@@ -6,9 +6,8 @@
                 <div @mouseover="getLastProjectSavedDateTooltip" :title="lastProjectSavedDateTooltip">
                     <img v-if="isProjectFromGoogleDrive" :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive" class="project-target-logo"/> 
                     <img v-else-if="isProjectFromFS" :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')" class="project-target-logo"/> 
-                    <img v-else :src="require('@/assets/images/empty.png')" class="project-target-logo"/>   
-                    <span class="gdrive-sync-label" v-if=" (isProjectFromGoogleDrive || isProjectFromFS) && !isEditorContentModifiedFlag" v-t="'appMessage.savedGDrive'" />
-                    <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" v-t="'appMessage.modifGDrive'" />
+                    <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag" v-t="'appMessage.savedGDrive'" />
+                    <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" v-t="'appMessage.modifGDrive'" :class="{'modifed-label-span': isProjectNotSourced}" />
                 </div>
             </div>     
             <div @mousedown.prevent.stop @mouseup.prevent.stop>
@@ -150,7 +149,11 @@ export default Vue.extend({
         isProjectFromFS(): boolean {
             return this.appStore.syncTarget == StrypeSyncTarget.fs;
         },
-
+        
+        isProjectNotSourced(): boolean {
+            return this.appStore.syncTarget == StrypeSyncTarget.none;
+        },
+        
         /* IFTRUE_isPython */
         peaComponentRefId(): string {
             return getStrypePEAComponentRefId();
@@ -580,12 +583,9 @@ export default Vue.extend({
         },
 
         getLastProjectSavedDateTooltip() {
-            // We show an indication about the last saved date of the document.
-           
-            // If we are in a new project, or a browser loaded project (from localStorage) we show "not saved"
-            if(this.appStore.syncTarget == StrypeSyncTarget.none){
-                this.lastProjectSavedDateTooltip = this.$i18n.t("appMessage.notSaved") as string;
-                return;
+            // We show an indication about the last saved date of the document (unless there is no select source yet)
+            if(this.isProjectNotSourced) {
+                return "";
             }
             
             // There shouldn't be a case when we get a date that is no set to a proper value, but to prevent
@@ -669,6 +669,10 @@ export default Vue.extend({
     justify-content: center;
 }
 
+.modifed-label-span {
+     margin-left: 15px;
+}
+
 .project-name {
     color: #274D19;
 }
@@ -676,7 +680,7 @@ export default Vue.extend({
 .project-target-logo {
     width: 16px;
     height: 16px;
-    margin-left: 5px;
+    margin-left: 15px;
     margin-right: 2px;
 }
 

@@ -20,32 +20,55 @@
             <div class="menu-separator-div"></div>
             <!-- load/save section -->
             <a :id="loadProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" @click="openLoadProjectModal">{{$t('appMenu.loadProject')}}<span class="strype-menu-kb-shortcut">{{loadProjectKBShortcut}}</span></a>
-            <ModalDlg :dlgId="loadProjectModalDlgId" :autoFocusButton="'ok'">
+            <ModalDlg :dlgId="loadProjectModalDlgId" showCloseBtn hideDlgBtns >
                 <div>
-                    <span v-t="'appMessage.loadToTarget'" class="load-save-label"/>
-                    <b-button-group :ref="loadProjectTargetButtonGpId" size="sm">
-                        <b-button :value="syncGDValue" :variant="(getSyncTargetStatus(syncGDValue)) ? 'primary' :'outline-primary'" class="toggle-button" @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, false)">Google Drive</b-button>
-                        <b-button :value="syncFSValue" :variant="(getSyncTargetStatus(syncFSValue)) ? 'primary' :'outline-primary'" class="toggle-button" @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, false)" v-t="'appMessage.targetFS'"></b-button>
-                    </b-button-group> 
+                    <div :ref="loadProjectTargetButtonGpId" class="project-target-button-container">
+                        <span v-t="'appMessage.loadToTarget'" class="load-save-label"/>
+                        <div id="loadFromGDStrypeButton" class="project-target-button load-dlg" tabindex="0"  @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
+                            @mouseenter="changeTargetFocusOnMouseOver">
+                            <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive"/> 
+                            <span>Google Drive</span>
+                        </div>
+                        <div id="loadFromFSStrypeButton" class="project-target-button load-dlg" tabindex="0"  @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
+                            @mouseenter="changeTargetFocusOnMouseOver">
+                            <img :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')"/> 
+                            <span v-t="'appMessage.targetFS'"></span>
+                        </div>
+                    </div>
                 </div>
             </ModalDlg>
             <a :id="saveProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" @click="handleSaveMenuClick">{{$t('appMenu.saveProject')}}<span class="strype-menu-kb-shortcut">{{saveProjectKBShortcut}}</span></a>
             <a v-if="showMenu" :class="{'strype-menu-link strype-menu-item': true, disabled: !isSynced }" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveAsProject'"/>
             <ModalDlg :dlgId="saveProjectModalDlgId" :autoFocusButton="'ok'">
-                <label v-t="'appMessage.fileName'" class="load-save-label"/>
-                <input :id="saveFileNameInputId" :placeholder="$t('defaultProjName')" type="text" ref="toFocus" autocomplete="off"/>
-                <div>
-                    <span v-t="'appMessage.saveToTarget'" class="load-save-label"/>
-                    <b-button-group :ref="saveProjectTargetButtonGpId" size="sm">
-                        <b-button :value="syncGDValue" :variant="(getSyncTargetStatus(syncGDValue)) ? 'primary' :'outline-primary'" class="toggle-button" @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)">Google Drive</b-button>
-                        <b-button :value="syncFSValue" :variant="(getSyncTargetStatus(syncFSValue)) ? 'primary' :'outline-primary'" class="toggle-button" @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)" v-t="'appMessage.targetFS'"></b-button>
-                    </b-button-group>
-                </div>
-                <br/>
-                <div v-show="showGDSaveLocation">
-                    <label v-t="'appMessage.gdriveLocation'" class="load-save-label"/>
-                    <span class="load-save-label">{{currentDriveLocation}}</span>
-                    <b-button v-t="'buttonLabel.saveDiffLocation'" variant="outline-primary" @click="onSaveDiffLocationClick" size="sm" />
+                <div class="save-project-modal-dlg-container">
+                    <div class="row">
+                        <label v-t="'appMessage.fileName'" class="load-save-label cell"/>
+                        <input :id="saveFileNameInputId" :placeholder="$t('defaultProjName')" type="text" ref="toFocus" autocomplete="off" class="cell" />
+                    </div>
+                    <div class="row">
+                        <span v-t="'appMessage.saveToTarget'" class="load-save-label cell" />
+                        <div class="cell">
+                            <div :ref="saveProjectTargetButtonGpId" class="project-target-button-container">
+                                <div id="saveToGDStrypeButton" class="project-target-button save-dlg" tabindex="0"  @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)"
+                                    :class="{saveTargetSelected: tempSyncTarget == syncGDValue || tempSyncTarget == noSyncTargetValue}">
+                                    <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive"/> 
+                                    <span>Google Drive</span>
+                                </div>
+                                <div id="saveToFSStrypeButton" class="project-target-button save-dlg" tabindex="0"  @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)"
+                                    :class="{saveTargetSelected: tempSyncTarget == syncFSValue}">
+                                    <img :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')"/> 
+                                    <span v-t="'appMessage.targetFS'"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <label v-show="showGDSaveLocation" v-t="'appMessage.gdriveLocation'" class="load-save-label cell"/>
+                        <div v-show="showGDSaveLocation" class="cell">                        
+                            <span class="load-save-label">{{currentDriveLocation}}</span>
+                            <b-button v-t="'buttonLabel.saveDiffLocation'" variant="outline-primary" @click="onSaveDiffLocationClick" size="sm" />
+                        </div>
+                    </div>
                 </div>
             </ModalDlg>
                 <ModalDlg :dlgId="saveOnLoadModalDlgId" :autoFocusButton="'ok'" :okCustomTitle="$t('buttonLabel.saveChanges')" :cancelCustomTitle="$t('buttonLabel.discardChanges')">
@@ -257,6 +280,10 @@ export default Vue.extend({
             return this.appStore.syncTarget != StrypeSyncTarget.none;
         },
 
+        noSyncTargetValue(): StrypeSyncTarget {
+            return StrypeSyncTarget.none;
+        },
+
         syncFSValue(): StrypeSyncTarget {
             return StrypeSyncTarget.fs;
         },
@@ -428,24 +455,26 @@ export default Vue.extend({
             this.$root.$emit("bv::show::modal", this.loadProjectModalDlgId);            
         },
 
+        changeTargetFocusOnMouseOver(event: MouseEvent) {
+            // On the "load project dialog", entering a target button should "snap" the focus to it and select it.
+            // On the "save porject dialog", entering a button just give an indication that the button can "clicked".
+            // For both, we handle those visual aspects by setting the focus on the button -- CSS does the rest.
+            if(event.target){
+                (event.target as HTMLDivElement).focus();
+            }
+        },
+
         changeTempSyncTarget(target: StrypeSyncTarget, isSaveAction?: boolean) {
             this.tempSyncTarget = target;
             if(isSaveAction){
                 this.onSaveTargetChanged();
             }
-        },
-
-        getSyncTargetStatus(target: StrypeSyncTarget): boolean {
-            // If there is no saved value in the store, the default value is Google Drive.
-            // When the UI temporary value is set, it prevails (that's only temporary to allow the switch).
-            if(this.tempSyncTarget != StrypeSyncTarget.none){
-                return (this.tempSyncTarget == target);
+            else {
+                // There is no intermediate steps when the target is selected for opening a project
+                // (we first close the target selector modal, then validate)
+                this.$root.$emit("bv::hide::modal", this.loadProjectModalDlgId);
+                this.onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.loadProjectModalDlgId);
             }
-
-            if(this.appStore.syncTarget == StrypeSyncTarget.none || (this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>)?.saveExistingGDProjectInfos.isCopyFileRequested){
-                return target == StrypeSyncTarget.gd; 
-            }
-            return target == this.appStore.syncTarget;
         },
 
         getTargetSelectVal(): StrypeSyncTarget {
@@ -506,6 +535,23 @@ export default Vue.extend({
                     saveFileNameInputElement.click();
                 }, 500);           
             }
+            else {
+                // When the load or save project dialogs are opened, we focus the Google Drive selector by default when we don't have information about the source target
+                setTimeout(() => {
+                    const targetToFocusButton =[...document.querySelectorAll(`#${dlgId} .project-target-button`)].find((targetButton) => {
+                        // As the moment we only have 2 possible source targets, we can simply check whether "Google" is in the button or not...
+                        if(this.tempSyncTarget == this.noSyncTargetValue || this.tempSyncTarget == this.syncGDValue) {
+                            return targetButton.querySelector("span")?.textContent?.includes("Google");
+                        }
+                        else {
+                            return !targetButton.querySelector("span")?.textContent?.includes("Google");
+                        }
+                    });
+                    if(targetToFocusButton){
+                        (targetToFocusButton as HTMLDivElement).focus();
+                    }
+                }, 100);
+            } 
         },
 
         onStrypeMenuHideModalDlg(event: BvModalEvent, dlgId: string, forcedProjectName?: string, saveReason ?: SaveRequestReason) {
@@ -532,6 +578,10 @@ export default Vue.extend({
             else if(event.trigger == "ok" || event.trigger == "event"){
                 // Case of "load file"
                 if(dlgId == this.loadProjectModalDlgId){
+                    // We do not do anything if the modal is closed by a "hide" event.
+                    if(event.trigger == "event" && event.type == "hide"){
+                        return;
+                    }
                     this.currentModalButtonGroupIDInAction = this.loadProjectTargetButtonGpId;
                     this.loadProject();
                 }
@@ -772,8 +822,8 @@ export default Vue.extend({
                 this.appStore.ignoreKeyEvent = true;
 
                 if(event.type == "keyup" && event.key == "Enter"){
-                // When the enter key is hit, we trigger the action bound to the click for the selected menu element
-                // and we cancel the natural key up event so it does not get sent to the editor (otherwise, will add a blank frame)
+                    // When the enter key is hit, we trigger the action bound to the click for the selected menu element
+                    // and we cancel the natural key up event so it does not get sent to the editor (otherwise, will add a blank frame)
                     event.preventDefault();
                     event.stopImmediatePropagation();
                     event.stopPropagation();
@@ -796,24 +846,41 @@ export default Vue.extend({
 
         onTargetButtonKeyDown(event: KeyboardEvent, isSaveAction: boolean) {
             // Handle some basic keyboard logic for the target selection.
-            // Space should allow a switch of target.
-            if(event.key == " "){
-                // We get the list of toggle button for the target (button)'s parent, and look for the next one (first if we're on the last)
-                const buttonGroupElement = this.$refs[(isSaveAction) ? this.saveProjectTargetButtonGpId : this.loadProjectTargetButtonGpId];
-                if(buttonGroupElement){
-                    const switchButtons = (buttonGroupElement as Element).children;
-                    if(switchButtons){
-                        const currentSwitchPos = [...switchButtons].findIndex((switchEl) => switchEl.classList.contains("btn-primary"));
-                        const newSwitchPos = (currentSwitchPos == switchButtons.length - 1) ? 0 : currentSwitchPos + 1;
-                        (switchButtons.item(newSwitchPos) as HTMLButtonElement).focus();
-                        (switchButtons.item(newSwitchPos) as HTMLButtonElement).click();
-                        // Prevent the default behaviour
-                        event.stopImmediatePropagation();
+
+            // Space, left/right arrows should trigger a change of target
+            if(event.key.toLowerCase() == " " || event.key.toLowerCase() == "arrowleft" || event.key.toLowerCase() == "arrowright"){
+                const currentFocusedElementID = document.activeElement?.id??"";
+                const targetButtons = [...document.querySelectorAll(`#${(isSaveAction) ? this.saveProjectModalDlgId : this.loadProjectModalDlgId} .project-target-button`)];
+                const focusedButtonIndex = targetButtons.findIndex((target) => {
+                    return target.id == currentFocusedElementID;
+                });
+                if(focusedButtonIndex > -1){
+                    const newFocousedButtonIndex = (event.key.toLowerCase() == "arrowleft") 
+                        ? (((focusedButtonIndex - 1) >= 0) ? focusedButtonIndex - 1 : targetButtons.length - 1)
+                        : (((focusedButtonIndex + 1) < targetButtons.length) ? focusedButtonIndex + 1 : 0); 
+                    (targetButtons[newFocousedButtonIndex] as HTMLDivElement).focus();
+                    if(isSaveAction) {
+                        (targetButtons[newFocousedButtonIndex] as HTMLDivElement).click();
+                    }                    
+                }
+                event.stopImmediatePropagation();
+                event.stopPropagation();
+                event.preventDefault();
+                return;
+            }
+
+            // Enter should act as a button validation, if one of the target is focused.
+            if(event.key.toLowerCase() == "enter"){
+                const focusedTarget = document.activeElement;
+                if(focusedTarget && focusedTarget.classList.contains("project-target-button")){
+                    (focusedTarget as HTMLDivElement).click();
+                    if(isSaveAction){
+                        // On the save dialog, the action doesn't validate the modal dialog
                         event.stopPropagation();
+                        event.stopImmediatePropagation();
                         event.preventDefault();
                     }
                 }
-
             }
         },
 
@@ -977,6 +1044,19 @@ export default Vue.extend({
     margin-right: 5px;
 }
 
+.save-project-modal-dlg-container {
+    display: table;
+    border-spacing: 10px 10px;
+}
+
+.save-project-modal-dlg-container .row {
+    display: table-row;
+}
+
+.save-project-modal-dlg-container .cell {
+    display: table-cell;
+}
+
 .error-nav-enabled {
     color: #d66;
     cursor: pointer;
@@ -991,6 +1071,48 @@ export default Vue.extend({
     color: white;
     background-color: #d66;
     border-radius: 50%;
+}
+
+.project-target-button-container {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 20px;
+    justify-content: space-around;
+    align-items: center;
+}
+
+.project-target-button {
+    border-radius: 8px;
+    border: #c5c4c1 2px solid;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    padding: 5px;
+    align-items: center;
+    justify-content: space-between;
+    width: 120px;
+}
+
+.project-target-button.load-dlg:focus,
+.project-target-button.saveTargetSelected
+ {
+    border-color: #007bff;
+    cursor: pointer;
+    box-shadow: 2px 2px 5px rgb(141, 140, 140);
+    outline: none;
+}
+
+.project-target-button.save-dlg:focus {
+    border-color: black !important;
+}
+
+
+.project-target-button.save-dlg:hover {
+    box-shadow: 2px 2px 5px rgb(141, 140, 140);
+}
+
+.project-target-button-container img {
+    width: 64px;
 }
 
 .toggle-button {
