@@ -316,12 +316,12 @@ export default Vue.extend({
                     // We found one menu entry matching the hit keyboard shortcut, we simulate a click (which will close the menu) on the underlying <a>
                     ((menuItemForKBShortcut as HTMLLIElement).children[0] as HTMLAnchorElement)?.click();
                 }
-                else if(event.key != "Enter" || (event.key == "Enter" && !isContextMenuItemSelected())){
+                else if((!event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) && (event.key != "Enter" || (event.key == "Enter" && !isContextMenuItemSelected()))){
                     // Note: that's not an ideal way of using the Keyboard Event, but the source code for VueContext uses keycodes...
                     activeContextMenu.dispatchEvent(new KeyboardEvent("keydown", {keyCode: 27}));
                 }
                 else{
-                    // An element from the menu is activated via "Enter", we don't interfere.
+                    // An element from the menu is activated via "Enter", or a modifier key is pressed alone, we don't interfere.
                     return;
                 }
 
