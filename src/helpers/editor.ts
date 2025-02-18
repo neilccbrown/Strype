@@ -1,7 +1,7 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesFuncDefScope, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameSectionIdFromFrameId } from "./storeMethods";
+import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameContainer, getFrameSectionIdFromFrameId } from "./storeMethods";
 import { strypeFileExtension } from "./common";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
 import scssVars  from "@/assets/style/_export.module.scss";
@@ -9,6 +9,10 @@ import html2canvas, { Options } from "html2canvas";
 import CaretContainer from "@/components/CaretContainer.vue";
 import { vm } from "@/main";
 import Vue from "vue";
+import Frame from "@/components/Frame.vue";
+import FrameContainer from "@/components/FrameContainer.vue";
+import FrameBody from "@/components/FrameBody.vue";
+import JointFrames from "@/components/JointFrames.vue";
 
 export const undoMaxSteps = 200;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
@@ -22,9 +26,9 @@ export enum CustomEventTypes {
     editableSlotGotCaret= "slotGotCaret",
     editableSlotLostCaret = "slotLostCaret",
     editorContentPastedInSlot = "contentPastedInSlot",
-    addFunctionToEditorAutoSave = "addToAutoSaveFunction",
-    removeFunctionToEditorAutoSave = "rmToAutoSaveFunction",
-    requestEditorAutoSaveNow = "requestAutoSaveNow",
+    addFunctionToEditorProjectSave = "addToProjectSaveFunction",
+    removeFunctionToEditorProjectSave = "rmToProjectSaveFunction",
+    requestEditorProjectSaveNow = "requestProjectSaveNow",
     saveStrypeProjectDoneForLoad = "saveProjDoneForLoad",
     noneStrypeFilePicked = "nonStrypeFilePicked",
     acItemHovered="acItemHovered",
@@ -365,6 +369,65 @@ export function getStrypeCommandComponentRefId(): string {
 export function getStrypePEAComponentRefId(): string {
     return "strypePEA";
 }
+
+// The following helpers traverse the component refs to retrieve the desired component
+export function getFrameComponent(frameId: number, innerLookDetails?: {frameParentComponent: InstanceType<typeof Frame> | InstanceType<typeof FrameContainer> | InstanceType<typeof FrameBody> | InstanceType<typeof JointFrames>, listOfFrameIdToCheck: number[]}): InstanceType<typeof Frame> | InstanceType<typeof FrameContainer> | undefined {
+    // This methods gets the (Vue) reference of a frame based on its ID, or undefined if we could not find it.
+    // The logic to retrieve the reference relies on the implementation of the editor, as we look in 
+    // the frame containers which are supposed to hold the frames, and within frame body/joint when a frame can have children/joint frames.
+    // If no root is provided, we assume we search the frame reference everywhere in the editor, meaning we look into the frame containers of App (this)
+    // IMPORTANT NOTE: we are getting arrays of refs here when retrieving the refs, because the referenced elements are within a v-for
+    // https://laracasts.com/discuss/channels/vue/ref-is-an-array 
+    let result = undefined;
+    if(innerLookDetails){                
+        for(const childFrameId of innerLookDetails.listOfFrameIdToCheck){
+            const childFrameComponent = ((innerLookDetails.frameParentComponent.$refs[getFrameUID(childFrameId)] as (Vue|Element)[])[0] as InstanceType<typeof Frame>);
+            if(childFrameId == frameId){
+                // Found the frame directly inside this list of frames
+                result =  childFrameComponent;
+                break;
+            }
+            else if(useStore().frameObjects[childFrameId].childrenIds.length > 0 || useStore().frameObjects[childFrameId].jointFrameIds.length > 0){
+                // That frame isn't the one we want, but maybe it contains the one we want so we look into it.
+                // We first look into the children, the joint frames (which may have children as well)
+                const frameBodyComponent = (childFrameComponent.$refs[getFrameBodyRef()] as InstanceType<typeof FrameBody>); // There is 1 body in a frame, no v-for is used, we have 1 element
+                result = getFrameComponent(frameId, {frameParentComponent: frameBodyComponent, listOfFrameIdToCheck: useStore().frameObjects[childFrameId].childrenIds});
+
+                if(!result){
+                    // Check joints if we didn't find anything in the children
+                    const jointFramesComponent = (childFrameComponent.$refs[getJointFramesRef()] as InstanceType<typeof FrameBody>); // There is 1 joint frames strcut in a frame, no v-for is used, we have 1 element
+                    result = getFrameComponent(frameId, {frameParentComponent: jointFramesComponent, listOfFrameIdToCheck: useStore().frameObjects[childFrameId].jointFrameIds});
+                }
+
+                if(result){
+                    break;
+                }
+            }
+        }
+    }
+    else{
+        // When we look for the frame from the whole editor, we need to find in wich frame container that frame lives.
+        // We don't need to parse recursively for getting the refs/frames as we can just find out what frame container it is in first directly...
+        // And if we are already in the container (body), then we just return this component 
+        const frameContainerId = (frameId < 0) ? frameId : getFrameContainer(frameId); 
+        const containerElementRefs = vm.$root.$children[0].$refs[getFrameContainerUID(frameContainerId)] as (Vue|Element)[]; // Retrieve in App
+        if(containerElementRefs) {
+            result = (frameId < 0) 
+                ? containerElementRefs[0] as InstanceType<typeof FrameContainer>
+                : getFrameComponent(frameId,{frameParentComponent: containerElementRefs[0] as InstanceType<typeof FrameContainer>, listOfFrameIdToCheck: useStore().frameObjects[frameContainerId].childrenIds});
+        }
+    }
+
+    return result;
+}
+
+export function getCaretContainerComponent(frameComponent: InstanceType<typeof Frame> | InstanceType<typeof FrameContainer>): InstanceType<typeof CaretContainer> {
+    const caretContainerComponent = (useStore().currentFrame.id < 0 || useStore().currentFrame.caretPosition == CaretPosition.below)
+        ? (frameComponent.$refs[getCaretContainerRef()] as InstanceType<typeof CaretContainer>)
+        : ((frameComponent.$refs[getFrameBodyRef()] as InstanceType<typeof FrameBody>).$refs[getCaretContainerRef()] as InstanceType<typeof CaretContainer>); 
+    return caretContainerComponent;                              
+}
+// End for component retriever
 
 export function getSaveAsProjectModalDlg():string {
     return "save-strype-project-modal-dlg";
@@ -900,7 +963,7 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
 // Helpers for adding or removing the "duplicate" action on a drag an drop frames
 export function addDuplicateActionOnFramesDnD(): void {
     // Add the "+" symbol
-    if(currentCaretDropPosFrameId > 0){
+    if(currentCaretDropPosFrameId != 0){
         (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).isDuplicateDnDAction = true;
     }
 
@@ -911,7 +974,7 @@ export function addDuplicateActionOnFramesDnD(): void {
 
 export function removeDuplicateActionOnFramesDnD(): void {
     // Remove the "+" symbol on the destination caret
-    if(currentCaretDropPosFrameId > 0){
+    if(currentCaretDropPosFrameId != 0){
         (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).isDuplicateDnDAction = false;
     }
 

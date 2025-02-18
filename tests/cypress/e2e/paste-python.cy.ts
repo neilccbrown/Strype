@@ -101,8 +101,12 @@ function testRoundTripImportAndDownload(filepath: string, expected?: string) {
 
         cy.get("#showHideMenu").click();
         cy.get("#loadProjectLink").click();
-        cy.get("button").contains("This device").click();
-        cy.get("button").contains("OK").click();
+        // If the current state of the project is modified,
+        // we first need to discard the changes (we check the button is available)
+        cy.get("button").contains("Discard changes").should("exist").click();
+        cy.wait(2000);
+        // The "button" for the target selection is now a div element.
+        cy.get("#loadFromFSStrypeButton").click();
         // Must force because the <input> is hidden:
         cy.get(".editor-file-input").selectFile(filepath, {force : true});
         cy.wait(2000);

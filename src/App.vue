@@ -44,7 +44,8 @@
                             <div class="col">
                                 <div 
                                     :id="editorUID" 
-                                    :class="{'editor-code-div noselect print-full-height':true, 'full-height-editor-code-div':!isExpandedPythonExecArea, 'cropped-editor-code-div': isExpandedPythonExecArea}" 
+                                    :class="{'editor-code-div noselect print-full-height':true, 'full-height-editor-code-div':!isExpandedPythonExecArea, 'cropped-editor-code-div': isExpandedPythonExecArea}"
+                                    @mousedown="handleWholeEditorMouseDown"
                                 >
                                     <FrameContainer
                                         v-for="container in containerFrames"
@@ -71,7 +72,7 @@
             <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
         </ModalDlg>
         <ModalDlg :dlgId="resyncGDAtStartupModalDlgId" :useYesNo="true" :okCustomTitle="$t('buttonLabel.yesSign')" :cancelCustomTitle="$t('buttonLabel.noContinueWithout')">
-            <span style="white-space:pre-wrap">{{ $t('appMessage.resyncToGDAtStartup') }}</span>
+            <span style="white-space:pre-wrap" v-html="$t('appMessage.resyncToGDAtStartup')"></span>
         </ModalDlg>
         <div :id="getSkulptBackendTurtleDivId" class="hidden"></div>
         <canvas v-show="appStore.isDraggingFrame" :id="getCompanionDndCanvasId" class="companion-canvas-dnd"/>
@@ -86,24 +87,21 @@ import Vue from "vue";
 import MessageBanner from "@/components/MessageBanner.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import Frame from "@/components/Frame.vue";
-import FrameBody from "@/components/FrameBody.vue";
-import JointFrames from "@/components/JointFrames.vue";
 import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
-import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getStrypePEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD } from "./helpers/editor";
+import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget } from "@/types/types";
+import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getStrypePEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
 /* FITRUE_isMicrobit */
 import { mapStores } from "pinia";
-import { getFrameContainer, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "./helpers/storeMethods";
+import { getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "./helpers/storeMethods";
 import { cloneDeep } from "lodash";
-import CaretContainer from "@/components/CaretContainer.vue";
 import { VueContextConstructor } from "vue-context";
 import { BACKEND_SKULPT_DIV_ID } from "@/autocompletion/ac-skulpt";
 import {copyFramesFromParsedPython, splitLinesToSections, STRYPE_LOCATION} from "@/helpers/pythonToFrames";
@@ -111,7 +109,7 @@ import GoogleDrive from "@/components/GoogleDrive.vue";
 import { BvModalEvent } from "bootstrap-vue";
 
 let autoSaveTimerId = -1;
-let autoSaveState : AutoSaveFunction[] = [];
+let projectSaveFunctionsState : ProjectSaveFunction[] = [];
 
 //////////////////////
 //     Component    //
@@ -211,7 +209,7 @@ export default Vue.extend({
     },
 
     created() {
-        autoSaveState[0] = {name: "WS", function: (reason: SaveRequestReason) => this.autoSaveStateToWebLocalStorage(reason)};
+        projectSaveFunctionsState[0] = {name: "WS", function: (reason: SaveRequestReason) => this.autoSaveStateToWebLocalStorage(reason)};
         window.addEventListener("beforeunload", (event) => {
             // No matter the choice the user will make on saving the page, and because it is not straight forward to know what action has been done,
             // we systematically exit any slot being edited to have a state showing the blue caret.
@@ -232,7 +230,7 @@ export default Vue.extend({
 
             // Save the state before exiting
             if(!this.resetStrypeProjectFlag){
-                autoSaveState.forEach((asf) => asf.function(SaveRequestReason.unloadPage));
+                this.autoSaveStateToWebLocalStorage(SaveRequestReason.unloadPage);
             }
             else {
                 // if the user cancels the reload, and that the reset was request, we need to restore the autosave process:
@@ -318,12 +316,12 @@ export default Vue.extend({
                     // We found one menu entry matching the hit keyboard shortcut, we simulate a click (which will close the menu) on the underlying <a>
                     ((menuItemForKBShortcut as HTMLLIElement).children[0] as HTMLAnchorElement)?.click();
                 }
-                else if(event.key != "Enter" || (event.key == "Enter" && !isContextMenuItemSelected())){
+                else if((!event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) && (event.key != "Enter" || (event.key == "Enter" && !isContextMenuItemSelected()))){
                     // Note: that's not an ideal way of using the Keyboard Event, but the source code for VueContext uses keycodes...
                     activeContextMenu.dispatchEvent(new KeyboardEvent("keydown", {keyCode: 27}));
                 }
                 else{
-                    // An element from the menu is activated via "Enter", we don't interfere.
+                    // An element from the menu is activated via "Enter", or a modifier key is pressed alone, we don't interfere.
                     return;
                 }
 
@@ -448,8 +446,8 @@ export default Vue.extend({
                             if((event.trigger == "ok" || event.trigger=="event") && dlgId == this.resyncGDAtStartupModalDlgId){
                                 // Fetch the Google Drive component
                                 const gdVueComponent = ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>);
-                                // Initiate a connection to Google Drive via loading mechanisms (for resync at startup)
-                                gdVueComponent.loadFile(true);
+                                // Initiate a connection to Google Drive via saving mechanisms (for updating Google Drive with local changes)
+                                gdVueComponent.saveFile(SaveRequestReason.reloadBrowser);
 
                                 this.$root.$off("bv::modal::hide", execGetGDFileFunction); 
                             }
@@ -467,41 +465,51 @@ export default Vue.extend({
         // Register a listener for a request to close a caret context menu (used by Frame.vue)
         this.$root.$on(CustomEventTypes.requestCaretContextMenuClose, () => {
             // We find the CaretContainer component currently active to properly close the menu using the component close() method.
-            const currentFrameComponent = this.getFrameComponent(this.appStore.currentFrame.id);
+            const currentFrameComponent = getFrameComponent(this.appStore.currentFrame.id);
             if(currentFrameComponent){
-                const currentCaretContainerComponent = this.getCaretContainerComponent(currentFrameComponent);
+                const currentCaretContainerComponent = getCaretContainerComponent(currentFrameComponent);
                 ((currentCaretContainerComponent.$refs.menu as unknown) as VueContextConstructor).close();
             }
         });
 
-        this.$root.$on(CustomEventTypes.addFunctionToEditorAutoSave, (asf: AutoSaveFunction) => {
+        this.$root.$on(CustomEventTypes.addFunctionToEditorProjectSave, (psf: ProjectSaveFunction) => {
             // Before adding a new function to execute in the autosave mechanism, we stop the current time, and will restart it again once the function is added.
             // That is because, if the new function is added just before the next tick of the timer is due, we don't want to excecuted actions just yet to give
             // time to the user to sign in to Google Drive first, then load a potential project without saving the project that is in the editor in between.
             window.clearInterval(autoSaveTimerId);
-            const asfEntry = autoSaveState.find((asfEntry) => (asfEntry.name == asf.name));
-            if(asfEntry){
-                // There is already some function set for that type of autosave, we just update the function
-                asfEntry.function = asf.function;
+            const psfEntry = projectSaveFunctionsState.find((psfEntry) => (psfEntry.name == psf.name));
+            if(psfEntry){
+                // There is already some function set for that type of project save, we just update the function
+                psfEntry.function = psf.function;
             }
             else{
-                // Nothing yet set for this type of autosave, we add the entry autoSaveState
-                autoSaveState.push(asf);
+                // Nothing yet set for this type of project save, we add the entry in projectSaveFunctionsState
+                projectSaveFunctionsState.push(psf);
             }
             this.setAutoSaveState();
         });
 
-        this.$root.$on(CustomEventTypes.removeFunctionToEditorAutoSave, (asfName: string) => {           
-            const toDeleteIndex = autoSaveState.findIndex((asf) => asf.name == asfName);
+        this.$root.$on(CustomEventTypes.removeFunctionToEditorProjectSave, (psfName: string) => {
+            const toDeleteIndex = projectSaveFunctionsState.findIndex((psf) => psf.name == psfName);
             if(toDeleteIndex > -1){
                 window.clearInterval(autoSaveTimerId);
-                autoSaveState.splice(toDeleteIndex, 1);
+                projectSaveFunctionsState.splice(toDeleteIndex, 1);
                 this.setAutoSaveState();
             }            
         });
 
-        // Listen to event for requesting the autosave now
-        this.$root.$on(CustomEventTypes.requestEditorAutoSaveNow, (saveReason: SaveRequestReason) => autoSaveState.forEach((asf) => asf.function(saveReason)));
+        // Listen to event for requesting the project save now
+        this.$root.$on(CustomEventTypes.requestEditorProjectSaveNow, (saveReason: SaveRequestReason) => {
+            // The usual behaviour is to trigger the saving functions for localStorage + any potential target (FS or GD).
+            // However, if we are in a situation of requesting a save to open a new project, AND the project wasn't coming
+            // from any source (FS or GD) we need to let the user perform a standard save.
+            if(saveReason == SaveRequestReason.loadProject && this.appStore.syncTarget == StrypeSyncTarget.none){
+                (this.$refs[this.menuUID] as InstanceType<typeof Menu>).handleSaveMenuClick(saveReason);
+            }
+            else {
+                projectSaveFunctionsState.forEach((psf) => psf.function(saveReason));
+            }
+        });
 
         // This case may not happen, but if we had a Strype version that contains a default initial state working with Turtle,
         // the UI should reflect it (showing the Turtle tab) so we look for Turtle in any case.
@@ -510,8 +518,13 @@ export default Vue.extend({
 
     methods: {
         setAutoSaveState() {
+            // The autosave is only performed on the webstore
             autoSaveTimerId = window.setInterval(() => {
-                autoSaveState.forEach((asf) => asf.function(SaveRequestReason.autosave));
+                projectSaveFunctionsState.forEach((psf) => {
+                    if(psf.name == "WS") {
+                        psf.function(SaveRequestReason.autosave);
+                    }
+                });
             }, autoSaveFreqMins * 60000);
         },
         
@@ -520,7 +533,7 @@ export default Vue.extend({
             if (!this.appStore.debugging && typeof(Storage) !== "undefined") {
                 localStorage.setItem(this.localStorageAutosaveKey, this.appStore.generateStateJSONStrWithCheckpoint(true));
                 // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
-                if(reason==SaveRequestReason.loadProject && autoSaveState.length == 1){
+                if(reason==SaveRequestReason.loadProject && projectSaveFunctionsState.length == 1){
                     this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                 }
             }
@@ -561,6 +574,11 @@ export default Vue.extend({
 
         messageTop(): boolean {
             return this.appStore.currentMessage.type !== MessageTypes.imageDisplay;
+        },
+
+        handleWholeEditorMouseDown(){
+            // Force the Strype menu to close in case it was opened
+            (this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).toggleMenuOnOff(null);
         },
 
         handleDocumentSelectionChange(){
@@ -629,14 +647,14 @@ export default Vue.extend({
                             const menuPosition = this.ensureFrameKBShortcutContextMenu(areFramesSelected);
                             // We retrieve the element on which we need to call the menu: the first frame of the selection if some frames are selected,
                             // the current blue caret otherwise
-                            const frameComponent = this.getFrameComponent((areFramesSelected) ? this.appStore.selectedFrames[0] : this.appStore.currentFrame.id);
+                            const frameComponent = getFrameComponent((areFramesSelected) ? this.appStore.selectedFrames[0] : this.appStore.currentFrame.id);
                             if(frameComponent) {
                                 if(areFramesSelected){
                                     (frameComponent as InstanceType<typeof Frame>).handleClick(event, menuPosition);
                                 }
                                 else{
                                     // When there is no selection, the menu to open is for the current caret, which can either be inside a frame's body or under a frame
-                                    const caretContainerComponent = this.getCaretContainerComponent(frameComponent);
+                                    const caretContainerComponent = getCaretContainerComponent(frameComponent);
                                     caretContainerComponent.handleClick(event, menuPosition);
                                 }
                             }
@@ -733,63 +751,6 @@ export default Vue.extend({
             });     
         },
 
-        getFrameComponent(frameId: number, innerLookDetails?: {frameParentComponent: InstanceType<typeof Frame> | InstanceType<typeof FrameContainer> | InstanceType<typeof FrameBody> | InstanceType<typeof JointFrames>, listOfFrameIdToCheck: number[]}): InstanceType<typeof Frame> | InstanceType<typeof FrameContainer> | undefined {
-            // This methods gets the (Vue) reference of a frame based on its ID, or undefined if we could not find it.
-            // The logic to retrieve the reference relies on the implementation of the editor, as we look in 
-            // the frame containers which are supposed to hold the frames, and within frame body/joint when a frame can have children/joint frames.
-            // If no root is provided, we assume we search the frame reference everywhere in the editor, meaning we look into the frame containers of App (this)
-            // IMPORTANT NOTE: we are getting arrays of refs here when retrieving the refs, because the referenced elements are within a v-for
-            // https://laracasts.com/discuss/channels/vue/ref-is-an-array 
-            let result = undefined;
-            if(innerLookDetails){                
-                for(const childFrameId of innerLookDetails.listOfFrameIdToCheck){
-                    const childFrameComponent = ((innerLookDetails.frameParentComponent.$refs[getFrameUID(childFrameId)] as (Vue|Element)[])[0] as InstanceType<typeof Frame>);
-                    if(childFrameId == frameId){
-                        // Found the frame directly inside this list of frames
-                        result =  childFrameComponent;
-                        break;
-                    }
-                    else if(this.appStore.frameObjects[childFrameId].childrenIds.length > 0 || this.appStore.frameObjects[childFrameId].jointFrameIds.length > 0){
-                        // That frame isn't the one we want, but maybe it contains the one we want so we look into it.
-                        // We first look into the children, the joint frames (which may have children as well)
-                        const frameBodyComponent = (childFrameComponent.$refs[getFrameBodyRef()] as InstanceType<typeof FrameBody>); // There is 1 body in a frame, no v-for is used, we have 1 element
-                        result = this.getFrameComponent(frameId, {frameParentComponent: frameBodyComponent, listOfFrameIdToCheck: this.appStore.frameObjects[childFrameId].childrenIds});
-
-                        if(!result){
-                            // Check joints if we didn't find anything in the children
-                            const jointFramesComponent = (childFrameComponent.$refs[getJointFramesRef()] as InstanceType<typeof FrameBody>); // There is 1 joint frames strcut in a frame, no v-for is used, we have 1 element
-                            result = this.getFrameComponent(frameId, {frameParentComponent: jointFramesComponent, listOfFrameIdToCheck: this.appStore.frameObjects[childFrameId].jointFrameIds});
-                        }
-
-                        if(result){
-                            break;
-                        }
-                    }
-                }
-            }
-            else{
-                // When we look for the frame from the whole editor, we need to find in wich frame container that frame lives.
-                // We don't need to parse recursively for getting the refs/frames as we can just find out what frame container it is in first directly...
-                // And if we are already in the container (body), then we just return this component 
-                const frameContainerId = (frameId < 0) ? frameId : getFrameContainer(frameId); 
-                const containerElementRefs = this.$refs[getFrameContainerUID(frameContainerId)] as (Vue|Element)[];
-                if(containerElementRefs) {
-                    result = (frameId < 0) 
-                        ? containerElementRefs[0] as InstanceType<typeof FrameContainer>
-                        : this.getFrameComponent(frameId,{frameParentComponent: containerElementRefs[0] as InstanceType<typeof FrameContainer>, listOfFrameIdToCheck: this.appStore.frameObjects[frameContainerId].childrenIds});
-                }
-            }
-
-            return result;
-        },
-
-        getCaretContainerComponent(frameComponent: InstanceType<typeof Frame> | InstanceType<typeof FrameContainer>): InstanceType<typeof CaretContainer> {
-            const caretContainerComponent = (this.appStore.currentFrame.id < 0 || this.appStore.currentFrame.caretPosition == CaretPosition.below)
-                ? (frameComponent.$refs[getCaretContainerRef()] as InstanceType<typeof CaretContainer>)
-                : ((frameComponent.$refs[getFrameBodyRef()] as InstanceType<typeof FrameBody>).$refs[getCaretContainerRef()] as InstanceType<typeof CaretContainer>); 
-            return caretContainerComponent;                              
-        },
-
         ensureFrameKBShortcutContextMenu(isTargetFrames: boolean): Position {
             // This method is called when the context menu for selected frames or the blue caret is going to be shown because of a keyboard shortcut.
             // We need to make sure the frame(s) / caret and the context menu will be visible, as the user may have scrolled and left the selection (partially or fully) out of view.
@@ -878,7 +839,7 @@ export default Vue.extend({
             document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
         },
         
-        setStateFromPythonFile(completeSource: string, fileName: string, fileLocation?: FileSystemFileHandle) : void {
+        setStateFromPythonFile(completeSource: string, fileName: string, lastSaveDate: number, fileLocation?: FileSystemFileHandle) : void {
             const allLines = completeSource.split(/\r?\n/);
             // Split can make an extra blank line at the end which we don't want:
             if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
@@ -903,16 +864,16 @@ export default Vue.extend({
 
                 copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION);
                 if (useStore().copiedSelectionFrameIds.length > 0) {
-                    this.getCaretContainerComponent(this.getFrameComponent(-1) as InstanceType<typeof FrameContainer>).doPaste(true);
+                    getCaretContainerComponent(getFrameComponent(-1) as InstanceType<typeof FrameContainer>).doPaste(true);
                 }
                 copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.DEFS_SECTION);
                 if (useStore().copiedSelectionFrameIds.length > 0) {
-                    this.getCaretContainerComponent(this.getFrameComponent(-2) as InstanceType<typeof FrameContainer>).doPaste(true);
+                    getCaretContainerComponent(getFrameComponent(-2) as InstanceType<typeof FrameContainer>).doPaste(true);
                 }
                 if (s.main.length > 0) {
                     copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION);
                     if (useStore().copiedSelectionFrameIds.length > 0) {
-                        this.getCaretContainerComponent(this.getFrameComponent(-3) as InstanceType<typeof FrameContainer>).doPaste(true);
+                        getCaretContainerComponent(getFrameComponent(-3) as InstanceType<typeof FrameContainer>).doPaste(true);
                     }
                 }
 
@@ -928,7 +889,7 @@ export default Vue.extend({
                 /* FITRUE_isPython */
 
                 // Finally, we can trigger the notifcation a file has been loaded.
-                (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, fileLocation);
+                (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, lastSaveDate, fileLocation);
             }
         },
     },
@@ -1274,7 +1235,7 @@ $divider-grey: darken($background-grey, 15%);
 
 .strype-split-theme.splitpanes--horizontal>.splitpanes__splitter,
 .strype-split-theme .splitpanes--horizontal>.splitpanes__splitter {
-	height: 7px;
+	height: 14px;
 	border-top: 1px solid transparent;
 	margin-top: -1px
 }

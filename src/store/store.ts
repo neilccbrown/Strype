@@ -2,7 +2,7 @@ import Vue from "vue";
 import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
-import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion, vm } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
@@ -143,6 +143,8 @@ export const useStore = defineStore("app", {
             isProjectUnsaved: true, // flag indicating if we have notified changes that haven't been saved
 
             currentGoogleDriveSaveFileId: undefined as undefined|string,
+
+            projectLastSaveDate: -1, // Date ticks
 
             selectedFrames: [] as number[],
 
@@ -392,6 +394,11 @@ export const useStore = defineStore("app", {
             const filteredCommands: {[id: string]: AddFrameCommandDef[]} = cloneDeep(addCommandsDefs);
             const allowedJointCommand: {[id: string]: AddFrameCommandDef[]} = {};
 
+            // If frames are selected, we only show the frames commands that can be used for wrapping.
+            // (For the definitions section, we won't allow any wrapping.)
+            const isSelectingInsideDefsSection = ((currentFrame.id == useStore().getFuncDefsFrameContainerId || state.frameObjects[currentFrame.id].parentId == useStore().getFuncDefsFrameContainerId) 
+                && state.selectedFrames.length > 0);
+
             // for each shortcut we get a list of the corresponding commands
             for (const frameShortcut in addCommandsDefs) {
 
@@ -400,10 +407,18 @@ export const useStore = defineStore("app", {
                 
                 // filtered = filtered - forbidden - allJoints
                 // all joints need to be removed here as they may overlap with the forbiden and the allowed ones. Allowed will be added on the next step.
-                // unless we are checking for a target position, if some frames are currently selected, we do not allow statement type frames to appear in the list of commands (we can only wrap the selection)
-                filteredCommands[frameShortcut] = filteredCommands[frameShortcut].filter((x) => !forbiddenTypes.includes(x.type.type) && !x.type.isJointFrame
-                    && (lookingForTargetPos || state.selectedFrames.length == 0 || (state.selectedFrames.length > 0 && x.type.allowChildren)));
-
+                // unless we are checking for a target position, if some frames are currently selected, we do not allow statement type frames to appear 
+                // in the list of commands (we can only wrap the selection).
+                // We need a special case for when we are directly inside the definitions section, and some frames are selected, to not allow wrapping
+                // a function, or a class, with another function or a class.
+                if(isSelectingInsideDefsSection) {
+                    filteredCommands[frameShortcut] = [];
+                }
+                else{
+                    filteredCommands[frameShortcut] = filteredCommands[frameShortcut].filter((x) => !forbiddenTypes.includes(x.type.type) && !x.type.isJointFrame
+                        && (lookingForTargetPos || state.selectedFrames.length == 0 || (state.selectedFrames.length > 0 && x.type.allowChildren)));
+                }
+                
                 // filtered = filtered + allowed
                 filteredCommands[frameShortcut].push(...allowedJointCommand[frameShortcut]);
                 
@@ -1270,6 +1285,7 @@ export const useStore = defineStore("app", {
             // If the sync target property did not exist in the saved stated, we set it up to the default value
             this.syncTarget = StrypeSyncTarget.none;
             this.isEditorContentModified = false;
+            this.projectLastSaveDate = -1;
 
             // We check the errors in the code applied to the that new state
             nextTick().then(() => {
@@ -1518,13 +1534,9 @@ export const useStore = defineStore("app", {
         },  
         
         doChangeDisableFrame(payload: {frameId: number; isDisabling: boolean; ignoreEnableFromRoot?: boolean}) {
-            //if we enable, we may need to use the root frame ID instead of the frame ID where the menu has been invocked
-            //because enabling a frame enables all the frames for that disabled "block" (i.e. the top disabled frame and its children/joint frames)
-            const rootFrameID = (payload.isDisabling || (payload.ignoreEnableFromRoot??false)) ? payload.frameId : getDisabledBlockRootFrameId(payload.frameId);
-
             //When we disable or enable a frame, we also disable/enable all the sublevels (children and joint frames)
-            const allFrameIds = [rootFrameID];
-            allFrameIds.push(...getAllChildrenAndJointFramesIds(rootFrameID));
+            const allFrameIds = [payload.frameId];
+            allFrameIds.push(...getAllChildrenAndJointFramesIds(payload.frameId));
             allFrameIds.forEach((frameId) => {
                 Vue.set(
                     this.frameObjects[frameId],
