@@ -111,7 +111,7 @@
     "gdriveAllStrypeFiles": "All Strype files",
     "gdriveTab": "My Drive",
     "editorErrors": "Errors",
-    "resyncToGDAtStartup": "<b>Reconnect and <u>save</u> to Google Drive?</b>\n\nLast time you were editing, you were saving to Google Drive.\nIf you want to <u>load</u> changes from Google Drive, click 'Do not connect' and use 'Open' from the menu."
+    "resyncToGDAtStartup": "<b>Reconnect and <u>save</u> to Google Drive?</b>\n\nLast time you were editing, you were saving to Google Drive.\nIf you want to instead <u>load</u> changes from Google Drive, click 'Do not connect' and use 'Open' from the menu."
   },
   "contextMenu": {
     "ctrl": "Ctrl",

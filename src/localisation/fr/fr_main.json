@@ -110,7 +110,7 @@
     "gdriveAllStrypeFiles": "Tous les fichiers Strype",
     "gdriveTab": "Mon Drive",
     "editorErrors": "Erreurs",
-    "resyncToGDAtStartup": "<b>Se reconnecter et <u>sauvegarder</u> vers Google Drive ?</b>\n\nLa dernière fois que vous éditiez ce projet, vous l'enregistriez vers Google Drive.\nSi vous souhaitez <u>charger</u> les modifications à partir de Google Drive, cliquez sur 'Ne pas se connecter' et utilisez 'Ouvrir' à partir du menu."
+    "resyncToGDAtStartup": "<b>Se reconnecter et <u>sauvegarder</u> vers Google Drive ?</b>\n\nLa dernière fois que vous éditiez ce projet, vous l'enregistriez vers Google Drive.\nSi vous souhaitez plutôt <u>charger</u> les modifications à partir de Google Drive, cliquez sur 'Ne pas se connecter' et utilisez 'Ouvrir' à partir du menu."
   },
   "contextMenu": {
     "ctrl": "Ctrl",
