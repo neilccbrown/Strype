@@ -399,10 +399,16 @@ export default Vue.extend({
                     else if((reason.status??400) >= 400 && this.saveFileId != undefined){
                         // We assume something went wrong regarding saving against the specified file id.
                         // This can notably happen if the file has been locked in the meantime that we tried to save it.
-                        // We show a modal and stop sync
-                        this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.GDriveSaveFailed") as string;
+                        // We show a modal and remove saving mechanisms.
+                        this.appStore.simpleModalDlgMsg = this.$i18n.t((this.saveReason == SaveRequestReason.reloadBrowser) ? "errorMessage.gdriveNoFile" :"errorMessage.GDriveSaveFailed") as string;
                         this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
                         this.updateSignInStatus(false);
+                        // When we tried to save a project upon request by the user when the a project was reloaded in the brower, failure to connect clears off the Google Drive information
+                        if(this.saveReason == SaveRequestReason.reloadBrowser){
+                            this.appStore.currentGoogleDriveSaveFileId = undefined;
+                            this.appStore.strypeProjectLocation = undefined;
+                            this.appStore.strypeProjectLocationAlias = "";
+                        }
                     }
                 }
             );   
@@ -477,7 +483,7 @@ export default Vue.extend({
                     (this.$parent as InstanceType<typeof Menu>).saveTargetChoice(StrypeSyncTarget.gd);
                 }, () => {});
 
-                // We check that the file has write access. If it doesn't we shouldn't propose the sync anymore.
+                // We check that the file has write access. 
                 gapi.client.request({
                     path: "https://www.googleapis.com/drive/v3/files/" + id,
                     method: "GET",
@@ -486,7 +492,7 @@ export default Vue.extend({
                     if(!resp["capabilities"]["canEdit"]){
                         this.saveFileId = undefined;
                         this.updateSignInStatus(false);
-                        this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.gdriveReadOnly") as string;
+                        this.appStore.simpleModalDlgMsg = this.$i18n.t((resp == undefined) ? "errorMessage.gdriveNoFile" : "errorMessage.gdriveReadOnly") as string;
                         this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
                     }
                 });

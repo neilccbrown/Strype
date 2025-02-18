@@ -64,7 +64,7 @@
     "errorUserDefinedFuncMsg": "Funcíon definida por el usuario\nesta definición de función contiene errores",
     "errorUserDefinedVarMsg": "Variable definida por el usuario\nuna de la asignaciones para esta variable contiene errores",
     "EOFError": "Este marco no puede estar vacío.",
-    "GDriveSaveFailed": "Strype no pudo guardar el archivo en Google Drive. Es posible que no se hayan guardado los últimos cambios y que se haya apagado la sincronización.",
+    "GDriveSaveFailed": "Strype no pudo guardar el archivo en Google Drive.",
     "fileNameError": "El nombre del proyecto/archivo solo puede contener letras, números, espacios, guiones o parêntesis.",
     "gdriveConnectionSaveToLoadProjFailed": "No se pudo conectar a Google Drive al intentar guardar el proyecto actual. Intente iniciar sesión abrir otro proyecto.",
     "gdriveConnectionSaveToUnloadPageFailed": "No se pudo conectar a Google Drive al intentar guardar el proyecto actual. Intente iniciar sesión nuevamente para guardar el proyecto actual antes de salir de Strype.",

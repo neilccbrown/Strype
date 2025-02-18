@@ -49,8 +49,8 @@
     "overwriteProject": "Remplacer",
     "saveProjectCopy": "Choisir un autre nom",
     "spaceBar": "espace",
-    "yesSign" : "Oui, se connecter",
-    "noContinueWithout":"Non, continuer sans connexion",
+    "yesSign" : "Se connecter",
+    "noContinueWithout":"Ne pas se connecter",
     "saveChanges": "Enregister les modifications",
     "discardChanges": "Ignorer les modifications"
   },
@@ -66,13 +66,15 @@
     "errorUserDefinedFuncMsg": "Fonction définie par l'utilisateur\nla définition de cette fonction contient des erreurs",
     "errorUserDefinedVarMsg": "Variable définie par l'utilisateur\nune affectation de cette variable contient des erreurs",
     "EOFError": "Ce cadre ne peut pas être vide.",
-    "GDriveSaveFailed": "Enregistrement vers Googde Drive impossible. Les dernières modifications n'ont peut-être pas été enregistrées et l'enregistrement automatique est desactivé.",
+    "GDriveSaveFailed": "Enregistrement vers Googde Drive impossible.",
     "fileNameError": "Le nom de projet / fichier ne peut contenir que des lettres, des chiffres, des espaces, des tirets ou des parenthèses.",
     "gdriveConnectionSaveToLoadProjFailed": "Connexion à Google Drive impossible lors de la tentative de sauvegarde du projet actuel.\nEssayez de vous connecter de nouveau pour ouvrir un autre projet.",
     "gdriveConnectionSaveToUnloadPageFailed": "Connexion à Google Drive impossible lors de la tentative de sauvegarde du projet actuel.\nEssayez de vous connecter de nouveau pour sauvegarder le project actuel avant de quitter Strype.",
     "gdrivePermissionsNotMet": "Strype nécessite au moins une permission d'accès pour utiliser Google Drive.",
     "gdriveReadOnly": "Ce fichier Drive est en lecture seule. L'enregistrement automatique a été désactivé.",
-    "gdriveWrongFile": "Veullez sélectionner un ficher Strype (extension \".spy\")."
+    "gdriveWrongFile": "Veullez sélectionner un ficher Strype (extension \".spy\").",
+    "gdriveNoFile": "Le projet n'existe pas dans Google Drive.",
+    "unexpectedCharsPython": "caractère(s) inattendu(s)"
   },
   "appMessage": {
     "editorFileUpload": "Chargement de votre fichier dans l'éditeur...",
@@ -108,7 +110,7 @@
     "gdriveAllStrypeFiles": "Tous les fichiers Strype",
     "gdriveTab": "Mon Drive",
     "editorErrors": "Erreurs",
-    "resyncToGDAtStartup": "Précédemment, ce projet était enregistré vers Google Drive.\nVoulez-vous vous reconnecter à Google Drive pour synchroniser vos modifications ?\nSans synchronisation, ce projet ne contiendra pas la dernière version de Google Drive et vos modifications n'y seront pas enregistrées."
+    "resyncToGDAtStartup": "<b>Se reconnecter et <u>sauvegarder</u> vers Google Drive ?</b>\n\nLa dernière fois que vous éditiez ce projet, vous l'enregistriez vers Google Drive.\nSi vous souhaitez plutôt <u>charger</u> les modifications à partir de Google Drive, cliquez sur 'Ne pas se connecter' et utilisez 'Ouvrir' à partir du menu."
   },
   "contextMenu": {
     "ctrl": "Ctrl",

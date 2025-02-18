@@ -50,8 +50,8 @@
     "overwriteProject": "Replace",
     "saveProjectCopy": "Choose new name",
     "spaceBar": "space",
-    "yesSign" : "Yes, sign me in",
-    "noContinueWithout":"No, continue without",
+    "yesSign" : "Connect",
+    "noContinueWithout":"Do not connect",
     "saveChanges": "Save changes",
     "discardChanges": "Discard changes"
   },
@@ -67,13 +67,14 @@
     "errorUserDefinedFuncMsg": "User-defined function\nthis function definition contains errors",
     "errorUserDefinedVarMsg": "User-defined variable\none of the assignments for this variable contains errors",
     "EOFError": "This frame cannot be empty.",
-    "GDriveSaveFailed": "Could not save to Google Drive. Your latest changes may have not have been saved. Auto-save is off.",
+    "GDriveSaveFailed": "Could not save to Google Drive.",
     "fileNameError": "Project / File name can only contain letters, numbers, spaces, hyphens or parentheses",
     "gdriveConnectionSaveToLoadProjFailed": "Could not connect to Google Drive when trying to save the current project. Try to sign-in again to open another project.",
     "gdriveConnectionSaveToUnloadPageFailed": "Could not connect to Google Drive when trying to save the current project. Try to sign-in again to save the current project before leaving Strype.",
     "gdrivePermissionsNotMet": "Strype requires at least one access permission to use Google Drive.",
     "gdriveReadOnly": "This file is read-only. Auto-save is off.",
     "gdriveWrongFile": "Please select a Strype file (extension \".spy\").",
+    "gdriveNoFile": "The project does not exist in Google Drive.",
     "unexpectedCharsPython": "unexpected character(s)"
   },
   "appMessage": {
@@ -110,7 +111,7 @@
     "gdriveAllStrypeFiles": "All Strype files",
     "gdriveTab": "My Drive",
     "editorErrors": "Errors",
-    "resyncToGDAtStartup": "Last time you were editing this project, you were saving to Google Drive.\nDo you want to reconnect to Google Drive in order to synchronise your changes?\nIf you do not, you will not have the latest version from Google Drive and your changes will not be saved back there."
+    "resyncToGDAtStartup": "<b>Reconnect and <u>save</u> to Google Drive?</b>\n\nLast time you were editing, you were saving to Google Drive.\nIf you want to instead <u>load</u> changes from Google Drive, click 'Do not connect' and use 'Open' from the menu."
   },
   "contextMenu": {
     "ctrl": "Ctrl",

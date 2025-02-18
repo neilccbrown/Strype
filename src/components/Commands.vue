@@ -681,7 +681,7 @@ export default Vue.extend({
     width: 16px;
     height: 16px;
     margin-left: 15px;
-    margin-right: 2px;
+    margin-right: 5px;
 }
 
 .gdrive-sync-label {
