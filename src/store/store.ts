@@ -396,7 +396,7 @@ export const useStore = defineStore("app", {
 
             // If frames are selected, we only show the frames commands that can be used for wrapping.
             // (For the definitions section, we won't allow any wrapping.)
-            const isSelectingInsideDefsSection = ((currentFrame.id == useStore().getFuncDefsFrameContainerId || state.frameObjects[currentFrame.id].parentId == useStore().getFuncDefsFrameContainerId) 
+            const isSelectingInsideDefsSection = ((currentFrame.id == useStore().getDefsFrameContainerId || state.frameObjects[currentFrame.id].parentId == useStore().getDefsFrameContainerId) 
                 && state.selectedFrames.length > 0);
 
             // for each shortcut we get a list of the corresponding commands
