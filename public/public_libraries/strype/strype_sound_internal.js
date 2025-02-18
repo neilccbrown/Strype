@@ -31,6 +31,7 @@ var $builtinmodule = function(name)  {
         return new AudioBuffer({length: Math.round(seconds * samplesPerSecond), sampleRate: samplesPerSecond});
     });
     mod.loadAndWaitForAudioBuffer = new Sk.builtin.func(function(path) {
+        path = Sk.ffi.remapToJs(path);
         const audioContext = peaComponent.__vue__.getAudioContext();
         let susp = new Sk.misceval.Suspension();
         susp.resume = function () {
@@ -41,9 +42,12 @@ var $builtinmodule = function(name)  {
         };
         susp.data = {
             type: "Sk.promise",
-            promise: fetch("./sounds/" + path)
-                .then((d) => d.arrayBuffer())
-                .then((b) => audioContext.decodeAudioData(b))
+            promise: (path.startsWith("data:") ?
+                audioContext.decodeAudioData(Uint8Array.from(atob(path.split(",")[1]), (char) => char.charCodeAt(0)).buffer)
+                :
+                fetch("./sounds/" + path)
+                    .then((d) => d.arrayBuffer())
+                    .then((b) => audioContext.decodeAudioData(b)))
                 .then((b) => {
                     if (!b) {
                         susp.data["error"] = Error("Cannot load audio file \"" + path + "\"");

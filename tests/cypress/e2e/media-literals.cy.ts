@@ -112,14 +112,20 @@ function checkGraphicsCanvasContent(expectedImageFileName : string, comparison =
     });
 }
 
+function checkConsoleContent(expectedContent : string) {
+    cy.get("#pythonConsole").should("have.value", expectedContent);
+}
+
 function enterImports() {
     cy.get("body").type("{uparrow}{uparrow}");
-    (cy.get("body") as any).paste("from strype.graphics import *\nfrom time import sleep\nimport math\n", "text");
+    (cy.get("body") as any).paste("from strype.graphics import *\nfrom strype.sound import *\nfrom time import sleep\nimport math\n", "text");
     cy.wait(2000);
     cy.get("body").type("{downarrow}{downarrow}");
 }
-function executeCode() {
-    cy.contains("a", "\uD83D\uDC22 Graphics").click();
+function executeCode(switchToGraphics = true) {
+    if (switchToGraphics) {
+        cy.contains("a", "\uD83D\uDC22 Graphics").click();
+    }
     cy.get("#runButton").contains("Run");
     cy.get("#runButton").click();
     // Wait for it to finish:
@@ -239,4 +245,27 @@ describe("Paste image literals", () => {
     });
     
     // TODO check the downloaded Python file (and check for double data: item) (and ideally re-load the images as images from the .py)
+});
+
+describe("Paste sound literals", () => {
+    if (Cypress.env("mode") == "microbit") {
+        // Graphics tests can't run in microbit
+        return;
+    }
+
+    it("Paste and show preview", () => {
+        cy.readFile("public/sounds/cat-test-meow.wav", null).then((catWAV) => {
+            focusEditorPasteAndClear();
+            enterImports();
+            // No point playing the sound as we can't test that, but at least check the preview shows up:
+            cy.get("body").type("=s=");
+            cy.wait(1000);
+            (cy.focused() as any).paste(catWAV, "audio/wav");
+            cy.wait(1000);
+            // We can also check that a sample is fetched correctly:
+            cy.get("body").type("{downarrow}=sa=s.copy_to_mono().get_samples(){downarrow}pround(sa[int(len(sa)/2)], 3)");
+            executeCode(false);
+            checkConsoleContent("0.002\n");
+        });
+    });
 });
