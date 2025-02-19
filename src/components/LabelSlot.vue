@@ -64,16 +64,15 @@
 import Vue, { PropType } from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUID, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUID, getFrameUID } from "@/helpers/editor";
+import { getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUID, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUID, getFrameUID, getFrameComponent } from "@/helpers/editor";
 import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, FieldSlot, PythonExecRunningState, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
-import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
 import { cloneDeep, debounce } from "lodash";
 import LabelSlotsStructure from "./LabelSlotsStructure.vue";
 import { BPopover } from "bootstrap-vue";
-import App from "@/App.vue";
 import Frame from "@/components/Frame.vue";
 
 export default Vue.extend({
@@ -205,11 +204,11 @@ export default Vue.extend({
             // Returns the class name for a span type (i.e. distinction between operators, string and the rest)
             // Comments are treated differently as they have their own specific colour
             let codeTypeCSS = "";
-            let boldClass = "";
+            let boldClass = "";               
             switch(this.slotType){
             case SlotType.operator:
-                // For commas, we do not show the operator style but the text style
-                codeTypeCSS = (this.code==",") ? "code-slot" : "operator-slot";
+                // For commas, we do not show the operator style but the text style and we allow a right margin
+                codeTypeCSS = (this.code==",") ? "code-slot slot-right-margin" : "operator-slot";
                 break;
             case SlotType.string:
             case SlotType.openingQuote:
@@ -341,10 +340,12 @@ export default Vue.extend({
                 event.stopImmediatePropagation();
                 event.stopPropagation();
                 event.preventDefault();
-                // Call the method which handles a click on the frame instead, we need to find the associated frame object
-                const frameDiv = document.getElementById(getFrameUID(this.frameId)) as HTMLDivElement;
+                // Call the method which handles a click on the frame instead, we need to find the associated frame object:
+                // the corresponding frame div under that click in the general case, or the outmost disabled ancester frame if the frame is disabled.
+                const outmostDisabledFrameAncestorId = getOutmostDisabledAncestorFrameId(this.frameId);
+                const frameDiv = document.getElementById(getFrameUID((this.isDisabled) ? outmostDisabledFrameAncestorId : this.frameId)) as HTMLDivElement;
                 if(frameDiv){
-                    const frameComponent = (this.$root.$children[0] as InstanceType<typeof App>).getFrameComponent(this.frameId);
+                    const frameComponent = getFrameComponent((this.isDisabled) ? outmostDisabledFrameAncestorId: this.frameId);
                     if(frameComponent){
                         // The frame component can only be a frame (and not a frame container) since we've clicked on a slot...
                         (frameComponent as InstanceType<typeof Frame>).changeToggledCaretPosition(event.clientY, frameDiv);
@@ -431,12 +432,12 @@ export default Vue.extend({
         handleMouseEnterLeave(isEntering: boolean) {
             // There is a bug with how Firefox handles editable text HTML elements contained in a draggable div.
             // We need to detect when the mouse is entering/leaving the text element to disable/enable the div's
-            // draggable attribute. 
+            // draggable attribute (disabled frames should show draggable since text can't be edited). 
             // Because the frames are nested, we need to do that for all the frames hierarchy up ot the frames container.
             // see https://stackoverflow.com/questions/21680363/prevent-drag-event-to-interfere-with-input-elements-in-firefox-using-html5-drag
             let frameId = this.frameId;
             do{
-                (document.getElementById(getFrameUID(frameId)) as HTMLDivElement).draggable = !isEntering;
+                (document.getElementById(getFrameUID(frameId)) as HTMLDivElement).draggable = this.isDisabled || (!isEntering && !this.isDisabled);
                 frameId = this.appStore.frameObjects[frameId].parentId;
             } 
             while(frameId > 0);
@@ -1505,7 +1506,7 @@ export default Vue.extend({
 }
 
 .labelSlot-input.readonly {
-    cursor: pointer;
+    cursor: default;
     user-select: none;
 }
 
@@ -1536,6 +1537,10 @@ export default Vue.extend({
 
 .comment-slot {
     color: #97971E !important;
+    margin-right: 2px;
+}
+
+.slot-right-margin {
     margin-right: 2px;
 }
 // end classes for slot type

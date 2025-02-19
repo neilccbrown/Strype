@@ -5,6 +5,7 @@
     >
         <div>
             <CaretContainer
+            v-if="!isDisabled"
             :ref="getCaretContainerRef"
             :frameId="frameId"
             :caretVisibility="caretVisibility"
