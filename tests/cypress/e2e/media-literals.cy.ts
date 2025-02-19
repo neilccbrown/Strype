@@ -243,6 +243,27 @@ describe("Paste image literals", () => {
             checkGraphicsCanvasContent("paste-in-text");
         });
     });
+
+    it("Can type before and after pasted image", () => {
+        cy.readFile("public/graphics_images/cat-test.jpg", null).then((catJPEG) => {
+            focusEditorPasteAndClear();
+            enterImports();
+            cy.get("body").type(" set_background(");
+            cy.wait(1000);
+            (cy.focused() as any).paste(catJPEG, "image/jpeg");
+            cy.wait(1000);
+            // Type a 1 before the image and delete, then after, then same with a, then dollar:
+            cy.get("body").type("{leftarrow}1");
+            cy.get("body").type("{backspace}{rightarrow}1");
+            cy.get("body").type("{backspace}{leftarrow}a");
+            cy.get("body").type("{backspace}{rightarrow}a");
+            cy.get("body").type("{backspace}{leftarrow}$");
+            cy.get("body").type("{backspace}{rightarrow}$");
+            cy.get("body").type("{backspace}");
+            executeCode();
+            checkGraphicsCanvasContent("paste-and-type-around", ImageComparison.WRITE_NEW_EXPECTED_DO_NOT_COMMIT_USE_OF_THIS);
+        });
+    });
     
     // TODO check the downloaded Python file (and check for double data: item) (and ideally re-load the images as images from the .py)
 });
