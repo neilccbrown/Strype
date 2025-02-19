@@ -1513,7 +1513,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
                         // Need to compensate for what we just added:
                         j += 1;
                     }
-                    if (after.length > 0 || j == resStructSlot.fields.length || !isFieldBaseSlot(resStructSlot.fields[j+1]) || resStructSlot.operators[j].code != "") {
+                    if (after.length > 0 || j >= resStructSlot.fields.length - 1 || !isFieldBaseSlot(resStructSlot.fields[j+1]) || resStructSlot.operators[j].code != "") {
                         // If there's no plain slot after or the operator isn't blank, we need to add a blank operator and blank field:
                         resStructSlot.operators.splice(j, 0, {code: ""});
                         resStructSlot.fields.splice(j+1, 0, {code: after} as BaseSlot);
