@@ -1842,3 +1842,23 @@ export function getCurrentFrameSelectionScope(): SelectAllFramesFuncDefScope {
     }
     return SelectAllFramesFuncDefScope.none;
 }
+
+// Gets all the HTML elements which are part of the window text selection.
+// The returned list may contain duplicates
+export function getElementsInSelection() : Element[] {
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount) {
+        return [];
+    }
+
+    const elements = [];
+
+    for (let i = 0; i < selection.rangeCount; i++) {
+        const range = selection.getRangeAt(i);
+        // Clone the selected content to be able to access the sub-elements:
+        const fragment = range.cloneContents();
+        elements.push(...fragment.querySelectorAll("*"));
+    }
+
+    return elements;
+}
