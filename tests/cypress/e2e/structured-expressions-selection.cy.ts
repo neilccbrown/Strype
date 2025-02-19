@@ -55,8 +55,7 @@ describe("Shift-End selects to the end", () => {
     testSelection("a+max(b,c)","{home}{rightarrow}{shift}{end}", "{a$}");
 });
 
-// TODO DONOTCOMMIT the only
-describe.only("Pasting of incomplete code", () => {
+describe("Pasting of incomplete code", () => {
     // If brackets complete, cursor should be after:
     testPasteThenType("print()","a","{print}({}){a$}");
     // If brackets incomplete, cursor should be between
