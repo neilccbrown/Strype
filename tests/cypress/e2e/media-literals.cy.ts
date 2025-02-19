@@ -261,7 +261,7 @@ describe("Paste image literals", () => {
             cy.get("body").type("{backspace}{rightarrow}$");
             cy.get("body").type("{backspace}");
             executeCode();
-            checkGraphicsCanvasContent("paste-and-type-around", ImageComparison.WRITE_NEW_EXPECTED_DO_NOT_COMMIT_USE_OF_THIS);
+            checkGraphicsCanvasContent("paste-and-type-around");
         });
     });
     
