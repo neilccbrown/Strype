@@ -1,10 +1,10 @@
 
 <template>
-    <div id="peaComponent" :class="{'expanded-PEA': isExpandedPEA}" ref="peaComponent">
+    <div id="peaComponent" :class="{'expanded-PEA': isExpandedPEA}" ref="peaComponent" @mousedown="handlePEAMouseDown">
         <div id="peaControlsDiv" :class="{'expanded-PEA-controls': isExpandedPEA}">           
             <b-tabs v-model="peaDisplayTabIndex" no-key-nav>
                 <b-tab :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab" active></b-tab>
-                <b-tab :title="'\uD83D\uDC22 '+$t('PEA.Graphics')" title-link-class="pea-display-tab"></b-tab>
+                <b-tab :button-id="graphicsTabId" :title="'\uD83D\uDC22 '+$t('PEA.Graphics')" title-link-class="pea-display-tab"></b-tab>
             </b-tabs>
             <div class="flex-padding"/>
             <button id="runButton" ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'">
@@ -169,6 +169,15 @@ export default Vue.extend({
                 this.updateTurtleListeningEvents();
             });
         }
+
+        // One last thing we want to do is update the Turtle emoji to something consistent across machines/browsers
+        this.$nextTick(() => {
+            const graphicTaBElement = document.getElementById(this.graphicsTabId);
+            if(graphicTaBElement){
+                graphicTaBElement.innerHTML = graphicTaBElement.innerHTML.replace("\uD83D\uDC22", `<img src="${require("@/assets/images/turtle.png")}" alt="${this.$i18n.t("PEA.TurtleGraphics")}" class="pea-turtle-img" />`);
+            }
+        });
+       
         
         // Setup Canvas:
         const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
@@ -198,6 +207,10 @@ export default Vue.extend({
 
     computed:{
         ...mapStores(useStore),
+
+        graphicsTabId(): string {
+            return "strypeGraphicsPEATab";
+        },
 
         isPythonExecuting(): boolean {
             return useStore().pythonExecRunningState != PythonExecRunningState.NotRunning;
@@ -238,6 +251,11 @@ export default Vue.extend({
     },
 
     methods: {
+        handlePEAMouseDown() {
+            // Force the Strype menu to close in case it was opened
+            (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).toggleMenuOnOff(null);
+        },
+
         runClicked() {
             // The Python code execution has a 3-ways states:
             // - not running when nothing happens, click will trigger "running"
@@ -753,6 +771,10 @@ export default Vue.extend({
     .pea-display-tab:hover {
         color: black;
         background-color: lightgray !important;
+    }
+
+    .pea-turtle-img {
+        width: 1.3em;
     }
 
     .pea-play-img {

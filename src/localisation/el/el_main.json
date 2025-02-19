@@ -25,7 +25,6 @@
   },
   "appMessage": {
     "editorFileUpload": "Μεταφόρτωση αρχείου στο Strype",
-    "editorConfirmChangeCode": "Ο κώδικας θα χαθεί.",
     "editorFileUploadWrongVersion": "Ο εισαγώμενος κώδικας προέρχεται απο παλαιότερη έκδοση του Strype.\nΗ εισαγωγή του μπορεί να προκαλέσει σφάλαματα.\nΕπιθυμείτε να συνεχίσετε?",
     "importsContainer": "Εισαγωγές:",
     "funcDefsContainer": "Ορισμοί Συναρτήσεων:",

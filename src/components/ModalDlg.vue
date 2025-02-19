@@ -1,12 +1,16 @@
 <!-- this acts as a wrapper around the bootstrap modals, to have centralised control and customisation -->
 <template>
-    <b-modal no-close-on-backdrop hide-header-close :id="dlgId" :title="dlgTitle" :ok-only="okOnly" 
+    <b-modal no-close-on-backdrop :hide-header-close="!showCloseBtn" :id="dlgId" :title="dlgTitle" :ok-only="okOnly" 
         :ok-title="okTitle" :cancel-title="cancelTitle" :size="size" :auto-focus-button="autoFocusButton">
-            <slot/>
-            <!-- the footer part is entirely optional if other buttons than the default OK/Cancel or Yes/No are required -->
-            <template #modal-footer="{ok, cancel, hide}">
-                <slot name="modal-footer-content" :ok="ok" :cancel="cancel" :hide="hide"/>
-            </template>
+        <slot/>
+        <!-- the footer part is entirely optional if other buttons than the default OK/Cancel or Yes/No are required -->
+        <template v-if="!hideDlgBtns" #modal-footer="{ok, cancel, hide}">
+            <slot name="modal-footer-content" :ok="ok" :cancel="cancel" :hide="hide"/>
+        </template>
+        <template v-else #modal-footer>
+            <!-- just to have a way to hide all buttons from the native modal -->
+            <div/>
+        </template>
     </b-modal>
 </template>
 <script lang="ts">
@@ -25,6 +29,8 @@ export default Vue.extend({
         okOnly: Boolean,
         okCustomTitle: String,
         cancelCustomTitle: String,
+        hideDlgBtns: Boolean,
+        showCloseBtn: Boolean,     
         size:  {
             type: String as PropType<BootstrapDlgSize>,
             required: false,

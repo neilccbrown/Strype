@@ -20,6 +20,27 @@ appPlatform = StrypePlatform.microbit;
 /* FITRUE_isMicrobit */
 export const AppPlatform = appPlatform;
 
+let localeBuildDate = "";
+export function getLocaleBuildDate(): string {
+    // This method returns the build date, set in vue.config.js.
+    // To avoid calling the formatter every time, we keep a local
+    // variable with the formatted date value for the web session.
+    if(localeBuildDate.length > 0) {
+        return localeBuildDate;
+    }
+    else{
+        try{
+            const buildDateTicks = new Date(parseInt(process.env.VUE_APP_BUILD_DATE_TICKS as string));
+            localeBuildDate = new Date(buildDateTicks).toLocaleDateString(navigator.language);
+            return localeBuildDate;
+        }
+        catch{
+            // Just in case something was wrong in our config file!
+            return "N/A";
+        }
+    }
+}
+
 // Install BootstrapVue
 Vue.use(BootstrapVue);
 

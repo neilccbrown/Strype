@@ -298,17 +298,23 @@ export default Vue.extend({
                 if(!this.isEditing){
                     // part 1): not editing the code: we create a new method call frame, then add the code in (parts 2 & 3)
                     this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall)).then(() => {
-                        // as we added a new frame, we need to get the new current frame
-                        this.addExampleCodeInSlot({
-                            slotInfos: {
-                                frameId: this.appStore.currentFrame.id,
-                                labelSlotsIndex: 0,
-                                slotId: "0",
-                                slotType: SlotType.code,
+                        // We need to delete the extra brackets added as the function call frame template.
+                        // We must then wait a bit before doing anything to make sure the deletion has been effective 
+                        // and won't interfer with the slot's content manipulation.
+                        document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", {key: "Delete"}));
+                        setTimeout(() => {
+                            // As we added a new frame, we need to get the new current frame
+                            this.addExampleCodeInSlot({
+                                slotInfos: {
+                                    frameId: this.appStore.currentFrame.id,
+                                    labelSlotsIndex: 0,
+                                    slotId: "0",
+                                    slotType: SlotType.code,
+                                },
+                                cursorPos: codeToInsert.length,
                             },
-                            cursorPos: codeToInsert.length,
-                        },
-                        codeToInsert);
+                            codeToInsert);
+                        }, 100);
                     });
                 }
                 else{
@@ -338,15 +344,34 @@ export default Vue.extend({
                 }
             )
                 .then(()=>{
-                    //we select the arguments of the added functions (if applies)
-                    //TODO : will require multi slot selection... Note that we don't need to do this for comments and string slots
-                    // for the time being, we just set the cursor after the insertion
-                    setDocumentSelection(slotcursorInfos, slotcursorInfos);
-                    // Update the store too
-                    this.appStore.setSlotTextCursors(slotcursorInfos, slotcursorInfos);
+                    //we select the arguments of the added functions (if applies) or move the cursor after the insertion (if no arguments)
+                    let needToSelectArgs = content.includes("(");
+                    if(needToSelectArgs){
+                        // At this stage, we have added a code inside a slot that hasn't yet been refactorised. 
+                        // If we set a text selection here, that selection will be lost when the frame slots are refactorised.
+                        // So we only keep a reference to the cursor position AFTER THE OPENING BRACKET: when the factorisation has been performed,
+                        // we will simply be able to select all slots of that same level (that is, inside the bracket structure where we are at)
+                        const argsStartSlotCursorInfos = {...slotcursorInfos};
+                        argsStartSlotCursorInfos.cursorPos = content.indexOf("(") + 1;  
+                        setDocumentSelection(argsStartSlotCursorInfos, argsStartSlotCursorInfos);
+                        // Update the store too
+                        this.appStore.setSlotTextCursors(argsStartSlotCursorInfos, argsStartSlotCursorInfos);
+                    }
+                    else {
+                        setDocumentSelection(slotcursorInfos, slotcursorInfos);
+                        // Update the store too
+                        this.appStore.setSlotTextCursors(slotcursorInfos, slotcursorInfos);
+                    }
+
                     //Refactor the slots, we call the refactorisation on the LabelSlotsStructure
                     const stateBeforeChanges = cloneDeep(this.appStore.$state);
                     (this.$root.$refs[getFrameLabelSlotsStructureUID(slotInfos.frameId, slotInfos.labelSlotsIndex)] as InstanceType<typeof LabelSlotsStructures>).checkSlotRefactoring(getLabelSlotUID(slotInfos), stateBeforeChanges);
+                    if(needToSelectArgs){
+                        // We have waited slots to be refactorised, we can do the args selection: from the current cursor position to the last of the same level slot
+                        setTimeout(() => {
+                            document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", {key: "End", shiftKey: true}));
+                        }, 100);
+                    }
                 });
         },
 
