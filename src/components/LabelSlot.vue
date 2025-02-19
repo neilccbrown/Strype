@@ -35,6 +35,7 @@
         >
         </span>
         <img :src="mediaPreview" v-if="isMediaSlot" class="labelSlot-media limited-height-inline-image" alt="Media literal" :data-code="code" :data-mediaType="getMediaType()">
+        <span v-if="isMediaSlot" style="opacity: 0; position: absolute; pointer-events: none;" contenteditable="false">{{code}}</span>
                
         <b-popover
             v-if="erroneous()"
@@ -1668,5 +1669,9 @@ export default Vue.extend({
 .limited-height-inline-image {
     max-height: 1.5em;
     border:1px solid #333;
+    /* Prevent selection to prevent it being copied to clipboard as part of a selection.
+       We copy the Python code to produce it instead: */
+    user-select: none;
+    -webkit-user-select: none; /* For Safari */
 }
 </style>
