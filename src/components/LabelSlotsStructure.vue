@@ -43,7 +43,7 @@ import { CustomEventTypes, getFrameLabelSlotsStructureUID, getLabelSlotUID, getS
 import {checkCodeErrors, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import {calculateParamPrompt} from "@/autocompletion/acManager";
-import {readFileAsyncAsData} from "@/helpers/common";
+import {readFileAsyncAsData, splitByRegexMatches} from "@/helpers/common";
 
 
 export default Vue.extend({
@@ -369,10 +369,47 @@ export default Vue.extend({
                 }
                 /* FITRUE_isPython */
 
-                // We create a new custom event with the clipboard data as payload, to avoid untrusted events issues
-                const content = event.clipboardData.getData("Text");
-                document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos))
-                    ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: "text", content: content}}));
+                interface PastedItem {
+                    type: string;
+                    content: string;
+                }
+                const pastedItems : PastedItem[] = [];
+
+                const content = event.clipboardData.getData("Text").trim();
+                if (content) {
+                    const ms = splitByRegexMatches(content, /(?:load_image|Sound)\("data:(?:image|audio)[^;]*;base64,[^"]+"\)/);
+                    for (let i = 0; i < ms.length; i++) {
+                        // We know even values (0, 2) are plain string and odd values (1, 3) are the regex:
+                        if ((i % 2) == 0) {
+                            pastedItems.push({type: "text/plain", content: ms[i]});
+                        }
+                        else {
+                            // fish out the details:
+                            const details = /data:([^;]+);base64,[^"']+/.exec(ms[i]);
+                            if (details) {
+                                const dataAndBase64 = details[0];
+                                const code = (details[1].startsWith("image") ? "load_image" : "Sound") + "(\"" + dataAndBase64 + "\")";
+                                pastedItems.push({type: details[1], content: code});
+                            }
+                        }
+                    }
+                }
+                
+                const pasteIndex = (i : number) => {
+                    if (i < pastedItems.length) {
+                        // We create a new custom event with the clipboard data as payload, to avoid untrusted events issues
+                        if (this.appStore.focusSlotCursorInfos) {
+                            document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
+                                ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, { detail: { type: pastedItems[i].type, content: pastedItems[i].content }}));
+                            this.$nextTick(() => {
+                                this.$nextTick(() => {
+                                    pasteIndex(i + 1);
+                                });
+                            });
+                        }
+                    }
+                };
+                pasteIndex(0);
             }
         },        
 
