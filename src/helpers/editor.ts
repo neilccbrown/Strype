@@ -1335,7 +1335,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             return codeStrQuotes + " ".repeat(match.length - 2) + codeStrQuotes;
         }
         else {
-            if(!match.endsWith(match[0]) || (match.endsWith("\\" + match[0]) && getNumPrecedingBackslashes(match, match.length - 1) % 2 == 1)){
+            if(!match.endsWith(match[0]) || match.length == 1 || (match.endsWith("\\" + match[0]) && getNumPrecedingBackslashes(match, match.length - 1) % 2 == 1)){
                 missingClosingQuote = match[0];
             }
             return match[0] + " ".repeat(match.length - ((missingClosingQuote.length == 1) ? 1 : 2)) + match[0];
@@ -1346,6 +1346,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         // The blanking above would have already terminate the string quote in blankedStringCodeLiteral if needed,
         // we need to update the original codeLiteral too
         codeLiteral += missingClosingQuote;
+        cursorOffset -= 1;
     }     
 
     // 1- Look for a bracket structure
@@ -1380,7 +1381,10 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
                     innerOpeningBracketCount--;
                     startLookingOtherOpeningBracketsPos = closingBracketPos + 1;
                 }
-            }            
+            }
+            else {
+                cursorOffset -= 1;
+            }
         }
         while (innerOpeningBracketCount != 0 && closingBracketPos != -1);
        

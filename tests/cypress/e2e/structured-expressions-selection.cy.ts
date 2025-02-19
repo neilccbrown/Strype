@@ -26,6 +26,18 @@ export function testSelection(code : string, selectKeys: string, expectedAfterDe
     });
 }
 
+export function testPasteThenType(toPaste : string, toTypeAfter: string, expectedFinal : string) : void {
+    it("Tests " + toPaste + " >>> " + toTypeAfter, () => {
+        focusEditor();
+        cy.get("body").type("{backspace}{backspace}i");
+        assertState("{$}");
+        (cy.focused() as any).paste(toPaste);
+        cy.wait(1000);
+        cy.get("body").type(toTypeAfter);
+        assertState(expectedFinal);
+    });
+}
+
 describe("Shift-Home selects to the beginning", () => {
     testSelection("a+b","{end}{shift}{home}", "{$}");
     testSelection("a+b","{end}{leftarrow}{shift}{home}", "{$b}");
@@ -41,4 +53,29 @@ describe("Shift-End selects to the end", () => {
     testSelection("a+abs(b)","{home}{rightarrow}{shift}{end}", "{a$}");
     testSelection("a+math.sin(b)","{home}{rightarrow}{shift}{end}", "{a$}");
     testSelection("a+max(b,c)","{home}{rightarrow}{shift}{end}", "{a$}");
+});
+
+// TODO DONOTCOMMIT the only
+describe.only("Pasting of incomplete code", () => {
+    // If brackets complete, cursor should be after:
+    testPasteThenType("print()","a","{print}({}){a$}");
+    // If brackets incomplete, cursor should be between
+    testPasteThenType("print(","a","{print}({a$}){}");
+    // Same principle for nested brackets:
+    testPasteThenType("print((","a", "{print}({}({a$}){}){}");
+    testPasteThenType("print(()","a","{print}({}({}){a$}){}");
+    // Ditto if the brackets are different types:
+    testPasteThenType("print([","a", "{print}({}[{a$}]{}){}");
+    testPasteThenType("print([]","a","{print}({}[{}]{a$}){}");
+    
+    // Check what happens when there is content in the bracket:
+    testPasteThenType("print((pe","a", "{print}({}({pea$}){}){}");
+    testPasteThenType("print((pe)","a","{print}({}({pe}){a$}){}");
+    testPasteThenType("print((zzz)pe","a","{print}({}({zzz}){pea$}){}");
+    
+    // Same principle for strings:
+    testPasteThenType("1+\"\"","a","{1}+{}“”{a$}");
+    testPasteThenType("1+\"","a","{1}+{}“a$”{}");
+    testPasteThenType("print(\"\")","a","{print}({}“”{}){a$}");
+    testPasteThenType("print(\"","a","{print}({}“a$”{}){}");
 });
