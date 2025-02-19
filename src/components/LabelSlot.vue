@@ -693,7 +693,7 @@ export default Vue.extend({
                     }); 
                 }
                 else{
-                // Same as hitting arrow down
+                    // Same as hitting arrow down
                     const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: this.code.length};
                     this.appStore.setSlotTextCursors(slotCursorInfo, slotCursorInfo);
                     document.getElementById(getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
@@ -1240,7 +1240,10 @@ export default Vue.extend({
                             : ((neighbourOperatorSlotContent.includes(" ")) ? neighbourOperatorSlotContent.substring(0, neighbourOperatorSlotContent.indexOf(" ")) : neighbourOperatorSlotContent[0]);
                         (neighbourOperatorSlot as BaseSlot).code = newOperatorContent;
                         // We don't actually require slot to be regenerated, but we need to mark the action for undo/redo
-                        this.$nextTick(() => (this.$parent as InstanceType<typeof LabelSlotsStructure>).checkSlotRefactoring(this.UID, stateBeforeChanges));
+                        this.$nextTick(() => {
+                            this.appStore.bypassEditableSlotBlurErrorCheck = false;
+                            (this.$parent as InstanceType<typeof LabelSlotsStructure>).checkSlotRefactoring(this.UID, stateBeforeChanges);
+                        });
                     }
                     else{
                         const {newSlotId, cursorPosOffset} = this.appStore.deleteSlots(isForwardDeletion, this.coreSlotInfo);
