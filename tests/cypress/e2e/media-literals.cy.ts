@@ -124,7 +124,7 @@ function enterImports() {
 }
 function executeCode(switchToGraphics = true) {
     if (switchToGraphics) {
-        cy.contains("a", "\uD83D\uDC22 Graphics").click();
+        cy.contains("a", "Graphics").click();
     }
     cy.get("#runButton").contains("Run");
     cy.get("#runButton").click();

@@ -164,7 +164,7 @@ function enterAndExecuteCode(functions: string, main: string, timeToWaitMillis =
     cy.get("body").type("{downarrow}");
     (cy.get("body") as any).paste(main);
     cy.wait(3000);
-    cy.contains("a", "\uD83D\uDC22 Graphics").click();
+    cy.contains("a", "Graphics").click();
     cy.get("#runButton").contains("Run");
     cy.get("#runButton").click();
     // Wait for it to finish:

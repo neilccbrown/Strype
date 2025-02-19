@@ -19,38 +19,62 @@
             <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="downloadPython();showMenu=false;" v-t="'appMenu.downloadPython'" />
             <div class="menu-separator-div"></div>
             <!-- load/save section -->
-            <a :id="loadProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" v-b-modal.load-strype-project-modal-dlg 
-                @click="openLoadProjectModal">{{$t('appMenu.loadProject')}}<span class="strype-menu-kb-shortcut">{{loadProjectKBShortcut}}</span></a>
-            <ModalDlg :dlgId="loadProjectModalDlgId" :autoFocusButton="'ok'">
-                <div v-if="changesNotSavedOnLoad">
-                    <span  v-t="'appMessage.editorConfirmChangeCode'" class="load-project-lost-span"/>
-                    <br/>
-                </div>
+            <a :id="loadProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" @click="openLoadProjectModal">{{$t('appMenu.loadProject')}}<span class="strype-menu-kb-shortcut">{{loadProjectKBShortcut}}</span></a>
+            <ModalDlg :dlgId="loadProjectModalDlgId" showCloseBtn hideDlgBtns >
                 <div>
-                    <span v-t="'appMessage.loadToTarget'" class="load-save-label"/>
-                    <b-button-group :ref="loadProjectTargetButtonGpId" size="sm">
-                        <b-button :value="syncGDValue" :variant="(getSyncTargetStatus(syncGDValue)) ? 'primary' :'outline-primary'" class="toggle-button" @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, false)">Google Drive</b-button>
-                        <b-button :value="syncFSValue" :variant="(getSyncTargetStatus(syncFSValue)) ? 'primary' :'outline-primary'" class="toggle-button" @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, false)" v-t="'appMessage.targetFS'"></b-button>
-                    </b-button-group> 
+                    <div :ref="loadProjectTargetButtonGpId" class="project-target-button-container">
+                        <span v-t="'appMessage.loadToTarget'" class="load-save-label"/>
+                        <div id="loadFromGDStrypeButton" class="project-target-button load-dlg" tabindex="0"  @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
+                            @mouseenter="changeTargetFocusOnMouseOver">
+                            <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive"/> 
+                            <span>Google Drive</span>
+                        </div>
+                        <div id="loadFromFSStrypeButton" class="project-target-button load-dlg" tabindex="0"  @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
+                            @mouseenter="changeTargetFocusOnMouseOver">
+                            <img :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')"/> 
+                            <span v-t="'appMessage.targetFS'"></span>
+                        </div>
+                    </div>
                 </div>
             </ModalDlg>
-            <a :id="saveProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" @click="handleSaveMenuClick" v-b-modal="saveLinkModalName">{{$t('appMenu.saveProject')}}<span class="strype-menu-kb-shortcut">{{saveProjectKBShortcut}}</span></a>
+            <a :id="saveProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" @click="handleSaveMenuClick">{{$t('appMenu.saveProject')}}<span class="strype-menu-kb-shortcut">{{saveProjectKBShortcut}}</span></a>
             <a v-if="showMenu" :class="{'strype-menu-link strype-menu-item': true, disabled: !isSynced }" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveAsProject'"/>
             <ModalDlg :dlgId="saveProjectModalDlgId" :autoFocusButton="'ok'">
-                <label v-t="'appMessage.fileName'" class="load-save-label"/>
-                <input :id="saveFileNameInputId" :placeholder="$t('defaultProjName')" type="text" ref="toFocus" autocomplete="off"/>
-                <div>
-                    <span v-t="'appMessage.saveToTarget'" class="load-save-label"/>
-                    <b-button-group :ref="saveProjectTargetButtonGpId" size="sm">
-                        <b-button :value="syncGDValue" :variant="(getSyncTargetStatus(syncGDValue)) ? 'primary' :'outline-primary'" class="toggle-button" @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)">Google Drive</b-button>
-                        <b-button :value="syncFSValue" :variant="(getSyncTargetStatus(syncFSValue)) ? 'primary' :'outline-primary'" class="toggle-button" @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)" v-t="'appMessage.targetFS'"></b-button>
-                    </b-button-group>
+                <div class="save-project-modal-dlg-container">
+                    <div class="row">
+                        <label v-t="'appMessage.fileName'" class="load-save-label cell"/>
+                        <input :id="saveFileNameInputId" :placeholder="$t('defaultProjName')" type="text" ref="toFocus" autocomplete="off" class="cell" />
+                    </div>
+                    <div class="row">
+                        <span v-t="'appMessage.saveToTarget'" class="load-save-label cell" />
+                        <div class="cell">
+                            <div :ref="saveProjectTargetButtonGpId" class="project-target-button-container">
+                                <div id="saveToGDStrypeButton" class="project-target-button save-dlg" tabindex="0"  @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)"
+                                    :class="{saveTargetSelected: tempSyncTarget == syncGDValue || tempSyncTarget == noSyncTargetValue}">
+                                    <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive"/> 
+                                    <span>Google Drive</span>
+                                </div>
+                                <div id="saveToFSStrypeButton" class="project-target-button save-dlg" tabindex="0"  @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)"
+                                    :class="{saveTargetSelected: tempSyncTarget == syncFSValue}">
+                                    <img :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')"/> 
+                                    <span v-t="'appMessage.targetFS'"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <label v-show="showGDSaveLocation" v-t="'appMessage.gdriveLocation'" class="load-save-label cell"/>
+                        <div v-show="showGDSaveLocation" class="cell">                        
+                            <span class="load-save-label">{{currentDriveLocation}}</span>
+                            <b-button v-t="'buttonLabel.saveDiffLocation'" variant="outline-primary" @click="onSaveDiffLocationClick" size="sm" />
+                        </div>
+                    </div>
                 </div>
-                <br/>
-                <div v-show="showGDSaveLocation">
-                    <label v-t="'appMessage.gdriveLocation'" class="load-save-label"/>
-                    <span class="load-save-label">{{currentDriveLocation}}</span>
-                    <b-button v-t="'buttonLabel.saveDiffLocation'" variant="outline-primary" @click="onSaveDiffLocationClick" size="sm" />
+            </ModalDlg>
+                <ModalDlg :dlgId="saveOnLoadModalDlgId" :autoFocusButton="'ok'" :okCustomTitle="$t('buttonLabel.saveChanges')" :cancelCustomTitle="$t('buttonLabel.discardChanges')">
+                <div>
+                    <span  v-t="'appMessage.editorAskSaveChangedCode'" class="load-project-lost-span"/>
+                    <br/>
                 </div>
             </ModalDlg>
             <div class="menu-separator-div"></div>
@@ -68,7 +92,7 @@
                 </div> 
             </div>
             <div class="app-menu-footer">
-                <a href="https://www.strype.org/history" target="_blank">{{$t('appMenu.version') + '&nbsp;' + getAppVersion}}</a>
+                <a href="https://www.strype.org/history" target="_blank">{{$t('appMenu.version') + '&nbsp;' + getAppVersion +' (' + getLocaleBuildDate +')'}}</a>
                 <span class="hidden">{{ getBuildHash }}</span>
             </div>
         </Slide>
@@ -143,6 +167,7 @@ import { cloneDeep } from "lodash";
 import App from "@/App.vue";
 import appPackageJson from "@/../package.json";
 import { getAboveFrameCaretPosition } from "@/helpers/storeMethods";
+import { getLocaleBuildDate } from "@/main";
 
 //////////////////////
 //     Component    //
@@ -179,6 +204,9 @@ export default Vue.extend({
             // the right button group value when the dialog is opened, and cleared when the dialog is explicitly closed by the user
             // or when the actions that follow the validation of the dialog (if any) are done.
             currentModalButtonGroupIDInAction: "",
+            // Request opening a project flag we need to use when a user wanted to open another project from a modified project
+            // that wasn't initially a FS or GD project (because at this stage we can't know what the target will be...)
+            requestOpenProjectLater: false,
         };
     },
 
@@ -202,7 +230,7 @@ export default Vue.extend({
         this.$root.$on("bv::modal::hide", this.onStrypeMenuHideModalDlg);      
         
         // Event listener for saving project action completion
-        this.$root.$on(CustomEventTypes.saveStrypeProjectDoneForLoad, this.loadProject);
+        this.$root.$on(CustomEventTypes.saveStrypeProjectDoneForLoad, this.openLoadProjectDlgAfterSaved);
 
         // Composition API allows watching an array of "sources" (cf https://vuejs.org/guide/essentials/watchers.html)
         // We need to update the current error Index when: the error count changes, navigation occurs (i.e. editing toggles, caret pos or focus pos changes)
@@ -222,7 +250,7 @@ export default Vue.extend({
         this.$root.$off("bv::modal::hide", this.onStrypeMenuHideModalDlg);
 
         // And for the saving project action completion too
-        this.$root.$off(CustomEventTypes.saveStrypeProjectDoneForLoad, this.loadProject);
+        this.$root.$off(CustomEventTypes.saveStrypeProjectDoneForLoad, this.openLoadProjectDlgAfterSaved);
     },
 
     computed: {
@@ -250,6 +278,10 @@ export default Vue.extend({
 
         isSynced(): boolean {
             return this.appStore.syncTarget != StrypeSyncTarget.none;
+        },
+
+        noSyncTargetValue(): StrypeSyncTarget {
+            return StrypeSyncTarget.none;
         },
 
         syncFSValue(): StrypeSyncTarget {
@@ -284,6 +316,10 @@ export default Vue.extend({
         loadProjectTargetButtonGpId(): string {
             return "loadProjectProjectSelect";
         },
+
+        saveOnLoadModalDlgId(): string {
+            return "save-on-load-project-modal-dlg";
+        },
         
         saveProjectLinkId(): string {
             return "saveStrypeProjLink";
@@ -307,11 +343,6 @@ export default Vue.extend({
         
         saveFileNameInputId(): string {
             return "saveStrypeFileNameInput";
-        },
-
-        changesNotSavedOnLoad(): boolean {
-            // For Google Drive, we will attempt saving anyway when loading so we don't need to care.
-            return this.appStore.syncTarget != StrypeSyncTarget.gd && (this.appStore.isProjectUnsaved ?? true);
         },
 
         isUndoDisabled(): boolean {
@@ -350,6 +381,10 @@ export default Vue.extend({
 
         getAppVersion(): string {
             return appPackageJson.version;
+        },
+        
+        getLocaleBuildDate(): string {
+            return getLocaleBuildDate();
         },
 
         getBuildHash(): string {
@@ -390,10 +425,18 @@ export default Vue.extend({
             // For a very strange reason, Bootstrap doesn't link the menu link to the dialog any longer 
             // after changing "v-if" to "v-show" on the link (to be able to have the keyboard shortcut working).
             // So we open it manually here...
-            this.$root.$emit("bv::show::modal", this.loadProjectModalDlgId);
+            // We might need to check, first that a project has been modified and needs to be saved.
+            if(this.appStore.isEditorContentModified){
+                // Show a modal dialog to let user save/discard their changes. Saving loop is handled with saving methods.
+                // Note that for the File System project we cannot make Strype save the file: that will require the user explicit action.
+                this.$root.$emit("bv::show::modal", this.saveOnLoadModalDlgId);
+            }
+            else {
+                this.$root.$emit("bv::show::modal", this.loadProjectModalDlgId);
+            }
         },
 
-        handleSaveMenuClick(): void {
+        handleSaveMenuClick(saveReason?: SaveRequestReason): void {
             // Some problem, like for the load project menu, happens because of changing v-if to v-show (it works first time, but not second time).
             // So again, we handle things manually for the menu entry click
             if(this.isSynced){
@@ -401,6 +444,23 @@ export default Vue.extend({
             }
             else{
                 this.$root.$emit("bv::show::modal", this.saveProjectModalDlgId);
+                // When we are saving a "browser" project (that is, not from FS or GD) we need to be able to trigger the "Open" later, so we set a flag
+                this.requestOpenProjectLater = (saveReason == SaveRequestReason.loadProject);
+            }
+        },
+
+        openLoadProjectDlgAfterSaved(): void {
+            // Reset the flag to request opening the project later (see flag definition)
+            this.requestOpenProjectLater = false;
+            this.$root.$emit("bv::show::modal", this.loadProjectModalDlgId);            
+        },
+
+        changeTargetFocusOnMouseOver(event: MouseEvent) {
+            // On the "load project dialog", entering a target button should "snap" the focus to it and select it.
+            // On the "save porject dialog", entering a button just give an indication that the button can "clicked".
+            // For both, we handle those visual aspects by setting the focus on the button -- CSS does the rest.
+            if(event.target){
+                (event.target as HTMLDivElement).focus();
             }
         },
 
@@ -409,19 +469,12 @@ export default Vue.extend({
             if(isSaveAction){
                 this.onSaveTargetChanged();
             }
-        },
-
-        getSyncTargetStatus(target: StrypeSyncTarget): boolean {
-            // If there is no saved value in the store, the default value is Google Drive.
-            // When the UI temporary value is set, it prevails (that's only temporary to allow the switch).
-            if(this.tempSyncTarget != StrypeSyncTarget.none){
-                return (this.tempSyncTarget == target);
+            else {
+                // There is no intermediate steps when the target is selected for opening a project
+                // (we first close the target selector modal, then validate)
+                this.$root.$emit("bv::hide::modal", this.loadProjectModalDlgId);
+                this.onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.loadProjectModalDlgId);
             }
-
-            if(this.appStore.syncTarget == StrypeSyncTarget.none || (this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>)?.saveExistingGDProjectInfos.isCopyFileRequested){
-                return target == StrypeSyncTarget.gd; 
-            }
-            return target == this.appStore.syncTarget;
         },
 
         getTargetSelectVal(): StrypeSyncTarget {
@@ -448,12 +501,15 @@ export default Vue.extend({
                 this.appStore.currentGoogleDriveSaveFileId = undefined;
                 this.appStore.strypeProjectLocationAlias = "";
             }
+            // If we have swapped target, we should remove the other target in the list of saving functions.
+            // (It doesn't really matter if there is one or not, the remove method will take care of that.)
+            this.$root.$emit(CustomEventTypes.removeFunctionToEditorProjectSave, (target == StrypeSyncTarget.fs) ? "GD" : "FS");
         },
 
-        saveCurrentProject(){
+        saveCurrentProject(saveReason?: SaveRequestReason){
             // This method is called when sync is activated, and bypass the "save as" dialog we show to change the project name/location.
             // (note that the @click event in the template already checks if we are synced)
-            this.onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.saveProjectModalDlgId, this.appStore.projectName);
+            this.onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.saveProjectModalDlgId, this.appStore.projectName, saveReason);
             this.showMenu = false;
         },
 
@@ -479,9 +535,26 @@ export default Vue.extend({
                     saveFileNameInputElement.click();
                 }, 500);           
             }
+            else {
+                // When the load or save project dialogs are opened, we focus the Google Drive selector by default when we don't have information about the source target
+                setTimeout(() => {
+                    const targetToFocusButton =[...document.querySelectorAll(`#${dlgId} .project-target-button`)].find((targetButton) => {
+                        // As the moment we only have 2 possible source targets, we can simply check whether "Google" is in the button or not...
+                        if(this.tempSyncTarget == this.noSyncTargetValue || this.tempSyncTarget == this.syncGDValue) {
+                            return targetButton.querySelector("span")?.textContent?.includes("Google");
+                        }
+                        else {
+                            return !targetButton.querySelector("span")?.textContent?.includes("Google");
+                        }
+                    });
+                    if(targetToFocusButton){
+                        (targetToFocusButton as HTMLDivElement).focus();
+                    }
+                }, 100);
+            } 
         },
 
-        onStrypeMenuHideModalDlg(event: BvModalEvent, dlgId: string, forcedProjectName?: string) {
+        onStrypeMenuHideModalDlg(event: BvModalEvent, dlgId: string, forcedProjectName?: string, saveReason ?: SaveRequestReason) {
             // This method handles the workflow after acting on any modal dialog of the Strype menu entries.
             // For most cases, if there is no confirmation, nothing special happens.
             // Only exception: if the user cancelled or proceeded to save a file copy following an clash with an existing project name on Google Drive,
@@ -490,7 +563,14 @@ export default Vue.extend({
                 (this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>).saveExistingGDProjectInfos.isCopyFileRequested = false;  
             }
             if(event.trigger == "cancel" || event.trigger == "esc"){
-                // Reset the temporary sync file flag
+                if(dlgId == this.saveOnLoadModalDlgId){
+                    // Case of request to save/discard the file currently opened, before loading a new file:
+                    // user chose to discard the file saving: we can trigger the file opening.
+                    this.$root.$emit("bv::show::modal", this.loadProjectModalDlgId);
+                    return;
+                }
+
+                // Other cases: reset the temporary sync file flag
                 this.tempSyncTarget = this.appStore.syncTarget;
                 this.currentModalButtonGroupIDInAction = "";
 
@@ -498,12 +578,18 @@ export default Vue.extend({
             else if(event.trigger == "ok" || event.trigger == "event"){
                 // Case of "load file"
                 if(dlgId == this.loadProjectModalDlgId){
+                    // We do not do anything if the modal is closed by a "hide" event.
+                    if(event.trigger == "event" && event.type == "hide"){
+                        return;
+                    }
                     this.currentModalButtonGroupIDInAction = this.loadProjectTargetButtonGpId;
-                    // We force saving the current project anyway just in case
-                    this.$root.$emit(CustomEventTypes.requestEditorAutoSaveNow, SaveRequestReason.loadProject);
-                    // The remaining parts of the loading process will be only done once saving is complete (cf loadProject())                    
+                    this.loadProject();
                 }
-                // Case of "save file"
+                // Case of request to save/discard the file currently opened, before loading a new file.
+                else if(dlgId == this.saveOnLoadModalDlgId){
+                    this.$root.$emit(CustomEventTypes.requestEditorProjectSaveNow, SaveRequestReason.loadProject);
+                }
+                // Case of standard "save file"
                 else if(dlgId == this.saveProjectModalDlgId){
                     this.currentModalButtonGroupIDInAction = this.saveProjectTargetButtonGpId;
                     // User has been given a chance to give the file a specifc name,
@@ -530,7 +616,12 @@ export default Vue.extend({
                             saveFile(saveFileName, this.strypeProjMIMEDescArray, this.appStore.strypeProjectLocation, this.appStore.generateStateJSONStrWithCheckpoint(), (fileHandle: FileSystemFileHandle) => {
                                 this.appStore.strypeProjectLocation = fileHandle;
                                 this.appStore.projectName = fileHandle.name.substring(0, fileHandle.name.lastIndexOf("."));
+                                this.appStore.projectLastSaveDate = Date.now();
+                                this.appStore.isEditorContentModified = false;
                                 this.saveTargetChoice(StrypeSyncTarget.fs);
+                                if(saveReason == SaveRequestReason.loadProject || this.requestOpenProjectLater) {
+                                    this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                                }
                             });
                         }
                         else{
@@ -538,13 +629,18 @@ export default Vue.extend({
                             // We cannot retrieve the file name ultimately set by the user or the browser when it's being saved with a click,
                             // however we should still at least update the project name with what the user set in our own save as dialog
                             this.appStore.projectName = saveFileName.trim();
+                            this.appStore.projectLastSaveDate = Date.now();
+                            this.appStore.isEditorContentModified = false;
                             this.saveTargetChoice(StrypeSyncTarget.fs);
+                            if(saveReason == SaveRequestReason.loadProject || this.requestOpenProjectLater) {
+                                this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                            }
                         }
                     }
                     else {          
                         // If we were already syncing to Google Drive, we save the current file now.
                         if(this.isSyncingToGoogleDrive){
-                            this.$root.$emit(CustomEventTypes.requestEditorAutoSaveNow, SaveRequestReason.autosave);
+                            this.$root.$emit(CustomEventTypes.requestEditorProjectSaveNow, SaveRequestReason.autosave);
                         }
                         // When the project name is enforced, user as clicked on "save", so we don't need to trigger the usual saving mechanism to select the location/filename
                         if(forcedProjectName){
@@ -591,14 +687,14 @@ export default Vue.extend({
                                 // name is not always available so we also check if content starts with a {,
                                 // which it will do for spy files:
                                 if (file.name.endsWith(".py") || !(reader.result as string).trimStart().startsWith("{")) {
-                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(reader.result as string, fileHandles[0].name, fileHandles[0]);
+                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(reader.result as string, fileHandles[0].name, file.lastModified, fileHandles[0]);
                                 }
                                 else {
                                     this.appStore.setStateFromJSONStr(
                                         {
                                             stateJSONStr: reader.result as string,
                                         }
-                                    ).then(() => this.onFileLoaded(fileHandles[0].name, fileHandles[0]), () => {});
+                                    ).then(() => fileHandles[0].getFile().then((file)=> this.onFileLoaded(fileHandles[0].name, file.lastModified, fileHandles[0])), () => {});
                                 }
                                 emitPayload.requestAttention=false;
                                 this.$emit("app-showprogress", emitPayload);  
@@ -624,20 +720,21 @@ export default Vue.extend({
                     this.$emit("app-showprogress", emitPayload);
                     // Store the file name in a variable to use it later in the callback, for some reason using files[0].name fails in Pinia, on Safari
                     const fileName = files[0].name;
+                    const lastModified = files[0].lastModified;
                     readFileContent(files[0])
                         .then(
                             (content) => {
                                 // name is not always available so we also check if content starts with a {,
                                 // which it will do for spy files:
                                 if (fileName.endsWith(".py") || !content.trimStart().startsWith("{")) {
-                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content, fileName);
+                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content, fileName, lastModified);
                                 }
                                 else {
                                     this.appStore.setStateFromJSONStr(
                                         {
                                             stateJSONStr: content,
                                         }
-                                    ).then(() => this.onFileLoaded(fileName), () => {});
+                                    ).then(() => this.onFileLoaded(fileName, lastModified), () => {});
                                 }
                                 emitPayload.requestAttention=false;
                                 this.$emit("app-showprogress", emitPayload);
@@ -665,8 +762,9 @@ export default Vue.extend({
             }
         },
 
-        onFileLoaded(fileName: string, fileLocation?: FileSystemFileHandle):void {
+        onFileLoaded(fileName: string, lastSaveDate: number, fileLocation?: FileSystemFileHandle):void {
             this.saveTargetChoice(StrypeSyncTarget.fs);
+            this.$root.$emit(CustomEventTypes.addFunctionToEditorProjectSave, {name: "FS", function: (saveReason: SaveRequestReason) => this.saveCurrentProject(saveReason)});
 
             // Strip the extension from the file, if it was left in. Then we can update the file name and location (if avaiable)
             const noExtFileName = (fileName.includes(".")) ? fileName.substring(0, fileName.lastIndexOf(".")) : fileName;
@@ -674,6 +772,7 @@ export default Vue.extend({
             if(fileLocation){
                 this.appStore.strypeProjectLocation = fileLocation;
             }
+            this.appStore.projectLastSaveDate = lastSaveDate;
         },
 
         resetProject(): void {
@@ -723,8 +822,8 @@ export default Vue.extend({
                 this.appStore.ignoreKeyEvent = true;
 
                 if(event.type == "keyup" && event.key == "Enter"){
-                // When the enter key is hit, we trigger the action bound to the click for the selected menu element
-                // and we cancel the natural key up event so it does not get sent to the editor (otherwise, will add a blank frame)
+                    // When the enter key is hit, we trigger the action bound to the click for the selected menu element
+                    // and we cancel the natural key up event so it does not get sent to the editor (otherwise, will add a blank frame)
                     event.preventDefault();
                     event.stopImmediatePropagation();
                     event.stopPropagation();
@@ -747,24 +846,41 @@ export default Vue.extend({
 
         onTargetButtonKeyDown(event: KeyboardEvent, isSaveAction: boolean) {
             // Handle some basic keyboard logic for the target selection.
-            // Space should allow a switch of target.
-            if(event.key == " "){
-                // We get the list of toggle button for the target (button)'s parent, and look for the next one (first if we're on the last)
-                const buttonGroupElement = this.$refs[(isSaveAction) ? this.saveProjectTargetButtonGpId : this.loadProjectTargetButtonGpId];
-                if(buttonGroupElement){
-                    const switchButtons = (buttonGroupElement as Element).children;
-                    if(switchButtons){
-                        const currentSwitchPos = [...switchButtons].findIndex((switchEl) => switchEl.classList.contains("btn-primary"));
-                        const newSwitchPos = (currentSwitchPos == switchButtons.length - 1) ? 0 : currentSwitchPos + 1;
-                        (switchButtons.item(newSwitchPos) as HTMLButtonElement).focus();
-                        (switchButtons.item(newSwitchPos) as HTMLButtonElement).click();
-                        // Prevent the default behaviour
-                        event.stopImmediatePropagation();
+
+            // Space, left/right arrows should trigger a change of target
+            if(event.key.toLowerCase() == " " || event.key.toLowerCase() == "arrowleft" || event.key.toLowerCase() == "arrowright"){
+                const currentFocusedElementID = document.activeElement?.id??"";
+                const targetButtons = [...document.querySelectorAll(`#${(isSaveAction) ? this.saveProjectModalDlgId : this.loadProjectModalDlgId} .project-target-button`)];
+                const focusedButtonIndex = targetButtons.findIndex((target) => {
+                    return target.id == currentFocusedElementID;
+                });
+                if(focusedButtonIndex > -1){
+                    const newFocousedButtonIndex = (event.key.toLowerCase() == "arrowleft") 
+                        ? (((focusedButtonIndex - 1) >= 0) ? focusedButtonIndex - 1 : targetButtons.length - 1)
+                        : (((focusedButtonIndex + 1) < targetButtons.length) ? focusedButtonIndex + 1 : 0); 
+                    (targetButtons[newFocousedButtonIndex] as HTMLDivElement).focus();
+                    if(isSaveAction) {
+                        (targetButtons[newFocousedButtonIndex] as HTMLDivElement).click();
+                    }                    
+                }
+                event.stopImmediatePropagation();
+                event.stopPropagation();
+                event.preventDefault();
+                return;
+            }
+
+            // Enter should act as a button validation, if one of the target is focused.
+            if(event.key.toLowerCase() == "enter"){
+                const focusedTarget = document.activeElement;
+                if(focusedTarget && focusedTarget.classList.contains("project-target-button")){
+                    (focusedTarget as HTMLDivElement).click();
+                    if(isSaveAction){
+                        // On the save dialog, the action doesn't validate the modal dialog
                         event.stopPropagation();
+                        event.stopImmediatePropagation();
                         event.preventDefault();
                     }
                 }
-
             }
         },
 
@@ -932,6 +1048,19 @@ export default Vue.extend({
     margin-right: 5px;
 }
 
+.save-project-modal-dlg-container {
+    display: table;
+    border-spacing: 10px 10px;
+}
+
+.save-project-modal-dlg-container .row {
+    display: table-row;
+}
+
+.save-project-modal-dlg-container .cell {
+    display: table-cell;
+}
+
 .error-nav-enabled {
     color: #d66;
     cursor: pointer;
@@ -946,6 +1075,48 @@ export default Vue.extend({
     color: white;
     background-color: #d66;
     border-radius: 50%;
+}
+
+.project-target-button-container {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 20px;
+    justify-content: space-around;
+    align-items: center;
+}
+
+.project-target-button {
+    border-radius: 8px;
+    border: #c5c4c1 2px solid;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    padding: 5px;
+    align-items: center;
+    justify-content: space-between;
+    width: 120px;
+}
+
+.project-target-button.load-dlg:focus,
+.project-target-button.saveTargetSelected
+ {
+    border-color: #007bff;
+    cursor: pointer;
+    box-shadow: 2px 2px 5px rgb(141, 140, 140);
+    outline: none;
+}
+
+.project-target-button.save-dlg:focus {
+    border-color: black !important;
+}
+
+
+.project-target-button.save-dlg:hover {
+    box-shadow: 2px 2px 5px rgb(141, 140, 140);
+}
+
+.project-target-button-container img {
+    width: 64px;
 }
 
 .toggle-button {
