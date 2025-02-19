@@ -358,9 +358,9 @@ export default Vue.extend({
                     let isImage = item.type.startsWith("image");
                     let isAudio = item.type.startsWith("audio");
                     if (file && (isImage || isAudio)) {
-                        readFileAsyncAsData(file).then((base64) => {
+                        readFileAsyncAsData(file).then((dataAndBase64) => {
                             // The code is the code to load the literal from its base64 string representation:
-                            const code = (isImage ? "load_image" : "Sound") + "(\"data:" + item.type + ";" + base64 + "\")";
+                            const code = (isImage ? "load_image" : "Sound") + "(\"" + dataAndBase64 + "\")";
                             document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos))
                                 ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: item.type, content: code}}));
                         });
