@@ -1640,10 +1640,7 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
     // (and we also need to remove "dead" closing brackets)
     let code = codeLiteral.substring(lookOffset).trimStart();
     closeBracketCharacters.forEach((closingBracket) => {
-        code = code.replaceAll(closingBracket, () => {
-            cursorOffset += -1;
-            return "";
-        });
+        code = code.replaceAll(closingBracket, "");
     });
     resStructSlot.fields.push({code: code});
     return {slots: resStructSlot, cursorOffset: cursorOffset};

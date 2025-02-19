@@ -78,4 +78,7 @@ describe.only("Pasting of incomplete code", () => {
     testPasteThenType("1+\"","a","{1}+{}“a$”{}");
     testPasteThenType("print(\"\")","a","{print}({}“”{}){a$}");
     testPasteThenType("print(\"","a","{print}({}“a$”{}){}");
+    
+    // Test position after pasting excess brackets:
+    testPasteThenType("print(1+2))", "a", "{print}({1}+{2}){a$}");
 });
