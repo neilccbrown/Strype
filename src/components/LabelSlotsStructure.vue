@@ -379,7 +379,8 @@ export default Vue.extend({
                 if (content) {
                     const ms = splitByRegexMatches(content, /(?:load_image|Sound)\("data:(?:image|audio)[^;]*;base64,[^"]+"\)/);
                     for (let i = 0; i < ms.length; i++) {
-                        // We know even values (0, 2) are plain string and odd values (1, 3) are the regex:
+                        // We know even values (0, 2) are the plain string parts inbetween regex matches,
+                        // and odd values (1, 3) are the parts which matched the regex:
                         if ((i % 2) == 0) {
                             pastedItems.push({type: "text/plain", content: ms[i]});
                         }
@@ -395,7 +396,11 @@ export default Vue.extend({
                     }
                 }
                 
-                const pasteIndex = (i : number) => {
+                // This recurses through the list pasting in order, but adds a double
+                // nextTick inbetween each paste event.  The reason we double is that the pasting
+                // sometimes uses one nextTick to take effect, so we need an extra one beyond that
+                // before we are then readyto paste the next part:
+                const pasteIndexThenFollowing = (i : number) => {
                     if (i < pastedItems.length) {
                         // We create a new custom event with the clipboard data as payload, to avoid untrusted events issues
                         if (this.appStore.focusSlotCursorInfos) {
@@ -403,13 +408,13 @@ export default Vue.extend({
                                 ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, { detail: { type: pastedItems[i].type, content: pastedItems[i].content }}));
                             this.$nextTick(() => {
                                 this.$nextTick(() => {
-                                    pasteIndex(i + 1);
+                                    pasteIndexThenFollowing(i + 1);
                                 });
                             });
                         }
                     }
                 };
-                pasteIndex(0);
+                pasteIndexThenFollowing(0);
             }
         },        
 

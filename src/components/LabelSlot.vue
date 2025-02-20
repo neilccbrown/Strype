@@ -35,7 +35,7 @@
         >
         </span>
         <img :src="mediaPreview" v-if="isMediaSlot" class="labelSlot-media limited-height-inline-image" alt="Media literal" :data-code="code" :data-mediaType="getMediaType()">
-        <span v-if="isMediaSlot" style="opacity: 0; position: absolute; pointer-events: none;" contenteditable="false">{{code}}</span>
+        <span v-if="isMediaSlot" class="labelSlot-invisible-media-code" contenteditable="false">{{code}}</span>
                
         <b-popover
             v-if="erroneous()"
@@ -1673,5 +1673,10 @@ export default Vue.extend({
        We copy the Python code to produce it instead: */
     user-select: none;
     -webkit-user-select: none; /* For Safari */
+}
+.labelSlot-invisible-media-code {
+    opacity: 0;
+    position: absolute;
+    pointer-events: none;
 }
 </style>

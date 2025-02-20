@@ -150,7 +150,7 @@ function expectMatchRegex(actual: string[], expected: RegExp[]) {
     }
 }
 
-function checkCodeEquals(codeLines : RegExp[]) : void {
+function checkDownloadedCodeMatchesRegexes(codeLines : RegExp[]) : void {
     const downloadsFolder = Cypress.config("downloadsFolder");
     cy.task("deleteFile", path.join(downloadsFolder, "main.py"));
     // Conversion to Python is located in the menu, so we need to open it first, then find the link and click on it
@@ -303,7 +303,7 @@ describe("Paste image literals", () => {
             cy.wait(1000);
             (cy.focused() as any).paste(catJPEG, "image/jpeg");
             cy.wait(1000);
-            checkCodeEquals([
+            checkDownloadedCodeMatchesRegexes([
                 /from strype.graphics import \*/,
                 /from strype.sound import \*/,
                 /from time import sleep/,
