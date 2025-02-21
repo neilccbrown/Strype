@@ -939,17 +939,17 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
             const closestCaretEl = document.getElementById(getCaretUID(currentCaretPositionsForDnD[closestCaretPositionIndex].caretPosition as string, currentCaretPositionsForDnD[closestCaretPositionIndex].frameId));
             // First remove the drop indicator of the current drop position (if any)
             if(currentCaretDropPosId.length > 0){
-                (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = false;
+                (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).$data.areFramesDraggedOver = false;
                 // Not really required but just better to reset things properly
-                (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = true;
+                (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).$data.areDropFramesAllowed = true;
                 // We make sure that we remove the "drag and d&d" flag on this caret since it's no longer a candidate for dropping the frames at this position...
                 removeDuplicateActionOnFramesDnD();
             }
             currentCaretDropPosId = closestCaretEl?.id??"";
             currentCaretDropPosFrameId = newCaretDropPosFrameId;
             currentCaretDropPosCaretPos = newCaretDropPosCaretPos;
-            (vm.$refs[getCaretUID(newCaretDropPosCaretPos, newCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = true;
-            (vm.$refs[getCaretUID(newCaretDropPosCaretPos, newCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = 
+            (vm.$refs[getCaretUID(newCaretDropPosCaretPos, newCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).$data.areFramesDraggedOver = true;
+            (vm.$refs[getCaretUID(newCaretDropPosCaretPos, newCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).$data.areDropFramesAllowed = 
                 isFrameDropAllowed(newCaretDropPosFrameId, newCaretDropPosCaretPos);
         }
 
@@ -967,7 +967,7 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
 export function addDuplicateActionOnFramesDnD(): void {
     // Add the "+" symbol
     if(currentCaretDropPosFrameId != 0){
-        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).isDuplicateDnDAction = true;
+        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).$data.isDuplicateDnDAction = true;
     }
 
     // Do not blur the source frame(s)
@@ -978,7 +978,7 @@ export function addDuplicateActionOnFramesDnD(): void {
 export function removeDuplicateActionOnFramesDnD(): void {
     // Remove the "+" symbol on the destination caret
     if(currentCaretDropPosFrameId != 0){
-        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).isDuplicateDnDAction = false;
+        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).$data.isDuplicateDnDAction = false;
     }
 
     // Restore the blur on the source frame(s) only if we are still dragging 
@@ -992,7 +992,7 @@ export function removeDuplicateActionOnFramesDnD(): void {
 // there is no "dragend" being raised by the browser consequently.
 const bodyMouseUpEventHandlerForFrameDnD = (event: MouseEvent): void => {
     if(useStore().isDraggingFrame){
-        const areDropFramesAllowed = (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed;
+        const areDropFramesAllowed = (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).$data.areDropFramesAllowed;
         // Notify the drag even is finished
         notifyDragEnded();
 
@@ -1121,9 +1121,9 @@ export function notifyDragEnded():void {
     (document.getElementsByTagName("body")[0] as HTMLBodyElement).removeEventListener("mouseup", bodyMouseUpEventHandlerForFrameDnD);
     document.getElementsByTagName("body")[0]?.classList.remove("dragging-frame");
     if(currentCaretDropPosId.length > 0){
-        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = false;
+        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).$data.areFramesDraggedOver = false;
         // Not really required but just better to reset things properly
-        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = true;
+        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).$data.areDropFramesAllowed = true;
     }
     // Reset flags in the next tick to let UI update properly
     Vue.nextTick(() => {
