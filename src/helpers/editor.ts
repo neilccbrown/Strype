@@ -1335,7 +1335,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             return codeStrQuotes + " ".repeat(match.length - 2) + codeStrQuotes;
         }
         else {
-            if(!match.endsWith(match[0]) || (match.endsWith("\\" + match[0]) && getNumPrecedingBackslashes(match, match.length - 1) % 2 == 1)){
+            if(!match.endsWith(match[0]) || match.length == 1 || (match.endsWith("\\" + match[0]) && getNumPrecedingBackslashes(match, match.length - 1) % 2 == 1)){
                 missingClosingQuote = match[0];
             }
             return match[0] + " ".repeat(match.length - ((missingClosingQuote.length == 1) ? 1 : 2)) + match[0];
@@ -1346,6 +1346,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         // The blanking above would have already terminate the string quote in blankedStringCodeLiteral if needed,
         // we need to update the original codeLiteral too
         codeLiteral += missingClosingQuote;
+        cursorOffset -= 1;
     }     
 
     // 1- Look for a bracket structure
@@ -1380,7 +1381,10 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
                     innerOpeningBracketCount--;
                     startLookingOtherOpeningBracketsPos = closingBracketPos + 1;
                 }
-            }            
+            }
+            else {
+                cursorOffset -= 1;
+            }
         }
         while (innerOpeningBracketCount != 0 && closingBracketPos != -1);
        
@@ -1513,7 +1517,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
                         // Need to compensate for what we just added:
                         j += 1;
                     }
-                    if (after.length > 0 || j == resStructSlot.fields.length || !isFieldBaseSlot(resStructSlot.fields[j+1]) || resStructSlot.operators[j].code != "") {
+                    if (after.length > 0 || j >= resStructSlot.fields.length - 1 || !isFieldBaseSlot(resStructSlot.fields[j+1]) || resStructSlot.operators[j].code != "") {
                         // If there's no plain slot after or the operator isn't blank, we need to add a blank operator and blank field:
                         resStructSlot.operators.splice(j, 0, {code: ""});
                         resStructSlot.fields.splice(j+1, 0, {code: after} as BaseSlot);
@@ -1636,10 +1640,7 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
     // (and we also need to remove "dead" closing brackets)
     let code = codeLiteral.substring(lookOffset).trimStart();
     closeBracketCharacters.forEach((closingBracket) => {
-        code = code.replaceAll(closingBracket, () => {
-            cursorOffset += -1;
-            return "";
-        });
+        code = code.replaceAll(closingBracket, "");
     });
     resStructSlot.fields.push({code: code});
     return {slots: resStructSlot, cursorOffset: cursorOffset};
@@ -1841,4 +1842,24 @@ export function getCurrentFrameSelectionScope(): SelectAllFramesFuncDefScope {
         return SelectAllFramesFuncDefScope.wholeFunctionBody;
     }
     return SelectAllFramesFuncDefScope.none;
+}
+
+// Gets all the HTML elements which are part of the window text selection.
+// The returned list may contain duplicates
+export function getElementsInSelection() : Element[] {
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount) {
+        return [];
+    }
+
+    const elements = [];
+
+    for (let i = 0; i < selection.rangeCount; i++) {
+        const range = selection.getRangeAt(i);
+        // Clone the selected content to be able to access the sub-elements:
+        const fragment = range.cloneContents();
+        elements.push(...fragment.querySelectorAll("*"));
+    }
+
+    return elements;
 }

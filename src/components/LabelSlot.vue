@@ -35,6 +35,7 @@
         >
         </span>
         <img :src="mediaPreview" v-if="isMediaSlot" class="labelSlot-media limited-height-inline-image" alt="Media literal" :data-code="code" :data-mediaType="getMediaType()">
+        <span v-if="isMediaSlot" class="labelSlot-invisible-media-code" contenteditable="false">{{code}}</span>
                
         <b-popover
             v-if="erroneous()"
@@ -67,7 +68,7 @@ import Vue, { PropType } from "vue";
 import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUID, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUID, getFrameUID, getFrameComponent } from "@/helpers/editor";
+import { getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUID, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUID, getFrameUID, getFrameComponent, getElementsInSelection } from "@/helpers/editor";
 import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, FieldSlot, MediaSlot, PythonExecRunningState, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
@@ -1038,6 +1039,14 @@ export default Vue.extend({
                                 let closingTokenSpanFieldCurosorPos = selectionEnd;  
                                 let closingTokenSlotInfos = this.coreSlotInfo;                              
                                 if(hasTextSelection){
+                                    // Media literals and strings can't be encased in a new string:
+                                    if (isStringQuote) {
+                                        const selectedEls = getElementsInSelection();
+                                        if (selectedEls.find((el) => el.classList.contains("labelSlot-media") || el.classList.contains("string-slot"))) {
+                                            return;
+                                        }
+                                    }
+
                                     // Check in what direction is the selection, note that we expect the anchor and focus to be set here (we checked before), so the comparison value shouldn't be undefined.
                                     if(slotSelectionCursorComparisonValue < 0){
                                         // Anchor is before the focus: we only change the openingTokenSpanField
@@ -1660,5 +1669,14 @@ export default Vue.extend({
 .limited-height-inline-image {
     max-height: 1.5em;
     border:1px solid #333;
+    /* Prevent selection to prevent it being copied to clipboard as part of a selection.
+       We copy the Python code to produce it instead: */
+    user-select: none;
+    -webkit-user-select: none; /* For Safari */
+}
+.labelSlot-invisible-media-code {
+    opacity: 0;
+    position: absolute;
+    pointer-events: none;
 }
 </style>

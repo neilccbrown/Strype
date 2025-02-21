@@ -184,3 +184,38 @@ export function getDateTimeFormatted(dt: Date): string {
     const rawSecsVal = dt.getSeconds();
     return `${dt.getFullYear()}-${((rawMonthOneIndexedVal) < 10) ? "0" + rawMonthOneIndexedVal : rawMonthOneIndexedVal }-${(rawDayVal < 10) ? "0" + rawDayVal : rawDayVal}_${(rawHoursVal < 10) ? "0" + rawHoursVal : rawHoursVal}-${(rawMinsVal < 10) ? "0" + rawMinsVal : rawMinsVal}-${(rawSecsVal < 10) ? "0" + rawSecsVal : rawSecsVal}`;
 }
+
+// Given a regex, splits the string into:
+//   [part before first match,
+//    full text of first match,
+//    part between first and second/final match,
+//    part after final match]
+// For any number of matches.  If no matches, returns a singleton array with the full string.  Never returns empty array.
+export function splitByRegexMatches(input: string, regex: RegExp): string[] {
+    // Make a global version:
+    regex = new RegExp(regex, "g");
+    const matches = [...input.matchAll(regex)];
+
+    const result: string[] = [];
+    let lastIndex = 0;
+
+    for (const match of matches) {
+        // Not sure this can happen, but keep Typescript happy:
+        if (match.index === undefined) {
+            continue;
+        }
+
+        // Add part before the match
+        result.push(input.slice(lastIndex, match.index));
+
+        // Add the matched part itself
+        result.push(match[0]);
+
+        lastIndex = match.index + match[0].length;
+    }
+
+    // Add the remaining part after the last match
+    result.push(input.slice(lastIndex));
+
+    return result;
+}

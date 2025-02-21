@@ -1,9 +1,14 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
+import {expect} from "chai";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 import {PNG} from "pngjs";
 import pixelmatch from "pixelmatch";
 import failOnConsoleError from "cypress-fail-on-console-error";
+import path from "path";
+import i18n from "@/i18n";
+
+
 failOnConsoleError();
 
 
@@ -134,6 +139,31 @@ function executeCode(switchToGraphics = true) {
     cy.get("#runButton").contains("Run");
 }
 
+/**
+ * Check if a list of actual strings matches a list of expected strings or regexes.
+ */
+function expectMatchRegex(actual: string[], expected: RegExp[]) {
+    // Deliberate double escape, use \n to separate lines but have it all appear on one line:
+    expect(actual.length, "Actual: " + actual.join("\\n")).to.equal(expected.length);
+    for (let i = 0; i < actual.length; i++) {
+        expect(actual[i]).to.match(expected[i]);
+    }
+}
+
+function checkDownloadedCodeMatchesRegexes(codeLines : RegExp[]) : void {
+    const downloadsFolder = Cypress.config("downloadsFolder");
+    cy.task("deleteFile", path.join(downloadsFolder, "main.py"));
+    // Conversion to Python is located in the menu, so we need to open it first, then find the link and click on it
+    // Force these because sometimes cypress gives false alarm about webpack overlay being on top:
+    cy.get("button#showHideMenu").click({force: true});
+    cy.contains(i18n.t("appMenu.downloadPython") as string).click({force: true});
+
+    cy.readFile(path.join(downloadsFolder, "main.py")).then((p : string) => {
+        expectMatchRegex(p.split("\n").map((l) => l.trimEnd()),
+            codeLines.concat([/\s*/]));
+    });
+}
+
 describe("Paste image literals", () => {
     if (Cypress.env("mode") == "microbit") {
         // Graphics tests can't run in microbit
@@ -243,8 +273,45 @@ describe("Paste image literals", () => {
             checkGraphicsCanvasContent("paste-in-text");
         });
     });
-    
-    // TODO check the downloaded Python file (and check for double data: item) (and ideally re-load the images as images from the .py)
+
+    it("Can type before and after pasted image", () => {
+        cy.readFile("public/graphics_images/cat-test.jpg", null).then((catJPEG) => {
+            focusEditorPasteAndClear();
+            enterImports();
+            cy.get("body").type(" set_background(");
+            cy.wait(1000);
+            (cy.focused() as any).paste(catJPEG, "image/jpeg");
+            cy.wait(1000);
+            // Type a 1 before the image and delete, then after, then same with a, then dollar:
+            cy.get("body").type("{leftarrow}1");
+            cy.get("body").type("{backspace}{rightarrow}1");
+            cy.get("body").type("{backspace}{leftarrow}a");
+            cy.get("body").type("{backspace}{rightarrow}a");
+            cy.get("body").type("{backspace}{leftarrow}$");
+            cy.get("body").type("{backspace}{rightarrow}$");
+            cy.get("body").type("{backspace}");
+            executeCode();
+            checkGraphicsCanvasContent("paste-and-type-around");
+        });
+    });
+
+    it("Converts to .py file successfully", () => {
+        cy.readFile("public/graphics_images/cat-test.jpg", null).then((catJPEG) => {
+            focusEditorPasteAndClear();
+            enterImports();
+            cy.get("body").type(" a(");
+            cy.wait(1000);
+            (cy.focused() as any).paste(catJPEG, "image/jpeg");
+            cy.wait(1000);
+            checkDownloadedCodeMatchesRegexes([
+                /from strype.graphics import \*/,
+                /from strype.sound import \*/,
+                /from time import sleep/,
+                /import math/,
+                /a\(load_image\("data:image\/jpeg;base64,[^"]+"\)\)/,
+            ]);
+        });
+    });
 });
 
 describe("Paste sound literals", () => {

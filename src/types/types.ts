@@ -51,8 +51,9 @@ export interface StringSlot extends BaseSlot {
 
 // For MediaSlot, code contains: load_image("data:image/png;base64,......")
 // This will be the code generated if converted to Python or copied as text
-// The mediaType is for convenience here e.g. "image/png", base64Content is the part after the "base64,"
-// and we can infer the function is "load_image" from the media type.  None of this can be edited after the image is initially inserted into the code
+// The mediaType is for convenience here e.g. "image/png".
+// and we can infer the function is "load_image" from the media type.
+// None of this can be edited after the image is initially inserted into the code
 // so there are no problems with keeping the different parts in sync
 export interface MediaSlot extends BaseSlot {
     mediaType: string;
