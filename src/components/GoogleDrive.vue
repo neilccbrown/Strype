@@ -49,7 +49,7 @@ export default Vue.extend({
         return {
             client: null as google.accounts.oauth2.TokenClient | null, // The Google Identity client
             oauthToken : null as string | null,
-            currentAction: null as "load" | "loadAsResync" | "save" | null, // flag the request current action for async workflow;
+            currentAction: null as "load" | "save" | null, // flag the request current action for async workflow;
             saveReason: SaveRequestReason.unloadPage, // flag the reason of the save action
             saveFileName: "", // The file name, will be set via the Menu when a name is provided for saving, or when loading a project
             isFileLocked: false, // Flag to notify when a file is locked (used for saving);
@@ -165,7 +165,7 @@ export default Vue.extend({
 
                     // In any case, continue the action requested by the user (need to do it in a next tick to make sure the oauthToken is updated in all Vue components)
                     this.$nextTick(() => {
-                        if(this.currentAction == "load" || this.currentAction == "loadAsResync"){
+                        if(this.currentAction == "load"){
                             this.doLoadFile();
                         }
                         else if(this.currentAction == "save"){
@@ -212,8 +212,8 @@ export default Vue.extend({
             xhr.send(null);
         },
 
-        loadFile(loadAsResync?: boolean) {
-            this.currentAction = (loadAsResync) ? "loadAsResync" : "load";
+        loadFile() {
+            this.currentAction = "load";
             // This method is the entry point to load a file from Google Drive. We check or request to sign-in to Google Drive here.
             // (that is redundant with the previous "save" action if we were already syncing, but this method can be called when we were not syncing so it has to be done.)
             if(this.oauthToken == null){                
@@ -257,11 +257,6 @@ export default Vue.extend({
                         this.appStore.strypeProjectLocationAlias = (strypeFolderId) ? "Strype" : "";
                     }
 
-                    if(this.currentAction == "loadAsResync"){
-                        // When we want to load a file as a resyincing mechanism (when browser is opened/reloaded) we don't use the file picker
-                        this.loadPickedFileId(this.appStore.currentGoogleDriveSaveFileId as string);
-                    }
-                    else {
                         // Method called to trigger the file load -- this would be called after we made sure the connection to Google Drive is (still) valid
                         (this.$refs[this.googleDriveFilePickerComponentId] as InstanceType<typeof GoogleDriveFilePicker>).startPicking(false);
                     }
@@ -443,9 +438,6 @@ export default Vue.extend({
                 method: "GET",
                 params: {fields: "name, modifiedTime"},
             }).execute((resp) => {
-                if(this.currentAction == "loadAsResync"){
-                    fileName = resp.name;
-                }
                 // The date conversion works fine because Google Drive API uses RFC 3339 date format
                 lastSaveDate = Date.parse(resp.modifiedTime);
             });
