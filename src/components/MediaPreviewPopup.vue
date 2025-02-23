@@ -6,8 +6,9 @@
         @mouseenter="cancelHidePopup"
         @mouseleave="startHidePopup"
     >
+        <span class="MediaPreviewPopup-header">{{mediaInfo}}</span>
         <div class="MediaPreviewPopup-img-container">
-            <img :src="imgDataURL" alt="Media preview">
+            <img ref="previewImgElement" :src="imgDataURL" alt="Media preview" @load="imgLoaded">
         </div>
     </div>
 </template>
@@ -24,17 +25,36 @@ export default Vue.extend({
             popupStyle: { top: "0px", left: "0px" },
             hideTimeout: undefined as number | undefined,
             imgDataURL: "",
+            mediaInfo: "",
+            mediaType: "",
         };
     },
     methods: {
         showPopup(event : MouseEvent, media: LoadedMedia) {
             this.cancelHidePopup();
-            this.imgDataURL = media.imageDataURL;
             this.isVisible = true;
             this.popupStyle = {
                 top: `${event.clientY + 5}px`,
                 left: `${event.clientX + 5}px`,
             };
+
+            this.mediaType = media.mediaType;
+            if (media.audioBuffer) {
+                this.mediaInfo = "Sound";
+                this.imgDataURL = media.imageDataURL;
+            }
+            else {
+                if (this.imgDataURL != media.imageDataURL) {
+                    this.imgDataURL = media.imageDataURL;
+                    this.mediaInfo = "Image";
+                }
+            }
+        },
+        imgLoaded(event: Event) {
+            const previewImgElement = event.target as HTMLImageElement;
+            if (this.mediaType.startsWith("image/")) {
+                this.mediaInfo = `Image (${this.mediaType.replace("image/", "")}), ${previewImgElement?.width} × ${previewImgElement?.height} pixels`;
+            }
         },
         startHidePopup() {
             this.hideTimeout = window.setTimeout(() => {
@@ -68,5 +88,11 @@ export default Vue.extend({
     /* Checkerboard background to reveal transparency in image: */
     background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAIAAADZF8uwAAAACXBIWXMAAC4jAAAuIwF4pT92AAAAJ0lEQVQY02Pcv38/AypwcHBAE2FiIAIMRkWM////RxM6cODAcPEdAIlzCFHU4KMkAAAAAElFTkSuQmCC') repeat;
     position: relative;
+    /* Important to make div size match img size: */
+    display: inline-block;
+}
+.MediaPreviewPopup-header {
+    display: block;
+    text-align: center;
 }
 </style>

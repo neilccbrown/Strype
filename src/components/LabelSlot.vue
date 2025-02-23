@@ -222,7 +222,7 @@ export default Vue.extend({
             //we need to track the key.down events for the bracket/quote closing method (cf details there)
             keyDownStr: "",
             //the preview for media literal (blank string if not media literal):
-            mediaPreview: {imageDataURL: ""} as LoadedMedia,
+            mediaPreview: {mediaType: "", imageDataURL: ""} as LoadedMedia,
         };
     },
     
@@ -1580,18 +1580,18 @@ export default Vue.extend({
         async loadMediaPreview(): Promise<LoadedMedia> {
             let slot = retrieveSlotFromSlotInfos(this.coreSlotInfo) as MediaSlot;
             if (slot.mediaType.startsWith("image") && !slot.mediaType.startsWith("image/svg+xml")) {
-                return {imageDataURL: "data:" + slot.mediaType + ";" + /base64,[^"']+/.exec(slot.code)?.[0]};
+                return {mediaType: slot.mediaType, imageDataURL: "data:" + slot.mediaType + ";" + /base64,[^"']+/.exec(slot.code)?.[0]};
             }
             else if (slot.mediaType.startsWith("audio")) {
                 let val = soundPreviewImages.get(slot.code);
                 if (val == null) {
                     let audioBuffer = await new OfflineAudioContext(1, 1, 48000).decodeAudioData(Uint8Array.from(atob(/base64,([^"']+)/.exec(slot.code)?.[1] ?? ""), (char) => char.charCodeAt(0)).buffer);
-                    val = {imageDataURL: drawSoundOnCanvas(audioBuffer), audioBuffer: audioBuffer};
+                    val = {mediaType: slot.mediaType, imageDataURL: drawSoundOnCanvas(audioBuffer), audioBuffer: audioBuffer};
                     soundPreviewImages.put(slot.code, val);
                 }
                 return val;
             }
-            return {imageDataURL: ""};
+            return {mediaType: "", imageDataURL: ""};
         },
         getMediaType(): string {
             let slot = retrieveSlotFromSlotInfos(this.coreSlotInfo) as MediaSlot;

@@ -1117,6 +1117,7 @@ export interface Locale {
 }
 
 export interface LoadedMedia {
+    mediaType: string,
     // Both sounds and images have an imageDataURL which acts as the preview:
     imageDataURL : string,
     // But only sounds have this item:
