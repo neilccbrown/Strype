@@ -898,11 +898,15 @@ export default Vue.extend({
         getMediaPreviewPopupInstance() {
             return this.$refs.mediaPreviewPopup;
         },
+        getPeaComponent() {
+            return (this.$refs[this.strypeCommandsRefId] as any).$refs.strypePEA;
+        },
     },
 
     provide() {
         return {
             mediaPreviewPopupInstance: this.getMediaPreviewPopupInstance,
+            peaComponent: this.getPeaComponent,
         };
     },
 });

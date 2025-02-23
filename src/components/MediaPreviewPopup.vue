@@ -21,6 +21,8 @@
 <script lang="ts">
 import Vue from "vue";
 import {LoadedMedia} from "@/types/types";
+import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
+import {PersistentImageManager} from "@/stryperuntime/image_and_collisions";
 
 export default Vue.extend({
     name: "MediaPreviewPopup",
@@ -36,6 +38,9 @@ export default Vue.extend({
             stopPreviewOnHide : () => {},
         };
     },
+
+    inject: ["peaComponent"],
+    
     methods: {
         showPopup(event : MouseEvent, media: LoadedMedia) {
             this.cancelHidePopup();
@@ -115,7 +120,41 @@ export default Vue.extend({
                     }
                 };
             }
-            // TODO for images, show a preview on the world.
+            else {
+                // For images, show a preview on the world:
+                document.getElementById("strypeGraphicsPEATab")?.click();
+                Vue.nextTick(() => {
+                    const imgManager : PersistentImageManager | undefined = this.peaComponentRef?.getPersistentImageManager();
+                    imgManager?.clear();
+                    const checkered = new OffscreenCanvas(800, 600);
+                    const ctx = checkered.getContext("2d") as OffscreenCanvasRenderingContext2D;
+                    const squareSize = 15;
+                    for (let y = 0; y < 600; y += squareSize) {
+                        for (let x = 0; x < 800; x += squareSize) {
+                            ctx.fillStyle = (x / squareSize + y / squareSize) % 2 === 0 ? "#ccc" : "#fff";
+                            ctx.fillRect(x, y, squareSize, squareSize);
+                        }
+                    }
+                    imgManager?.setBackground(checkered);
+                    const preview = new Image();
+                    preview.onload = () => {
+                        imgManager?.addPersistentImage(preview);
+                        this.peaComponentRef?.redrawCanvas();
+                    };
+                    preview.src = this.imgDataURL;
+                    this.peaComponentRef?.redrawCanvas();
+                });
+                this.stopPreviewOnHide = () => {
+                    this.peaComponentRef?.getPersistentImageManager()?.clear();
+                    this.peaComponentRef?.redrawCanvas();
+                };
+            }
+        },
+    },
+    
+    computed: {
+        peaComponentRef(): InstanceType<typeof PythonExecutionArea> | null {
+            return ((this as any).peaComponent as () => InstanceType<typeof PythonExecutionArea>)?.();
         },
     },
 });
