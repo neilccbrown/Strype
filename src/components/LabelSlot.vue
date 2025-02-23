@@ -1598,7 +1598,9 @@ export default Vue.extend({
             return slot.mediaType;
         },
         showMediaPreviewPopup(event : MouseEvent) {
-            this.mediaPreviewPopupRef?.showPopup(event, this.mediaPreview);
+            if (!this.isPythonExecuting) {
+                this.mediaPreviewPopupRef?.showPopup(event, this.mediaPreview);
+            }
         },
         startHideMediaPreviewPopup() {
             this.mediaPreviewPopupRef?.startHidePopup();
