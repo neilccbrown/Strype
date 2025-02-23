@@ -6,9 +6,14 @@
         @mouseenter="cancelHidePopup"
         @mouseleave="startHidePopup"
     >
-        <span class="MediaPreviewPopup-header">{{mediaInfo}}</span>
+        <div class="MediaPreviewPopup-header">
+            <button class="MediaPreviewPopup-header-preview-button" @click="doPreview">Preview</button>
+            <span class="MediaPreviewPopup-header-text">{{mediaInfo}}</span>
+        </div>
         <div class="MediaPreviewPopup-img-container">
-            <img ref="previewImgElement" :src="imgDataURL" alt="Media preview" @load="imgLoaded">
+            <img :src="imgDataURL" alt="Media preview" @load="imgLoaded">
+            <!-- Style elements are dynamically set from code, don't move them to a class: -->
+            <div ref="playbackLine" class="MediaPreviewPopup-img-red-line" style="opacity: 0%; left: 0%;"></div>
         </div>
     </div>
 </template>
@@ -27,6 +32,8 @@ export default Vue.extend({
             imgDataURL: "",
             mediaInfo: "",
             mediaType: "",
+            audioBuffer: undefined as AudioBuffer | undefined,
+            stopPreviewOnHide : () => {},
         };
     },
     methods: {
@@ -39,6 +46,7 @@ export default Vue.extend({
             };
 
             this.mediaType = media.mediaType;
+            this.audioBuffer = media.audioBuffer;
             if (media.audioBuffer) {
                 this.mediaInfo = "Sound";
                 this.imgDataURL = media.imageDataURL;
@@ -59,10 +67,55 @@ export default Vue.extend({
         startHidePopup() {
             this.hideTimeout = window.setTimeout(() => {
                 this.isVisible = false;
+                this.stopPreviewOnHide();
             }, 300);
         },
         cancelHidePopup() {
             window.clearTimeout(this.hideTimeout);
+        },
+        doPreview() {
+            // Stop any existing preview first:
+            this.stopPreviewOnHide();
+
+            const audioBuffer = this.audioBuffer;
+            if (audioBuffer) {
+                // We are handling a user-triggered click event, which allows us to play sound:
+                const ctx = new AudioContext();
+                const src = ctx.createBufferSource();
+                src.buffer = audioBuffer;
+                src.connect(ctx.destination);
+                const startTime = ctx.currentTime;
+                src.start();
+                // There isn't a way to get regular callbacks while playing
+                // so we must time it ourselves.  We don't bother if the sound is under 300ms:
+                let updater = null as number | null;
+                if (audioBuffer.length / audioBuffer.sampleRate >= 0.3) {
+                    updater = window.setInterval(() => {
+                        const percentage = (ctx.currentTime - startTime) / (audioBuffer.length / audioBuffer.sampleRate) * 100;
+                        if (percentage >= 100) {
+                            this.stopPreviewOnHide();
+                        }
+                        else {
+                            const playbackLine = this.$refs.playbackLine as HTMLDivElement;
+                            if (playbackLine) {
+                                playbackLine.style.left = percentage + "%";
+                                playbackLine.style.opacity = "100%";
+                            }
+                        }
+                    }, 100);
+                }
+                this.stopPreviewOnHide = () => {
+                    src.stop();
+                    if (updater != null) {
+                        window.clearInterval(updater);
+                    }
+                    const playbackLine = this.$refs.playbackLine as HTMLDivElement;
+                    if (playbackLine) {
+                        playbackLine.style.opacity = "0%";
+                    }
+                };
+            }
+            // TODO for images, show a preview on the world.
         },
     },
 });
@@ -91,8 +144,29 @@ export default Vue.extend({
     /* Important to make div size match img size: */
     display: inline-block;
 }
+.MediaPreviewPopup-img-red-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background-color: red;
+    pointer-events: none; /* Prevents interaction issues */
+}
 .MediaPreviewPopup-header {
-    display: block;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+.MediaPreviewPopup-header-text {
+    flex-grow: 1; /* Allow center item to grow and take available space */
+    justify-content: center;
+    align-items: center;
     text-align: center;
+    color: #444;
+}
+.MediaPreviewPopup-header-preview-button {
+    justify-content: center;
+    align-items: center;
 }
 </style>
