@@ -6,7 +6,9 @@
         @mouseenter="cancelHidePopup"
         @mouseleave="startHidePopup"
     >
-        <img :src="imgDataURL" alt="Media preview">
+        <div class="MediaPreviewPopup-img-container">
+            <img :src="imgDataURL" alt="Media preview">
+        </div>
     </div>
 </template>
 
@@ -60,5 +62,11 @@ export default Vue.extend({
 .MediaPreviewPopup img {
     max-width: 200px;
     max-height: 200px;
+    object-fit: contain;
+}
+.MediaPreviewPopup-img-container {
+    /* Checkerboard background to reveal transparency in image: */
+    background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAIAAADZF8uwAAAACXBIWXMAAC4jAAAuIwF4pT92AAAAJ0lEQVQY02Pcv38/AypwcHBAE2FiIAIMRkWM////RxM6cODAcPEdAIlzCFHU4KMkAAAAAElFTkSuQmCC') repeat;
+    position: relative;
 }
 </style>
