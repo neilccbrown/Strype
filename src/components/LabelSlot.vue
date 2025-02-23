@@ -39,6 +39,8 @@
             v-if="isMediaSlot"
             class="labelSlot-media limited-height-inline-image"
             alt="Media literal"
+            @mouseenter="showMediaPreviewPopup($event)"
+            @mouseleave="startHideMediaPreviewPopup"
             :data-code="code"
             :data-mediaType="getMediaType()">
         <span v-if="isMediaSlot" class="labelSlot-invisible-media-code" contenteditable="false">{{code}}</span>
@@ -84,6 +86,7 @@ import { cloneDeep, debounce } from "lodash";
 import LabelSlotsStructure from "./LabelSlotsStructure.vue";
 import { BPopover } from "bootstrap-vue";
 import Frame from "@/components/Frame.vue";
+import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
 
 // Default time to keep in cache: 5 minutes.
 const soundPreviewImages = new Cache<LoadedMedia>({ defaultTtl: 5 * 60 * 1000 });
@@ -156,6 +159,8 @@ export default Vue.extend({
         isEditableSlot: Boolean,
         isEmphasised: Boolean,
     },
+
+    inject: ["mediaPreviewPopupInstance"],
 
     beforeUpdate(){
         // If the text isn't set again here, despite "code" being reactive, we end up with "duplicated" insert with operators.
@@ -356,6 +361,10 @@ export default Vue.extend({
 
         isPythonExecuting(): boolean {
             return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
+        },
+
+        mediaPreviewPopupRef(): InstanceType<typeof MediaPreviewPopup> | null {
+            return ((this as any).mediaPreviewPopupInstance as () => InstanceType<typeof MediaPreviewPopup>)?.();
         },
     },
 
@@ -1587,6 +1596,12 @@ export default Vue.extend({
         getMediaType(): string {
             let slot = retrieveSlotFromSlotInfos(this.coreSlotInfo) as MediaSlot;
             return slot.mediaType;
+        },
+        showMediaPreviewPopup(event : MouseEvent) {
+            this.mediaPreviewPopupRef?.showPopup(event, this.mediaPreview);
+        },
+        startHideMediaPreviewPopup() {
+            this.mediaPreviewPopupRef?.startHidePopup();
         },
     },
     watch: {
