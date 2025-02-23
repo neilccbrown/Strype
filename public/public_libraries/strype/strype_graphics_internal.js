@@ -75,7 +75,7 @@ var $builtinmodule = function(name)  {
                     // Absolute partial:
                     newImg.src = "https://" + filename;
                 }
-                else if (/^data:/.test(filename)) {
+                else if (/^data:/.test(filename) && !/^data:image\/svg+xml/.test(filename)) {
                     // Base64 data image:
                     newImg.src = filename;
                 }

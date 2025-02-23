@@ -1564,7 +1564,7 @@ export default Vue.extend({
         
         async loadMediaPreview(): Promise<string> {
             let slot = retrieveSlotFromSlotInfos(this.coreSlotInfo) as MediaSlot;
-            if (slot.mediaType.startsWith("image")) {
+            if (slot.mediaType.startsWith("image") && !slot.mediaType.startsWith("image/svg+xml")) {
                 return "data:" + slot.mediaType + ";" + /base64,[^"']+/.exec(slot.code)?.[0];
             }
             else if (slot.mediaType.startsWith("audio")) {
