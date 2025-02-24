@@ -71,7 +71,7 @@
     "gdriveConnectionSaveToLoadProjFailed": "Connexion à Google Drive impossible lors de la tentative de sauvegarde du projet actuel.\nEssayez de vous connecter de nouveau pour ouvrir un autre projet.",
     "gdriveConnectionSaveToUnloadPageFailed": "Connexion à Google Drive impossible lors de la tentative de sauvegarde du projet actuel.\nEssayez de vous connecter de nouveau pour sauvegarder le project actuel avant de quitter Strype.",
     "gdrivePermissionsNotMet": "Strype nécessite au moins une permission d'accès pour utiliser Google Drive.",
-    "gdriveReadOnly": "Ce fichier Drive est en lecture seule. L'enregistrement automatique a été désactivé.",
+    "gdriveReadOnly": "Ce projet de Google Drive est en lecture seule.",
     "gdriveWrongFile": "Veullez sélectionner un ficher Strype (extension \".spy\").",
     "gdriveNoFile": "Le projet n'existe pas dans Google Drive.",
     "unexpectedCharsPython": "caractère(s) inattendu(s)"

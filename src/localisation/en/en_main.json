@@ -72,7 +72,7 @@
     "gdriveConnectionSaveToLoadProjFailed": "Could not connect to Google Drive when trying to save the current project. Try to sign-in again to open another project.",
     "gdriveConnectionSaveToUnloadPageFailed": "Could not connect to Google Drive when trying to save the current project. Try to sign-in again to save the current project before leaving Strype.",
     "gdrivePermissionsNotMet": "Strype requires at least one access permission to use Google Drive.",
-    "gdriveReadOnly": "This file is read-only. Auto-save is off.",
+    "gdriveReadOnly": "This Google Drive project is read-only.",
     "gdriveWrongFile": "Please select a Strype file (extension \".spy\").",
     "gdriveNoFile": "The project does not exist in Google Drive.",
     "unexpectedCharsPython": "unexpected character(s)"

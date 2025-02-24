@@ -94,7 +94,7 @@ import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget } from "@/types/types";
-import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getStrypePEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent } from "./helpers/editor";
+import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getStrypePEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
@@ -427,6 +427,23 @@ export default Vue.extend({
     },
 
     mounted() {
+        // Check whether Strype is opening a shared project.
+        // We check the type of sharing (for now it's only Google Drive) and get the retrieve path from the query parameters.
+        let isTryingToOpenSharedProject = false;
+        const queryParams = new URLSearchParams(window.location.search);
+        const sharedProjectTarget= queryParams.get(sharedStrypeProjectTargetKey);
+        const shareProjectId = queryParams.get(sharedStrypeProjectIdKey);
+        if(shareProjectId && sharedProjectTarget == StrypeSyncTarget.gd.toString()) {
+            // When there is a shared project, we do like if we were opening a Google Drive project BUT we use a special
+            // mode that does not ask for the target selection (which shows with "open" in the menu) and breaks links to Google Drive
+            // (it's only a retrieval of the code)
+            (this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).openSharedProjectTarget = StrypeSyncTarget.gd;
+            (this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).openSharedProjectId = shareProjectId;
+            // Wait a bit, Google API must have been loaded first.
+            setTimeout(() => document.getElementById((this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).loadProjectLinkId)?.click(), 100);
+            isTryingToOpenSharedProject = true;
+        }
+
         // Check the local storage (WebStorage) to see if there is a saved project from the previous time the user entered the system
         // if browser supports localstorage
         if (typeof(Storage) !== "undefined") {
@@ -440,8 +457,8 @@ export default Vue.extend({
                     }
                 ).then(() => {
                     // When a file had been reloaded and it was previously synced with Google Drive, we want to ask the user
-                    // about reloading the project from Google Drive again
-                    if(this.appStore.currentGoogleDriveSaveFileId) {
+                    // about reloading the project from Google Drive again (only if we were not attempting to open a shared project via the URL)
+                    if(!isTryingToOpenSharedProject && this.appStore.currentGoogleDriveSaveFileId) {
                         const execGetGDFileFunction = (event: BvModalEvent, dlgId: string) => {
                             if((event.trigger == "ok" || event.trigger=="event") && dlgId == this.resyncGDAtStartupModalDlgId){
                                 // Fetch the Google Drive component
@@ -564,8 +581,8 @@ export default Vue.extend({
             if (typeof(Storage) !== "undefined") {
                 localStorage.removeItem(this.localStorageAutosaveKey);
             }
-            // finally, reload the page to reload the Strype default project
-            window.location.reload();
+            // Finally, reload the page to reload the Strype default project (removing potential query parameters)
+            window.location.href = window.location.pathname;
         },
 
         getFrameContainerUID(frameId: number){

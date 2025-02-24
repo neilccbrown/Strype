@@ -17,6 +17,14 @@ import JointFrames from "@/components/JointFrames.vue";
 export const undoMaxSteps = 200;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
 
+// Constants used for query parameters parsing
+// The target to fetch the project (for now, we only support Google Drive. We use the enum StrypeSyncTarget for values)
+export const sharedStrypeProjectTargetKey = "shared_proj_targ"; 
+// The URL of the project, with the URL pattern (template) for each possible target
+export const sharedStrypeProjectIdKey = "shared_proj_id";
+//export const sharedStrypeProjectURLSrcTemplates: {target: StrypeSyncTarget, URLTemplate: string}[] = [{target: StrypeSyncTarget.gd, URLTemplate: "https://drive.google.com/file/{0}"}];
+
+// Custom JS events in Strype
 export enum CustomEventTypes {
     contextMenuHovered = "contextMenuHovered",
     requestCaretContextMenuClose="requestCaretContextMenuClose",
@@ -32,6 +40,7 @@ export enum CustomEventTypes {
     saveStrypeProjectDoneForLoad = "saveProjDoneForLoad",
     noneStrypeFilePicked = "nonStrypeFilePicked",
     acItemHovered="acItemHovered",
+    openSharedFileDone="openSharedFileDone",
     /* IFTRUE_isPython */
     pythonExecAreaExpandCollapseChanged = "peaExpandCollapsChanged",
     pythonConsoleRequestFocus = "pythonConsoleReqFocus",
