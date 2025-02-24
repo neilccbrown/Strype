@@ -9,6 +9,12 @@
                     <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag" v-t="'appMessage.savedGDrive'" />
                     <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" v-t="'appMessage.modifGDrive'" :class="{'modifed-label-span': isProjectNotSourced}" />
                 </div>
+                <i 
+                    v-if="isProjectFromGoogleDrive" 
+                    :class="{'fas fa-share-alt share-gd-proj-icon': true, disabled: isEditorContentModifiedFlag}" 
+                    :title="$t((isEditorContentModifiedFlag)?'appMessage.needSaveShareStrypeProj':'appMessage.shareStrypeProj')"
+                    @click="shareProject"
+                    ></i>
             </div>     
             <div @mousedown.prevent.stop @mouseup.prevent.stop>
                 /* IFTRUE_isMicrobit
@@ -80,7 +86,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getManuallyResizedEditorHeightFlag, getMenuLeftPaneUID, getStrypePEAComponentRefId, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
+import { CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getAppSimpleMsgDlgId, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getManuallyResizedEditorHeightFlag, getMenuLeftPaneUID, getStrypePEAComponentRefId, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -636,6 +642,18 @@ export default Vue.extend({
             this.lastProjectSavedDateTooltip = toolTipVal;
         },
 
+        shareProject(){
+            // We only share a project that is saved.
+            // Sharing a project results in the shareable URL to be created and copied in the clipboard.
+            if(!this.isEditorContentModifiedFlag){
+                const shareURL = `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentGoogleDriveSaveFileId}`;
+                navigator.clipboard.writeText(shareURL);
+                // Alert user the link is copied in the clipboard
+                this.appStore.simpleModalDlgMsg = this.$i18n.t("appMessage.sharedProjectLinkCopied") as string;
+                this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+            }
+        },
+
         /* IFTRUE_isMicrobit */
         runToMicrobit() {
             // If we can directly upload on microbit, we run the method flash().
@@ -687,6 +705,18 @@ export default Vue.extend({
 .gdrive-sync-label {
     color: #2e641b;
     font-size: 80%;
+}
+
+.share-gd-proj-icon {
+    cursor: pointer;
+    margin-left: 5px;
+    color: #274D19;
+    font-size: 75%;
+}
+
+.share-gd-proj-icon.disabled {
+    color: lightgray;
+    cursor: default;
 }
 
 .commands {
