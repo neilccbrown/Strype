@@ -67,7 +67,18 @@ export default Vue.extend({
                 docsViews.push(allStrypeDocsView);
             }
 
-            // View 3 or 4: Shared with me view (added to the list of view later with position depending on the action)
+            // View 3: Python files (load only)
+            if(!this.isSaveAction) {
+                const pythonFilesDocsView = new google.picker.DocsView();
+                // The setLabel and setQuery functions are (no longer?) officially existing on the type DocsView -- we cast to "any" to bypass errors
+                (pythonFilesDocsView as any).setQuery("title:*.py");
+                (pythonFilesDocsView as any).setLabel((this.$i18n.t("appMessage.gdriveAllPythonFiles") as string));
+                pythonFilesDocsView.setIncludeFolders(true);
+                pythonFilesDocsView.setMode(google.picker.DocsViewMode.LIST);
+                docsViews.push(pythonFilesDocsView);
+            }
+
+            // View 4 or 5: Shared with me view (added to the list of view later with position depending on the action)
             const sharedDocsView = new google.picker.DocsView();
             sharedDocsView.setSelectFolderEnabled(this.isSaveAction);
             if(this.isSaveAction){
@@ -77,7 +88,7 @@ export default Vue.extend({
             sharedDocsView.setIncludeFolders(true);
             sharedDocsView.setMode(google.picker.DocsViewMode.LIST);
             
-            // View 4 or 3: My Drive view (added to the list of view later with position depending on the action)
+            // View 5 or 4: My Drive view (added to the list of view later with position depending on the action)
             // This view is required to allow users to nagivate in their Drive: with View 1, we cannot nagivate outside the given parent folder,
             // so we need a way to allow users getting there.
             const rootDocsView = new google.picker.DocsView();
@@ -92,7 +103,7 @@ export default Vue.extend({
             // The setLabel function is (no longer?) officially existing on the type DocsView -- we cast to "any" to bypass errors
             (rootDocsView as any).setLabel((this.$i18n.t("appMessage.gdriveTab") as string));
 
-            // Add views at 3rd and 4th positions depending on the action
+            // Add views at 4th and 5th positions depending on the action
             docsViews.push((this.isSaveAction) ? rootDocsView : sharedDocsView);
             docsViews.push((this.isSaveAction) ? sharedDocsView : rootDocsView);
 
