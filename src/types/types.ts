@@ -1115,3 +1115,11 @@ export interface Locale {
     code: string, // a 2 letter code idenitifying the locale (e.g.: "en")
     name: string, // the user-friendly locale's name (e.g.: "English")
 }
+
+export interface LoadedMedia {
+    mediaType: string,
+    // Both sounds and images have an imageDataURL which acts as the preview:
+    imageDataURL : string,
+    // But only sounds have this item:
+    audioBuffer?: AudioBuffer,
+}

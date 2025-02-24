@@ -966,6 +966,14 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
             (vm.$refs[getCaretUID(newCaretDropPosCaretPos, newCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = 
                 isFrameDropAllowed(newCaretDropPosFrameId, newCaretDropPosCaretPos);
         }
+
+        // Update the duplicate status based on whether they are holding ctrl/alt:
+        if (mouseEvent.ctrlKey || mouseEvent.altKey) {
+            addDuplicateActionOnFramesDnD();
+        }
+        else {
+            removeDuplicateActionOnFramesDnD();
+        }
     }
 };
 

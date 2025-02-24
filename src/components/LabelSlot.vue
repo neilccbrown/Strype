@@ -34,7 +34,15 @@
             v-if="!isMediaSlot"
         >
         </span>
-        <img :src="mediaPreview" v-if="isMediaSlot" class="labelSlot-media limited-height-inline-image" alt="Media literal" :data-code="code" :data-mediaType="getMediaType()">
+        <img
+            :src="mediaPreview.imageDataURL"
+            v-if="isMediaSlot"
+            class="labelSlot-media limited-height-inline-image"
+            alt="Media literal"
+            @mouseenter="showMediaPreviewPopup($event)"
+            @mouseleave="startHideMediaPreviewPopup"
+            :data-code="code"
+            :data-mediaType="getMediaType()">
         <span v-if="isMediaSlot" class="labelSlot-invisible-media-code" contenteditable="false">{{code}}</span>
                
         <b-popover
@@ -69,7 +77,7 @@ import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUID, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUID, getFrameUID, getFrameComponent, getElementsInSelection } from "@/helpers/editor";
-import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, FieldSlot, MediaSlot, PythonExecRunningState, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
+import {CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, FieldSlot, MediaSlot, PythonExecRunningState, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, LoadedMedia} from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
 import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
@@ -78,9 +86,10 @@ import { cloneDeep, debounce } from "lodash";
 import LabelSlotsStructure from "./LabelSlotsStructure.vue";
 import { BPopover } from "bootstrap-vue";
 import Frame from "@/components/Frame.vue";
+import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
 
 // Default time to keep in cache: 5 minutes.
-const soundPreviewImages = new Cache({ defaultTtl: 5 * 60 * 1000 });
+const soundPreviewImages = new Cache<LoadedMedia>({ defaultTtl: 5 * 60 * 1000 });
 
 // Adapted from https://stackoverflow.com/questions/66776487/how-to-convert-mp3-to-the-sound-wave-image-using-javascript
 // Returns base64 version of PNG of image
@@ -151,6 +160,8 @@ export default Vue.extend({
         isEmphasised: Boolean,
     },
 
+    inject: ["mediaPreviewPopupInstance"],
+
     beforeUpdate(){
         // If the text isn't set again here, despite "code" being reactive, we end up with "duplicated" insert with operators.
         const spanElement = document.getElementById(this.UID);
@@ -211,7 +222,7 @@ export default Vue.extend({
             //we need to track the key.down events for the bracket/quote closing method (cf details there)
             keyDownStr: "",
             //the preview for media literal (blank string if not media literal):
-            mediaPreview: "",
+            mediaPreview: {mediaType: "", imageDataURL: ""} as LoadedMedia,
         };
     },
     
@@ -350,6 +361,10 @@ export default Vue.extend({
 
         isPythonExecuting(): boolean {
             return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
+        },
+
+        mediaPreviewPopupRef(): InstanceType<typeof MediaPreviewPopup> | null {
+            return ((this as any).mediaPreviewPopupInstance as () => InstanceType<typeof MediaPreviewPopup>)?.();
         },
     },
 
@@ -759,7 +774,7 @@ export default Vue.extend({
                     }); 
                 }
                 else{
-                // Same as hitting arrow down
+                    // Same as hitting arrow down
                     const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: this.code.length};
                     this.appStore.setSlotTextCursors(slotCursorInfo, slotCursorInfo);
                     document.getElementById(getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
@@ -1322,7 +1337,10 @@ export default Vue.extend({
                             : ((neighbourOperatorSlotContent.includes(" ")) ? neighbourOperatorSlotContent.substring(0, neighbourOperatorSlotContent.indexOf(" ")) : neighbourOperatorSlotContent[0]);
                         (neighbourOperatorSlot as BaseSlot).code = newOperatorContent;
                         // We don't actually require slot to be regenerated, but we need to mark the action for undo/redo
-                        this.$nextTick(() => (this.$parent as InstanceType<typeof LabelSlotsStructure>).checkSlotRefactoring(this.UID, stateBeforeChanges));
+                        this.$nextTick(() => {
+                            this.appStore.bypassEditableSlotBlurErrorCheck = false;
+                            (this.$parent as InstanceType<typeof LabelSlotsStructure>).checkSlotRefactoring(this.UID, stateBeforeChanges);
+                        });
                     }
                     else{
                         const {newSlotId, cursorPosOffset} = this.appStore.deleteSlots(isForwardDeletion, this.coreSlotInfo);
@@ -1559,24 +1577,33 @@ export default Vue.extend({
             return this.appStore.isImportFrame(this.frameId);
         },
         
-        async loadMediaPreview(): Promise<string> {
+        async loadMediaPreview(): Promise<LoadedMedia> {
             let slot = retrieveSlotFromSlotInfos(this.coreSlotInfo) as MediaSlot;
-            if (slot.mediaType.startsWith("image")) {
-                return "data:" + slot.mediaType + ";" + /base64,[^"']+/.exec(slot.code)?.[0];
+            if (slot.mediaType.startsWith("image") && !slot.mediaType.startsWith("image/svg+xml")) {
+                return {mediaType: slot.mediaType, imageDataURL: "data:" + slot.mediaType + ";" + /base64,[^"']+/.exec(slot.code)?.[0]};
             }
             else if (slot.mediaType.startsWith("audio")) {
-                let val : string | null = soundPreviewImages.get(slot.code) as string | null;
+                let val = soundPreviewImages.get(slot.code);
                 if (val == null) {
-                    val = drawSoundOnCanvas(await new OfflineAudioContext(1, 1, 48000).decodeAudioData(Uint8Array.from(atob(/base64,([^"']+)/.exec(slot.code)?.[1] ?? ""), (char) => char.charCodeAt(0)).buffer));
+                    let audioBuffer = await new OfflineAudioContext(1, 1, 48000).decodeAudioData(Uint8Array.from(atob(/base64,([^"']+)/.exec(slot.code)?.[1] ?? ""), (char) => char.charCodeAt(0)).buffer);
+                    val = {mediaType: slot.mediaType, imageDataURL: drawSoundOnCanvas(audioBuffer), audioBuffer: audioBuffer};
                     soundPreviewImages.put(slot.code, val);
                 }
                 return val;
             }
-            return "";
+            return {mediaType: "", imageDataURL: ""};
         },
         getMediaType(): string {
             let slot = retrieveSlotFromSlotInfos(this.coreSlotInfo) as MediaSlot;
             return slot.mediaType;
+        },
+        showMediaPreviewPopup(event : MouseEvent) {
+            if (!this.isPythonExecuting) {
+                this.mediaPreviewPopupRef?.showPopup(event, this.mediaPreview);
+            }
+        },
+        startHideMediaPreviewPopup() {
+            this.mediaPreviewPopupRef?.startHidePopup();
         },
     },
     watch: {

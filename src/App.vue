@@ -74,6 +74,7 @@
         <ModalDlg :dlgId="resyncGDAtStartupModalDlgId" :useYesNo="true" :okCustomTitle="$t('buttonLabel.yesSign')" :cancelCustomTitle="$t('buttonLabel.noContinueWithout')">
             <span style="white-space:pre-wrap" v-html="$t('appMessage.resyncToGDAtStartup')"></span>
         </ModalDlg>
+        <MediaPreviewPopup ref="mediaPreviewPopup" />        
         <div :id="getSkulptBackendTurtleDivId" class="hidden"></div>
         <canvas v-show="appStore.isDraggingFrame" :id="getCompanionDndCanvasId" class="companion-canvas-dnd"/>
     </div>
@@ -107,6 +108,7 @@ import { BACKEND_SKULPT_DIV_ID } from "@/autocompletion/ac-skulpt";
 import {copyFramesFromParsedPython, splitLinesToSections, STRYPE_LOCATION} from "@/helpers/pythonToFrames";
 import GoogleDrive from "@/components/GoogleDrive.vue";
 import { BvModalEvent } from "bootstrap-vue";
+import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
 
 let autoSaveTimerId = -1;
 let projectSaveFunctionsState : ProjectSaveFunction[] = [];
@@ -121,6 +123,7 @@ export default Vue.extend({
         MessageBanner,
         FrameContainer,
         Commands,
+        MediaPreviewPopup,
         Menu,
         ModalDlg,
         SimpleMsgModalDlg,
@@ -892,6 +895,19 @@ export default Vue.extend({
                 (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, lastSaveDate, fileLocation);
             }
         },
+        getMediaPreviewPopupInstance() {
+            return this.$refs.mediaPreviewPopup;
+        },
+        getPeaComponent() {
+            return (this.$refs[this.strypeCommandsRefId] as any).$refs.strypePEA;
+        },
+    },
+
+    provide() {
+        return {
+            mediaPreviewPopupInstance: this.getMediaPreviewPopupInstance,
+            peaComponent: this.getPeaComponent,
+        };
     },
 });
 </script>
