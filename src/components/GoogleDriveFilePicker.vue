@@ -5,7 +5,7 @@
 import Vue from "vue";
 import {useStore} from "@/store/store";
 import { mapStores } from "pinia";
-import { strypeFileExtension } from "@/helpers/common";
+import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { CustomEventTypes } from "@/helpers/editor";
 
 // Derived from https://medium.com/timeless/google-picker-with-vue-2a39de7f36e
@@ -126,9 +126,9 @@ export default Vue.extend({
                 const fileName = data[google.picker.Response.DOCUMENTS][0][google.picker.Document.NAME];
                 const fileParentId = data[google.picker.Response.DOCUMENTS][0][google.picker.Document.PARENT_ID];
                 // For a file selection, we check that the file is accepted by Strype
-                if(!this.isSaveAction && !fileName.endsWith("." + strypeFileExtension)){
-                    // The file isn't a Strype file: send event to handle what to do
-                    this.$emit(CustomEventTypes.noneStrypeFilePicked);
+                if(!this.isSaveAction && !fileName.endsWith("." + strypeFileExtension) && !fileName.endsWith("." + pythonFileExtension)){
+                    // The file isn't support by Strype: send event to handle what to do
+                    this.$emit(CustomEventTypes.unsupportedByStrypeFilePicked);
                     return;
                 }
                 // Update the location of the Strype project within the Drive

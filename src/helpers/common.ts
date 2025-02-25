@@ -159,6 +159,7 @@ export function isMacOSPlatform(): boolean {
 }
 
 export const strypeFileExtension = "spy";
+export const pythonFileExtension = "py";
 // For file names allow only A–Z a–z 0–9 _ - () spaces and unicode characters
 export const fileNameRegex = /^[\d\p{L} \-_()]+$/u;
 

@@ -1,8 +1,8 @@
 <template>
     <div>
-        <GoogleDriveFilePicker :ref="googleDriveFilePickerComponentId" @picked-file="loadPickedFileId" @picked-folder="savePickedFolder" @nonStrypeFilePicked="onNonStrypeFilePicked" dev-key="AIzaSyDKjPl4foVEM8iCMTkgu_FpedJ604vbm6E" :oauth-token="oauthToken"/>
+        <GoogleDriveFilePicker :ref="googleDriveFilePickerComponentId" @picked-file="loadPickedFileId" @picked-folder="savePickedFolder" @unsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" dev-key="AIzaSyDKjPl4foVEM8iCMTkgu_FpedJ604vbm6E" :oauth-token="oauthToken"/>
         <SimpleMsgModalDlg :dlgId="loginErrorModalDlgId" :hideActionListener="signIn"/>
-        <SimpleMsgModalDlg :dlgId="nonStrypeFilePickedModalDlgId" :hideActionListener="loadFile" />
+        <SimpleMsgModalDlg :dlgId="unsupportedByStrypeFilePickedModalDlgId" :hideActionListener="loadFile" />
         <ModalDlg :dlgId="saveExistingGDProjectModalDlgId" :size="saveExistingFileDlgSize" :elementToFocusId="(isFileLocked) ? saveExistingFileCopyButtonId : saveExistingFileOverwriteButtonId">
             <span style="white-space:pre-wrap">{{$t((isFileLocked)?'appMessage.gdriveLockedFileAlreadyExists':'appMessage.gdriveFileAlreadyExists')}}</span>
             <!-- in order to allow 3 (customed) buttons, we use the slot "modal-footer" made available by Boostrap for the modal; to simply things, we handle both locked/unlocked files there -->
@@ -22,11 +22,13 @@ import {useStore} from "@/store/store";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
+import Menu from "@/components/Menu.vue";
+import App from "@/App.vue";
 import i18n from "@/i18n";
 import { CustomEventTypes, getAppSimpleMsgDlgId, getSaveAsProjectModalDlg } from "@/helpers/editor";
-import { strypeFileExtension } from "@/helpers/common";
+import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { BootstrapDlgSize, MessageDefinitions, SaveExistingGDProjectInfos, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
-import Menu from "@/components/Menu.vue";
+
 
 // This enum is used for flaging the action taken when a request to save a file on Google Drive
 // has been done, and a file of the same name already exists on the Drive
@@ -77,8 +79,8 @@ export default Vue.extend({
             return "gdLoginErrorModalDlg";
         },
 
-        nonStrypeFilePickedModalDlgId(): string {
-            return "gdNonStrypeFilePickedModalDlg";
+        unsupportedByStrypeFilePickedModalDlgId(): string {
+            return "gdUnsupportedByStrypeFilePickedModalDlg";
         },
 
         saveFileId: {
@@ -461,22 +463,30 @@ export default Vue.extend({
                 path: "https://www.googleapis.com/drive/v3/files/" + id,
                 method: "GET",
                 params: {alt: "media"},
-            }).execute((resp) => {
-                // Check first we don't have an error with file that doesn't exist..
-                if((resp?.error?.code??"") == 404){
-                    this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.gdriveNoFile") as string;                    
-                    this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+            }).then((resp) => {
+                if(fileName?.endsWith(`.${pythonFileExtension}`)){
+                    // The loading mechanisms for a Python file differs from a Strype file AND it doens't maintain a "link" to Google Drive.
+                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(resp.body, fileName, lastSaveDate);
+                    this.saveFileId = undefined;
+                    this.updateSignInStatus(false);
+                    this.appStore.strypeProjectLocation = undefined;
+                    this.appStore.strypeProjectLocationAlias = "";
+                    this.appStore.projectLastSaveDate = lastSaveDate;
+                    (this.$parent as InstanceType<typeof Menu>).saveTargetChoice(StrypeSyncTarget.none);
+                    // At the very end, emit event for notifying the attempt to open a shared project is finished in case that Python file was shared
+                    this.$emit(CustomEventTypes.openSharedFileDone);   
                 }
                 else{
+                    // The default case of a .spy (Strype) file.
                     // Some flags in the store SHOULD NOT BE lost when we load a file, so we make a backup of those here:
                     const strypeLocation = this.appStore.strypeProjectLocation;
                     const strypeLocationAlias = this.appStore.strypeProjectLocationAlias;
                     // Load the file content in the editor
                     this.appStore.setStateFromJSONStr(
                         {
-                        // The response from Google Drive would be encoded in UTF-8, so we need to decode it.
-                        // cf https://stackoverflow.com/questions/13356493/decode-utf-8-with-javascript
-                            stateJSONStr: decodeURIComponent(escape(JSON.stringify(resp))),
+                            // The response from Google Drive would be encoded in UTF-8, so we need to decode it.
+                            // cf https://stackoverflow.com/questions/13356493/decode-utf-8-with-javascript
+                            stateJSONStr: decodeURIComponent(escape(JSON.stringify(resp.result))),
                         }                    
                     ).then(() => {
                         // Only update things if we could set the new state AND THE PROJECT WASN'T OPENED AS A SHARED PROJECT
@@ -513,6 +523,15 @@ export default Vue.extend({
                         this.$emit(CustomEventTypes.openSharedFileDone);                  
                     }, () => {});
                 }
+            },
+            // Case of errors
+            (resp) => {
+                if(resp.status == 404){
+                    this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.gdriveNoFile") as string;                    
+                    this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                }
+                // At the very end, emit event for notifying the attempt to open a shared project is finished
+                this.$emit(CustomEventTypes.openSharedFileDone);   
             });
         },
 
@@ -522,10 +541,10 @@ export default Vue.extend({
             this.lookForAvailableProjectFileName(this.doSaveFile);
         },
 
-        onNonStrypeFilePicked(){
+        onUnsupportedByStrypeFilePicked(){
             // When a non-Strype file was picked to load, we notify the user on a modal dialog, and trigger the Drive picker again
             this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.gdriveWrongFile") as string;
-            this.$root.$emit("bv::show::modal", this.nonStrypeFilePickedModalDlgId);
+            this.$root.$emit("bv::show::modal", this.unsupportedByStrypeFilePickedModalDlgId);
         },
 
         checkDriveStrypeFolder(createIfNone: boolean, checkFolderDoneCallBack: (strypeFolderId: string | null) => void, failedConnectionCallBack?: () => void) {

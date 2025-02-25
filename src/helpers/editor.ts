@@ -38,7 +38,7 @@ export enum CustomEventTypes {
     removeFunctionToEditorProjectSave = "rmToProjectSaveFunction",
     requestEditorProjectSaveNow = "requestProjectSaveNow",
     saveStrypeProjectDoneForLoad = "saveProjDoneForLoad",
-    noneStrypeFilePicked = "nonStrypeFilePicked",
+    unsupportedByStrypeFilePicked = "unsupportedByStrypeFilePicked",
     acItemHovered="acItemHovered",
     openSharedFileDone="openSharedFileDone",
     /* IFTRUE_isPython */
