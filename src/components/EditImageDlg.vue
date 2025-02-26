@@ -1,6 +1,6 @@
 <template>
     <ModalDlg :dlgId="dlgId" :dlgTitle="dlgTitle">
-        <span class="EditImageDlg-header">Image Crop</span>
+        <span class="EditImageDlg-header">{{$t("media.imageCrop")}}</span>
         <cropper
             ref="cropper"
             class="edit-image-cropper"
@@ -16,14 +16,14 @@
             @ready="imageLoaded"
             @change="change"
         ></cropper>
-        <span class="EditImageDlg-header">Image Scale</span>
+        <span class="EditImageDlg-header">{{$t("media.imageScale")}}</span>
         <div class="EditImageDlg-scale">
             <input v-model="imageScale" type="range" id="EditImageDlg-imageScale" min="1" max="100" />
             <span class="EditImageDlg-scale-label">{{imageScale}}%</span>
         </div>
-        <span class="EditImageDlg-header">Image Details</span>
-        <span class="EditImageDlg-sizeInfo">Original image size: {{originalImgSize}}</span>
-        <span class="EditImageDlg-sizeInfo">Changed image size: {{currentImgSize}} (approx)</span>
+        <span class="EditImageDlg-header">{{$t("media.imageDetails")}}</span>
+        <span class="EditImageDlg-sizeInfo">{{$t("media.imageOriginalSize")}}{{originalImgSize}} {{$t("media.pixels")}}</span>
+        <span class="EditImageDlg-sizeInfo">{{$t("media.imageChangedSize")}}{{currentImgSize}} {{$t("media.pixels")}}</span>
     </ModalDlg>
 </template>
 

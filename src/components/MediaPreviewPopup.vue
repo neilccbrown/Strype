@@ -7,9 +7,9 @@
         @mouseleave="startHidePopup"
     >
         <div class="MediaPreviewPopup-header">
-            <button class="MediaPreviewPopup-header-preview-button" @click="doPreview">Preview</button>
+            <button class="MediaPreviewPopup-header-preview-button" @click="doPreview">{{$t("media.preview")}}</button>
             <span class="MediaPreviewPopup-header-text">{{mediaInfo}}</span>
-            <button class="MediaPreviewPopup-header-edit-button" @click="doEdit">Edit</button>
+            <button class="MediaPreviewPopup-header-edit-button" @click="doEdit">{{$t("media.edit")}}</button>
         </div>
         <div class="MediaPreviewPopup-img-container">
             <img :src="imgDataURL" alt="Media preview" @load="imgLoaded">
@@ -56,20 +56,22 @@ export default Vue.extend({
             this.mediaType = media.mediaType;
             this.audioBuffer = media.audioBuffer;
             if (media.audioBuffer) {
+                // This is not translated because it's a class name:
                 this.mediaInfo = "Sound";
                 this.imgDataURL = media.imageDataURL;
             }
             else {
                 if (this.imgDataURL != media.imageDataURL) {
                     this.imgDataURL = media.imageDataURL;
-                    this.mediaInfo = "Image";
+                    // This is not translated because it's a class name:
+                    this.mediaInfo = "EditableImage";
                 }
             }
         },
         imgLoaded(event: Event) {
             const previewImgElement = event.target as HTMLImageElement;
             if (this.mediaType.startsWith("image/")) {
-                this.mediaInfo = `Image (${this.mediaType.replace("image/", "")}), ${previewImgElement?.naturalWidth} × ${previewImgElement?.naturalHeight} pixels`;
+                this.mediaInfo = `EditableImage (${this.mediaType.replace("image/", "")}), ${previewImgElement?.naturalWidth} × ${previewImgElement?.naturalHeight} ${this.$t("media.pixels")}`;
             }
         },
         startHidePopup() {
@@ -108,7 +110,8 @@ export default Vue.extend({
                 this.peaComponentRef?.getPersistentImageManager()?.clear();
                 this.peaComponentRef?.redrawCanvas();
             };
-        }, doPreview() {
+        },
+        doPreview() {
             // Stop any existing preview first:
             this.stopPreviewOnHide();
 
