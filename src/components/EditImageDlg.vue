@@ -85,7 +85,7 @@ export default Vue.extend({
         onHideModalDlg(event: BvModalEvent, id: string){
         },
         updatePreview() {
-            this.getUpdatedMedia().then((m) => this.showImgPreview(/"([^"]+)"/.exec(m.code)?.[1] ?? ""));
+            this.getUpdatedMedia().then((m) => this.showImgPreview(/"([^"]+)"/.exec(m.code)?.[1] ?? "")).catch((err) => {});
         },
         defaultSize({imageSize, visibleArea} : { imageSize: {width: number, height: number}, visibleArea : {width: number, height: number} }) {
             return {
