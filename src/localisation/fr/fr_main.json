@@ -112,6 +112,7 @@
     "gdriveLocation": "Dossier :",
     "gdriveAllStrypeFiles": "Tous les fichiers Strype",
     "gdriveTab": "Mon Drive",
+    "gdCouldNotShareFile":"Le projet n'a pas été rendu public <b>dans Google Drive</b>, veillez à ce que les personnes avec lesquelles vous partagez votre projet aient l'autorisation d'y accéder.",    
     "editorErrors": "Erreurs",
     "resyncToGDAtStartup": "<b>Se reconnecter et <u>sauvegarder</u> vers Google Drive ?</b>\n\nLa dernière fois que vous éditiez ce projet, vous l'enregistriez vers Google Drive.\nSi vous souhaitez plutôt <u>charger</u> les modifications à partir de Google Drive, cliquez sur 'Ne pas se connecter' et utilisez 'Ouvrir' à partir du menu."
   },

@@ -86,7 +86,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getAppSimpleMsgDlgId, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getManuallyResizedEditorHeightFlag, getMenuLeftPaneUID, getStrypePEAComponentRefId, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey } from "@/helpers/editor";
+import { CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getAppSimpleMsgDlgId, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getGoogleDriveComponentRefId, getManuallyResizedEditorHeightFlag, getMenuLeftPaneUID, getStrypePEAComponentRefId, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -94,6 +94,8 @@ import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
 import { mapStores } from "pinia";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
+import Menu from "@/components/Menu.vue";
+import GoogleDrive from "@/components/GoogleDrive.vue";
 /* IFTRUE_isPython */
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import { isMacOSPlatform } from "@/helpers/common";
@@ -646,11 +648,22 @@ export default Vue.extend({
             // We only share a project that is saved.
             // Sharing a project results in the shareable URL to be created and copied in the clipboard.
             if(!this.isEditorContentModifiedFlag){
-                const shareURL = `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentGoogleDriveSaveFileId}`;
-                navigator.clipboard.writeText(shareURL);
-                // Alert user the link is copied in the clipboard
-                this.appStore.simpleModalDlgMsg = this.$i18n.t("appMessage.sharedProjectLinkCopied") as string;
-                this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                // Before generating a link, we change the file setttings on Google Drive to make it accessible at large.
+                const gdVueComponent = ((this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>);
+                let createPermissionSucceeded = false;
+                gdVueComponent.shareGoogleDriveFile()
+                    .then((succeeded) => createPermissionSucceeded = succeeded)
+                    .catch(() => {
+                        // we don't do anything, but keep the catch clause to avoid JS errors
+                    })
+                    .finally(() => {
+                        const shareURL = `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentGoogleDriveSaveFileId}`;
+                        navigator.clipboard.writeText(shareURL);
+                        // Alert user the link is copied in the clipboard - and if the share on Google Drive didn't work, indicate that.
+                        this.appStore.simpleModalDlgMsg = this.$i18n.t("appMessage.sharedProjectLinkCopied") as string + ((!createPermissionSucceeded) ? (`<br><br>${this.$i18n.t("appMessage.gdCouldNotShareFile")}`) : "");
+                        this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                    });
+                
             }
         },
 

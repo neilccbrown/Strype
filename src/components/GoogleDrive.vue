@@ -666,6 +666,25 @@ export default Vue.extend({
 
             // If user chose "cancel": we do nothing  
         },
+
+        async shareGoogleDriveFile(): Promise<boolean>{
+            // When we share a Strype project, we try to set the project on Google Drive with public acccess.
+            // The methods returns a Promise, with a boolean flag set at true if we succeeeded.
+            return new Promise<boolean>((resolve, reject) => {
+                gapi.client.request({
+                    path: `https://www.googleapis.com/drive/v3/files/${this.saveFileId}/permissions`,
+                    method: "POST",
+                    body:  {
+                        role: "reader",
+                        type: "anyone",
+                    },
+                }).then((resp) => {
+                    resolve(resp.status == 200);
+                }, () => {
+                    reject();
+                });
+            });
+        },
     },
 });
 </script>
