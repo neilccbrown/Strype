@@ -102,11 +102,11 @@ export default Vue.extend({
             // We have to go fetch the image from the document and ask its size:
             let img = document.getElementsByClassName("edit-image-cropper-image")?.[0] as HTMLImageElement | null;
             if (img) {
-                this.originalImgSize = img.width + " × " + img.height;
-                this.cropSize = {left: 0, top: 0, width: img.width, height: img.height};
+                this.originalImgSize = img.naturalWidth + " × " + img.naturalHeight;
+                this.cropSize = {left: 0, top: 0, width: img.naturalWidth, height: img.naturalHeight};
                 // Set scale so that image is under 1000 pixels:
-                if (img.width > 1000 || img.height > 1000) {
-                    this.imageScale = 100 * Math.min(1000 / img.width, 1000 / img.height);
+                if (img.naturalWidth > 1000 || img.naturalHeight > 1000) {
+                    this.imageScale = Math.floor(100 * Math.min(1000 / img.naturalWidth, 1000 / img.naturalHeight));
                 }
                 else {
                     this.imageScale = 100;
@@ -126,6 +126,9 @@ export default Vue.extend({
         },
         getUpdatedMedia() : Promise<{code: string, mediaType: string}> {
             const { canvas } = (this.$refs.cropper as any).getResult() as {canvas : HTMLCanvasElement};
+            if (!canvas) {
+                return Promise.reject("Loading");
+            }
             const scale = this.imageScale / 100.0;
             let width = this.cropSize.width * scale;
             let height = this.cropSize.height * scale;
