@@ -1599,7 +1599,17 @@ export default Vue.extend({
         },
         showMediaPreviewPopup(event : MouseEvent) {
             if (!this.isPythonExecuting) {
-                this.mediaPreviewPopupRef?.showPopup(event, this.mediaPreview);
+                this.mediaPreviewPopupRef?.showPopup(event, this.mediaPreview, (repl : { code: string, mediaType : string }) => {
+                    this.appStore.setFrameEditableSlotContent(
+                        {
+                            ...this.coreSlotInfo,
+                            code: repl.code,
+                            mediaType: repl.mediaType,
+                            initCode: "",
+                            isFirstChange: true,
+                        }
+                    );
+                });
             }
         },
         startHideMediaPreviewPopup() {
@@ -1608,6 +1618,14 @@ export default Vue.extend({
     },
     watch: {
         slotType: function() {
+            if (this.isMediaSlot) {
+                this.loadMediaPreview().then((m) => {
+                    this.mediaPreview = m;
+                });
+            }
+        },
+        // If the image is edited, the slotType won't change but code will so we need to watch it:
+        code: function() {
             if (this.isMediaSlot) {
                 this.loadMediaPreview().then((m) => {
                     this.mediaPreview = m;

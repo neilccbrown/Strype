@@ -9,6 +9,7 @@
         <div class="MediaPreviewPopup-header">
             <button class="MediaPreviewPopup-header-preview-button" @click="doPreview">Preview</button>
             <span class="MediaPreviewPopup-header-text">{{mediaInfo}}</span>
+            <button class="MediaPreviewPopup-header-edit-button" @click="doEdit">Edit</button>
         </div>
         <div class="MediaPreviewPopup-img-container">
             <img :src="imgDataURL" alt="Media preview" @load="imgLoaded">
@@ -20,7 +21,7 @@
 
 <script lang="ts">
 import Vue from "vue";
-import {LoadedMedia} from "@/types/types";
+import {EditImageInDialogFunction, LoadedMedia} from "@/types/types";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import {PersistentImageManager} from "@/stryperuntime/image_and_collisions";
 
@@ -36,13 +37,15 @@ export default Vue.extend({
             mediaType: "",
             audioBuffer: undefined as AudioBuffer | undefined,
             stopPreviewOnHide : () => {},
+            replaceAfterEdit : (() => {}) as ((replacement: {code: string, mediaType: string}) => void),
         };
     },
 
-    inject: ["peaComponent"],
+    inject: ["peaComponent", "editImageInDialog"],
     
     methods: {
-        showPopup(event : MouseEvent, media: LoadedMedia) {
+        showPopup(event : MouseEvent, media: LoadedMedia, replaceMedia: (replacement: {code: string, mediaType: string}) => void) {
+            this.replaceAfterEdit = replaceMedia;
             this.cancelHidePopup();
             this.isVisible = true;
             this.popupStyle = {
@@ -150,11 +153,24 @@ export default Vue.extend({
                 };
             }
         },
+        doEdit() {
+            if (this.audioBuffer) {
+                // TODO edit sounds
+            }
+            else {
+                this.doEditImageInDialog(this.imgDataURL, (replacement : {code: string, mediaType: string}) => {
+                    this.replaceAfterEdit(replacement);
+                });
+            }
+        },
     },
     
     computed: {
         peaComponentRef(): InstanceType<typeof PythonExecutionArea> | null {
             return ((this as any).peaComponent as () => InstanceType<typeof PythonExecutionArea>)?.();
+        },
+        doEditImageInDialog() : EditImageInDialogFunction {
+            return (this as any).editImageInDialog as EditImageInDialogFunction;
         },
     },
 });
@@ -204,7 +220,7 @@ export default Vue.extend({
     text-align: center;
     color: #444;
 }
-.MediaPreviewPopup-header-preview-button {
+.MediaPreviewPopup-header-preview-button, .MediaPreviewPopup-header-edit-button {
     justify-content: center;
     align-items: center;
 }
