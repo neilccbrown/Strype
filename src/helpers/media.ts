@@ -45,3 +45,20 @@ export function drawSoundOnCanvas(audioBuffer : AudioBuffer, targetWidth: number
     return img.toDataURL("image/png");
 }
 
+export function getRMS(audioBuffer: AudioBuffer, volumeFactor: number, firstSampleIncl?: number, lastSampleExcl?: number) : number {
+    const numChannels = audioBuffer.numberOfChannels;
+    let rms = 0;
+    let sampleCount = 0;
+
+    // Calculate RMS level
+    for (let channel = 0; channel < numChannels; channel++) {
+        const samples = audioBuffer.getChannelData(channel);
+        for (let i = firstSampleIncl ?? 0; i < (lastSampleExcl ?? samples.length); i++) {
+            rms += samples[i] * samples[i] * volumeFactor * volumeFactor; // Sum squared values
+            sampleCount++;
+        }
+    }
+
+    rms = Math.sqrt(rms / sampleCount); // Compute RMS
+    return rms;
+}
