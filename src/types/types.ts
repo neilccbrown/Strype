@@ -1129,4 +1129,4 @@ export interface LoadedMedia {
     audioBuffer?: AudioBuffer,
 }
 
-export type EditImageInDialogFunction = (imageDataURL: string, callback: (replacement: {code: string, mediaType: string}) => void) => void;
+export type EditImageInDialogFunction = (imageDataURL: string, showPreview: (dataURL : string) => void, callback: (replacement: {code: string, mediaType: string}) => void) => void;

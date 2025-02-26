@@ -36,6 +36,7 @@ import downscale from "downscale";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import { BvModalEvent } from "bootstrap-vue";
+import {debounce} from "lodash";
 
 export default Vue.extend({
     name: "EditImageDlg",
@@ -49,6 +50,7 @@ export default Vue.extend({
         dlgId: String,
         dlgTitle: String,
         imgToEdit: String, /* Base 64 string */
+        showImgPreview:{type: Function}, /* Takes new base64 string as input */
     },
     
     data: function() {
@@ -63,6 +65,7 @@ export default Vue.extend({
     created() {
         // Register the event listener for the dialog here
         this.$root.$on("bv::modal::hide", this.onHideModalDlg);
+        this.updatePreview = debounce(this.updatePreview, 500);
     },
 
     beforeDestroy(){
@@ -81,6 +84,9 @@ export default Vue.extend({
     methods:{
         onHideModalDlg(event: BvModalEvent, id: string){
         },
+        updatePreview() {
+            this.getUpdatedMedia().then((m) => this.showImgPreview(/"([^"]+)"/.exec(m.code)?.[1] ?? ""));
+        },
         defaultSize({imageSize, visibleArea} : { imageSize: {width: number, height: number}, visibleArea : {width: number, height: number} }) {
             return {
                 width: (visibleArea || imageSize).width,
@@ -90,6 +96,7 @@ export default Vue.extend({
         change(info : {image: any, coordinates: {left: number, top: number, width: number, height: number}}) {
             this.cropSize = info.coordinates; 
             this.updateCurrentSize();
+            this.updatePreview();
         },
         imageLoaded() {
             // We have to go fetch the image from the document and ask its size:
@@ -115,6 +122,7 @@ export default Vue.extend({
         updateCurrentSize() {
             const scale = this.imageScale / 100.0;
             this.currentImgSize = Math.ceil(this.cropSize.width * scale) + " × " + Math.ceil(this.cropSize.height * scale);
+            this.updatePreview();
         },
         getUpdatedMedia() : Promise<{code: string, mediaType: string}> {
             const { canvas } = (this.$refs.cropper as any).getResult() as {canvas : HTMLCanvasElement};

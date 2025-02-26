@@ -75,7 +75,7 @@
             <span style="white-space:pre-wrap" v-html="$t('appMessage.resyncToGDAtStartup')"></span>
         </ModalDlg>
         <MediaPreviewPopup ref="mediaPreviewPopup" />
-        <EditImageDlg dlgId="editImageDlg" ref="editImageDlg" :imgToEdit="imgToEditInDialog" />
+        <EditImageDlg dlgId="editImageDlg" ref="editImageDlg" :imgToEdit="imgToEditInDialog" :showImgPreview="showImgPreview" />
         <div :id="getSkulptBackendTurtleDivId" class="hidden"></div>
         <canvas v-show="appStore.isDraggingFrame" :id="getCompanionDndCanvasId" class="companion-canvas-dnd"/>
     </div>
@@ -142,6 +142,7 @@ export default Vue.extend({
             resetStrypeProjectFlag: false,
             isExpandedPythonExecArea: false,
             imgToEditInDialog: "",
+            showImgPreview: (() => {}) as (dataURL: string) => void,
         };
     },
 
@@ -905,9 +906,10 @@ export default Vue.extend({
         getPeaComponent() {
             return (this.$refs[this.strypeCommandsRefId] as any).$refs.strypePEA;
         },
-        editImageInDialog(imageDataURL: string, callback: (replacement: {code: string, mediaType: string}) => void) {
+        editImageInDialog(imageDataURL: string, showPreview: (dataURL: string) => void, callback: (replacement: {code: string, mediaType: string}) => void) {
             const editImageDlg = this.$refs.editImageDlg as InstanceType<typeof EditImageDlg>;
             this.imgToEditInDialog = imageDataURL;
+            this.showImgPreview = showPreview;
 
             const editedImage = (event: BvModalEvent, dlgId: string) => {
                 if((event.trigger == "ok" || event.trigger=="event") && dlgId == "editImageDlg"){
