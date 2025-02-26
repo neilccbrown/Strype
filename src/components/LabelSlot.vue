@@ -87,57 +87,10 @@ import LabelSlotsStructure from "./LabelSlotsStructure.vue";
 import { BPopover } from "bootstrap-vue";
 import Frame from "@/components/Frame.vue";
 import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
+import {drawSoundOnCanvas} from "@/helpers/media";
 
 // Default time to keep in cache: 5 minutes.
 const soundPreviewImages = new Cache<LoadedMedia>({ defaultTtl: 5 * 60 * 1000 });
-
-// Adapted from https://stackoverflow.com/questions/66776487/how-to-convert-mp3-to-the-sound-wave-image-using-javascript
-// Returns base64 version of PNG of image
-function drawSoundOnCanvas(audioBuffer : AudioBuffer) : string {
-    const float32Arrays : Float32Array[] = [];
-    for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
-        float32Arrays.push(audioBuffer.getChannelData(ch));
-    }
-    const targetWidth = 200;
-    const targetHeight = 50;
-    const array = [];
-
-    let i = 0;
-    const length = audioBuffer.length;
-    const chunkSize = Math.floor(length / targetWidth);
-    while (i < length) {
-        let max = 0;
-        // We take the max out of all values in the chunk, across all channels:
-        for (const arr of float32Arrays) {
-            max = Math.max(arr.slice(i, i + chunkSize).reduce(function (total, value) {
-                return Math.max(total, Math.abs(value));
-            }));
-        }
-        array.push(max);
-        i += chunkSize;
-    }
-    
-    const img = document.createElement("canvas");
-    img.width = targetWidth;
-    img.height = targetHeight;
-    const ctx = img.getContext("2d") as OffscreenCanvasRenderingContext2D | null;
-    if (ctx == null) {
-        // Shouldn't happen:
-        return "";
-    }
-    ctx.fillStyle = "black";
-    ctx.fillRect(0, 0, targetWidth, targetHeight);
-
-    for (let index = 0; index < array.length; index++) {
-        ctx.strokeStyle = "green";
-        ctx.beginPath();
-        // Most sounds don't reach max volume so we rescale to 0.65 to give a more indicative preview:
-        ctx.moveTo(index, targetHeight/2 - Math.min(0.65, Math.abs(array[index]))/0.65 * targetHeight/2);
-        ctx.lineTo(index, targetHeight/2 + Math.min(0.65, Math.abs(array[index]))/0.65 * targetHeight/2);
-        ctx.stroke();
-    }
-    return img.toDataURL("image/png");
-}
 
 export default Vue.extend({
     name: "LabelSlot",
@@ -1600,7 +1553,7 @@ export default Vue.extend({
                 let val = soundPreviewImages.get(slot.code);
                 if (val == null) {
                     let audioBuffer = await new OfflineAudioContext(1, 1, 48000).decodeAudioData(Uint8Array.from(atob(/base64,([^"']+)/.exec(slot.code)?.[1] ?? ""), (char) => char.charCodeAt(0)).buffer);
-                    val = {mediaType: slot.mediaType, imageDataURL: drawSoundOnCanvas(audioBuffer), audioBuffer: audioBuffer};
+                    val = {mediaType: slot.mediaType, imageDataURL: drawSoundOnCanvas(audioBuffer, 200, 50, 1.0, 0.75), audioBuffer: audioBuffer};
                     soundPreviewImages.put(slot.code, val);
                 }
                 return val;
