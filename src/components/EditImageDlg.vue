@@ -125,7 +125,7 @@ export default Vue.extend({
             this.updatePreview();
         },
         getUpdatedMedia() : Promise<{code: string, mediaType: string}> {
-            const { canvas } = (this.$refs.cropper as any).getResult() as {canvas : HTMLCanvasElement};
+            const { canvas } = (this.$refs.cropper as Cropper).getResult();
             if (!canvas) {
                 return Promise.reject("Loading");
             }
