@@ -147,7 +147,6 @@ export function readImageSizeFromDataURI(dataURI: string): Promise<{ dataURI: st
         const img = new Image();
 
         img.onload = () => {
-            console.log("Loaded image: " + img.naturalWidth);
             resolve({ dataURI: dataURI, width: img.naturalWidth, height: img.naturalHeight });
         };
 
@@ -155,7 +154,6 @@ export function readImageSizeFromDataURI(dataURI: string): Promise<{ dataURI: st
             reject(new Error("Failed to load image from data URI"));
         };
 
-        console.log("Loading image: " + dataURI);
         img.src = dataURI;
     });
 }
