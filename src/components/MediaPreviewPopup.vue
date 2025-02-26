@@ -21,7 +21,7 @@
 
 <script lang="ts">
 import Vue from "vue";
-import {EditImageInDialogFunction, LoadedMedia} from "@/types/types";
+import {EditImageInDialogFunction, EditSoundInDialogFunction, LoadedMedia} from "@/types/types";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import {PersistentImageManager} from "@/stryperuntime/image_and_collisions";
 
@@ -41,7 +41,7 @@ export default Vue.extend({
         };
     },
 
-    inject: ["peaComponent", "editImageInDialog"],
+    inject: ["peaComponent", "editImageInDialog", "editSoundInDialog"],
     
     methods: {
         showPopup(event : MouseEvent, media: LoadedMedia, replaceMedia: (replacement: {code: string, mediaType: string}) => void) {
@@ -165,7 +165,9 @@ export default Vue.extend({
         },
         doEdit() {
             if (this.audioBuffer) {
-                // TODO edit sounds
+                this.doEditSoundInDialog(this.audioBuffer, (replacement : {code: string, mediaType: string}) => {
+                    this.replaceAfterEdit(replacement);
+                });
             }
             else {
                 this.doEditImageInDialog(this.imgDataURL, this.doPreviewImage, (replacement : {code: string, mediaType: string}) => {
@@ -181,6 +183,9 @@ export default Vue.extend({
         },
         doEditImageInDialog() : EditImageInDialogFunction {
             return (this as any).editImageInDialog as EditImageInDialogFunction;
+        },
+        doEditSoundInDialog() : EditSoundInDialogFunction {
+            return (this as any).editSoundInDialog as EditSoundInDialogFunction;
         },
     },
 });

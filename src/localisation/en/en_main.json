@@ -173,6 +173,13 @@
     "imageOriginalSize": "Original size: ",
     "imageScale": "Image Scale",
     "pixels": "pixels",
-    "preview": "Preview"
+    "preview": "Preview",
+    "soundAverageVolume": "Average volume:",
+    "soundChangedLength": "Result length:",
+    "soundCrop": "Sound Trimming",
+    "soundDetails": "Sound Details",
+    "soundNormaliseVolume": "Normalise volume",
+    "soundSeconds": "seconds",
+    "volumeScale": "Volume Scaling"
   }
 }
