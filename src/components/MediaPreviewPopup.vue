@@ -66,7 +66,7 @@ export default Vue.extend({
         imgLoaded(event: Event) {
             const previewImgElement = event.target as HTMLImageElement;
             if (this.mediaType.startsWith("image/")) {
-                this.mediaInfo = `Image (${this.mediaType.replace("image/", "")}), ${previewImgElement?.width} × ${previewImgElement?.height} pixels`;
+                this.mediaInfo = `Image (${this.mediaType.replace("image/", "")}), ${previewImgElement?.naturalWidth} × ${previewImgElement?.naturalHeight} pixels`;
             }
         },
         startHidePopup() {
