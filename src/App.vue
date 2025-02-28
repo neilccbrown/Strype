@@ -93,7 +93,7 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
-import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget } from "@/types/types";
+import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, GAPIState } from "@/types/types";
 import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getStrypePEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
@@ -428,6 +428,10 @@ export default Vue.extend({
     },
 
     mounted() {
+        // When the App is ready, we want to either open a project present in the local storage,
+        // or open a shared project that is given by the URL (this takes priority over local storage).
+        // If we need to open a shared project, we may need to wait for the Google API (GAPI) to be loaded before doing anything.
+
         // Check whether Strype is opening a shared project.
         // We check the type of sharing (for now it's only Google Drive and generic) and get the retrieve path from the query parameters.
         const queryParams = new URLSearchParams(window.location.search);
@@ -440,7 +444,17 @@ export default Vue.extend({
             (this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).openSharedProjectTarget = StrypeSyncTarget.gd;
             (this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).openSharedProjectId = shareProjectId;
             // Wait a bit, Google API must have been loaded first.
-            setTimeout(() => document.getElementById((this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).loadProjectLinkId)?.click(), 500);
+            ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>)
+                ?.getGAPIStatusWhenLoadedOrFailed()
+                .then((gapiState) =>{
+                    // Only open the project is the GAPI is loaded, and show a message of error if it hasn't.
+                    if(gapiState == GAPIState.loaded){
+                        document.getElementById((this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).loadProjectLinkId)?.click();
+                    }
+                    else{
+                        this.finaliseOpenShareProject("errorMessage.retrievedSharedGenericProject", this.$i18n.t("errorMessage.GAPIFailed") as string);
+                    }
+                });
         }
         else if(shareProjectId && shareProjectId.match(/^https?:\/\/.*$/g) != null){
             // The "fall out" case of a generic share: we don't care about the source target, it is only a URL to get to and retrive the Strype file.
@@ -452,12 +466,11 @@ export default Vue.extend({
             let alertMsgKey = "";
             let alertParams = "";
             if(isPublicShareFromGD){
-                // Extract the file ID and attempt a retrieving of the file with the Google Drive API (we wait a bit for the API to be loaded)
+                // Extract the file ID and attempt a retrieving of the file with the Google Drive API (it waits a bit for the API to be loaded)
                 const sharedFileID = shareProjectId.substring(googleDrivePublicURLPreamble.length).match(/^([^/]+)\/.*$/)?.[1];
-                setTimeout(() => {
-                    const gdVueComponent = ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>);
-                    gdVueComponent?.getPublicSharedProjectContent(sharedFileID??"");
-                }, 500);
+                ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>)
+                    ?.getPublicSharedProjectContent(sharedFileID??"");
+                
             }
             else{
                 axios.get(shareProjectId)
@@ -465,7 +478,7 @@ export default Vue.extend({
                         if(resp.status == 200){
                             return this.appStore.setStateFromJSONStr( 
                                 {
-                                    stateJSONStr: resp.data,
+                                    stateJSONStr: JSON.stringify(resp.data),
                                     showMessage: false,
                                 }
                             ).then(() => {
@@ -483,7 +496,6 @@ export default Vue.extend({
                         }
                     })
                     .catch((error) => {
-                        // do something
                         alertMsgKey = "errorMessage.retrievedSharedGenericProject";
                         alertParams = error;
                     })

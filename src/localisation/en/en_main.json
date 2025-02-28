@@ -68,6 +68,7 @@
     "errorUserDefinedFuncMsg": "User-defined function\nthis function definition contains errors",
     "errorUserDefinedVarMsg": "User-defined variable\none of the assignments for this variable contains errors",
     "EOFError": "This frame cannot be empty.",
+    "GAPIFailed":"Google API failed to load.",
     "GDriveSaveFailed": "Could not save to Google Drive.",
     "webViewLinkNotRetrieved":"Could not retrieve the public URL of your project (reason: {param1}).",
     "fileNameError": "Project / File name can only contain letters, numbers, spaces, hyphens or parentheses",
