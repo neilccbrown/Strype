@@ -471,7 +471,7 @@ export default Vue.extend({
 
         changeTargetFocusOnMouseOver(event: MouseEvent) {
             // On the "load project dialog", entering a target button should "snap" the focus to it and select it.
-            // On the "save porject dialog", entering a button just give an indication that the button can "clicked".
+            // On the "save project dialog", entering a button just give an indication that the button can "clicked".
             // For both, we handle those visual aspects by setting the focus on the button -- CSS does the rest.
             if(event.target){
                 (event.target as HTMLDivElement).focus();
@@ -850,7 +850,6 @@ export default Vue.extend({
                     event.stopPropagation();
                     (document.activeElement as HTMLElement).click();
                 }
-
 
                 if(event.type == "keydown" && ["Tab", "ArrowDown", "ArrowUp"].includes(event.key)){
                 // When the tab key is hit, we handle the menu entry selection ourselves, because the default behaviour won't do it properly.

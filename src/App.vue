@@ -107,6 +107,7 @@ import { BACKEND_SKULPT_DIV_ID } from "@/autocompletion/ac-skulpt";
 import {copyFramesFromParsedPython, splitLinesToSections, STRYPE_LOCATION} from "@/helpers/pythonToFrames";
 import GoogleDrive from "@/components/GoogleDrive.vue";
 import { BvModalEvent } from "bootstrap-vue";
+import axios from "axios";
 
 let autoSaveTimerId = -1;
 let projectSaveFunctionsState : ProjectSaveFunction[] = [];
@@ -428,8 +429,7 @@ export default Vue.extend({
 
     mounted() {
         // Check whether Strype is opening a shared project.
-        // We check the type of sharing (for now it's only Google Drive) and get the retrieve path from the query parameters.
-        let isTryingToOpenSharedProject = false;
+        // We check the type of sharing (for now it's only Google Drive and generic) and get the retrieve path from the query parameters.
         const queryParams = new URLSearchParams(window.location.search);
         const sharedProjectTarget= queryParams.get(sharedStrypeProjectTargetKey);
         const shareProjectId = queryParams.get(sharedStrypeProjectIdKey);
@@ -440,40 +440,58 @@ export default Vue.extend({
             (this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).openSharedProjectTarget = StrypeSyncTarget.gd;
             (this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).openSharedProjectId = shareProjectId;
             // Wait a bit, Google API must have been loaded first.
-            setTimeout(() => document.getElementById((this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).loadProjectLinkId)?.click(), 100);
-            isTryingToOpenSharedProject = true;
+            setTimeout(() => document.getElementById((this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).loadProjectLinkId)?.click(), 500);
         }
-
-        // Check the local storage (WebStorage) to see if there is a saved project from the previous time the user entered the system
-        // if browser supports localstorage
-        if (typeof(Storage) !== "undefined") {
-            const savedState = localStorage.getItem(this.localStorageAutosaveKey);
-            if(savedState) {
-                this.appStore.setStateFromJSONStr( 
-                    {
-                        stateJSONStr: savedState,
-                        showMessage: false,
-                        readCompressed: true,
-                    }
-                ).then(() => {
-                    // When a file had been reloaded and it was previously synced with Google Drive, we want to ask the user
-                    // about reloading the project from Google Drive again (only if we were not attempting to open a shared project via the URL)
-                    if(!isTryingToOpenSharedProject && this.appStore.currentGoogleDriveSaveFileId) {
-                        const execGetGDFileFunction = (event: BvModalEvent, dlgId: string) => {
-                            if((event.trigger == "ok" || event.trigger=="event") && dlgId == this.resyncGDAtStartupModalDlgId){
-                                // Fetch the Google Drive component
-                                const gdVueComponent = ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>);
-                                // Initiate a connection to Google Drive via saving mechanisms (for updating Google Drive with local changes)
-                                gdVueComponent.saveFile(SaveRequestReason.reloadBrowser);
-
-                                this.$root.$off("bv::modal::hide", execGetGDFileFunction); 
-                            }
-                        };
-                        this.$root.$on("bv::modal::hide", execGetGDFileFunction); 
-                        this.$root.$emit("bv::show::modal", this.resyncGDAtStartupModalDlgId);
-                    }
-                }, () => {});
+        else if(shareProjectId && shareProjectId.match(/^https?:\/\/.*$/g) != null){
+            // The "fall out" case of a generic share: we don't care about the source target, it is only a URL to get to and retrive the Strype file.
+            // We just do a small sanity check that it is a HTTP(S) link.
+            // IMPORTANT: it is custom to the source to expose the file as such or not. So the generic share does NOT guarantee we can get the Strype file.
+            // Google Drive will not expose the file directly, so we can *try* to extract the file ID and then get the data with the API (without authentication).
+            const googleDrivePublicURLPreamble = "https://drive.google.com/file/d/";
+            const isPublicShareFromGD = shareProjectId.startsWith(googleDrivePublicURLPreamble);
+            let alertMsgKey = "";
+            let alertParams = "";
+            if(isPublicShareFromGD){
+                // Extract the file ID and attempt a retrieving of the file with the Google Drive API (we wait a bit for the API to be loaded)
+                const sharedFileID = shareProjectId.substring(googleDrivePublicURLPreamble.length).match(/^([^/]+)\/.*$/)?.[1];
+                setTimeout(() => {
+                    const gdVueComponent = ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>);
+                    gdVueComponent?.getPublicSharedProjectContent(sharedFileID??"");
+                }, 500);
             }
+            else{
+                axios.get(shareProjectId)
+                    .then((resp) => {
+                        if(resp.status == 200){
+                            return this.appStore.setStateFromJSONStr( 
+                                {
+                                    stateJSONStr: resp.data,
+                                    showMessage: false,
+                                }
+                            ).then(() => alertMsgKey = "appMessage.retrievedSharedGenericProject",
+                                (reason) => {
+                                    alertMsgKey = "errorMessage.retrievedSharedGenericProject";
+                                    alertParams = reason;
+                                });
+                        }
+                        else{
+                            alertMsgKey = "errorMessage.retrievedSharedGenericProject";
+                            alertParams = resp.status.toString();
+                        }
+                    })
+                    .catch((error) => {
+                        // do something
+                        alertMsgKey = "errorMessage.retrievedSharedGenericProject";
+                        alertParams = error;
+                    })
+                    .finally(() => {
+                        this.finaliseOpenShareProject(alertMsgKey, alertParams);
+                    });
+            }
+        }
+        else{
+            // The default opening of Strype (either brand new project or retrieving from local storage -- not opening a shared project)
+            this.loadLocaStorageProjectOnStart();
         }
 
         // Register a listener to handle the context menu hovers (cf onContextMenuHover())
@@ -556,6 +574,40 @@ export default Vue.extend({
             }
         },
 
+        loadLocaStorageProjectOnStart() {
+            // Check the local storage (WebStorage) to see if there is a saved project from the previous time the user entered the system
+            // if browser supports localstorage
+            if (typeof(Storage) !== "undefined") {
+                const savedState = localStorage.getItem(this.localStorageAutosaveKey);
+                if(savedState) {
+                    this.appStore.setStateFromJSONStr( 
+                        {
+                            stateJSONStr: savedState,
+                            showMessage: false,
+                            readCompressed: true,
+                        }
+                    ).then(() => {
+                        // When a file had been reloaded and it was previously synced with Google Drive, we want to ask the user
+                        // about reloading the project from Google Drive again (only if we were not attempting to open a shared project via the URL)
+                        if(this.appStore.currentGoogleDriveSaveFileId) {
+                            const execGetGDFileFunction = (event: BvModalEvent, dlgId: string) => {
+                                if((event.trigger == "ok" || event.trigger=="event") && dlgId == this.resyncGDAtStartupModalDlgId){
+                                // Fetch the Google Drive component
+                                    const gdVueComponent = ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>);
+                                    // Initiate a connection to Google Drive via saving mechanisms (for updating Google Drive with local changes)
+                                    gdVueComponent.saveFile(SaveRequestReason.reloadBrowser);
+
+                                    this.$root.$off("bv::modal::hide", execGetGDFileFunction); 
+                                }
+                            };
+                            this.$root.$on("bv::modal::hide", execGetGDFileFunction); 
+                            this.$root.$emit("bv::show::modal", this.resyncGDAtStartupModalDlgId);
+                        }
+                    }, () => {});
+                }
+            }
+        },
+
         applyShowAppProgress(event: AppEvent) {
             // If the progress bar is shown, we block the width of the application to the viewport
             // and revert it otherwise
@@ -583,6 +635,14 @@ export default Vue.extend({
             }
             // Finally, reload the page to reload the Strype default project (removing potential query parameters)
             window.location.href = window.location.pathname;
+        },
+
+        finaliseOpenShareProject(messageKey: string, messageParam: string) {
+            // Show a message to the user that the project has (not) been loaded
+            this.appStore.simpleModalDlgMsg = this.$i18n.t(messageKey, {errorMsg: messageParam}) as string;
+            this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+            // And also remove the query parameters in the URL
+            window.history.replaceState({}, document.title, window.location.pathname);
         },
 
         getFrameContainerUID(frameId: number){

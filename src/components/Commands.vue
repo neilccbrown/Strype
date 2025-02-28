@@ -8,6 +8,23 @@
                     <img v-else-if="isProjectFromFS" :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')" class="project-target-logo"/> 
                     <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag" v-t="'appMessage.savedGDrive'" />
                     <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" v-t="'appMessage.modifGDrive'" :class="{'modifed-label-span': isProjectNotSourced}" />
+                    <ModalDlg :dlgId="shareGDProjectModalDlgId" showCloseBtn hideDlgBtns >
+                    <div>
+                        <div class="project-target-button-container">
+                            <span v-t="'appMessage.shareProjectMode'"/>
+                            <div id="sharePublicStrypeButton" class="project-target-button load-dlg" tabindex="0"  @keydown.self="onShareProjectButtonKeyDown"
+                                @click="shareProjectWithMode(true)" @mouseenter="changeShareModeFocusOnMouseOver" :title="$t('appMessage.shareProjectPublicDetails')">
+                                <img :src="require('@/assets/images/world.png')" :alt="$t('appMessage.shareProjectPublic')"/> 
+                                <span>{{$t("appMessage.shareProjectPublic")}}</span>
+                            </div>
+                            <div id="shareWithinGDStrypeButton" class="project-target-button load-dlg" tabindex="0" @keydown.self="onShareProjectButtonKeyDown"
+                                @click="shareProjectWithMode(false)" @mouseenter="changeShareModeFocusOnMouseOver" :title="$t('appMessage.shareProjectWithinGDDetails')">
+                                <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive"/> 
+                                <span>Google Drive</span>
+                            </div>
+                        </div>
+                    </div>
+                </ModalDlg>
                 </div>
                 <i 
                     v-if="isProjectFromGoogleDrive" 
@@ -96,6 +113,7 @@ import { mapStores } from "pinia";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import Menu from "@/components/Menu.vue";
 import GoogleDrive from "@/components/GoogleDrive.vue";
+import ModalDlg from "@/components/ModalDlg.vue";
 /* IFTRUE_isPython */
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import { isMacOSPlatform } from "@/helpers/common";
@@ -111,6 +129,7 @@ export default Vue.extend({
 
     components: {
         AddFrameCommand,
+        ModalDlg,
         /* IFTRUE_isMicrobit */
         APIDiscovery,
         /* FITRUE_isMicrobit */
@@ -160,6 +179,10 @@ export default Vue.extend({
         
         isProjectNotSourced(): boolean {
             return this.appStore.syncTarget == StrypeSyncTarget.none;
+        },
+
+        shareGDProjectModalDlgId(): string {
+            return "shareGDProjectModalDlg";
         },
         
         /* IFTRUE_isPython */
@@ -583,7 +606,7 @@ export default Vue.extend({
         },
         
         handleAppScroll(event: WheelEvent) {
-            // Don't do anything if a context menu is displayed
+            // Don't do anything if a context menu is displayed 
             if(!getActiveContextMenu()){
                 const currentScroll = $("#"+getEditorMiddleUID()).scrollTop();
                 $("#"+getEditorMiddleUID()).scrollTop((currentScroll??0) + (event as WheelEvent).deltaY/2);
@@ -645,25 +668,116 @@ export default Vue.extend({
         },
 
         shareProject(){
-            // We only share a project that is saved.
-            // Sharing a project results in the shareable URL to be created and copied in the clipboard.
+            // We only share a project that is saved. Show the user what mode of sharing to use (see details in shareProjectWithMode())
             if(!this.isEditorContentModifiedFlag){
+                this.$root.$emit("bv::show::modal", this.shareGDProjectModalDlgId);
+            }
+        },
+
+        shareProjectWithMode(isPublicShare: boolean){
+            // There is no intermediate steps when the mode is selected for sharing a project
+            // (we first close the mode selector modal, then validate)
+            this.$root.$emit("bv::hide::modal", this.shareGDProjectModalDlgId);
+
+            // Sharing a project results in the share URL to be created and copied in the clipboard.
+            // With Google Drive, we allow two types of sharing: either sharing the Google Drive link (after setting the project readonly and totally public in the sharing settings)
+            // or just getting a Strype URL with a shared Google Drive file ID (in that case, users getting the shared link still need to connect to Google Drive first.)
+            // We preare the link to share and the message to show to the users as a confirmation or error situation.
+            // Note that we always generate the link: if public sharing fails, we fall back on the within Google Drive mode sharing.
+            let shareLink = "", alertMessage = "";
+            if(isPublicShare){
                 // Before generating a link, we change the file setttings on Google Drive to make it accessible at large.
                 const gdVueComponent = ((this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>);
                 let createPermissionSucceeded = false;
+                let alertErrorDetail = "";
                 gdVueComponent.shareGoogleDriveFile()
                     .then((succeeded) => createPermissionSucceeded = succeeded)
-                    .catch(() => {
-                        // we don't do anything, but keep the catch clause to avoid JS errors
-                    })
+                    .catch((error) => alertMessage = error)
                     .finally(() => {
-                        const shareURL = `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentGoogleDriveSaveFileId}`;
-                        navigator.clipboard.writeText(shareURL);
-                        // Alert user the link is copied in the clipboard - and if the share on Google Drive didn't work, indicate that.
-                        this.appStore.simpleModalDlgMsg = this.$i18n.t("appMessage.sharedProjectLinkCopied") as string + ((!createPermissionSucceeded) ? (`<br><br>${this.$i18n.t("appMessage.gdCouldNotShareFile")}`) : "");
-                        this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
-                    });
+                        if(createPermissionSucceeded){
+                            // We have set the file public on Google Drive, now we retrieve the share link.
+                            gapi.client.request({
+                                path: "https://www.googleapis.com/drive/v3/files/" + gdVueComponent.saveFileId,
+                                method: "GET",
+                                params: {fields: "webViewLink"},
+                            })
+                                .then((resp) => {
+                                    if(resp.status == 200){
+                                        shareLink = `${window.location}?${sharedStrypeProjectIdKey}=${encodeURIComponent(JSON.parse(resp.body)["webViewLink"])}`;
+                                        alertMessage = this.$i18n.t("appMessage.sharedProjectLinkCopied") as string;
+                                    }
+                                    else{
+                                    // Something happened when we tried to get the public URL of the Google Drive file.
+                                    // We still share the file within Google Drive
+                                        shareLink = `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentGoogleDriveSaveFileId}`;
+                                        alertMessage = this.$i18n.t("appMessage.gdPublicShareFailed", (this.$i18n.t("errorMessage.webViewLinkNotRetrieved", resp.status?.toString()??"unknown") as string)) as string;
+                                    }
+                                })
+                                .catch((error) => {
+                                    // Something happened when we tried to get the public URL of the Google Drive file.
+                                    // We still share the file within Google Drive
+                                    shareLink = `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentGoogleDriveSaveFileId}`;
+                                    alertMessage = this.$i18n.t("appMessage.gdPublicShareFailed", (this.$i18n.t("errorMessage.webViewLinkNotRetrieved", error) as string)) as string;
+            
+                                })
+                                .finally(() => this.finaliseShareProjectLink(shareLink, alertMessage));                           
+                        }
+                        else{
+                            // The project could not be made public on Google Drive for some reason.
+                            // We still make a share link but we make it within Google Drive instead.
+                            shareLink = `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentGoogleDriveSaveFileId}`;
+                            alertMessage = this.$i18n.t("appMessage.gdPublicShareFailed", alertErrorDetail) as string;
+                            this.finaliseShareProjectLink(shareLink, alertMessage);
+                        }
+                    });            
+            }
+            else{
+                shareLink = `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentGoogleDriveSaveFileId}`;
+                alertMessage = this.$i18n.t("appMessage.sharedProjectLinkCopied") as string;
+                this.finaliseShareProjectLink(shareLink, alertMessage);
+            }
+        },
+
+        finaliseShareProjectLink(shareLink: string, alertMsg: string){
+            // Paste the share link in the clipboard and show the user an information message.
+            navigator.clipboard.writeText(shareLink);
+            this.appStore.simpleModalDlgMsg = alertMsg;
+            this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());        
+        },
+
+        onShareProjectButtonKeyDown(event: KeyboardEvent, isSaveAction: boolean) {
+            // Handle some basic keyboard logic for the share mode selection.
+
+            // Space, left/right arrows should trigger a change of mode
+            if(event.key.toLowerCase() == " " || event.key.toLowerCase() == "arrowleft" || event.key.toLowerCase() == "arrowright"){
+                const modeButtons = [...(document.getElementById(this.shareGDProjectModalDlgId)?.querySelectorAll(".project-target-button")??[])];
+                for(const modeButton of modeButtons){
+                    if(modeButton.id != document.activeElement?.id){
+                        (modeButton as HTMLDivElement).focus();
+                        break;
+                    }
+                }
                 
+                event.stopImmediatePropagation();
+                event.stopPropagation();
+                event.preventDefault();
+                return;
+            }
+
+            // Enter should act as a button validation, if one of the mode is focused.
+            if(event.key.toLowerCase() == "enter"){
+                const focusedTarget = document.activeElement;
+                if(focusedTarget && focusedTarget.classList.contains("project-target-button")){
+                    (focusedTarget as HTMLDivElement).click();
+                }
+            }
+        },
+
+        changeShareModeFocusOnMouseOver(event: MouseEvent) {
+            // Entering the mode button should "snap" the focus to it and select it.
+            // For both, we handle those visual aspects by setting the focus on the button -- CSS does the rest.
+            if(event.target){
+                (event.target as HTMLDivElement).focus();
             }
         },
 
