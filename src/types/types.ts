@@ -1025,6 +1025,11 @@ export enum StrypeSyncTarget {
     gd, // Google Drive
 }
 
+export enum ShareProjectMode {
+    public, // A public sharing (generic cases)
+    withinGD, // A share within Google Drive access rights
+}
+
 export enum SaveRequestReason {
     autosave,
     saveProjectAtLocation, // explicit save at the given location in the dialog

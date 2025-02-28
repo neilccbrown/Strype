@@ -468,11 +468,14 @@ export default Vue.extend({
                                     stateJSONStr: resp.data,
                                     showMessage: false,
                                 }
-                            ).then(() => alertMsgKey = "appMessage.retrievedSharedGenericProject",
-                                (reason) => {
-                                    alertMsgKey = "errorMessage.retrievedSharedGenericProject";
-                                    alertParams = reason;
-                                });
+                            ).then(() => {
+                                alertMsgKey = "appMessage.retrievedSharedGenericProject";
+                                alertParams = this.appStore.projectName;
+                            },
+                            (reason) => {
+                                alertMsgKey = "errorMessage.retrievedSharedGenericProject";
+                                alertParams = reason;
+                            });
                         }
                         else{
                             alertMsgKey = "errorMessage.retrievedSharedGenericProject";
@@ -639,7 +642,7 @@ export default Vue.extend({
 
         finaliseOpenShareProject(messageKey: string, messageParam: string) {
             // Show a message to the user that the project has (not) been loaded
-            this.appStore.simpleModalDlgMsg = this.$i18n.t(messageKey, {errorMsg: messageParam}) as string;
+            this.appStore.simpleModalDlgMsg = this.$i18n.t(messageKey, {param1: messageParam}) as string;
             this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
             // And also remove the query parameters in the URL
             window.history.replaceState({}, document.title, window.location.pathname);

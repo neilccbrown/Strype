@@ -290,6 +290,8 @@ export default Vue.extend({
                         return this.appStore.setStateFromJSONStr({stateJSONStr: decodeURIComponent(escape(response.body)), showMessage: false })
                             .then(() => {
                                 alertMsgKey = "appMessage.retrievedSharedGenericProject";
+                                alertParams = this.appStore.projectName;
+
                                 // Remove things in the state that were related to Google Drive
                                 this.cleanGoogleDriveRelatedInfosInState();
                             })
@@ -545,7 +547,7 @@ export default Vue.extend({
                             this.saveFileId = undefined;
                             this.updateSignInStatus(false);
                             if(isOpenedSharedProject){
-                                (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject("appMessage.retrievedSharedGenericProject", "");
+                                (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject("appMessage.retrievedSharedGenericProject", fileNameNoExt);
                             }
                             else{
                                 this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.gdriveReadOnly") as string;

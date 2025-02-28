@@ -8,30 +8,37 @@
                     <img v-else-if="isProjectFromFS" :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')" class="project-target-logo"/> 
                     <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag" v-t="'appMessage.savedGDrive'" />
                     <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" v-t="'appMessage.modifGDrive'" :class="{'modifed-label-span': isProjectNotSourced}" />
-                    <ModalDlg :dlgId="shareGDProjectModalDlgId" showCloseBtn hideDlgBtns >
-                    <div>
-                        <div class="project-target-button-container">
-                            <span v-t="'appMessage.shareProjectMode'"/>
-                            <div id="sharePublicStrypeButton" class="project-target-button load-dlg" tabindex="0"  @keydown.self="onShareProjectButtonKeyDown"
-                                @click="shareProjectWithMode(true)" @mouseenter="changeShareModeFocusOnMouseOver" :title="$t('appMessage.shareProjectPublicDetails')">
-                                <img :src="require('@/assets/images/world.png')" :alt="$t('appMessage.shareProjectPublic')"/> 
-                                <span>{{$t("appMessage.shareProjectPublic")}}</span>
-                            </div>
-                            <div id="shareWithinGDStrypeButton" class="project-target-button load-dlg" tabindex="0" @keydown.self="onShareProjectButtonKeyDown"
-                                @click="shareProjectWithMode(false)" @mouseenter="changeShareModeFocusOnMouseOver" :title="$t('appMessage.shareProjectWithinGDDetails')">
-                                <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive"/> 
-                                <span>Google Drive</span>
+                    <ModalDlg :dlgId="shareGDProjectModalDlgId" :okCustomTitle="$t('buttonLabel.copyLink')" :dlgTitle="$t('appMessage.createShareProjectLink')" :autoFocusButton="'ok'">
+                        <div>
+                            <span class="share-mode-buttons-container-title">{{$i18n.t('appMessage.shareProjectModeLabel')}}</span>
+                            <div class="share-mode-buttons-container">
+                                    <div class="share-mode-button-group">
+                                    <input type="radio" id="shareGDProjectPublicRadioBtn" name="shareGDModeRadioGroup" 
+                                        v-model="shareProjectMode" :value="shareProjectWithinGDModeValue" />
+                                    <div>
+                                        <label for="shareGDProjectPublicRadioBtn" >{{$i18n.t("appMessage.shareProjectWithinGDMode")}}</label>
+                                        <span>{{$i18n.t("appMessage.shareProjectWithinGDModeDetails")}}</span>
+                                    </div>
+                                </div>
+                                <div class="share-mode-button-group">
+                                    <input type="radio" id="shareGDProjectWithGDRadioBtn" name="shareGDModeRadioGroup"
+                                    v-model="shareProjectMode" :value="shareProjectPublicModeValue" />
+                                    <div>
+                                        <label for="shareGDProjectWithGDRadioBtn" >{{$i18n.t("appMessage.shareProjectPublicMode")}}</label>
+                                        <span>{{$i18n.t("appMessage.shareProjectPublicModeDetails")}}</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </ModalDlg>
+                    </ModalDlg>
                 </div>
-                <i 
-                    v-if="isProjectFromGoogleDrive" 
-                    :class="{'fas fa-share-alt share-gd-proj-icon': true, disabled: isEditorContentModifiedFlag}" 
-                    :title="$t((isEditorContentModifiedFlag)?'appMessage.needSaveShareStrypeProj':'appMessage.shareStrypeProj')"
+                <img 
+                    v-if="isProjectFromGoogleDrive"
+                    :src="require('@/assets/images/share.png')"
+                    :class="{'share-proj-img': true, disabled: isEditorContentModifiedFlag}" 
+                    :title="$t((isEditorContentModifiedFlag)?'appMessage.needSaveShareProj':'appMessage.shareProj')"
                     @click="shareProject"
-                    ></i>
+                />
             </div>     
             <div @mousedown.prevent.stop @mouseup.prevent.stop>
                 /* IFTRUE_isMicrobit
@@ -105,7 +112,7 @@
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import { CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getAppSimpleMsgDlgId, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getGoogleDriveComponentRefId, getManuallyResizedEditorHeightFlag, getMenuLeftPaneUID, getStrypePEAComponentRefId, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey } from "@/helpers/editor";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, StrypeSyncTarget } from "@/types/types";
+import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, ShareProjectMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
 import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
@@ -122,6 +129,7 @@ import { isMacOSPlatform } from "@/helpers/common";
 import APIDiscovery from "@/components/APIDiscovery.vue";
 import { flash } from "@/helpers/webUSB";
 import { downloadHex } from "@/helpers/download";
+import { BvModalEvent } from "bootstrap-vue";
 /* FITRUE_isMicrobit */
 
 export default Vue.extend({
@@ -146,6 +154,7 @@ export default Vue.extend({
             frameCommandsReactiveFlag: false, // this flag is only use to allow a reactive binding when the add frame commands are updated (language),
             isExpandedPEA: false, // flag indicating whether the Python Execution Area is expanded (to fit the other parts of the commands)
             lastProjectSavedDateTooltip: "", // update on a mouse over event (in getLastProjectSavedDateTooltip)
+            shareProjectMode: ShareProjectMode.withinGD,
         };
     },
 
@@ -183,6 +192,14 @@ export default Vue.extend({
 
         shareGDProjectModalDlgId(): string {
             return "shareGDProjectModalDlg";
+        },
+
+        shareProjectPublicModeValue() {
+            return ShareProjectMode.public;
+        },
+
+        shareProjectWithinGDModeValue() {
+            return ShareProjectMode.withinGD;
         },
         
         /* IFTRUE_isPython */
@@ -598,6 +615,14 @@ export default Vue.extend({
             this.handleAppScroll,
             false
         );
+
+        // Register share mode modal dialog opening event
+        this.$root.$on("bv::modal::hide", this.onShareProjectModeSelectionHideModalDlg);
+    },
+
+    beforeDestroy() {
+        // Just in case, we remove the Bootstrap modal event handler from the root app 
+        this.$root.$off("bv::modal::hide", this.onShareProjectModeSelectionHideModalDlg);
     },
 
     methods: {
@@ -674,6 +699,12 @@ export default Vue.extend({
             }
         },
 
+        onShareProjectModeSelectionHideModalDlg(event: BvModalEvent, dlgId: string){
+            if(dlgId == this.shareGDProjectModalDlgId && event.trigger == "ok"){
+                this.shareProjectWithMode(this.shareProjectMode == ShareProjectMode.public);
+            }
+        },
+
         shareProjectWithMode(isPublicShare: boolean){
             // There is no intermediate steps when the mode is selected for sharing a project
             // (we first close the mode selector modal, then validate)
@@ -745,42 +776,6 @@ export default Vue.extend({
             this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());        
         },
 
-        onShareProjectButtonKeyDown(event: KeyboardEvent, isSaveAction: boolean) {
-            // Handle some basic keyboard logic for the share mode selection.
-
-            // Space, left/right arrows should trigger a change of mode
-            if(event.key.toLowerCase() == " " || event.key.toLowerCase() == "arrowleft" || event.key.toLowerCase() == "arrowright"){
-                const modeButtons = [...(document.getElementById(this.shareGDProjectModalDlgId)?.querySelectorAll(".project-target-button")??[])];
-                for(const modeButton of modeButtons){
-                    if(modeButton.id != document.activeElement?.id){
-                        (modeButton as HTMLDivElement).focus();
-                        break;
-                    }
-                }
-                
-                event.stopImmediatePropagation();
-                event.stopPropagation();
-                event.preventDefault();
-                return;
-            }
-
-            // Enter should act as a button validation, if one of the mode is focused.
-            if(event.key.toLowerCase() == "enter"){
-                const focusedTarget = document.activeElement;
-                if(focusedTarget && focusedTarget.classList.contains("project-target-button")){
-                    (focusedTarget as HTMLDivElement).click();
-                }
-            }
-        },
-
-        changeShareModeFocusOnMouseOver(event: MouseEvent) {
-            // Entering the mode button should "snap" the focus to it and select it.
-            // For both, we handle those visual aspects by setting the focus on the button -- CSS does the rest.
-            if(event.target){
-                (event.target as HTMLDivElement).focus();
-            }
-        },
-
         /* IFTRUE_isMicrobit */
         runToMicrobit() {
             // If we can directly upload on microbit, we run the method flash().
@@ -834,16 +829,48 @@ export default Vue.extend({
     font-size: 80%;
 }
 
-.share-gd-proj-icon {
+.share-proj-img {
     cursor: pointer;
     margin-left: 5px;
-    color: #274D19;
-    font-size: 75%;
+    width: 0.75em;
 }
 
-.share-gd-proj-icon.disabled {
-    color: lightgray;
+.share-proj-img.disabled {
+    opacity: 25%;
     cursor: default;
+}
+
+.share-mode-buttons-container-title {
+    font-weight: 600;
+}
+
+.share-mode-buttons-container {
+    display: table;
+    margin-left: 30px;
+    margin-top: 10px;
+}
+
+.share-mode-button-group {
+    display: table-row;
+}
+
+.share-mode-buttons-container input,
+.share-mode-buttons-container > div > div {
+    display: table-cell;
+    font-size: 95%;
+}
+
+.share-mode-buttons-container > div > div {
+    padding-left: 5px;
+}
+
+.share-mode-buttons-container span {
+    font-size: 90%;
+    display: block;
+}
+
+.share-mode-buttons-container > .share-mode-button-group:first-child span {
+    margin-bottom: 20px;
 }
 
 .commands {
