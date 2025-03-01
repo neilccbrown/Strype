@@ -7,7 +7,7 @@
         @mouseleave="startHidePopup"
     >
         <div class="MediaPreviewPopup-header">
-            <span class="MediaPreviewPopup-header-text">{{mediaInfo}}</span>
+            <span class="MediaPreviewPopup-header-text" v-html="mediaInfo"></span>
         </div>
         <div class="MediaPreviewPopup-controls">
             <b-button size="sm" variant="outline-success" class="MediaPreviewPopup-header-preview-button" @click="doPreview">{{$t("media.preview")}}</b-button>
@@ -61,7 +61,7 @@ export default Vue.extend({
             this.audioBuffer = media.audioBuffer;
             if (media.audioBuffer) {
                 // This is not translated because it's a class name:
-                this.mediaInfo = "Sound";
+                this.mediaInfo = `Sound<br>${media.audioBuffer.duration.toFixed(2)} ${this.$t("media.soundSeconds")}`;
                 this.imgDataURL = media.imageDataURL;
             }
             else {
@@ -75,7 +75,7 @@ export default Vue.extend({
         imgLoaded(event: Event) {
             const previewImgElement = event.target as HTMLImageElement;
             if (this.mediaType.startsWith("image/")) {
-                this.mediaInfo = `EditableImage (${this.mediaType.replace("image/", "")}), ${previewImgElement?.naturalWidth} × ${previewImgElement?.naturalHeight} ${this.$t("media.pixels")}`;
+                this.mediaInfo = `EditableImage (${this.mediaType.replace("image/", "")})<br>${previewImgElement?.naturalWidth} × ${previewImgElement?.naturalHeight} ${this.$t("media.pixels")}`;
             }
         },
         startHidePopup() {
