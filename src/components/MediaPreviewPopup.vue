@@ -7,14 +7,18 @@
         @mouseleave="startHidePopup"
     >
         <div class="MediaPreviewPopup-header">
-            <button class="MediaPreviewPopup-header-preview-button" @click="doPreview">{{$t("media.preview")}}</button>
             <span class="MediaPreviewPopup-header-text">{{mediaInfo}}</span>
-            <button class="MediaPreviewPopup-header-edit-button" @click="doEdit">{{$t("media.edit")}}</button>
         </div>
-        <div class="MediaPreviewPopup-img-container">
-            <img :src="imgDataURL" alt="Media preview" @load="imgLoaded">
-            <!-- Style elements are dynamically set from code, don't move them to a class: -->
-            <div ref="playbackLine" class="MediaPreviewPopup-img-red-line" style="opacity: 0%; left: 0%;"></div>
+        <div class="MediaPreviewPopup-controls">
+            <b-button size="sm" variant="outline-success" class="MediaPreviewPopup-header-preview-button" @click="doPreview">{{$t("media.preview")}}</b-button>
+            <b-button size="sm" variant="outline-danger" class="MediaPreviewPopup-header-edit-button" @click="doEdit">{{$t("media.edit")}}</b-button>
+        </div>
+        <div class="MediaPreviewPopup-img-container-wrapper">
+            <div class="MediaPreviewPopup-img-container">
+                <img :src="imgDataURL" alt="Media preview" @load="imgLoaded">
+                <!-- Style elements are dynamically set from code, don't move them to a class: -->
+                <div ref="playbackLine" class="MediaPreviewPopup-img-red-line" style="opacity: 0%; left: 0%;"></div>
+            </div>
         </div>
     </div>
 </template>
@@ -214,6 +218,12 @@ export default Vue.extend({
     /* Important to make div size match img size: */
     display: inline-block;
 }
+.MediaPreviewPopup-img-container-wrapper {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
 .MediaPreviewPopup-img-red-line {
     position: absolute;
     top: 0;
@@ -233,10 +243,11 @@ export default Vue.extend({
     justify-content: center;
     align-items: center;
     text-align: center;
-    color: #444;
+    color: black;
 }
-.MediaPreviewPopup-header-preview-button, .MediaPreviewPopup-header-edit-button {
-    justify-content: center;
-    align-items: center;
+.MediaPreviewPopup-controls {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
 }
 </style>
