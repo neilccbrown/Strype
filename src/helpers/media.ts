@@ -1,3 +1,5 @@
+import toWav from "audiobuffer-to-wav";
+
 
 // Adapted from https://stackoverflow.com/questions/66776487/how-to-convert-mp3-to-the-sound-wave-image-using-javascript
 // Returns base64 version of PNG of image
@@ -61,4 +63,14 @@ export function getRMS(audioBuffer: AudioBuffer, volumeFactor: number, firstSamp
 
     rms = Math.sqrt(rms / sampleCount); // Compute RMS
     return rms;
+}
+
+export async function audioBufferToDataURL(audioBuffer : AudioBuffer) : Promise<string> {
+    const wavArrayBuffer = toWav(audioBuffer);
+    return new Promise((resolve) => {
+        const blob = new Blob([wavArrayBuffer], { type: "audio/wav" });
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+    });
 }

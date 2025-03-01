@@ -15,6 +15,9 @@
             minHeight="100"
             @change="change"
         ></cropper>
+        <div class="EditSoundDlg-button-wrapper">
+            <b-button class="EditSoundDlg-play-button" :variant="playStopVariant" @click="doPlayStopPreview">{{playStopLabel}}</b-button>
+        </div>
         <span class="EditSoundDlg-header">{{$t("media.volumeScale")}}</span>
         <div class="EditSoundDlg-scale">
             <input v-model="volumeScaleLogPercent" type="range" id="EditSoundDlg-imageScale" min="-70" max="70" />
@@ -24,7 +27,7 @@
         <span class="EditSoundDlg-sizeInfo">{{$t("media.soundChangedLength")}} {{currentSoundLength}} {{$t("media.soundSeconds")}}</span>
         <span class="EditSoundDlg-sizeInfo">{{$t("media.soundAverageVolume")}} {{Math.round(volumeRMS * 10 * 100)}}%</span>
         <div class="EditSoundDlg-button-wrapper">
-            <button class="EditSoundDlg-normalise-button" @click="doNormaliseVolume">{{$t("media.soundNormaliseVolume")}}</button>
+            <b-button class="EditSoundDlg-normalise-button" variant="info" @click="doNormaliseVolume">{{$t("media.soundNormaliseVolume")}}</b-button>
         </div>
     </ModalDlg>
 </template>
@@ -37,7 +40,8 @@ import "vue-advanced-cropper/dist/style.css";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import { BvModalEvent } from "bootstrap-vue";
-import {drawSoundOnCanvas, getRMS} from "@/helpers/media";
+import {drawSoundOnCanvas, getRMS, audioBufferToDataURL} from "@/helpers/media";
+import {TranslateResult} from "vue-i18n";
 
 const previewImageWidth = 300;
 const previewImageHeight = 100;
@@ -66,6 +70,7 @@ export default Vue.extend({
             volumeScaleLogPercent: 0,
             volumeRMS: 0,
             crop: {firstSampleIncl: 0, lastSampleExcl: 0, leftPixel: 0, widthPixels: 0},
+            stopPreview: null as (() => void) | null,
         };
     },
 
@@ -85,10 +90,19 @@ export default Vue.extend({
         dlgMsg(): string{
             return this.appStore.simpleModalDlgMsg;
         },
+        playStopLabel(): TranslateResult {
+            return this.stopPreview == null ? this.$t("media.soundPlay") : this.$t("media.soundStop");
+        },
+        playStopVariant() : string {
+            return this.stopPreview == null ? "success" : "danger";
+        },
     },
 
     methods:{
         onHideModalDlg(event: BvModalEvent, id: string){
+            if (this.stopPreview != null) {
+                this.stopPreview();
+            }
         },
         defaultSize({imageSize, visibleArea} : { imageSize: {width: number, height: number}, visibleArea : {width: number, height: number} }) {
             return {
@@ -112,12 +126,81 @@ export default Vue.extend({
             let rms = getRMS(this.soundToEdit, 1.0, this.crop.firstSampleIncl, this.crop.lastSampleExcl);
             this.volumeScaleLogPercent = Math.max(-70, Math.min(70, Math.round(Math.log10(rms == 0.0 ? 1 : 0.1 / rms) * 100))); 
         },
-        getUpdatedMedia() : Promise<{code: string, mediaType: string}> {
-            const { canvas } = (this.$refs.cropper as Cropper).getResult();
-            if (!canvas) {
-                return Promise.reject("Loading");
+        doPlayStopPreview() {
+            if (this.stopPreview != null) {
+                this.stopPreview();
+                return;
             }
-            return Promise.reject("TODO");
+            
+            // Add a play marker:
+            const playbackLine = document.createElement("div");
+            playbackLine.className = "EditSoundDlg-img-red-line";
+            playbackLine.setAttribute("style", "opacity: 0%; left: 0%;");
+            
+            document.getElementsByClassName("vue-preview__wrapper")?.[0].append(playbackLine);
+            
+            // We are handling a user-triggered click event, which allows us to play sound:
+            const ctx = new AudioContext();
+            const src = ctx.createBufferSource();
+            src.buffer = this.soundToEdit;
+            var gainNode = ctx.createGain();
+            const volumeFactor = 10 ** (this.volumeScaleLogPercent / 100.0);
+            gainNode.gain.value = volumeFactor;
+            gainNode.connect(ctx.destination);
+
+            src.connect(gainNode);
+            const startTime = ctx.currentTime;
+            let updater = null as number | null;
+            this.stopPreview = () => {
+                src.stop();
+                if (updater != null) {
+                    window.clearInterval(updater);
+                    updater = null;
+                }
+                playbackLine.remove();
+                this.stopPreview = null;
+            };
+            src.onended = this.stopPreview;
+            let sampleDuration = this.crop.lastSampleExcl - this.crop.firstSampleIncl;
+            src.start(0, this.crop.firstSampleIncl / this.soundToEdit?.sampleRate, sampleDuration / this.soundToEdit?.sampleRate);
+            
+            // Show a red marker animating across as it plays.
+            // There isn't a way to get regular callbacks while playing
+            // so we must time it ourselves.  We don't bother if the sound is under 300ms:
+            updater = window.setInterval(() => {
+                const percentage = (ctx.currentTime - startTime) / (sampleDuration / this.soundToEdit.sampleRate) * 100;
+                if (percentage >= 100) {
+                    this.stopPreview?.();
+                }
+                else {
+                    playbackLine.style.left = percentage + "%";
+                    playbackLine.style.opacity = "100%";
+                }
+            }, 100);
+        },
+        getUpdatedMedia() : Promise<{code: string, mediaType: string}> {
+            const copiedAudioBuffer = new AudioBuffer({
+                length: this.crop.lastSampleExcl - this.crop.firstSampleIncl,
+                numberOfChannels: this.soundToEdit.numberOfChannels,
+                sampleRate: this.soundToEdit.sampleRate,
+            });
+
+            const volumeFactor = 10 ** (this.volumeScaleLogPercent / 100.0);
+            for (let channel = 0; channel < this.soundToEdit.numberOfChannels; channel++) {
+                const channelData = this.soundToEdit.getChannelData(channel);
+                const copiedChannelData = copiedAudioBuffer.getChannelData(channel);
+
+                for (let sample = this.crop.firstSampleIncl; sample < this.crop.lastSampleExcl; sample++) {
+                    copiedChannelData[sample - this.crop.firstSampleIncl] = channelData[sample] * volumeFactor;
+                }
+            }
+            
+            return audioBufferToDataURL(copiedAudioBuffer).then((dataURL) => {
+                return {
+                    code: "Sound(\"" + dataURL + "\")", 
+                    mediaType: "audio/wav",
+                };
+            });
         },
     },
     watch: {
@@ -205,5 +288,14 @@ export default Vue.extend({
 }
 .EditSoundDlg-button-wrapper {
     text-align: center;
+    margin: 5px;
+}
+.EditSoundDlg-img-red-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background-color: red;
+    pointer-events: none; /* Prevents interaction issues */
 }
 </style>

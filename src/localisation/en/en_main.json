@@ -179,7 +179,9 @@
     "soundCrop": "Sound Trimming",
     "soundDetails": "Sound Details",
     "soundNormaliseVolume": "Normalise volume",
-    "soundSeconds": "seconds",
+    "soundPlay": "Play",
+    "soundSeconds": "seconds", 
+    "soundStop": "Stop",
     "volumeScale": "Volume Scaling"
   }
 }
