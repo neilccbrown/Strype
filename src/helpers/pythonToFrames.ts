@@ -612,8 +612,51 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         break;
     case Sk.ParseTables.sym.funcdef:
         // First child is keyword, second is the name, third is params, fourth is colon, fifth is body
-        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.funcdef, [1, 2], 4, s);
+        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.funcdef, [1, 2], 4, s, (f) => {
+            if (s.parent?.frameType.type == AllFrameTypesIdentifier.classdef) {
+                // We remove the first param from the start of function params,
+                // assuming it is the self parameter that we add automatically.
+                const params = f.labelSlotsDict[1];
+                
+                if (params && params.slotStructures.fields.length == 1) {
+                    // We need to keep a field, but we blank the content:
+                    (params.slotStructures.fields[0] as BaseSlot).code = "";
+                }
+                else if (params && params.slotStructures.fields.length > 1) {
+                    // We can just delete the first item and first operator, and rest can stay:
+                    params.slotStructures.fields.splice(0, 1);
+                    params.slotStructures.operators.splice(0, 1);
+                }
+            }
+        });
         break;
+    case Sk.ParseTables.sym.classdef: {
+        // First child is keyword, second is the name, penultimate is colon, last is body.
+        // If there are parent classes, third is open-bracket, fourth is content, fifth is close bracket
+        // However, this doesn't work with makeAndAddFrameWithBody because the way we deal with parent classes
+        // is to add them as a bracketed item inside the single name slot.  So we need to do some custom work:
+        const numChildren = children(p).length;
+        const slots : { [index: number]: LabelSlotsContent} = {};
+        if (numChildren == 4) {
+            // No parent, just the name:
+            slots[0] = {slotStructures: toSlots(applyIndex(p, 1))};
+        }
+        else {
+            // There are brackets with parent names:
+            const name = toSlots(applyIndex(p, 1));
+            const parent = toSlots(applyIndex(p, 3));
+            parent.openingBracketValue = "(";
+            // Now we need to combine them:
+            name.fields.push(parent, {code: ""});
+            name.operators.push({code: ""}, {code: ""});
+            slots[0] = {slotStructures: name};
+        }
+        const frame = makeFrame(AllFrameTypesIdentifier.classdef, slots);
+        s = addFrame(frame, s);
+        const nextId = copyFramesFromPython(children(p)[numChildren - 1], {...s, addTo: frame.childrenIds, parent: frame}).nextId;
+        s = {...s, nextId: nextId};
+        break;
+    }
     }
     return s;
 }
@@ -663,13 +706,13 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION)
     // Check if the match between the current Strype location and the copied Python code frames is possible
     switch(currentStrypeLocation){
     case STRYPE_LOCATION.MAIN_CODE_SECTION:
-        return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.global].includes(frame.frameType.type));
+        return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.global].includes(frame.frameType.type));
     case  STRYPE_LOCATION.IN_FUNCDEF:
-        return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type));
+        return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type));
     case  STRYPE_LOCATION.DEFS_SECTION:
         removeTopLevelBlankFrames();
-        return !(topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type))
-            || copiedPythonToFrames.some((frame) => !topLevelCopiedFrameIds.includes(frame.id) && [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type)));
+        return !(topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type))
+            || copiedPythonToFrames.some((frame) => !topLevelCopiedFrameIds.includes(frame.id) && [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef].includes(frame.frameType.type)));
     case  STRYPE_LOCATION.IMPORTS_SECTION:
         removeTopLevelBlankFrames();
         return !topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type));
@@ -725,7 +768,7 @@ export function splitLinesToSections(allLines : string[]) : {imports: string[]; 
             imports.push(lineWithNum);
             addingToDef = false;
         }
-        else if (line.match(/^def\s+/)) {
+        else if (line.match(/^(def|class)\s+/)) {
             defs.push(...latestComments);
             latestComments = [];
             defs.push(lineWithNum);
