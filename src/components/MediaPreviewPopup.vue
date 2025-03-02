@@ -88,6 +88,11 @@ export default Vue.extend({
             Vue.nextTick(() => {
                 const imgManager: PersistentImageManager | undefined = this.peaComponentRef?.getPersistentImageManager();
                 imgManager?.clear();
+                // null is passed to clear the preview when the edit dialog is closed:
+                if (imgDataURL == null) {
+                    this.peaComponentRef?.redrawCanvas();
+                    return;
+                }
                 const checkered = new OffscreenCanvas(800, 600);
                 const ctx = checkered.getContext("2d") as OffscreenCanvasRenderingContext2D;
                 const squareSize = 15;

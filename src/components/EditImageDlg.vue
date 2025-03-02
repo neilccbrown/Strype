@@ -50,7 +50,7 @@ export default Vue.extend({
         dlgId: String,
         dlgTitle: String,
         imgToEdit: String, /* Base 64 string */
-        showImgPreview:{type: Function}, /* Takes new base64 string as input */
+        showImgPreview:{type: Function}, /* Takes new base64 string as input, null to cancel preview */
     },
     
     data: function() {
@@ -83,6 +83,7 @@ export default Vue.extend({
 
     methods:{
         onHideModalDlg(event: BvModalEvent, id: string){
+            this.showImgPreview(null);
         },
         updatePreview() {
             this.getUpdatedMedia().then((m) => this.showImgPreview(/"([^"]+)"/.exec(m.code)?.[1] ?? "")).catch((err) => {});
