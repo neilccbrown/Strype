@@ -171,6 +171,15 @@
     "imageOriginalSize": "Taille originale : ",
     "imageScale": "Échelle de l'image",
     "pixels": "pixels",
-    "preview": "Aperçu"
+    "preview": "Aperçu",
+    "soundAverageVolume": "Volume moyen:",
+    "soundChangedLength": "Nouvelle durée:",
+    "soundCrop": "Rognage du son",
+    "soundDetails": "Détails du son",
+    "soundNormaliseVolume": "Normaliser le volume",
+    "soundPlay": "Lecture",
+    "soundSeconds": "secondes", 
+    "soundStop": "Arrêt",
+    "volumeScale": "Échelle du volume"
   }
 }
