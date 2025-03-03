@@ -7,21 +7,25 @@
         @mouseleave="startHidePopup"
     >
         <div class="MediaPreviewPopup-header">
-            <button class="MediaPreviewPopup-header-preview-button" @click="doPreview">{{$t("media.preview")}}</button>
-            <span class="MediaPreviewPopup-header-text">{{mediaInfo}}</span>
-            <button class="MediaPreviewPopup-header-edit-button" @click="doEdit">{{$t("media.edit")}}</button>
+            <span class="MediaPreviewPopup-header-text" v-html="mediaInfo"></span>
         </div>
-        <div class="MediaPreviewPopup-img-container">
-            <img :src="imgDataURL" alt="Media preview" @load="imgLoaded">
-            <!-- Style elements are dynamically set from code, don't move them to a class: -->
-            <div ref="playbackLine" class="MediaPreviewPopup-img-red-line" style="opacity: 0%; left: 0%;"></div>
+        <div class="MediaPreviewPopup-controls">
+            <b-button size="sm" variant="outline-success" class="MediaPreviewPopup-header-preview-button" @click="doPreview">{{$t("media.preview")}}</b-button>
+            <b-button size="sm" variant="outline-danger" class="MediaPreviewPopup-header-edit-button" @click="doEdit">{{$t("media.edit")}}</b-button>
+        </div>
+        <div class="MediaPreviewPopup-img-container-wrapper">
+            <div class="MediaPreviewPopup-img-container">
+                <img :src="imgDataURL" alt="Media preview" @load="imgLoaded">
+                <!-- Style elements are dynamically set from code, don't move them to a class: -->
+                <div ref="playbackLine" class="MediaPreviewPopup-img-red-line" style="opacity: 0%; left: 0%;"></div>
+            </div>
         </div>
     </div>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
-import {EditImageInDialogFunction, LoadedMedia} from "@/types/types";
+import {EditImageInDialogFunction, EditSoundInDialogFunction, LoadedMedia} from "@/types/types";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import {PersistentImageManager} from "@/stryperuntime/image_and_collisions";
 
@@ -41,7 +45,7 @@ export default Vue.extend({
         };
     },
 
-    inject: ["peaComponent", "editImageInDialog"],
+    inject: ["peaComponent", "editImageInDialog", "editSoundInDialog"],
     
     methods: {
         showPopup(event : MouseEvent, media: LoadedMedia, replaceMedia: (replacement: {code: string, mediaType: string}) => void) {
@@ -57,7 +61,7 @@ export default Vue.extend({
             this.audioBuffer = media.audioBuffer;
             if (media.audioBuffer) {
                 // This is not translated because it's a class name:
-                this.mediaInfo = "Sound";
+                this.mediaInfo = `Sound<br>${media.audioBuffer.duration.toFixed(2)} ${this.$t("media.soundSeconds")}`;
                 this.imgDataURL = media.imageDataURL;
             }
             else {
@@ -71,7 +75,7 @@ export default Vue.extend({
         imgLoaded(event: Event) {
             const previewImgElement = event.target as HTMLImageElement;
             if (this.mediaType.startsWith("image/")) {
-                this.mediaInfo = `EditableImage (${this.mediaType.replace("image/", "")}), ${previewImgElement?.naturalWidth} × ${previewImgElement?.naturalHeight} ${this.$t("media.pixels")}`;
+                this.mediaInfo = `EditableImage (${this.mediaType.replace("image/", "")})<br>${previewImgElement?.naturalWidth} × ${previewImgElement?.naturalHeight} ${this.$t("media.pixels")}`;
             }
         },
         startHidePopup() {
@@ -165,7 +169,9 @@ export default Vue.extend({
         },
         doEdit() {
             if (this.audioBuffer) {
-                // TODO edit sounds
+                this.doEditSoundInDialog(this.audioBuffer, (replacement : {code: string, mediaType: string}) => {
+                    this.replaceAfterEdit(replacement);
+                });
             }
             else {
                 this.doEditImageInDialog(this.imgDataURL, this.doPreviewImage, (replacement : {code: string, mediaType: string}) => {
@@ -181,6 +187,9 @@ export default Vue.extend({
         },
         doEditImageInDialog() : EditImageInDialogFunction {
             return (this as any).editImageInDialog as EditImageInDialogFunction;
+        },
+        doEditSoundInDialog() : EditSoundInDialogFunction {
+            return (this as any).editSoundInDialog as EditSoundInDialogFunction;
         },
     },
 });
@@ -209,6 +218,12 @@ export default Vue.extend({
     /* Important to make div size match img size: */
     display: inline-block;
 }
+.MediaPreviewPopup-img-container-wrapper {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
 .MediaPreviewPopup-img-red-line {
     position: absolute;
     top: 0;
@@ -228,10 +243,11 @@ export default Vue.extend({
     justify-content: center;
     align-items: center;
     text-align: center;
-    color: #444;
+    color: black;
 }
-.MediaPreviewPopup-header-preview-button, .MediaPreviewPopup-header-edit-button {
-    justify-content: center;
-    align-items: center;
+.MediaPreviewPopup-controls {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
 }
 </style>
