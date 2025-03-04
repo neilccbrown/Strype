@@ -92,6 +92,7 @@
     "selectStrypeFile": "Wähle ein Strype-Projekt",
     "gdriveLocation": "Ordner:",
     "gdriveAllStrypeFiles": "Alle Strype-Dateien",
+    "gdriveAllPythonFiles": "Alle Python-Dateien",
     "gdriveTab": "Mein Drive",
     "editorErrors": "Fehler"
   },
