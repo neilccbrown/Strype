@@ -68,6 +68,7 @@
     "errorUserDefinedFuncMsg": "Fonction définie par l'utilisateur\nla définition de cette fonction contient des erreurs",
     "errorUserDefinedVarMsg": "Variable définie par l'utilisateur\nune affectation de cette variable contient des erreurs",
     "EOFError": "Ce cadre ne peut pas être vide.",
+    "GAPIFailed":"Google API ne s'est pas chargée.",
     "GDriveSaveFailed": "Enregistrement vers Googde Drive impossible.",
     "webViewLinkNotRetrieved":"Impossible de récupérer l'URL publique de votre projet (cause : {param1}).",
     "fileNameError": "Le nom de projet / fichier ne peut contenir que des lettres, des chiffres, des espaces, des tirets ou des parenthèses.",

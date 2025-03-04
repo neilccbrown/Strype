@@ -27,7 +27,7 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import i18n from "@/i18n";
 import { CustomEventTypes, getAppSimpleMsgDlgId, getSaveAsProjectModalDlg } from "@/helpers/editor";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
-import { BootstrapDlgSize, MessageDefinitions, SaveExistingGDProjectInfos, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
+import { BootstrapDlgSize, GAPIState, MessageDefinitions, SaveExistingGDProjectInfos, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
 
 // This enum is used for flaging the action taken when a request to save a file on Google Drive
 // has been done, and a file of the same name already exists on the Drive
@@ -52,6 +52,7 @@ export default Vue.extend({
 
     data: function(){
         return {
+            gapiLoadedState: GAPIState.unloaded,
             client: null as google.accounts.oauth2.TokenClient | null, // The Google Identity client
             oauthToken : null as string | null,
             devKey: "AIzaSyDKjPl4foVEM8iCMTkgu_FpedJ604vbm6E",
@@ -143,10 +144,35 @@ export default Vue.extend({
         // After Google API loaded, initialise client:
         gapiStart() {
             gapi.client.init({
-            }).then(function (response) {
+            }).then((response) => {
+                this.gapiLoadedState = GAPIState.loaded;
                 console.log("GAPI loaded");
-            }, function (reason) {
-                console.log("GAPI Error: " + reason.result.error.message);
+            }, (reason) => {
+                this.gapiLoadedState = GAPIState.failed;
+                console.log(reason.result.error.message);
+            });
+        },
+
+        getGAPIStatusWhenLoadedOrFailed(): Promise<GAPIState> {
+            // If the GAPI isn't responsive within 10 seconds we considered it failed to load...
+            const maxWaitingTimeout = 10000;
+            let waitingCounter = 0;
+            const checkingStateInterval = 200; // we check the GAPI state very 200 ms when unloaded
+            return new Promise<GAPIState>((resolve) => {
+                if(this.gapiLoadedState == GAPIState.unloaded){
+                    // GAPI isn't loaded yet, we need to wait
+                    const timerId = setInterval(() => {
+                        waitingCounter += checkingStateInterval;
+                        if(waitingCounter >= maxWaitingTimeout || this.gapiLoadedState != GAPIState.unloaded){
+                            clearInterval(timerId);
+                            resolve((this.gapiLoadedState == GAPIState.unloaded) ? GAPIState.failed : this.gapiLoadedState);
+                        }
+                    }, checkingStateInterval);
+                }
+                else {
+                    // GAPI is loaded or failed to do so, we can return the promise
+                    resolve(this.gapiLoadedState);
+                }
             });
         },
 
@@ -280,38 +306,48 @@ export default Vue.extend({
         getPublicSharedProjectContent(sharedFileID: string) {
             // This mechanism to load file isn't using OAuth but our API key instead. 
             // It is only relevant for getting a Strype project content of a PUBLICLY SHARED project.
-            let alertMsgKey = "", alertParams = "";
-            gapi.client.request({
-                path: `https://www.googleapis.com/drive/v3/files/${sharedFileID}?alt=media&key=${this.devKey}`,
-                method: "GET",
-            })
-                .then((response) => {
-                    if(response.status == 200){
-                        return this.appStore.setStateFromJSONStr({stateJSONStr: decodeURIComponent(escape(response.body)), showMessage: false })
-                            .then(() => {
-                                alertMsgKey = "appMessage.retrievedSharedGenericProject";
-                                alertParams = this.appStore.projectName;
+            // We wait for GAPI to be loaded, or show an error message if it failed
 
-                                // Remove things in the state that were related to Google Drive
-                                this.cleanGoogleDriveRelatedInfosInState();
+            this.getGAPIStatusWhenLoadedOrFailed()
+                .then((gapiState) =>{
+                    if(gapiState == GAPIState.loaded){
+                        let alertMsgKey = "", alertParams = "";
+                        gapi.client.request({
+                            path: `https://www.googleapis.com/drive/v3/files/${sharedFileID}?alt=media&key=${this.devKey}`,
+                            method: "GET",
+                        })
+                            .then((response) => {
+                                if(response.status == 200){
+                                    return this.appStore.setStateFromJSONStr({stateJSONStr: decodeURIComponent(escape(response.body)), showMessage: false })
+                                        .then(() => {
+                                            alertMsgKey = "appMessage.retrievedSharedGenericProject";
+                                            alertParams = this.appStore.projectName;
+
+                                            // Remove things in the state that were related to Google Drive
+                                            this.cleanGoogleDriveRelatedInfosInState();
+                                        })
+                                        .catch((reason) => {
+                                            alertMsgKey = "errorMessage.retrievedSharedGenericProject";
+                                            alertParams = reason;
+                                        });                     
+                                }
+                                else{
+                                    alertMsgKey = "errorMessage.retrievedSharedGenericProject";
+                                    alertParams = response.status?.toString()??"unknown";
+                                }
                             })
                             .catch((reason) => {
                                 alertMsgKey = "errorMessage.retrievedSharedGenericProject";
-                                alertParams = reason;
-                            });                     
+                                alertParams = (reason?.result?.error?.message)??(reason?.status);
+                            })
+                            .finally(() => {
+                                // Show a message to the user that the project has (not) been loaded
+                                (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject(alertMsgKey, alertParams);
+                            });
                     }
                     else{
-                        alertMsgKey = "errorMessage.retrievedSharedGenericProject";
-                        alertParams = response.status?.toString()??"unknown";
+                        (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject("errorMessage.retrievedSharedGenericProject", this.$i18n.t("errorMessage.GAPIFailed") as string);
                     }
-                })
-                .catch((reason) => {
-                    alertMsgKey = "errorMessage.retrievedSharedGenericProject";
-                    alertParams = (reason?.result?.error?.message)??(reason?.status);
-                })
-                .finally(() => {
-                    // Show a message to the user that the project has (not) been loaded
-                    (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject(alertMsgKey, alertParams);
                 });
         },
 
