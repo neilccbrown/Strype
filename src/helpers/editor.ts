@@ -1716,7 +1716,7 @@ export function setPythonExecAreaLayoutButtonPos(): void{
             const peaComponent = (((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as any).$refs[getStrypePEAComponentRefId()]) as InstanceType<typeof PythonExecutionArea>);
             const peaExpandButtonNaturalRightPosOffsets = PEALayoutButtons.map((_, index) => peaComponent.PEALayoutIconStyle(index)["right"]);
             // Then, look for the scrollbars
-            if(peaComponent.isConsoleAreaShowing){
+            if(peaComponent.isConsoleAreaShowing && !peaComponent.isGraphicsAreaShowing){
                 // In the Python console, we wrap the text, only the vertical scrollbar can appear.
                 const scrollDiff = pythonConsoleTextArea.getBoundingClientRect().width - pythonConsoleTextArea.clientWidth;
                 PEALayoutButtons.forEach((peaLayoutButton, index) => {
