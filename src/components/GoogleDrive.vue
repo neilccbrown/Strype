@@ -307,7 +307,6 @@ export default Vue.extend({
             // This mechanism to load file isn't using OAuth but our API key instead. 
             // It is only relevant for getting a Strype project content of a PUBLICLY SHARED project.
             // We wait for GAPI to be loaded, or show an error message if it failed
-
             this.getGAPIStatusWhenLoadedOrFailed()
                 .then((gapiState) =>{
                     if(gapiState == GAPIState.loaded){
@@ -423,10 +422,13 @@ export default Vue.extend({
             if(isExplictSave){
                 this.saveFileId = undefined;
             }
+            // We need to set the name properly by what the user set in the save dialog (if applicable)
+            const newProjectName = (isExplictSave || this.saveReason == SaveRequestReason.overwriteExistingProject) ? this.saveFileName  : this.appStore.projectName;
+            this.appStore.projectName = newProjectName;
             const fileContent = this.appStore.generateStateJSONStrWithCheckpoint();   
             // The file name depends on the context: normal save, we use the filed this.saveName that is in line with what the user provided in the input field
             // while when do autosave etc, we use th PROJECT saved name in the store.
-            const fullFileName = ((isExplictSave || this.saveReason == SaveRequestReason.overwriteExistingProject) ? this.saveFileName  : this.appStore.projectName) + "." + strypeFileExtension;        
+            const fullFileName = newProjectName + "." + strypeFileExtension;        
             // Using this example: https://stackoverflow.com/a/38475303/412908
             // Arbitrary long string:
             const boundary = "2db8c22f75474a58cd13fa2d3425017015d392ce0";

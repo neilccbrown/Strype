@@ -738,8 +738,8 @@ export default Vue.extend({
                                         alertMessage = this.$i18n.t("appMessage.sharedProjectLinkCopied") as string;
                                     }
                                     else{
-                                    // Something happened when we tried to get the public URL of the Google Drive file.
-                                    // We still share the file within Google Drive
+                                        // Something happened when we tried to get the public URL of the Google Drive file.
+                                        // We still share the file within Google Drive
                                         shareLink = `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentGoogleDriveSaveFileId}`;
                                         alertMessage = this.$i18n.t("appMessage.gdPublicShareFailed", (this.$i18n.t("errorMessage.webViewLinkNotRetrieved", resp.status?.toString()??"unknown") as string)) as string;
                                     }
