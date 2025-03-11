@@ -41,15 +41,17 @@
                     </div>
                 </pane>
             </Splitpanes>
-            <div v-for="(layoutData, index) in PEALayoutsData" 
-                :key="'strype-PEA-Layout-'+index" 
-                @click="togglePEALayout(layoutData.mode)" 
-                :title="$t('PEA.'+layoutData.iconName)"
-                class="pea-toggle-layout-buttons-container">
-                <SVGIcon :name="layoutData.iconName" 
-                    :customClass="{'pea-toggle-layout-button': true,'dark-mode': (isTabsLayout && peaDisplayTabIndex==0)}" 
-                    :customStyle="PEALayoutIconStyle(index)"
-                />
+            <div :class="{hidden: !isTabContentHovered || isPythonExecuting}">
+                <div v-for="(layoutData, index) in PEALayoutsData" 
+                    :key="'strype-PEA-Layout-'+index" 
+                    @click="togglePEALayout(layoutData.mode)" 
+                    :title="$t('PEA.'+layoutData.iconName)"
+                >
+                    <SVGIcon :name="layoutData.iconName" 
+                        :customClass="{'pea-toggle-layout-button': true,'dark-mode': (isTabsLayout && peaDisplayTabIndex==0)}" 
+                        :customStyle="PEALayoutIconStyle(index)"
+                    />
+                </div>
             </div>
         </div>
     </div>

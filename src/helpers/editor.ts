@@ -1709,7 +1709,7 @@ export function setPythonExecAreaLayoutButtonPos(): void{
     setTimeout(() => {
         const pythonConsoleTextArea = document.getElementById("pythonConsole");
         const pythonTurtleContainerDiv = document.getElementById("pythonTurtleContainerDiv");
-        const PEALayoutButtons = [...document.getElementsByClassName("pea-toggle-size-button")] as HTMLDivElement[];
+        const PEALayoutButtons = [...document.getElementsByClassName("pea-toggle-layout-button")] as HTMLDivElement[];
         if(pythonConsoleTextArea && pythonTurtleContainerDiv){
             // First get the natural position offset of the button, so can compute the new position:
             const peaExpandButtonNaturalBottonPosOffset = parseInt((scssVars.pythonExecutionAreaLayoutButtonsPosOffset as string).replace("px",""));
