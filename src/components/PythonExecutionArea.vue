@@ -466,10 +466,11 @@ export default Vue.extend({
             const canvasH = turtleCanvas.height;
             const tabContentElementBoundingClientRect = tabContentContainerDiv.getBoundingClientRect();
             let {width: tabContentW, height: tabContentH} = tabContentElementBoundingClientRect;
+            const tabContentMaxH = parseFloat(window.getComputedStyle(tabContentContainerDiv).maxHeight.replace("px",""));
 
             // If we are minimising the PEA, we make sure we don't expand the tab container more than the default 4:3 ratio.
-            // (larger canvas will expand the PEA, but we want to keep it at a consistent size all the time.)
-            if(!this.isExpandedPEA){
+            // (larger canvas will expand the PEA when we are below the natural ratio, but we want to keep it at a consistent size all the time.)
+            if(!this.isExpandedPEA && tabContentW * 0.75 <= tabContentMaxH){
                 tabContentH = tabContentW * 0.75;
                 tabContentContainerDiv.style.height = tabContentH+"px";
             }
