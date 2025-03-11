@@ -25,12 +25,32 @@
     <strong>We're sorry but Strype doesn't work without JavaScript enabled.
         Please enable it to continue.</strong>
   </noscript>
+  
+  <div id="StrypeSVGIconsSprite" style="display: none;">
+    <!--We need to load the SVG sprite for Strype ASAP, so it can be used by the app's components, see script below. -->
+  </div>
+  
   <b id="uncompatibleBrowserSpan" style="display: block; white-space: pre; margin:auto; width: 50%;"></b>
   
   <div id="app"></div>
   <!-- built files will be auto injected -->
 
   <script>
+    /**
+     * Loading of the Strype SVG Icons sprite.
+     * It needs to be done ASAP in the lifecycle of the application,
+     * so it is best to do it in here. 
+     **/
+    const spriteContainerDiv = document.getElementById("StrypeSVGIconsSprite");
+    if(spriteContainerDiv){
+      fetch("img/StrypeSVGIcons.svg")
+        .then((response) => response.text())
+        .then((svgContent) => {
+          spriteContainerDiv.innerHTML = svgContent;
+        })
+        .catch(console.error);
+    }
+
     /**
      * Root-level scripts to test things for compatibilty. 
     */

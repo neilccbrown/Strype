@@ -13,6 +13,7 @@ import Frame from "@/components/Frame.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import FrameBody from "@/components/FrameBody.vue";
 import JointFrames from "@/components/JointFrames.vue";
+import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 
 export const undoMaxSteps = 200;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
@@ -1691,13 +1692,16 @@ export function setPythonExecutionAreaTabsContentMaxHeight(): void {
     // (defined above) with the correct value. If not, we use the default 50vh (50% of body) value directly.
     const editorNewMaxHeight = manuallyResizedEditorHeight ?? (fullAppHeight / 2);
     // For the tabs' height, we can't rely on the container as the tabs may stack on top of each other (small browser window)
-    const pythonExecAreaTabsAreaHeight = (document.querySelector("#peaControlsDiv li") as HTMLLIElement).getBoundingClientRect().height;
-    (document.querySelector("#tabContentContainerDiv") as HTMLDivElement).style.maxHeight = ((fullAppHeight - editorNewMaxHeight - pythonExecAreaTabsAreaHeight) + "px");
+    // so we get the first element of the tab section that is not having a 0 height (because tabs are hidden when we are in split layout)
+    const pythonExecAreaTabsAreaHeight = [...document.querySelectorAll("#peaControlsDiv li, .pea-no-tabs-controls")]
+        .find((element) => element.getBoundingClientRect().height != 0)
+        ?.getBoundingClientRect().height;    
+    (document.querySelector("#tabContentContainerDiv") as HTMLDivElement).style.maxHeight = ((fullAppHeight - editorNewMaxHeight - (pythonExecAreaTabsAreaHeight??0)) + "px");
 }
 
-// This method set the Python Execution Area expand/collapse button position based on the presence of scrollbars
+// This method set the Python Execution Area layout buttons position based on the presence of scrollbars
 // (It is put here as we need to call at different points in the code.)
-export function setPythonExecAreaExpandButtonPos(): void{
+export function setPythonExecAreaLayoutButtonPos(): void{
     // We need to know in which context we are : Python console, or Turtle.
     // The general idea is to override the CSS styling by directly applying style when needed (the case a scrollbar is present).
     // We find out the size of the scroll bar, add a margin of 2px, to displace the button by that size.
@@ -1705,24 +1709,29 @@ export function setPythonExecAreaExpandButtonPos(): void{
     setTimeout(() => {
         const pythonConsoleTextArea = document.getElementById("pythonConsole");
         const pythonTurtleContainerDiv = document.getElementById("pythonTurtleContainerDiv");
-        const peaExpandButton = document.getElementsByClassName("pea-toggle-size-button")[0] as HTMLDivElement;
+        const PEALayoutButtons = [...document.getElementsByClassName("pea-toggle-size-button")] as HTMLDivElement[];
         if(pythonConsoleTextArea && pythonTurtleContainerDiv){
             // First get the natural position offset of the button, so can compute the new position:
-            const peaExpandButtonNaturalPosOffset = parseInt((scssVars.pythonExecutionAreaExpandButtonPosOffset as string).replace("px",""));
-    
+            const peaExpandButtonNaturalBottonPosOffset = parseInt((scssVars.pythonExecutionAreaLayoutButtonsPosOffset as string).replace("px",""));
+            const peaComponent = (((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as any).$refs[getStrypePEAComponentRefId()]) as InstanceType<typeof PythonExecutionArea>);
+            const peaExpandButtonNaturalRightPosOffsets = PEALayoutButtons.map((_, index) => peaComponent.PEALayoutIconStyle(index)["right"]);
             // Then, look for the scrollbars
-            if(pythonConsoleTextArea.style.display != "none"){
+            if(peaComponent.isConsoleAreaShowing){
                 // In the Python console, we wrap the text, only the vertical scrollbar can appear.
                 const scrollDiff = pythonConsoleTextArea.getBoundingClientRect().width - pythonConsoleTextArea.clientWidth;
-                peaExpandButton.style.right = (pythonConsoleTextArea.scrollHeight > pythonConsoleTextArea.clientHeight) ? (peaExpandButtonNaturalPosOffset + scrollDiff + 2) + "px" : "";
-                peaExpandButton.style.bottom = "";
+                PEALayoutButtons.forEach((peaLayoutButton, index) => {
+                    peaLayoutButton.style.right = (pythonConsoleTextArea.scrollHeight > pythonConsoleTextArea.clientHeight) ? peaExpandButtonNaturalRightPosOffsets[index].replace("calc(", `calc(${scrollDiff + 2}px + `) : peaExpandButtonNaturalRightPosOffsets[index];
+                    peaLayoutButton.style.bottom = "";                
+                });
             }
             else{
                 // In the Turtle container, any of the scrollbars can appear.
                 const scrollDiffW = pythonTurtleContainerDiv.getBoundingClientRect().width - pythonTurtleContainerDiv.clientWidth,
                     scrollDiffH = pythonTurtleContainerDiv.getBoundingClientRect().height - pythonTurtleContainerDiv.clientHeight;
-                peaExpandButton.style.right = (pythonTurtleContainerDiv.scrollHeight > pythonTurtleContainerDiv.clientHeight) ? (peaExpandButtonNaturalPosOffset + scrollDiffW + 2) + "px" : "";
-                peaExpandButton.style.bottom = (pythonTurtleContainerDiv.scrollWidth > pythonTurtleContainerDiv.clientWidth) ? (peaExpandButtonNaturalPosOffset + scrollDiffH + 2) + "px" : "";
+                PEALayoutButtons.forEach((peaLayoutButton, index) => {
+                    peaLayoutButton.style.right = (pythonTurtleContainerDiv.scrollHeight > pythonTurtleContainerDiv.clientHeight) ? peaExpandButtonNaturalRightPosOffsets[index].replace("calc(", `calc(${scrollDiffW + 2}px + `) : peaExpandButtonNaturalRightPosOffsets[index];
+                    peaLayoutButton.style.bottom = (pythonTurtleContainerDiv.scrollWidth > pythonTurtleContainerDiv.clientWidth) ? (peaExpandButtonNaturalBottonPosOffset + scrollDiffH + 2) + "px" : "";
+                });
             }
         }
     }, 100);
