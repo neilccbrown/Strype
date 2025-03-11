@@ -506,7 +506,7 @@ export default Vue.extend({
         }
         else{
             // The default opening of Strype (either brand new project or retrieving from local storage -- not opening a shared project)
-            this.loadLocaStorageProjectOnStart();
+            this.loadLocalStorageProjectOnStart();
         }
 
         // Register a listener to handle the context menu hovers (cf onContextMenuHover())
@@ -589,7 +589,7 @@ export default Vue.extend({
             }
         },
 
-        loadLocaStorageProjectOnStart() {
+        loadLocalStorageProjectOnStart() {
             // Check the local storage (WebStorage) to see if there is a saved project from the previous time the user entered the system
             // if browser supports localstorage
             if (typeof(Storage) !== "undefined") {
