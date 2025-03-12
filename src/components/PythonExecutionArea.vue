@@ -3,8 +3,8 @@
     <div id="peaComponent" :class="{'expanded-PEA': isExpandedPEA}" ref="peaComponent" @mousedown="handlePEAMouseDown">
         <div id="peaControlsDiv" :class="{'expanded-PEA-controls': isExpandedPEA}">           
             <b-tabs v-show="isTabsLayout" v-model="peaDisplayTabIndex" no-key-nav>
-                <b-tab v-show="isTabsLayout" :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab" active></b-tab>
                 <b-tab v-show="isTabsLayout" :button-id="graphicsTabId" :title="'\uD83D\uDC22 '+$t('PEA.TurtleGraphics')" title-link-class="pea-display-tab"></b-tab>
+                <b-tab v-show="isTabsLayout" :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab" active></b-tab>
             </b-tabs>
             <!-- IMPORTANT: keep this div with "invisible" text for proper layout rendering, it replaces the tabs -->
             <span v-if="!isTabsLayout" class="pea-no-tabs-controls">c+g</span>
@@ -18,7 +18,15 @@
         <div id="tabContentContainerDiv">
             <!-- the SplitPanes is used in all layout configurations: for tabs, we only show 1 of the panes and disable moving the divider, and for stacked window it acts as normal -->
             <Splitpanes :class="{'strype-PEA-split-theme': true, 'with-expanded-PEA': isExpandedPEA, 'tabs-PEA': isTabsLayout}" :horizontal="!isExpandedPEA" @resize="onSplitterPane1Resize">
-                <pane key="1" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : currentSplitterPane1Size">
+                <pane id="PEAGraphicsSplitPane" key="1" v-show="isGraphicsAreaShowing" :size="(isTabsLayout) ? 100 : currentSplitterPane1Size">
+                    <div id="pythonTurtleContainerDiv" @wheel.stop :class="{hidden: graphicsTemporaryHidden}">
+                        <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
+                            <div id="pythonTurtleDiv" ref="pythonTurtleDiv"></div>
+                        </div>
+                        <span id="noTurtleSpan" v-if="isGraphicsAreaShowing && !turtleGraphicsImported">{{$t('PEA.importTurtle')}}</span> 
+                    </div>
+                </pane>
+                <pane key="2" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)">
                     <textarea 
                         id="pythonConsole"
                         ref="pythonConsole"
@@ -31,14 +39,6 @@
                         spellcheck="false"
                     >    
                     </textarea>
-                </pane>
-                <pane id="PEAGraphicsSplitPane" key="2" v-show="isGraphicsAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)">
-                    <div id="pythonTurtleContainerDiv" @wheel.stop :class="{hidden: graphicsTemporaryHidden}">
-                        <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
-                            <div id="pythonTurtleDiv" ref="pythonTurtleDiv"></div>
-                        </div>
-                        <span id="noTurtleSpan" v-if="isGraphicsAreaShowing && !turtleGraphicsImported">{{$t('PEA.importTurtle')}}</span> 
-                    </div>
                 </pane>
             </Splitpanes>
             <div :class="{'pea-toggle-layout-buttons-container': true, hidden: (!isTabContentHovered || isPythonExecuting)}">
@@ -64,6 +64,9 @@ import Menu from "@/components/Menu.vue";
 import SVGIcon from "@/components/SVGIcon.vue";
 import {Splitpanes, Pane} from "splitpanes";
 
+// Helper to keep indexed tabs (for maintenance if we add some tabs etc)
+const enum PEATabIndexes {graphics, console}
+
 export default Vue.extend({
     name: "PythonExecutionArea",
 
@@ -79,7 +82,7 @@ export default Vue.extend({
             isTabsLayout: true, // flag to indicate the PEA's layout - tabs by default
             graphicsTemporaryHidden: false, //flag to use when we need to temporary hide the graphics for UI reasons (like before a layout of the PEA is performed, so we can compute things right)
             turtleGraphicsImported: false, // by default, Turtle isn't imported - this flag is updated when we detect the import (see event registration in mounted())
-            peaDisplayTabIndex: 0, // the index of the PEA tab (console/turtle), we use it equally as a flag to indicate if we are on Turtle
+            peaDisplayTabIndex: PEATabIndexes.console, // the index of the PEA tab (graphics/console), we use it equally as a flag to indicate if we are on one or other tab
             interruptedTurtle: false,
             isTabContentHovered: false,
             isTurtleListeningKeyEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for key events on Turtle
@@ -147,8 +150,8 @@ export default Vue.extend({
                         this.scaleTurtleCanvas(tabContentContainerDiv, graphicsSplitPaneDiv, turtlePlaceholderDiv);
                     }, 100);
 
-                    // When a canvas has been added we can select the Turtle tab
-                    this.peaDisplayTabIndex = 1;
+                    // When a canvas has been added we can select the Graphics tab
+                    this.peaDisplayTabIndex = PEATabIndexes.graphics;
                 }
             });
             turtleDivPlaceholderObserver.observe(turtlePlaceholderDiv, {childList: true});   
@@ -205,11 +208,11 @@ export default Vue.extend({
         },
 
         isConsoleAreaShowing(): boolean {
-            return !this.isTabsLayout || (this.isTabsLayout && this.peaDisplayTabIndex == 0);
+            return !this.isTabsLayout || (this.isTabsLayout && this.peaDisplayTabIndex == PEATabIndexes.console);
         },
 
         isGraphicsAreaShowing(): boolean {
-            return !this.isTabsLayout || (this.isTabsLayout && this.peaDisplayTabIndex == 1);
+            return !this.isTabsLayout || (this.isTabsLayout && this.peaDisplayTabIndex == PEATabIndexes.graphics);
         },
 
         isPythonExecuting(): boolean {
@@ -370,24 +373,24 @@ export default Vue.extend({
                 // If there is an error, we reach it and, if Turtle is active, we make sure we show the Python console
                 if(this.appStore.errorCount > 0){
                     this.reachFirstError();
-                    this.peaDisplayTabIndex = 0;
+                    this.peaDisplayTabIndex = PEATabIndexes.console;
                 }
             });
         },
 
         onFocus(): void {
             this.appStore.isEditing = false;
-            this.peaDisplayTabIndex = 0;
+            this.peaDisplayTabIndex = PEATabIndexes.console;
         },
 
         handleConsoleFocusRequest(): void {
             // This method is responsible for handling when a focus on the console (textarea) is requrested programmatically
             // (typically when the Python input() function is encountered)
             
-            //First we switch between Turtle and the console shall the Turtle be showing at the moment
-            if(this.peaDisplayTabIndex == 1){
+            //First we switch between Graphics and the console shall the Turtle be showing at the moment
+            if(this.peaDisplayTabIndex == PEATabIndexes.graphics){
                 this.interruptedTurtle = true;
-                this.peaDisplayTabIndex = 0;
+                this.peaDisplayTabIndex = PEATabIndexes.console;
             }
 
             //In any case, then we focus the console (keep setTimeout rather than nextTick to have enough time to be effective)
@@ -399,7 +402,7 @@ export default Vue.extend({
             // If there was a Turtle being shown, we get back to it. If not, we just stay on the console.
             if(this.turtleGraphicsImported && this.interruptedTurtle){
                 this.interruptedTurtle = false;
-                this.peaDisplayTabIndex = 1;
+                this.peaDisplayTabIndex = PEATabIndexes.graphics;
             }
         },
 
