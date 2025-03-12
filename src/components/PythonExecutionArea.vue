@@ -41,16 +41,10 @@
                     </div>
                 </pane>
             </Splitpanes>
-            <div :class="{hidden: !isTabContentHovered || isPythonExecuting}">
-                <div v-for="(layoutData, index) in PEALayoutsData" 
-                    :key="'strype-PEA-Layout-'+index" 
-                    @click="togglePEALayout(layoutData.mode)" 
-                    :title="$t('PEA.'+layoutData.iconName)"
-                >
-                    <SVGIcon :name="layoutData.iconName" 
-                        :customClass="{'pea-toggle-layout-button': true,'dark-mode': (isTabsLayout && peaDisplayTabIndex==0)}" 
-                        :customStyle="PEALayoutIconStyle(index)"
-                    />
+            <div :class="{'pea-toggle-layout-buttons-container': true, hidden: (!isTabContentHovered || isPythonExecuting)}">
+                <div v-for="(layoutData, index) in PEALayoutsData" :key="'strype-PEA-Layout-'+index" 
+                    @click="togglePEALayout(layoutData.mode)" :title="$t('PEA.'+layoutData.iconName)">
+                    <SVGIcon :name="layoutData.iconName" customClass="pea-toggle-layout-button" />
                 </div>
             </div>
         </div>
@@ -69,7 +63,6 @@ import { PythonExecRunningState, StrypePEALayoutData, StrypePEALayoutMode } from
 import Menu from "@/components/Menu.vue";
 import SVGIcon from "@/components/SVGIcon.vue";
 import {Splitpanes, Pane} from "splitpanes";
-import scssVars  from "@/assets/style/_export.module.scss";
 
 export default Vue.extend({
     name: "PythonExecutionArea",
@@ -418,11 +411,6 @@ export default Vue.extend({
             setPythonExecAreaLayoutButtonPos();
         },
 
-        PEALayoutIconStyle(iconIndex: number): Record<string, string> {
-            // The layout icons are shown side by side
-            return {"right": `calc(${scssVars.pythonExecutionAreaLayoutButtonsPosOffset} + ${this.PEALayoutsData.length - iconIndex - 1} * ${scssVars.pythonExecutionAreaLayoutButtonSpacing})`};
-        },
-
         togglePEALayout(layoutMode: StrypePEALayoutMode){
             const newTabsLayout = (layoutMode == StrypePEALayoutMode.tabsCollapsed || layoutMode == StrypePEALayoutMode.tabsExpanded);
             const newExpandLayout = (layoutMode == StrypePEALayoutMode.tabsExpanded || layoutMode == StrypePEALayoutMode.splitExpanded);
@@ -565,17 +553,26 @@ export default Vue.extend({
         color: red;
     }
 
-    .pea-toggle-layout-button {
+    .pea-toggle-layout-buttons-container {
         position: absolute;
-        bottom: $strype-python-exec-area-layout-buttons-pos-offset; // right position is generated dynamically see PEALayoutIconStyle()
-        color: black;
+        bottom: $strype-python-exec-area-layout-buttons-pos-offset;
+        right: $strype-python-exec-area-layout-buttons-pos-offset;
+        display: flex;
+        column-gap: 5px;
+        padding: 3px 3px;
+        border-radius: 5px;
+        background: rgb(69, 68, 68) !important;
+    }
+
+    .pea-toggle-layout-buttons-container > div {
+        line-height: 0px; // Thanks copilot! needs to be 0 for making sure the divs are same heights as content
+    }
+
+    .pea-toggle-layout-button {
+        color: white;
         cursor: pointer;
         width: 20px;
         height: 20px;
-    }
-
-    .pea-toggle-layout-button.dark-mode {        
-        color: white !important;
     }
 
     .show-error-icon {

@@ -1709,29 +1709,25 @@ export function setPythonExecAreaLayoutButtonPos(): void{
     setTimeout(() => {
         const pythonConsoleTextArea = document.getElementById("pythonConsole");
         const pythonTurtleContainerDiv = document.getElementById("pythonTurtleContainerDiv");
-        const PEALayoutButtons = [...document.getElementsByClassName("pea-toggle-layout-button")] as HTMLDivElement[];
-        if(pythonConsoleTextArea && pythonTurtleContainerDiv){
+        const peaLayoutButtonsContainer = document.getElementsByClassName("pea-toggle-layout-buttons-container")?.[0];
+        const peaComponent = ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as any).$refs[getStrypePEAComponentRefId()]);
+        if(pythonConsoleTextArea && pythonTurtleContainerDiv && peaLayoutButtonsContainer && peaComponent){
             // First get the natural position offset of the button, so can compute the new position:
-            const peaExpandButtonNaturalBottonPosOffset = parseInt((scssVars.pythonExecutionAreaLayoutButtonsPosOffset as string).replace("px",""));
-            const peaComponent = (((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as any).$refs[getStrypePEAComponentRefId()]) as InstanceType<typeof PythonExecutionArea>);
-            const peaExpandButtonNaturalRightPosOffsets = PEALayoutButtons.map((_, index) => peaComponent.PEALayoutIconStyle(index)["right"]);
+            const peaExpandButtonNaturalPosOffset = parseInt((scssVars.pythonExecutionAreaLayoutButtonsPosOffset as string).replace("px",""));
             // Then, look for the scrollbars
-            if(peaComponent.isConsoleAreaShowing && !peaComponent.isGraphicsAreaShowing){
+            if((peaComponent as InstanceType<typeof PythonExecutionArea>).isConsoleAreaShowing && !(peaComponent as InstanceType<typeof PythonExecutionArea>).isGraphicsAreaShowing){
                 // In the Python console, we wrap the text, only the vertical scrollbar can appear.
                 const scrollDiff = pythonConsoleTextArea.getBoundingClientRect().width - pythonConsoleTextArea.clientWidth;
-                PEALayoutButtons.forEach((peaLayoutButton, index) => {
-                    peaLayoutButton.style.right = (pythonConsoleTextArea.scrollHeight > pythonConsoleTextArea.clientHeight) ? peaExpandButtonNaturalRightPosOffsets[index].replace("calc(", `calc(${scrollDiff + 2}px + `) : peaExpandButtonNaturalRightPosOffsets[index];
-                    peaLayoutButton.style.bottom = "";                
-                });
+                (peaLayoutButtonsContainer as HTMLDivElement).style.right = (pythonConsoleTextArea.scrollHeight > pythonConsoleTextArea.clientHeight) ? (peaExpandButtonNaturalPosOffset + scrollDiff + 2) + "px" : "";
+                (peaLayoutButtonsContainer as HTMLDivElement).style.bottom = "";                
             }
             else{
                 // In the Turtle container, any of the scrollbars can appear.
                 const scrollDiffW = pythonTurtleContainerDiv.getBoundingClientRect().width - pythonTurtleContainerDiv.clientWidth,
                     scrollDiffH = pythonTurtleContainerDiv.getBoundingClientRect().height - pythonTurtleContainerDiv.clientHeight;
-                PEALayoutButtons.forEach((peaLayoutButton, index) => {
-                    peaLayoutButton.style.right = (pythonTurtleContainerDiv.scrollHeight > pythonTurtleContainerDiv.clientHeight) ? peaExpandButtonNaturalRightPosOffsets[index].replace("calc(", `calc(${scrollDiffW + 2}px + `) : peaExpandButtonNaturalRightPosOffsets[index];
-                    peaLayoutButton.style.bottom = (pythonTurtleContainerDiv.scrollWidth > pythonTurtleContainerDiv.clientWidth) ? (peaExpandButtonNaturalBottonPosOffset + scrollDiffH + 2) + "px" : "";
-                });
+                (peaLayoutButtonsContainer as HTMLDivElement).style.right = (pythonTurtleContainerDiv.scrollHeight > pythonTurtleContainerDiv.clientHeight) ? (peaExpandButtonNaturalPosOffset + scrollDiffW + 2) + "px" : "";
+                (peaLayoutButtonsContainer as HTMLDivElement).style.bottom = (pythonTurtleContainerDiv.scrollWidth > pythonTurtleContainerDiv.clientWidth) ? (peaExpandButtonNaturalPosOffset + scrollDiffH + 2) + "px" : "";
+    
             }
         }
     }, 100);

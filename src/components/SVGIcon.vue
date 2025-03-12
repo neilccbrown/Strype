@@ -1,12 +1,12 @@
 <template>
-  <svg :class="{'svg-icon':true, ...customClass}" :style="{...customStyle}">
+  <svg :class="computedCustomClass" :style="customStyle">
     <use :xlink:href="'#strype-svgicon-'+name" fill="currentColor"></use>
   </svg>
 </template>
 
 <script lang="ts">
 
-import Vue from "vue";
+import Vue, { PropType } from "vue";
 
 /**
  * This SVGIcon component is a helper component to use in place
@@ -22,15 +22,32 @@ export default Vue.extend({
 
     props: {
         name: { type: String, required: true }, // the icon name
-        customClass: { type: Object, required: false}, // the custom class to apply to the icon
-        customStyle: {type: Object, required: false}, // the custom style to apply to the icon
+        customClass: {type: [String, Object] as PropType<string | Record<string, boolean>>, required: false}, // the custom class to apply to the icon
+        customStyle: {type: [String, Object] as PropType<string | Record<string, string>>, required: false}, // the custom style to apply to the icon
+    },
+
+    computed: {
+        computedCustomClass(): string | Record<string, boolean> {
+            // The property "customClass" can be set as a string (of classes) 
+            // or as Record<string, boolean>, therefore, we need to adjust the prop
+            // so we can use it correctly in our component template.
+            // We also add the default component's class here
+            const defaultClass = "strype-svg-icon";
+            if (typeof this.customClass === "string") {
+                return defaultClass + " " + this.customClass;
+            }
+            else if (typeof this.customClass === "object") {
+                return {...{defaultClass: true}, ...this.customClass };
+            }
+            return defaultClass;          
+        },
     },
 });
 </script>
 
 <style lang="scss">
     // The default style of our SVG icons
-    .svg-icon {
+    .strype-svg-icon {
         width: 24px;
         height: 24px;
         fill: currentColor; /* Inherits text color */
