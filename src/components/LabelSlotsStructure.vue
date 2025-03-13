@@ -360,7 +360,7 @@ export default Vue.extend({
                     if (file && (isImage || isAudio)) {
                         readFileAsyncAsData(file).then(isImage ? readImageSizeFromDataURI : (s) => Promise.resolve({dataURI: s, width: -1, height: -1})).then((dataAndDim) => {
                             // The code is the code to load the literal from its base64 string representation:
-                            const code = (isImage ? "load_image" : "Sound") + "(\"" + dataAndDim.dataURI + "\")";
+                            const code = (isImage ? "load_image" : "load_sound") + "(\"" + dataAndDim.dataURI + "\")";
                             document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos))
                                 ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: item.type, content: code, width: dataAndDim.width, height: dataAndDim.height}}));
                         });
@@ -377,7 +377,7 @@ export default Vue.extend({
 
                 const content = event.clipboardData.getData("Text").trim();
                 if (content) {
-                    const ms = splitByRegexMatches(content, /(?:load_image|Sound)\("data:(?:image|audio)[^;]*;base64,[^"]+"\)/);
+                    const ms = splitByRegexMatches(content, /(?:load_image|load_sound)\("data:(?:image|audio)[^;]*;base64,[^"]+"\)/);
                     for (let i = 0; i < ms.length; i++) {
                         // We know even values (0, 2) are the plain string parts inbetween regex matches,
                         // and odd values (1, 3) are the parts which matched the regex:
@@ -389,7 +389,7 @@ export default Vue.extend({
                             const details = /data:([^;]+);base64,[^"']+/.exec(ms[i]);
                             if (details) {
                                 const dataAndBase64 = details[0];
-                                const code = (details[1].startsWith("image") ? "load_image" : "Sound") + "(\"" + dataAndBase64 + "\")";
+                                const code = (details[1].startsWith("image") ? "load_image" : "load_sound") + "(\"" + dataAndBase64 + "\")";
                                 pastedItems.push({type: details[1], content: code});
                             }
                         }
