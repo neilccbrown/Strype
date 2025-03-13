@@ -241,8 +241,8 @@ class Image:
         :param x: The left X coordinate to draw the image at.
         :param y: The top Y coordinate to draw the image at.
         """
-        dim = _strype_graphics_internal.getCanvasDimensions(image._EditableImage__image)
-        _strype_graphics_internal.canvas_drawImagePart(self.__image, image._EditableImage__image, x, y, 0, 0, dim[0], dim[1], 1.0)
+        dim = _strype_graphics_internal.getCanvasDimensions(image._Image__image)
+        _strype_graphics_internal.canvas_drawImagePart(self.__image, image._Image__image, x, y, 0, 0, dim[0], dim[1], 1.0)
 
     def draw_part_of_image(self, image, x, y, sx, sy, width, height, scale = 1.0):
         """
@@ -257,7 +257,7 @@ class Image:
         :param height: The height of the area to draw from.
         :param scale: The scale of the image (1.0 is original size, higher values result in drawing a larger version).
         """
-        _strype_graphics_internal.canvas_drawImagePart(self.__image, image._EditableImage__image, x, y, sx, sy, width, height, scale)
+        _strype_graphics_internal.canvas_drawImagePart(self.__image, image._Image__image, x, y, sx, sy, width, height, scale)
 
     #@@ float
     def get_width(self):
@@ -485,7 +485,7 @@ class Actor:
         :param tag: The tag to give the actor (for use in detecting touching actors)
         """
         if isinstance(image_or_filename, Image):
-            self.__id = _strype_graphics_internal.addImage(image_or_filename._EditableImage__image, self)
+            self.__id = _strype_graphics_internal.addImage(image_or_filename._Image__image, self)
             self.__editable_image = image_or_filename
         elif isinstance(image_or_filename, str):
             self.__id = _strype_graphics_internal.addImage(_strype_graphics_internal.loadAndWaitForImage(image_or_filename), self)
@@ -789,7 +789,7 @@ class Actor:
         if self.__editable_image is None:
             # The -1, -1 sizing indicates we will set the image ourselves afterwards:
             self.__editable_image = Image(-1, -1)
-            self.__editable_image._EditableImage__image = _strype_graphics_internal.makeImageEditable(self.__id) 
+            self.__editable_image._Image__image = _strype_graphics_internal.makeImageEditable(self.__id) 
         return self.__editable_image
     
     def say(self, text, font_size = 20, max_width = 300, max_height = 200, font_family = None):
@@ -829,7 +829,7 @@ class Actor:
             sayImg.set_stroke("#555555FF")
             sayImg.rounded_rectangle(0, 0, textDimensions.width + 2 * padding, textDimensions.height + 2 * padding, padding)
             sayImg.draw_part_of_image(textOnlyImg, padding, padding, 0, 0, textDimensions.width, textDimensions.height)
-            self.__say = _strype_graphics_internal.addImage(sayImg._EditableImage__image, None)
+            self.__say = _strype_graphics_internal.addImage(sayImg._Image__image, None)
             self._update_say_position()
             
     def _update_say_position(self):
@@ -894,7 +894,7 @@ def load_image(filename):
     :return: An Image object with the same image and dimensions as the given file
     """
     img = Image(-1, -1)
-    img._EditableImage__image = _strype_graphics_internal.htmlImageToCanvas(_strype_graphics_internal.loadAndWaitForImage(filename))
+    img._Image__image = _strype_graphics_internal.htmlImageToCanvas(_strype_graphics_internal.loadAndWaitForImage(filename))
     return img
 
 #@@ Actor
@@ -986,7 +986,7 @@ def set_background(image_or_filename_or_color, tile_to_fit = True):
     else:
         raise TypeError("image_or_filename_or_color must be an Image or a string or a Color")
 
-    _strype_graphics_internal.setBackground(bk_image._EditableImage__image)        
+    _strype_graphics_internal.setBackground(bk_image._Image__image)        
     
 def stop():
     """
