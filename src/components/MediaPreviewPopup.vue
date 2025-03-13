@@ -68,14 +68,14 @@ export default Vue.extend({
                 if (this.imgDataURL != media.imageDataURL) {
                     this.imgDataURL = media.imageDataURL;
                     // This is not translated because it's a class name:
-                    this.mediaInfo = "EditableImage";
+                    this.mediaInfo = "Image";
                 }
             }
         },
         imgLoaded(event: Event) {
             const previewImgElement = event.target as HTMLImageElement;
             if (this.mediaType.startsWith("image/")) {
-                this.mediaInfo = `EditableImage (${this.mediaType.replace("image/", "")})<br>${previewImgElement?.naturalWidth} × ${previewImgElement?.naturalHeight} ${this.$t("media.pixels")}`;
+                this.mediaInfo = `Image (${this.mediaType.replace("image/", "")})<br>${previewImgElement?.naturalWidth} × ${previewImgElement?.naturalHeight} ${this.$t("media.pixels")}`;
             }
         },
         startHidePopup() {
