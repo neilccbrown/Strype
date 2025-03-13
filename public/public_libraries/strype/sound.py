@@ -1,13 +1,5 @@
 import strype_sound_internal as _strype_sound_internal
 
-def play_sound(filename):
-    """
-    Starts playing the given sound, returning immediately without waiting for it to finish.
-    
-    :param filename: The filename of the sound 
-    """
-    _strype_sound_internal.playOneOffSound(filename)
-
 class Sound:
     def __init__(self, source_or_seconds, samples_per_second = 44100):
         """
@@ -18,6 +10,7 @@ class Sound:
         which will create an empty sound.
         
         Note that if you load a sound file, most browsers will resample it to a fixed rate (44100 or 48000).
+        So the sample rate of a loaded sound file will probably not match the original file.
          
         :param source_or_seconds: A string filename to load a sound, or a numeric value to create an empty sound of that length in seconds. 
         :param samples_per_second: If the first parameter is a number, this is the sampling rate in samples per second. 
@@ -63,7 +56,7 @@ class Sound:
 
     def play(self):
         """
-        Starts playing the sound, but returns immediately without waiting for the sound to finish playing.
+        Starts playing the sound from the start, but returns immediately without waiting for the sound to finish playing.
         """
         _strype_sound_internal.playAudioBuffer(self.__buffer)
 
