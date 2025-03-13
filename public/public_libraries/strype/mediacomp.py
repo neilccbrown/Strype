@@ -150,7 +150,7 @@ def makeSound(path):
     :returns: the sound created from the file at the given path
     Takes a filename as input, reads the file, and creates a sound from it. Returns the sound.
     """
-    return _sound.Sound("mediacomp/" + path)
+    return _sound.load_sound("mediacomp/" + path)
 
 # Note: Not supported in browser.  (Could do this with cloud storage?)
 #def pickAFile():
