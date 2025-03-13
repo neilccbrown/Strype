@@ -428,6 +428,7 @@ class FontFamily:
         by calling:
         
         .. code-block:: python
+        
             FontFamily("google", "Roboto") 
             
         If the font cannot be loaded, you will get an error.  This usually indicates either an issue with your Internet connection, or that you have entered the font name wrongly.
@@ -924,8 +925,8 @@ def set_background(image_or_filename_or_color, tile_to_fit = True):
     
     The parameter can be an Image, a color, a filename of an image in Strype's image library, or a URL.
     Using a URL requires the server to allow remote image loading from Javascript via a feature
-        called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and
-        you can load the image in a browser yourself.
+    called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and
+    you can load the image in a browser yourself.
     
     If tile_to_fit is True and the background image is smaller than 800x600, it will be tiled (repeated) to fill the area of 800x600.
     If tile_to_fit is True and background image is larger than 800x600, it will be centered, and the extra regions will be cut off.
@@ -999,11 +1000,12 @@ def pause(actions_per_second = 25):
     """
     Waits for a suitable amount of time since the last call to pause().  This is almost always used as follows:
     
-    ```
-    while True:
-        # Do all the actions you want to do in one go
-        pause(30)
-    ```
+    .. code-block:: python
+    
+        while True:
+            # Do all the actions you want to do in one iteration
+            pause(30)
+    
     
     Where 30 is the number of times you want to do those actions per second.  It is like sleeping
     for 1/30th of a second, but it accounts for the fact that your actions may have taken some time,
