@@ -1016,7 +1016,7 @@ def pause(actions_per_second = 25):
     now = _time.time()
     # We sleep for 1/Nth minus the time since we last slept.  If it's negative (because we can't keep
     # up that frame rate), we just "sleep" for 0, so go as fast as we can:
-    sleep_for = max(0, 1 / actions_per_second - (now - _last_frame))
+    sleep_for = max(0.0, 1 / actions_per_second - (now - _last_frame))
     _last_frame = now
     _time.sleep(sleep_for)
     
