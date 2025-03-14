@@ -325,7 +325,7 @@ function replaceMediaLiterals(s : SlotsStructure) : SlotsStructure {
     // Note: we don't bother with last field because it can't be followed by brackets
     for (let i = 0; i < s.fields.length - 1; i++) {
         if (isFieldBaseSlot(s.fields[i])
-            && ["load_image", "Sound"].includes((s.fields[i] as BaseSlot).code)
+            && ["load_image", "load_sound"].includes((s.fields[i] as BaseSlot).code)
             && s.operators[i].code === ""
             && isFieldBracketedSlot(s.fields[i + 1])) {
             // Check the bracket is just a string literal, which will have two blanks either side:
@@ -347,9 +347,9 @@ function replaceMediaLiterals(s : SlotsStructure) : SlotsStructure {
                     s.fields[i] = {code: "load_image(\"" + stringArg + "\")", mediaType: /data:([^;]+)/.exec(stringArg)?.[1] ?? "image"};
                     replaced = true;
                 }
-                else if (funcCall == "Sound"
+                else if (funcCall == "load_sound"
                     && stringArg.startsWith("data:audio/")) {
-                    s.fields[i] = {code: "Sound(\"" + stringArg + "\")", mediaType: /data:([^;]+)/.exec(stringArg)?.[1] ?? "audio"};
+                    s.fields[i] = {code: "load_sound(\"" + stringArg + "\")", mediaType: /data:([^;]+)/.exec(stringArg)?.[1] ?? "audio"};
                     replaced = true;
                 }
                 // Otherwise don't substitute

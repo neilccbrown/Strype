@@ -1081,12 +1081,12 @@ describe("Graphics library", () => {
         });
     });
 
-    it("Shows completions for EditableImage methods", () => {
+    it("Shows completions for Image methods", () => {
         focusEditorAC();
         // Add graphics import:
         cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Make an image:
-        cy.get("body").type("=e=EditableImage(100, 100){rightarrow}");
+        cy.get("body").type("=e=Image(100, 100){rightarrow}");
         // Add a function frame and trigger auto-complete:
         cy.get("body").type(" ");
         cy.wait(500);
@@ -1101,12 +1101,12 @@ describe("Graphics library", () => {
         });
     });
 
-    it("Shows completions for EditableImage methods on make_copy()", () => {
+    it("Shows completions for Image methods on make_copy()", () => {
         focusEditorAC();
         // Add graphics import:
         cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Make an image:
-        cy.get("body").type("=e=EditableImage(100, 100){rightarrow}");
+        cy.get("body").type("=e=Image(100, 100){rightarrow}");
         // Add a function frame and trigger auto-complete:
         cy.get("body").type(" ");
         cy.wait(500);
@@ -1121,7 +1121,7 @@ describe("Graphics library", () => {
         });
     });
 
-    it("Shows completions for EditableImage methods on Actor.edit_image()", () => {
+    it("Shows completions for Image methods on Actor.edit_image()", () => {
         focusEditorAC();
         // Add graphics import:
         cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");

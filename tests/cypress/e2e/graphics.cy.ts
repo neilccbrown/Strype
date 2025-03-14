@@ -202,7 +202,7 @@ describe("Basic operation", () => {
     });
     it("BlueJ icon fetched via full URL", () => {
         runCodeAndCheckImage("", `
-            white_rect = EditableImage(800, 600)
+            white_rect = Image(800, 600)
             white_rect.set_fill("white")
             white_rect.fill()
             white = Actor(white_rect)
@@ -212,7 +212,7 @@ describe("Basic operation", () => {
     });
     it("BlueJ icon fetched via unqualified URL", () => {
         runCodeAndCheckImage("", `
-            white_rect = EditableImage(800, 600)
+            white_rect = Image(800, 600)
             white_rect.set_fill("white")
             white_rect.fill()
             white = Actor(white_rect)
@@ -249,7 +249,7 @@ describe("Image manipulation", () => {
     }
     it("Setting pixels using string colors", () => {
         runCodeAndCheckImage("", `
-            img = EditableImage(100, 100)
+            img = Image(100, 100)
             img.set_fill("white")
             img.fill()
             for x in range(100):
@@ -268,7 +268,7 @@ describe("Image manipulation", () => {
     });
     it("Draws circles", () => {
         runCodeAndCheckImage("", `
-            img = EditableImage(800, 600)
+            img = Image(800, 600)
             img.set_fill("white")
             img.set_stroke("red")
             img.circle(200,200,150)
@@ -285,7 +285,7 @@ describe("Image manipulation", () => {
 
     it("Draws polygons", () => {
         runCodeAndCheckImage("", `
-            img = EditableImage(800, 600)
+            img = Image(800, 600)
             img.set_fill("white")
             img.set_stroke("red")
             img.polygon([(100, 100), (400, 300), (100, 300)])
@@ -312,7 +312,7 @@ describe("Collision detection", () => {
         runCodeAndCheckImage("", `
             cat = Actor('cat-test.jpg')
             cat.set_rotation(60)
-            white_square = EditableImage(20, 20)
+            white_square = Image(20, 20)
             white_square.set_fill("white")
             white_square.fill()
             squares = []
@@ -333,7 +333,7 @@ describe("Collision detection", () => {
             cat = Actor('cat-test.jpg')
             cat.set_rotation(-75)
             cat.set_can_touch(False)
-            white_square = EditableImage(20, 20)
+            white_square = Image(20, 20)
             white_square.set_fill("white")
             white_square.fill()
             squares = []
@@ -356,14 +356,14 @@ describe("Collision detection", () => {
         // We make a grid of white squares every 50 pixels that are 20x20
         // Then we find all the colliding ones in a radius and colour them red
         runCodeAndCheckImage("", `
-            circle_guide = EditableImage(800, 600)
+            circle_guide = Image(800, 600)
             circle_guide.set_stroke(None)
             circle_guide.set_fill("#555555")
             circle_guide.circle(400, 300, 200)
             set_background(circle_guide)
             cat = Actor('cat-test.jpg')
             cat.set_scale(0.2)
-            white_square = EditableImage(20, 20)
+            white_square = Image(20, 20)
             white_square.set_fill("white")
             white_square.fill()
             squares = []
@@ -408,9 +408,9 @@ describe("Image download", () => {
         const before = Date.now();
         enterAndExecuteCode("", `
             # Make small images to make saving very fast:
-            a = EditableImage(10, 10)
-            b = EditableImage(10, 10)
-            c = EditableImage(10, 10)
+            a = Image(10, 10)
+            b = Image(10, 10)
+            c = Image(10, 10)
             a.download()
             a.download()
             a.download()
@@ -456,27 +456,27 @@ describe("World bounds", () => {
     }
     it("Cannot set location or move outside corners", () => {
         runCodeAndCheckImage("", `
-            white_rect = EditableImage(100, 100)
+            white_rect = Image(100, 100)
             white_rect.set_fill("white")
             white_rect.fill()
             top_left = Actor(white_rect)
             top_left.set_location(-500, 500)
-            red_rect = EditableImage(100, 100)
+            red_rect = Image(100, 100)
             red_rect.set_fill("red")
             red_rect.fill()
             top_right = Actor(red_rect)
             top_right.set_location(1000, 500)
-            blue_rect = EditableImage(100, 100)
+            blue_rect = Image(100, 100)
             blue_rect.set_fill("blue")
             blue_rect.fill()
             bottom_right = Actor(blue_rect)
             bottom_right.set_location(800, -600)
-            green_rect = EditableImage(100, 100)
+            green_rect = Image(100, 100)
             green_rect.set_fill("green")
             green_rect.fill()
             bottom_left = Actor(green_rect)
             bottom_left.set_location(-1500, -1500)
-            yellow_rect = EditableImage(50, 50)
+            yellow_rect = Image(50, 50)
             yellow_rect.set_fill("yellow")
             yellow_rect.fill()
             mover = Actor(yellow_rect)
@@ -493,7 +493,7 @@ describe("World bounds", () => {
     it("Registers is_at_edge correctly", () => {
         runCodeAndCheckImage("", `
             for i in range(0, 360):
-                img = EditableImage(10, 10)
+                img = Image(10, 10)
                 img.set_fill("white")
                 img.fill()
                 a = Actor(img)
@@ -509,7 +509,7 @@ describe("World bounds", () => {
     it("Registers not is_at_edge correctly", () => {
         runCodeAndCheckImage("", `
             for i in range(0, 360):
-                img = EditableImage(10, 10)
+                img = Image(10, 10)
                 img.set_fill("white")
                 img.fill()
                 a = Actor(img)
@@ -554,7 +554,7 @@ describe("World background", () => {
     });
     it("Centres larger backgrounds", () => {
         runCodeAndCheckImage("", `
-            big = EditableImage(1000, 1000)
+            big = Image(1000, 1000)
             big.set_fill("white")
             big.set_stroke(None)
             big.circle(500, 500, 450)
@@ -572,7 +572,7 @@ describe("World background", () => {
 
     it("Stretches larger backgrounds", () => {
         runCodeAndCheckImage("", `
-            big = EditableImage(1000, 1000)
+            big = Image(1000, 1000)
             big.set_fill("white")
             big.set_stroke(None)
             big.circle(500, 500, 450)

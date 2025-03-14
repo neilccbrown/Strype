@@ -1,38 +1,23 @@
 import strype_sound_internal as _strype_sound_internal
 
-def play_sound(filename):
-    """
-    Starts playing the given sound, returning immediately without waiting for it to finish.
-    
-    :param filename: The filename of the sound 
-    """
-    _strype_sound_internal.playOneOffSound(filename)
-
 class Sound:
-    def __init__(self, source_or_seconds, samples_per_second = 44100):
+    def __init__(self, seconds, samples_per_second = 44100):
         """
-        Creates a new sound object.  There are two different ways to create a sound object.
-        The first is to pass a string filename as the first parameter, in which case the second is ignored.  This will
-        load the given filename as a Sound.  The second is to pass a number as the first parameter indicating
-        a length in seconds, and optionally a second parameter indicating the sample rate (samples per second),
-        which will create an empty sound.
-        
-        Note that if you load a sound file, most browsers will resample it to a fixed rate (44100 or 48000).
-         
-        :param source_or_seconds: A string filename to load a sound, or a numeric value to create an empty sound of that length in seconds. 
+        Creates a new silent/empty sound object.  The first parameter indicates
+        a length in seconds, and the optional second parameter indicates the sample rate (samples per second).
+                 
+        :param seconds: A numeric value to indicate the sound's length in seconds. 
         :param samples_per_second: If the first parameter is a number, this is the sampling rate in samples per second. 
         """
         if samples_per_second == -4242: # Magic number used internally to indicate source is already an audio buffer
             # Important this clause is first, because if it's a Javascript object, performing
             # Python isinstance checks will give an error.  Which is why we use a magic number rather than
             # inspecting the type of source_or_seconds ourselves:
-            self.__buffer = source_or_seconds
-        elif isinstance(source_or_seconds, (int, float)):
-            self.__buffer = _strype_sound_internal.createAudioBuffer(source_or_seconds, samples_per_second)
-        elif isinstance(source_or_seconds, str):
-            self.__buffer = _strype_sound_internal.loadAndWaitForAudioBuffer(source_or_seconds)
+            self.__buffer = seconds
+        elif isinstance(seconds, (int, float)):
+            self.__buffer = _strype_sound_internal.createAudioBuffer(seconds, samples_per_second)
         else:
-            raise TypeError(f"Sound source must be a number or a string, but was: {type(source_or_seconds)}")
+            raise TypeError(f"Sound length must be a number, but was: {type(seconds)}")
     
     def get_num_samples(self):
         """
@@ -63,7 +48,7 @@ class Sound:
 
     def play(self):
         """
-        Starts playing the sound, but returns immediately without waiting for the sound to finish playing.
+        Starts playing the sound from the start, but returns immediately without waiting for the sound to finish playing.
         """
         _strype_sound_internal.playAudioBuffer(self.__buffer)
 
@@ -96,4 +81,23 @@ class Sound:
         :return: The number of samples per second in the sound.
         """
         return _strype_sound_internal.getSampleRate(self.__buffer)
+
+#@@ Sound
+def load_sound(source):
+    """
+    Loads the given sound file as a Sound object.
+
+    Note that most browsers will resample loaded sounded files to a fixed rate (44100 or 48000).
+    So the sample rate of a loaded sound file will probably not match the original file you are loading from.
+    You can call get_sample_rate() on the loaded sound to get the actual sample rate.       
     
+    Note: you can pass a filename for the sound, which is a sound name from Strype's sound library,
+        or a URL to an image.  Using a URL requires the server to allow remote loading from Javascript via a feature
+        called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and
+        you can load the sound in a browser yourself.
+
+    :param source: The filename or URL to a sound file 
+    :return: The loaded sound
+    """
+    buffer = _strype_sound_internal.loadAndWaitForAudioBuffer(source)
+    return Sound(buffer, -4242)

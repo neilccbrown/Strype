@@ -1547,7 +1547,7 @@
                 },
                 {
                     "name": "verbosity",
-                    "defaultValue": "<unittest.loader.TestLoader object at 0x1059afb50>"
+                    "defaultValue": "<unittest.loader.TestLoader object at 0x102c655b0>"
                 },
                 {
                     "name": "failfast",
@@ -1662,7 +1662,7 @@
         },
         {
             "acResult": "urlopen",
-            "documentation": "Open the URL url, which can be either a string or a Request object.\n\n*data* must be an object specifying additional data to be sent to\nthe server, or None if no such data is needed.  See Request for\ndetails.\n\nurllib.request module uses HTTP/1.1 and includes a \"Connection:close\"\nheader in its HTTP requests.\n\nThe optional *timeout* parameter specifies a timeout in seconds for\nblocking operations like the connection attempt (if not specified, the\nglobal default timeout setting will be used). This only works for HTTP,\nHTTPS and FTP connections.\n\nIf *context* is specified, it must be a ssl.SSLContext instance describing\nthe various SSL options. See HTTPSConnection for more details.\n\nThe optional *cafile* and *capath* parameters specify a set of trusted CA\ncertificates for HTTPS requests. cafile should point to a single file\ncontaining a bundle of CA certificates, whereas capath should point to a\ndirectory of hashed certificate files. More information can be found in\nssl.SSLContext.load_verify_locations().\n\nThe *cadefault* parameter is ignored.\n\nThis function always returns an object which can work as a context\nmanager and has methods such as\n\n* geturl() - return the URL of the resource retrieved, commonly used to\n  determine if a redirect was followed\n\n* info() - return the meta-information of the page, such as headers, in the\n  form of an email.message_from_string() instance (see Quick Reference to\n  HTTP Headers)\n\n* getcode() - return the HTTP status code of the response.  Raises URLError\n  on errors.\n\nFor HTTP and HTTPS URLs, this function returns a http.client.HTTPResponse\nobject slightly modified. In addition to the three new methods above, the\nmsg attribute contains the same information as the reason attribute ---\nthe reason phrase returned by the server --- instead of the response\nheaders as it is specified in the documentation for HTTPResponse.\n\nFor FTP, file, and data URLs and requests explicitly handled by legacy\nURLopener and FancyURLopener classes, this function returns a\nurllib.response.addinfourl object.\n\nNote that None may be returned if no handler handles the request (though\nthe default installed global OpenerDirector uses UnknownHandler to ensure\nthis never happens).\n\nIn addition, if proxy settings are detected (for example, when a *_proxy\nenvironment variable like http_proxy is set), ProxyHandler is default\ninstalled and makes sure the requests are handled through the proxy.",
+            "documentation": "Open the URL url, which can be either a string or a Request object.\n\n*data* must be an object specifying additional data to be sent to\nthe server, or None if no such data is needed.  See Request for\ndetails.\n\nurllib.request module uses HTTP/1.1 and includes a \"Connection:close\"\nheader in its HTTP requests.\n\nThe optional *timeout* parameter specifies a timeout in seconds for\nblocking operations like the connection attempt (if not specified, the\nglobal default timeout setting will be used). This only works for HTTP,\nHTTPS and FTP connections.\n\nIf *context* is specified, it must be a ssl.SSLContext instance describing\nthe various SSL options. See HTTPSConnection for more details.\n\nThe optional *cafile* and *capath* parameters specify a set of trusted CA\ncertificates for HTTPS requests. cafile should point to a single file\ncontaining a bundle of CA certificates, whereas capath should point to a\ndirectory of hashed certificate files. More information can be found in\nssl.SSLContext.load_verify_locations().\n\nThe *cadefault* parameter is ignored.\n\n\nThis function always returns an object which can work as a\ncontext manager and has the properties url, headers, and status.\nSee urllib.response.addinfourl for more detail on these properties.\n\nFor HTTP and HTTPS URLs, this function returns a http.client.HTTPResponse\nobject slightly modified. In addition to the three new methods above, the\nmsg attribute contains the same information as the reason attribute ---\nthe reason phrase returned by the server --- instead of the response\nheaders as it is specified in the documentation for HTTPResponse.\n\nFor FTP, file, and data URLs and requests explicitly handled by legacy\nURLopener and FancyURLopener classes, this function returns a\nurllib.response.addinfourl object.\n\nNote that None may be returned if no handler handles the request (though\nthe default installed global OpenerDirector uses UnknownHandler to ensure\nthis never happens).\n\nIn addition, if proxy settings are detected (for example, when a *_proxy\nenvironment variable like http_proxy is set), ProxyHandler is default\ninstalled and makes sure the requests are handled through the proxy.",
             "type": [
                 "function"
             ],
@@ -1673,7 +1673,7 @@
                 },
                 {
                     "name": "data",
-                    "defaultValue": "<object object at 0x1055481c0>"
+                    "defaultValue": "<object object at 0x10218dc50>"
                 },
                 {
                     "name": "timeout",
@@ -1877,7 +1877,23 @@
             "type": [
                 "function"
             ],
-            "version": 0
+            "version": 0,
+            "params": [
+                {
+                    "name": "a"
+                },
+                {
+                    "name": "x"
+                },
+                {
+                    "name": "lo",
+                    "defaultValue": "None"
+                },
+                {
+                    "name": "hi",
+                    "defaultValue": "0"
+                }
+            ]
         },
         {
             "acResult": "bisect_left",
@@ -1892,6 +1908,14 @@
                 },
                 {
                     "name": "x"
+                },
+                {
+                    "name": "lo",
+                    "defaultValue": "None"
+                },
+                {
+                    "name": "hi",
+                    "defaultValue": "0"
                 }
             ]
         },
@@ -1908,6 +1932,14 @@
                 },
                 {
                     "name": "x"
+                },
+                {
+                    "name": "lo",
+                    "defaultValue": "None"
+                },
+                {
+                    "name": "hi",
+                    "defaultValue": "0"
                 }
             ]
         },
@@ -1917,7 +1949,23 @@
             "type": [
                 "function"
             ],
-            "version": 0
+            "version": 0,
+            "params": [
+                {
+                    "name": "a"
+                },
+                {
+                    "name": "x"
+                },
+                {
+                    "name": "lo",
+                    "defaultValue": "None"
+                },
+                {
+                    "name": "hi",
+                    "defaultValue": "0"
+                }
+            ]
         },
         {
             "acResult": "insort_left",
@@ -1932,6 +1980,14 @@
                 },
                 {
                     "name": "x"
+                },
+                {
+                    "name": "lo",
+                    "defaultValue": "None"
+                },
+                {
+                    "name": "hi",
+                    "defaultValue": "0"
                 }
             ]
         },
@@ -1948,6 +2004,14 @@
                 },
                 {
                     "name": "x"
+                },
+                {
+                    "name": "lo",
+                    "defaultValue": "None"
+                },
+                {
+                    "name": "hi",
+                    "defaultValue": "0"
                 }
             ]
         }
@@ -2280,7 +2344,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x10613db80>"
+                    "defaultValue": "<function deepcopy at 0x104b869d0>"
                 }
             ]
         },
@@ -2322,7 +2386,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x10613db80>"
+                    "defaultValue": "<function deepcopy at 0x104b869d0>"
                 }
             ]
         },
@@ -2350,7 +2414,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x10613db80>"
+                    "defaultValue": "<function deepcopy at 0x104b869d0>"
                 }
             ]
         },
@@ -2392,7 +2456,7 @@
                 },
                 {
                     "name": "state",
-                    "defaultValue": "<function deepcopy at 0x10613db80>"
+                    "defaultValue": "<function deepcopy at 0x104b869d0>"
                 },
                 {
                     "name": "listiter",
@@ -5656,15 +5720,7 @@
             "type": [
                 "function"
             ],
-            "version": 0,
-            "params": [
-                {
-                    "name": "x"
-                },
-                {
-                    "name": "y"
-                }
-            ]
+            "version": 0
         },
         {
             "acResult": "hypot",
@@ -7720,7 +7776,7 @@
                 },
                 {
                     "name": "linkage",
-                    "defaultValue": "/opt/homebrew/opt/python@3.8/bin/python3.8"
+                    "defaultValue": "/opt/homebrew/opt/python@3.9/bin/python3.9"
                 }
             ]
         },
@@ -10705,21 +10761,17 @@
                 },
                 {
                     "name": "stop",
-                    "defaultValue": "<class 'int'>"
-                },
-                {
-                    "name": "step",
                     "defaultValue": "1"
                 },
                 {
-                    "name": "_int",
+                    "name": "step",
                     "defaultValue": "None"
                 }
             ]
         },
         {
             "acResult": "sample",
-            "documentation": "Chooses k unique random elements from a population sequence or set.\n\nReturns a new list containing elements from the population while\nleaving the original population unchanged.  The resulting list is\nin selection order so that all sub-slices will also be valid random\nsamples.  This allows raffle winners (the sample) to be partitioned\ninto grand prize and second place winners (the subslices).\n\nMembers of the population need not be hashable or unique.  If the\npopulation contains repeats, then each occurrence is a possible\nselection in the sample.\n\nTo choose a sample in a range of integers, use range as an argument.\nThis is especially fast and space efficient for sampling from a\nlarge population:   sample(range(10000000), 60)",
+            "documentation": "Chooses k unique random elements from a population sequence or set.\n\nReturns a new list containing elements from the population while\nleaving the original population unchanged.  The resulting list is\nin selection order so that all sub-slices will also be valid random\nsamples.  This allows raffle winners (the sample) to be partitioned\ninto grand prize and second place winners (the subslices).\n\nMembers of the population need not be hashable or unique.  If the\npopulation contains repeats, then each occurrence is a possible\nselection in the sample.\n\nRepeated elements can be specified one at a time or with the optional\ncounts parameter.  For example:\n\n    sample(['red', 'blue'], counts=[4, 2], k=5)\n\nis equivalent to:\n\n    sample(['red', 'red', 'red', 'red', 'blue', 'blue'], k=5)\n\nTo choose a sample from a range of integers, use range() for the\npopulation argument.  This is especially fast and space efficient\nfor sampling from a large population:\n\n    sample(range(10000000), 60)",
             "type": [
                 "function"
             ],
@@ -10739,7 +10791,7 @@
         },
         {
             "acResult": "seed",
-            "documentation": "Initialize internal state from hashable object.\n\nNone or no argument seeds from current time or from an operating\nsystem specific randomness source if available.\n\nIf *a* is an int, all bits are used.\n\nFor version 2 (the default), all of the bits are used if *a* is a str,\nbytes, or bytearray.  For version 1 (provided for reproducing random\nsequences from older versions of Python), the algorithm for str and\nbytes generates a narrower range of seeds.",
+            "documentation": "Initialize internal state from a seed.\n\nThe only supported seed types are None, int, float,\nstr, bytes, and bytearray.\n\nNone or no argument seeds from current time or from an operating\nsystem specific randomness source if available.\n\nIf *a* is an int, all bits are used.\n\nFor version 2 (the default), all of the bits are used if *a* is a str,\nbytes, or bytearray.  For version 1 (provided for reproducing random\nsequences from older versions of Python), the algorithm for str and\nbytes generates a narrower range of seeds.",
             "type": [
                 "function"
             ],
@@ -14146,27 +14198,6 @@
             ]
         },
         {
-            "acResult": "EditableImage",
-            "documentation": "\n    An editable image of fixed width and height.\n    ",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0,
-            "params": [
-                {
-                    "name": "self",
-                    "hide": true
-                },
-                {
-                    "name": "width"
-                },
-                {
-                    "name": "height"
-                }
-            ]
-        },
-        {
             "acResult": "FontFamily",
             "documentation": "\n    A font family is a particular font type, e.g. Arial or Courier.\n    ",
             "type": [
@@ -14184,6 +14215,27 @@
                 },
                 {
                     "name": "font_name"
+                }
+            ]
+        },
+        {
+            "acResult": "Image",
+            "documentation": "\n    An editable image of fixed width and height.\n    ",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "self",
+                    "hide": true
+                },
+                {
+                    "name": "width"
+                },
+                {
+                    "name": "height"
                 }
             ]
         },
@@ -14229,6 +14281,12 @@
             "type": [
                 "module"
             ],
+            "version": 0
+        },
+        {
+            "acResult": "_color_map",
+            "documentation": "dict() -> new empty dictionary\ndict(mapping) -> new dictionary initialized from a mapping object's\n    (key, value) pairs\ndict(iterable) -> new dictionary initialized as if via:\n    d = {}\n    for k, v in iterable:\n        d[k] = v\ndict(**kwargs) -> new dictionary initialized with the name=value pairs\n    in the keyword argument list.  For example:  dict(one=1, two=2)",
+            "type": [],
             "version": 0
         },
         {
@@ -14291,6 +14349,19 @@
             "version": 0
         },
         {
+            "acResult": "color_from_string",
+            "documentation": "\n    Converts a string that is either a color name (e.g. \"red\") or a hex string (e.g. \"#ff0000\") to\n    a Color object.  The hex string can either be 6 hex digits (in which case alpha is assumed to be 255)\n    or 8 hex digits (which includes the alpha)\n    \n    :param html_string: A string as described above.\n    :raises ValueError: If the string is not recognised as a color name or valid 6 or 8 digit hex string.\n    :return: A Color object.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "html_string"
+                }
+            ]
+        },
+        {
             "acResult": "get_clicked_actor",
             "documentation": "\n    Gets the last clicked Actor (or None if nothing was clicked since the last call to this function).  Be careful that if you call this twice\n    in quick succession, the second call will almost certainly be None.  If you need to compare the result of this function\n    to several other things, assign it to a variable first.\n    \n    :return: The most recently clicked Actor, or None if nothing was clicked since you last called this function.\n    ",
             "type": [
@@ -14329,7 +14400,7 @@
         },
         {
             "acResult": "load_image",
-            "documentation": "\n    Loads the given image file as an EditableImage object.\n    \n    Note: you can pass a filename for the image, which is an image name from Strype's image library,\n        or a URL to an image.  Using a URL requires the server to allow remote image loading from Javascript via a feature\n        called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and\n        you can load the image in a browser yourself.\n    \n    :param filename: The built-in Strype filename, or URL, of the image to load.\n    :return: An EditableImage object with the same image and dimensions as the given file\n    ",
+            "documentation": "\n    Loads the given image file as an Image object.\n    \n    Note: you can pass a filename for the image, which is an image name from Strype's image library,\n        or a URL to an image.  Using a URL requires the server to allow remote image loading from Javascript via a feature\n        called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and\n        you can load the image in a browser yourself.\n    \n    :param filename: The built-in Strype filename, or URL, of the image to load.\n    :return: An Image object with the same image and dimensions as the given file\n    ",
             "type": [
                 "function"
             ],
@@ -14356,14 +14427,18 @@
         },
         {
             "acResult": "set_background",
-            "documentation": "\n    Sets the current background image.\n    \n    The parameter can be an EditableImage, a colour, a filename of an image in Strype's image library, or a URL.\n    Using a URL requires the server to allow remote image loading from Javascript via a feature\n        called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and\n        you can load the image in a browser yourself.\n     \n    If the background image is smaller than 800x600, it will be tiled (repeated) to fill the area of 800x600.\n    The background image is always copied, so later changes to an EditableImage will not be shown in the background;\n    you should call set_background() again to update it.\n    \n    :param image_or_filename: An EditableImage, an image filename or URL.\n    ",
+            "documentation": "\n    Sets the current background image.\n    \n    The parameter can be an Image, a color, a filename of an image in Strype's image library, or a URL.\n    Using a URL requires the server to allow remote image loading from Javascript via a feature\n        called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and\n        you can load the image in a browser yourself.\n    \n    If tile_to_fit is True and the background image is smaller than 800x600, it will be tiled (repeated) to fill the area of 800x600.\n    If tile_to_fit is True and background image is larger than 800x600, it will be centered, and the extra regions will be cut off.\n    If tile_to_fit is False, the background image will be scaled (preserving its aspect ratio) to fit into 800x600, and centered.    \n    \n    The background image is always copied, so later changes to an Image will not be shown in the background;\n    you should call set_background() again to update it.\n    \n    :param image_or_filename_or_color: An Image, an image filename or URL, or a color name or hex string.\n    :param tile_to_fit: Whether to tile the background image to fit (True), or to stretch the image to Fit (False) \n    ",
             "type": [
                 "function"
             ],
             "version": 0,
             "params": [
                 {
-                    "name": "image_or_filename"
+                    "name": "image_or_filename_or_color"
+                },
+                {
+                    "name": "tile_to_fit",
+                    "defaultValue": "True"
                 }
             ]
         },
@@ -14391,7 +14466,7 @@
                     "hide": true
                 },
                 {
-                    "name": "source_or_seconds"
+                    "name": "seconds"
                 },
                 {
                     "name": "samples_per_second",
@@ -14444,15 +14519,15 @@
             "version": 0
         },
         {
-            "acResult": "play_sound",
-            "documentation": "\n    Starts playing the given sound, returning immediately without waiting for it to finish.\n    \n    :param filename: The filename of the sound \n    ",
+            "acResult": "load_sound",
+            "documentation": "\n    Loads the given sound file as a Sound object.\n\n    Note that most browsers will resample loaded sounded files to a fixed rate (44100 or 48000).\n    So the sample rate of a loaded sound file will probably not match the original file you are loading from.\n    You can call get_sample_rate() on the loaded sound to get the actual sample rate.       \n    \n    Note: you can pass a filename for the sound, which is a sound name from Strype's sound library,\n        or a URL to an image.  Using a URL requires the server to allow remote loading from Javascript via a feature\n        called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and\n        you can load the sound in a browser yourself.\n\n    :param source: The filename or URL to a sound file \n    :return: The loaded sound\n    ",
             "type": [
                 "function"
             ],
             "version": 0,
             "params": [
                 {
-                    "name": "filename"
+                    "name": "source"
                 }
             ]
         }

@@ -627,20 +627,6 @@ export default Vue.extend({
             }
         },
 
-        playOneOffSound(audioFileName : string) : void {
-            fetch("./sounds/" + audioFileName)
-                .then((d) => d.arrayBuffer())
-                .then((b) => audioContext?.decodeAudioData(b))
-                .then((b) => {
-                    if (!b) {
-                        // If we can't load the file, we should tell the user:
-                        (this.$refs.pythonConsole as HTMLTextAreaElement).value += "Error loading sound \"" + audioFileName + "\""; 
-                    }
-                    else if (audioContext && b) {
-                        this.playAudioBuffer(b);
-                    }
-                });
-        },
         playAudioBuffer(audioBuffer : AudioBuffer) : Promise<void> | null {
             if (audioContext) {
                 const source = audioContext.createBufferSource();

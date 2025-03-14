@@ -197,7 +197,7 @@ export default Vue.extend({
             
             return audioBufferToDataURL(copiedAudioBuffer).then((dataURL) => {
                 return {
-                    code: "Sound(\"" + dataURL + "\")", 
+                    code: "load_sound(\"" + dataURL + "\")", 
                     mediaType: "audio/wav",
                 };
             });

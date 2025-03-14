@@ -111,7 +111,7 @@ class Dimension:
         self.width = width
         self.height = height
 
-class EditableImage:
+class Image:
     """
     An editable image of fixed width and height.
     """
@@ -237,18 +237,18 @@ class EditableImage:
         Draws the entire given image into this image, at the given top-left x, y position.  If you only want to draw
         part of the image, use `draw_part_of_image()`.
         
-        :param image: The image to draw from, into this image.  Must be an EditableImage.
+        :param image: The image to draw from, into this image.  Must be an Image.
         :param x: The left X coordinate to draw the image at.
         :param y: The top Y coordinate to draw the image at.
         """
-        dim = _strype_graphics_internal.getCanvasDimensions(image._EditableImage__image)
-        _strype_graphics_internal.canvas_drawImagePart(self.__image, image._EditableImage__image, x, y, 0, 0, dim[0], dim[1], 1.0)
+        dim = _strype_graphics_internal.getCanvasDimensions(image._Image__image)
+        _strype_graphics_internal.canvas_drawImagePart(self.__image, image._Image__image, x, y, 0, 0, dim[0], dim[1], 1.0)
 
     def draw_part_of_image(self, image, x, y, sx, sy, width, height, scale = 1.0):
         """
         Draws part of the given image into this image.
         
-        :param image: The image to draw from, into this image.  Must be an EditableImage.
+        :param image: The image to draw from, into this image.  Must be an Image.
         :param x: The left X coordinate to draw the image at.
         :param y: The top Y coordinate to draw the image at.
         :param sx: The left X coordinate within the source image to draw from.
@@ -257,7 +257,7 @@ class EditableImage:
         :param height: The height of the area to draw from.
         :param scale: The scale of the image (1.0 is original size, higher values result in drawing a larger version).
         """
-        _strype_graphics_internal.canvas_drawImagePart(self.__image, image._EditableImage__image, x, y, sx, sy, width, height, scale)
+        _strype_graphics_internal.canvas_drawImagePart(self.__image, image._Image__image, x, y, sx, sy, width, height, scale)
 
     #@@ float
     def get_width(self):
@@ -379,15 +379,15 @@ class EditableImage:
         """
         _strype_graphics_internal.polygon_xy_pairs(self.__image, points)
 
-    #@@ EditableImage
+    #@@ Image
     def make_copy(self):
         """
-        Makes a copy of this EditableImage with the same width and height,
+        Makes a copy of this Image with the same width and height,
         and the same image content.
         
-        :return: The new copy of the EditableImage 
+        :return: The new copy of the Image 
         """
-        copy = EditableImage(self.get_width(), self.get_height())
+        copy = Image(self.get_width(), self.get_height())
         copy.draw_image(self, 0, 0)
         return copy
 
@@ -412,10 +412,10 @@ class EditableImage:
         # module anyway:        
         now = _time.time()
         # If it's less than 2 seconds since last download, wait:
-        if now < EditableImage.__last_download + 2:
-            _time.sleep(EditableImage.__last_download + 2 - now)
+        if now < Image.__last_download + 2:
+            _time.sleep(Image.__last_download + 2 - now)
         _strype_graphics_internal.canvas_downloadPNG(self.__image, filename)
-        EditableImage.__last_download = _time.time()
+        Image.__last_download = _time.time()
 
 class FontFamily:
     """
@@ -428,6 +428,7 @@ class FontFamily:
         by calling:
         
         .. code-block:: python
+        
             FontFamily("google", "Roboto") 
             
         If the font cannot be loaded, you will get an error.  This usually indicates either an issue with your Internet connection, or that you have entered the font name wrongly.
@@ -468,29 +469,29 @@ class Actor:
         """
         Construct an Actor with a given image and position and an optional name.
         
-        Note: if you pass an EditableImage, this Actor will use a reference to it for its display.  This means
-        if you make any changes to that EditableImage, it will update the Actor's image.  If you pass
-        the same EditableImage to multiple Actors, they will all update when you edit it.  If you do not want this
-        behaviour then call `make_copy()` on the EditableImage as you pass it in.
+        Note: if you pass an Image, this Actor will use a reference to it for its display.  This means
+        if you make any changes to that Image, it will update the Actor's image.  If you pass
+        the same Image to multiple Actors, they will all update when you edit it.  If you do not want this
+        behaviour then call `make_copy()` on the Image as you pass it in.
         
         Note: you can pass a filename for the image, which is an image name from Strype's image library,
         or a URL to an image.  Using a URL requires the server to allow remote image loading from Javascript via a feature
         called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and
         you can load the image in a browser yourself.
         
-        :param image_or_filename: Either a string with an image name (from Strype's built-in images), a string with a URL (e.g. "https://example.com/example.png") or an EditableImage 
+        :param image_or_filename: Either a string with an image name (from Strype's built-in images), a string with a URL (e.g. "https://example.com/example.png") or an Image 
         :param x: The X position at which to add the actor
         :param y: The Y position at which to add the actor
         :param tag: The tag to give the actor (for use in detecting touching actors)
         """
-        if isinstance(image_or_filename, EditableImage):
-            self.__id = _strype_graphics_internal.addImage(image_or_filename._EditableImage__image, self)
+        if isinstance(image_or_filename, Image):
+            self.__id = _strype_graphics_internal.addImage(image_or_filename._Image__image, self)
             self.__editable_image = image_or_filename
         elif isinstance(image_or_filename, str):
             self.__id = _strype_graphics_internal.addImage(_strype_graphics_internal.loadAndWaitForImage(image_or_filename), self)
             self.__editable_image = None
         else:
-            raise TypeError("Actor constructor parameter must be string or EditableImage")
+            raise TypeError("Actor constructor parameter must be string or Image")
         self.__say = None
         self.__tag = tag
         _strype_graphics_internal.setImageLocation(self.__id, x, y)
@@ -774,21 +775,21 @@ class Actor:
         return [a for a in _strype_input_internal.getAllNearbyAssociated(self.__id, distance) if tag is None or tag == a.get_tag()]
 
 
-    #@@ EditableImage
+    #@@ Image
     def edit_image(self):
         """
-        Return an EditableImage which can be used to edit this actor's image.  All modifications
+        Return an Image which can be used to edit this actor's image.  All modifications
         to the returned image will be shown for this actor automatically.  If you call this function multiple times
-        you will get the same EditableImage returned.
+        you will get the same Image returned.
         
-        :return: An EditableImage with the current Actor image already drawn in it 
+        :return: An Image with the current Actor image already drawn in it 
         """
         # Note: we don't want to have an editable image by default because it is slower to render
         # the editable canvas than to render the unedited image (I think!?)
         if self.__editable_image is None:
             # The -1, -1 sizing indicates we will set the image ourselves afterwards:
-            self.__editable_image = EditableImage(-1, -1)
-            self.__editable_image._EditableImage__image = _strype_graphics_internal.makeImageEditable(self.__id) 
+            self.__editable_image = Image(-1, -1)
+            self.__editable_image._Image__image = _strype_graphics_internal.makeImageEditable(self.__id) 
         return self.__editable_image
     
     def say(self, text, font_size = 20, max_width = 300, max_height = 200, font_family = None):
@@ -816,19 +817,19 @@ class Actor:
         if text and _strype_graphics_internal.imageExists(self.__id):
             padding = 10
             # We first make an image just with the text on, which also tells us the size:
-            textOnlyImg = EditableImage(max_width, max_height)
+            textOnlyImg = Image(max_width, max_height)
             textOnlyImg.set_fill("white")
             textOnlyImg.fill()
             textOnlyImg.set_fill("black")
             textDimensions = textOnlyImg.draw_text(text, 0, 0, font_size, max_width, max_height, font_family)
             # Now we prepare an image of the right size plus padding:
-            sayImg = EditableImage(textDimensions.width + 2 * padding, textDimensions.height + 2 * padding)
+            sayImg = Image(textDimensions.width + 2 * padding, textDimensions.height + 2 * padding)
             # We draw a rounded rect for the background, then draw the text on:
             sayImg.set_fill("white")
             sayImg.set_stroke("#555555FF")
             sayImg.rounded_rectangle(0, 0, textDimensions.width + 2 * padding, textDimensions.height + 2 * padding, padding)
             sayImg.draw_part_of_image(textOnlyImg, padding, padding, 0, 0, textDimensions.width, textDimensions.height)
-            self.__say = _strype_graphics_internal.addImage(sayImg._EditableImage__image, None)
+            self.__say = _strype_graphics_internal.addImage(sayImg._Image__image, None)
             self._update_say_position()
             
     def _update_say_position(self):
@@ -879,10 +880,10 @@ class Actor:
         self.say(text, font_size, max_width, max_height)
         _strype_graphics_internal.removeImageAfter(self.__say, seconds)
 
-#@@ EditableImage
+#@@ Image
 def load_image(filename):
     """
-    Loads the given image file as an EditableImage object.
+    Loads the given image file as an Image object.
     
     Note: you can pass a filename for the image, which is an image name from Strype's image library,
         or a URL to an image.  Using a URL requires the server to allow remote image loading from Javascript via a feature
@@ -890,10 +891,10 @@ def load_image(filename):
         you can load the image in a browser yourself.
     
     :param filename: The built-in Strype filename, or URL, of the image to load.
-    :return: An EditableImage object with the same image and dimensions as the given file
+    :return: An Image object with the same image and dimensions as the given file
     """
-    img = EditableImage(-1, -1)
-    img._EditableImage__image = _strype_graphics_internal.htmlImageToCanvas(_strype_graphics_internal.loadAndWaitForImage(filename))
+    img = Image(-1, -1)
+    img._Image__image = _strype_graphics_internal.htmlImageToCanvas(_strype_graphics_internal.loadAndWaitForImage(filename))
     return img
 
 #@@ Actor
@@ -922,19 +923,19 @@ def set_background(image_or_filename_or_color, tile_to_fit = True):
     """
     Sets the current background image.
     
-    The parameter can be an EditableImage, a color, a filename of an image in Strype's image library, or a URL.
+    The parameter can be an Image, a color, a filename of an image in Strype's image library, or a URL.
     Using a URL requires the server to allow remote image loading from Javascript via a feature
-        called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and
-        you can load the image in a browser yourself.
+    called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and
+    you can load the image in a browser yourself.
     
     If tile_to_fit is True and the background image is smaller than 800x600, it will be tiled (repeated) to fill the area of 800x600.
     If tile_to_fit is True and background image is larger than 800x600, it will be centered, and the extra regions will be cut off.
     If tile_to_fit is False, the background image will be scaled (preserving its aspect ratio) to fit into 800x600, and centered.    
     
-    The background image is always copied, so later changes to an EditableImage will not be shown in the background;
+    The background image is always copied, so later changes to an Image will not be shown in the background;
     you should call set_background() again to update it.
     
-    :param image_or_filename_or_color: An EditableImage, an image filename or URL, or a color name or hex string.
+    :param image_or_filename_or_color: An Image, an image filename or URL, or a color name or hex string.
     :param tile_to_fit: Whether to tile the background image to fit (True), or to stretch the image to Fit (False) 
     """
 
@@ -945,7 +946,7 @@ def set_background(image_or_filename_or_color, tile_to_fit = True):
     # Note we always take a copy, even if the size is fine, because
     # we don't want later changes to affect the background:
     def background_808_606(image):
-        dest = EditableImage(808, 606)
+        dest = Image(808, 606)
         w = image.get_width()
         h = image.get_height()
         if tile_to_fit:
@@ -967,7 +968,7 @@ def set_background(image_or_filename_or_color, tile_to_fit = True):
             dest.draw_part_of_image(image, (808 - scale * w) / 2, (606 - scale * h) / 2, 0, 0, w, h, scale)
         return dest
         
-    if isinstance(image_or_filename_or_color, EditableImage):
+    if isinstance(image_or_filename_or_color, Image):
         bk_image = background_808_606(image_or_filename_or_color)
     elif isinstance(image_or_filename_or_color, str):
         # We follow this heuristic: if it has a dot, slash or colon it's a filename/URL
@@ -975,17 +976,17 @@ def set_background(image_or_filename_or_color, tile_to_fit = True):
         if _re.search(r"[.:/]", image_or_filename_or_color):
             bk_image = background_808_606(load_image(image_or_filename_or_color))
         else:
-            bk_image = EditableImage(808, 606)
+            bk_image = Image(808, 606)
             bk_image.set_fill(image_or_filename_or_color)
             bk_image.fill()
     elif isinstance(image_or_filename_or_color, Color):
-        bk_image = EditableImage(808, 606)
+        bk_image = Image(808, 606)
         bk_image.set_fill(image_or_filename_or_color)
         bk_image.fill()
     else:
-        raise TypeError("image_or_filename_or_color must be an EditableImage or a string or a Color")
+        raise TypeError("image_or_filename_or_color must be an Image or a string or a Color")
 
-    _strype_graphics_internal.setBackground(bk_image._EditableImage__image)        
+    _strype_graphics_internal.setBackground(bk_image._Image__image)        
     
 def stop():
     """
@@ -999,11 +1000,12 @@ def pause(actions_per_second = 25):
     """
     Waits for a suitable amount of time since the last call to pause().  This is almost always used as follows:
     
-    ```
-    while True:
-        # Do all the actions you want to do in one go
-        pause(30)
-    ```
+    .. code-block:: python
+    
+        while True:
+            # Do all the actions you want to do in one iteration
+            pause(30)
+    
     
     Where 30 is the number of times you want to do those actions per second.  It is like sleeping
     for 1/30th of a second, but it accounts for the fact that your actions may have taken some time,
@@ -1016,7 +1018,7 @@ def pause(actions_per_second = 25):
     now = _time.time()
     # We sleep for 1/Nth minus the time since we last slept.  If it's negative (because we can't keep
     # up that frame rate), we just "sleep" for 0, so go as fast as we can:
-    sleep_for = max(0, 1 / actions_per_second - (now - _last_frame))
+    sleep_for = max(0.0, 1 / actions_per_second - (now - _last_frame))
     _last_frame = now
     _time.sleep(sleep_for)
     

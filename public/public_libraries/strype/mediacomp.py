@@ -150,7 +150,7 @@ def makeSound(path):
     :returns: the sound created from the file at the given path
     Takes a filename as input, reads the file, and creates a sound from it. Returns the sound.
     """
-    return _sound.Sound("mediacomp/" + path)
+    return _sound.load_sound("mediacomp/" + path)
 
 # Note: Not supported in browser.  (Could do this with cloud storage?)
 #def pickAFile():
@@ -441,7 +441,7 @@ def duplicatePicture(picture):
     :return: A new picture object identical to the original.
     """
     _invalidateCache(picture)
-    dupe = _graphics.EditableImage(getWidth(picture), getHeight(picture))
+    dupe = _graphics.Image(getWidth(picture), getHeight(picture))
     dupe.draw_image(picture, 0, 0)
     return dupe
 
@@ -600,7 +600,7 @@ def makeEmptyPicture(width, height, color="white"):
     :param color: The background color (default: white).
     :return: The empty picture.
     """
-    img = _graphics.EditableImage(width, height)
+    img = _graphics.Image(width, height)
     img.set_fill(_convertColor(color))
     img.fill()
     return img
@@ -713,7 +713,7 @@ def show(picture):
     """
     global MainImage
     if not MainImage:
-        MainImage = _graphics.Actor(_graphics.EditableImage(800, 600), 0, 0).edit_image()
+        MainImage = _graphics.Actor(_graphics.Image(800, 600), 0, 0).edit_image()
     MainImage.set_fill("white")
     MainImage.fill()
     # This will write any changes to the picture:
