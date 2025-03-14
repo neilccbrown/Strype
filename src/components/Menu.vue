@@ -80,24 +80,25 @@
             <!-- category: export -->
             <!-- share project -->
             <a :id="shareProjectLinkId" v-show="showMenu" :class="{'strype-menu-link strype-menu-item': true, disabled: !canShareProject}" :title="$t((isSyncingToGoogleDrive)?'':'appMenu.needSaveShareProj')" @click="onShareProjectClick">{{$t('appMenu.shareProject')}}<span class="strype-menu-kb-shortcut">{{shareProjectKBShortcut}}</span></a>
-            <ModalDlg :dlgId="shareProjectModalDlgId" :okCustomTitle="$t('buttonLabel.copyLink')" :dlgTitle="$t('appMessage.createShareProjectLink')" :autoFocusButton="'ok'">
+            <ModalDlg :dlgId="shareProjectModalDlgId" :okCustomTitle="$t('buttonLabel.copyLink')" :okDisabled="(shareProjectLink.length == 0)" 
+                :dlgTitle="$t('appMessage.createShareProjectLink')" :elementToFocusId="shareGDProjectPublicRadioBtnId">
                         <div>
                             <span class="share-mode-buttons-container-title">{{$i18n.t('appMessage.shareProjectModeLabel')}}</span>
                             <div class="share-mode-buttons-container">
-                                    <div class="share-mode-button-group">
-                                    <input type="radio" id="shareGDProjectPublicRadioBtn" name="shareGDModeRadioGroup" 
-                                        v-model="shareProjectMode" :value="shareProjectWithinGDModeValue" />
+                                <div class="share-mode-button-group">
+                                    <input type="radio" :id="shareGDProjectPublicRadioBtnId" name="shareGDModeRadioGroup"
+                                        v-model="shareProjectMode" :value="shareProjectPublicModeValue" />
                                     <div>
-                                        <label for="shareGDProjectPublicRadioBtn" >{{$i18n.t("appMessage.shareProjectWithinGDMode")}}</label>
-                                        <span>{{$i18n.t("appMessage.shareProjectWithinGDModeDetails")}}</span>
+                                        <label :for="shareGDProjectPublicRadioBtnId" >{{$i18n.t("appMessage.shareProjectPublicMode")}}</label>
+                                        <span>{{$i18n.t("appMessage.shareProjectPublicModeDetails")}}</span>
                                     </div>
                                 </div>
                                 <div class="share-mode-button-group">
-                                    <input type="radio" id="shareGDProjectWithGDRadioBtn" name="shareGDModeRadioGroup"
-                                    v-model="shareProjectMode" :value="shareProjectPublicModeValue" />
+                                    <input type="radio" id="shareGDProjectWithGDRadioBtn" name="shareGDModeRadioGroup" 
+                                        v-model="shareProjectMode" :value="shareProjectWithinGDModeValue" />
                                     <div>
-                                        <label for="shareGDProjectWithGDRadioBtn" >{{$i18n.t("appMessage.shareProjectPublicMode")}}</label>
-                                        <span>{{$i18n.t("appMessage.shareProjectPublicModeDetails")}}</span>
+                                        <label for="shareGDProjectWithGDRadioBtn" >{{$i18n.t("appMessage.shareProjectWithinGDMode")}}</label>
+                                        <span>{{$i18n.t("appMessage.shareProjectWithinGDModeDetails")}}</span>
                                     </div>
                                 </div>
                             </div>
@@ -205,6 +206,7 @@ import { getLocaleBuildDate } from "@/main";
 //////////////////////
 //     Component    //
 //////////////////////
+const defaultSharingProjectMode = ShareProjectMode.public;
 export default Vue.extend({
     name: "Menu",
 
@@ -240,7 +242,9 @@ export default Vue.extend({
             // Request opening a project flag we need to use when a user wanted to open another project from a modified project
             // that wasn't initially a FS or GD project (because at this stage we can't know what the target will be...)
             requestOpenProjectLater: false,
-            shareProjectMode: ShareProjectMode.withinGD, // flag for the sharing mode
+            shareProjectMode: defaultSharingProjectMode, // flag for the sharing mode
+            shareProjectLink: "", // the share project link to copy to the clipboard, only valid when the share modal is active!
+            shareProjectInitialCall: true, // this flag is essential to allow a delay on the first link generation when the popup is opened (see getSharingLink())
             // Flags for opening a shared project: the ID (main flag) and the target (for the moment it's only Google Drive...)
             openSharedProjectId: "",
             openSharedProjectTarget: StrypeSyncTarget.none,
@@ -404,6 +408,10 @@ export default Vue.extend({
             return "shareProjectModalDlg";
         },
 
+        shareGDProjectPublicRadioBtnId(): string {
+            return "shareGDProjectPublicRadioBtnId";
+        },
+
         canShareProject(): boolean {
             return this.isSyncingToGoogleDrive && !this.appStore.isEditorContentModified;
         },
@@ -414,7 +422,7 @@ export default Vue.extend({
 
         shareProjectWithinGDModeValue() {
             return ShareProjectMode.withinGD;
-        },
+        },        
 
         isUndoDisabled(): boolean {
             return this.appStore.isUndoRedoEmpty("undo") || ((this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning) || this.appStore.isDraggingFrame;
@@ -480,6 +488,15 @@ export default Vue.extend({
                     accept: { "text/x-python": [".py"] },
                 },
             ];
+        },
+    },
+
+    watch: {
+        shareProjectMode(){
+            // Whenever the sharing mode changes, we make sure we trigger a new link generation mechanism that will:
+            // 1) reset the shared link, and 2) reset the timer associated with the generation.
+            this.shareProjectInitialCall = false;
+            this.getSharingLink(this.shareProjectMode);
         },
     },
 
@@ -599,6 +616,8 @@ export default Vue.extend({
         onShareProjectClick(){
             // We only share a project that is saved and on Google Drive. Show the user what mode of sharing to use (see details in shareProjectWithMode())
             if(this.canShareProject){
+                this.shareProjectLink = "";
+                this.shareProjectInitialCall = true;
                 this.$root.$emit("bv::show::modal", this.shareProjectModalDlgId);
             }
         },
@@ -626,8 +645,12 @@ export default Vue.extend({
                 }, 500);           
             }
             else if(dlgId == this.shareProjectModalDlgId){
-                // Set the default sharing mode to public
-                this.shareProjectMode = ShareProjectMode.public;
+                // When the popup opens, we try to generate the link to share for the default (public) sharing mode
+                setTimeout(() => {
+                    // In case retrieving the link is quite fast (working or not) and the user hasn't yet made their choice as to how to share, 
+                    // we should allow some time before getting in their face with a result!
+                    this.getSharingLink(defaultSharingProjectMode, true);
+                }, 2000);
             }
             else {
                 // When the load or save project dialogs are opened, we focus the Google Drive selector by default when we don't have information about the source target
@@ -648,73 +671,92 @@ export default Vue.extend({
             } 
         },
 
-        shareProjectWithMode(isPublicShare: boolean){
-            // There is no intermediate steps when the mode is selected for sharing a project
-            // (we first close the mode selector modal, then validate)
-            this.$root.$emit("bv::hide::modal", this.shareProjectModalDlgId);
+        areShareProjectActionStillValid(sharingMode: ShareProjectMode): boolean {
+            // There are 2 conditions for an action about sharing a project (i.e. allowing the share link to be copied or show an error) to be valid:
+            // the dialog is still showing (the user didn't cancel or the timeout for getting the link hasn't happened).
+            // In theory there could be a third condition: that the actions are actually for the time the user wanted to share.
+            // That last option is unlikely to happen.
+            return (this.appStore.currentModalDlgId == this.shareProjectModalDlgId) && (sharingMode == this.shareProjectMode);
+        },
 
-            // Sharing a project results in the share URL to be created and copied in the clipboard.
+        getSharingLink(forShareMode: ShareProjectMode, initialCall?: boolean){
+            // If this method is called for the popup opening (initial call), then the user might have already changed the sharing mode option in the popup.
+            // In that case, we ignore the call as it was delayed an no longer making sense
+            if(initialCall && !this.shareProjectInitialCall){
+                return;
+            }
+
+            // This method gets the sharing link and update the sharing link flag if the sharing mode still matches the method call (i.e. the user is still asking for that same mode).
+            // Once a sharing link is generated and can be used, the flag update will validate the OK button of the dialog.
+            // Note that for every call, we always also generate a timeout to make sure we never end up in "pending" situation -- that timeout is really generous to avoid unwanted behaviour for the user.
+            const noShareActionTimeOut = 10*1000; 
+            const noShareActionTimeOutHandle = setTimeout(()=>{
+                this.showErrorForShareProjectLink(this.$i18n.t("errorMessage.sharingLinkTimedout") as string);
+            }, noShareActionTimeOut);
+
+            this.shareProjectLink = "";
+
             // With Google Drive, we allow two types of sharing: either sharing the Google Drive link (after setting the project readonly and totally public in the sharing settings)
             // or just getting a Strype URL with a shared Google Drive file ID (in that case, users getting the shared link still need to connect to Google Drive first.)
-            // We preare the link to share and the message to show to the users as a confirmation or error situation.
-            // Note that we always generate the link: if public sharing fails, we fall back on the within Google Drive mode sharing.
-            let shareLink = "", alertMessage = "";
-            if(isPublicShare){
+            let alertMessage = "";
+            if(forShareMode == ShareProjectMode.public){
                 // Before generating a link, we change the file setttings on Google Drive to make it accessible at large.
                 const gdVueComponent = (this.$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>);
                 let createPermissionSucceeded = false;
-                let alertErrorDetail = "";
                 gdVueComponent.shareGoogleDriveFile()
                     .then((succeeded) => createPermissionSucceeded = succeeded)
-                    .catch((error) => alertMessage = error)
+                    .catch((error) => alertMessage = (error.status?.toString())??"unknown")
                     .finally(() => {
+                        clearTimeout(noShareActionTimeOutHandle);
                         if(createPermissionSucceeded){
-                            // We have set the file public on Google Drive, now we retrieve the share link.
+                            // We have set the file public on Google Drive, now we retrieve the sharing link.
                             gapi.client.request({
                                 path: "https://www.googleapis.com/drive/v3/files/" + gdVueComponent.saveFileId,
                                 method: "GET",
                                 params: {fields: "webViewLink"},
                             })
                                 .then((resp) => {
-                                    if(resp.status == 200){
-                                        shareLink = `${window.location}?${sharedStrypeProjectIdKey}=${encodeURIComponent(JSON.parse(resp.body)["webViewLink"])}`;
-                                        alertMessage = this.$i18n.t("appMessage.sharedProjectLinkCopied") as string;
-                                    }
-                                    else{
-                                        // Something happened when we tried to get the public URL of the Google Drive file.
-                                        // We still share the file within Google Drive
-                                        shareLink = `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentGoogleDriveSaveFileId}`;
-                                        alertMessage = this.$i18n.t("appMessage.gdPublicShareFailed", (this.$i18n.t("errorMessage.webViewLinkNotRetrieved", resp.status?.toString()??"unknown") as string)) as string;
+                                    // We got the link or not, but we can only make it useful or show an error *if the user is still expecting this sharing mode from the dialog (if not, we just return)
+                                    if(this.areShareProjectActionStillValid(forShareMode)){
+                                        if(resp.status == 200){
+                                            this.shareProjectLink = `${window.location}?${sharedStrypeProjectIdKey}=${encodeURIComponent(JSON.parse(resp.body)["webViewLink"])}`;                                    
+                                        }
+                                        else{
+                                            // Something happened we couldn't make the link
+                                            alertMessage = this.$i18n.t("errorMessage.gdPublicShareFailed", {error: (resp.status?.toString())??"unknown"}) as string;
+                                        }
                                     }
                                 })
                                 .catch((error) => {
                                     // Something happened when we tried to get the public URL of the Google Drive file.
-                                    // We still share the file within Google Drive
-                                    shareLink = `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentGoogleDriveSaveFileId}`;
-                                    alertMessage = this.$i18n.t("appMessage.gdPublicShareFailed", (this.$i18n.t("errorMessage.webViewLinkNotRetrieved", error) as string)) as string;
-            
+                                    alertMessage = this.$i18n.t("errorMessage.gdPublicShareFailed", {error: (error.status?.toString())??"unknown"}) as string;            
                                 })
-                                .finally(() => this.finaliseShareProjectLink(shareLink, alertMessage));                           
+                                .finally(() => {
+                                    if((alertMessage.length > 0) && this.areShareProjectActionStillValid(forShareMode)){
+                                        this.showErrorForShareProjectLink(alertMessage);
+                                    }
+                                });
                         }
                         else{
                             // The project could not be made public on Google Drive for some reason.
-                            // We still make a share link but we make it within Google Drive instead.
-                            shareLink = `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentGoogleDriveSaveFileId}`;
-                            alertMessage = this.$i18n.t("appMessage.gdPublicShareFailed", alertErrorDetail) as string;
-                            this.finaliseShareProjectLink(shareLink, alertMessage);
+                            if(this.areShareProjectActionStillValid(forShareMode)){
+                                alertMessage = this.$i18n.t("errorMessage.gdPublicShareFailed", {error: (alertMessage.length > 0) ? alertMessage: "unknow"}) as string;
+                                this.showErrorForShareProjectLink(alertMessage);
+                            }
                         }
                     });            
             }
             else{
-                shareLink = `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentGoogleDriveSaveFileId}`;
-                alertMessage = this.$i18n.t("appMessage.sharedProjectLinkCopied") as string;
-                this.finaliseShareProjectLink(shareLink, alertMessage);
+                clearTimeout(noShareActionTimeOutHandle);
+                if(this.areShareProjectActionStillValid(forShareMode)){
+                    this.shareProjectLink = `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentGoogleDriveSaveFileId}`;
+                }
             }
         },		
 		
-        finaliseShareProjectLink(shareLink: string, alertMsg: string){
-            // Paste the share link in the clipboard and show the user an information message.
-            navigator.clipboard.writeText(shareLink);
+        showErrorForShareProjectLink(alertMsg: string){
+            // An error occur during the creation of the sharing link: we close the sharing mode selection popup and show an alert
+            this.$root.$emit("bv::hide::modal", this.shareProjectModalDlgId);        
             this.appStore.simpleModalDlgMsg = alertMsg;
             this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());        
         },
@@ -726,7 +768,8 @@ export default Vue.extend({
             // we release the flag to indicate we were doing a file copy, to avoid messing up the targets in future calls of a load/save project
             if(dlgId == this.shareProjectModalDlgId){
                 if(event.trigger == "ok"){
-                    this.shareProjectWithMode(this.shareProjectMode == ShareProjectMode.public);
+                    // The sharing link creation has succeed and we need to have a user action to allow a copy to the clipboard, which we do here.
+                    navigator.clipboard.writeText(this.shareProjectLink);
                 }
                 return;
             }
