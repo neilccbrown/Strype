@@ -107,6 +107,7 @@
     "selectStrypeFile": "选择一个 Strype 项目",
     "gdriveLocation": "文件夹：",
     "gdriveAllStrypeFiles": "所有 Strype 文件",
+    "gdriveAllPythonFiles": "所有 Python 文件",
     "gdriveTab": "我的 Drive",
     "editorErrors": "错误",
     "resyncToGDAtStartup": "上次编辑此项目时，您正在保存到 Google Drive。\n是否要重新连接到 Google Drive 以同步您的更改？\n如果不这样做，您将无法获得来自 Google Drive 的最新版本，并且您的更改将不会保存回那里。"

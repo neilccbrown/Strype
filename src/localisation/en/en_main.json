@@ -77,8 +77,9 @@
     "gdriveConnectionSaveToUnloadPageFailed": "Could not connect to Google Drive when trying to save the current project. Try to sign-in again to save the current project before leaving Strype.",
     "gdrivePermissionsNotMet": "Strype requires at least one access permission to use Google Drive.",
     "gdriveReadOnly": "This Google Drive project is read-only.",
-    "gdriveWrongFile": "Please select a Strype file (extension \".spy\").",
+    "gdriveWrongFile": "Please select a file supported by Strype (extension \".spy\" or \".py\").",
     "gdriveNoFile": "The project does not exist in Google Drive.",
+    "gdriveError": "An error occured when attempting to load your Google Drive project (error: {error}).",
     "gdPublicShareFailed":"The project could not be shared publicly. It has been shared within Google Drive instead. A share link has been copied to the clipboard.<br>(Error: {param1})",
     "unexpectedCharsPython": "unexpected character(s)"
   },
@@ -124,6 +125,7 @@
     "selectStrypeFile": "Select a Strype project",
     "gdriveLocation": "Folder:",
     "gdriveAllStrypeFiles": "All Strype files",
+    "gdriveAllPythonFiles": "All Python files",
     "gdriveTab": "My Drive",
     "editorErrors": "Errors",
     "resyncToGDAtStartup": "<b>Reconnect and <u>save</u> to Google Drive?</b>\n\nLast time you were editing, you were saving to Google Drive.\nIf you want to instead <u>load</u> changes from Google Drive, click 'Do not connect' and use 'Open' from the menu."

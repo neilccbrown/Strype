@@ -1,8 +1,8 @@
 <template>
     <div>
-        <GoogleDriveFilePicker :ref="googleDriveFilePickerComponentId" @picked-file="loadPickedFileId" @picked-folder="savePickedFolder" @nonStrypeFilePicked="onNonStrypeFilePicked" :dev-key="devKey" :oauth-token="oauthToken"/>
+        <GoogleDriveFilePicker :ref="googleDriveFilePickerComponentId" @picked-file="loadPickedFileId" @picked-folder="savePickedFolder" @unsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" :dev-key="devKey" :oauth-token="oauthToken"/>
         <SimpleMsgModalDlg :dlgId="loginErrorModalDlgId" :hideActionListener="signIn"/>
-        <SimpleMsgModalDlg :dlgId="nonStrypeFilePickedModalDlgId" :hideActionListener="loadFile" />
+        <SimpleMsgModalDlg :dlgId="unsupportedByStrypeFilePickedModalDlgId" :hideActionListener="loadFile" />
         <ModalDlg :dlgId="saveExistingGDProjectModalDlgId" :size="saveExistingFileDlgSize" :elementToFocusId="(isFileLocked) ? saveExistingFileCopyButtonId : saveExistingFileOverwriteButtonId">
             <span style="white-space:pre-wrap">{{$t((isFileLocked)?'appMessage.gdriveLockedFileAlreadyExists':'appMessage.gdriveFileAlreadyExists')}}</span>
             <!-- in order to allow 3 (customed) buttons, we use the slot "modal-footer" made available by Boostrap for the modal; to simply things, we handle both locked/unlocked files there -->
@@ -26,7 +26,7 @@ import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import i18n from "@/i18n";
 import { CustomEventTypes, getAppSimpleMsgDlgId, getSaveAsProjectModalDlg } from "@/helpers/editor";
-import { strypeFileExtension } from "@/helpers/common";
+import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { BootstrapDlgSize, GAPIState, MessageDefinitions, SaveExistingGDProjectInfos, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
 
 // This enum is used for flaging the action taken when a request to save a file on Google Drive
@@ -80,8 +80,8 @@ export default Vue.extend({
             return "gdLoginErrorModalDlg";
         },
 
-        nonStrypeFilePickedModalDlgId(): string {
-            return "gdNonStrypeFilePickedModalDlg";
+        unsupportedByStrypeFilePickedModalDlgId(): string {
+            return "gdUnsupportedByStrypeFilePickedModalDlg";
         },
 
         saveFileId: {
@@ -540,69 +540,97 @@ export default Vue.extend({
                 method: "GET",
                 params: {alt: "media"},
             }).then((resp) => {
-                // Some flags in the store SHOULD NOT BE lost when we load a file, so we make a backup of those here:
-                const strypeLocation = this.appStore.strypeProjectLocation;
-                const strypeLocationAlias = this.appStore.strypeProjectLocationAlias;
-                // Load the file content in the editor
-                const isOpenedSharedProject = (this.openSharedProjectFileId.length > 0);
-                this.appStore.setStateFromJSONStr(
-                    {
+                if(fileName?.endsWith(`.${pythonFileExtension}`)){
+                    // The loading mechanisms for a Python file differs from a Strype file AND it doens't maintain a "link" to Google Drive.
+                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(resp.body, fileName, lastSaveDate);
+                    this.saveFileId = undefined;
+                    this.updateSignInStatus(false);
+                    this.appStore.strypeProjectLocation = undefined;
+                    this.appStore.strypeProjectLocationAlias = "";
+                    this.appStore.projectLastSaveDate = lastSaveDate;
+                    (this.$parent as InstanceType<typeof Menu>).saveTargetChoice(StrypeSyncTarget.none);
+                    // At the very end, emit event for notifying the attempt to open a shared project is finished in case that Python file was shared
+                    this.$emit(CustomEventTypes.openSharedFileDone);   
+                }
+                else{
+                    // The default case of a .spy (Strype) file.
+                    // Some flags in the store SHOULD NOT BE lost when we load a file, so we make a backup of those here:
+                    const strypeLocation = this.appStore.strypeProjectLocation;
+                    const strypeLocationAlias = this.appStore.strypeProjectLocationAlias;
+                    // Load the file content in the editor
+                    const isOpenedSharedProject = (this.openSharedProjectFileId.length > 0);
+                    this.appStore.setStateFromJSONStr(
+                        {
                         // The response from Google Drive would be encoded in UTF-8, so we need to decode it.
                         // cf https://stackoverflow.com/questions/13356493/decode-utf-8-with-javascript
-                        stateJSONStr: decodeURIComponent(escape(JSON.stringify(resp.result))),
-                        showMessage: !isOpenedSharedProject,
-                    }                    
-                ).then(() => {
+                            stateJSONStr: decodeURIComponent(escape(JSON.stringify(resp.result))),
+                            showMessage: !isOpenedSharedProject,
+                        }                    
+                    ).then(() => {
                     // Only update things if we could set the new state
-                    if(isOpenedSharedProject){
-                        this.cleanGoogleDriveRelatedInfosInState();
-                    }
-                    else{
-                        this.saveFileId = id;
-                        // Restore the fields we backed up before loading
-                        this.appStore.strypeProjectLocation = strypeLocation;
-                        this.appStore.strypeProjectLocationAlias = strypeLocationAlias;
-                        this.appStore.projectLastSaveDate = lastSaveDate;
-                    }
-                    // Users may have changed the file name directly on Drive, so we make sure at this stage we get the project with that same name
-                    // (At this stage, we shouldn't have an undefined name, but for safety we use the default project name if so.)
-                    const fileNameNoExt = (fileName) ? fileName.substring(0, fileName.lastIndexOf(".")) : i18n.t("defaultProjName") as string;
-                    this.appStore.projectName = fileNameNoExt;
-                    this.saveFileName = fileNameNoExt;
+                        if(isOpenedSharedProject){
+                            this.cleanGoogleDriveRelatedInfosInState();
+                        }
+                        else{
+                            this.saveFileId = id;
+                            // Restore the fields we backed up before loading
+                            this.appStore.strypeProjectLocation = strypeLocation;
+                            this.appStore.strypeProjectLocationAlias = strypeLocationAlias;
+                            this.appStore.projectLastSaveDate = lastSaveDate;
+                        }
+                        // Users may have changed the file name directly on Drive, so we make sure at this stage we get the project with that same name
+                        // (At this stage, we shouldn't have an undefined name, but for safety we use the default project name if so.)
+                        const fileNameNoExt = (fileName) ? fileName.substring(0, fileName.lastIndexOf(".")) : i18n.t("defaultProjName") as string;
+                        this.appStore.projectName = fileNameNoExt;
+                        this.saveFileName = fileNameNoExt;
                         
-                    // And finally register the correc target flags via the Menu 
-                    // (it is necessary when switching from FS to GD to also update the Menu flags, which will update the state too)
-                    (this.$parent as InstanceType<typeof Menu>).saveTargetChoice((isOpenedSharedProject) ? StrypeSyncTarget.none : StrypeSyncTarget.gd);
+                        // And finally register the correc target flags via the Menu 
+                        // (it is necessary when switching from FS to GD to also update the Menu flags, which will update the state too)
+                        (this.$parent as InstanceType<typeof Menu>).saveTargetChoice((isOpenedSharedProject) ? StrypeSyncTarget.none : StrypeSyncTarget.gd);
 
-                    // We check that the file has write access and isn't locked (in Google Drive). 
-                    // We use that also (regardless the access rights) to make accessed shared project READONLY.
-                    gapi.client.request({
-                        path: "https://www.googleapis.com/drive/v3/files/" + id,
-                        method: "GET",
-                        params: {fields: "capabilities/canEdit, capabilities/canModifyContent"},
-                    }).execute((resp) => {
-                        if(isOpenedSharedProject || !resp["capabilities"]["canEdit"] || !resp["capabilities"]["canModifyContent"]){
-                            this.saveFileId = undefined;
-                            this.updateSignInStatus(false);
-                            if(isOpenedSharedProject){
-                                (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject("appMessage.retrievedSharedGenericProject", fileNameNoExt);
+                        // We check that the file has write access and isn't locked (in Google Drive). 
+                        // We use that also (regardless the access rights) to make accessed shared project READONLY.
+                        gapi.client.request({
+                            path: "https://www.googleapis.com/drive/v3/files/" + id,
+                            method: "GET",
+                            params: {fields: "capabilities/canEdit, capabilities/canModifyContent"},
+                        }).execute((resp) => {
+                            if(isOpenedSharedProject || !resp["capabilities"]["canEdit"] || !resp["capabilities"]["canModifyContent"]){
+                                this.saveFileId = undefined;
+                                this.updateSignInStatus(false);
+                                if(isOpenedSharedProject){
+                                    (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject("appMessage.retrievedSharedGenericProject", fileNameNoExt);
+                                }
+                                else{
+                                    this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.gdriveReadOnly") as string;
+                                    this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                                }
                             }
-                            else{
-                                this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.gdriveReadOnly") as string;
-                                this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
-                            }
+                        });
+                        
+                        // At the very end, emit event for notifying the attempt to open a shared project is finished
+                        this.$emit(CustomEventTypes.openSharedFileDone);                  
+                    }, (reason) => {
+                        // When loading a file didn't work, we only need to handle the situation of opening a shared file 
+                        // (because the error message would have been shown before for normal opening from the Drive picker)
+                        if(this.openSharedProjectFileId.length > 0){
+                            (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject("errorMessage.retrievedSharedGenericProject", reason);
                         }
                     });
-                        
-                    // At the very end, emit event for notifying the attempt to open a shared project is finished
-                    this.$emit(CustomEventTypes.openSharedFileDone);                  
-                }, (reason) => {
-                    // When loading a file didn't work, we only need to handle the situation of opening a shared file 
-                    // (because the error message would have been shown before for normal opening from the Drive picker)
-                    if(this.openSharedProjectFileId.length > 0){
-                        (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject("errorMessage.retrievedSharedGenericProject", reason);
-                    }
-                });
+                }
+            },
+            // Case of errors
+            (resp) => {
+                if(resp.status == 404){
+                    this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.gdriveNoFile") as string;                    
+                    this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                }
+                else{
+                    this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.gdriveError", {error: resp.status}) as string;                    
+                    this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                }
+                // At the very end, emit event for notifying the attempt to open a shared project is finished
+                this.$emit(CustomEventTypes.openSharedFileDone);  
             });
         },
 
@@ -612,10 +640,10 @@ export default Vue.extend({
             this.lookForAvailableProjectFileName(this.doSaveFile);
         },
 
-        onNonStrypeFilePicked(){
+        onUnsupportedByStrypeFilePicked(){
             // When a non-Strype file was picked to load, we notify the user on a modal dialog, and trigger the Drive picker again
             this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.gdriveWrongFile") as string;
-            this.$root.$emit("bv::show::modal", this.nonStrypeFilePickedModalDlgId);
+            this.$root.$emit("bv::show::modal", this.unsupportedByStrypeFilePickedModalDlgId);
         },
 
         checkDriveStrypeFolder(createIfNone: boolean, checkFolderDoneCallBack: (strypeFolderId: string | null) => void, failedConnectionCallBack?: () => void) {
