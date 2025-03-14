@@ -10,15 +10,12 @@
             :burgerIcon="false"
             @openMenu="handleMenuOpen"
             @closeMenu="toggleMenuOnOff(null)"
-            width="200"
-        >
-            <!-- download python/hex section -->
-            /* IFTRUE_isMicrobit 
-            <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="downloadHex();showMenu=false;" v-t="'appMenu.downloadHex'" />
-            FITRUE_isMicrobit */
-            <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="downloadPython();showMenu=false;" v-t="'appMenu.downloadPython'" />
-            <div class="menu-separator-div"></div>
-            <!-- load/save section -->
+            width="195"
+        > 
+            <!-- category main acions-->
+            <!-- new project-->
+            <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="resetProject();showMenu=false;" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')"/>
+            <!-- open project -->
             <a :id="loadProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" @click="openLoadProjectModal">{{$t('appMenu.loadProject')}}<span class="strype-menu-kb-shortcut">{{loadProjectKBShortcut}}</span></a>
             <ModalDlg :dlgId="loadProjectModalDlgId" showCloseBtn hideDlgBtns >
                 <div>
@@ -37,6 +34,7 @@
                     </div>
                 </div>
             </ModalDlg>
+            <!-- save project -->
             <a :id="saveProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" @click="handleSaveMenuClick">{{$t('appMenu.saveProject')}}<span class="strype-menu-kb-shortcut">{{saveProjectKBShortcut}}</span></a>
             <a v-if="showMenu" :class="{'strype-menu-link strype-menu-item': true, disabled: !isSynced }" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveAsProject'"/>
             <ModalDlg :dlgId="saveProjectModalDlgId" :autoFocusButton="'ok'">
@@ -76,13 +74,44 @@
                     <span  v-t="'appMessage.editorAskSaveChangedCode'" class="load-project-lost-span"/>
                     <br/>
                 </div>
-            </ModalDlg>
+            </ModalDlg>            
+            <!-- new section -->
             <div class="menu-separator-div"></div>
-            <!-- reset section -->
-            <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="resetProject();showMenu=false;" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')"/>
-            <div class="menu-separator-div"></div>
-            <!-- prefs (localisation) section -->
-            <span v-t="'appMenu.prefs'"/>
+            <!-- category: export -->
+            <!-- share project -->
+            <a :id="shareProjectLinkId" v-show="showMenu" :class="{'strype-menu-link strype-menu-item': true, disabled: !canShareProject}" :title="$t((isSyncingToGoogleDrive)?'':'appMenu.needSaveShareProj')" @click="onShareProjectClick">{{$t('appMenu.shareProject')}}<span class="strype-menu-kb-shortcut">{{shareProjectKBShortcut}}</span></a>
+            <ModalDlg :dlgId="shareProjectModalDlgId" :okCustomTitle="$t('buttonLabel.copyLink')" :dlgTitle="$t('appMessage.createShareProjectLink')" :autoFocusButton="'ok'">
+                        <div>
+                            <span class="share-mode-buttons-container-title">{{$i18n.t('appMessage.shareProjectModeLabel')}}</span>
+                            <div class="share-mode-buttons-container">
+                                    <div class="share-mode-button-group">
+                                    <input type="radio" id="shareGDProjectPublicRadioBtn" name="shareGDModeRadioGroup" 
+                                        v-model="shareProjectMode" :value="shareProjectWithinGDModeValue" />
+                                    <div>
+                                        <label for="shareGDProjectPublicRadioBtn" >{{$i18n.t("appMessage.shareProjectWithinGDMode")}}</label>
+                                        <span>{{$i18n.t("appMessage.shareProjectWithinGDModeDetails")}}</span>
+                                    </div>
+                                </div>
+                                <div class="share-mode-button-group">
+                                    <input type="radio" id="shareGDProjectWithGDRadioBtn" name="shareGDModeRadioGroup"
+                                    v-model="shareProjectMode" :value="shareProjectPublicModeValue" />
+                                    <div>
+                                        <label for="shareGDProjectWithGDRadioBtn" >{{$i18n.t("appMessage.shareProjectPublicMode")}}</label>
+                                        <span>{{$i18n.t("appMessage.shareProjectPublicModeDetails")}}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </ModalDlg>
+            <!-- download python/hex project -->
+            /* IFTRUE_isMicrobit 
+            <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="downloadHex();showMenu=false;" v-t="'appMenu.downloadHex'" />
+            FITRUE_isMicrobit */
+            <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="downloadPython();showMenu=false;" v-t="'appMenu.downloadPython'" />
+            <!-- BLANK SPACE IN MENU TO FOOTER -->
+            <div class="flex-padding" />
+            <!-- category: preferences / settings -->
+            <!-- Localisation -->
             <div class="appMenu-prefs-div">
                 <div>
                     <label for="appLangSelect" v-t="'appMenu.lang'"/>&nbsp;
@@ -91,7 +120,11 @@
                     </select>
                 </div> 
             </div>
-            <div class="app-menu-footer">
+            <!-- new section -->
+            <div class="menu-separator-div"></div>
+            <div></div>
+            <div class="app-menu-footer">             
+                <!-- version indicator-->
                 <a href="https://www.strype.org/history" target="_blank">{{$t('appMenu.version') + '&nbsp;' + getAppVersion +' (' + getLocaleBuildDate +')'}}</a>
                 <span class="hidden">{{ getBuildHash }}</span>
             </div>
@@ -153,8 +186,8 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
-import { AppEvent, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
-import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getGoogleDriveComponentRefId, getLabelSlotUID, getNearestErrorIndex, getSaveAsProjectModalDlg, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection } from "@/helpers/editor";
+import { AppEvent, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, ShareProjectMode, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
+import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getGoogleDriveComponentRefId, getLabelSlotUID, getNearestErrorIndex, getSaveAsProjectModalDlg, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey } from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
 import GoogleDrive from "@/components/GoogleDrive.vue";
@@ -207,6 +240,7 @@ export default Vue.extend({
             // Request opening a project flag we need to use when a user wanted to open another project from a modified project
             // that wasn't initially a FS or GD project (because at this stage we can't know what the target will be...)
             requestOpenProjectLater: false,
+            shareProjectMode: ShareProjectMode.withinGD, // flag for the sharing mode
             // Flags for opening a shared project: the ID (main flag) and the target (for the moment it's only Google Drive...)
             openSharedProjectId: "",
             openSharedProjectTarget: StrypeSyncTarget.none,
@@ -218,12 +252,16 @@ export default Vue.extend({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
-                //handle the Ctrl/Meta + O for opening a project, and Ctrl/Meta + S command for saving the project
+                // Loading/saving project shortcuts
                 if((event.key.toLowerCase() === "s" || event.key.toLowerCase() === "o") && (event.metaKey || event.ctrlKey) && (!event.shiftKey)){
                     event.stopImmediatePropagation();
                     event.preventDefault();
                     const linkIdToSimulate = (event.key.toLowerCase() === "s") ? this.saveProjectLinkId : this.loadProjectLinkId;
                     document.getElementById(linkIdToSimulate)?.click();
+                }
+                // Sharing project shorcut
+                else if(event.key.toLowerCase() === "l" && (event.metaKey || event.ctrlKey) && event.shiftKey) {
+                    document.getElementById(this.shareProjectLinkId)?.click();
                 }
             }
         );
@@ -352,6 +390,30 @@ export default Vue.extend({
         
         saveFileNameInputId(): string {
             return "saveStrypeFileNameInput";
+        },
+
+        shareProjectLinkId(): string {
+            return "shareStrypeProjLink";
+        },
+
+        shareProjectKBShortcut(): string {
+            return `${(isMacOSPlatform()) ? "⌘" : (this.$t("contextMenu.ctrl")+"+")}⇧+L`;
+        },
+
+        shareProjectModalDlgId(): string {
+            return "shareProjectModalDlg";
+        },
+
+        canShareProject(): boolean {
+            return this.isSyncingToGoogleDrive && !this.appStore.isEditorContentModified;
+        },
+
+        shareProjectPublicModeValue() {
+            return ShareProjectMode.public;
+        },
+
+        shareProjectWithinGDModeValue() {
+            return ShareProjectMode.withinGD;
         },
 
         isUndoDisabled(): boolean {
@@ -534,8 +596,15 @@ export default Vue.extend({
             this.showMenu = false;
         },
 
+        onShareProjectClick(){
+            // We only share a project that is saved and on Google Drive. Show the user what mode of sharing to use (see details in shareProjectWithMode())
+            if(this.canShareProject){
+                this.$root.$emit("bv::show::modal", this.shareProjectModalDlgId);
+            }
+        },
+
         onStrypeMenuShownModalDlg(event: BvModalEvent, dlgId: string) {
-            // This method handles the workflow of the "save file" menu entry related dialog
+            // This method handles the workflow of the menu entries' related dialog
             this.showMenu = false;
             if(dlgId == this.saveProjectModalDlgId){
                 this.saveAtOtherLocation = false;
@@ -556,6 +625,10 @@ export default Vue.extend({
                     saveFileNameInputElement.click();
                 }, 500);           
             }
+            else if(dlgId == this.shareProjectModalDlgId){
+                // Set the default sharing mode to public
+                this.shareProjectMode = ShareProjectMode.public;
+            }
             else {
                 // When the load or save project dialogs are opened, we focus the Google Drive selector by default when we don't have information about the source target
                 setTimeout(() => {
@@ -575,14 +648,93 @@ export default Vue.extend({
             } 
         },
 
+        shareProjectWithMode(isPublicShare: boolean){
+            // There is no intermediate steps when the mode is selected for sharing a project
+            // (we first close the mode selector modal, then validate)
+            this.$root.$emit("bv::hide::modal", this.shareProjectModalDlgId);
+
+            // Sharing a project results in the share URL to be created and copied in the clipboard.
+            // With Google Drive, we allow two types of sharing: either sharing the Google Drive link (after setting the project readonly and totally public in the sharing settings)
+            // or just getting a Strype URL with a shared Google Drive file ID (in that case, users getting the shared link still need to connect to Google Drive first.)
+            // We preare the link to share and the message to show to the users as a confirmation or error situation.
+            // Note that we always generate the link: if public sharing fails, we fall back on the within Google Drive mode sharing.
+            let shareLink = "", alertMessage = "";
+            if(isPublicShare){
+                // Before generating a link, we change the file setttings on Google Drive to make it accessible at large.
+                const gdVueComponent = (this.$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>);
+                let createPermissionSucceeded = false;
+                let alertErrorDetail = "";
+                gdVueComponent.shareGoogleDriveFile()
+                    .then((succeeded) => createPermissionSucceeded = succeeded)
+                    .catch((error) => alertMessage = error)
+                    .finally(() => {
+                        if(createPermissionSucceeded){
+                            // We have set the file public on Google Drive, now we retrieve the share link.
+                            gapi.client.request({
+                                path: "https://www.googleapis.com/drive/v3/files/" + gdVueComponent.saveFileId,
+                                method: "GET",
+                                params: {fields: "webViewLink"},
+                            })
+                                .then((resp) => {
+                                    if(resp.status == 200){
+                                        shareLink = `${window.location}?${sharedStrypeProjectIdKey}=${encodeURIComponent(JSON.parse(resp.body)["webViewLink"])}`;
+                                        alertMessage = this.$i18n.t("appMessage.sharedProjectLinkCopied") as string;
+                                    }
+                                    else{
+                                        // Something happened when we tried to get the public URL of the Google Drive file.
+                                        // We still share the file within Google Drive
+                                        shareLink = `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentGoogleDriveSaveFileId}`;
+                                        alertMessage = this.$i18n.t("appMessage.gdPublicShareFailed", (this.$i18n.t("errorMessage.webViewLinkNotRetrieved", resp.status?.toString()??"unknown") as string)) as string;
+                                    }
+                                })
+                                .catch((error) => {
+                                    // Something happened when we tried to get the public URL of the Google Drive file.
+                                    // We still share the file within Google Drive
+                                    shareLink = `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentGoogleDriveSaveFileId}`;
+                                    alertMessage = this.$i18n.t("appMessage.gdPublicShareFailed", (this.$i18n.t("errorMessage.webViewLinkNotRetrieved", error) as string)) as string;
+            
+                                })
+                                .finally(() => this.finaliseShareProjectLink(shareLink, alertMessage));                           
+                        }
+                        else{
+                            // The project could not be made public on Google Drive for some reason.
+                            // We still make a share link but we make it within Google Drive instead.
+                            shareLink = `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentGoogleDriveSaveFileId}`;
+                            alertMessage = this.$i18n.t("appMessage.gdPublicShareFailed", alertErrorDetail) as string;
+                            this.finaliseShareProjectLink(shareLink, alertMessage);
+                        }
+                    });            
+            }
+            else{
+                shareLink = `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentGoogleDriveSaveFileId}`;
+                alertMessage = this.$i18n.t("appMessage.sharedProjectLinkCopied") as string;
+                this.finaliseShareProjectLink(shareLink, alertMessage);
+            }
+        },		
+		
+        finaliseShareProjectLink(shareLink: string, alertMsg: string){
+            // Paste the share link in the clipboard and show the user an information message.
+            navigator.clipboard.writeText(shareLink);
+            this.appStore.simpleModalDlgMsg = alertMsg;
+            this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());        
+        },
+
         onStrypeMenuHideModalDlg(event: BvModalEvent, dlgId: string, forcedProjectName?: string, saveReason ?: SaveRequestReason) {
             // This method handles the workflow after acting on any modal dialog of the Strype menu entries.
             // For most cases, if there is no confirmation, nothing special happens.
             // Only exception: if the user cancelled or proceeded to save a file copy following an clash with an existing project name on Google Drive,
             // we release the flag to indicate we were doing a file copy, to avoid messing up the targets in future calls of a load/save project
+            if(dlgId == this.shareProjectModalDlgId){
+                if(event.trigger == "ok"){
+                    this.shareProjectWithMode(this.shareProjectMode == ShareProjectMode.public);
+                }
+                return;
+            }
+
             if(dlgId == this.saveProjectModalDlgId){
                 (this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>).saveExistingGDProjectInfos.isCopyFileRequested = false;  
             }
+
             if(event.trigger == "cancel" || event.trigger == "esc"){
                 if(dlgId == this.saveOnLoadModalDlgId){
                     // Case of request to save/discard the file currently opened, before loading a new file:
@@ -1004,6 +1156,12 @@ export default Vue.extend({
     outline: none;
     border: $strype-menu-entry-border;
     position: relative;
+    color: black;
+    cursor: pointer;
+}
+
+.strype-menu-link:hover {
+    color: black;
 }
 
 .strype-menu-link.disabled{
@@ -1075,6 +1233,39 @@ export default Vue.extend({
 
 .save-project-modal-dlg-container .cell {
     display: table-cell;
+}
+
+.share-mode-buttons-container-title {
+    font-weight: 600;
+}
+
+.share-mode-buttons-container {
+    display: table;
+    margin-left: 30px;
+    margin-top: 10px;
+}
+
+.share-mode-button-group {
+    display: table-row;
+}
+
+.share-mode-buttons-container input,
+.share-mode-buttons-container > div > div {
+    display: table-cell;
+    font-size: 95%;
+}
+
+.share-mode-buttons-container > div > div {
+    padding-left: 5px;
+}
+
+.share-mode-buttons-container span {
+    font-size: 90%;
+    display: block;
+}
+
+.share-mode-buttons-container > .share-mode-button-group:first-child span {
+    margin-bottom: 20px;
 }
 
 .error-nav-enabled {
@@ -1162,11 +1353,8 @@ export default Vue.extend({
 }
 
 .app-menu-footer {
-    bottom: 0px;
     font-size: smaller;
     color: #3467FE;
-    position: absolute;
-    bottom: 2px;
 }
 
 .app-menu-footer:hover {
@@ -1198,16 +1386,20 @@ export default Vue.extend({
 }
 
 .bm-item-list {
-      color: #6d6c6a !important;
-      margin-left: 0% !important;
-      font-size: inherit !important;
+    color: #6d6c6a !important;
+    margin-left: 0% !important;
+    font-size: inherit !important;
+    // To allow some padding divs inside the menu
+    display: flex !important;
+    flex-direction: column;
+    height: 100%;
 }
 
-.bm-item-list > :not(.menu-separator-div):not(.google-drive-container) {
+.bm-item-list > :not(.menu-separator-div) {
       display: flex !important;
       text-decoration: none !important;
-      padding: $strype-menu-entry-padding !important;
-      width: $strype-menu-entry-width;
+      padding: 2px !important;
+      margin-left: 2px !important;
 }
 
 // This essentially acts as the class for the keyboard shortcut spans (for the properties that are ovewritten, other bits are in .strype-menu-kb-shortcut)
