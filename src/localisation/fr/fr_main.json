@@ -79,6 +79,7 @@
     "gdriveReadOnly": "Ce projet de Google Drive est en lecture seule.",
     "gdriveWrongFile": "Veullez sélectionner un ficher supporté par Strype (extension \".spy\" ou \".py\").",
     "gdriveNoFile": "Le projet n'existe pas dans Google Drive.",
+    "gdriveError": "Une erreur est survenue lors de la tentative de chargement de votre projet Google Drive (erreur : {error}).",
     "gdPublicShareFailed":"Le projet n'a pas pu être partagé publiquement. Il a été partagé avec Google Drive à la place. Un lien de partage a été copié dans le presse-papiers.<br>(Erreur : {param1})",
     "unexpectedCharsPython": "caractère(s) inattendu(s)"
   },

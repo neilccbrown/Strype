@@ -625,6 +625,10 @@ export default Vue.extend({
                     this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.gdriveNoFile") as string;                    
                     this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
                 }
+                else{
+                    this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.gdriveError", {error: resp.status}) as string;                    
+                    this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                }
                 // At the very end, emit event for notifying the attempt to open a shared project is finished
                 this.$emit(CustomEventTypes.openSharedFileDone);  
             });
