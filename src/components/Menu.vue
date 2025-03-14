@@ -266,6 +266,10 @@ export default Vue.extend({
                 // Sharing project shorcut
                 else if(event.key.toLowerCase() === "l" && (event.metaKey || event.ctrlKey) && event.shiftKey) {
                     document.getElementById(this.shareProjectLinkId)?.click();
+                    // Safari is using this shortcut, so we consume it!
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    event.stopPropagation();
                 }
             }
         );

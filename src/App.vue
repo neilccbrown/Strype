@@ -373,6 +373,14 @@ export default Vue.extend({
                 event.stopPropagation();
                 return;
             }
+
+            // Listen to the project sharing shortcut "keyup" event that needs to consume for Safari (handling of the shorcut is in Menu.vue)
+            if(event.type == "keyup" && event.key.toLowerCase() == "l" && event.metaKey && event.shiftKey){
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                event.stopPropagation();
+                return;
+            }
         });
 
         /* IFTRUE_isPython */
