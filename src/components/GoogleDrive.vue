@@ -816,13 +816,4 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.google-drive-container {
-    flex-direction: column;
-    padding: 0px !important;
-    width: $strype-menu-entry-width;
-}
-
-.google-drive-container > * {
-    padding: $strype-menu-entry-padding;
-}
 </style>
