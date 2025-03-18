@@ -927,8 +927,11 @@ export default Vue.extend({
         },
 
         onStrypeCommandsSplitPaneResize(){
-            // When the Strype commands are resized, we need to also update the Turtle canvas
+            /* IFTRUE_isPython */
+            // When the rightmost panel (with Strype commands) is resized, we need to also update the Turtle canvas and break the natural 4/3 ratio of the PEA
+            (this.$refs[this.strypeCommandsRefId] as InstanceType<typeof Commands>).isCommandsSplitterChanged = true;
             document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
+            /* FITRUE_isPython */
         },
         
         setStateFromPythonFile(completeSource: string, fileName: string, lastSaveDate: number, fileLocation?: FileSystemFileHandle) : void {
@@ -1083,6 +1086,10 @@ body.dragging-frame {
 
 .nohover{
     pointer-events: none;
+}
+
+.flex-padding {
+    flex-grow: 2;
 }
 
 /**
@@ -1274,11 +1281,11 @@ $divider-grey: darken($background-grey, 15%);
 	cursor: row-resize
 }
 
-.splitpanes.strype-split-theme .splitpanes__pane {
+.splitpanes.strype-split-theme > .splitpanes__pane {
 	background-color: transparent;
 }
 
-.splitpanes.strype-split-theme .splitpanes__splitter {
+.splitpanes.strype-split-theme > .splitpanes__splitter {
     background-color: transparent;
 	-webkit-box-sizing: border-box;
 	box-sizing: border-box;
@@ -1287,11 +1294,11 @@ $divider-grey: darken($background-grey, 15%);
 	flex-shrink: 0
 }
 
-.splitpanes.strype-split-theme .splitpanes__splitter:first-child {
+.splitpanes.strype-split-theme > .splitpanes__splitter:first-child {
 	cursor: auto
 }
 
-.strype-split-theme.splitpanes .splitpanes .splitpanes__splitter {
+.strype-split-theme.splitpanes > .splitpanes .splitpanes__splitter {
 	z-index: 1
 }
 

@@ -14,6 +14,7 @@ import FrameContainer from "@/components/FrameContainer.vue";
 import FrameBody from "@/components/FrameBody.vue";
 import JointFrames from "@/components/JointFrames.vue";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
+import { debounce } from "lodash";
 
 export const undoMaxSteps = 200;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
@@ -43,6 +44,7 @@ export enum CustomEventTypes {
     acItemHovered="acItemHovered",
     openSharedFileDone="openSharedFileDone",
     /* IFTRUE_isPython */
+    pythonExecAreaMounted = "peaMounted",
     pythonExecAreaExpandCollapseChanged = "peaExpandCollapsChanged",
     pythonConsoleRequestFocus = "pythonConsoleReqFocus",
     pythonConsoleAfterInput = "pythonConsoleAfterInput",
@@ -1738,18 +1740,27 @@ export function setPythonExecAreaLayoutButtonPos(): void{
  * to allow the commands to be displayed in columns when they can't be shown as one column.
  * See Commands.vue for the HTML template logics.
  */
-export function resetAddFrameCommandContainerHeight(): void{
-    (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.height = "";
-}
+export const debounceComputeAddFrameCommandContainerHeight = debounce(computeAddFrameCommandContainerHeight, 100);
 
 export function computeAddFrameCommandContainerHeight(): void{
     // When the container div overflows, we remove the overflow extra height to the p element containing the commands
     // so that we can shorten the p height to trigger the commands to be displayed in columns.  
     const scrollContainerH = document.getElementsByClassName("no-PEA-commands")[0].scrollHeight;
-    const noPEACommandsH =  Math.round(document.getElementsByClassName("no-PEA-commands")[0].getBoundingClientRect().height);
+    const noPEACommandsH =  document.getElementsByClassName("no-PEA-commands")[0].getBoundingClientRect().height;
+    const addFrameCmdsPH = (document.querySelector(".frameCommands p") as HTMLParagraphElement).getBoundingClientRect().height;
+    const commandsFlexContainer = (document.querySelector(".frameCommands p") as HTMLParagraphElement);
     if(noPEACommandsH < scrollContainerH){
-        const addFrameCmdsPH = (document.querySelector(".frameCommands p") as HTMLParagraphElement).getBoundingClientRect().height;
-        (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.height = (addFrameCmdsPH - (scrollContainerH - noPEACommandsH)) + "px";
+        commandsFlexContainer.style.height = (addFrameCmdsPH - (scrollContainerH - noPEACommandsH)) + "px";
+    }
+    else{
+        // The commands panel is not overflowing, but it could be because it is already collapsed (elements are wrapped) and now we have more space for it to expand:
+        // in the case, we want to increase the commands panel size.
+        const firstCommandLeft = commandsFlexContainer.children[0].getBoundingClientRect().left;
+        const lastCommandLeft =  commandsFlexContainer.children[commandsFlexContainer.childElementCount - 1].getBoundingClientRect().left;
+        if(firstCommandLeft != lastCommandLeft){
+            const projectNameContainerH = document.getElementsByClassName("project-name-container")[0].getBoundingClientRect().height;
+            (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.height = (noPEACommandsH - projectNameContainerH) + "px";
+        }
     }
 }
 

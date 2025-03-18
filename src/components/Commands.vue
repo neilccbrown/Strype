@@ -1,90 +1,97 @@
 <template>
     <div class="commands">
-        <div :class="{'no-PEA-commands': true, 'cropped': isExpandedPEA}" @wheel.stop>
-            <div class="project-name-container">
-                <span class="project-name">{{projectName}}</span>
-                <div @mouseover="getLastProjectSavedDateTooltip" :title="lastProjectSavedDateTooltip">
-                    <img v-if="isProjectFromGoogleDrive" :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive" class="project-target-logo"/> 
-                    <img v-else-if="isProjectFromFS" :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')" class="project-target-logo"/> 
-                    <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag" v-t="'appMessage.savedGDrive'" />
-                    <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" v-t="'appMessage.modifGDrive'" :class="{'modifed-label-span': isProjectNotSourced}" />
-                    <ModalDlg :dlgId="shareGDProjectModalDlgId" :okCustomTitle="$t('buttonLabel.copyLink')" :dlgTitle="$t('appMessage.createShareProjectLink')" :autoFocusButton="'ok'">
-                        <div>
-                            <span class="share-mode-buttons-container-title">{{$i18n.t('appMessage.shareProjectModeLabel')}}</span>
-                            <div class="share-mode-buttons-container">
-                                    <div class="share-mode-button-group">
-                                    <input type="radio" id="shareGDProjectPublicRadioBtn" name="shareGDModeRadioGroup" 
-                                        v-model="shareProjectMode" :value="shareProjectWithinGDModeValue" />
-                                    <div>
-                                        <label for="shareGDProjectPublicRadioBtn" >{{$i18n.t("appMessage.shareProjectWithinGDMode")}}</label>
-                                        <span>{{$i18n.t("appMessage.shareProjectWithinGDModeDetails")}}</span>
-                                    </div>
-                                </div>
-                                <div class="share-mode-button-group">
-                                    <input type="radio" id="shareGDProjectWithGDRadioBtn" name="shareGDModeRadioGroup"
-                                    v-model="shareProjectMode" :value="shareProjectPublicModeValue" />
-                                    <div>
-                                        <label for="shareGDProjectWithGDRadioBtn" >{{$i18n.t("appMessage.shareProjectPublicMode")}}</label>
-                                        <span>{{$i18n.t("appMessage.shareProjectPublicModeDetails")}}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </ModalDlg>
-                </div>
-                <img 
-                    v-if="isProjectFromGoogleDrive"
-                    :src="require('@/assets/images/share.png')"
-                    :class="{'share-proj-img': true, disabled: isEditorContentModifiedFlag}" 
-                    :title="$t((isEditorContentModifiedFlag)?'appMessage.needSaveShareProj':'appMessage.shareProj')"
-                    @click="shareProject"
-                />
-            </div>     
-            <div @mousedown.prevent.stop @mouseup.prevent.stop>
-                /* IFTRUE_isMicrobit
-                <b-tabs id="commandsTabs" content-class="mt-2" v-model="tabIndex">
-                    <b-tab :title="$t('commandTabs.0')" active :title-link-class="getTabClasses(0)" :disabled="isEditing">
-                FITRUE_isMicrobit */
-                        <div :id="commandsContainerUID" class="command-tab-content" >
-                            <div id="addFramePanel">
-                                <div class="frameCommands">
-                                    <p>
-                                        <AddFrameCommand
-                                            v-for="addFrameCommand in addFrameCommands"
-                                            :id="addFrameCommandUID(addFrameCommand[0].type.type)"
-                                            :key="addFrameCommand[0].type.type"
-                                            :type="addFrameCommand[0].type.type"
-                                            :shortcut="addFrameCommand[0].shortcuts[0]"
-                                            :symbol="
-                                                addFrameCommand[0].symbol !== undefined
-                                                    ? addFrameCommand[0].symbol
-                                                    : addFrameCommand[0].shortcuts[0]
-                                            "
-                                            :description="addFrameCommand[0].description"
-                                            :index="
-                                                addFrameCommand[0].index!==undefined
-                                                ? addFrameCommand[0].index
-                                                : 0
-                                            "
-                                        />
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    /* IFTRUE_isMicrobit 
-                    </b-tab>
-                        <b-tab :title="$t('commandTabs.1')" :title-link-class="getTabClasses(1)">
-                            <APIDiscovery  class="command-tab-content"/>
-                        </b-tab>
-                    FITRUE_isMicrobit */
-                </b-tabs>
-            </div>
-            <text id="userCode"></text>
-            <span id="keystrokeSpan"></span>
-        </div>
         /* IFTRUE_isPython
-        <div class="flex-padding"/>
-        <python-execution-area class="python-exec-area-container" :ref="peaComponentRefId"/>
+        <Splitpanes horizontal class="strype-commands-split-theme" @resize="onCommandsSplitterResize">
+            <pane key="1" :size="100-commandsSplitterPane2Size" :min-size="commandSplitterPane1MinSize">
+        FITRUE_isPython */
+                <div :class="{'no-PEA-commands': true, 'cropped': isExpandedPEA}" @wheel.stop>
+                    <div class="project-name-container">
+                        <span class="project-name">{{projectName}}</span>
+                        <div @mouseover="getLastProjectSavedDateTooltip" :title="lastProjectSavedDateTooltip">
+                            <img v-if="isProjectFromGoogleDrive" :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive" class="project-target-logo"/> 
+                            <img v-else-if="isProjectFromFS" :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')" class="project-target-logo"/> 
+                            <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag" v-t="'appMessage.savedGDrive'" />
+                            <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" v-t="'appMessage.modifGDrive'" :class="{'modifed-label-span': isProjectNotSourced}" />
+                            <ModalDlg :dlgId="shareGDProjectModalDlgId" :okCustomTitle="$t('buttonLabel.copyLink')" :dlgTitle="$t('appMessage.createShareProjectLink')" :autoFocusButton="'ok'">
+                                <div>
+                                    <span class="share-mode-buttons-container-title">{{$i18n.t('appMessage.shareProjectModeLabel')}}</span>
+                                    <div class="share-mode-buttons-container">
+                                            <div class="share-mode-button-group">
+                                            <input type="radio" id="shareGDProjectPublicRadioBtn" name="shareGDModeRadioGroup" 
+                                                v-model="shareProjectMode" :value="shareProjectWithinGDModeValue" />
+                                            <div>
+                                                <label for="shareGDProjectPublicRadioBtn" >{{$i18n.t("appMessage.shareProjectWithinGDMode")}}</label>
+                                                <span>{{$i18n.t("appMessage.shareProjectWithinGDModeDetails")}}</span>
+                                            </div>
+                                        </div>
+                                        <div class="share-mode-button-group">
+                                            <input type="radio" id="shareGDProjectWithGDRadioBtn" name="shareGDModeRadioGroup"
+                                            v-model="shareProjectMode" :value="shareProjectPublicModeValue" />
+                                            <div>
+                                                <label for="shareGDProjectWithGDRadioBtn" >{{$i18n.t("appMessage.shareProjectPublicMode")}}</label>
+                                                <span>{{$i18n.t("appMessage.shareProjectPublicModeDetails")}}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </ModalDlg>
+                        </div>
+                        <img 
+                            v-if="isProjectFromGoogleDrive"
+                            :src="require('@/assets/images/share.png')"
+                            :class="{'share-proj-img': true, disabled: isEditorContentModifiedFlag}" 
+                            :title="$t((isEditorContentModifiedFlag)?'appMessage.needSaveShareProj':'appMessage.shareProj')"
+                            @click="shareProject"
+                        />
+                    </div>     
+                    <div @mousedown.prevent.stop @mouseup.prevent.stop>
+                        /* IFTRUE_isMicrobit
+                        <b-tabs id="commandsTabs" content-class="mt-2" v-model="tabIndex">
+                            <b-tab :title="$t('commandTabs.0')" active :title-link-class="getTabClasses(0)" :disabled="isEditing">
+                        FITRUE_isMicrobit */
+                                <div :id="commandsContainerUID" class="command-tab-content" >
+                                    <div id="addFramePanel">
+                                        <div class="frameCommands">
+                                            <p>
+                                                <AddFrameCommand
+                                                    v-for="addFrameCommand in addFrameCommands"
+                                                    :id="addFrameCommandUID(addFrameCommand[0].type.type)"
+                                                    :key="addFrameCommand[0].type.type"
+                                                    :type="addFrameCommand[0].type.type"
+                                                    :shortcut="addFrameCommand[0].shortcuts[0]"
+                                                    :symbol="
+                                                        addFrameCommand[0].symbol !== undefined
+                                                            ? addFrameCommand[0].symbol
+                                                            : addFrameCommand[0].shortcuts[0]
+                                                    "
+                                                    :description="addFrameCommand[0].description"
+                                                    :index="
+                                                        addFrameCommand[0].index!==undefined
+                                                        ? addFrameCommand[0].index
+                                                        : 0
+                                                    "
+                                                />
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            /* IFTRUE_isMicrobit 
+                            </b-tab>
+                                <b-tab :title="$t('commandTabs.1')" :title-link-class="getTabClasses(1)">
+                                    <APIDiscovery  class="command-tab-content"/>
+                                </b-tab>
+                            FITRUE_isMicrobit */
+                        </b-tabs>
+                    </div>
+                    <text id="userCode"></text>
+                    <span id="keystrokeSpan"></span>
+                </div>
+        /* IFTRUE_isPython
+            </pane>           
+            <pane key="2" :size="commandsSplitterPane2Size" :min-size="commandSplitterPane2MinSize">
+                <python-execution-area class="python-exec-area-container" :ref="peaComponentRefId" v-on:[peaMountedEventName]="onPEAMounted" :hasDefault43Ratio="!isCommandsSplitterChanged"/>
+            </pane>
+        </Splitpanes>
         FITRUE_isPython */
         /* IFTRUE_isMicrobit      
         <div class="python-exec-area-container">  
@@ -110,7 +117,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getAppSimpleMsgDlgId, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getGoogleDriveComponentRefId, getManuallyResizedEditorHeightFlag, getMenuLeftPaneUID, getStrypePEAComponentRefId, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey } from "@/helpers/editor";
+import { computeAddFrameCommandContainerHeight, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getAppSimpleMsgDlgId, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getGoogleDriveComponentRefId, getManuallyResizedEditorHeightFlag, getMenuLeftPaneUID, getStrypePEAComponentRefId, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, ShareProjectMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -122,8 +129,10 @@ import Menu from "@/components/Menu.vue";
 import GoogleDrive from "@/components/GoogleDrive.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 /* IFTRUE_isPython */
+import {Splitpanes, Pane} from "splitpanes";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import { isMacOSPlatform } from "@/helpers/common";
+import scssVars  from "@/assets/style/_export.module.scss";
 /* FITRUE_isPython */
 /* IFTRUE_isMicrobit */
 import APIDiscovery from "@/components/APIDiscovery.vue";
@@ -142,6 +151,7 @@ export default Vue.extend({
         APIDiscovery,
         /* FITRUE_isMicrobit */
         /* IFTRUE_isPython */
+        Splitpanes, Pane,
         PythonExecutionArea, 
         /* FITRUE_isPython */
     },
@@ -155,6 +165,13 @@ export default Vue.extend({
             isExpandedPEA: false, // flag indicating whether the Python Execution Area is expanded (to fit the other parts of the commands)
             lastProjectSavedDateTooltip: "", // update on a mouse over event (in getLastProjectSavedDateTooltip)
             shareProjectMode: ShareProjectMode.withinGD,
+            /* IFTRUE_isPython */
+            peaMountedEventName: CustomEventTypes.pythonExecAreaMounted,
+            commandSplitterPane1MinSize: 0, // to be adjusted after the component is mounted
+            commandSplitterPane2MinSize: 0, // to be adjusted after the component is mounted
+            commandsSplitterPane2Size: 0, // to be adjused after the component is mounted
+            isCommandsSplitterChanged: false,
+            /* FITRUE_isPython */
         };
     },
 
@@ -798,6 +815,64 @@ export default Vue.extend({
             }
         },
         /*FITRUE_isMicrobit */
+
+        /* IFTRUE_isPython */
+        onPEAMounted(){
+            // Once the PEA is ready, we need to fix the splitter's position between the frame commands area and the PEA,
+            // so that the PEA stays at the bottom of the viewport as intially intented (in its intial 4/3 ratio).
+            const peaElement = (this.$refs[this.peaComponentRefId] as Vue).$el;
+            const peaHeight = peaElement.getBoundingClientRect().height;
+            const peaMargin = parseInt(scssVars.pythonExecutionAreaMargin.replace("px",""));
+            // (The divider isn't exactly the size we give in CSS (I don't know why so we check it like that))
+            const commandsSplitterDivider = document.querySelector(".strype-commands-split-theme .splitpanes__splitter");
+            if(commandsSplitterDivider){
+                const commandsSplitterHeight = commandsSplitterDivider.getBoundingClientRect().height + parseInt(window.getComputedStyle(commandsSplitterDivider).marginTop.replace("px","")); 
+                const viewPortH = document.getElementsByTagName("body")[0].getBoundingClientRect().height;
+                this.commandsSplitterPane2Size = ((peaHeight + peaMargin ) * 100) / (viewPortH - commandsSplitterHeight);
+                
+                // We can also set the min size of the splitter panes here.
+                this.setCommandsSplitterPanesMinSize(peaHeight + peaMargin);
+            }
+
+            // Finally, also update the frame commands panel as it may now overflow...
+            setTimeout(() => {
+                computeAddFrameCommandContainerHeight(); 
+            }, 200);
+        },
+
+        onCommandsSplitterResize() {
+            // When the splitter is resized, we need to resize the frame commands container (wrap/unwrap)
+            // and the PEA (will take the full space in its pane, breaking the initial 4/3 ratio)
+            document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
+            this.isCommandsSplitterChanged = true;
+            this.setCommandsSplitterPanesMinSize();
+        },
+
+        setCommandsSplitterPanesMinSize(peaDefaultHeight?: number) {
+            // Called to get the right min sizes of the Commands splitter.
+            // The minimum size the first pane of the Commands Splitter can take is set to guarantee the project name is visible.
+            // The method parameter "peaDefaultHeight" is only required when we get the min sizes the very first time
+            // (because the minimum size will be that of the PEA with the 4/3 default aspect ratio).
+            const viewPortH = document.getElementsByTagName("body")[0].getBoundingClientRect().height;
+            const commandsSplitterDivider = document.querySelector(".strype-commands-split-theme .splitpanes__splitter");
+            if(commandsSplitterDivider) {               
+                const commandsSplitterHeight = commandsSplitterDivider.getBoundingClientRect().height + parseInt(window.getComputedStyle(commandsSplitterDivider).marginTop.replace("px","")); 
+                const projectNameContainerDiv = document.getElementsByClassName("project-name-container")?.[0];
+                // Pane 1: it is possible that at some point, the frame commands panel has a x-axis scroll bar (when the commands are wrapped). 
+                // So we need to account for that in the min size.
+                const frameCommandsContainer = (document.querySelector(".no-PEA-commands") as HTMLDivElement);
+                const frameCommandsScrollBarH = frameCommandsContainer.offsetHeight - frameCommandsContainer.clientHeight;
+                if(projectNameContainerDiv){                    
+                    this.commandSplitterPane1MinSize = ((projectNameContainerDiv.getBoundingClientRect().height + frameCommandsScrollBarH) * 100) / (viewPortH - commandsSplitterHeight);
+                }    
+            
+                // Pane 2:
+                if(peaDefaultHeight) {
+                    this.commandSplitterPane2MinSize = (peaDefaultHeight * 100) / (viewPortH - commandsSplitterHeight);
+                }
+            }
+        },
+        /* FITRUE_isPython */
     },
 });
 </script>
@@ -877,13 +952,39 @@ export default Vue.extend({
     border-left: #383b40 1px solid;
     color: #252323;
     background-color: #E2E7E0;
-    display: flex;
-    flex-direction: column;
     height: 100vh;
     /* IFTRUE_isMicrobit */
+    display: flex;
+    flex-direction: column;
     padding:0px 15px;
     /* FITRUE_isMicrobit */
 }
+
+/**
+ * The following classes overwrite the spitter's style
+ * for the splitter in use in this component.
+ */
+/* IFTRUE_isPython */
+.strype-commands-split-theme.splitpanes--horizontal>.splitpanes__splitter,
+.strype-commands-split-theme > .splitpanes--horizontal>.splitpanes__splitter {
+    height: 1px !important;
+    background-color: black;
+    position: relative;
+}
+
+.strype-commands-split-theme.splitpanes--horizontal>.splitpanes__splitter:before,
+.strype-commands-split-theme > .splitpanes--horizontal>.splitpanes__splitter:before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: -2px;
+    bottom: -2px;
+    width: 100% !important;
+    transform: none !important;
+    height: auto !important;
+}
+/* FITRUE_isPython */
+/** End splitter classes */
 
 .cmd-progress-container {
     margin-top: 5px;
@@ -899,7 +1000,15 @@ export default Vue.extend({
 }
 
 .no-PEA-commands {
+    /* IFTRUE_isPython */
+    overflow-y: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;    
+    /* FITRUE_isPython */
+    /* IFTRUE_isMicrobit */
     overflow-y: auto;
+    /* FITRUE_isMicrobit */
 }
 
 .no-PEA-commands.cropped {
@@ -932,13 +1041,9 @@ export default Vue.extend({
     flex-wrap: wrap;
 }
 
-.flex-padding {
-    flex-grow: 2;
-}
-
 .python-exec-area-container {
     /* IFTRUE_isPython */
-    margin: 0px 5px 5px 5px;
+    margin: 0px $strype-python-exec-area-margin $strype-python-exec-area-margin $strype-python-exec-area-margin;
     /* FITRUE_isPython */
     /* IFTRUE_isMicrobit */
     margin-bottom: 90px;
