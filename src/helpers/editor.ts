@@ -1740,26 +1740,43 @@ export function setPythonExecAreaLayoutButtonPos(): void{
  * to allow the commands to be displayed in columns when they can't be shown as one column.
  * See Commands.vue for the HTML template logics.
  */
-export const debounceComputeAddFrameCommandContainerHeight = debounce(computeAddFrameCommandContainerHeight, 100);
+export const debounceComputeAddFrameCommandContainerSize = debounce(computeAddFrameCommandContainerSize, 100);
 
-export function computeAddFrameCommandContainerHeight(): void{
-    // When the container div overflows, we remove the overflow extra height to the p element containing the commands
-    // so that we can shorten the p height to trigger the commands to be displayed in columns.  
-    const scrollContainerH = document.getElementsByClassName("no-PEA-commands")[0].scrollHeight;
-    const noPEACommandsH =  document.getElementsByClassName("no-PEA-commands")[0].getBoundingClientRect().height;
-    const addFrameCmdsPH = (document.querySelector(".frameCommands p") as HTMLParagraphElement).getBoundingClientRect().height;
-    const commandsFlexContainer = (document.querySelector(".frameCommands p") as HTMLParagraphElement);
-    if(noPEACommandsH < scrollContainerH){
-        commandsFlexContainer.style.height = (addFrameCmdsPH - (scrollContainerH - noPEACommandsH)) + "px";
+export function computeAddFrameCommandContainerSize(isExpandedPEA?: boolean): void{
+    // Two situations can happen: being or not in expanded PEA view.
+    // If we are in expanded PEA view, the height of the frame commands panel is aligned with the editor's "cropped" size.
+    // If we are in collapsed PEA view, the height of the frame commands is aligned with the commands/PEA splitter pane's size.
+    if(isExpandedPEA){
+        const projectNameContainerH = (document.getElementsByClassName("project-name-container")[0] as HTMLDivElement).clientHeight;
+        const croppedEditorH = (manuallyResizedEditorHeight) ? manuallyResizedEditorHeight : (document.getElementsByTagName("body")[0].clientHeight / 2);
+        (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.height = (croppedEditorH - projectNameContainerH) + "px";
+        // In expanded view, we need to set the frame commmands container to "position: absolute" for the content to overlay the commands/PEA splitter.
+        // However, the width won't align properly, we need to set that width manually.
+        const frameCmdsParagraphContainer =  document.querySelector(".frameCommands") as HTMLDivElement;
+        (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.width = frameCmdsParagraphContainer.clientWidth + "px";
     }
-    else{
+    else {
+        // Reset the frame commands container's width to natural behaviour (see case above)
+        (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.width = "";
+
+        // When the container div overflows, we remove the overflow extra height to the p element containing the commands
+        // so that we can shorten the p height to trigger the commands to be displayed in columns.
+        const scrollContainerH = document.getElementsByClassName("no-PEA-commands")[0].scrollHeight;
+        const noPEACommandsH =  document.getElementsByClassName("no-PEA-commands")[0].getBoundingClientRect().height;
+        const addFrameCmdsPH = (document.querySelector(".frameCommands p") as HTMLParagraphElement).getBoundingClientRect().height;
+        const commandsFlexContainer = (document.querySelector(".frameCommands p") as HTMLParagraphElement);
+        if(noPEACommandsH < scrollContainerH){
+            commandsFlexContainer.style.height = (addFrameCmdsPH - (scrollContainerH - noPEACommandsH)) + "px";
+        }
+        else{
         // The commands panel is not overflowing, but it could be because it is already collapsed (elements are wrapped) and now we have more space for it to expand:
         // in the case, we want to increase the commands panel size.
-        const firstCommandLeft = commandsFlexContainer.children[0].getBoundingClientRect().left;
-        const lastCommandLeft =  commandsFlexContainer.children[commandsFlexContainer.childElementCount - 1].getBoundingClientRect().left;
-        if(firstCommandLeft != lastCommandLeft){
-            const projectNameContainerH = document.getElementsByClassName("project-name-container")[0].getBoundingClientRect().height;
-            (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.height = (noPEACommandsH - projectNameContainerH) + "px";
+            const firstCommandLeft = commandsFlexContainer.children[0].getBoundingClientRect().left;
+            const lastCommandLeft =  commandsFlexContainer.children[commandsFlexContainer.childElementCount - 1].getBoundingClientRect().left;
+            if(firstCommandLeft != lastCommandLeft){
+                const projectNameContainerH = document.getElementsByClassName("project-name-container")[0].getBoundingClientRect().height;
+                (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.height = (noPEACommandsH - projectNameContainerH) + "px";
+            }
         }
     }
 }

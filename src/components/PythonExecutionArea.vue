@@ -1,6 +1,6 @@
 
 <template>
-    <div id="peaComponent" :class="{'expanded-PEA': isExpandedPEA, 'collapsed-no-ratio-PEA': !isExpandedPEA && !hasDefault43Ratio}" ref="peaComponent" @mousedown="handlePEAMouseDown">
+    <div id="peaComponent" :class="{'expanded-PEA': isExpandedPEA, 'no-43-ratio-collapsed-PEA': !hasDefault43Ratio && !isExpandedPEA}" ref="peaComponent" @mousedown="handlePEAMouseDown">
         <div id="peaControlsDiv" :class="{'expanded-PEA-controls': isExpandedPEA}">           
             <b-tabs v-show="isTabsLayout" v-model="peaDisplayTabIndex" no-key-nav>
                 <b-tab v-show="isTabsLayout" :button-id="graphicsTabId" :title="'\uD83D\uDC22 '+$t('PEA.TurtleGraphics')" title-link-class="pea-display-tab"></b-tab>
@@ -57,7 +57,7 @@ import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
 import { execPythonCode } from "@/helpers/execPythonCode";
 import { mapStores } from "pinia";
-import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerHeight, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, hasPrecompiledCodeError, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
+import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, hasPrecompiledCodeError, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
 import i18n from "@/i18n";
 import { PythonExecRunningState, StrypePEALayoutData, StrypePEALayoutMode } from "@/types/types";
 import Menu from "@/components/Menu.vue";
@@ -175,7 +175,7 @@ export default Vue.extend({
                 }
                 
                 setTimeout(() => {
-                    debounceComputeAddFrameCommandContainerHeight();
+                    debounceComputeAddFrameCommandContainerSize(this.isExpandedPEA);
                     setPythonExecAreaLayoutButtonPos();
                 }, 100);
             }, 100);
@@ -449,6 +449,7 @@ export default Vue.extend({
                     const turtlePlaceholderContainer = document.getElementById("pythonTurtleContainerDiv") as HTMLDivElement;
                     (turtlePlaceholderContainer.children[0] as HTMLDivElement).style.width = "";
                     (turtlePlaceholderContainer.children[0] as HTMLDivElement).style.height = "";
+                    (document.getElementById("tabContentContainerDiv") as HTMLDivElement).style.maxHeight = "";                                     
                 }
                 else{
                     // When the PEA is maximized, we set the max height via styling: this rules over CSS.
@@ -543,7 +544,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-    .expanded-PEA {
+    #peaComponent.expanded-PEA {
         width: 100vw;
         top:50vh;
         bottom:0px;
@@ -552,7 +553,7 @@ export default Vue.extend({
         margin: 0px !important;
     }
 
-    .collapsed-no-ratio-PEA {
+    .no-43-ratio-collapsed-PEA {
         height: calc(100% - $strype-python-exec-area-margin);
     }
 

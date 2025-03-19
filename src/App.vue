@@ -16,12 +16,14 @@
                 </div>
             </div>
         </div>
+        /* IFTRUE_isPython
         <Splitpanes id="expandedPythonExecAreaSplitersOverlay" class="strype-split-theme" v-show="isExpandedPythonExecArea" horizontal @resize=onExpandedPythonExecAreaSplitPaneResize>
             <pane key="1">
             </pane>
-            <pane key="2" min-size="20" max-size="80" size="50">
+            <pane key="2" min-size="20" max-size="80">
             </pane>
         </Splitpanes>
+        FITRUE_isPython */
         <!-- Keep the style position of the row div to get proper z order layout of the app -->
         <div class="row" style="position: relative;">
             <Splitpanes class="strype-split-theme" @resize=onStrypeCommandsSplitPaneResize>
@@ -94,7 +96,7 @@ import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, GAPIState } from "@/types/types";
-import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getStrypePEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey } from "./helpers/editor";
+import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getStrypePEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, debounceComputeAddFrameCommandContainerSize } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
@@ -135,7 +137,9 @@ export default Vue.extend({
             setAppNotOnTop: false,
             progressbarMessage: "",
             resetStrypeProjectFlag: false,
+            /* IFTRUE_isPython */
             isExpandedPythonExecArea: false,
+            /* FITRUE_isPython */
         };
     },
 
@@ -379,6 +383,9 @@ export default Vue.extend({
         // Listen to the Python execution area size change events (as the editor needs to be resized too)
         document.addEventListener(CustomEventTypes.pythonExecAreaExpandCollapseChanged, (event) => {
             this.isExpandedPythonExecArea = (event as CustomEvent).detail;
+            (this.$refs[this.strypeCommandsRefId] as InstanceType<typeof Commands>).isExpandedPEA = (event as CustomEvent).detail;
+            (this.$refs[this.strypeCommandsRefId] as InstanceType<typeof Commands>).hasPEAExpanded ||= (event as CustomEvent).detail;
+            debounceComputeAddFrameCommandContainerSize((event as CustomEvent).detail);
         });
         /* FITRUE_isPython */
 
@@ -561,9 +568,11 @@ export default Vue.extend({
             }
         });
 
+        /* IFTRUE_isPython */
         // This case may not happen, but if we had a Strype version that contains a default initial state working with Turtle,
         // the UI should reflect it (showing the Turtle tab) so we look for Turtle in any case.
         actOnTurtleImport();
+        /* FITRUE_isPython */
     },
 
     methods: {
@@ -899,6 +908,7 @@ export default Vue.extend({
             menuTarget.focus();
         },
 
+        /* IFTRUE_isPython */
         onExpandedPythonExecAreaSplitPaneResize(event: any){
             // We want to know the size of the second pane (https://antoniandre.github.io/splitpanes/#emitted-events).
             // It will dictate the size of the Python execution area (expanded, with a range between 20% and 80% of the vh)
@@ -911,6 +921,7 @@ export default Vue.extend({
                 // When the user has used the splitter slider to resize the Python execution area, we set a flag in the store: 
                 // as we play with styling we need to know (see PythonExecutionArea.vue)
                 setManuallyResizedEditorHeightFlag(editorNewMaxHeight);
+                debounceComputeAddFrameCommandContainerSize(true);
                 // Set the editor's max height (fitting within the first pane's height); as well as the "frame commands" panel's
                 (document.getElementsByClassName("cropped-editor-code-div")[0] as HTMLDivElement).style.maxHeight = (editorNewMaxHeight + "px");
                 (document.getElementsByClassName("no-PEA-commands")[0] as HTMLDivElement).style.maxHeight = (editorNewMaxHeight + "px");
@@ -925,6 +936,7 @@ export default Vue.extend({
             // Update the Python Execution Area layout buttons' position
             setPythonExecAreaLayoutButtonPos();
         },
+        /* FITRUE_isPython */
 
         onStrypeCommandsSplitPaneResize(){
             /* IFTRUE_isPython */

@@ -1,10 +1,10 @@
 <template>
     <div class="commands">
         /* IFTRUE_isPython
-        <Splitpanes horizontal class="strype-commands-split-theme" @resize="onCommandsSplitterResize">
+        <Splitpanes horizontal :class="{'strype-commands-split-theme': true, 'expanded-PEA': isExpandedPEA}" @resize="onCommandsSplitterResize">
             <pane key="1" :size="100-commandsSplitterPane2Size" :min-size="commandSplitterPane1MinSize">
         FITRUE_isPython */
-                <div :class="{'no-PEA-commands': true, 'cropped': isExpandedPEA}" @wheel.stop>
+                <div class="no-PEA-commands" @wheel.stop>
                     <div class="project-name-container">
                         <span class="project-name">{{projectName}}</span>
                         <div @mouseover="getLastProjectSavedDateTooltip" :title="lastProjectSavedDateTooltip">
@@ -51,7 +51,7 @@
                         FITRUE_isMicrobit */
                                 <div :id="commandsContainerUID" class="command-tab-content" >
                                     <div id="addFramePanel">
-                                        <div class="frameCommands">
+                                        <div :class="{frameCommands: true, 'with-expanded-PEA': isExpandedPEA}">
                                             <p>
                                                 <AddFrameCommand
                                                     v-for="addFrameCommand in addFrameCommands"
@@ -89,7 +89,7 @@
         /* IFTRUE_isPython
             </pane>           
             <pane key="2" :size="commandsSplitterPane2Size" :min-size="commandSplitterPane2MinSize">
-                <python-execution-area class="python-exec-area-container" :ref="peaComponentRefId" v-on:[peaMountedEventName]="onPEAMounted" :hasDefault43Ratio="!isCommandsSplitterChanged"/>
+                <python-execution-area class="python-exec-area-container" :ref="peaComponentRefId" v-on:[peaMountedEventName]="onPEAMounted" :hasDefault43Ratio="!isCommandsSplitterChanged && !hasPEAExpanded"/>
             </pane>
         </Splitpanes>
         FITRUE_isPython */
@@ -117,7 +117,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { computeAddFrameCommandContainerHeight, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getAppSimpleMsgDlgId, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getGoogleDriveComponentRefId, getManuallyResizedEditorHeightFlag, getMenuLeftPaneUID, getStrypePEAComponentRefId, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey } from "@/helpers/editor";
+import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getAppSimpleMsgDlgId, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getGoogleDriveComponentRefId, getMenuLeftPaneUID, getStrypePEAComponentRefId, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, ShareProjectMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -162,10 +162,11 @@ export default Vue.extend({
             progressPercent: 0,
             uploadThroughUSB: false,
             frameCommandsReactiveFlag: false, // this flag is only use to allow a reactive binding when the add frame commands are updated (language),
-            isExpandedPEA: false, // flag indicating whether the Python Execution Area is expanded (to fit the other parts of the commands)
             lastProjectSavedDateTooltip: "", // update on a mouse over event (in getLastProjectSavedDateTooltip)
             shareProjectMode: ShareProjectMode.withinGD,
             /* IFTRUE_isPython */
+            isExpandedPEA: false, // flag indicating whether the Python Execution Area is expanded (to update the UI parts accordingly)
+            hasPEAExpanded: false, // flag indicating whether the Python Execution Area *has ever been* expanded
             peaMountedEventName: CustomEventTypes.pythonExecAreaMounted,
             commandSplitterPane1MinSize: 0, // to be adjusted after the component is mounted
             commandSplitterPane2MinSize: 0, // to be adjusted after the component is mounted
@@ -598,25 +599,6 @@ export default Vue.extend({
             // we use this reactive flag to trigger the recomputation of the computed property addFrameCommands
             this.frameCommandsReactiveFlag = !this.frameCommandsReactiveFlag;
         });
-            
-        /* IFTRUE_isPython */
-        // Listen to the Python execution area size change events (as the other commands max height need to be ammended)
-        document.addEventListener(CustomEventTypes.pythonExecAreaExpandCollapseChanged, (event) => {
-            this.isExpandedPEA = (event as CustomEvent).detail;
-            // The maximum height of the "frame commands" (the part that doesn't contain the Python Execution Area)
-            // should be set to the same as the editor when the PEA is expanded, otherwise we remove the style.
-            this.$nextTick(() => {
-                const noPEACommandsDiv = document.getElementsByClassName("no-PEA-commands")[0] as HTMLDivElement;
-                if(this.isExpandedPEA){
-                    // If the editor's size was manually set by moving the splitter, we use that value, otherwise, we use 50vh.
-                    noPEACommandsDiv.style.maxHeight = (getManuallyResizedEditorHeightFlag()) ? getManuallyResizedEditorHeightFlag()+"px" : "50vh";
-                }
-                else{
-                    noPEACommandsDiv.style.maxHeight ="";
-                }
-            });
-        });
-        /* FITRUE_isPython */
     },
 
     mounted() {
@@ -836,7 +818,7 @@ export default Vue.extend({
 
             // Finally, also update the frame commands panel as it may now overflow...
             setTimeout(() => {
-                computeAddFrameCommandContainerHeight(); 
+                computeAddFrameCommandContainerSize(); 
             }, 200);
         },
 
@@ -972,6 +954,11 @@ export default Vue.extend({
     position: relative;
 }
 
+.strype-commands-split-theme.expanded-PEA.splitpanes--horizontal>.splitpanes__splitter,
+.strype-commands-split-theme.expanded-PEA > .splitpanes--horizontal>.splitpanes__splitter {
+    background-color: transparent !important;    
+}
+
 .strype-commands-split-theme.splitpanes--horizontal>.splitpanes__splitter:before,
 .strype-commands-split-theme > .splitpanes--horizontal>.splitpanes__splitter:before {
     content: "";
@@ -1011,10 +998,6 @@ export default Vue.extend({
     /* FITRUE_isMicrobit */
 }
 
-.no-PEA-commands.cropped {
-    max-height: 50vh;
-}
-
 .progress-bar-text {
     @include centerer;
     color:#fefefe !important;
@@ -1039,6 +1022,13 @@ export default Vue.extend({
     display: flex;
     flex-direction: column;
     flex-wrap: wrap;
+}
+
+.frameCommands.with-expanded-PEA p {
+   // So that the frame commands in expanded view expands over the commands/PEA splitter,
+   // the width is set programmatically
+   position: absolute; 
+  
 }
 
 .python-exec-area-container {
