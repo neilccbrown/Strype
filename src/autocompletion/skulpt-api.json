@@ -945,8 +945,7 @@
             "type": [
                 "function"
             ],
-            "version": 0,
-            "params": []
+            "version": 0
         },
         {
             "acResult": "divmod",

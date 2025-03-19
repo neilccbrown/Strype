@@ -758,7 +758,7 @@ export default Vue.extend({
             const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UID);
             const hasTextSelection = (this.appStore.anchorSlotCursorInfos && this.appStore.focusSlotCursorInfos && slotSelectionCursorComparisonValue != 0) ?? false;
             let refactorFocusSpanUID = this.UID; // by default the focus stays where we are
-
+                        
             // If the frame is a variable assignment frame and we are in a top level slot of the left hand side editable slot,
             // pressing "=" or space keys move to RHS editable slot (but we allow the a/c to be activated)
             // Note: because 1) key code value is deprecated and 2) "=" is coded a different value between Chrome and FF, 
@@ -846,10 +846,12 @@ export default Vue.extend({
             // Finally, we check the case an operator, bracket or quote has been typed and the slots within this frame need update
             // First we check closing brackets or quote as they have a specifc behaviour, then keep working out the other things
             else if((closeBracketCharacters.includes(event.key) && !isFieldStringSlot(currentSlot)) || (isFieldStringSlot(currentSlot) && stringQuoteCharacters.includes(event.key))){
-                // Closing bracket / quote: key hits are ignored except for escaping a quote in a string
+                // Closing bracket / quote: key hits are ignored except for escaping a quote in a string or when making a multi-dimensional expression*
                 // However, when no text is highlighted and we are just before that same closing bracket / quote (no text between text cursor and bracket)
                 // we move the text cursor in the next slot, as we consider the user closed an existing already closed bracket / quote.
+                //(*) see later in this method
                 let shouldMoveToNextSlot = !hasTextSelection;
+                let checkMultidimBrackets = !shouldMoveToNextSlot;
                 // Checking if we are escaping the quote used for this string (i.e. we are after an escaping \, and there is no quote following the caret)
                 const isEscapingString = isFieldStringSlot(currentSlot) && selectionStart > 0 && (getNumPrecedingBackslashes(inputSpanFieldContent, selectionStart) % 2) == 1
                     && ((selectionStart < inputSpanFieldContent.length && inputSpanFieldContent[selectionStart]!= event.key) || selectionStart == inputSpanFieldContent.length);
@@ -875,6 +877,7 @@ export default Vue.extend({
                         shouldMoveToNextSlot = inputSpanFieldContent.substring(selectionEnd).trim().length == 0
                             // make sure we are inside a bracketed structure and that the opening bracket is the counterpart of the key value (closing bracket)
                             && parentBracketSlot != undefined && parentBracketSlot.openingBracketValue == getMatchingBracket(event.key, false);
+                        checkMultidimBrackets = !shouldMoveToNextSlot;
                     }
                     if(shouldMoveToNextSlot){
                         // focus the subslot following the closing bracket, in the next tick
@@ -889,6 +892,31 @@ export default Vue.extend({
                         });
                     }
                 }
+
+                if(checkMultidimBrackets){
+                    // Check the case of a multi-dimensional expression 
+                    //(*) multi-dimensional expression case: say we have this expression: n[3] --> 
+                    // case 1: typing "]" right after "n" will generate "[|]" (| is the text cursor)
+                    // case 2: typing "]" right after "[" will generate "|][" (| is the text cursor)
+                    // Note that if there is a text selection, we wrap the selection in the appropriate added brackets
+                    if(inputSpanFieldContent.substring(selectionEnd).trim().length == 0 && nextSlotInfos != undefined 
+                        && isFieldBracketedSlot(retrieveSlotFromSlotInfos(nextSlotInfos) as FieldSlot) && (retrieveSlotFromSlotInfos(nextSlotInfos) as SlotsStructure).openingBracketValue == getMatchingBracket(event.key, false)){
+                        // Case 1 (at the end of the slot, before a bracketed slot structure of the same bracket symbol opening counterpart than typed closing bracket)
+                        inputSpanField.textContent = inputSpanFieldContent.substring(0, selectionStart) + getMatchingBracket(event.key, false) + inputSpanFieldContent.substring(selectionStart, selectionEnd) + event.key;
+                        const newSlotCursorInfos: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: selectionEnd + 1}; // We move past the first inserted opening bracket
+                        this.appStore.setSlotTextCursors(newSlotCursorInfos, newSlotCursorInfos);
+                        this.$emit("requestSlotsRefactoring", refactorFocusSpanUID, stateBeforeChanges);
+                    }
+                    else if(inputSpanFieldContent.substring(0, selectionStart).trim().length == 0 && inputSpanFieldContent.substring(selectionEnd).trim().length > 0 && this.coreSlotInfo.slotId.includes(",") &&
+                        isFieldBracketedSlot(parentSlot as FieldSlot) && (parentSlot as SlotsStructure).openingBracketValue == getMatchingBracket(event.key, false)){
+                        // Case 2 (at the beginning of a bracketed structure, that is NOT empty, and of the same bracket symbol opening counterpart than typed closing bracket)
+                        inputSpanField.textContent = inputSpanFieldContent.substring(selectionStart, selectionEnd) + event.key + getMatchingBracket(event.key, false) + inputSpanFieldContent.substring(selectionEnd);
+                        const newSlotCursorInfos: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: selectionEnd - selectionStart}; // We move before the first inserted closing bracket
+                        this.appStore.setSlotTextCursors(newSlotCursorInfos, newSlotCursorInfos);
+                        this.$emit("requestSlotsRefactoring", refactorFocusSpanUID, stateBeforeChanges);  
+                    }
+                }
+
                 event.preventDefault();
                 event.stopImmediatePropagation();
             }
@@ -971,7 +999,7 @@ export default Vue.extend({
                                 let openingTokenSpanFieldCurosorPos = selectionStart;
                                 let closingTokenSpanField = inputSpanField;
                                 let closingTokenSpanFieldCurosorPos = selectionEnd;  
-                                let closingTokenSlotInfos = this.coreSlotInfo;                              
+                                let closingTokenSlotInfos = this.coreSlotInfo; 
                                 if(hasTextSelection){
                                     // Check in what direction is the selection, note that we expect the anchor and focus to be set here (we checked before), so the comparison value shouldn't be undefined.
                                     if(slotSelectionCursorComparisonValue < 0){
