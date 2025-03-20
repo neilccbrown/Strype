@@ -1769,13 +1769,15 @@ export function computeAddFrameCommandContainerSize(isExpandedPEA?: boolean): vo
             commandsFlexContainer.style.height = (addFrameCmdsPH - (scrollContainerH - noPEACommandsH)) + "px";
         }
         else{
-        // The commands panel is not overflowing, but it could be because it is already collapsed (elements are wrapped) and now we have more space for it to expand:
-        // in the case, we want to increase the commands panel size.
-            const firstCommandLeft = commandsFlexContainer.children[0].getBoundingClientRect().left;
-            const lastCommandLeft =  commandsFlexContainer.children[commandsFlexContainer.childElementCount - 1].getBoundingClientRect().left;
-            if(firstCommandLeft != lastCommandLeft){
-                const projectNameContainerH = document.getElementsByClassName("project-name-container")[0].getBoundingClientRect().height;
-                (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.height = (noPEACommandsH - projectNameContainerH) + "px";
+            // The commands panel is not overflowing, but it could be because it is already collapsed (elements are wrapped) and now we have more space for it to expand:
+            // in the case, we want to increase the commands panel size.
+            if(commandsFlexContainer.childElementCount > 0){
+                const firstCommandLeft = commandsFlexContainer.children[0].getBoundingClientRect().left;
+                const lastCommandLeft =  commandsFlexContainer.children[commandsFlexContainer.childElementCount - 1].getBoundingClientRect().left;
+                if(firstCommandLeft != lastCommandLeft){
+                    const projectNameContainerH = document.getElementsByClassName("project-name-container")[0].getBoundingClientRect().height;
+                    (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.height = (noPEACommandsH - projectNameContainerH) + "px";
+                }
             }
         }
     }
