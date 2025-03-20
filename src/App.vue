@@ -46,7 +46,7 @@
                             <div class="col">
                                 <div 
                                     :id="editorUID" 
-                                    :class="{'editor-code-div noselect print-full-height':true, 'full-height-editor-code-div':!isExpandedPythonExecArea, 'cropped-editor-code-div': isExpandedPythonExecArea}"
+                                    :class="{'editor-code-div noselect print-full-height':true/* IFTRUE_isPython , 'full-height-editor-code-div':!isExpandedPythonExecArea, 'cropped-editor-code-div': isExpandedPythonExecArea FITRUE_isPython */}"
                                     @mousedown="handleWholeEditorMouseDown"
                                 >
                                     <FrameContainer
