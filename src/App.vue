@@ -377,6 +377,14 @@ export default Vue.extend({
                 event.stopPropagation();
                 return;
             }
+
+            // Listen to the project sharing shortcut "keyup" event that needs to consume for Safari (handling of the shorcut is in Menu.vue)
+            if(event.type == "keyup" && event.key.toLowerCase() == "l" && event.metaKey && event.shiftKey){
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                event.stopPropagation();
+                return;
+            }
         });
 
         /* IFTRUE_isPython */
@@ -513,7 +521,7 @@ export default Vue.extend({
         }
         else{
             // The default opening of Strype (either brand new project or retrieving from local storage -- not opening a shared project)
-            this.loadLocaStorageProjectOnStart();
+            this.loadLocalStorageProjectOnStart();
         }
 
         // Register a listener to handle the context menu hovers (cf onContextMenuHover())
@@ -598,7 +606,7 @@ export default Vue.extend({
             }
         },
 
-        loadLocaStorageProjectOnStart() {
+        loadLocalStorageProjectOnStart() {
             // Check the local storage (WebStorage) to see if there is a saved project from the previous time the user entered the system
             // if browser supports localstorage
             if (typeof(Storage) !== "undefined") {

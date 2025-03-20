@@ -1,7 +1,7 @@
 <!-- this acts as a wrapper around the bootstrap modals, to have centralised control and customisation -->
 <template>
     <b-modal no-close-on-backdrop :hide-header-close="!showCloseBtn" :id="dlgId" :title="dlgTitle" :ok-only="okOnly" 
-        :ok-title="okTitle" :cancel-title="cancelTitle" :size="size" :auto-focus-button="autoFocusButton">
+        :ok-title="okTitle" :ok-disabled="okDisabled" :cancel-title="cancelTitle" :size="size" :auto-focus-button="autoFocusButton">
         <slot/>
         <!-- the footer part is entirely optional if other buttons than the default OK/Cancel or Yes/No are required -->
         <template v-if="!hideDlgBtns" #modal-footer="{ok, cancel, hide}">
@@ -28,6 +28,7 @@ export default Vue.extend({
         dlgTitle: String,
         okOnly: Boolean,
         okCustomTitle: String,
+        okDisabled: Boolean, // this is meant as a TEMPORARY disable, for example when async methods are called in between
         cancelCustomTitle: String,
         hideDlgBtns: Boolean,
         showCloseBtn: Boolean,     
