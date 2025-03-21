@@ -169,6 +169,34 @@ export function getAddFrameCmdElementUID(commandType: string): string {
     return "addFrameCmd_" + commandType;
 }
 
+/* IFTRUE_isPython */
+/** This section contains accessors for the PEA components' ID, used within the application */
+export function getPEAComponentRefId(): string {
+    return "peaComponent";
+}
+
+export function getPEAControlsDivId(): string {
+    return "peaControlsDiv";
+}
+
+export function getPEATabContentContainerDivId(): string {
+    return "peaTabContentContainerDiv";
+}
+
+export function getPEAGraphicsContainerDivId(): string {
+    return "peaGraphicsContainerDiv";
+}
+
+export function getPEAGraphicsDivId(): string {
+    return "peaGraphicsDiv";
+}
+
+export function getPEAConsoleId(): string {
+    return "peaConsole";
+}
+/** end of section */
+/*FITRUE_isPython */
+
 export function getTextStartCursorPositionOfHTMLElement(htmlElement: HTMLSpanElement): number {
     // For (editable) spans, it is not straight forward to retrieve the text cursor position, we do it via the selection API
     // if the text in the element is selected, we show the start of the selection.
@@ -354,6 +382,16 @@ export function getCaretUID(caretAssignedPosition: string, frameId: number): str
     return "caret_"+caretAssignedPosition+"_"+frameId;
 }
 
+const caretContainerUIDRegex = /caret_(.+)_of_frame_(-?\d*)/;
+export function getCaretContainerUID(caretPos: CaretPosition, frameId: number): string {
+    // If a change is made in this method, reflect it on the regex above.
+    return "caret_" + caretPos + "_of_frame_" + frameId;
+}
+
+export function isCaretContainerElement(id: string): boolean {
+    return caretContainerUIDRegex.test(id);
+}
+
 export function getCaretContainerRef(): string {
     return "caretContainer";
 }
@@ -376,10 +414,6 @@ export function getGoogleDriveComponentRefId(): string {
 
 export function getStrypeCommandComponentRefId(): string {
     return "strypeCommands";
-}
-
-export function getStrypePEAComponentRefId(): string {
-    return "strypePEA";
 }
 
 // The following helpers traverse the component refs to retrieve the desired component
@@ -1654,7 +1688,7 @@ export function getNumPrecedingBackslashes(content: string, cursorPos : number) 
 /**
  * Turtle  related bits for the editor
  */
-
+/* IFTRUE_isPython */
 // This method acts the turtle module being imported or not in the editor's frame
 export function actOnTurtleImport(): void {
     let hasTurtleImported = false;
@@ -1675,7 +1709,7 @@ export function actOnTurtleImport(): void {
     });
 
     // We notify the Python exec area about the presence or absence of the turtle module
-    document.getElementById("peaComponent")?.dispatchEvent(new CustomEvent(CustomEventTypes.notifyTurtleUsage, {detail: hasTurtleImported}));
+    document.getElementById(getPEAComponentRefId())?.dispatchEvent(new CustomEvent(CustomEventTypes.notifyTurtleUsage, {detail: hasTurtleImported}));
 }
 
 // UI-related method to calculate and set the max height of the Python Execution Area tabs content.
@@ -1695,10 +1729,10 @@ export function setPythonExecutionAreaTabsContentMaxHeight(): void {
     const editorNewMaxHeight = manuallyResizedEditorHeight ?? (fullAppHeight / 2);
     // For the tabs' height, we can't rely on the container as the tabs may stack on top of each other (small browser window)
     // so we get the first element of the tab section that is not having a 0 height (because tabs are hidden when we are in split layout)
-    const pythonExecAreaTabsAreaHeight = [...document.querySelectorAll("#peaControlsDiv li, .pea-no-tabs-controls")]
+    const pythonExecAreaTabsAreaHeight = [...document.querySelectorAll("#" + getPEAControlsDivId() + " li, .pea-no-tabs-controls")]
         .find((element) => element.getBoundingClientRect().height != 0)
         ?.getBoundingClientRect().height;    
-    (document.querySelector("#tabContentContainerDiv") as HTMLDivElement).style.maxHeight = ((fullAppHeight - editorNewMaxHeight - (pythonExecAreaTabsAreaHeight??0)) + "px");
+    (document.querySelector("#"+getPEATabContentContainerDivId()) as HTMLDivElement).style.maxHeight = ((fullAppHeight - editorNewMaxHeight - (pythonExecAreaTabsAreaHeight??0)) + "px");
 }
 
 // This method set the Python Execution Area layout buttons position based on the presence of scrollbars
@@ -1709,10 +1743,10 @@ export function setPythonExecAreaLayoutButtonPos(): void{
     // We find out the size of the scroll bar, add a margin of 2px, to displace the button by that size.
     // (To be sure the UI layout is correctly updated before computing, we wait a bit.)
     setTimeout(() => {
-        const pythonConsoleTextArea = document.getElementById("pythonConsole");
-        const pythonTurtleContainerDiv = document.getElementById("pythonTurtleContainerDiv");
+        const pythonConsoleTextArea = document.getElementById(getPEAConsoleId());
+        const pythonTurtleContainerDiv = document.getElementById(getPEAGraphicsContainerDivId());
         const peaLayoutButtonsContainer = document.getElementsByClassName("pea-toggle-layout-buttons-container")?.[0];
-        const peaComponent = ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as any).$refs[getStrypePEAComponentRefId()]);
+        const peaComponent = ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as any).$refs[getPEAComponentRefId()]);
         if(pythonConsoleTextArea && pythonTurtleContainerDiv && peaLayoutButtonsContainer && peaComponent){
             // First get the natural position offset of the button, so can compute the new position:
             const peaExpandButtonNaturalPosOffset = parseInt((scssVars.pythonExecutionAreaLayoutButtonsPosOffset as string).replace("px",""));
@@ -1734,6 +1768,7 @@ export function setPythonExecAreaLayoutButtonPos(): void{
         }
     }, 100);
 }
+/* FITRUE_isPython */
 
 /** 
  * These methods are used to control the height of the "Add frame" commands,

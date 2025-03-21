@@ -87,7 +87,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getMenuLeftPaneUID, getStrypePEAComponentRefId, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
+import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getMenuLeftPaneUID, getPEAConsoleId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getPEAComponentRefId, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -174,7 +174,7 @@ export default Vue.extend({
         
         /* IFTRUE_isPython */
         peaComponentRefId(): string {
-            return getStrypePEAComponentRefId();
+            return getPEAComponentRefId();
         },
         /* FITRUE_isPython */
         /* IFTRUE_isMicrobit */
@@ -219,8 +219,8 @@ export default Vue.extend({
             // When the commands list is regenerated, the height of the frame commands list may change, and so may the Python Exec Area.
             // So to make sure that the Turtle canvas is still showing in the right scaling, if Turtle is showing then we rescale a bit later.
             // Keep this in the watch rather directly inside the corresponding computed property as computed property shouldn't contain time functions.
-            if(document.getElementById("pythonTurtleContainerDiv")?.style.display != "none"){
-                setTimeout(() => document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged)),
+            if(document.getElementById(getPEAGraphicsContainerDivId())?.style.display != "none"){
+                setTimeout(() => document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged)),
                     800);
             }
         },
@@ -375,11 +375,11 @@ export default Vue.extend({
                 }
                 
                 // If ctrl-enter/cmd-enter is pressed, make sure we quit the editing (if that's the case) and run the code
-                if((event.ctrlKey || event.metaKey) && eventKeyLowCase === "enter" && this.$refs.strypePEA) {
-                    ((this.$refs.strypePEA as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).focus();
-                    ((this.$refs.strypePEA as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).click();
+                if((event.ctrlKey || event.metaKey) && eventKeyLowCase === "enter" && this.$refs[getPEAComponentRefId()]) {
+                    ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).focus();
+                    ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).click();
                     // Need to unfocus to avoid keyboard focus non-obviously remaining with the run button:
-                    ((this.$refs.strypePEA as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).blur();
+                    ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).blur();
                     
                     // Don't then process the keypress for other purposes:
                     event.preventDefault();
@@ -399,7 +399,7 @@ export default Vue.extend({
 
                 // Prevent default scrolling and navigation in the editor, except if Turtle is currently running and listening for key events
                 // (then we just leave the PEA handling it, see at the end of these conditions for related code)
-                if (!isDraggingFrames && !isEditing && !(isPythonExecuting && (this.$refs.strypePEA as InstanceType<typeof PythonExecutionArea>).$data.isTurtleListeningKeyEvents) && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"].includes(event.key)) {
+                if (!isDraggingFrames && !isEditing && !(isPythonExecuting && (this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isTurtleListeningKeyEvents) && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"].includes(event.key)) {
                     event.stopImmediatePropagation();
                     event.stopPropagation();
                     event.preventDefault();
@@ -494,7 +494,7 @@ export default Vue.extend({
                         // If there is a combination key (ctrl,...) we just ignore the events, otherwise, if Turtle is active we pass events to the Turtle graphics,
                         // and if it's not active AND the Python Execution console hasn't go focus, we prevents events.
                         if(!event.altKey && !event.ctrlKey && !event.metaKey){
-                            const turtlePlaceholder = document.getElementById("pythonTurtleDiv");
+                            const turtlePlaceholder = document.getElementById(getPEAGraphicsDivId());
                             const isTurtleShowing = turtlePlaceholder?.style.display != "none";
                             if(turtlePlaceholder && isTurtleShowing && document.activeElement?.id != turtlePlaceholder.id){
                                 // Give focus to the Turtle graphics first to make sure it will respond.
@@ -511,7 +511,7 @@ export default Vue.extend({
                                 }, 500);
                             }
 
-                            if(document.activeElement?.id === "pythonConsole"){
+                            if(document.activeElement?.id === getPEAConsoleId()){
                                 // Don't interfere with the Python Execution console if it's having focus
                                 return;
                             }
@@ -689,7 +689,7 @@ export default Vue.extend({
         onCommandsSplitterResize() {
             // When the splitter is resized, we need to resize the frame commands container (wrap/unwrap)
             // and the PEA (will take the full space in its pane, breaking the initial 4/3 ratio)
-            document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
+            document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
             this.isCommandsSplitterChanged = true;
             this.setCommandsSplitterPanesMinSize();
         },
