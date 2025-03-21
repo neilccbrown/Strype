@@ -578,7 +578,7 @@ export default Vue.extend({
 
     .pea-no-tabs-controls {
         color: transparent;
-        padding: 8.8px 0 7.8px 0px;
+        padding: 9px 0 8px 0px;
     }
     
     .expanded-PEA-controls {
