@@ -63,7 +63,7 @@ export const frameContextMenuShortcuts: FrameContextMenuShortcut[] = [
 ];
 
 export function getFrameContainerUID(frameId: number): string {
-    return "FrameContainer_" + frameId;
+    return "frameContainer_" + frameId;
 }
 
 export function getFrameBodyUID(frameId: number): string {
@@ -167,6 +167,10 @@ export function getACLabelSlotUID(slotCoreInfos: SlotCoreInfos): string {
 
 export function getAddFrameCmdElementUID(commandType: string): string {
     return "addFrameCmd_" + commandType;
+}
+
+export function getAppLangSelectId(): string {
+    return "strypeLangSelect";
 }
 
 /* IFTRUE_isPython */
@@ -400,6 +404,10 @@ export function getCommandsContainerUID(): string {
     return "editorCommands";
 }
 
+export function getEditorID(): string {
+    return "editor";
+}
+
 export function getEditorMenuUID(): string {
     return "showHideMenu";
 } 
@@ -408,8 +416,16 @@ export function getMenuLeftPaneUID(): string {
     return "menu-bar";
 }
 
+export function getLoadProjectLinkId(): string {
+    return "loadProjectLink";
+}
+
 export function getGoogleDriveComponentRefId(): string {
     return "googleDriveComponent";
+}
+
+export function getLoadFromFSStrypeButtonId(): string {
+    return "loadFromFSStrypeButton";
 }
 
 export function getStrypeCommandComponentRefId(): string {

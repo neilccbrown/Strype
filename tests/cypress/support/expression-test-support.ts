@@ -1,6 +1,8 @@
+import { getEditorID, getFrameContainerUID, getFrameUID } from "@/helpers/editor";
+
 export function assertState(expectedState : string) : void {
     withSelection((info) => {
-        cy.get("#FrameContainer_-3 .frame-header").first().within((h) => cy.get(".labelSlot-input,.frameColouredLabel").then((parts) => {
+        cy.get("#" + getFrameContainerUID(-3) + " .frame-header").first().within((h) => cy.get(".labelSlot-input,.frameColouredLabel").then((parts) => {
             let s = "";
             if (!parts) {
                 // Try to debug an occasional seemingly impossible failure:
@@ -31,7 +33,7 @@ export function assertState(expectedState : string) : void {
 function withSelection(inner : (arg0: { id: string, cursorPos : number }) => void) : void {
     // We need a delay to make sure last DOM update has occurred:
     cy.wait(200);
-    cy.get("#editor").then((eds) => {
+    cy.get("#" + getEditorID()).then((eds) => {
         const ed = eds.get()[0];
         inner({id : ed.getAttribute("data-slot-focus-id") || "", cursorPos : parseInt(ed.getAttribute("data-slot-cursor") || "-2")});
     });
@@ -146,7 +148,7 @@ function reachFrameLabelSlot(targetSlotSpanID: string, goLeft: boolean): boolean
 export function focusEditor(): void {
     // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
     // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
-    cy.get("#frame_id_-3").focus();
+    cy.get("#" + getFrameUID(-3)).focus();
 }
 
 export function testMultiInsert(multiInsertion : string, firstResult : string, secondResult : string) : void {

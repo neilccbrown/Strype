@@ -26,7 +26,7 @@
                             <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive"/> 
                             <span>Google Drive</span>
                         </div>
-                        <div id="loadFromFSStrypeButton" class="project-target-button load-dlg" tabindex="0"  @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
+                        <div :id="loadFromFSStrypeButtonId" class="project-target-button load-dlg" tabindex="0"  @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
                             @mouseenter="changeTargetFocusOnMouseOver">
                             <img :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')"/> 
                             <span v-t="'appMessage.targetFS'"></span>
@@ -115,8 +115,8 @@
             <!-- Localisation -->
             <div class="appMenu-prefs-div">
                 <div>
-                    <label for="appLangSelect" v-t="'appMenu.lang'"/>&nbsp;
-                    <select name="lang" id="appLangSelect" v-model="appLang" @change="showMenu=false;" class="strype-menu-item" @click="setCurrentTabIndexFromEltId('appLangSelect')">
+                    <label :for="appLangSelectId" v-t="'appMenu.lang'"/>&nbsp;
+                    <select name="lang" :id="appLangSelectId" v-model="appLang" @change="showMenu=false;" class="strype-menu-item" @click="setCurrentTabIndexFromEltId(appLangSelectId)">
                         <option v-for="locale in locales" :value="locale.code" :key="locale.code">{{locale.name}}</option>
                     </select>
                 </div> 
@@ -188,7 +188,7 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
 import { AppEvent, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, ShareProjectMode, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
-import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getGoogleDriveComponentRefId, getLabelSlotUID, getNearestErrorIndex, getSaveAsProjectModalDlg, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey } from "@/helpers/editor";
+import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppLangSelectId, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getGoogleDriveComponentRefId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNearestErrorIndex, getSaveAsProjectModalDlg, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey } from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
 import GoogleDrive from "@/components/GoogleDrive.vue";
@@ -315,6 +315,10 @@ export default Vue.extend({
             return getEditorMenuUID();
         },
 
+        appLangSelectId(): string {
+            return getAppLangSelectId();
+        },
+
         locales(): Locale[] {
             // The locale codes are already parts of the i18n messages at this stage, so they are easy to retrieve.
             // We retrieve the corresponding locale's friendly name from i18n directly.
@@ -325,6 +329,10 @@ export default Vue.extend({
                 locales.push({code: i18nLocale, name: this.$i18n.getLocaleMessage(i18nLocale)["localeName"] as string??i18nLocale});
             });
             return locales;
+        },
+
+        loadFromFSStrypeButtonId(): string {
+            return getLoadFromFSStrypeButtonId();
         },
 
         googleDriveComponentId(): string {
@@ -357,7 +365,7 @@ export default Vue.extend({
         },       
 
         loadProjectLinkId(): string {
-            return "loadProjectLink";
+            return getLoadProjectLinkId();
         },
 
         loadProjectKBShortcut(): string {

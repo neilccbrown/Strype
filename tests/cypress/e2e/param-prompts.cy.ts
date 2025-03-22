@@ -1,5 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
+import { getEditorID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID } from "@/helpers/editor";
 import "@testing-library/cypress/add-commands";
 // Needed for the "be.sorted" assertion:
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -31,7 +32,7 @@ beforeEach(() => {
 function withFrameId(inner : (frameId: number) => void) : void {
     // We need a delay to make sure last DOM update has occurred:
     cy.wait(600);
-    cy.get("#editor").then((eds) => {
+    cy.get("#" + getEditorID()).then((eds) => {
         const ed = eds.get()[0];
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
@@ -44,13 +45,13 @@ function withFrameId(inner : (frameId: number) => void) : void {
 function focusEditorAC(): void {
     // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
     // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
-    cy.get("#frame_id_-3").focus();
+    cy.get("#" + getFrameUID(-3) + "-3").focus();
 }
 
 function withSelection(inner : (arg0: { id: string, cursorPos : number }) => void) : void {
     // We need a delay to make sure last DOM update has occurred:
     cy.wait(200);
-    cy.get("#editor").then((eds) => {
+    cy.get("#" + getEditorID()).then((eds) => {
         const ed = eds.get()[0];
         inner({id : ed.getAttribute("data-slot-focus-id") || "", cursorPos : parseInt(ed.getAttribute("data-slot-cursor") || "-2")});
     });
@@ -65,7 +66,7 @@ const BUILTIN = "Python";
 function assertState(frameId: number, expectedState : string, expectedStateWithPlaceholders?: string) : void {
     expectedStateWithPlaceholders = expectedStateWithPlaceholders ?? expectedState.replaceAll("$", "");
     withSelection((info) => {    
-        cy.get("#frameHeader_" + frameId + " #labelSlotsStruct" + frameId + "_0 .labelSlot-input").then((parts) => {
+        cy.get("#" + getFrameHeaderUID(frameId) + " #" + getFrameLabelSlotsStructureUID(frameId, 0) + " .labelSlot-input").then((parts) => {
             let content = "";
             let contentWithPlaceholders = "";
             for (let i = 0; i < parts.length; i++) {

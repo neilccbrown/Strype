@@ -29,7 +29,7 @@
             <Splitpanes class="strype-split-theme" @resize=onStrypeCommandsSplitPaneResize>
                 <Pane key="1" size="66" min-size="33" max-size="90">
                     <!-- These data items are to enable testing: -->
-                    <div id="editor" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos" class="print-full-height">
+                    <div :id="editorId" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos" class="print-full-height">
                         <div class="top no-print">
                             <MessageBanner 
                                 v-if="showMessage"
@@ -96,7 +96,7 @@ import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, GAPIState } from "@/types/types";
-import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getPEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getCaretContainerUID } from "./helpers/editor";
+import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getPEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getCaretContainerUID, getEditorID, getLoadProjectLinkId } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
@@ -145,6 +145,10 @@ export default Vue.extend({
 
     computed: {       
         ...mapStores(useStore),
+
+        editorId(): string {
+            return getEditorID();
+        },
              
         // gets the container frames objects which are in the root
         containerFrames(): FrameObject[] {
@@ -464,7 +468,7 @@ export default Vue.extend({
                 .then((gapiState) =>{
                     // Only open the project is the GAPI is loaded, and show a message of error if it hasn't.
                     if(gapiState == GAPIState.loaded){
-                        document.getElementById((this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).loadProjectLinkId)?.click();
+                        document.getElementById(getLoadProjectLinkId())?.click();
                     }
                     else{
                         this.finaliseOpenShareProject("errorMessage.retrievedSharedGenericProject", this.$i18n.t("errorMessage.GAPIFailed") as string);

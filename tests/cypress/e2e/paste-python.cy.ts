@@ -8,6 +8,7 @@ import path from "path";
 import i18n from "@/i18n";
 import * as os from "os";
 import {focusEditor} from "../support/expression-test-support";
+import { getEditorMenuUID, getFrameUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId } from "@/helpers/editor";
 
 // Must clear all local storage between tests to reset the state:
 beforeEach(() => {
@@ -43,7 +44,7 @@ Cypress.Commands.add("paste",
 function focusEditorPasteAndClear(): void {
     // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
     // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
-    cy.get("#frame_id_-3").focus();
+    cy.get("#" + getFrameUID(-3)).focus();
     // Delete existing content (bit of a hack):
     cy.get("body").type("{uparrow}{uparrow}{uparrow}{del}{downarrow}{downarrow}{downarrow}{downarrow}{backspace}{backspace}");
 }
@@ -53,7 +54,7 @@ function checkDownloadedCodeEquals(fullCode: string) : void {
     cy.task("deleteFile", path.join(downloadsFolder, "main.py"));
     // Conversion to Python is located in the menu, so we need to open it first, then find the link and click on it
     // Force these because sometimes cypress gives false alarm about webpack overlay being on top:
-    cy.get("button#showHideMenu").click({force: true});
+    cy.get("button#" + getEditorMenuUID()).click({force: true});
     cy.contains(i18n.t("appMenu.downloadPython") as string).click({force: true});
 
     cy.readFile(path.join(downloadsFolder, "main.py")).then((p : string) => {
@@ -89,7 +90,7 @@ function testRoundTripPasteAndDownload(code: string, extraPositioning?: string, 
     (cy.get("body") as any).paste(code);
     checkDownloadedCodeEquals(expected ?? code);
     // Refocus the editor and go to the bottom:
-    cy.get("#frame_id_-3").focus();
+    cy.get("#" + getFrameUID(-3)).focus();
     cy.get("body").type("{end}");
 }
 
@@ -99,21 +100,21 @@ function testRoundTripImportAndDownload(filepath: string, expected?: string) {
         // Delete existing:
         focusEditorPasteAndClear();
 
-        cy.get("#showHideMenu").click();
-        cy.get("#loadProjectLink").click();
+        cy.get("#" + getEditorMenuUID()).click();
+        cy.get("#" + getLoadProjectLinkId()).click();
         // If the current state of the project is modified,
         // we first need to discard the changes (we check the button is available)
         cy.get("button").contains("Discard changes").should("exist").click();
         cy.wait(2000);
         // The "button" for the target selection is now a div element.
-        cy.get("#loadFromFSStrypeButton").click();
+        cy.get("#" + getLoadFromFSStrypeButtonId()).click();
         // Must force because the <input> is hidden:
         cy.get(".editor-file-input").selectFile(filepath, {force : true});
         cy.wait(2000);
         
         checkDownloadedCodeEquals(expected ?? py);
         // Refocus the editor and go to the bottom:
-        cy.get("#frame_id_-3").focus();
+        cy.get("#" + getFrameUID(-3)).focus();
         cy.get("body").type("{end}");
     });
 }

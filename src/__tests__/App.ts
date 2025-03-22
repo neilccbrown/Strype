@@ -9,6 +9,7 @@ import { useStore } from "@/store/store";
 import { StateAppObject } from "@/types/types";
 import initialStates from "@/store/initial-states";
 import { cloneDeep } from "lodash";
+import { getAppLangSelectId, getEditorMenuUID } from "@/helpers/editor";
 
 // All declared in test-setup-{microbit,python}.js
 declare const defaultImports: (string | RegExp)[];
@@ -159,12 +160,12 @@ describe("App.vue Basic Test", () => {
         const wrapper = testApp();
 
         // Starts as English:
-        expect((wrapper.get("select#appLangSelect").element as HTMLSelectElement).value).to.equal("en");
+        expect((wrapper.get("select#" + getAppLangSelectId()).element as HTMLSelectElement).value).to.equal("en");
 
         // Swap to French and check it worked:
-        await wrapper.get("button#showHideMenu").trigger("click");
-        await wrapper.get("select#appLangSelect").setValue("fr");
-        expect((wrapper.get("select#appLangSelect").element as HTMLSelectElement).value).to.equal("fr");
+        await wrapper.get("button#" + getEditorMenuUID()).trigger("click");
+        await wrapper.get("select#" + getAppLangSelectId()).setValue("fr");
+        expect((wrapper.get("select#" + getAppLangSelectId()).element as HTMLSelectElement).value).to.equal("fr");
 
         // check that the sections are present and translated:
         const headers = wrapper.findAll(".frame-container-label-span");

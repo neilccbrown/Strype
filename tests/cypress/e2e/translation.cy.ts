@@ -1,4 +1,5 @@
 // Test that the translation is working properly
+import { getAppLangSelectId, getEditorMenuUID } from "@/helpers/editor";
 import i18n from "@/i18n";
 import {expect} from "chai";
 import failOnConsoleError from "cypress-fail-on-console-error";
@@ -29,12 +30,12 @@ describe("Translation tests", () => {
     it("Translates correctly", () => {
         // Starts as English:
         cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer") as string, i18n.t("appMessage.funcDefsContainer") as string, i18n.t("appMessage.mainContainer") as string]));
-        cy.get("select#appLangSelect").should("have.value", "en");
+        cy.get("select#" + getAppLangSelectId()).should("have.value", "en");
 
         // Swap to French and check it worked:
-        cy.get("button#showHideMenu").click();
-        cy.get("select#appLangSelect").select("fr");
-        cy.get("select#appLangSelect").should("have.value", "fr");
+        cy.get("button#" + getEditorMenuUID()).click();
+        cy.get("select#" + getAppLangSelectId()).select("fr");
+        cy.get("select#" + getAppLangSelectId()).should("have.value", "fr");
 
         // Check that the sections are present and translated:
         cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer", "fr") as string, i18n.t("appMessage.funcDefsContainer", "fr") as string, i18n.t("appMessage.mainContainer", "fr") as string]));
@@ -59,6 +60,6 @@ describe("Translation tests", () => {
     it("Resets translation properly", () => {
         // Should be back to English:
         cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer") as string, i18n.t("appMessage.funcDefsContainer") as string, i18n.t("appMessage.mainContainer") as string]));
-        cy.get("select#appLangSelect").should("have.value", "en");
+        cy.get("select#" + getAppLangSelectId()).should("have.value", "en");
     });
 });

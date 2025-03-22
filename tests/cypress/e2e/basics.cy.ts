@@ -2,6 +2,7 @@ import * as path from "path";
 import {expect} from "chai";
 import i18n from "@/i18n";
 import failOnConsoleError from "cypress-fail-on-console-error";
+import { getEditorMenuUID, getFrameBodyUID, getFrameUID } from "@/helpers/editor";
 failOnConsoleError();
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
@@ -72,7 +73,9 @@ function matchFrameText(item : JQuery<HTMLElement>, match : CodeMatch) : void {
     
     // We used to look for .frameDiv for body items, but this can also pick up items in the body of joint frames
     // So we use the ID to find our own body, then look in there:
-    const bodySelector = "#" + item.attr("id")?.replace("frame_id_", "frameBodyId_") + " .frameDiv";
+    const frameIdStart = getFrameUID(0).replace("0","");
+    const frameBodyIdStart = getFrameBodyUID(0).replace("0","");
+    const bodySelector = "#" + item.attr("id")?.replace(frameIdStart, frameBodyIdStart) + " .frameDiv";
     
     // .get().filter() fails if there are no items but the body is permitted to be empty for us.  So we must check
     // if we expect an empty body and act accordingly:
@@ -191,7 +194,7 @@ function checkCodeEquals(codeLines : CodeMatch[]) : void {
     cy.task("deleteFile", path.join(downloadsFolder, "main.py"));
     // Conversion to Python is located in the menu, so we need to open it first, then find the link and click on it
     // Force these because sometimes cypress gives false alarm about webpack overlay being on top:
-    cy.get("button#showHideMenu").click({force: true}); 
+    cy.get("button#" + getEditorMenuUID()).click({force: true}); 
     cy.contains(i18n.t("appMenu.downloadPython") as string).click({force: true});
     
     cy.readFile(path.join(downloadsFolder, "main.py")).then((p : string) => {
