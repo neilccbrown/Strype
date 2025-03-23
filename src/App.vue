@@ -17,7 +17,7 @@
             </div>
         </div>
         /* IFTRUE_isPython
-        <Splitpanes id="expandedPythonExecAreaSplitersOverlay" class="strype-split-theme" v-show="isExpandedPythonExecArea" horizontal @resize=onExpandedPythonExecAreaSplitPaneResize>
+        <Splitpanes class="expanded-PEA-splitter-overlay strype-split-theme" v-show="isExpandedPythonExecArea" horizontal @resize=onExpandedPythonExecAreaSplitPaneResize>
             <pane key="1">
             </pane>
             <pane key="2" min-size="20" max-size="80">
@@ -1215,15 +1215,15 @@ $divider-grey: darken($background-grey, 15%);
 
 // Styling of the expanded Python execution area splitter overlay (used to simulate a splitter above the Python execution area)
 // It must be full width and heigh, overlaying from (0,0), and we use events to apply the splitting ratio back to the Python execution area
-#expandedPythonExecAreaSplitersOverlay {
-    width: 100vw;
-    height: 100vh;
+.expanded-PEA-splitter-overlay {
+    width: 100vw !important;
+    height: 100vh !important;
     position: absolute;
     top:0;
     left:0;
 }
 
-#expandedPythonExecAreaSplitersOverlay .splitpanes__splitter {
+.expanded-PEA-splitter-overlay .splitpanes__splitter {
     z-index: 10;
 }
 

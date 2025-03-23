@@ -1,7 +1,7 @@
 
 <template>
-    <div :id="peaComponentId" :class="{[scssVars.expandedPEAClassName]: isExpandedPEA, 'no-43-ratio-collapsed-PEA': !hasDefault43Ratio && !isExpandedPEA}" ref="peaComponent" @mousedown="handlePEAMouseDown">
-        <div :id="controlsDivId" :class="{'expanded-PEA-controls': isExpandedPEA}">           
+    <div :id="peaComponentId" :class="{'pea-component': true, [scssVars.expandedPEAClassName]: isExpandedPEA, 'no-43-ratio-collapsed-PEA': !hasDefault43Ratio && !isExpandedPEA}" ref="peaComponent" @mousedown="handlePEAMouseDown">
+        <div :id="controlsDivId" :class="{'pea-controls-div': true, 'expanded-PEA-controls': isExpandedPEA}">           
             <b-tabs v-show="isTabsLayout" v-model="peaDisplayTabIndex" no-key-nav>
                 <b-tab v-show="isTabsLayout" :button-id="graphicsTabId" :title="'\uD83D\uDC22 '+$t('PEA.TurtleGraphics')" title-link-class="pea-display-tab"></b-tab>
                 <b-tab v-show="isTabsLayout" :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab" active></b-tab>
@@ -15,21 +15,22 @@
                 <span>{{runCodeButtonLabel}}</span>
             </button>
         </div>
-        <div :id="tabContentContainerDivId" :class="{'flex-padding': true, 'pea-43-ratio': hasDefault43Ratio}">
+        <div :id="tabContentContainerDivId" :class="{'pea-tab-content-container': true, 'flex-padding': true, 'pea-43-ratio': hasDefault43Ratio}">
             <!-- the SplitPanes is used in all layout configurations: for tabs, we only show 1 of the panes and disable moving the divider, and for stacked window it acts as normal -->
             <Splitpanes :class="{'strype-PEA-split-theme': true, 'with-expanded-PEA': isExpandedPEA, 'tabs-PEA': isTabsLayout}" :horizontal="!isExpandedPEA" @resize="onSplitterPane1Resize">
                 <pane :id="graphicsSplitPaneId" key="1" v-show="isGraphicsAreaShowing" :size="(isTabsLayout) ? 100 : currentSplitterPane1Size">
-                    <div :id="graphicsContainerDivId" @wheel.stop :class="{hidden: graphicsTemporaryHidden}">
+                    <div :id="graphicsContainerDivId" @wheel.stop :class="{'pea-graphics-container': true, hidden: graphicsTemporaryHidden}">
                         <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
-                            <div :id="graphicsDivId" ref="pythonTurtleDiv"></div>
+                            <div :id="graphicsDivId" ref="pythonTurtleDiv" class="pea-graphics-div"></div>
                         </div>
-                        <span id="noTurtleSpan" v-if="isGraphicsAreaShowing && !turtleGraphicsImported">{{$t('PEA.importTurtle')}}</span> 
+                        <span v-if="isGraphicsAreaShowing && !turtleGraphicsImported" class="pea-no-graphics-import-span">{{$t('PEA.importTurtle')}}</span> 
                     </div>
                 </pane>
                 <pane key="2" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)">
                     <textarea 
                         :id="pythonConsoleId"
                         ref="pythonConsole"
+                        class="pea-console"
                         @focus="onFocus()"
                         @change="onChange"
                         @wheel.stop
@@ -575,7 +576,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-    #peaComponent.#{$strype-classname-expanded-pea} {
+    .pea-component.#{$strype-classname-expanded-pea} {
         width: 100vw;
         top:50vh;
         bottom:0px;
@@ -588,7 +589,7 @@ export default Vue.extend({
         height: calc(100% - $strype-python-exec-area-margin);
     }
 
-    #peaControlsDiv {
+    .pea-controls-div {
         display: flex;
         column-gap: 5px;        
         width:100%;
@@ -596,14 +597,14 @@ export default Vue.extend({
         align-items: center;
     }
 
-    #peaControlsDiv button {
+    .pea-controls-div button {
         z-index: 10;
         border-radius: 10px;
         border: 1px solid transparent;
         outline: none;
     }
 
-    #peaControlsDiv button:hover {
+    .pea-controls-div button:hover {
         border-color: lightgray !important;
     }
 
@@ -673,12 +674,12 @@ export default Vue.extend({
         vertical-align: sub;
     }
 
-    #tabContentContainerDiv {
+    .pea-tab-content-container {
         width: 100%;
         position: relative;
     }
 
-    #tabContentContainerDiv.pea-43-ratio {
+    .pea-tab-content-container.pea-43-ratio {
         aspect-ratio: 4/3;
     }
 
@@ -689,7 +690,7 @@ export default Vue.extend({
         resize: none !important;
     }
     
-    #pythonConsole {
+    .pea-console {
         width:100%;
         height: 100%;
         background-color: #333;
@@ -699,24 +700,24 @@ export default Vue.extend({
         font-family: monospace;
     }
 
-    #pythonConsole:disabled {
+    .pea-console:disabled {
         -webkit-text-fill-color: #ffffff; // Required for Safari
         color: white;
     }
 
     // Mac Safari: always show scrollbar (when content is large enough to require one), and make it light
-    #pythonConsole::-webkit-scrollbar {
+    .pea-console::-webkit-scrollbar {
         width: 8px;
     }    
-    #pythonConsole::-webkit-scrollbar-track {
+    .pea-console::-webkit-scrollbar-track {
         background: #333;
     }
-    #pythonConsole::-webkit-scrollbar-thumb {
+    .pea-console::-webkit-scrollbar-thumb {
         background: #888;
         border-radius: 5px;
     }
 
-    #pythonTurtleContainerDiv {
+    .pea-graphics-container {
         width:100%;
         height: 100%;
         background-color: grey;
@@ -725,19 +726,19 @@ export default Vue.extend({
     }
 
 
-    #pythonTurtleContainerDiv > div {
+    .pea-graphics-container > div {
         display: flex;
         align-items: center;
         justify-content: center;
     }
 
-    #pythonTurtleDiv {
+    .pea-graphics-div {
         background-color: white;
         margin:5px;
         outline: none;
     }
     
-    #noTurtleSpan {
+    .pea-no-graphics-import-span {
         position: absolute;
         top: 10px;
         left: 10px;
