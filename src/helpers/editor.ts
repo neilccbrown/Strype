@@ -1803,22 +1803,22 @@ export function computeAddFrameCommandContainerSize(isExpandedPEA?: boolean): vo
     if(isExpandedPEA){
         const projectNameContainerH = (document.getElementsByClassName(scssVars.strypeProjectNameContainerClassName)[0] as HTMLDivElement).clientHeight;
         const croppedEditorH = (manuallyResizedEditorHeight) ? manuallyResizedEditorHeight : (document.getElementsByTagName("body")[0].clientHeight / 2);
-        (document.querySelector("." + scssVars.aFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.height = (croppedEditorH - projectNameContainerH) + "px";
+        (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.height = (croppedEditorH - projectNameContainerH) + "px";
         // In expanded view, we need to set the frame commmands container to "position: absolute" for the content to overlay the commands/PEA splitter.
         // However, the width won't align properly, we need to set that width manually.
-        const frameCmdsParagraphContainer =  document.querySelector("." + scssVars.aFrameCommandsContainerClassName) as HTMLDivElement;
-        (document.querySelector("." + scssVars.aFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.width = frameCmdsParagraphContainer.clientWidth + "px";
+        const frameCmdsParagraphContainer =  document.querySelector("." + scssVars.addFrameCommandsContainerClassName) as HTMLDivElement;
+        (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.width = frameCmdsParagraphContainer.clientWidth + "px";
     }
     else {
         // Reset the frame commands container's width to natural behaviour (see case above)
-        (document.querySelector("." + scssVars.aFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.width = "";
+        (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.width = "";
 
         // When the container div overflows, we remove the overflow extra height to the p element containing the commands
         // so that we can shorten the p height to trigger the commands to be displayed in columns.
         const scrollContainerH = document.getElementsByClassName(scssVars.noPEACommandsClassName)[0].scrollHeight;
         const noPEACommandsH =  document.getElementsByClassName(scssVars.noPEACommandsClassName)[0].getBoundingClientRect().height;
-        const addFrameCmdsPH = (document.querySelector("." + scssVars.aFrameCommandsContainerClassName + " p") as HTMLParagraphElement).getBoundingClientRect().height;
-        const commandsFlexContainer = (document.querySelector("." + scssVars.aFrameCommandsContainerClassName + " p") as HTMLParagraphElement);
+        const addFrameCmdsPH = (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement).getBoundingClientRect().height;
+        const commandsFlexContainer = (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement);
         if(noPEACommandsH < scrollContainerH){
             commandsFlexContainer.style.height = (addFrameCmdsPH - (scrollContainerH - noPEACommandsH)) + "px";
         }
@@ -1830,7 +1830,7 @@ export function computeAddFrameCommandContainerSize(isExpandedPEA?: boolean): vo
                 const lastCommandLeft =  commandsFlexContainer.children[commandsFlexContainer.childElementCount - 1].getBoundingClientRect().left;
                 if(firstCommandLeft != lastCommandLeft){
                     const projectNameContainerH = document.getElementsByClassName(scssVars.strypeProjectNameContainerClassName)[0].getBoundingClientRect().height;
-                    (document.querySelector("." + scssVars.aFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.height = (noPEACommandsH - projectNameContainerH) + "px";
+                    (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.height = (noPEACommandsH - projectNameContainerH) + "px";
                 }
             }
         }

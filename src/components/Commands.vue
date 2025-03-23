@@ -21,7 +21,7 @@
                         FITRUE_isMicrobit */
                                 <div :id="commandsContainerUID" class="command-tab-content" >
                                     <div id="addFramePanel">
-                                        <div :class="{[scssVars.aFrameCommandsContainerClassName]: true/* IFTRUE_isPython , 'with-expanded-PEA': isExpandedPEA FITRUE_isPython*/}">
+                                        <div :class="{[scssVars.addFrameCommandsContainerClassName]: true/* IFTRUE_isPython , 'with-expanded-PEA': isExpandedPEA FITRUE_isPython*/}">
                                             <p>
                                                 <AddFrameCommand
                                                     v-for="addFrameCommand in addFrameCommands"

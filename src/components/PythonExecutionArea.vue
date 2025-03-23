@@ -516,7 +516,7 @@ export default Vue.extend({
             // - set the placeholder container (the flex div) to the correct dimension to make sure the positioning (centered) is preserved
             //    -- SCALING WITH CSS DOES NOT MAKES THE DOM "SEEING" NEW DIMENSIONS
             // Note that when we are in split layout view, we need to work with the split pane.
-            const turtleCanvas = document.querySelector("#" + getPEAGraphicsDivId + " canvas") as HTMLCanvasElement;
+            const turtleCanvas = document.querySelector("#" + getPEAGraphicsDivId() + " canvas") as HTMLCanvasElement;
             const canvasW = turtleCanvas.width;
             const canvasH = turtleCanvas.height;
             const tabContentElementBoundingClientRect = (this.isTabsLayout) ? tabContentContainerDiv.getBoundingClientRect() : graphicsSplitterPaneDiv.getBoundingClientRect();
