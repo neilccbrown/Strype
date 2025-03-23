@@ -921,7 +921,7 @@ export default Vue.extend({
                         fileHandles[0].getFile().then((file: File) => {
                             const emitPayload: AppEvent = {requestAttention: true};
                             emitPayload.message = this.$i18n.t("appMessage.editorFileUpload").toString();
-                            this.$emit("app-showprogress", emitPayload);
+                            this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);
                             const reader = new FileReader();
                             reader.addEventListener("load", () => {
                                 // name is not always available so we also check if content starts with a {,
@@ -937,7 +937,7 @@ export default Vue.extend({
                                     ).then(() => fileHandles[0].getFile().then((file)=> this.onFileLoaded(fileHandles[0].name, file.lastModified, fileHandles[0])), () => {});
                                 }
                                 emitPayload.requestAttention=false;
-                                this.$emit("app-showprogress", emitPayload);  
+                                this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);  
                             });
                             reader.readAsText(file);
                         });
@@ -957,7 +957,7 @@ export default Vue.extend({
                 if(files[0].name.indexOf(".") > -1 && fileImportSupportedFormats.findIndex((extension) => extension === files[0].name.substring(files[0].name.lastIndexOf(".") + 1)) > -1) {
                     const emitPayload: AppEvent = {requestAttention: true};
                     emitPayload.message = this.$i18n.t("appMessage.editorFileUpload").toString();
-                    this.$emit("app-showprogress", emitPayload);
+                    this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);
                     // Store the file name in a variable to use it later in the callback, for some reason using files[0].name fails in Pinia, on Safari
                     const fileName = files[0].name;
                     const lastModified = files[0].lastModified;
@@ -977,7 +977,7 @@ export default Vue.extend({
                                     ).then(() => this.onFileLoaded(fileName, lastModified), () => {});
                                 }
                                 emitPayload.requestAttention=false;
-                                this.$emit("app-showprogress", emitPayload);
+                                this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);
                                 
                             }, 
                             (reason) => this.appStore.setStateFromJSONStr( 
@@ -1018,7 +1018,7 @@ export default Vue.extend({
         resetProject(): void {
             //resetting the project means removing the WebStorage saved project and reloading the page
             //we emit an event to the App so that handlers are done properly
-            this.$emit("app-reset-project");
+            this.$emit(CustomEventTypes.appResetProject);
         },
 
         handleMenuOpen(){

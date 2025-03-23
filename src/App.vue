@@ -39,8 +39,8 @@
                             <Menu 
                                 :id="menuUID" 
                                 :ref="menuUID"
-                                @app-showprogress="applyShowAppProgress"
-                                @app-reset-project="resetStrypeProject"
+                                v-on:[CustomEventTypes.appShowProgressOverlay]="applyShowAppProgress"
+                                v-on:[CustomEventTypes.appResetProject]="resetStrypeProject"
                                 class="noselect no-print"
                             />
                             <div class="col">
@@ -134,6 +134,7 @@ export default Vue.extend({
 
     data: function() {
         return {
+            CustomEventTypes, // just for using in template
             showAppProgress: false,
             setAppNotOnTop: false,
             progressbarMessage: "",

@@ -27,7 +27,7 @@
                 :frameId="frameId"
                 :isEditableSlot="isEditableSlot(slotItem.type)"
                 :isEmphasised="isSlotEmphasised(slotItem)"
-                @requestSlotsRefactoring="checkSlotRefactoring"
+                v-on:[CustomEventTypes.requestSlotsRefactoring]="checkSlotRefactoring"
             />
         </div> 
     </div>
@@ -61,6 +61,7 @@ export default Vue.extend({
 
     data: function() {
         return {
+            CustomEventTypes, // just to be able to use in template
             ignoreBracketEmphasisCheck: false, // cf. isSlotEmphasised()
             isFocused: false,
         };

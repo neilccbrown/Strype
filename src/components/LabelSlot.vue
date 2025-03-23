@@ -907,7 +907,7 @@ export default Vue.extend({
                         inputSpanField.textContent = inputSpanFieldContent.substring(0, selectionStart) + getMatchingBracket(event.key, false) + inputSpanFieldContent.substring(selectionStart, selectionEnd) + event.key;
                         const newSlotCursorInfos: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: selectionEnd + 1}; // We move past the first inserted opening bracket
                         this.appStore.setSlotTextCursors(newSlotCursorInfos, newSlotCursorInfos);
-                        this.$emit("requestSlotsRefactoring", refactorFocusSpanUID, stateBeforeChanges);
+                        this.$emit(CustomEventTypes.requestSlotsRefactoring, refactorFocusSpanUID, stateBeforeChanges);
                     }
                     else if(inputSpanFieldContent.substring(0, selectionStart).trim().length == 0 && inputSpanFieldContent.substring(selectionEnd).trim().length > 0 && this.coreSlotInfo.slotId.includes(",") &&
                         isFieldBracketedSlot(parentSlot as FieldSlot) && (parentSlot as SlotsStructure).openingBracketValue == getMatchingBracket(event.key, false)){
@@ -915,7 +915,7 @@ export default Vue.extend({
                         inputSpanField.textContent = inputSpanFieldContent.substring(selectionStart, selectionEnd) + event.key + getMatchingBracket(event.key, false) + inputSpanFieldContent.substring(selectionEnd);
                         const newSlotCursorInfos: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: selectionEnd - selectionStart}; // We move before the first inserted closing bracket
                         this.appStore.setSlotTextCursors(newSlotCursorInfos, newSlotCursorInfos);
-                        this.$emit("requestSlotsRefactoring", refactorFocusSpanUID, stateBeforeChanges);  
+                        this.$emit(CustomEventTypes.requestSlotsRefactoring, refactorFocusSpanUID, stateBeforeChanges);  
                     }
                 }
 
@@ -1046,7 +1046,7 @@ export default Vue.extend({
                 // The logic is as such, we handle the insertion in the slot (with adequate adaptation if needed, see above)
                 // let the parsing and slot factorisation do the checkup later
                 // (we handle the insertion even if there is specific adapation because in the call to emit, the DOM has not updated)
-                this.$emit("requestSlotsRefactoring", refactorFocusSpanUID, stateBeforeChanges);
+                this.$emit(CustomEventTypes.requestSlotsRefactoring, refactorFocusSpanUID, stateBeforeChanges);
             }            
         },
 
@@ -1221,7 +1221,7 @@ export default Vue.extend({
                 this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: newPos}, {slotInfos: this.coreSlotInfo, cursorPos: newPos});
 
                 // part 4
-                this.$emit("requestSlotsRefactoring", this.UID, stateBeforeChanges);     
+                this.$emit(CustomEventTypes.requestSlotsRefactoring, this.UID, stateBeforeChanges);     
             }
         },
 

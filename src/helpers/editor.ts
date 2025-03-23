@@ -28,11 +28,14 @@ export const sharedStrypeProjectIdKey = "shared_proj_id";
 
 // Custom JS events in Strype
 export enum CustomEventTypes {
+    appResetProject = "appResetProject",
+    appShowProgressOverlay = "appShowProgressOverlay",
     contextMenuHovered = "contextMenuHovered",
     requestCaretContextMenuClose="requestCaretContextMenuClose",
     requestAppNotOnTop="requestAppNotOnTop",
     editorAddFrameCommandsUpdated = "frameCommandsUpdated",
     frameContentEdited = "frameContentEdited",
+    requestSlotsRefactoring ="requestSlotsRefactoring",
     editableSlotGotCaret= "slotGotCaret",
     editableSlotLostCaret = "slotLostCaret",
     editorContentPastedInSlot = "contentPastedInSlot",
