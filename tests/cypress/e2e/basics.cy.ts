@@ -1,6 +1,7 @@
 import * as path from "path";
 import {expect} from "chai";
 import i18n from "@/i18n";
+import scssVars from "@/assets/style/_export.module.scss";
 import failOnConsoleError from "cypress-fail-on-console-error";
 import { getEditorMenuUID, getFrameBodyUID, getFrameUID } from "@/helpers/editor";
 failOnConsoleError();
@@ -53,14 +54,14 @@ function body(match: CodeMatch, usePassForEmptyBody? : boolean) : CodeMatch[] {
  * Then gets all the body items and matches them against the body of the CodeMatch.
  */
 function matchFrameText(item : JQuery<HTMLElement>, match : CodeMatch) : void {
-    cy.get(".frame-header").first().within((h) => cy.get(".labelSlot-input,.frame-keyword").should((parts) => {
+    cy.get("." + scssVars.frameHeaderClassName).first().within((h) => cy.get("."  + scssVars.labelSlotInputClassName + ",." + scssVars.framePythonTokenClassName).should((parts) => {
         let s = "";
         for (let i = 0; i < parts.length; i++) {
             const p : any = parts[i];
 
             const text = p.value || p.textContent || "";
             
-            if (text.match(/[a-zA-Z0-9]/) && !p.classList.contains("string-slot")) {
+            if (text.match(/[a-zA-Z0-9]/) && !p.classList.contains(scssVars.frameStringSlotClassName)) {
                 // Only add spaces if it has some non-punctuation characters and isn't a string:
                 s = s + text + " ";
             }
@@ -75,7 +76,7 @@ function matchFrameText(item : JQuery<HTMLElement>, match : CodeMatch) : void {
     // So we use the ID to find our own body, then look in there:
     const frameIdStart = getFrameUID(0).replace("0","");
     const frameBodyIdStart = getFrameBodyUID(0).replace("0","");
-    const bodySelector = "#" + item.attr("id")?.replace(frameIdStart, frameBodyIdStart) + " .frameDiv";
+    const bodySelector = "#" + item.attr("id")?.replace(frameIdStart, frameBodyIdStart) + " ." + scssVars.frameDivClassName;
     
     // .get().filter() fails if there are no items but the body is permitted to be empty for us.  So we must check
     // if we expect an empty body and act accordingly:
@@ -112,7 +113,7 @@ function noFrameDivBetween(parent: Element, descendent: Element) : boolean {
     let e : Element | null = descendent;
     let countBetween = -1; // Start at -1 since we will count descendent immediately
     while (e != parent && e != null) {
-        if (e.classList.contains("frameDiv")) {
+        if (e.classList.contains(scssVars.frameDivClassName)) {
             countBetween += 1;
         }
         e = e.parentElement;
@@ -126,10 +127,10 @@ function noFrameDivBetween(parent: Element, descendent: Element) : boolean {
 function sanityCheck() : void {
     // Check exactly one caret visible or focused input field:
     if (document?.getSelection()?.focusNode == null) {
-        cy.get(".caret:not(.invisible)").should("have.length.at.most", 1);
+        cy.get("."+ scssVars.caretClasName + ":not(." + scssVars.invisibleClasName +")").should("have.length.at.most", 1);
     }
     else {
-        cy.get(".caret:not(.invisible)").should("have.length", 0);
+        cy.get("." + scssVars.caretClasName + ":not(." + scssVars.invisibleClasName + ")").should("have.length", 0);
     }
 }
 
@@ -186,7 +187,7 @@ function flatten(codeLines: CodeMatch[]) : (string | RegExp)[] {
  */
 function checkCodeEquals(codeLines : CodeMatch[]) : void {
     sanityCheck();
-    cy.root().then((r) => cy.get(".frameDiv").filter((i, e) => noFrameDivBetween(r.get()[0], e)).each((f, i) => cy.wrap(f).within((f2) => {
+    cy.root().then((r) => cy.get("." + scssVars.frameDivClassName).filter((i, e) => noFrameDivBetween(r.get()[0], e)).each((f, i) => cy.wrap(f).within((f2) => {
         expect(i).lessThan(codeLines.length, "Found line #" + (i + 1) + " but only expected " + codeLines.length + " lines");
         matchFrameText(f2, codeLines[i]);
     })));

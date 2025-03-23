@@ -285,7 +285,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
     let foundFocusSpan = false;
     let ignoreSpan = !!delimiters;
     let hasStringSlots = false;
-    frameLabelStruct.querySelectorAll(".labelSlot-input").forEach((spanElement) => {
+    frameLabelStruct.querySelectorAll("." + scssVars.labelSlotInputClassName).forEach((spanElement) => {
         if(delimiters && (delimiters.startSlotUID == spanElement.id || delimiters.stopSlotUID == spanElement.id)){
             ignoreSpan = !ignoreSpan ;
         } 
@@ -598,10 +598,10 @@ export function checkEditorCodeErrors(): void{
     }
 
     // Then look up errors based on CSS
-    const erroneousHTMLElements = [...document.getElementsByClassName("error"), ...document.getElementsByClassName("errorSlot")];
+    const erroneousHTMLElements = [...document.getElementsByClassName(scssVars.errorClassName), ...document.getElementsByClassName(scssVars.errorSlotClassName)];
     if(erroneousHTMLElements.length > 0){
         for(const erroneousHTMLElement of erroneousHTMLElements) {
-            if(erroneousHTMLElement.classList.contains("labelSlot-input") || erroneousHTMLElement.classList.contains("frame-header") || erroneousHTMLElement.classList.contains("frameDiv")){
+            if(erroneousHTMLElement.classList.contains(scssVars.labelSlotInputClassName) || erroneousHTMLElement.classList.contains(scssVars.frameHeaderClassName) || erroneousHTMLElement.classList.contains(scssVars.frameDivClassName)){
                 errorHTMLElements.push(erroneousHTMLElement as HTMLElement);
             }
         }
@@ -1147,7 +1147,7 @@ export function notifyDragStarted(frameId?: number):void {
         .filter((navigationPosition) => !navigationPosition.isSlotNavigationPosition 
             && !noCaretDropFrameIds.includes(navigationPosition.frameId));
     // Change the mouse cursor for the whole app
-    document.getElementsByTagName("body")[0]?.classList.add("dragging-frame");
+    document.getElementsByTagName("body")[0]?.classList.add(scssVars.draggingFrameClassName);
     // And assign a mouse event event listen to allow companion "image" to follow cursor and detect when the drop is performed
     (document.getElementsByTagName("body")[0] as HTMLBodyElement).addEventListener("mousemove", bodyMouseMoveEventHandlerForFrameDnD);
     (document.getElementsByTagName("body")[0] as HTMLBodyElement).addEventListener("mouseup", bodyMouseUpEventHandlerForFrameDnD);
@@ -1181,7 +1181,7 @@ export function notifyDragEnded():void {
     (canvas.getContext("2d") as any).reset();
     (document.getElementsByTagName("body")[0] as HTMLBodyElement).removeEventListener("mousemove", bodyMouseMoveEventHandlerForFrameDnD);
     (document.getElementsByTagName("body")[0] as HTMLBodyElement).removeEventListener("mouseup", bodyMouseUpEventHandlerForFrameDnD);
-    document.getElementsByTagName("body")[0]?.classList.remove("dragging-frame");
+    document.getElementsByTagName("body")[0]?.classList.remove(scssVars.draggingFrameClassName);
     if(currentCaretDropPosId.length > 0){
         (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = false;
         // Not really required but just better to reset things properly
@@ -1745,7 +1745,7 @@ export function setPythonExecutionAreaTabsContentMaxHeight(): void {
     const editorNewMaxHeight = manuallyResizedEditorHeight ?? (fullAppHeight / 2);
     // For the tabs' height, we can't rely on the container as the tabs may stack on top of each other (small browser window)
     // so we get the first element of the tab section that is not having a 0 height (because tabs are hidden when we are in split layout)
-    const pythonExecAreaTabsAreaHeight = [...document.querySelectorAll("#" + getPEAControlsDivId() + " li, .pea-no-tabs-controls")]
+    const pythonExecAreaTabsAreaHeight = [...document.querySelectorAll("#" + getPEAControlsDivId() + " li, ." + scssVars.peaNoTabsPlaceholderSpanClassName)]
         .find((element) => element.getBoundingClientRect().height != 0)
         ?.getBoundingClientRect().height;    
     (document.querySelector("#"+getPEATabContentContainerDivId()) as HTMLDivElement).style.maxHeight = ((fullAppHeight - editorNewMaxHeight - (pythonExecAreaTabsAreaHeight??0)) + "px");
@@ -1761,7 +1761,7 @@ export function setPythonExecAreaLayoutButtonPos(): void{
     setTimeout(() => {
         const pythonConsoleTextArea = document.getElementById(getPEAConsoleId());
         const pythonTurtleContainerDiv = document.getElementById(getPEAGraphicsContainerDivId());
-        const peaLayoutButtonsContainer = document.getElementsByClassName("pea-toggle-layout-buttons-container")?.[0];
+        const peaLayoutButtonsContainer = document.getElementsByClassName(scssVars.peaToggleLayoutButtonsContainerClassName)?.[0];
         const peaComponent = ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as any).$refs[getPEAComponentRefId()]);
         if(pythonConsoleTextArea && pythonTurtleContainerDiv && peaLayoutButtonsContainer && peaComponent){
             // First get the natural position offset of the button, so can compute the new position:
@@ -1798,24 +1798,24 @@ export function computeAddFrameCommandContainerSize(isExpandedPEA?: boolean): vo
     // If we are in expanded PEA view, the height of the frame commands panel is aligned with the editor's "cropped" size.
     // If we are in collapsed PEA view, the height of the frame commands is aligned with the commands/PEA splitter pane's size.
     if(isExpandedPEA){
-        const projectNameContainerH = (document.getElementsByClassName("project-name-container")[0] as HTMLDivElement).clientHeight;
+        const projectNameContainerH = (document.getElementsByClassName(scssVars.strypeProjectNameContainerClassName)[0] as HTMLDivElement).clientHeight;
         const croppedEditorH = (manuallyResizedEditorHeight) ? manuallyResizedEditorHeight : (document.getElementsByTagName("body")[0].clientHeight / 2);
-        (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.height = (croppedEditorH - projectNameContainerH) + "px";
+        (document.querySelector("." + scssVars.aFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.height = (croppedEditorH - projectNameContainerH) + "px";
         // In expanded view, we need to set the frame commmands container to "position: absolute" for the content to overlay the commands/PEA splitter.
         // However, the width won't align properly, we need to set that width manually.
-        const frameCmdsParagraphContainer =  document.querySelector(".frameCommands") as HTMLDivElement;
-        (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.width = frameCmdsParagraphContainer.clientWidth + "px";
+        const frameCmdsParagraphContainer =  document.querySelector("." + scssVars.aFrameCommandsContainerClassName) as HTMLDivElement;
+        (document.querySelector("." + scssVars.aFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.width = frameCmdsParagraphContainer.clientWidth + "px";
     }
     else {
         // Reset the frame commands container's width to natural behaviour (see case above)
-        (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.width = "";
+        (document.querySelector("." + scssVars.aFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.width = "";
 
         // When the container div overflows, we remove the overflow extra height to the p element containing the commands
         // so that we can shorten the p height to trigger the commands to be displayed in columns.
-        const scrollContainerH = document.getElementsByClassName("no-PEA-commands")[0].scrollHeight;
-        const noPEACommandsH =  document.getElementsByClassName("no-PEA-commands")[0].getBoundingClientRect().height;
-        const addFrameCmdsPH = (document.querySelector(".frameCommands p") as HTMLParagraphElement).getBoundingClientRect().height;
-        const commandsFlexContainer = (document.querySelector(".frameCommands p") as HTMLParagraphElement);
+        const scrollContainerH = document.getElementsByClassName(scssVars.noPEACommandsClassName)[0].scrollHeight;
+        const noPEACommandsH =  document.getElementsByClassName(scssVars.noPEACommandsClassName)[0].getBoundingClientRect().height;
+        const addFrameCmdsPH = (document.querySelector("." + scssVars.aFrameCommandsContainerClassName + " p") as HTMLParagraphElement).getBoundingClientRect().height;
+        const commandsFlexContainer = (document.querySelector("." + scssVars.aFrameCommandsContainerClassName + " p") as HTMLParagraphElement);
         if(noPEACommandsH < scrollContainerH){
             commandsFlexContainer.style.height = (addFrameCmdsPH - (scrollContainerH - noPEACommandsH)) + "px";
         }
@@ -1826,8 +1826,8 @@ export function computeAddFrameCommandContainerSize(isExpandedPEA?: boolean): vo
                 const firstCommandLeft = commandsFlexContainer.children[0].getBoundingClientRect().left;
                 const lastCommandLeft =  commandsFlexContainer.children[commandsFlexContainer.childElementCount - 1].getBoundingClientRect().left;
                 if(firstCommandLeft != lastCommandLeft){
-                    const projectNameContainerH = document.getElementsByClassName("project-name-container")[0].getBoundingClientRect().height;
-                    (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.height = (noPEACommandsH - projectNameContainerH) + "px";
+                    const projectNameContainerH = document.getElementsByClassName(scssVars.strypeProjectNameContainerClassName)[0].getBoundingClientRect().height;
+                    (document.querySelector("." + scssVars.aFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.height = (noPEACommandsH - projectNameContainerH) + "px";
                 }
             }
         }

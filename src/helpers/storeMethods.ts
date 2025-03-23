@@ -7,6 +7,7 @@ import Vue from "vue";
 import { checkEditorCodeErrors, countEditorCodeErrors, getCaretContainerUID, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID } from "./editor";
 import { nextTick } from "@vue/composition-api";
 import { cloneDeep } from "lodash";
+import scssVars from "@/assets/style/_export.module.scss";
 
 export const retrieveSlotFromSlotInfos = (slotCoreInfos: SlotCoreInfos): FieldSlot => {
     // Retrieve the slot from its id (used for UI), check generateFlatSlotBases() for IDs explanation    
@@ -704,7 +705,7 @@ export const isContainedInFrame = function (currFrameId: number, caretPosition: 
 export const getAvailableNavigationPositions = function(): NavigationPosition[] {
     // We start by getting from the DOM all the available caret and editable slot positions 
     // (slots of "code" type slots, e.g. not operators -- won't appear in allCaretDOMPositions)
-    const allCaretDOMpositions = document.getElementsByClassName("navigationPosition");
+    const allCaretDOMpositions = document.getElementsByClassName(scssVars.navigationPositionClassName);
     // We create a list that hold objects of {frameId,isSlotNavigationPosition,caretPosition?,labelSlotsIndex?, slotId?) for each available navigation positions
     // and discard the locations that correspond to the editable slots of disable frames
     return Object.values(allCaretDOMpositions).map((e)=> {

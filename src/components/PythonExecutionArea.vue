@@ -1,13 +1,13 @@
 
 <template>
-    <div :id="peaComponentId" :class="{'expanded-PEA': isExpandedPEA, 'no-43-ratio-collapsed-PEA': !hasDefault43Ratio && !isExpandedPEA}" ref="peaComponent" @mousedown="handlePEAMouseDown">
+    <div :id="peaComponentId" :class="{[scssVars.expandedPEAClassName]: isExpandedPEA, 'no-43-ratio-collapsed-PEA': !hasDefault43Ratio && !isExpandedPEA}" ref="peaComponent" @mousedown="handlePEAMouseDown">
         <div :id="controlsDivId" :class="{'expanded-PEA-controls': isExpandedPEA}">           
             <b-tabs v-show="isTabsLayout" v-model="peaDisplayTabIndex" no-key-nav>
                 <b-tab v-show="isTabsLayout" :button-id="graphicsTabId" :title="'\uD83D\uDC22 '+$t('PEA.TurtleGraphics')" title-link-class="pea-display-tab"></b-tab>
                 <b-tab v-show="isTabsLayout" :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab" active></b-tab>
             </b-tabs>
             <!-- IMPORTANT: keep this div with "invisible" text for proper layout rendering, it replaces the tabs -->
-            <span v-if="!isTabsLayout" class="pea-no-tabs-controls">c+g</span>
+            <span v-if="!isTabsLayout" :class="scssVars.peaNoTabsPlaceholderSpanClassName">c+g</span>
             <div class="flex-padding"/>            
             <button ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'">
                 <img v-if="!isPythonExecuting" src="favicon.png" class="pea-play-img">
@@ -41,7 +41,7 @@
                     </textarea>
                 </pane>
             </Splitpanes>
-            <div :class="{'pea-toggle-layout-buttons-container': true, hidden: (!isTabContentHovered || isPythonExecuting)}">
+            <div :class="{[scssVars.peaToggleLayoutButtonsContainerClassName]: true, hidden: (!isTabContentHovered || isPythonExecuting)}">
                 <div v-for="(layoutData, index) in PEALayoutsData" :key="'strype-PEA-Layout-'+index" 
                     @click="togglePEALayout(layoutData.mode)" :title="$t('PEA.'+layoutData.iconName)">
                     <SVGIcon :name="layoutData.iconName" customClass="pea-toggle-layout-button" />
@@ -64,6 +64,7 @@ import Menu from "@/components/Menu.vue";
 import SVGIcon from "@/components/SVGIcon.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { debounce } from "lodash";
+import scssVars from "@/assets/style/_export.module.scss";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
@@ -83,6 +84,7 @@ export default Vue.extend({
 
     data: function() {
         return {
+            scssVars, // just to be able to use in template
             isExpandedPEA: false,
             isTabsLayout: true, // flag to indicate the PEA's layout - tabs by default
             graphicsTemporaryHidden: false, //flag to use when we need to temporary hide the graphics for UI reasons (like before a layout of the PEA is performed, so we can compute things right)
@@ -573,7 +575,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-    #peaComponent.expanded-PEA {
+    #peaComponent.#{$strype-classname-expanded-pea} {
         width: 100vw;
         top:50vh;
         bottom:0px;
@@ -605,7 +607,7 @@ export default Vue.extend({
         border-color: lightgray !important;
     }
 
-    .pea-no-tabs-controls {
+    .#{$strype-classname-pea-no-tabs-placeholder-span} {
         color: transparent;
         padding: 9px 0 8px 0px;
     }
@@ -618,7 +620,7 @@ export default Vue.extend({
         color: red;
     }
 
-    .pea-toggle-layout-buttons-container {
+    .#{$strype-classname-pea-toggle-layout-buttons-container} {
         position: absolute;
         bottom: $strype-python-exec-area-layout-buttons-pos-offset;
         right: $strype-python-exec-area-layout-buttons-pos-offset;
@@ -629,7 +631,7 @@ export default Vue.extend({
         background: rgba(69, 68, 68, 0.8) !important;
     }
 
-    .pea-toggle-layout-buttons-container > div {
+    .#{$strype-classname-pea-toggle-layout-buttons-container} > div {
         line-height: 0px; // Thanks copilot! needs to be 0 for making sure the divs are same heights as content
     }
 

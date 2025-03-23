@@ -110,6 +110,7 @@ import {copyFramesFromParsedPython, splitLinesToSections, STRYPE_LOCATION} from 
 import GoogleDrive from "@/components/GoogleDrive.vue";
 import { BvModalEvent } from "bootstrap-vue";
 import axios from "axios";
+import scssVars from "@/assets/style/_export.module.scss";
 
 let autoSaveTimerId = -1;
 let projectSaveFunctionsState : ProjectSaveFunction[] = [];
@@ -702,23 +703,24 @@ export default Vue.extend({
                 let focusSpanElement =  docSelection?.focusNode?.parentElement;
                 // When the editable slots are empty, the span doesn't get the focus, but the container div does.
                 // So we need to retrieve the right HTML component by hand.      
-                // (usually, the first level div container gets the selection, but with FF, the second level container can also get it)     
+                // (usually, the first level div container gets the selection, but with FF, the second level container can also get it)   
+                const classCheckerRegex = new RegExp("(^| )" + scssVars.labelSlotContainerClassName + "($| )");
                 if(anchorSpanElement?.tagName.toLowerCase() == "div"){
-                    if(anchorSpanElement.className.match(/(^| )labelSlot-container($| )/) != null){
+                    if(anchorSpanElement.className.match(classCheckerRegex) != null){
                         // The most common case
                         anchorSpanElement = anchorSpanElement.firstElementChild as HTMLSpanElement;
                     }
-                    else if(anchorSpanElement.firstElementChild?.className.match(/(^| )labelSlot-container($| )/) != null){
+                    else if(anchorSpanElement.firstElementChild?.className.match(classCheckerRegex) != null){
                         // The odd case in FF
                         anchorSpanElement = anchorSpanElement.firstElementChild.firstElementChild as HTMLSpanElement;
                     }
                 }
                 if(focusSpanElement?.tagName.toLowerCase() == "div"){
-                    if(focusSpanElement.className.match(/(^| )labelSlot-container($| )/) != null){
+                    if(focusSpanElement.className.match(classCheckerRegex) != null){
                         // The most common case
                         focusSpanElement = focusSpanElement.firstElementChild as HTMLSpanElement;
                     }
-                    else if(focusSpanElement.firstElementChild?.className.match(/(^| )labelSlot-container($| )/) != null){
+                    else if(focusSpanElement.firstElementChild?.className.match(classCheckerRegex) != null){
                         // The odd case in FF
                         focusSpanElement = focusSpanElement.firstElementChild.firstElementChild as HTMLSpanElement;
                     }
@@ -874,10 +876,10 @@ export default Vue.extend({
             const menuHeightSpace = (isTargetFrames) ? 320 : 90, menuOffsetY = 5, menuOffsetX = 40;
             const firstSelectedTargetElement = (isTargetFrames) 
                 ? document.getElementById(getFrameUID(this.appStore.selectedFrames[0]))
-                : document.querySelector(".caret-container:has(> .navigationPosition.caret:not(.invisible))"); // We want to retrieve the caret container of the currently visible caret
+                : document.querySelector(`.${scssVars.caretContainerClassName}:has(> .${scssVars.navigationPositionClassName}.${scssVars.caretClassName}:not(.${scssVars.invisibleClassName}))`); // We want to retrieve the caret container of the currently visible caret
             const lastSelectedTargetElement = (isTargetFrames) 
                 ? document.getElementById(getFrameUID(this.appStore.selectedFrames.at(-1) as number)) 
-                : document.querySelector(".caret-container:has(> .navigationPosition.caret:not(.invisible))");
+                : document.querySelector(`.${scssVars.caretContainerClassName}:has(> .${scssVars.navigationPositionClassName}.${scssVars.caretClassName}:not(.${scssVars.invisibleClassName}))`);
             // For the editor, we need to get whole editor container, not the space in the middle that is adapted to the viewport
             const editorViewingElement = document.getElementById(getEditorMiddleUID());
             const editorElement = editorViewingElement?.children[0];
@@ -936,9 +938,9 @@ export default Vue.extend({
                 debounceComputeAddFrameCommandContainerSize(true);
                 // Set the editor's max height (fitting within the first pane's height); as well as the "frame commands" panel's
                 (document.getElementsByClassName("cropped-editor-code-div")[0] as HTMLDivElement).style.maxHeight = (editorNewMaxHeight + "px");
-                (document.getElementsByClassName("no-PEA-commands")[0] as HTMLDivElement).style.maxHeight = (editorNewMaxHeight + "px");
+                (document.getElementsByClassName(scssVars.noPEACommandsClassName)[0] as HTMLDivElement).style.maxHeight = (editorNewMaxHeight + "px");
                 // Set the Python Execution Area's position
-                (document.querySelector(".python-exec-area-container.expanded-PEA") as HTMLDivElement).style.top = (editorNewMaxHeight + "px");
+                (document.querySelector("." + scssVars.peaContainerClassName + "." + scssVars.expandedPEAClassName) as HTMLDivElement).style.top = (editorNewMaxHeight + "px");
                 // Set the max height of the Python Execution Area's tab content
                 setPythonExecutionAreaTabsContentMaxHeight();
                 // Trigger a resized event (for scaling the Turtle canvas properly)
@@ -1048,7 +1050,7 @@ html,body {
     background-color: #bbc6b6 !important;
 }
 
-body.dragging-frame {
+body.#{$strype-classname-dragging-frame} {
     cursor: grabbing !important;
 }
 
@@ -1165,7 +1167,7 @@ $divider-grey: darken($background-grey, 15%);
 
 .v-context > li > a:focus,
 .v-context ul > li > a:focus,
-.acItem.acItemSelected {
+.#{$strype-classname-ac-item}.#{$strype-classname-ac-item-selected} {
     text-decoration:none;
     color:white !important;
     background-color: $hover-blue;

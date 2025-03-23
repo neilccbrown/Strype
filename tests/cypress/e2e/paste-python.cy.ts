@@ -9,6 +9,7 @@ import i18n from "@/i18n";
 import * as os from "os";
 import {focusEditor} from "../support/expression-test-support";
 import { getEditorMenuUID, getFrameUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId } from "@/helpers/editor";
+import scssVars from "@/assets/style/_export.module.scss";
 
 // Must clear all local storage between tests to reset the state:
 beforeEach(() => {
@@ -109,7 +110,7 @@ function testRoundTripImportAndDownload(filepath: string, expected?: string) {
         // The "button" for the target selection is now a div element.
         cy.get("#" + getLoadFromFSStrypeButtonId()).click();
         // Must force because the <input> is hidden:
-        cy.get(".editor-file-input").selectFile(filepath, {force : true});
+        cy.get("." + scssVars.editorFileInputClassName).selectFile(filepath, {force : true});
         cy.wait(2000);
         
         checkDownloadedCodeEquals(expected ?? py);
@@ -504,11 +505,11 @@ finally:
 
 function assertVisibleError(error: RegExp | null) {
     if (error != null) {
-        cy.get(".message-banner-container span:first-child").invoke("text").should("match", error);
-        cy.get(".message-banner-cross").click();
+        cy.get("." + scssVars.messageBannerContainerClassName + " span:first-child").invoke("text").should("match", error);
+        cy.get("." + scssVars.messageBannerCrossClassName).click();
     }
     // Whether it never existed, or we closed it, it should now not exist:
-    cy.get(".message-banner-container").should("not.exist");
+    cy.get("." + scssVars.messageBannerContainerClassName).should("not.exist");
 }
 
 // If error is null, there shouldn't be an error banner

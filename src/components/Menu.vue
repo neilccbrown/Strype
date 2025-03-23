@@ -14,19 +14,19 @@
         > 
             <!-- category main acions-->
             <!-- new project-->
-            <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="resetProject();showMenu=false;" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')"/>
+            <a v-if="showMenu" :class="'strype-menu-link '+ scssVars.strypeMenuItemClassName" @click="resetProject();showMenu=false;" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')"/>
             <!-- open project -->
-            <a :id="loadProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" @click="openLoadProjectModal">{{$t('appMenu.loadProject')}}<span class="strype-menu-kb-shortcut">{{loadProjectKBShortcut}}</span></a>
+            <a :id="loadProjectLinkId" v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLoadProjectModal">{{$t('appMenu.loadProject')}}<span class="strype-menu-kb-shortcut">{{loadProjectKBShortcut}}</span></a>
             <ModalDlg :dlgId="loadProjectModalDlgId" showCloseBtn hideDlgBtns >
                 <div>
                     <div :ref="loadProjectTargetButtonGpId" class="project-target-button-container">
                         <span v-t="'appMessage.loadToTarget'" class="load-save-label"/>
-                        <div id="loadFromGDStrypeButton" class="project-target-button load-dlg" tabindex="0"  @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
+                        <div id="loadFromGDStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
                             @mouseenter="changeTargetFocusOnMouseOver">
                             <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive"/> 
                             <span>Google Drive</span>
                         </div>
-                        <div :id="loadFromFSStrypeButtonId" class="project-target-button load-dlg" tabindex="0"  @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
+                        <div :id="loadFromFSStrypeButtonId" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
                             @mouseenter="changeTargetFocusOnMouseOver">
                             <img :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')"/> 
                             <span v-t="'appMessage.targetFS'"></span>
@@ -35,8 +35,8 @@
                 </div>
             </ModalDlg>
             <!-- save project -->
-            <a :id="saveProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" @click="handleSaveMenuClick">{{$t('appMenu.saveProject')}}<span class="strype-menu-kb-shortcut">{{saveProjectKBShortcut}}</span></a>
-            <a v-if="showMenu" :class="{'strype-menu-link strype-menu-item': true, disabled: !isSynced }" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveAsProject'"/>
+            <a :id="saveProjectLinkId" v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="handleSaveMenuClick">{{$t('appMenu.saveProject')}}<span class="strype-menu-kb-shortcut">{{saveProjectKBShortcut}}</span></a>
+            <a v-if="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !isSynced }" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveAsProject'"/>
             <ModalDlg :dlgId="saveProjectModalDlgId" :autoFocusButton="'ok'">
                 <div class="save-project-modal-dlg-container">
                     <div class="row">
@@ -47,13 +47,13 @@
                         <span v-t="'appMessage.saveToTarget'" class="load-save-label cell" />
                         <div class="cell">
                             <div :ref="saveProjectTargetButtonGpId" class="project-target-button-container">
-                                <div id="saveToGDStrypeButton" class="project-target-button save-dlg" tabindex="0"  @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)"
-                                    :class="{saveTargetSelected: tempSyncTarget == syncGDValue || tempSyncTarget == noSyncTargetValue}">
+                                <div id="saveToGDStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)"
+                                    :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncGDValue || tempSyncTarget == noSyncTargetValue}">
                                     <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive"/> 
                                     <span>Google Drive</span>
                                 </div>
-                                <div id="saveToFSStrypeButton" class="project-target-button save-dlg" tabindex="0"  @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)"
-                                    :class="{saveTargetSelected: tempSyncTarget == syncFSValue}">
+                                <div id="saveToFSStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)"
+                                    :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncFSValue}">
                                     <img :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')"/> 
                                     <span v-t="'appMessage.targetFS'"></span>
                                 </div>
@@ -79,7 +79,7 @@
             <div class="menu-separator-div"></div>
             <!-- category: export -->
             <!-- share project -->
-            <a :id="shareProjectLinkId" v-show="showMenu" :class="{'strype-menu-link strype-menu-item': true, disabled: !canShareProject}" :title="$t((isSyncingToGoogleDrive)?'':'appMenu.needSaveShareProj')" @click="onShareProjectClick">{{$t('appMenu.shareProject')}}<span class="strype-menu-kb-shortcut">{{shareProjectKBShortcut}}</span></a>
+            <a :id="shareProjectLinkId" v-show="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !canShareProject}" :title="$t((isSyncingToGoogleDrive)?'':'appMenu.needSaveShareProj')" @click="onShareProjectClick">{{$t('appMenu.shareProject')}}<span class="strype-menu-kb-shortcut">{{shareProjectKBShortcut}}</span></a>
             <ModalDlg :dlgId="shareProjectModalDlgId" :okCustomTitle="$t('buttonLabel.copyLink')" :okDisabled="isSharingLinkGenerationPending" 
                 :dlgTitle="$t('appMessage.createShareProjectLink')" :elementToFocusId="shareGDProjectPublicRadioBtnId">
                         <div>
@@ -106,9 +106,9 @@
                     </ModalDlg>
             <!-- download python/hex project -->
             /* IFTRUE_isMicrobit 
-            <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="downloadHex();showMenu=false;" v-t="'appMenu.downloadHex'" />
+            <a v-if="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="downloadHex();showMenu=false;" v-t="'appMenu.downloadHex'" />
             FITRUE_isMicrobit */
-            <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="downloadPython();showMenu=false;" v-t="'appMenu.downloadPython'" />
+            <a v-if="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="downloadPython();showMenu=false;" v-t="'appMenu.downloadPython'" />
             <!-- BLANK SPACE IN MENU TO FOOTER -->
             <div class="flex-padding" />
             <!-- category: preferences / settings -->
@@ -116,7 +116,7 @@
             <div class="appMenu-prefs-div">
                 <div>
                     <label :for="appLangSelectId" v-t="'appMenu.lang'"/>&nbsp;
-                    <select name="lang" :id="appLangSelectId" v-model="appLang" @change="showMenu=false;" class="strype-menu-item" @click="setCurrentTabIndexFromEltId(appLangSelectId)">
+                    <select name="lang" :id="appLangSelectId" v-model="appLang" @change="showMenu=false;" :class="scssVars.strypeMenuItemClassName" @click="setCurrentTabIndexFromEltId(appLangSelectId)">
                         <option v-for="locale in locales" :value="locale.code" :key="locale.code">{{locale.name}}</option>
                     </select>
                 </div> 
@@ -147,7 +147,7 @@
                 :accept="acceptedInputFileFormat"
                 ref="importFileInput" 
                 @change="selectedFile" 
-                class="editor-file-input"
+                :class="scssVars.editorFileInputClassName"
             /> 
         </div>
         <div class="menu-icons-div">
@@ -202,6 +202,7 @@ import App from "@/App.vue";
 import appPackageJson from "@/../package.json";
 import { getAboveFrameCaretPosition } from "@/helpers/storeMethods";
 import { getLocaleBuildDate } from "@/main";
+import scssVars from "@/assets/style/_export.module.scss";
 
 //////////////////////
 //     Component    //
@@ -218,6 +219,7 @@ export default Vue.extend({
 
     data: function() {
         return {
+            scssVars, // just to be able to use in template
             showMenu: false,
             // This flag is used to know if we've added the tabindex value for the closing "button", and get the number of indexes
             retrievedTabindexesCount: -1,
@@ -673,7 +675,7 @@ export default Vue.extend({
             else {
                 // When the load or save project dialogs are opened, we focus the Google Drive selector by default when we don't have information about the source target
                 setTimeout(() => {
-                    const targetToFocusButton =[...document.querySelectorAll(`#${dlgId} .project-target-button`)].find((targetButton) => {
+                    const targetToFocusButton =[...document.querySelectorAll(`#${dlgId} .${scssVars.projectTargetButtonClassName}`)].find((targetButton) => {
                         // As the moment we only have 2 possible source targets, we can simply check whether "Google" is in the button or not...
                         if(this.tempSyncTarget == this.noSyncTargetValue || this.tempSyncTarget == this.syncGDValue) {
                             return targetButton.querySelector("span")?.textContent?.includes("Google");
@@ -1024,7 +1026,7 @@ export default Vue.extend({
             // (the close button and all bits in the menu). The button is treated separately, and all other elements are found based on the CSS class.
             (document.getElementsByClassName("bm-cross-button")[0] as HTMLSpanElement).tabIndex = 0;
             this.retrievedTabindexesCount = 1;
-            document.querySelectorAll(".bm-menu .strype-menu-item").forEach((element, index) => {
+            document.querySelectorAll(".bm-menu ." + scssVars.strypeMenuItemClassName).forEach((element, index) => {
                 element.setAttribute("tabindex", (index + 1).toString());
                 this.retrievedTabindexesCount++;
             });
@@ -1087,7 +1089,7 @@ export default Vue.extend({
             // Space, left/right arrows should trigger a change of target
             if(event.key.toLowerCase() == " " || event.key.toLowerCase() == "arrowleft" || event.key.toLowerCase() == "arrowright"){
                 const currentFocusedElementID = document.activeElement?.id??"";
-                const targetButtons = [...document.querySelectorAll(`#${(isSaveAction) ? this.saveProjectModalDlgId : this.loadProjectModalDlgId} .project-target-button`)];
+                const targetButtons = [...document.querySelectorAll(`#${(isSaveAction) ? this.saveProjectModalDlgId : this.loadProjectModalDlgId} .${scssVars.projectTargetButtonClassName}`)];
                 const focusedButtonIndex = targetButtons.findIndex((target) => {
                     return target.id == currentFocusedElementID;
                 });
@@ -1109,7 +1111,7 @@ export default Vue.extend({
             // Enter should act as a button validation, if one of the target is focused.
             if(event.key.toLowerCase() == "enter"){
                 const focusedTarget = document.activeElement;
-                if(focusedTarget && focusedTarget.classList.contains("project-target-button")){
+                if(focusedTarget && focusedTarget.classList.contains(scssVars.projectTargetButtonClassName)){
                     (focusedTarget as HTMLDivElement).click();
                     if(isSaveAction){
                         // On the save dialog, the action doesn't validate the modal dialog
@@ -1196,12 +1198,13 @@ export default Vue.extend({
     height: 24px;
     margin-bottom: 10px;
 }
+
 .top-left-strype-logo {
     margin-top: 10px !important;
     margin-bottom: 10px !important;
 }
 
-.editor-file-input {
+.#{$strype-classname-editor-file-input} {
     display: none;
 } 
 
@@ -1243,11 +1246,11 @@ export default Vue.extend({
     transform: translate(-25px, -50%);
 }
 
-.strype-menu-item {
+.#{$strype-classname-strype-menu-item} {
     outline: none;
 }
 
-.strype-menu-item:focus {
+.#{$strype-classname-strype-menu-item}:focus {
     border: $strype-menu-entry-focus-border;
 }
 
@@ -1357,7 +1360,7 @@ export default Vue.extend({
     align-items: center;
 }
 
-.project-target-button {
+.#{$strype-classname-project-target-button} {
     border-radius: 8px;
     border: #c5c4c1 2px solid;
     display: flex;
@@ -1369,8 +1372,8 @@ export default Vue.extend({
     width: 120px;
 }
 
-.project-target-button.load-dlg:focus,
-.project-target-button.saveTargetSelected
+.#{$strype-classname-project-target-button}.load-dlg:focus,
+.#{$strype-classname-project-target-button}.saveTargetSelected
  {
     border-color: #007bff;
     cursor: pointer;
@@ -1378,12 +1381,12 @@ export default Vue.extend({
     outline: none;
 }
 
-.project-target-button.save-dlg:focus {
+.#{$strype-classname-project-target-button}.save-dlg:focus {
     border-color: black !important;
 }
 
 
-.project-target-button.save-dlg:hover {
+.#{$strype-classname-project-target-button}.save-dlg:hover {
     box-shadow: 2px 2px 5px rgb(141, 140, 140);
 }
 

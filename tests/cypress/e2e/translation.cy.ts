@@ -4,6 +4,8 @@ import i18n from "@/i18n";
 import {expect} from "chai";
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
+import scssVars from "@/assets/style/_export.module.scss";
+
 
 /**
  * Given a JQuery with multiple results and an array of expected string content,
@@ -29,7 +31,7 @@ beforeEach(() => {
 describe("Translation tests", () => {
     it("Translates correctly", () => {
         // Starts as English:
-        cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer") as string, i18n.t("appMessage.funcDefsContainer") as string, i18n.t("appMessage.mainContainer") as string]));
+        cy.get("." + scssVars.frameContainerLabelSpanClassName).should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer") as string, i18n.t("appMessage.funcDefsContainer") as string, i18n.t("appMessage.mainContainer") as string]));
         cy.get("select#" + getAppLangSelectId()).should("have.value", "en");
 
         // Swap to French and check it worked:
@@ -38,7 +40,7 @@ describe("Translation tests", () => {
         cy.get("select#" + getAppLangSelectId()).should("have.value", "fr");
 
         // Check that the sections are present and translated:
-        cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer", "fr") as string, i18n.t("appMessage.funcDefsContainer", "fr") as string, i18n.t("appMessage.mainContainer", "fr") as string]));
+        cy.get("."+ scssVars.frameContainerLabelSpanClassName).should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer", "fr") as string, i18n.t("appMessage.funcDefsContainer", "fr") as string, i18n.t("appMessage.mainContainer", "fr") as string]));
 
         // Close the menu:
         cy.get("body").type("{esc}");
@@ -59,7 +61,7 @@ describe("Translation tests", () => {
     });
     it("Resets translation properly", () => {
         // Should be back to English:
-        cy.get(".frame-container-label-span").should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer") as string, i18n.t("appMessage.funcDefsContainer") as string, i18n.t("appMessage.mainContainer") as string]));
+        cy.get("." + scssVars.frameContainerLabelSpanClassName).should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer") as string, i18n.t("appMessage.funcDefsContainer") as string, i18n.t("appMessage.mainContainer") as string]));
         cy.get("select#" + getAppLangSelectId()).should("have.value", "en");
     });
 });

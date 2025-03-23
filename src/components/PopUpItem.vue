@@ -1,8 +1,8 @@
 <template>
     <!-- @mousedown must be kept to avoid the click to move the focus from input text field -->
     <li
-        v-show="this.item"
-        :class="{acItem: true, acItemSelected: selected}"
+        v-show="item"
+        :class="{[scssVars.acItemClassName]: true, [scssVars.acItemSelectedClassName]: selected}"
         :id="id"
         @mouseover="onHover"
         @mousedown.prevent.stop
@@ -17,7 +17,7 @@
 //////////////////////
 import { CustomEventTypes } from "@/helpers/editor";
 import Vue from "vue";
-
+import scssVars from "@/assets/style/_export.module.scss";
 //////////////////////
 
 export default Vue.extend({
@@ -30,6 +30,12 @@ export default Vue.extend({
         selected: Boolean,
         isSelectable: Boolean,
         version: Number,
+    },
+
+    data: function () {
+        return {
+            scssVars, // just to be able to use in template
+        };
     },
 
     methods: {

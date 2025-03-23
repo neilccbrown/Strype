@@ -8,6 +8,8 @@ chai.use(require("chai-sorted"));
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 
+import scssVars from "@/assets/style/_export.module.scss";
+
 chai.Assertion.addMethod("beLocaleSorted", function () {
     const $element = this._obj;
 
@@ -66,7 +68,7 @@ const BUILTIN = "Python";
 function assertState(frameId: number, expectedState : string, expectedStateWithPlaceholders?: string) : void {
     expectedStateWithPlaceholders = expectedStateWithPlaceholders ?? expectedState.replaceAll("$", "");
     withSelection((info) => {    
-        cy.get("#" + getFrameHeaderUID(frameId) + " #" + getFrameLabelSlotsStructureUID(frameId, 0) + " .labelSlot-input").then((parts) => {
+        cy.get("#" + getFrameHeaderUID(frameId) + " #" + getFrameLabelSlotsStructureUID(frameId, 0) + " ." + scssVars.labelSlotInputClassName).then((parts) => {
             let content = "";
             let contentWithPlaceholders = "";
             for (let i = 0; i < parts.length; i++) {

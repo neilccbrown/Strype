@@ -1,6 +1,6 @@
 <template>
     <div 
-        :class="{'caret-container': true, 'static-caret-container': isStaticCaretContainer, 'dragging-frames': areFramesDraggedOver}"
+        :class="{[scssVars.caretContainerClassName]: true, 'static-caret-container': isStaticCaretContainer, [scssVars.draggingFrameClassName]: areFramesDraggedOver}"
         @click.exact.prevent.stop="toggleCaret()"
         @contextmenu.prevent.stop="handleClick($event)"
         :key="UID"
@@ -21,7 +21,7 @@
             </li>
         </vue-context>
         <Caret
-            class="navigationPosition caret"
+            :class="scssVars.navigationPositionClassName + ' ' + scssVars.caretClassName"
             :id="caretUID"
             :isInvisible="isInvisible"
             v-blur="isCaretBlurred"
@@ -47,6 +47,7 @@ import { mapStores } from "pinia";
 import {copyFramesFromParsedPython, findCurrentStrypeLocation} from "@/helpers/pythonToFrames";
 import { cloneDeep } from "lodash";
 import { getAboveFrameCaretPosition } from "@/helpers/storeMethods";
+import scssVars  from "@/assets/style/_export.module.scss";
 
 //////////////////////
 //     Component    //
@@ -124,6 +125,7 @@ export default Vue.extend({
 
     data: function () {
         return {
+            scssVars, // just to be able to use in template
             showPasteMenuItem: false,
             insertFrameMenuItems: [] as {name: string, method: VoidFunction, actionName ?: FrameContextMenuActionName}[],
             areFramesDraggedOver: false,
@@ -332,7 +334,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.caret-container {
+.#{$strype-classname-caret-container} {
     padding-top: 0px;
     padding-bottom: 0px;
 }
@@ -341,7 +343,7 @@ export default Vue.extend({
     height: $caret-height-value + px;
 }
 
-.caret-container:not(.dragging-frames):hover{
+.#{$strype-classname-caret-container}:not(.#{$strype-classname-dragging-frame}):hover{
     cursor: pointer;
 }
 </style>

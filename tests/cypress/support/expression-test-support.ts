@@ -1,8 +1,9 @@
 import { getEditorID, getFrameContainerUID, getFrameUID } from "@/helpers/editor";
+import scssVars from "@/assets/style/_export.module.scss";
 
 export function assertState(expectedState : string) : void {
     withSelection((info) => {
-        cy.get("#" + getFrameContainerUID(-3) + " .frame-header").first().within((h) => cy.get(".labelSlot-input,.frameColouredLabel").then((parts) => {
+        cy.get("#" + getFrameContainerUID(-3) + " ." + scssVars.frameHeaderClassName).first().within((h) => cy.get("." + scssVars.labelSlotInputClassName + ",." + scssVars.frameColouredLabelClassName).then((parts) => {
             let s = "";
             if (!parts) {
                 // Try to debug an occasional seemingly impossible failure:
@@ -19,7 +20,7 @@ export function assertState(expectedState : string) : void {
                     text = text.substring(0, info.cursorPos) + "$" + text.substring(info.cursorPos);
                 }
                 // Don't put curly brackets around strings, operators or brackets:
-                if (!p.classList.contains("string-slot") && !p.classList.contains("operator-slot") && !/[([)\]$]/.exec(p.textContent)) {
+                if (!p.classList.contains(scssVars.frameStringSlotClassName) && !p.classList.contains(scssVars.frameOperatorSlotClassName) && !/[([)\]$]/.exec(p.textContent)) {
                     text = "{" + text + "}";
                 }
                 s += text;

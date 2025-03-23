@@ -9,6 +9,7 @@ import { useStore } from "@/store/store";
 import { StateAppObject } from "@/types/types";
 import initialStates from "@/store/initial-states";
 import { cloneDeep } from "lodash";
+import scssVars from "@/assets/style/_export.module.scss";
 import { getAppLangSelectId, getEditorMenuUID } from "@/helpers/editor";
 
 // All declared in test-setup-{microbit,python}.js
@@ -54,7 +55,7 @@ function checkTextEquals(ws: WrapperArray<any>, expecteds : string[]) : void {
  * @param w A wrapper representing a .frameDiv element
  */
 function getFrameText(w : Wrapper<any, any>) : string {
-    const parts = w.findAll("input,.frameColouredLabel");
+    const parts = w.findAll("input,." + scssVars.frameColouredLabelClassName);
     let s = "";
     for (let i = 0; i < parts.length; i++) {
         const p = parts.at(i);
@@ -88,7 +89,7 @@ function getFramesText(ws : WrapperArray<any>) : string[] {
  */
 function sanityCheck(root : Wrapper<any>) : void {
     // Check exactly one caret visible when not editing, zero when editing:
-    expect(root.findAll(".caret").filter((w) => !w.classes().includes("invisible"))).to.
+    expect(root.findAll("." + scssVars.caretClassName).filter((w) => !w.classes().includes(scssVars.invisibleClassName))).to.
         length(document.activeElement instanceof HTMLInputElement ? 0 : 1);
 }
 
@@ -117,7 +118,7 @@ function expectMatchRegex(actual: string[], expected: (string | RegExp)[]) {
 function checkCodeEquals(root: Wrapper<any>, codeLines : (string | RegExp)[]) : void {
     sanityCheck(root);
     // We must use eql to compare lists, not equal:
-    expectMatchRegex(getFramesText(root.findAll(".frameDiv")), codeLines);
+    expectMatchRegex(getFramesText(root.findAll("." + scssVars.frameDivClassName)), codeLines);
     const p = parseCodeAndGetParseElements(false);
     expect(p.hasErrors).to.equal(false);
     expectMatchRegex(p.parsedOutput.split("\n").map((l) => l.trimEnd()),
@@ -152,7 +153,7 @@ describe("App.vue Basic Test", () => {
         const wrapper = testApp();
 
         // check that the sections are present and correct:
-        const headers = wrapper.findAll(".frame-container-label-span");
+        const headers = wrapper.findAll("." + scssVars.frameContainerLabelSpanClassName);
         checkTextEquals(headers, ["Imports:", "Function definitions:", "My code:"]);
         wrapper.destroy();
     });
@@ -168,7 +169,7 @@ describe("App.vue Basic Test", () => {
         expect((wrapper.get("select#" + getAppLangSelectId()).element as HTMLSelectElement).value).to.equal("fr");
 
         // check that the sections are present and translated:
-        const headers = wrapper.findAll(".frame-container-label-span");
+        const headers = wrapper.findAll("." + scssVars.frameContainerLabelSpanClassName);
         checkTextEquals(headers, ["Imports :", "Définitions de fonctions :", "Mon code :"]);
         wrapper.destroy();
     });
