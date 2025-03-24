@@ -1,11 +1,9 @@
 // Test that the translation is working properly
-import { getAppLangSelectId, getEditorMenuUID } from "@/helpers/editor";
 import i18n from "@/i18n";
 import {expect} from "chai";
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
-import scssVars from "@/assets/style/_export.module.scss";
-
+import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
 
 /**
  * Given a JQuery with multiple results and an array of expected string content,
@@ -19,25 +17,37 @@ function checkTextEquals(ws: JQuery, expecteds : string[]) : void {
     }
 }
 
-// Must clear all local storage between tests to reset the state:
+// Must clear all local storage between tests to reset the state,
+// and also retrieve the shared CSS and HTML elements IDs exposed
+// by Strype via the Window object of the app.
+let scssVars: {[varName: string]: string};
+let strypeElIds: {[varName: string]: (...args: any[]) => string};
 beforeEach(() => {
     cy.clearLocalStorage();
     cy.visit("/",  {onBeforeLoad: (win) => {
         win.localStorage.clear();
         win.sessionStorage.clear();
-    }});
+    }}).then(() => {       
+        // Only need to get the global variables if we haven't done so
+        if(scssVars == undefined){
+            cy.window().then((win) => {
+                scssVars = (win as any)[WINDOW_STRYPE_SCSSVARS_PROPNAME];
+                strypeElIds = (win as any)[WINDOW_STRYPE_HTMLIDS_PROPNAME];
+            });
+        }
+    });
 });
 
 describe("Translation tests", () => {
     it("Translates correctly", () => {
         // Starts as English:
         cy.get("." + scssVars.frameContainerLabelSpanClassName).should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer") as string, i18n.t("appMessage.funcDefsContainer") as string, i18n.t("appMessage.mainContainer") as string]));
-        cy.get("select#" + getAppLangSelectId()).should("have.value", "en");
+        cy.get("select#" + strypeElIds.getAppLangSelectId()).should("have.value", "en");
 
         // Swap to French and check it worked:
-        cy.get("button#" + getEditorMenuUID()).click();
-        cy.get("select#" + getAppLangSelectId()).select("fr");
-        cy.get("select#" + getAppLangSelectId()).should("have.value", "fr");
+        cy.get("button#" + strypeElIds.getEditorMenuUID()).click();
+        cy.get("select#" + strypeElIds.getAppLangSelectId()).select("fr");
+        cy.get("select#" + strypeElIds.getAppLangSelectId()).should("have.value", "fr");
 
         // Check that the sections are present and translated:
         cy.get("."+ scssVars.frameContainerLabelSpanClassName).should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer", "fr") as string, i18n.t("appMessage.funcDefsContainer", "fr") as string, i18n.t("appMessage.mainContainer", "fr") as string]));
@@ -62,6 +72,6 @@ describe("Translation tests", () => {
     it("Resets translation properly", () => {
         // Should be back to English:
         cy.get("." + scssVars.frameContainerLabelSpanClassName).should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer") as string, i18n.t("appMessage.funcDefsContainer") as string, i18n.t("appMessage.mainContainer") as string]));
-        cy.get("select#" + getAppLangSelectId()).should("have.value", "en");
+        cy.get("select#" + strypeElIds.getAppLangSelectId()).should("have.value", "en");
     });
 });

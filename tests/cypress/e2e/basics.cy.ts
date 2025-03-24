@@ -1,12 +1,12 @@
 import * as path from "path";
 import {expect} from "chai";
 import i18n from "@/i18n";
-import scssVars from "@/assets/style/_export.module.scss";
 import failOnConsoleError from "cypress-fail-on-console-error";
-import { getEditorMenuUID, getFrameBodyUID, getFrameUID } from "@/helpers/editor";
 failOnConsoleError();
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
+
+import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
 
 /**
  * A CodeMatch can be an exact string to match a single line frame,
@@ -74,8 +74,8 @@ function matchFrameText(item : JQuery<HTMLElement>, match : CodeMatch) : void {
     
     // We used to look for .frameDiv for body items, but this can also pick up items in the body of joint frames
     // So we use the ID to find our own body, then look in there:
-    const frameIdStart = getFrameUID(0).replace("0","");
-    const frameBodyIdStart = getFrameBodyUID(0).replace("0","");
+    const frameIdStart = strypeElIds.getFrameUID(0).replace("0","");
+    const frameBodyIdStart = strypeElIds.getFrameBodyUID(0).replace("0","");
     const bodySelector = "#" + item.attr("id")?.replace(frameIdStart, frameBodyIdStart) + " ." + scssVars.frameDivClassName;
     
     // .get().filter() fails if there are no items but the body is permitted to be empty for us.  So we must check
@@ -195,7 +195,7 @@ function checkCodeEquals(codeLines : CodeMatch[]) : void {
     cy.task("deleteFile", path.join(downloadsFolder, "main.py"));
     // Conversion to Python is located in the menu, so we need to open it first, then find the link and click on it
     // Force these because sometimes cypress gives false alarm about webpack overlay being on top:
-    cy.get("button#" + getEditorMenuUID()).click({force: true}); 
+    cy.get("button#" + strypeElIds.getEditorMenuUID()).click({force: true}); 
     cy.contains(i18n.t("appMenu.downloadPython") as string).click({force: true});
     
     cy.readFile(path.join(downloadsFolder, "main.py")).then((p : string) => {
@@ -237,13 +237,25 @@ Cypress.on("uncaught:exception", (err, runnable) => {
     return false;
 });
 
-// Must clear all local storage between tests to reset the state:
+// Must clear all local storage between tests to reset the state,
+// and also retrieve the shared CSS and HTML elements IDs exposed
+// by Strype via the Window object of the app.
+let scssVars: {[varName: string]: string};
+let strypeElIds: {[varName: string]: (...args: any[]) => string};
 beforeEach(() => {
     cy.clearLocalStorage();
     cy.visit("/",  {onBeforeLoad: (win) => {
         win.localStorage.clear();
         win.sessionStorage.clear();
-    }});
+    }}).then(() => {       
+        // Only need to get the global variables if we haven't done so
+        if(scssVars == undefined){
+            cy.window().then((win) => {
+                scssVars = (win as any)[WINDOW_STRYPE_SCSSVARS_PROPNAME];
+                strypeElIds = (win as any)[WINDOW_STRYPE_HTMLIDS_PROPNAME];
+            });
+        }        
+    });
 });
 
 // Test that adding frames by typing keys works properly:

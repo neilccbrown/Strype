@@ -8,16 +8,30 @@ import path from "path";
 import i18n from "@/i18n";
 import * as os from "os";
 import {focusEditor} from "../support/expression-test-support";
-import { getEditorMenuUID, getFrameUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId } from "@/helpers/editor";
-import scssVars from "@/assets/style/_export.module.scss";
+import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
 
-// Must clear all local storage between tests to reset the state:
+// Must clear all local storage between tests to reset the state,
+// and also retrieve the shared CSS and HTML elements IDs exposed
+// by Strype via the Window object of the app.
+let scssVars: {[varName: string]: string};
+let strypeElIds: {[varName: string]: (...args: any[]) => string};
 beforeEach(() => {
     cy.clearLocalStorage();
     cy.visit("/",  {onBeforeLoad: (win) => {
         win.localStorage.clear();
         win.sessionStorage.clear();
-    }});
+    }}).then(() => {       
+        // Only need to get the global variables if we haven't done so
+        if(scssVars == undefined){
+            cy.window().then((win) => {
+                scssVars = (win as any)[WINDOW_STRYPE_SCSSVARS_PROPNAME];
+                strypeElIds = (win as any)[WINDOW_STRYPE_HTMLIDS_PROPNAME];
+            });
+        }
+        // The Strype IDs and CSS class names aren't directly used in the test
+        // but they are used in the support file, so we make them available.
+        cy.initialiseSupportStrypeGlobals();
+    });
 });
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -45,7 +59,7 @@ Cypress.Commands.add("paste",
 function focusEditorPasteAndClear(): void {
     // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
     // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
-    cy.get("#" + getFrameUID(-3)).focus();
+    cy.get("#" + strypeElIds.getFrameUID(-3)).focus();
     // Delete existing content (bit of a hack):
     cy.get("body").type("{uparrow}{uparrow}{uparrow}{del}{downarrow}{downarrow}{downarrow}{downarrow}{backspace}{backspace}");
 }
@@ -55,7 +69,7 @@ function checkDownloadedCodeEquals(fullCode: string) : void {
     cy.task("deleteFile", path.join(downloadsFolder, "main.py"));
     // Conversion to Python is located in the menu, so we need to open it first, then find the link and click on it
     // Force these because sometimes cypress gives false alarm about webpack overlay being on top:
-    cy.get("button#" + getEditorMenuUID()).click({force: true});
+    cy.get("button#" + strypeElIds.getEditorMenuUID()).click({force: true});
     cy.contains(i18n.t("appMenu.downloadPython") as string).click({force: true});
 
     cy.readFile(path.join(downloadsFolder, "main.py")).then((p : string) => {
@@ -91,7 +105,7 @@ function testRoundTripPasteAndDownload(code: string, extraPositioning?: string, 
     (cy.get("body") as any).paste(code);
     checkDownloadedCodeEquals(expected ?? code);
     // Refocus the editor and go to the bottom:
-    cy.get("#" + getFrameUID(-3)).focus();
+    cy.get("#" + strypeElIds.getFrameUID(-3)).focus();
     cy.get("body").type("{end}");
 }
 
@@ -101,21 +115,21 @@ function testRoundTripImportAndDownload(filepath: string, expected?: string) {
         // Delete existing:
         focusEditorPasteAndClear();
 
-        cy.get("#" + getEditorMenuUID()).click();
-        cy.get("#" + getLoadProjectLinkId()).click();
+        cy.get("#" + strypeElIds.getEditorMenuUID()).click();
+        cy.get("#" + strypeElIds.getLoadProjectLinkId()).click();
         // If the current state of the project is modified,
         // we first need to discard the changes (we check the button is available)
         cy.get("button").contains("Discard changes").should("exist").click();
         cy.wait(2000);
         // The "button" for the target selection is now a div element.
-        cy.get("#" + getLoadFromFSStrypeButtonId()).click();
+        cy.get("#" + strypeElIds.getLoadFromFSStrypeButtonId()).click();
         // Must force because the <input> is hidden:
         cy.get("." + scssVars.editorFileInputClassName).selectFile(filepath, {force : true});
         cy.wait(2000);
         
         checkDownloadedCodeEquals(expected ?? py);
         // Refocus the editor and go to the bottom:
-        cy.get("#" + getFrameUID(-3)).focus();
+        cy.get("#" + strypeElIds.getFrameUID(-3)).focus();
         cy.get("body").type("{end}");
     });
 }

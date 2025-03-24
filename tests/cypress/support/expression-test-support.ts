@@ -1,9 +1,20 @@
-import { getEditorID, getFrameContainerUID, getFrameUID } from "@/helpers/editor";
-import scssVars from "@/assets/style/_export.module.scss";
+// To avoid passing arguments in all the functions defined in this file, we fetch the shared IDs
+// and CSS class names of Strype (we only do it if they are not already saved in this file)
+import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
+let scssVars: {[varName: string]: string};
+let strypeElIds: {[varName: string]: (...args: any[]) => string};
+Cypress.Commands.add("initialiseSupportStrypeGlobals", () => {
+    if(scssVars == undefined){
+        cy.window().then((win) => {
+            scssVars = (win as any)[WINDOW_STRYPE_SCSSVARS_PROPNAME];
+            strypeElIds = (win as any)[WINDOW_STRYPE_HTMLIDS_PROPNAME];
+        });
+    }
+});
 
 export function assertState(expectedState : string) : void {
     withSelection((info) => {
-        cy.get("#" + getFrameContainerUID(-3) + " ." + scssVars.frameHeaderClassName).first().within((h) => cy.get("." + scssVars.labelSlotInputClassName + ",." + scssVars.frameColouredLabelClassName).then((parts) => {
+        cy.get("#" + strypeElIds.getFrameContainerUID(-3) + " ." + scssVars.frameHeaderClassName).first().within((h) => cy.get("." + scssVars.labelSlotInputClassName + ",." + scssVars.frameColouredLabelClassName).then((parts) => {
             let s = "";
             if (!parts) {
                 // Try to debug an occasional seemingly impossible failure:
@@ -34,7 +45,7 @@ export function assertState(expectedState : string) : void {
 function withSelection(inner : (arg0: { id: string, cursorPos : number }) => void) : void {
     // We need a delay to make sure last DOM update has occurred:
     cy.wait(200);
-    cy.get("#" + getEditorID()).then((eds) => {
+    cy.get("#" + strypeElIds.getEditorID()).then((eds) => {
         const ed = eds.get()[0];
         inner({id : ed.getAttribute("data-slot-focus-id") || "", cursorPos : parseInt(ed.getAttribute("data-slot-cursor") || "-2")});
     });
@@ -149,7 +160,7 @@ function reachFrameLabelSlot(targetSlotSpanID: string, goLeft: boolean): boolean
 export function focusEditor(): void {
     // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
     // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
-    cy.get("#" + getFrameUID(-3)).focus();
+    cy.get("#" + strypeElIds.getFrameUID(-3)).focus();
 }
 
 export function testMultiInsert(multiInsertion : string, firstResult : string, secondResult : string) : void {
