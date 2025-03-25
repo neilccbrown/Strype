@@ -87,7 +87,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getMenuLeftPaneUID, getPEAConsoleId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getPEAComponentRefId, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
+import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getMenuLeftPaneUID, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -95,11 +95,12 @@ import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
 import { mapStores } from "pinia";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
+import scssVars  from "@/assets/style/_export.module.scss";
+import { isMacOSPlatform } from "@/helpers/common";
 /* IFTRUE_isPython */
 import {Splitpanes, Pane} from "splitpanes";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
-import { isMacOSPlatform } from "@/helpers/common";
-import scssVars  from "@/assets/style/_export.module.scss";
+import {getPEAConsoleId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getPEAComponentRefId} from "@/helpers/editor";
 /* FITRUE_isPython */
 /* IFTRUE_isMicrobit */
 import APIDiscovery from "@/components/APIDiscovery.vue";
@@ -216,6 +217,7 @@ export default Vue.extend({
         },
     },
 
+    /* IFTRUE_isPython */
     watch: {
         addFrameCommands(){
             // When the commands list is regenerated, the height of the frame commands list may change, and so may the Python Exec Area.
@@ -227,6 +229,7 @@ export default Vue.extend({
             }
         },
     },
+    /* FITRUE_isPython */
 
     created() {
         if(this.appStore.showKeystroke){
@@ -376,6 +379,7 @@ export default Vue.extend({
                     }
                 }
                 
+                /* IFTRUE_isPython */
                 // If ctrl-enter/cmd-enter is pressed, make sure we quit the editing (if that's the case) and run the code
                 if((event.ctrlKey || event.metaKey) && eventKeyLowCase === "enter" && this.$refs[getPEAComponentRefId()]) {
                     ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).focus();
@@ -389,6 +393,7 @@ export default Vue.extend({
                     event.stopImmediatePropagation();
                     return;
                 }
+                /* FITRUE_isPython */
 
                 // If a context menu is currently displayed, we handle the menu keyboard interaction here
                 // (note that preventing the event here also prevents the keyboard scrolling of the page)
@@ -401,7 +406,7 @@ export default Vue.extend({
 
                 // Prevent default scrolling and navigation in the editor, except if Turtle is currently running and listening for key events
                 // (then we just leave the PEA handling it, see at the end of these conditions for related code)
-                if (!isDraggingFrames && !isEditing && !(isPythonExecuting && (this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isTurtleListeningKeyEvents) && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"].includes(event.key)) {
+                if (!isDraggingFrames && !isEditing && /*IFTRUE_isPython !(isPythonExecuting && (this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isTurtleListeningKeyEvents) && FITRUE_isPython*/["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"].includes(event.key)) {
                     event.stopImmediatePropagation();
                     event.stopPropagation();
                     event.preventDefault();
@@ -491,6 +496,7 @@ export default Vue.extend({
                             this.$nextTick(() => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true})));
                         }
                     }
+                    /* IFTRUE_isPython */
                     else if(isPythonExecuting){
                         // The special case when the user's code is being executing, we want to handle the key events carefully.
                         // If there is a combination key (ctrl,...) we just ignore the events, otherwise, if Turtle is active we pass events to the Turtle graphics,
@@ -524,6 +530,7 @@ export default Vue.extend({
                             return;
                         }
                     }
+                    /* FITRUE_isPython */
                 }
                 else if(this.appStore.isDraggingFrame){
                     // Hitting escape during a DnD cancels it.
