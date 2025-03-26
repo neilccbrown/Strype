@@ -1,10 +1,11 @@
 <template>
-    <div :id="'div_'+UID" :class="{'labelSlot-container': true, nohover: isDraggingFrame}">
+    <div :id="'div_'+UID" :class="{'labelSlot-container': true, nohover: isDraggingFrame}" contenteditable="false">
         <span
             autocomplete="off"
             spellcheck="false"
             :disabled="isDisabled"
             :placeholder="defaultText"
+            :empty-content="!code || code == '\u200B'"
             :contenteditable="isEditableSlot && !(isDisabled || isPythonExecuting)"
             @click.stop="onGetCaret"
             @slotGotCaret="onGetCaret"
@@ -1528,7 +1529,9 @@ export default Vue.extend({
     min-width: 3px;
 }
 
-.labelSlot-input:empty::before {
+// We can't use :empty because we use a zero-width space for the content
+// when it is empty (at which point :empty is not applied).  So we use our own version:
+.labelSlot-input[empty-content="true"]::after {
     content: attr(placeholder);
     font-style: italic;
     color: #bbb;

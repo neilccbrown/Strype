@@ -15,6 +15,7 @@
             v-for="(slotItem, slotIndex) in subSlots" 
             :key="frameId + '_'  + labelIndex + '_' + slotIndex"
             class="next-to-eachother"
+            contenteditable="false"
         >
             <!-- Note: the default text is only showing for new slots (1 subslot), we also use unicode zero width space character for empty slots for UI -->
             <LabelSlot
@@ -126,7 +127,9 @@ export default Vue.extend({
                 // We show quotes in the UI as textual opening or closing quotes
                 return getUIQuote(slot.code, slot.type == SlotType.openingQuote);
             }
-            return slot.code;
+            // On Firefox there are problems typing into completely blank slots,
+            // so we use a zero-width space if there is no code:
+            return slot.code ? slot.code : "\u200B";
         },
 
         isSlotEmphasised(slot: FlatSlotBase): boolean{
