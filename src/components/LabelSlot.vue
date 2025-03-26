@@ -29,7 +29,8 @@
             :id="UID"
             :key="UID"
             :style="spanBackgroundStyle"
-            @input="onSlotSpanChange"
+            @input="onInput"
+            @compositionend="onCompositionEnd"
             @dragstart.prevent
             v-text="code"
         >
@@ -297,12 +298,19 @@ export default Vue.extend({
             return (document.getElementById(this.UID) as HTMLSpanElement).textContent ?? "";
         },
 
-        setSlotContent(value: string){
-            (document.getElementById(this.UID) as HTMLSpanElement).textContent = value;
-            this.onSlotSpanChange();
+        onInput(input: InputEvent){
+            // Don't do this if we are mid-composition because it alters
+            // the cursor position and prevents composition/IME working:
+            if (!input.isComposing) {
+                this.updateStoreFromEditableContent();
+            }
         },
 
-        onSlotSpanChange(){
+        onCompositionEnd(input?: CompositionEvent) {
+            this.updateStoreFromEditableContent();
+        },
+
+        updateStoreFromEditableContent() {            
             const spanElement = (document.getElementById(this.UID) as HTMLSpanElement);
             this.textCursorPos = getTextStartCursorPositionOfHTMLElement(spanElement);
 
@@ -1471,7 +1479,9 @@ export default Vue.extend({
             }
 
             // Remove content before the cursor (and put cursor at the beginning):
-            this.setSlotContent(this.getSlotContent().substr(currentTextCursorPos));
+            (document.getElementById(this.UID) as HTMLSpanElement).textContent = this.getSlotContent().substring(currentTextCursorPos);
+            this.updateStoreFromEditableContent();
+            
             const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: 0};
             this.appStore.setSlotTextCursors(slotCursorInfo, slotCursorInfo);
             setDocumentSelection(slotCursorInfo, slotCursorInfo);
