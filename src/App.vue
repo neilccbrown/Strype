@@ -416,11 +416,13 @@ export default Vue.extend({
         // Add a listener for the mouse scroll events. We do not want to allow scrolling when the context menu is shown
         document.addEventListener("wheel", this.blockScrollOnContextMenu, {passive:false});
 
+        /* IFTRUE_isPython */
         // Add a listener for the whole window resize.
         window.addEventListener("resize",() => {
             // Re-scale the Turtle canvas.
             document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
         });
+        /* FITRUE_isPython */
 
         // When the page is loaded, we might load an existing code for which the caret is not visible, so we get it into view.
         setTimeout(() => {
