@@ -39,13 +39,13 @@ def _round_and_clamp_0_255(number):
 #@@ Color
 def color_from_string(html_string):
     """
-    Converts a string that is either a color name (e.g. "red") or a hex string (e.g. "#ff0000") to
-    a Color object.  The hex string can either be 6 hex digits (in which case alpha is assumed to be 255)
-    or 8 hex digits (which includes the alpha)
+    Convert a string to a :class:`Color` object.  The string can be either a color name (e.g. "red") or a 
+    hex string (e.g. "#ff0000").  A hex string can either be 6 hex digits (in which case alpha is assumed to be 255)
+    or 8 hex digits (which includes the alpha).
     
     :param html_string: A string as described above.
     :raises ValueError: If the string is not recognised as a color name or valid 6 or 8 digit hex string.
-    :return: A Color object.
+    :return: A :class:`Color` object.
     """
     if html_string.lower() in _color_map:
         html_string = _color_map[html_string.lower()]
@@ -66,18 +66,17 @@ def color_from_string(html_string):
 
 class Color:
     """
-    A Color class with members red, green, blue, alpha, in the range 0--255.
+    A Color class with red, green, blue components, and an optional alpha value. 
     """
     def __init__(self, red, green, blue, alpha = 255):
         """
-        Constructs a color value with the given red, green, blue and alpha values.  If they are below 0 they will be treated
-        as if they were 0, and if they are above 255 they will be treated as if they were 255.  Fractional numbers will
-        be converted to a whole number.
+        Create a color object with red, green, blue and alpha (transparency) values. Parameters are in the range 0--255. Parameters below 0 they will be 
+        treated as 0; parameters above 255 will be treated as 255.
         
         :param red: The red value, from 0 (none) to 255 (most).
         :param green: The green value, from 0 (none) to 255 (most).
         :param blue: The blue value, from 0 (none) to 255 (most). 
-        :param alpha: The alpha value.  Alpha represents transparency.  0 means fully transparent which is rarely what you want.  255 means non-transparent.  Values inbetween indicate the amount of transparency.
+        :param alpha: The alpha value.  0 is fully transparent (invisible).  255 is fully opaque.
         """
         self.red = _round_and_clamp_0_255(red)
         self.green = _round_and_clamp_0_255(green)
@@ -126,10 +125,11 @@ class Image:
 
     def __init__(self, width, height):
         """
-        Creates an editable image with the given dimensions, with transparent content. 
+        Create an editable image with the given dimensions. The initial image is empty (fully transparent).
+        For reference: the size of the Strype graphics canvas is 800x600 pixels.
         
-        :param width: The width of the image in pixels
-        :param height: The height of the image in pixels
+        :param width: The width of the image in pixels.
+        :param height: The height of the image in pixels.
         """
 
         # Note: for internal purposes we sometimes don't want to make an image, so we pass -1,-1 for that case:
@@ -143,16 +143,17 @@ class Image:
 
     def fill(self):
         """
-        Fills the image with the current fill color (see `set_fill`)
+        Fill the image with the current fill color (see `set_fill`).
         """
         dim = _strype_graphics_internal.getCanvasDimensions(self.__image)
         _strype_graphics_internal.canvas_fillRect(self.__image, 0, 0, dim[0], dim[1])
 
     def set_fill(self, color):
         """
-        Sets the current fill color for future fill operations (but does not do any filling).
+        Set the current fill color.  The fill color is used in subsequent fill and draw operations.  
+        Set the fill color to None to draw shape outlines without filling.
         
-        :param fill: A color that is either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0"), a :class:`Color` object, or None if you want to turn off filling
+        :param fill: The color to use for filling.  It can be either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0"), a :class:`Color` object, or None.
         """
         if isinstance(color, Color):
             _strype_graphics_internal.canvas_setFill(self.__image, color.to_html())
@@ -163,9 +164,10 @@ class Image:
 
     def set_stroke(self, color):
         """
-        Sets the current stroke/outline color for future shape-drawing operations (but does not draw anything).
+        Set the current stroke (line) color.  This color is used in subsequent draw operations for the shape's outline.
+        Set the stroke color to None to paint shapes without a separately colored border.
         
-        :param fill: A color that is either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0"), a :class:`Color` object, or None if you want to turn off the stroke
+        :param fill: The color to use for drawing.  It can be either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0"), a :class:`Color` object, or None.
         """
         if isinstance(color, Color):
             _strype_graphics_internal.canvas_setStroke(self.__image, color.to_html())
@@ -177,23 +179,22 @@ class Image:
     #@@ Color
     def get_pixel(self, x, y):
         """
-        Gets a Color object with the color of the pixel at the given position.  If you want to change the color,
-        you must call `set_pixel` rather than modifying the returned object.
+        Return a :class:`Color` object representing the color of the pixel at the given position.
         
-        :param x: The X position within the image, in pixels
-        :param y: The Y position within the image, in pixels
-        :return: A Color object with the color of the given pixel
+        :param x: The X position within the image, in pixels.
+        :param y: The Y position within the image, in pixels.
+        :return: A :class:`Color` object with the color of the given pixel.
         """
         rgba = _strype_graphics_internal.canvas_getPixel(self.__image, int(x), int(y))
         return Color(rgba[0], rgba[1], rgba[2], rgba[3])
 
     def set_pixel(self, x, y, color):
         """
-        Sets the pixel at the given x, y position to be the given color.
-         
-        :param x: The x position of the pixel (must be an integer) 
-        :param y: The y position of the pixel (must be an integer)
-        :param color: The color to set: either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0"), or a :class:`Color` object.
+        Set the pixel at the given position to a specific color.
+        
+        :param x: The x position of the pixel (must be an integer).
+        :param y: The y position of the pixel (must be an integer).
+        :param color: The color to use.  The color can be either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0"), or a :class:`Color` object.
         """
         if isinstance(color, str):
             color = color_from_string(color)
@@ -234,12 +235,11 @@ class Image:
 
     def draw_image(self, image, x, y):
         """
-        Draws the entire given image into this image, at the given top-left x, y position.  If you only want to draw
-        part of the image, use `draw_part_of_image()`.
+        Draw another image onto this image. 
         
-        :param image: The image to draw from, into this image.  Must be an Image.
-        :param x: The left X coordinate to draw the image at.
-        :param y: The top Y coordinate to draw the image at.
+        :param image: The image to draw.  This must be of type :class:`Image`.
+        :param x: The X coordinate for the top left corner of the image to draw.
+        :param y: The Y coordinate for the top left corner of the image to draw.
         """
         dim = _strype_graphics_internal.getCanvasDimensions(image._Image__image)
         _strype_graphics_internal.canvas_drawImagePart(self.__image, image._Image__image, x, y, 0, 0, dim[0], dim[1], 1.0)
@@ -262,7 +262,7 @@ class Image:
     #@@ float
     def get_width(self):
         """
-        Gets the width of this image.
+        Return the width of this image.
         
         :return: The width of this image, in pixels. 
         """
@@ -271,7 +271,7 @@ class Image:
     #@@ float
     def get_height(self):
         """
-        Gets the height of this image.
+        Return the height of this image.
         
         :return: The height of this image, in pixels. 
         """
@@ -279,61 +279,61 @@ class Image:
 
     def draw_text(self, text, x, y, font_size, max_width = 0, max_height = 0, font_family = None):
         """
-        Draws text on the editable image.  You can specify an optional maximum width and maximum height.  If you specify a max_width
-        greater than zero then the text will be wrapped at whitespace to try to fit it into the given width.  If the text still doesn't
-        fit, or it doesn't fit in to max_height (where max_height is greater than 0), the font size will be progressively shrunk 
-        (down to a minimum size of 8 pixels) to try to make it fit.  But it is possible with awkward text (e.g. one long word
-        like "Aaaaaarrrghhhh!!") that it still may not fit in the given size.
+        Draw text onto the image.  If a maximum width is specified, the text will be wrapped to fit the given width.  
+        If a maximum height is specified as well, the font size will be reduced if necessary to fit within the width and height.  
+        If the text is too long, it may exceed the maximum width or height.
         
-        Note that text is colored using the fill (see `set_fill()`) not the stroke.  Text drawing is done by filling the shape of the letters,
-        not outlining like a stencil. 
+        The text color is the current fill color (see `set_fill()`). 
         
-        :param text: The text to draw
-        :param x: The x position of the top-left
-        :param y: The y position of the top-left
-        :param font_size: The size of the text to draw, in pixels
-        :param max_width: The maximum width of the text (or 0 if you do not want a maximum width)
-        :param max_height: The maximum height of the text (or 0 if you do not want a maximum height)
-        :param font_family: If None, then the default font family is used.  To change this, pass your own FontFamily instance.
+        :param text: The text to draw.
+        :param x: The x position of the top-left corner of the text.
+        :param y: The y position of the top-left corner of the text.
+        :param font_size: The size of the text, in pixels.
+        :param max_width: The maximum width of the text (or 0 for no maximum).
+        :param max_height: The maximum height of the text (or 0 for no maximum).
+        :param font_family: The font family for the text. Use None for the default font family.
         """
         if font_family is not None and not isinstance(font_family, FontFamily):
             raise TypeError("Font family must be an instance of FontFamily")
         dim = _strype_graphics_internal.canvas_drawText(self.__image, text, x, y, font_size, max_width, max_height, font_family._FontFamily__font if font_family is not None else None)
         return Dimension(dim['width'], dim['height'])
+        
     def rounded_rectangle(self, x, y, width, height, corner_size):
         """
-        Draws a rectangle with rounded corners.  The edge of the rectangle is drawn in the current outline color
-        (see `set_outline`) and filled in the current fill color (see `set_fill`).  The corners are rounded using
-        quarter-circles with radius of `corner_size`.
+        Draw a rectangle with rounded corners.  The border is drawn using the stroke color (see `set_stroke`) 
+        and filled using the current fill color (see `set_fill`).
         
-        :param x: The top-left of the rounded rectangle.
-        :param y: The bottom-right of the rounded rectangle.
-        :param width: The width of the rounded rectangle.
-        :param height: The height of the rounded rectangle.
-        :param corner_size: The radius of the corners of the rounded rectangle.
+        :param x: The x coordinate of the top-left of the rectangle.
+        :param y: The y coordinate of the top-left of the rectangle.
+        :param width: The width of the rectangle.
+        :param height: The height of the rectangle.
+        :param corner_size: The radius of the rounded corners of the rectangle.
         """
         _strype_graphics_internal.canvas_roundedRect(self.__image, x, y, width, height, corner_size)
+        
     def rectangle(self, x, y, width, height):
         """
-        Draws a rectangle.  The edge of the rectangle is drawn in the current stroke color
-        (see `set_stroke`) and filled in the current fill color (see `set_fill`).
-          
-        :param x: The top-left of the rounded rectangle.
-        :param y: The bottom-right of the rounded rectangle.
-        :param width: The width of the rounded rectangle.
-        :param height: The height of the rounded rectangle.
+        Draw a rectangle.  The border is drawn using the stroke color (see `set_stroke`) 
+        and filled using the current fill color (see `set_fill`).
+        
+        :param x: The x coordinate of the top-left of the rectangle.
+        :param y: The y coordinate of the top-left of the rectangle.
+        :param width: The width of the rectangle.
+        :param height: The height of the rectangle.
         """
         _strype_graphics_internal.canvas_roundedRect(self.__image, x, y, width, height, 0)
+        
     def line(self, start_x, start_y, end_x, end_y):
         """
-        Draws a line.  The line is drawn in the current stroke color.
+        Draw a line.  The line is drawn in the current stroke color.
         
-        :param start_x: The starting X position.
-        :param start_y: The starting Y position.
-        :param end_x: The end X position.
-        :param end_y: The end Y position.
+        :param start_x: The starting x coordinate.
+        :param start_y: The starting y coordinate.
+        :param end_x: The end x coordinate.
+        :param end_y: The end y coordinate.
         """
         _strype_graphics_internal.canvas_line(self.__image, start_x, start_y, end_x, end_y)
+        
     def arc(self, centre_x, centre_y, width, height, angle_start, angle_amount):
         """
         Draws an arc (a part of an ellipse, an ellipse being a circle with a width than can be different than height).
@@ -355,37 +355,32 @@ class Image:
 
     def circle(self, centre_x, centre_y, radius):
         """
-        Draws a circle with a given centre position and width and height.
+        Draw a circle at a given position.  The border is drawn using the stroke color (see `set_stroke`) 
+        and filled using the current fill color (see `set_fill`).
         
-        The circle will be filled with the current fill (see `set_fill()`) and drawn in the current stroke (see `set_stroke()`).
-        
-        :param centre_x: The centre X position of the circle.
-        :param centre_y: The centre Y position of the circle.
-        :param width: The radius (distance from centre to the edge) of the circle.
+        :param centre_x: The x coordinate of the centre of the circle.
+        :param centre_y: The y coordinate of the centre of the circle.
+        :param width: The radius of the circle.
         """
         self.arc(centre_x, centre_y, radius, radius, 0, 360)
 
     def polygon(self, points):
         """
-        Draws a polygon with the given X, Y point locations.
+        Draw a polygon with the given corner points.  The last point will be connected to the first point to close the polygon.
         
-        The last point will automatically be connected to the first point to convert the polygon.
-        
-        The polygon will be filled with the current fill (see `set_fill()`) and drawn in the current stroke (see `set_stroke()`).
-        
+        The border is drawn using the stroke color (see `set_stroke`) and filled using the current fill color (see `set_fill`).  
         The polygon should be convex, otherwise the visual behaviour is undefined.
         
-        :param points: A list of pairs of (X, Y) positions
+        :param points: A list of pairs of (x, y) coordinates.
         """
         _strype_graphics_internal.polygon_xy_pairs(self.__image, points)
 
     #@@ Image
     def make_copy(self):
         """
-        Makes a copy of this Image with the same width and height,
-        and the same image content.
+        Return a copy of this image.
         
-        :return: The new copy of the Image 
+        :return: The new :class:`Image` that is a copy of this image.
         """
         copy = Image(self.get_width(), self.get_height())
         copy.draw_image(self, 0, 0)
@@ -454,9 +449,10 @@ def in_bounds(x, y):
 
 class Actor:
     """
-    An Actor is an item in the world with a specific image, position, rotation and scale.  Everything you want to show up
-    in your graphics must be an Actor.  
+    An Actor is an item in the world with a specific image, position, rotation and scale.  If an actor is created,
+    it becomes visible in the graphics world. 
     """
+    
     # Private attributes:
     # __id: the identifier of the PersistentImage that represents this actor on screen.  Should never be None
     # __editable_image: the editable image of this actor, if the user has ever called edit_image() on us.
@@ -467,22 +463,19 @@ class Actor:
     
     def __init__(self, image_or_filename, x = 0, y = 0, tag = None):
         """
-        Construct an Actor with a given image and position and an optional name.
+        Create a new Actor.  An actor has an image and a location.  It can optionally have a tag.  A tag (usually a string) 
+        can be used to group actors and identify them later for collision detection.
         
-        Note: if you pass an Image, this Actor will use a reference to it for its display.  This means
-        if you make any changes to that Image, it will update the Actor's image.  If you pass
-        the same Image to multiple Actors, they will all update when you edit it.  If you do not want this
-        behaviour then call `make_copy()` on the Image as you pass it in.
+        The image parameter can be either an :class:`Image` object or an image name (a string).  If it is a name, it refers to an image 
+        from Strype's image library.
+
+        The (x, y) coordinate determines the location of the actor.  The graphics world coordinate system has x coordinates from -400 to 400, 
+        and y coordinates from -300 to 300.  The origin (0, 0) point is in the center; (-400, -300) is the bottom left.
         
-        Note: you can pass a filename for the image, which is an image name from Strype's image library,
-        or a URL to an image.  Using a URL requires the server to allow remote image loading from Javascript via a feature
-        called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and
-        you can load the image in a browser yourself.
-        
-        :param image_or_filename: Either a string with an image name (from Strype's built-in images), a string with a URL (e.g. "https://example.com/example.png") or an Image 
-        :param x: The X position at which to add the actor
-        :param y: The Y position at which to add the actor
-        :param tag: The tag to give the actor (for use in detecting touching actors)
+        :param image_or_filename: Either an :class:`Image` object, or a string with an image name (from Strype's library).
+        :param x: The x coordinate at which to place the actor.
+        :param y: The y coordinate at which to place the actor.
+        :param tag: A optional tag for the actor (usually a string) for use in detecting touching actors.
         """
         if isinstance(image_or_filename, Image):
             self.__id = _strype_graphics_internal.addImage(image_or_filename._Image__image, self)
@@ -499,25 +492,25 @@ class Actor:
         
     def set_location(self, x, y):
         """
-        Sets the position of the actor to be the given x, y position.
+        Set the location of the actor.
         
-        If the position is outside the bounds of the world (X: -399 to +400, Y: -299 to +300) the position
+        If the location is outside the bounds of the world, it
         will be adjusted to the nearest point inside the world.
         
-        :param x: The new X position of the actor
-        :param y: The new Y position of the actor
+        :param x: The new x coordinate of the actor.
+        :param y: The new y coordinate of the actor.
         """
         _strype_graphics_internal.setImageLocation(self.__id, x, y)
         self._update_say_position()
         
-    def set_rotation(self, deg):
+    def set_rotation(self, degrees):
         """
-        Sets the rotation of the actor to be the given rotation in degrees.  This changes the rotation of
-        the actor's image and also affects which direction the actor will travel if you call `turn()`.
+        Set the rotation of the actor.  This changes the rotation of the actor's image, and it also affects 
+        the direction of movement when `move()` is called.
         
-        :param deg: The rotation in degrees (0 points right, 90 points up, 180 points left, 270 points down).
+        :param degrees: The rotation in degrees (0 points right, 90 points up, 180 points left, 270 points down).
         """
-        _strype_graphics_internal.setImageRotation(self.__id, deg)
+        _strype_graphics_internal.setImageRotation(self.__id, degrees)
         # Note: no need to update say position if we are just rotating
         
     def set_scale(self, scale):
@@ -535,11 +528,9 @@ class Actor:
     #@@ float
     def get_rotation(self):
         """
-        Gets the current rotation of this Actor.
+        Return the current rotation of this actor.
         
-        Note: returns None if the actor has been removed by a call to remove().
-        
-        :return: The rotation of this Actor, in degrees.
+        :return: The rotation of this Actor, in degrees, or None if the actor has been removed from the world.
         """
         return _strype_graphics_internal.getImageRotation(self.__id)
 
@@ -556,15 +547,15 @@ class Actor:
     
     def get_tag(self):
         """
-        Gets the tag of this actor.
+        Return the tag of this actor.
         
-        :return: The tag of this actor, as passed to the constructor of the object.
+        :return: The tag, as set during the creation of this actor.
         """
         return self.__tag
     
     def remove(self):
         """
-        Removes the actor from the world.  There is no way to re-add the actor to the world.
+        Remove the actor from the world.  Once an actor has been removed, it cannot be re-added to the world.
         """
         _strype_graphics_internal.removeImage(self.__id)
         # Also remove any speech bubble:
@@ -573,13 +564,11 @@ class Actor:
     #@@ float
     def get_x(self):
         """
-        Gets the X position of the actor as an integer (whole number).  If the actors current position
-        is not a whole number, it is rounded down (towards zero).  If you want the exact position as a potentially
-        fractional number, call `get_exact_x()` instead.
+        Return the x coordinate of the actor as an integer (whole number).  If the actor's exact position
+        is not a whole number, it is rounded down (towards zero).  To receive the exact position as a potentially
+        fractional number, call `get_exact_x()`.
         
-        Note: returns None if the actor has been removed by a call to remove().
-        
-        :return: The current X position, rounded down to an integer (whole number). 
+        :return: The current x coordinate, as an integer, or None if the actor has been removed from the world.
         """
         
          # Gets X with rounding (towards zero):
@@ -589,13 +578,11 @@ class Actor:
     #@@ float
     def get_y(self):
         """
-        Gets the Y position of the actor as an integer (whole number).  If the actors current position
-        is not a whole number, it is rounded down (towards zero).  If you want the exact position as a potentially
-        fractional number, call `get_exact_y()` instead.
+        Return the y coordinate of the actor as an integer (whole number).  If the actor's exact position
+        is not a whole number, it is rounded down (towards zero).  To receive the exact position as a potentially
+        fractional number, call `get_exact_y()`.
         
-        Note: returns None if the actor has been removed by a call to remove().
-        
-        :return: The current Y position, rounded down to an integer (whole number). 
+        :return: The current y coordinate, as an integer, or None if the actor has been removed from the world.
         """
         # Gets Y with rounding (towards zero):
         location = _strype_graphics_internal.getImageLocation(self.__id)
@@ -604,12 +591,10 @@ class Actor:
     #@@ float
     def get_exact_x(self):
         """
-        Gets the exact X position of the actor, which may be a fractional number.  If you do not need this accuracy,
-        you may prefer to call `get_x()` instead.
+        Return the exact x coordinate of the actor, which may be a fractional number.  For simpler coordinate calculations
+        using whole numbers, call `get_x()` instead.
         
-        Note: returns None if the actor has been removed by a call to remove().
-         
-        :return: The exact X position
+        :return: The exact x coordinate, or None if the actor has been removed from the world.
         """
         # Gets X with no rounding:
         location = _strype_graphics_internal.getImageLocation(self.__id)
@@ -618,12 +603,10 @@ class Actor:
     #@@ float
     def get_exact_y(self):
         """
-        Gets the exact Y position of the actor, which may be a fractional number.  If you do not need this accuracy,
-        you may prefer to call `get_y()` instead.
-        
-        Note: returns None if the actor has been removed by a call to remove().
+        Return the exact y coordinate of the actor, which may be a fractional number.  For simpler coordinate calculations
+        using whole numbers, call `get_y()` instead.
          
-        :return: The exact Y position
+        :return: The exact y coordinate, or None if the actor has been removed from the world.
         """
         # Gets Y with no rounding:
         location = _strype_graphics_internal.getImageLocation(self.__id)
@@ -631,24 +614,24 @@ class Actor:
     
     def move(self, distance):
         """
-        Move forwards the given amount in the current direction that the actor is heading.  If you want to change
-        this direction, you can call `set_rotation()` or `turn()`.
+        Move forward the given distance in the current direction.  The direction of travel can be changed using 
+        `set_rotation()` or `turn()`.
         
-        If the movement would take the actor outside the bounds of the world, the actor is moved to the nearest
-        point within the world; you cannot move outside the world.
+        Actors are stopped at the edge of the world -- they cannot move outside of the world.
         
-        :param distance: The amount of pixels to move forwards.  Negative amounts move backwards.
+        :param distance: The distance to move (in pixels).  Negative amounts move backwards.
         """
         cur = _strype_graphics_internal.getImageLocation(self.__id)
         if cur is not None:
             rot = _math.radians(_strype_graphics_internal.getImageRotation(self.__id))
             self.set_location(cur['x'] + distance * _math.cos(rot), cur['y'] + distance * _math.sin(rot))
         # If cur is None, do nothing
+    
     def turn(self, degrees):
         """
-        Changes the actor's current rotation by the given amount of degrees.
+        Change the actor's current rotation by turning a given amount of degrees.
         
-        :param degrees: The change in rotation, in degrees.  Positive amounts turn anti-clockwise, negative amounts turn clockwise.
+        :param degrees: The amount to turn.  Positive amounts turn anti-clockwise, negative amounts turn clockwise.
         """
         rotation = _strype_graphics_internal.getImageRotation(self.__id)
         if rotation is not None:
@@ -658,10 +641,8 @@ class Actor:
     #@@ bool   
     def is_at_edge(self):
         """
-        Checks whether the central point of the actor is at the edge of the screen.
-        
-        An actor is determined to be at the edge if it's position is within two pixels of the edge of the screen.
-        So if its X is less than -397 or greater than 398, or its Y is less than -297 or greater than 298.
+        Check whether the actor is at the edge of the world.  An actor is considered to be at the edge 
+        if its location (its center point) is within two pixels of the world bounds.
         
         :return: True if the actor is at the edge of the world, False otherwise. 
         """
@@ -674,17 +655,16 @@ class Actor:
     #@@ bool   
     def is_touching(self, actor_or_tag):
         """
-        Checks if this actor is touching the given actor.  Two actors are deemed to be touching if the
-        rectangles of their images are overlapping (even if the actor is transparent at that point).
+        Check if this actor is touching the another actor.
         
-        You can either pass an actor, or an actor's tag to check for collisions.  If you pass a tag,
-        it will check whether any actor touching the current actor has that tag.
+        Two actors are deemed to be touching if the bounding rectangles of their images are 
+        overlapping (even if the actor is transparent at that point).
         
-        Note that if either this actor or the given actor has had collisions turned off with
-        `set_can_touch(false)` then this function will return False even if they touch.
+        The parameter can be either a specific actor (of type :class:`Actor`) or a tag.  If a tag is used,
+        this function will return True if any actor with this tag is touched.
         
-        :param actor_or_tag: The actor (or tag of an actor) to check for overlap
-        :return: True if this actor overlaps that actor, False if it does not 
+        :param actor_or_tag: The actor (or tag of an actor) to check for overlap.
+        :return: True if this actor overlaps that actor (or an actor with the given tag), False if it does not.
         """
         if isinstance(actor_or_tag, Actor):
             return _strype_input_internal.checkCollision(self.__id, actor_or_tag.__id)
@@ -696,19 +676,16 @@ class Actor:
     #@@ Actor
     def get_touching(self, tag = None):
         """
-        Gets the actor touching this one.  If you pass a tag it will return a touching Actor
-        with that tag (or None if there is none) -- if there are many actors with that
-        tag it will return an arbitrary actor from the set.  If you do not pass a tag, it will return an
-        arbitrary touching Actor (or None if there is none).
-        
-        Two actors are deemed to be touching if the
-        rectangles of their images are overlapping (even if the actor is transparent at that point).
-        
-        Note that if either this actor (or the potentially-touching) actor has had collisions turned off with
-        `set_can_touch(false)` then this function will return None even if they appear to touch.
+        Return an actor touching this one.  
+
+        If more than one actor is touching this one, a random one of these actors will be returned. If a tag is
+        passed as a parameter, only actors with that tag will be considered.
+                
+        Two actors are deemed to be touching if the bounding rectangles of their images are 
+        overlapping (even if the actor is transparent at that point).
         
         :param tag: The tag of the actor to check for touching, or None to check all actors.
-        :return: The Actor we are touching, if any, otherwise None if we are not touching an Actor. 
+        :return: The :class:`Actor` we are touching, if any, or None if we are not touching any actor. 
         """
         return next(iter(self.get_all_touching(tag)), None)
     
@@ -728,27 +705,24 @@ class Actor:
     #@@ list
     def get_all_touching(self, tag = None):
         """
-        Gets all the actors that this actor is touching.  If this actor has had `set_can_touch(false)`
-        called, the returned list will always be empty.  The list will never feature any actors
-        which have had `set_can_touch(false)` called on them.
+        Return all the actors that this actor is touching.
         
-        If the tag is given (i.e. is not None), it will be used to filter the returned list just
-        to actors with that given tag.
+        If the tag is specified, only actors with the given tag will be included.
         
-        :param tag: The tag to use to filter the returned actors (or None/omitted if you do not want to filter the actors by tag)
+        :param tag: The tag to use to filter the returned actors (or None to return all actors)
         :return: A list of all touching actors.
         """
         return [a for a in _strype_input_internal.getAllTouchingAssociated(self.__id) if tag is None or tag == a.get_tag()]
     
     def remove_touching(self, tag = None):
         """
-        Removes one arbitrary touching actor.  If you pass a tag, it will only remove touching actors with the
-        given tag.
+        Remove a touching actor. 
+
+        If this actor is not currently touching another actor, do nothing.  If this actor currently touches more than one
+        actor, one random actor currently toouching is removed.  If a tag is specified, only actors with the given tag will
+        be removed.
         
-        Note that if either this actor (or the potentially-touching) actor has had collisions turned off with
-        `set_can_touch(false)` then this function will not remove the other actor, even if they appear to touch.
-        
-        :param tag:  The name to use to filter the removed actor (or None/omitted if you do not want to filter the actors by tag)
+        :param tag:  The tag to use to filter the actors (or None to consider all actors)
         """
         a = self.get_touching(tag)
         if a is not None:
