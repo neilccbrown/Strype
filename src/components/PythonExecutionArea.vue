@@ -571,7 +571,7 @@ export default Vue.extend({
         display: flex;
         column-gap: 5px;        
         width:100%;
-        background-color: rgb(240,240,240);
+        background-color: $pea-outer-background-color;
         align-items: center;
     }
 
@@ -726,7 +726,7 @@ export default Vue.extend({
      * The following CSS classes are for the Splitter component in use here
      */
     .splitpanes.strype-PEA-split-theme.with-expanded-PEA {
-        background-color: rgb(240,240,240);
+        background-color: $pea-outer-background-color;
     }
     
     .strype-PEA-split-theme.splitpanes--horizontal>.splitpanes__splitter,

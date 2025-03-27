@@ -58,7 +58,7 @@
                 </div>
         /* IFTRUE_isPython
             </pane>           
-            <pane key="2" :size="commandsSplitterPane2Size" :min-size="commandSplitterPane2MinSize">
+            <pane key="2" :size="commandsSplitterPane2Size" :min-size="commandSplitterPane2MinSize" :class="{'collapsed-pea-splitter-pane': !isExpandedPEA}">
                 <python-execution-area class="python-exec-area-container" :ref="peaComponentRefId" v-on:[peaMountedEventName]="onPEAMounted" :hasDefault43Ratio="!isCommandsSplitterChanged && !hasPEAExpanded"/>
             </pane>
         </Splitpanes>
@@ -789,6 +789,10 @@ export default Vue.extend({
     width: 100% !important;
     transform: none !important;
     height: auto !important;
+}
+
+.collapsed-pea-splitter-pane {
+    background-color: $pea-outer-background-color;
 }
 /* FITRUE_isPython */
 /** End splitter classes */
