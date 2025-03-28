@@ -425,9 +425,6 @@ export default Vue.extend({
                 });
             }
 
-            // Reset the flag here as we have consumed the focus event (cf. directives > focus)
-            useStore().editableSlotViaKeyboard = {isKeyboard: false, direction: 1};
-
             // Make sure we're visible in the viewport properly
             document.getElementById(getLabelSlotUID(this.coreSlotInfo))?.scrollIntoView({block: "nearest"});
 
@@ -894,7 +891,6 @@ export default Vue.extend({
                             if(nextSlotInfos){
                                 // Should always find something because a bracket or a string slot are followed by a text slot
                                 const afterBracketOrStringSlotCursorInfo: SlotCursorInfos = {slotInfos: {...this.coreSlotInfo, slotId: nextSlotInfos.slotId, slotType: nextSlotInfos.slotType}, cursorPos: 0};
-                                this.appStore.editableSlotViaKeyboard.isKeyboard = true; // in order to get the focused editable subslot performing the bracket checks in onGetCaret()
                                 document.getElementById(getLabelSlotUID(afterBracketOrStringSlotCursorInfo.slotInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
                                 this.appStore.setSlotTextCursors(afterBracketOrStringSlotCursorInfo, afterBracketOrStringSlotCursorInfo);
                             }               
@@ -995,7 +991,6 @@ export default Vue.extend({
                                         // Move to next slot, as it is a bracketed structure, we need to get into the first child slot of that structure
                                         this.$nextTick(() => {
                                             const nextBrackedStructFirstSlotCursorInfos: SlotCursorInfos = {slotInfos: {...nextSlotInfos, slotId: nextSlotInfos.slotId+",0", slotType: SlotType.code}, cursorPos: 0};
-                                            this.appStore.editableSlotViaKeyboard.isKeyboard = true; // in order to get the focused editable subslot performing the bracket checks in onGetCaret()
                                             document.getElementById(getLabelSlotUID(nextBrackedStructFirstSlotCursorInfos.slotInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
                                             this.appStore.setSlotTextCursors(nextBrackedStructFirstSlotCursorInfos, nextBrackedStructFirstSlotCursorInfos);      
                                         });

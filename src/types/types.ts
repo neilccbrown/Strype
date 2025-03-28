@@ -991,11 +991,6 @@ export const DefaultCursorPosition: CursorPosition = {
     height: 0,
 };
 
-export interface EditableSlotReachInfos {
-    isKeyboard: boolean;
-    direction: -1 | 1;
-}
-
 export interface StateAppObject {
     debugging: boolean;
     initialState: EditorFrameObjects;
