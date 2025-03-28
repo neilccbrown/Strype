@@ -2,7 +2,7 @@
     <div class="commands">
         /* IFTRUE_isPython
         <Splitpanes horizontal :class="{'strype-commands-split-theme': true, 'expanded-PEA': isExpandedPEA}" @resize="onCommandsSplitterResize">
-            <pane key="1" :size="100-commandsSplitterPane2Size" :min-size="commandSplitterPane1MinSize">
+            <pane key="1" ref="peaCommandsSplitterPane1Ref" :size="100-commandsSplitterPane2Size" :min-size="commandSplitterPane1MinSize">
         FITRUE_isPython */
                 <div class="no-PEA-commands" @wheel.stop>
                     <div class="project-name-container">
@@ -58,7 +58,7 @@
                 </div>
         /* IFTRUE_isPython
             </pane>           
-            <pane key="2" :size="commandsSplitterPane2Size" :min-size="commandSplitterPane2MinSize" :class="{'collapsed-pea-splitter-pane': !isExpandedPEA}">
+            <pane key="2" ref="peaCommandsSplitterPane2Ref" :size="commandsSplitterPane2Size" :min-size="commandSplitterPane2MinSize" :class="{'collapsed-pea-splitter-pane': !isExpandedPEA}">
                 <python-execution-area class="python-exec-area-container" :ref="peaComponentRefId" v-on:[peaMountedEventName]="onPEAMounted" :hasDefault43Ratio="!isCommandsSplitterChanged && !hasPEAExpanded"/>
             </pane>
         </Splitpanes>
@@ -96,7 +96,7 @@ import browserDetect from "vue-browser-detect-plugin";
 import { mapStores } from "pinia";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 /* IFTRUE_isPython */
-import {Splitpanes, Pane} from "splitpanes";
+import {Splitpanes, Pane, PaneData} from "splitpanes";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import { isMacOSPlatform } from "@/helpers/common";
 import scssVars  from "@/assets/style/_export.module.scss";
@@ -691,25 +691,38 @@ export default Vue.extend({
             // and the PEA (will take the full space in its pane, breaking the initial 4/3 ratio)
             document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
             this.isCommandsSplitterChanged = true;
-            this.setCommandsSplitterPanesMinSize();
         },
 
         setCommandsSplitterPanesMinSize(peaDefaultHeight?: number) {
             // Called to get the right min sizes of the Commands splitter.
-            // The minimum size the first pane of the Commands Splitter can take is set to guarantee the project name is visible.
+            // The minimum size the first pane of the Commands Splitter can take is set to guarantee
+            // the project name is visible, and the first row of add frame commands + potential scrollbars.
             // The method parameter "peaDefaultHeight" is only required when we get the min sizes the very first time
             // (because the minimum size will be that of the PEA with the 4/3 default aspect ratio).
             const viewPortH = document.getElementsByTagName("body")[0].getBoundingClientRect().height;
             const commandsSplitterDivider = document.querySelector(".strype-commands-split-theme .splitpanes__splitter");
             if(commandsSplitterDivider) {               
-                const commandsSplitterHeight = commandsSplitterDivider.getBoundingClientRect().height + parseInt(window.getComputedStyle(commandsSplitterDivider).marginTop.replace("px","")); 
+                const commandsSplitterHeight = commandsSplitterDivider.getBoundingClientRect().height; 
                 const projectNameContainerDiv = document.getElementsByClassName("project-name-container")?.[0];
+                const firstAddCommandDiv = document.querySelector(".frameCommands p > div");
                 // Pane 1: it is possible that at some point, the frame commands panel has a x-axis scroll bar (when the commands are wrapped). 
                 // So we need to account for that in the min size.
                 const frameCommandsContainer = (document.querySelector(".no-PEA-commands") as HTMLDivElement);
                 const frameCommandsScrollBarH = frameCommandsContainer.offsetHeight - frameCommandsContainer.clientHeight;
-                if(projectNameContainerDiv){                    
-                    this.commandSplitterPane1MinSize = ((projectNameContainerDiv.getBoundingClientRect().height + frameCommandsScrollBarH) * 100) / (viewPortH - commandsSplitterHeight);
+                if(projectNameContainerDiv && firstAddCommandDiv){
+                    const firstAddCommandDivFullHeight = firstAddCommandDiv.getBoundingClientRect().height + parseInt(window.getComputedStyle(firstAddCommandDiv).marginTop.replace("px","")) + parseInt(window.getComputedStyle(firstAddCommandDiv).marginBottom.replace("px",""));                    
+                    this.commandSplitterPane1MinSize = ((projectNameContainerDiv.getBoundingClientRect().height + firstAddCommandDivFullHeight + frameCommandsScrollBarH) * 100) / (viewPortH - commandsSplitterHeight);
+                    const currentPane1Size = parseFloat(((this.$refs.peaCommandsSplitterPane1Ref as InstanceType<typeof Pane>).$data as PaneData).style.height.replace("%",""));
+                    if(currentPane1Size < this.commandSplitterPane1MinSize){
+                        // Setting the min size doesn't mean that the current size will update to be valid. 
+                        // So we do it ourselves. The reactivity doesn't seem to always work (some timing issue?)
+                        // so we change the data of the Panes directly
+                        setTimeout(() => {
+                            this.commandsSplitterPane2Size = (100 - this.commandSplitterPane1MinSize);      
+                            (this.$refs.peaCommandsSplitterPane1Ref as InstanceType<typeof Pane>).$data.style.height = this.commandSplitterPane1MinSize + "%";
+                            (this.$refs.peaCommandsSplitterPane2Ref as InstanceType<typeof Pane>).$data.style.height = this.commandsSplitterPane2Size + "%";
+                        }, 200);                        
+                    }     
                 }    
             
                 // Pane 2:

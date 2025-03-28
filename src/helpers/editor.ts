@@ -13,8 +13,11 @@ import Frame from "@/components/Frame.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import FrameBody from "@/components/FrameBody.vue";
 import JointFrames from "@/components/JointFrames.vue";
+/* IFTRUE_isPython */
+import CommandsComponent from "@/components/Commands.vue";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import { debounce } from "lodash";
+/* FITRUE_isPython */
 
 export const undoMaxSteps = 200;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
@@ -1781,6 +1784,12 @@ export function computeAddFrameCommandContainerSize(isExpandedPEA?: boolean): vo
             }
         }
     }
+
+    // When we are done, we need to check again the min size of the commands/PEA splitter pane 1, since scroll bars
+    // could have been added with the new change (need to wait for it to be effective though).
+    setTimeout(() => {
+        (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).setCommandsSplitterPanesMinSize();    
+    }, 100);    
 }
 
 export function getCurrentFrameSelectionScope(): SelectAllFramesFuncDefScope {
