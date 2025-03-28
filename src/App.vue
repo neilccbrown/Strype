@@ -1069,7 +1069,7 @@ body.dragging-frame {
  }
 
 #app {
-    font-family: 'Source Sans Pro', sans-serif;
+    font-family: 'AHN-Strype', 'Source Sans Pro', sans-serif;
     font-size: 15px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
