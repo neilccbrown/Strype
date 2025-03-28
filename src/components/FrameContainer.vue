@@ -2,7 +2,7 @@
     <div class="frame-container" :style="frameStyle" @click.self="onOuterContainerClick">
         <div class="frame-container-header">
             <button class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
-            <span class="frame-container-label-span" @click.self="toggleCollapse">{{containerLabel}}</span>
+            <span :class="scssVars.frameContainerLabelSpanClassName" @click.self="toggleCollapse">{{containerLabel}}</span>
         </div>
 
         <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
@@ -41,6 +41,7 @@ import { useStore } from "@/store/store";
 import { CaretPosition, FrameObject, DefaultFramesDefinition, FramesDefinitions, FrameContainersDefinitions, getFrameDefType, AllFrameTypesIdentifier, PythonExecRunningState } from "@/types/types";
 import { mapStores } from "pinia";
 import { getCaretContainerRef, getCaretUID, getFrameUID} from "@/helpers/editor";
+import scssVars from "@/assets/style/_export.module.scss";
 
 //////////////////////
 //     Component    //
@@ -76,6 +77,11 @@ export default Vue.extend({
 
     computed: {
         ...mapStores(useStore),
+
+        scssVars() {
+            // just to be able to use in template
+            return scssVars;
+        },
 
         frameUID(): string{
             return getFrameUID(this.frameId);
@@ -222,7 +228,7 @@ export default Vue.extend({
     outline: none;
 }
 
-.frame-container-label-span {       
+.#{$strype-classname-frame-container-label-span} {       
     margin-left: 5px;
     cursor:default;
     color: #274D19;

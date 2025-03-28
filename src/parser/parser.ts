@@ -1,11 +1,13 @@
 import Compiler from "@/compiler/compiler";
-import { actOnTurtleImport, hasEditorCodeErrors, trimmedKeywordOperators } from "@/helpers/editor";
+import { hasEditorCodeErrors, trimmedKeywordOperators } from "@/helpers/editor";
 import { generateFlatSlotBases, retrieveSlotByPredicate } from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import { AllFrameTypesIdentifier, BaseSlot, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, ParserElements, SlotsStructure, SlotType } from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
-
+/*IFTRUE_isPython */
+import { actOnTurtleImport } from "@/helpers/editor";
+/*FITRUE_isPython */
 const INDENT = "    ";
 const DISABLEDFRAMES_FLAG =  "\"\"\""; 
 
@@ -219,8 +221,10 @@ export default class Parser {
             this.excludeLoopsAndCommentsAndCloseTry = excludeLoopsAndCommentsAndCloseTry;
         }
 
+        /* IFTRUE_isPython */
         // We look if Turtle has been imported to notify the editor UI
         actOnTurtleImport();
+        /* FITRUE_isPython */
 
         //console.time();
         output += this.parseFrames((this.startAtFrameId > -100) ? [useStore().frameObjects[this.startAtFrameId]] : useStore().getFramesForParentId(0));

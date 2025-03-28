@@ -1,3 +1,4 @@
+// Values
 $caret-height-value: 6;
 $caret-width: 120px;
 $frame-container-min-height: 30px;
@@ -8,3 +9,45 @@ $strype-python-exec-area-margin: 5px;
 $strype-non-main-code-container-background: #CBD4C8;
 $strype-main-code-container-background: #F6F2E9;
 $strype-frame-caret-forbidden-dnd-cross-height-notransform-value : 20;
+
+// Class Names
+// editor related
+$strype-classname-invisible: invisible;
+$strype-classname-caret: caret;
+$strype-classname-error: error;
+$strype-classname-caret-container: caret-container;
+$strype-classname-navigation-position: navigationPosition;
+$strype-classname-dragging-frame: dragging-frame;
+$strype-classname-frame-div: frame-div;
+$strype-classname-frame-header: frame-header;
+$strype-classname-frame-container-label-span: frame-container-label-span;
+$strype-classname-frame-coloured-label: frame-coloured-label;
+$strype-classname-frame-python-token: frame-python-token;
+$strype-classname-label-slot-container: label-slot-container;
+$strype-classname-label-slot-input: label-slot-input;
+$strype-classname-error-slot: error-slot;
+$strype-classname-frame-string-slot: string-slot;
+$strype-classname-frame-operator-slot: operator-slot;
+$strype-classname-frame-comment-slot: comment-slot;
+$strype-classname-frame-code-slot: code-slot;
+// autocompletion related
+$strype-classname-ac-popup-container: ac-popup-container;
+$strype-classname-ac-popup-item: ac-popup-item;
+$strype-classname-ac-item: acItem;
+$strype-classname-ac-item-selected: acItem-selected;
+$strype-classname-ac-empty-results-container: ac-empty-results-container;
+// commands pane related (+ PEA) 
+$strype-classname-project-name-container: project-name-container;
+$strype-classname-add-frame-commands-container: add-frame-commands-container;
+$strype-classname-commands-pea-splitter-theme: strype-commands-pea-splitter-theme;
+$strype-classname-pea-container: python-exec-area-container;
+$strype-classname-pea-toggle-layout-buttons-container: pea-toggle-layout-buttons-container;
+$strype-classname-expanded-pea: expanded-pea;
+$strype-classname-pea-no-tabs-placeholder-span: pea-no-tabs-placeholder-span;
+$strype-classname-no-pea-commands: no-pea-commands;
+// app wide related
+$strype-classname-editor-file-input: editor-file-input;
+$strype-classname-message-banner-container: message-banner-container;
+$strype-classname-message-banner-cross: message-banner-cross;
+$strype-classname-project-target-button: project-target-button;
+$strype-classname-strype-menu-item: strype-menu-item;
