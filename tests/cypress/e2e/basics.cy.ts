@@ -2,6 +2,7 @@ import * as path from "path";
 import {expect} from "chai";
 import i18n from "@/i18n";
 import failOnConsoleError from "cypress-fail-on-console-error";
+import {cleanFromHTML} from "../support/test-support";
 failOnConsoleError();
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
@@ -57,7 +58,7 @@ function matchFrameText(item : JQuery<HTMLElement>, match : CodeMatch) : void {
         for (let i = 0; i < parts.length; i++) {
             const p : any = parts[i];
 
-            const text = p.value || p.textContent || "";
+            const text = cleanFromHTML(p.value || p.textContent || "");
             
             if (text.match(/[a-zA-Z0-9]/) && !p.classList.contains("string-slot")) {
                 // Only add spaces if it has some non-punctuation characters and isn't a string:
