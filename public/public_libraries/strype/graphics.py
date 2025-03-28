@@ -126,7 +126,7 @@ class Image:
     def __init__(self, width, height):
         """
         Create an editable image with the given dimensions. The initial image is empty (fully transparent).
-        For reference: the size of the Strype graphics canvas is 800x600 pixels.
+        For reference: the size of the Strype graphics world is 800x600 pixels.
         
         :param width: The width of the image in pixels.
         :param height: The height of the image in pixels.
@@ -181,8 +181,8 @@ class Image:
         """
         Return a :class:`Color` object representing the color of the pixel at the given position.
         
-        :param x: The X position within the image, in pixels.
-        :param y: The Y position within the image, in pixels.
+        :param x: The x coordinate within the image, in pixels.
+        :param y: The y coordinate within the image, in pixels.
         :return: A :class:`Color` object with the color of the given pixel.
         """
         rgba = _strype_graphics_internal.canvas_getPixel(self.__image, int(x), int(y))
@@ -192,8 +192,8 @@ class Image:
         """
         Set the pixel at the given position to a specific color.
         
-        :param x: The x position of the pixel (must be an integer).
-        :param y: The y position of the pixel (must be an integer).
+        :param x: The x coordinate of the pixel (must be an integer).
+        :param y: The y coordinate of the pixel (must be an integer).
         :param color: The color to use.  The color can be either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0"), or a :class:`Color` object.
         """
         if isinstance(color, str):
@@ -226,8 +226,8 @@ class Image:
         """
         Clears the given rectangle (i.e. sets all the pixels to be fully transparent).
         
-        :param x: The left X coordinate of the rectangle (inclusive).
-        :param y: The top Y coordinate of the rectangle (inclusive).
+        :param x: The left x coordinate of the rectangle (inclusive).
+        :param y: The top y coordinate of the rectangle (inclusive).
         :param width: The width of the rectangle
         :param height: The height of the rectangle.
         """
@@ -238,8 +238,8 @@ class Image:
         Draw another image onto this image. 
         
         :param image: The image to draw.  This must be of type :class:`Image`.
-        :param x: The X coordinate for the top left corner of the image to draw.
-        :param y: The Y coordinate for the top left corner of the image to draw.
+        :param x: The x coordinate for the top left corner of the image to draw.
+        :param y: The y coordinate for the top left corner of the image to draw.
         """
         dim = _strype_graphics_internal.getCanvasDimensions(image._Image__image)
         _strype_graphics_internal.canvas_drawImagePart(self.__image, image._Image__image, x, y, 0, 0, dim[0], dim[1], 1.0)
@@ -286,8 +286,8 @@ class Image:
         The text color is the current fill color (see `set_fill()`). 
         
         :param text: The text to draw.
-        :param x: The x position of the top-left corner of the text.
-        :param y: The y position of the top-left corner of the text.
+        :param x: The x coordinate of the top-left corner of the text.
+        :param y: The y coordinate of the top-left corner of the text.
         :param font_size: The size of the text, in pixels.
         :param max_width: The maximum width of the text (or 0 for no maximum).
         :param max_height: The maximum height of the text (or 0 for no maximum).
@@ -344,8 +344,8 @@ class Image:
         
         The arc will be filled with the current fill (see `set_fill()`) and drawn in the current stroke (see `set_stroke()`).
         
-        :param centre_x: The centre X position of the arc.
-        :param centre_y: The centre Y position of the arc.
+        :param centre_x: The centre x coordinate of the arc.
+        :param centre_y: The centre y coordinate of the arc.
         :param width: The width of the ellipse that describes the arc.
         :param height: The height of the ellipse that describes the arc.
         :param angle_start: The starting angle of the arc, in degrees (0 points to the right).
@@ -731,20 +731,14 @@ class Actor:
     #@@ list
     def get_all_nearby(self, distance, tag = None):
         """
-        Gets all the actors that are within the current distance of this actor. There is an imaginary circle drawn at
-        the centre of this actor with radius of "distance", and any actors that touch this circle will be returned
-        (even if their centres are not within this circle; only one corner needs to be).  
+        Return all actors which are within a given distance of this actor.  The distance is measured as the 
+        distance of the logication location (the center point) of each actor.
         
-        If this actor has had `set_can_touch(false)`
-        called, the returned list will always be empty.  The list will never feature any actors
-        which have had `set_can_touch(false)` called on them.
+        If a tag is specified, only actors with the given tag will be returned.
         
-        If the tag is given (i.e. is not None), it will be used to filter the returned list just
-        to actors with that given tag.
-        
-        :param distance: The radius to look for nearby actors, from the centre of this actor
-        :param tag: The tag to use to filter the returned actors (or None/omitted if you do not want to filter the actors by tag)
-        :return: A list of all nearby actors.
+        :param distance: The maximum distance to look for other actors.
+        :param tag: The tag to use to filter the actors (or None to consider all actors)
+        :return: A list of all actors within a given range.
         """
         return [a for a in _strype_input_internal.getAllNearbyAssociated(self.__id, distance) if tag is None or tag == a.get_tag()]
 
@@ -752,11 +746,10 @@ class Actor:
     #@@ Image
     def edit_image(self):
         """
-        Return an Image which can be used to edit this actor's image.  All modifications
-        to the returned image will be shown for this actor automatically.  If you call this function multiple times
-        you will get the same Image returned.
+        Return the image of this actor.  The image object returned is the actual actor's live image -- drawing on it will 
+        become visible on the actor's image.
         
-        :return: An Image with the current Actor image already drawn in it 
+        :return: The actor's :class:`Image`.
         """
         # Note: we don't want to have an editable image by default because it is slower to render
         # the editable canvas than to render the unedited image (I think!?)
@@ -768,19 +761,20 @@ class Actor:
     
     def say(self, text, font_size = 20, max_width = 300, max_height = 200, font_family = None):
         """
-        Add a speech bubble next to the actor with the given text.  The only required parameter is the
-        text, all the others can be omitted.  The text will be wrapped if it reaches max_width (unless you
-        set max_width to 0).  If it then overflows max_height, the font size will be reduced until the text fits
-        in both max_width and max_height.  Wrapping will only occur at spaces, so if you have long text like
-        "Aaaaaarrrggghhhh" and want it to wrap you may need to add a space in there. 
+        Show a speech bubble next to the actor with the given text.  The only required parameter is the
+        text, all others are optional.  \\n can be used to start a new line.
         
-        To remove the speech bubble later, call `say("")` (that is, with a blank string).  You can also consider
-        using `say_for` if you want the speech to display for a fixed time.
+        If a maximum width is specified, the text will be wrapped to fit the given width.  
+        If a maximum height is specified as well, the font size will be reduced if necessary to fit within 
+        the width and height.  If the text is too long, it may exceed the maximum width or height. 
+
+        To remove the speech bubble, call `say("")` (that is, with an empty string).  See also
+        `say_for` to display text for a fixed time.
         
-        :param text: The text to be displayed in the speech bubble.  You can use \\n to separate lines.
-        :param font_size: The font size to try to display at
-        :param max_width: The maximum width to fit the speech into (excluding padding which is added to make the speech bubble)
-        :param max_height: The maximum height to fit the speech into (excluding padding which is added to make the speech bubble)
+        :param text: The text to be shown.  
+        :param font_size: The preferred font size.
+        :param max_width: The maximum width to fit the text (or 0 for no maximum.).
+        :param max_height: The maximum height of the text (or 0 for no maximum).
         """
         
         # Remove any existing speech bubble:
@@ -840,32 +834,26 @@ class Actor:
 
     def say_for(self, text, seconds, font_size = 16, max_width = 300, max_height = 200):
         """
-        Like the `say` function, but automatically removes the speech bubble after the given number of seconds.  For all
-        other parameters, see the `say` function for an explanation.
+        `say_for` acts like the `say` function, but automatically removes the speech bubble after the given number of seconds.  
+        For all other parameters, see the `say` function for an explanation.
         
-        Any other calls to `say()` or `say_for()` will override the current timed removal.
-                
-        :param text: The text to display in the speech bubble
-        :param seconds: The number of seconds to display it for.
-        :param font_size: See `say`
-        :param max_width: See `say`
-        :param max_height: See `say`
+        :param text: The text to be shown.  
+        :param seconds: The number of seconds to show the text for.
+        :param font_size: The preferred font size.
+        :param max_width: The maximum width to fit the text (or 0 for no maximum.).
+        :param max_height: The maximum height of the text (or 0 for no maximum).
         """
         self.say(text, font_size, max_width, max_height)
         _strype_graphics_internal.removeImageAfter(self.__say, seconds)
 
 #@@ Image
-def load_image(filename):
+def load_image(name):
     """
-    Loads the given image file as an Image object.
+    Load the given image and return it as an :class:`Image` object.  The image name must be the name of one of the images
+    in the Strype image library.
     
-    Note: you can pass a filename for the image, which is an image name from Strype's image library,
-        or a URL to an image.  Using a URL requires the server to allow remote image loading from Javascript via a feature
-        called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and
-        you can load the image in a browser yourself.
-    
-    :param filename: The built-in Strype filename, or URL, of the image to load.
-    :return: An Image object with the same image and dimensions as the given file
+    :param name: The nameof the image to load, as shown in the Strype image library.
+    :return: An :class:`Image` object with the library image.
     """
     img = Image(-1, -1)
     img._Image__image = _strype_graphics_internal.htmlImageToCanvas(_strype_graphics_internal.loadAndWaitForImage(filename))
@@ -874,43 +862,42 @@ def load_image(filename):
 #@@ Actor
 def get_clicked_actor():
     """
-    Gets the last clicked Actor (or None if nothing was clicked since the last call to this function).  Be careful that if you call this twice
-    in quick succession, the second call will almost certainly be None.  If you need to compare the result of this function
-    to several other things, assign it to a variable first.
+    Return the last actor receiving a mouse click.  If no actor was clicked since this function was last called, None is returned.
+    Every click will be reported only once -- a seccond call to this function in quick succession will return None.
     
-    :return: The most recently clicked Actor, or None if nothing was clicked since you last called this function.
+    :return: The most recently clicked :class:`Actor`, or None if no actor was clicked since the last call.
     """
     return _strype_input_internal.getAndResetClickedItem()
 
 #@@ bool
 def key_pressed(keyname):
     """
-    Checks if the given key is currently pressed.  Note that because the user may be pressing and releasing keys all the time,
-    consecutive calls to this function with the same key name may not give the same result.
+    Check if a given key is currently pressed down.
+
+    The names of printable keys are the character they print (e.g. "a" for the a-key). Other keys have names 
+    describing their function. These include "left", "right", "up, "down", "Enter", "Tab", "Escape", "Shift", 
+    "Control", "Alt", "Backspace", Delete".
     
-    :param keyname: The name of the key.  This can be a single letter like "a" or a key name like "up", "down". 
-    :return: Either True or False depending on whether the key is currently pressed.
+    :param keyname: The name of the key to check.
+    :return: True if the key is currently pressed down, False otherwise.
     """
     return _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys())[keyname]
 
-def set_background(image_or_filename_or_color, tile_to_fit = True):
+def set_background(image_or_name_or_color, tile_to_fit = True):
     """
-    Sets the current background image.
+    Set the current background image.
     
-    The parameter can be an Image, a color, a filename of an image in Strype's image library, or a URL.
-    Using a URL requires the server to allow remote image loading from Javascript via a feature
-    called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and
-    you can load the image in a browser yourself.
+    The parameter can be an :class:`Image`, a :class:`Color`, or an image name from Strype's image library.
     
-    If tile_to_fit is True and the background image is smaller than 800x600, it will be tiled (repeated) to fill the area of 800x600.
-    If tile_to_fit is True and background image is larger than 800x600, it will be centered, and the extra regions will be cut off.
-    If tile_to_fit is False, the background image will be scaled (preserving its aspect ratio) to fit into 800x600, and centered.    
+    If scale_to_fit is True, the image will be scaled (up or down) so that it fills the world area (800x600 pixels).  
+    Otherwise the image will be drawn in the center of the world in its original size, and tiled outwards
+    if it is smaller than the world.
     
-    The background image is always copied, so later changes to an Image will not be shown in the background;
-    you should call set_background() again to update it.
+    The background image is always copied when it is created, so later changes to the original image will not be 
+    shown in the world.  You can call `get_background()` to receive the actual background image object to change it.
     
-    :param image_or_filename_or_color: An Image, an image filename or URL, or a color name or hex string.
-    :param tile_to_fit: Whether to tile the background image to fit (True), or to stretch the image to Fit (False) 
+    :param image_or_name_or_color: An Image, an image name, a :class:`Color` object, or a color name or hex string.
+    :param scale_to_fit: If True, scale the image to the world size. If False, tile the image on the world. 
     """
 
     # We use an oversize image to avoid slivers of other colour appearing at the edges
@@ -964,7 +951,7 @@ def set_background(image_or_filename_or_color, tile_to_fit = True):
     
 def stop():
     """
-    Stops the whole execution immediately.  Will not return.
+    Stop the execution of the program.  This function will not return.
     """
     raise SystemExit()
 
@@ -972,7 +959,7 @@ _last_frame = _time.time()
 
 def pause(actions_per_second = 25):
     """
-    Waits for a suitable amount of time since the last call to pause().  This is almost always used as follows:
+    Wait for a suitable amount of time since the last call to pause().  This is almost always used as follows:
     
     .. code-block:: python
     
