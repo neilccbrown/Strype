@@ -1790,7 +1790,6 @@ export function setPythonExecAreaLayoutButtonPos(): void{
         }
     }, 100);
 }
-/* FITRUE_isPython */
 
 /** 
  * These methods are used to control the height of the "Add frame" commands,
@@ -1845,6 +1844,8 @@ export function computeAddFrameCommandContainerSize(isExpandedPEA?: boolean): vo
         (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).setPEACommandsSplitterPanesMinSize();    
     }, 100);    
 }
+/* FITRUE_isPython */
+
 
 export function getCurrentFrameSelectionScope(): SelectAllFramesFuncDefScope {
     // This method checks the current selection scope that we need to know when doing select-all (for function definitions).
