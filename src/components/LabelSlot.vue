@@ -302,7 +302,24 @@ export default Vue.extend({
             // Don't do this if we are mid-composition because it alters
             // the cursor position and prevents composition/IME working:
             if (!input.isComposing) {
-                this.updateStoreFromEditableContent();
+                const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
+                const inputSpanFieldContent = inputSpanField.textContent ?? "";
+                // The contenteditable spans have a zero-width space when they are empty, so that browsers
+                // will focus into them correctly.  But this should be used when the slot is empty.  Once
+                // it has any other content, such spaces should be removed:
+                if (inputSpanFieldContent != "\u200B" && inputSpanFieldContent.includes("\u200B")) {
+                    // It's not a single zero-width space, but there are some:
+                    let cursorPos = getTextStartCursorPositionOfHTMLElement(inputSpanField);
+                    // Count number of zero-widths before the cursor (should be none, but you never know)
+                    // and adjust cursor pos accordingly:
+                    cursorPos -= inputSpanFieldContent.substring(0, cursorPos).replace(/[^\u200B]/g, "").length;
+                    inputSpanField.textContent = inputSpanFieldContent.replace(/\u200B/g, "");
+                    this.updateStoreFromEditableContent(cursorPos);
+                }
+                else {
+                    this.updateStoreFromEditableContent();
+                }
+                
             }
         },
 
@@ -310,9 +327,9 @@ export default Vue.extend({
             this.updateStoreFromEditableContent();
         },
 
-        updateStoreFromEditableContent() {            
+        updateStoreFromEditableContent(overrideCursorPos = null as number | null) {            
             const spanElement = (document.getElementById(this.UID) as HTMLSpanElement);
-            this.textCursorPos = getTextStartCursorPositionOfHTMLElement(spanElement);
+            this.textCursorPos = overrideCursorPos ?? getTextStartCursorPositionOfHTMLElement(spanElement);
 
             // Send an event to the frame that need to know that an editable slot got focus (no extra information needed as args for the moment)
             document.getElementById(getFrameHeaderUID(this.frameId))?.dispatchEvent(new Event(CustomEventTypes.frameContentEdited));
