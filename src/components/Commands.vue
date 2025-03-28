@@ -676,8 +676,7 @@ export default Vue.extend({
                 const viewPortH = document.getElementsByTagName("body")[0].getBoundingClientRect().height;
                 this.commandsSplitterPane2Size = ((peaHeight + peaMargin ) * 100) / (viewPortH - commandsSplitterHeight);
                 
-                // We can also set the min size of the splitter panes here.
-                this.setCommandsSplitterPanesMinSize(peaHeight + peaMargin);
+                // The splitter's PEA pane's min size will be updated after computeAddFrameCommandContainerSize() is called
             }
 
             // Finally, also update the frame commands panel as it may now overflow...
@@ -693,12 +692,14 @@ export default Vue.extend({
             this.isCommandsSplitterChanged = true;
         },
 
-        setCommandsSplitterPanesMinSize(peaDefaultHeight?: number) {
-            // Called to get the right min sizes of the Commands splitter.
-            // The minimum size the first pane of the Commands Splitter can take is set to guarantee
+        setPEACommandsSplitterPanesMinSize() {
+            // Called to get the right min sizes of the pea/Commands splitter.
+            // The minimum size the first pane of the splitter can take is set to guarantee
             // the project name is visible, and the first row of add frame commands + potential scrollbars.
-            // The method parameter "peaDefaultHeight" is only required when we get the min sizes the very first time
-            // (because the minimum size will be that of the PEA with the 4/3 default aspect ratio).
+            // The minimum size for the second pane of the splitter is a bit more deterministic: the header
+            // of the PEA component + about 3 lines of text (we don't include the botton margin). 
+            // Nevertheless, the min size need to change if the PEA component changes: in window resize events 
+            // or when the editor/commands splitters pushes the commands too small.
             const viewPortH = document.getElementsByTagName("body")[0].getBoundingClientRect().height;
             const commandsSplitterDivider = document.querySelector(".strype-commands-split-theme .splitpanes__splitter");
             if(commandsSplitterDivider) {               
@@ -726,8 +727,22 @@ export default Vue.extend({
                 }    
             
                 // Pane 2:
-                if(peaDefaultHeight) {
-                    this.commandSplitterPane2MinSize = (peaDefaultHeight * 100) / (viewPortH - commandsSplitterHeight);
+                const peaHeaderHeight = (document?.getElementById("peaControlsDiv")?.getBoundingClientRect().height)??0;
+                const peaConsoleElement = document.getElementById("pythonConsole");
+                if(peaConsoleElement){               
+                    const peaConsoleLineH = parseFloat(window.getComputedStyle(peaConsoleElement).lineHeight.replace("px",""));
+                    this.commandSplitterPane2MinSize = ((peaHeaderHeight + 3 * peaConsoleLineH) * 100) / (viewPortH - commandsSplitterHeight);
+                    const currentPane2Size = parseFloat(((this.$refs.peaCommandsSplitterPane2Ref as InstanceType<typeof Pane>).$data as PaneData).style.height.replace("%",""));
+                    if(currentPane2Size < this.commandSplitterPane2MinSize){
+                        // Setting the min size doesn't mean that the current size will update to be valid. 
+                        // So we do it ourselves. The reactivity doesn't seem to always work (some timing issue?)
+                        // so we change the data of the Panes directly
+                        setTimeout(() => {
+                            this.commandsSplitterPane2Size = (this.commandSplitterPane2MinSize);      
+                            (this.$refs.peaCommandsSplitterPane1Ref as InstanceType<typeof Pane>).$data.style.height = (100 - this.commandsSplitterPane2Size) + "%";
+                            (this.$refs.peaCommandsSplitterPane2Ref as InstanceType<typeof Pane>).$data.style.height = this.commandsSplitterPane2Size + "%";
+                        }, 200);                        
+                    }     
                 }
             }
         },

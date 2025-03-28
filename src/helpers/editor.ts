@@ -1788,7 +1788,7 @@ export function computeAddFrameCommandContainerSize(isExpandedPEA?: boolean): vo
     // When we are done, we need to check again the min size of the commands/PEA splitter pane 1, since scroll bars
     // could have been added with the new change (need to wait for it to be effective though).
     setTimeout(() => {
-        (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).setCommandsSplitterPanesMinSize();    
+        (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).setPEACommandsSplitterPanesMinSize();    
     }, 100);    
 }
 
