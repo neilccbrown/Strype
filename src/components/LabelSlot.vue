@@ -650,7 +650,6 @@ export default Vue.extend({
                     })
                 );
                 this.appStore.ignoreKeyEvent = true;
-                return;
             }
             event.preventDefault();
             event.stopPropagation();
