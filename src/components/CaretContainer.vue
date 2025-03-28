@@ -1,6 +1,6 @@
 <template>
     <div 
-        :class="{'caret-container': true, 'static-caret-container': isStaticCaretContainer, 'dragging-frames': areFramesDraggedOver}"
+        :class="{[scssVars.caretContainerClassName]: true, 'static-caret-container': isStaticCaretContainer, [scssVars.draggingFrameClassName]: areFramesDraggedOver}"
         @click.exact.prevent.stop="toggleCaret()"
         @contextmenu.prevent.stop="handleClick($event)"
         :key="UID"
@@ -21,7 +21,7 @@
             </li>
         </vue-context>
         <Caret
-            class="navigationPosition caret"
+            :class="scssVars.navigationPositionClassName + ' ' + scssVars.caretClassName"
             :id="caretUID"
             :isInvisible="isInvisible"
             v-blur="isCaretBlurred"
@@ -42,11 +42,12 @@ import VueContext, { VueContextConstructor } from "vue-context";
 import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
 import {AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, PythonExecRunningState, FrameContextMenuActionName, CurrentFrame} from "@/types/types";
-import { getCaretUID, adjustContextMenuPosition, setContextMenuEventClientXY, getAddFrameCmdElementUID, CustomEventTypes } from "@/helpers/editor";
+import { getCaretUID, adjustContextMenuPosition, setContextMenuEventClientXY, getAddFrameCmdElementUID, CustomEventTypes, getCaretContainerUID } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import {copyFramesFromParsedPython, findCurrentStrypeLocation} from "@/helpers/pythonToFrames";
 import { cloneDeep } from "lodash";
 import { getAboveFrameCaretPosition } from "@/helpers/storeMethods";
+import scssVars  from "@/assets/style/_export.module.scss";
 
 //////////////////////
 //     Component    //
@@ -97,7 +98,7 @@ export default Vue.extend({
         },
 
         UID(): string {
-            return "caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId;
+            return getCaretContainerUID(this.caretAssignedPosition,this.frameId);
         },
 
         caretUID(): string {
@@ -124,6 +125,7 @@ export default Vue.extend({
 
     data: function () {
         return {
+            scssVars, // just to be able to use in template
             showPasteMenuItem: false,
             insertFrameMenuItems: [] as {name: string, method: VoidFunction, actionName ?: FrameContextMenuActionName}[],
             areFramesDraggedOver: false,
@@ -156,7 +158,7 @@ export default Vue.extend({
     methods: {
         putCaretContainerInView(){
             if(this.caretVisibility !== CaretPosition.none && this.caretVisibility === this.caretAssignedPosition) {
-                const caretContainerElement = document.getElementById("caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId);
+                const caretContainerElement = document.getElementById(getCaretContainerUID(this.caretAssignedPosition, this.frameId));
                 const caretContainerEltRect = caretContainerElement?.getBoundingClientRect();
                 //is caret outside the viewport? if so, scroll into view (we need to wait a bit for the UI to be ready before we can perform the scroll)
                 if(caretContainerEltRect && (caretContainerEltRect.bottom + caretContainerEltRect.height < 0 || caretContainerEltRect.top + caretContainerEltRect.height > document.documentElement.clientHeight)){
@@ -332,7 +334,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.caret-container {
+.#{$strype-classname-caret-container} {
     padding-top: 0px;
     padding-bottom: 0px;
 }
@@ -341,7 +343,7 @@ export default Vue.extend({
     height: $caret-height-value + px;
 }
 
-.caret-container:not(.dragging-frames):hover{
+.#{$strype-classname-caret-container}:not(.#{$strype-classname-dragging-frame}):hover{
     cursor: pointer;
 }
 </style>

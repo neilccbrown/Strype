@@ -9,7 +9,11 @@ beforeEach(() => {
     cy.visit("/",  {onBeforeLoad: (win) => {
         win.localStorage.clear();
         win.sessionStorage.clear();
-    }});
+    }}).then(() => {
+        // The Strype IDs and CSS class names aren't directly used in the test
+        // but they are used in the support file, so we make them available.
+        cy.initialiseSupportStrypeGlobals();
+    });
 });
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment

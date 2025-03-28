@@ -13,12 +13,12 @@
     </b-modal>
     <div
         v-else 
-        class="message-banner-container"
+        :class="scssVars.messageBannerContainerClassName"
     >
         <span 
             v-if="message.message"
             v-t="message.message"></span>
-        <span class="message-banner-cross" v-on:click="close">&#x2716;</span>
+        <span :class="scssVars.messageBannerCrossClassName" v-on:click="close">&#x2716;</span>
         
         <br/>
         <button 
@@ -35,12 +35,14 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import { MessageDefinedActions, MessageDefinitions, MessageDefinition, MessageTypes, VoidFunction} from "@/types/types";
 import { mapStores } from "pinia";
+import scssVars from "@/assets/style/_export.module.scss";
 
 export default Vue.extend({
     name: "MessageBanner",
 
     data: function() {
         return {
+            scssVars, // just to be able to use in template
             image: "" as string,
         };
     },
@@ -96,14 +98,14 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.message-banner-container {
+.#{$strype-classname-message-banner-container} {
     display: inline-block;
     width: 100%;
     background-color: #BBBBBB;
     padding:5px;
 }
 
-.message-banner-cross {
+.#{$strype-classname-message-banner-cross} {
     float: right;
     margin-right:15px;
     cursor:pointer;

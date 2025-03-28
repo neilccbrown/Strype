@@ -17,7 +17,7 @@
             </div>
         </div>
         /* IFTRUE_isPython
-        <Splitpanes id="expandedPythonExecAreaSplitersOverlay" class="strype-split-theme" v-show="isExpandedPythonExecArea" horizontal @resize=onExpandedPythonExecAreaSplitPaneResize>
+        <Splitpanes class="expanded-PEA-splitter-overlay strype-split-theme" v-show="isExpandedPythonExecArea" horizontal @resize=onExpandedPythonExecAreaSplitPaneResize>
             <pane key="1">
             </pane>
             <pane key="2" min-size="20" max-size="80">
@@ -29,7 +29,7 @@
             <Splitpanes class="strype-split-theme" @resize=onStrypeCommandsSplitPaneResize>
                 <Pane key="1" size="66" min-size="33" max-size="90">
                     <!-- These data items are to enable testing: -->
-                    <div id="editor" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos" class="print-full-height">
+                    <div :id="editorId" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos" class="print-full-height">
                         <div class="top no-print">
                             <MessageBanner 
                                 v-if="showMessage"
@@ -39,8 +39,8 @@
                             <Menu 
                                 :id="menuUID" 
                                 :ref="menuUID"
-                                @app-showprogress="applyShowAppProgress"
-                                @app-reset-project="resetStrypeProject"
+                                v-on:[CustomEventTypes.appShowProgressOverlay]="applyShowAppProgress"
+                                v-on:[CustomEventTypes.appResetProject]="resetStrypeProject"
                                 class="noselect no-print"
                             />
                             <div class="col">
@@ -96,7 +96,10 @@ import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, GAPIState } from "@/types/types";
-import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getStrypePEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, debounceComputeAddFrameCommandContainerSize } from "./helpers/editor";
+import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getPEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId } from "./helpers/editor";
+/* IFTRUE_isPython */
+import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId } from "@/helpers/editor";
+/* FITRUE_isPython */
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
@@ -110,6 +113,7 @@ import {copyFramesFromParsedPython, splitLinesToSections, STRYPE_LOCATION} from 
 import GoogleDrive from "@/components/GoogleDrive.vue";
 import { BvModalEvent } from "bootstrap-vue";
 import axios from "axios";
+import scssVars from "@/assets/style/_export.module.scss";
 
 let autoSaveTimerId = -1;
 let projectSaveFunctionsState : ProjectSaveFunction[] = [];
@@ -133,6 +137,7 @@ export default Vue.extend({
 
     data: function() {
         return {
+            CustomEventTypes, // just for using in template
             showAppProgress: false,
             setAppNotOnTop: false,
             progressbarMessage: "",
@@ -145,6 +150,10 @@ export default Vue.extend({
 
     computed: {       
         ...mapStores(useStore),
+
+        editorId(): string {
+            return getEditorID();
+        },
              
         // gets the container frames objects which are in the root
         containerFrames(): FrameObject[] {
@@ -420,13 +429,13 @@ export default Vue.extend({
         // Add a listener for the whole window resize.
         window.addEventListener("resize",() => {
             // Re-scale the Turtle canvas.
-            document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
+            document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
         });
         /* FITRUE_isPython */
 
         // When the page is loaded, we might load an existing code for which the caret is not visible, so we get it into view.
         setTimeout(() => {
-            const htmlElementToShowId = (this.appStore.focusSlotCursorInfos) ? getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos) : ("caret_"+this.appStore.currentFrame.caretPosition+"_of_frame_"+this.appStore.currentFrame.id);
+            const htmlElementToShowId = (this.appStore.focusSlotCursorInfos) ? getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos) : getCaretContainerUID(this.appStore.currentFrame.caretPosition, this.appStore.currentFrame.id);
             document.getElementById(htmlElementToShowId)?.scrollIntoView();
         }, 1000);
 
@@ -466,7 +475,7 @@ export default Vue.extend({
                 .then((gapiState) =>{
                     // Only open the project is the GAPI is loaded, and show a message of error if it hasn't.
                     if(gapiState == GAPIState.loaded){
-                        document.getElementById((this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).loadProjectLinkId)?.click();
+                        document.getElementById(getLoadProjectLinkId())?.click();
                     }
                     else{
                         this.finaliseOpenShareProject("errorMessage.retrievedSharedGenericProject", this.$i18n.t("errorMessage.GAPIFailed") as string);
@@ -700,23 +709,24 @@ export default Vue.extend({
                 let focusSpanElement =  docSelection?.focusNode?.parentElement;
                 // When the editable slots are empty, the span doesn't get the focus, but the container div does.
                 // So we need to retrieve the right HTML component by hand.      
-                // (usually, the first level div container gets the selection, but with FF, the second level container can also get it)     
+                // (usually, the first level div container gets the selection, but with FF, the second level container can also get it)   
+                const classCheckerRegex = new RegExp("(^| )" + scssVars.labelSlotContainerClassName + "($| )");
                 if(anchorSpanElement?.tagName.toLowerCase() == "div"){
-                    if(anchorSpanElement.className.match(/(^| )labelSlot-container($| )/) != null){
+                    if(anchorSpanElement.className.match(classCheckerRegex) != null){
                         // The most common case
                         anchorSpanElement = anchorSpanElement.firstElementChild as HTMLSpanElement;
                     }
-                    else if(anchorSpanElement.firstElementChild?.className.match(/(^| )labelSlot-container($| )/) != null){
+                    else if(anchorSpanElement.firstElementChild?.className.match(classCheckerRegex) != null){
                         // The odd case in FF
                         anchorSpanElement = anchorSpanElement.firstElementChild.firstElementChild as HTMLSpanElement;
                     }
                 }
                 if(focusSpanElement?.tagName.toLowerCase() == "div"){
-                    if(focusSpanElement.className.match(/(^| )labelSlot-container($| )/) != null){
+                    if(focusSpanElement.className.match(classCheckerRegex) != null){
                         // The most common case
                         focusSpanElement = focusSpanElement.firstElementChild as HTMLSpanElement;
                     }
-                    else if(focusSpanElement.firstElementChild?.className.match(/(^| )labelSlot-container($| )/) != null){
+                    else if(focusSpanElement.firstElementChild?.className.match(classCheckerRegex) != null){
                         // The odd case in FF
                         focusSpanElement = focusSpanElement.firstElementChild.firstElementChild as HTMLSpanElement;
                     }
@@ -872,10 +882,10 @@ export default Vue.extend({
             const menuHeightSpace = (isTargetFrames) ? 320 : 90, menuOffsetY = 5, menuOffsetX = 40;
             const firstSelectedTargetElement = (isTargetFrames) 
                 ? document.getElementById(getFrameUID(this.appStore.selectedFrames[0]))
-                : document.querySelector(".caret-container:has(> .navigationPosition.caret:not(.invisible))"); // We want to retrieve the caret container of the currently visible caret
+                : document.querySelector(`.${scssVars.caretContainerClassName}:has(> .${scssVars.navigationPositionClassName}.${scssVars.caretClassName}:not(.${scssVars.invisibleClassName}))`); // We want to retrieve the caret container of the currently visible caret
             const lastSelectedTargetElement = (isTargetFrames) 
                 ? document.getElementById(getFrameUID(this.appStore.selectedFrames.at(-1) as number)) 
-                : document.querySelector(".caret-container:has(> .navigationPosition.caret:not(.invisible))");
+                : document.querySelector(`.${scssVars.caretContainerClassName}:has(> .${scssVars.navigationPositionClassName}.${scssVars.caretClassName}:not(.${scssVars.invisibleClassName}))`);
             // For the editor, we need to get whole editor container, not the space in the middle that is adapted to the viewport
             const editorViewingElement = document.getElementById(getEditorMiddleUID());
             const editorElement = editorViewingElement?.children[0];
@@ -934,13 +944,13 @@ export default Vue.extend({
                 debounceComputeAddFrameCommandContainerSize(true);
                 // Set the editor's max height (fitting within the first pane's height); as well as the "frame commands" panel's
                 (document.getElementsByClassName("cropped-editor-code-div")[0] as HTMLDivElement).style.maxHeight = (editorNewMaxHeight + "px");
-                (document.getElementsByClassName("no-PEA-commands")[0] as HTMLDivElement).style.maxHeight = (editorNewMaxHeight + "px");
+                (document.getElementsByClassName(scssVars.noPEACommandsClassName)[0] as HTMLDivElement).style.maxHeight = (editorNewMaxHeight + "px");
                 // Set the Python Execution Area's position
-                (document.querySelector(".python-exec-area-container.expanded-PEA") as HTMLDivElement).style.top = (editorNewMaxHeight + "px");
+                (document.querySelector("." + scssVars.peaContainerClassName + "." + scssVars.expandedPEAClassName) as HTMLDivElement).style.top = (editorNewMaxHeight + "px");
                 // Set the max height of the Python Execution Area's tab content
                 setPythonExecutionAreaTabsContentMaxHeight();
                 // Trigger a resized event (for scaling the Turtle canvas properly)
-                document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
+                document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
             }
 
             // Update the Python Execution Area layout buttons' position
@@ -952,7 +962,7 @@ export default Vue.extend({
             /* IFTRUE_isPython */
             // When the rightmost panel (with Strype commands) is resized, we need to also update the Turtle canvas and break the natural 4/3 ratio of the PEA
             (this.$refs[this.strypeCommandsRefId] as InstanceType<typeof Commands>).isCommandsSplitterChanged = true;
-            document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
+            document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
             /* FITRUE_isPython */
         },
         
@@ -1002,7 +1012,7 @@ export default Vue.extend({
                 actOnTurtleImport();
 
                 // Clear the Python Execution Area as it could have be run before.
-                ((this.$root.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getStrypePEAComponentRefId()] as any).clear();
+                ((this.$root.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getPEAComponentRefId()] as any).clear();
                 /* FITRUE_isPython */
 
                 // Finally, we can trigger the notifcation a file has been loaded.
@@ -1046,7 +1056,7 @@ html,body {
     background-color: #bbc6b6 !important;
 }
 
-body.dragging-frame {
+body.#{$strype-classname-dragging-frame} {
     cursor: grabbing !important;
 }
 
@@ -1163,7 +1173,7 @@ $divider-grey: darken($background-grey, 15%);
 
 .v-context > li > a:focus,
 .v-context ul > li > a:focus,
-.acItem.acItemSelected {
+.#{$strype-classname-ac-item}.#{$strype-classname-ac-item-selected} {
     text-decoration:none;
     color:white !important;
     background-color: $hover-blue;
@@ -1210,15 +1220,15 @@ $divider-grey: darken($background-grey, 15%);
 
 // Styling of the expanded Python execution area splitter overlay (used to simulate a splitter above the Python execution area)
 // It must be full width and heigh, overlaying from (0,0), and we use events to apply the splitting ratio back to the Python execution area
-#expandedPythonExecAreaSplitersOverlay {
-    width: 100vw;
-    height: 100vh;
+.expanded-PEA-splitter-overlay {
+    width: 100vw !important;
+    height: 100vh !important;
     position: absolute;
     top:0;
     left:0;
 }
 
-#expandedPythonExecAreaSplitersOverlay .splitpanes__splitter {
+.expanded-PEA-splitter-overlay .splitpanes__splitter {
     z-index: 10;
 }
 
