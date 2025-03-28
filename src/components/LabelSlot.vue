@@ -424,6 +424,20 @@ export default Vue.extend({
                     });
                     return;
                 }
+                else {
+                    const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
+                    const inputSpanFieldContent = inputSpanField.textContent ?? "";
+                    if (inputSpanFieldContent == "\u200B") {
+                        const cursorPos = getTextStartCursorPositionOfHTMLElement(inputSpanField);
+                        if (cursorPos > 0 && this.appStore.anchorSlotCursorInfos && this.appStore.focusSlotCursorInfos) {
+                            // We maybe came here by moving left from the field after, need to set pos to before zero-width space:
+                            const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: 0};
+                            const hasMultiSlotTextSelection = !areSlotCoreInfosEqual(this.appStore.anchorSlotCursorInfos.slotInfos, this.appStore.focusSlotCursorInfos.slotInfos);
+                            setDocumentSelection(hasMultiSlotTextSelection ? this.appStore.anchorSlotCursorInfos : slotCursorInfo, slotCursorInfo);
+                            this.appStore.setSlotTextCursors(hasMultiSlotTextSelection ? this.appStore.anchorSlotCursorInfos : slotCursorInfo, slotCursorInfo);
+                        }
+                    }
+                }
             }
             
             this.appStore.setFocusEditableSlot(
