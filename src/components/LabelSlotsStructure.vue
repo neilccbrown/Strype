@@ -28,6 +28,7 @@
                 :isEditableSlot="isEditableSlot(slotItem.type)"
                 :isEmphasised="isSlotEmphasised(slotItem)"
                 @requestSlotsRefactoring="checkSlotRefactoring"
+                @slotLostCaret="updatePrependText"
             />
         </div> 
     </div>
