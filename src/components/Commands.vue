@@ -4,7 +4,7 @@
         <Splitpanes horizontal :class="{[scssVars.commandsPEASplitterThemeClassName]: true, [scssVars.expandedPEAClassName]: isExpandedPEA}" @resize="onCommandsSplitterResize">
             <pane key="1" :size="100-commandsSplitterPane2Size" :min-size="commandSplitterPane1MinSize">
         FITRUE_isPython */
-                <div :class="[scssVars.noPEACommandsClassName]" @wheel.stop>
+                <div :class="scssVars.noPEACommandsClassName" @wheel.stop>
                     <div :class="scssVars.strypeProjectNameContainerClassName">
                         <span class="project-name">{{projectName}}</span>
                         <div @mouseover="getLastProjectSavedDateTooltip" :title="lastProjectSavedDateTooltip">

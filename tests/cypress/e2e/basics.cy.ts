@@ -127,10 +127,10 @@ function noFrameDivBetween(parent: Element, descendent: Element) : boolean {
 function sanityCheck() : void {
     // Check exactly one caret visible or focused input field:
     if (document?.getSelection()?.focusNode == null) {
-        cy.get("."+ scssVars.caretClasName + ":not(." + scssVars.invisibleClasName +")").should("have.length.at.most", 1);
+        cy.get("."+ scssVars.caretClassName + ":not(." + scssVars.invisibleClassName +")").should("have.length.at.most", 1);
     }
     else {
-        cy.get("." + scssVars.caretClasName + ":not(." + scssVars.invisibleClasName + ")").should("have.length", 0);
+        cy.get("." + scssVars.caretClassName + ":not(." + scssVars.invisibleClassName + ")").should("have.length", 0);
     }
 }
 

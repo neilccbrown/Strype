@@ -21,7 +21,7 @@
                         </div>
                         <PopUpItem
                             v-for="(item) in resultsToShow[module]"
-                            :class="[scssVars.acPopupItemClassName]"
+                            :class="scssVars.acPopupItemClassName"
                             :id="UID+'_'+item.index"
                             :index="item.index"
                             :item="textForAC(item)"
