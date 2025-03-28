@@ -100,7 +100,7 @@ import { isMacOSPlatform } from "@/helpers/common";
 /* IFTRUE_isPython */
 import {Splitpanes, Pane, PaneData} from "splitpanes";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
-import {getPEAConsoleId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getPEAComponentRefId} from "@/helpers/editor";
+import {getPEAConsoleId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getPEAComponentRefId, getPEAControlsDivId} from "@/helpers/editor";
 /* FITRUE_isPython */
 /* IFTRUE_isMicrobit */
 import APIDiscovery from "@/components/APIDiscovery.vue";
@@ -714,7 +714,7 @@ export default Vue.extend({
             if(commandsSplitterDivider) {               
                 const commandsSplitterHeight = commandsSplitterDivider.getBoundingClientRect().height; 
                 const projectNameContainerDiv = document.getElementsByClassName(scssVars.strypeProjectNameContainerClassName)?.[0];
-                const firstAddCommandDiv = document.querySelector(".frameCommands p > div");                
+                const firstAddCommandDiv = document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p > div");                
                 // Pane 1: it is possible that at some point, the frame commands panel has a x-axis scroll bar (when the commands are wrapped). 
                 // So we need to account for that in the min size.
                 const frameCommandsContainer = (document.querySelector("." + scssVars.noPEACommandsClassName) as HTMLDivElement);
@@ -736,8 +736,8 @@ export default Vue.extend({
                 }    
             
                 // Pane 2:
-                const peaHeaderHeight = (document?.getElementById("peaControlsDiv")?.getBoundingClientRect().height)??0;
-                const peaConsoleElement = document.getElementById("pythonConsole");
+                const peaHeaderHeight = (document?.getElementById(getPEAControlsDivId())?.getBoundingClientRect().height)??0;
+                const peaConsoleElement = document.getElementById(getPEAConsoleId());
                 if(peaConsoleElement){               
                     const peaConsoleLineH = parseFloat(window.getComputedStyle(peaConsoleElement).lineHeight.replace("px",""));
                     this.commandSplitterPane2MinSize = ((peaHeaderHeight + 3 * peaConsoleLineH) * 100) / (viewPortH - commandsSplitterHeight);
