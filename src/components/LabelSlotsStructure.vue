@@ -361,7 +361,7 @@ export default Vue.extend({
                 // If we're trying to go off the bounds of this slot
                 // For comments, if there is a terminating line return, we do not allow the cursor to be past it (cf LabelSlot.vue onEnterOrTabKeyUp() for why)
                 if((cursorPos == 0 && event.key==="ArrowLeft") 
-                        || (((cursorPos === spanInputContent.length) || (isCommentFrame && spanInputContent.endsWith("\n") && cursorPos == spanInputContent.length - 1)) && event.key==="ArrowRight")) {
+                        || (((cursorPos >= spanInputContent.replace(/\u200B/, "").length) || (isCommentFrame && spanInputContent.endsWith("\n") && cursorPos == spanInputContent.length - 1)) && event.key==="ArrowRight")) {
                     // DO NOT request a loss of focus here, because we need to be able to know which element of the UI has focus to find the neighbour in this.appStore.leftRightKey()
                     this.appStore.isSelectingMultiSlots = event.shiftKey;
                     this.appStore.leftRightKey({key: event.key, isShiftKeyHold: event.shiftKey}).then(() => {
