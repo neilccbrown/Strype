@@ -1084,13 +1084,18 @@ export default Vue.extend({
                                 let openingTokenSpanFieldCurosorPos = selectionStart;
                                 let closingTokenSpanField = inputSpanField;
                                 let closingTokenSpanFieldCurosorPos = selectionEnd;  
-                                let closingTokenSlotInfos = this.coreSlotInfo; 
+                                let closingTokenSlotInfos = this.coreSlotInfo;
+                                // We need to know where the new bracket is to remove it, like
+                                // removeLastInput but we don't want to destroy information about selection
+                                // so we don't call that function:
+                                let newBracketIsAtClosingEnd = false;
                                 if(hasTextSelection){
                                     // Check in what direction is the selection, note that we expect the anchor and focus to be set here (we checked before), so the comparison value shouldn't be undefined.
                                     if(slotSelectionCursorComparisonValue < 0){
                                         // Anchor is before the focus: we only change the openingTokenSpanField
                                         openingTokenSpanField = (document.getElementById(getLabelSlotUID((this.appStore.anchorSlotCursorInfos as SlotCursorInfos).slotInfos)) as HTMLSpanElement);
                                         openingTokenSpanFieldCurosorPos = (this.appStore.anchorSlotCursorInfos as SlotCursorInfos).cursorPos;
+                                        newBracketIsAtClosingEnd = true;
                                     }
                                     else{
                                         // Anchor is after the focus: we only change the closingTokenSpanField
@@ -1101,13 +1106,13 @@ export default Vue.extend({
                                 }
                                 // Start with the closing end so cursor positions are still valid for the opening
                                 closingTokenSpanField.textContent = closingTokenSpanField.textContent?.substring(0, closingTokenSpanFieldCurosorPos) 
-                                    + ((isBracket) ? getMatchingBracket(event.key, true) : ((event.key == "\"") ? STRING_DOUBLEQUOTE_PLACERHOLDER : STRING_SINGLEQUOTE_PLACERHOLDER))
-                                    + closingTokenSpanField.textContent?.substring(closingTokenSpanFieldCurosorPos);
+                                    + ((isBracket) ? getMatchingBracket(inputString, true) : ((inputString == "\"") ? STRING_DOUBLEQUOTE_PLACERHOLDER : STRING_SINGLEQUOTE_PLACERHOLDER))
+                                    + closingTokenSpanField.textContent?.substring(closingTokenSpanFieldCurosorPos + (newBracketIsAtClosingEnd ? inputString.length : 0));
 
                                 openingTokenSpanField.textContent = openingTokenSpanField.textContent?.substring(0, openingTokenSpanFieldCurosorPos) 
-                                    + ((isStringQuote) ? ((event.key == "\"") ? STRING_DOUBLEQUOTE_PLACERHOLDER : STRING_SINGLEQUOTE_PLACERHOLDER) : event.key)
-                                    + openingTokenSpanField.textContent?.substring(openingTokenSpanFieldCurosorPos);
-
+                                    + ((isStringQuote) ? ((inputString == "\"") ? STRING_DOUBLEQUOTE_PLACERHOLDER : STRING_SINGLEQUOTE_PLACERHOLDER) : inputString)
+                                    + openingTokenSpanField.textContent?.substring(openingTokenSpanFieldCurosorPos + (newBracketIsAtClosingEnd ? inputString.length : 0));
+                 
                                 // If there is no text selection, we "autocomplete" the opening token and want to get after it, into the structure, at position 0
                                 // if there text selection, we are wrapping the text with the tokens and we want to get after the closing token
                                 const newPos = (!hasTextSelection) ? selectionStart + 1 : closingTokenSpanFieldCurosorPos + ((openingTokenSpanField.id == closingTokenSpanField.id) ? 2 : 1);
