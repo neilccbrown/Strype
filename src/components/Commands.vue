@@ -888,8 +888,7 @@ export default Vue.extend({
 .#{$strype-classname-add-frame-commands-container}.with-expanded-PEA p {
    // So that the frame commands in expanded view expands over the commands/PEA splitter,
    // the width is set programmatically
-   position: absolute; 
-  
+   position: absolute;   
 }
 
 .#{$strype-classname-pea-container} {

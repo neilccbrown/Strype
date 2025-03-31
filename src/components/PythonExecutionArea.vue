@@ -18,7 +18,7 @@
         <div :id="tabContentContainerDivId" :class="{'pea-tab-content-container': true, 'flex-padding': true, 'pea-43-ratio': hasDefault43Ratio}">
             <!-- the SplitPanes is used in all layout configurations: for tabs, we only show 1 of the panes and disable moving the divider, and for stacked window it acts as normal -->
             <Splitpanes :class="{'strype-PEA-split-theme': true, 'with-expanded-PEA': isExpandedPEA, 'tabs-PEA': isTabsLayout}" :horizontal="!isExpandedPEA" @resize="onSplitterPane1Resize">
-                <pane :id="graphicsSplitPaneId" key="1" v-show="isGraphicsAreaShowing" :size="(isTabsLayout) ? 100 : currentSplitterPane1Size">
+                <pane :id="graphicsSplitPaneId" key="1" v-show="isGraphicsAreaShowing" :size="(isTabsLayout) ? 100 : currentSplitterPane1Size" min-size="5">
                     <div :id="graphicsContainerDivId" @wheel.stop :class="{'pea-graphics-container': true, hidden: graphicsTemporaryHidden}">
                         <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
                             <div :id="graphicsDivId" ref="pythonTurtleDiv" class="pea-graphics-div"></div>
@@ -26,7 +26,7 @@
                         <span v-if="isGraphicsAreaShowing && !turtleGraphicsImported" class="pea-no-graphics-import-span">{{$t('PEA.importTurtle')}}</span> 
                     </div>
                 </pane>
-                <pane key="2" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)">
+                <pane key="2" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)" min-size="5">
                     <textarea 
                         :id="pythonConsoleId"
                         ref="pythonConsole"
@@ -774,5 +774,14 @@ export default Vue.extend({
     .strype-PEA-split-theme.tabs-PEA.splitpanes--vertical>.splitpanes__splitter,
     .strype-PEA-split-theme.tabs-PEA .splitpanes--vertical>.splitpanes__splitter {
         display: none;
+    }
+
+    .strype-PEA-split-theme.splitpanes--vertical > .splitpanes__splitter:before,
+    .strype-PEA-split-theme > .splitpanes--vertical > .splitpanes__splitter:before {
+        content: "";
+        position: absolute;
+        height: 100% !important;
+        width: 8px !important;
+        transform: none !important;
     }
 </style>
