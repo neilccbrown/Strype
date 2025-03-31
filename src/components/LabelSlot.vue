@@ -1064,7 +1064,6 @@ export default Vue.extend({
                         if(!forbidOperator && planningToInsertKey){
                             plainKey = false;
                             if(isBracket || isStringQuote){
-                                insertKey = false;
                                 // When an opening bracket is typed and there is no text highlighted, we check if we need to "skipped" that input: if we are at the end of an editable slot, and the next slot is a bracketed structure
                                 // that starts with the same opening bracket that the typed one, we move to the next slot rather than adding a new bracketed structure.
                                 // (at this point of the code, we know we're not in a String slot)
