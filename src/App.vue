@@ -20,7 +20,7 @@
         <Splitpanes class="expanded-PEA-splitter-overlay strype-split-theme" v-show="isExpandedPythonExecArea" horizontal @resize=onExpandedPythonExecAreaSplitPaneResize>
             <pane key="1">
             </pane>
-            <pane key="2" min-size="20" max-size="80">
+            <pane ref="overlayExpandedPEAPane2Ref" key="2" min-size="20" max-size="80">
             </pane>
         </Splitpanes>
         FITRUE_isPython */
@@ -93,7 +93,7 @@ import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
-import {Splitpanes, Pane} from "splitpanes";
+import {Splitpanes, Pane, PaneData} from "splitpanes";
 import { useStore } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, GAPIState } from "@/types/types";
 import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getPEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId } from "./helpers/editor";
@@ -428,6 +428,12 @@ export default Vue.extend({
         /* IFTRUE_isPython */
         // Add a listener for the whole window resize.
         window.addEventListener("resize",() => {
+            // When the window is resized, the overlay expanded PEA splitter is properly updated. However, the underlying UI is not updated
+            // properly (because it isn't inside that splitter) so we need to manually update things.
+            if(this.isExpandedPythonExecArea) {
+                this.onExpandedPythonExecAreaSplitPaneResize({1: {size: ((this.$refs.overlayExpandedPEAPane2Ref as InstanceType<typeof Pane>).$data as PaneData).style.height.replace("%","")}});
+            }
+
             // Re-scale the Turtle canvas.
             document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
         });
