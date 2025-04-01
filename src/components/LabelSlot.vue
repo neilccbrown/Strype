@@ -1315,7 +1315,7 @@ export default Vue.extend({
                         const newOperatorContent = (isForwardDeletion) 
                             ? ((neighbourOperatorSlotContent.includes(" ")) ? neighbourOperatorSlotContent.substring(neighbourOperatorSlotContent.indexOf(" ") + 1) : neighbourOperatorSlotContent[1])
                             : ((neighbourOperatorSlotContent.includes(" ")) ? neighbourOperatorSlotContent.substring(0, neighbourOperatorSlotContent.indexOf(" ")) : neighbourOperatorSlotContent[0]);
-                        (neighbourOperatorSlot as BaseSlot).code = newOperatorContent;
+                        (neighbourOperatorSlot as BaseSlot).code = newOperatorContent.replace(/\u200B/g, "");
                         // We don't actually require slot to be regenerated, but we need to mark the action for undo/redo
                         this.$nextTick(() => {
                             this.appStore.bypassEditableSlotBlurErrorCheck = false;
@@ -1527,7 +1527,7 @@ export default Vue.extend({
                 const typeOfSelected: string  = (this.$refs.AC as any).getTypeOfSelected(item);
                 const hasFollowingBracketSlot = (getFlatNeighbourFieldSlotInfos(this.coreSlotInfo, true, true)?.slotType == SlotType.bracket);
                 isSelectedFunction =  (this.frameType.localeCompare(AllFrameTypesIdentifier.fromimport) != 0) && (typeOfSelected.includes("function") || typeOfSelected.includes("method"));
-                newCode = this.getSlotContent().substr(0, currentTextCursorPos - (this.tokenAC?.length ?? 0))
+                newCode = this.getSlotContent().substr(0, currentTextCursorPos - (this.tokenAC?.length ?? 0)).replace(/\u200B/g, "")
                 + selectedItem.replace(new RegExp("\\(.*"), "") 
                 + ((isSelectedFunction && !hasFollowingBracketSlot)?"()":"");
             }
