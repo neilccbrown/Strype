@@ -1001,9 +1001,6 @@ export default Vue.extend({
                 }
             }
             else{
-                // In any other scenario, we capture the key ourselves to handle the UI changes
-                let plainKey = true;
-
                 // Check that if we are in a string slot, all characters but the quote of that string are allowed
                 // note: string quotes logic is already handled by checking the closing brackets/quotes above
                 if(isFieldStringSlot(currentSlot)) {
@@ -1055,7 +1052,6 @@ export default Vue.extend({
                                 || (this.frameType == AllFrameTypesIdentifier.import && (this.keyDownStr == "," || this.keyDownStr == "."));
                         }
                         if(!forbidOperator && planningToInsertKey){
-                            plainKey = false;
                             if(isBracket || isStringQuote){
                                 // When an opening bracket is typed and there is no text highlighted, we check if we need to "skipped" that input: if we are at the end of an editable slot, and the next slot is a bracketed structure
                                 // that starts with the same opening bracket that the typed one, we move to the next slot rather than adding a new bracketed structure.
@@ -1120,13 +1116,6 @@ export default Vue.extend({
                                 this.appStore.setSlotTextCursors(newSlotCursorInfos, newSlotCursorInfos);
                             }               
                         }
-                    }
-                    if(plainKey){
-                        // Add the typed key manually
-                        //this.insertSimpleTypedKey(inputString, stateBeforeChanges);
-                        // We leave the rest of the workflow to be handled by insertSimpleTypedKey() above,
-                        // because emitting an event for the slots to be refactored might need to be delayed (cf. insertSimpleTypedKey)
-                        return;
                     }
                 }
                 // The logic is as such, we handle the insertion in the slot (with adequate adaptation if needed, see above)
