@@ -183,7 +183,7 @@ export default Vue.extend({
                 // to those indicating there is no compulsory value
                 "background-color": ((this.focused) 
                     ? ((this.getSlotContent().trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") 
-                    : (((isStructureSingleSlot || isEmptyFunctionCallSlot) && !isSlotOptional && this.code.trim().length == 0) ? "#FFFFFF" : "rgba(255, 255, 255, 0)")) 
+                    : (((isStructureSingleSlot || isEmptyFunctionCallSlot) && !isSlotOptional && this.code.replace(/\u200B/g, "").trim().length == 0) ? "#FFFFFF" : "rgba(255, 255, 255, 0)")) 
                     + " !important", 
             };
         }, 
@@ -1300,12 +1300,12 @@ export default Vue.extend({
                 // Without selection, a slot will be removed when the text caret is at the end of a slot and there is no text selection
                 // we delete slots only when there is a single operator between the current slot, and the next flat (UI) slot.      
                 if(!isSelectingMultiSlots && (selectionStart == selectionEnd) 
-                    && ((isForwardDeletion && focusSlotCursorInfos.cursorPos == this.code.length && nextSlotInfos) || (!isForwardDeletion && focusSlotCursorInfos.cursorPos == 0 && previousSlotInfos))){
+                    && ((isForwardDeletion && focusSlotCursorInfos.cursorPos == this.code.replace(/\u200B/g, "").length && nextSlotInfos) || (!isForwardDeletion && focusSlotCursorInfos.cursorPos == 0 && previousSlotInfos))){
                     this.appStore.bypassEditableSlotBlurErrorCheck = true;
                     
                     const isDeletingFromString = (this.slotType == SlotType.string);
                     // if we are deleting from a string, we start from a reference cursor position or code length of 0 and only use offset to reposition the cursor
-                    const backDeletionCharactersToRetainCount = (isDeletingFromString) ? 0 : this.code.length;
+                    const backDeletionCharactersToRetainCount = (isDeletingFromString) ? 0 : this.code.replace(/\u200B/g, "").length;
                     const referenceCursorPos = (isDeletingFromString) 
                         ? 0 
                         : focusSlotCursorInfos.cursorPos;
@@ -1338,7 +1338,7 @@ export default Vue.extend({
                             const inputSpanField = document.getElementById(slotUID) as HTMLSpanElement;
                             const newTextCursorPos = (isForwardDeletion) 
                                 ? referenceCursorPos + cursorPosOffset 
-                                : ((inputSpanField.textContent??"").length - cursorPosOffset - backDeletionCharactersToRetainCount); 
+                                : ((inputSpanField.textContent??"").replace(/\u200B/g, "").length - cursorPosOffset - backDeletionCharactersToRetainCount); 
                             const newCurrentSlotInfoWithType = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
                             const slotCursorInfos: SlotCursorInfos = {slotInfos: newCurrentSlotInfoWithType, cursorPos: newTextCursorPos};
                             document.getElementById(getLabelSlotUID(newCurrentSlotInfoWithType))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
@@ -1389,7 +1389,7 @@ export default Vue.extend({
                             });
                         }
                     }
-                    else if(!((isForwardDeletion && focusSlotCursorInfos?.cursorPos == this.code.length) || (!isForwardDeletion && focusSlotCursorInfos?.cursorPos == 0))){
+                    else if(!((isForwardDeletion && focusSlotCursorInfos?.cursorPos == this.code.replace(/\u200B/g, "").length) || (!isForwardDeletion && focusSlotCursorInfos?.cursorPos == 0))){
                         const deletionOffset = (isForwardDeletion) ? 0 : -1;
                         newTextCursorPos += deletionOffset;
                         inputSpanField.textContent = inputSpanFieldContent.substring(0, newTextCursorPos) + inputSpanFieldContent.substring(newTextCursorPos + 1);  
