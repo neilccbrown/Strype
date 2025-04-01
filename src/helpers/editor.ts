@@ -202,7 +202,7 @@ export function getFocusedEditableSlotTextSelectionStartEnd(labelSlotUID: string
             }
             else{
                 // the anchor is somewhere after the focus cursor: the selection end is at the end of the slot
-                return {selectionStart: focusCursorInfos.cursorPos, selectionEnd: (document.getElementById(labelSlotUID) as HTMLSpanElement).textContent?.length??0};
+                return {selectionStart: focusCursorInfos.cursorPos, selectionEnd: (document.getElementById(labelSlotUID) as HTMLSpanElement).textContent?.replace(/\u200B/g, "")?.length??0};
             }
         }
     }
@@ -279,7 +279,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                 if((spanElement.textContent?.includes(STRING_DOUBLEQUOTE_PLACERHOLDER) || spanElement.textContent?.includes(STRING_SINGLEQUOTE_PLACERHOLDER)) as boolean){
                     hasStringSlots = true;
                 }
-                uiLiteralCode += (spanElement.textContent);
+                uiLiteralCode += (spanElement.textContent??"").replace(/\u200B/g, "");
             }
         
             if(spanElement.id === currentSlotUID){
@@ -292,7 +292,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                 // therefore we need to account for them when dealing with such operators;
                 // and if we parse the string quotes, we need to set the position value as if the quotes were still here (because they are in the UI)
                 let spacesOffset = 0;
-                const spanElementContentLength = (spanElement.textContent?.length??0);
+                const spanElementContentLength = (spanElement.textContent?.replace(/\u200B/g, "")?.length??0);
                 const ignoreAsKW = (spanElement.textContent == "as" && useStore().frameObjects[parseLabelSlotUID(spanElement.id).frameId].frameType.type != AllFrameTypesIdentifier.import);
                 if(!ignoreAsKW && !isSlotStringLiteralType(labelSlotCoreInfos.slotType) && (trimmedKeywordOperators.includes(spanElement.textContent??""))){
                     spacesOffset = 2;

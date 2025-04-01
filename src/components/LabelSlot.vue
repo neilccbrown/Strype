@@ -344,7 +344,7 @@ export default Vue.extend({
             this.appStore.setFrameEditableSlotContent(
                 {
                     ...this.coreSlotInfo,
-                    code: (spanElement.textContent??""),
+                    code: (spanElement.textContent??"").replace(/\u200B/g, ""),
                     initCode: this.initCode,
                     isFirstChange: this.isFirstChange,
                 }
@@ -570,7 +570,7 @@ export default Vue.extend({
                         this.appStore.validateSlot(
                             {
                                 ...this.coreSlotInfo,
-                                code: this.getSlotContent().trim(),
+                                code: this.getSlotContent().replace(/\u200B/g, "").trim(),
                                 initCode: this.initCode,
                                 isFirstChange: this.isFirstChange,
                             }   
