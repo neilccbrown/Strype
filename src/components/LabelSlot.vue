@@ -1096,6 +1096,11 @@ export default Vue.extend({
                                         closingTokenSlotInfos = (this.appStore.anchorSlotCursorInfos as SlotCursorInfos).slotInfos;
                                     }
                                 }
+                                else {
+                                    closingTokenSpanFieldCurosorPos += inputString.length;
+                                    newBracketIsAtClosingEnd = true;
+                                }
+                                
                                 // Start with the closing end so cursor positions are still valid for the opening
                                 closingTokenSpanField.textContent = closingTokenSpanField.textContent?.substring(0, closingTokenSpanFieldCurosorPos) 
                                     + ((isBracket) ? getMatchingBracket(inputString, true) : ((inputString == "\"") ? STRING_DOUBLEQUOTE_PLACERHOLDER : STRING_SINGLEQUOTE_PLACERHOLDER))

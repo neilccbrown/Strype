@@ -218,7 +218,7 @@ export default Vue.extend({
                     // Reposition the cursor now
                     labelDiv.querySelectorAll(".labelSlot-input").forEach((spanElement) => {
                         if(!foundPos){
-                            const spanContentLength = (spanElement.textContent?.length??0);
+                            const spanContentLength = (spanElement.textContent?.replace(/\u200B/g, "")?.length??0);
                             if(setInsideNextSlot || (focusCursorAbsPos <= (newUICodeLiteralLength + spanContentLength) && focusCursorAbsPos >= newUICodeLiteralLength)){
                                 if(!setInsideNextSlot && !isElementEditableLabelSlotInput(spanElement)){
                                     setInsideNextSlot = true;
