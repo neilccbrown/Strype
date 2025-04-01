@@ -98,20 +98,6 @@ export default Vue.extend({
         isEmphasised: Boolean,
     },
 
-    beforeUpdate(){
-        // If the text isn't set again here, despite "code" being reactive, we end up with "duplicated" insert with operators.
-        const spanElement = document.getElementById(this.UID);
-        if(spanElement && this.appStore.anchorSlotCursorInfos && this.appStore.focusSlotCursorInfos){ // Keep TS happy
-            const prevTextContent = spanElement.textContent;
-            spanElement.textContent = this.code;
-            // After changing the code here, FF requires the right caret position to be reassigned, otherwise the caret moves back to the first
-            // position. The condition ensure we do this only for the right slot, and when the text is in line with the selection we are going to set.
-            if(areSlotCoreInfosEqual(this.appStore.focusSlotCursorInfos.slotInfos, this.coreSlotInfo) && prevTextContent === this.code){
-                setDocumentSelection(this.appStore.anchorSlotCursorInfos, this.appStore.focusSlotCursorInfos);
-            }
-        }
-    },
-
     mounted(){
         // To make sure the a/c component shows just below the spans, we set its top position here based on the span height.
         const spanH = document.getElementById(this.UID)?.clientHeight;
