@@ -1738,7 +1738,7 @@ export function actOnTurtleImport(): void {
 // We need to "fix" the size of the tabs container so the elements of the Exec Area, when it's enlarged, are correctly flowing in the page
 // and stay within the splitters (which are overlayed in App.vue).
 let manuallyResizedEditorHeight: number | undefined; // Flag used below and by App.vue - do not store this in store, it's session-lived only.
-export function setManuallyResizedEditorHeightFlag(value: number): void {
+export function setManuallyResizedEditorHeightFlag(value: number | undefined): void {
     manuallyResizedEditorHeight = value;
 }
 export function getManuallyResizedEditorHeightFlag(): number | undefined {
@@ -1836,13 +1836,13 @@ export function computeAddFrameCommandContainerSize(isExpandedPEA?: boolean): vo
                 }
             }
         }
+            
+        // When we are done, we need to check again the min size of the commands/PEA splitter pane 1, since scroll bars
+        // could have been added with the new change (need to wait for it to be effective though).
+        setTimeout(() => {
+            (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).setPEACommandsSplitterPanesMinSize();    
+        }, 100);    
     }
-
-    // When we are done, we need to check again the min size of the commands/PEA splitter pane 1, since scroll bars
-    // could have been added with the new change (need to wait for it to be effective though).
-    setTimeout(() => {
-        (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).setPEACommandsSplitterPanesMinSize();    
-    }, 100);    
 }
 /* FITRUE_isPython */
 

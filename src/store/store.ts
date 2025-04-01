@@ -1,12 +1,12 @@
 import Vue from "vue";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion, vm } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, actOnTurtleImport, getStrypeCommandComponentRefId, getPEAComponentRefId, getCaretContainerUID, isCaretContainerElement } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getStrypeCommandComponentRefId, getCaretContainerUID, isCaretContainerElement } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -15,6 +15,12 @@ import $ from "jquery";
 import { BvModalEvent } from "bootstrap-vue";
 import { nextTick } from "@vue/composition-api";
 import { TPyParser } from "tigerpython-parser";
+/* IFTRUE_isPython */
+import AppComponent from "@/App.vue";
+import PEAComponent from "@/components/PythonExecutionArea.vue";
+import CommandsComponent from "@/components/Commands.vue";
+import { actOnTurtleImport, getPEAComponentRefId } from "@/helpers/editor";
+/* FITRUE_isPython */
 
 let initialState: StateAppObject = initialStates["initialPythonState"];
 /* IFTRUE_isMicrobit */
@@ -74,9 +80,28 @@ export const useStore = defineStore("app", {
 
             isEditing: false,
 
+            /* These state properties are for saving the layout of the UI.
+             * Some are initally set to UNDEFINED so it we can detect default state:
+             * (for example, the PEA will take its 4:3 ratio size when the commands/PEA 
+             * splitter has not changed, we it needs to be seen as such. )
+             ***/ 
+            editorCommandsSplitterPane2Size: undefined as number | undefined, // same as above for the divider between the editor and the commands (pane 2), default is 34%
+            
+            /* IFTRUE_isPython */
+            peaLayoutMode:  undefined as StrypePEALayoutMode | undefined, // the project layout view is saved with the store
+            
+            // The size of the commands/PEA splitter pane 2 size is saved with the store.
+            // We can't have a default value as the default size will depend on the viewport (to have the PEA in 4:3 ratio)
+            peaCommandsSplitterPane2Size: undefined as number | undefined, 
+
+            peaSplitViewSplitterPane1Size: undefined as number | undefined, // same as above for the split view PEA divider (pane 1), this time a default value is 50%
+            
+            peaExpandedSplitterPane2Size: undefined as number | undefined, // same as above for the expanded view divider (pane 2), this time a default value is 50%
+            /* FITRUE_isPython */
+            /* end properties for saving layout */
+
             // This flag indicates if the user code is being executed in the Python Execution Area
             pythonExecRunningState: PythonExecRunningState.NotRunning,
-
 
             // This flag can be used anywhere a key event should be ignored within the application
             ignoreKeyEvent: false,
@@ -2408,21 +2433,83 @@ export const useStore = defineStore("app", {
                 }
             });
         },
-
         doSetStateFromJSONStr(stateJSONStr: string){
-            this.updateState(
-                JSON.parse(stateJSONStr)
-            );
-            // If the language has been updated, we need to also update the UI accordingly
-            this.setAppLang(this.appLang);
-
             /* IFTRUE_isPython */
             // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
             actOnTurtleImport();
 
             // Clear the Python Execution Area as it could have be run before.
-            ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getPEAComponentRefId()] as any).clear();
+            ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getPEAComponentRefId()] as InstanceType<typeof PEAComponent>).clear(); 
+             
+            // With the PEA, the styling of the overall UI layout is quite complex as some things depend on the "natural"
+            // default state of the layout, and we handle some styling manually. To make things clearer, we always reset 
+            // back to the default layout before any layout changes need to be done. Like that we handle both the case of 
+            // when some information related to the layout are not saved, and the case of being sure we start from a sound base.
+            // So we first need to strip out the new state's information and keep a back up so we can use them later.
+            // (note: for microbit, the styling is far less complicated so we don't do anything on its only layout prop,
+            // editorCommandsSplitterPane2Size)
+            const newState = JSON.parse(stateJSONStr) as typeof this.$state;
+            const newEditorCommandsSplitterPane2Size = newState.editorCommandsSplitterPane2Size;
+            delete newState.editorCommandsSplitterPane2Size;          
+            const newPEALayout = newState.peaLayoutMode;
+            delete newState.peaLayoutMode;
+            const newPEACommandsSplitterPane2Size = newState.peaCommandsSplitterPane2Size;
+            delete newState.peaCommandsSplitterPane2Size; // will be updated manually 
+            const newPEAExpandedSplitterPane2Size = newState.peaExpandedSplitterPane2Size;
+            delete newState.peaExpandedSplitterPane2Size;
+            const newPEASplitViewSplitterPane1Size = newState.peaSplitViewSplitterPane1Size;
+            delete newState.peaSplitViewSplitterPane1Size;  
+            const commandsComponent = (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>);
+
+            commandsComponent.resetPEACommmandsSplitterDefaultState().then(() => {
+                this.updateState(JSON.parse(JSON.stringify(newState)));
+                // Wait a bit after we have reset everything for the UI to get ready, then affect backed up changes
+                setTimeout(() => {
+                    let chainedTimeOuts = 400;
+                    // Now we can restore the backuped properties of the new state related to the layout.
+                    // If any of the properties for layout changes was updated, the PEA 4:3 ratio isn't any longer meaningful.
+                    if(newEditorCommandsSplitterPane2Size){
+                        this.editorCommandsSplitterPane2Size = newEditorCommandsSplitterPane2Size;
+                        // If this splitter was changed, the PEA needs to be resized once the splitter has updated
+                        setTimeout(() => {
+                            (vm.$children[0] as InstanceType<typeof AppComponent>).onStrypeCommandsSplitPaneResize({1: {size: newEditorCommandsSplitterPane2Size}});
+                        }, chainedTimeOuts);
+                    }
+                    if(newPEALayout){
+                        setTimeout(() => {
+                            this.peaLayoutMode = newPEALayout;
+                            ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).$refs[getPEAComponentRefId()] as InstanceType<typeof PEAComponent>).togglePEALayout(newPEALayout);
+                        }, chainedTimeOuts+=200);
+                    }
+    
+                    if(newPEACommandsSplitterPane2Size){
+                        this.peaCommandsSplitterPane2Size = newPEACommandsSplitterPane2Size;
+                        // If this splitter was changed, the PEA needs to be resized once the splitter has updated
+                        setTimeout(() => {
+                            (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).onCommandsSplitterResize({1: {size: newPEACommandsSplitterPane2Size}});
+                        }, (chainedTimeOuts += 200));
+                    }
+    
+                    if(newPEASplitViewSplitterPane1Size){
+                        this.peaSplitViewSplitterPane1Size = newPEASplitViewSplitterPane1Size;
+                    }
+    
+                    if(newPEAExpandedSplitterPane2Size) {
+                        this.peaExpandedSplitterPane2Size = newPEAExpandedSplitterPane2Size;
+                        // If this splitter was changed, the PEA needs to be resized once the splitter has updated
+                        setTimeout(() => {
+                            (vm.$children[0] as InstanceType<typeof AppComponent>).onExpandedPythonExecAreaSplitPaneResize({1: {size: newPEAExpandedSplitterPane2Size}});
+                        }, (chainedTimeOuts += 200));
+                    }                  
+                }, 1000);          
+            });
             /* FITRUE_isPython */
+            /* IFTRUE_isMicrobit */
+            this.updateState(JSON.parse(stateJSONStr));
+            /* FITRUE_isMicrobit */
+
+            // If the language has been updated, we need to also update the UI accordingly
+            this.setAppLang(this.appLang);
         },
 
         // This method can be used to copy a frame to a position.

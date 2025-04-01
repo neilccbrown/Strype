@@ -2,7 +2,7 @@
     <div class="commands">
         /* IFTRUE_isPython
         <Splitpanes horizontal :class="{[scssVars.commandsPEASplitterThemeClassName]: true, [scssVars.expandedPEAClassName]: isExpandedPEA}" @resize="onCommandsSplitterResize">
-            <pane key="1" ref="peaCommandsSplitterPane1Ref" :size="100-commandsSplitterPane2Size" :min-size="commandSplitterPane1MinSize">
+            <pane key="1" ref="peaCommandsSplitterPane1Ref" :size="100 - commandsSplitterPane2Size" :min-size="commandSplitterPane1MinSize">
         FITRUE_isPython */
                 <div :class="scssVars.noPEACommandsClassName" @wheel.stop>
                     <div :class="scssVars.strypeProjectNameContainerClassName">
@@ -89,7 +89,7 @@
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getMenuLeftPaneUID, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, StrypeSyncTarget } from "@/types/types";
+import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
 import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
@@ -644,10 +644,6 @@ export default Vue.extend({
             this.lastProjectSavedDateTooltip = toolTipVal;
         },
 
-       
-
-        
-
         /* IFTRUE_isMicrobit */
         runToMicrobit() {
             // If we can directly upload on microbit, we run the method flash().
@@ -674,7 +670,7 @@ export default Vue.extend({
         /* IFTRUE_isPython */
         onPEAMounted(){
             // Once the PEA is ready, we need to fix the splitter's position between the frame commands area and the PEA,
-            // so that the PEA stays at the bottom of the viewport as intially intented (in its intial 4/3 ratio).
+            // so that the PEA stays at the bottom of the viewport as intially intented (in its initial 4:3 ratio).
             const peaElement = (this.$refs[this.peaComponentRefId] as Vue).$el;
             const peaHeight = peaElement.getBoundingClientRect().height;
             const peaMargin = parseInt(scssVars.pythonExecutionAreaMargin.replace("px",""));
@@ -684,7 +680,6 @@ export default Vue.extend({
                 const commandsSplitterHeight = commandsSplitterDivider.getBoundingClientRect().height + parseInt(window.getComputedStyle(commandsSplitterDivider).marginTop.replace("px","")); 
                 const viewPortH = document.getElementsByTagName("body")[0].getBoundingClientRect().height;
                 this.commandsSplitterPane2Size = ((peaHeight + peaMargin ) * 100) / (viewPortH - commandsSplitterHeight);
-                
                 // The splitter's PEA pane's min size will be updated after computeAddFrameCommandContainerSize() is called
             }
 
@@ -694,11 +689,32 @@ export default Vue.extend({
             }, 200);
         },
 
-        onCommandsSplitterResize() {
+        resetPEACommmandsSplitterDefaultState(): Promise<void> {
+            // When a project is loaded, a PEA layout will be affected.
+            // We need to make sure to be "as if" we were starting from a default project layout
+            // before doing anything (otherwise we have issues with some layout related stuff that
+            // are not saved, or some styling that gets messy).
+            return new Promise((resolve) => {
+                this.hasPEAExpanded = false;
+                this.isCommandsSplitterChanged = false;               
+                (this.$refs[this.peaComponentRefId] as InstanceType<typeof PythonExecutionArea>).togglePEALayout(StrypePEALayoutMode.tabsCollapsed);
+                // Once we have the flags set, we set a timer to wait for the splitter to update before returning from the promise
+                setTimeout(() => {
+                    resolve();
+                }, 800);   
+            });            
+        },        
+
+        onCommandsSplitterResize(event: any) {
             // When the splitter is resized, we need to resize the frame commands container (wrap/unwrap)
-            // and the PEA (will take the full space in its pane, breaking the initial 4/3 ratio)
+            // and the PEA (will take the full space in its pane, breaking the initial 4:3 ratio)
             document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
             this.isCommandsSplitterChanged = true;
+            this.commandsSplitterPane2Size = event[1].size;
+            // We also save the value in the store. We do not want to set commandsSplitterPane2Size as get/set computed property
+            // (and call the appStore change in set()) because we set the value based on other settings (the 4:3 ratio) when PEA is mounted,
+            // that value then shouldn't be saved in the store.
+            this.appStore.peaCommandsSplitterPane2Size = this.commandsSplitterPane2Size;
         },
 
         setPEACommandsSplitterPanesMinSize() {
