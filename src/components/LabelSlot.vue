@@ -596,6 +596,13 @@ export default Vue.extend({
         },
 
         onUDKeyDown(event: KeyboardEvent) {
+            // We may still have the focus even when not logically editing, so we want to
+            // avoid handling the keypress in this case; let the code in Commands handle it
+            // which moves the frame cursor up and down:
+            if (!this.appStore.isEditing) {
+                return;
+            }
+            
             this.appStore.isSelectingMultiSlots = false; // reset the flag
             const isArrowUp = (event.key == "ArrowUp");
            
@@ -1417,6 +1424,13 @@ export default Vue.extend({
         },
 
         onDeleteKeyDown(event: KeyboardEvent){
+            // We may still have the focus even when not logically editing, so we want to
+            // avoid handling the keypress in this case; let the code in Commands handle it
+            // which moves the frame cursor up and down:
+            if (!this.appStore.isEditing) {
+                return;
+            }
+            
             // Be careful: the event is triggered both by backspace & delete keys ! So we need to make a clear distinction here
             if(event.key.toLowerCase() == "delete"){
                 return this.deleteSlots(event);
@@ -1424,6 +1438,13 @@ export default Vue.extend({
         },
 
         onBackSpaceKeyDown(event: KeyboardEvent){
+            // We may still have the focus even when not logically editing, so we want to
+            // avoid handling the keypress in this case; let the code in Commands handle it
+            // which moves the frame cursor up and down:
+            if (!this.appStore.isEditing) {
+                return;
+            }
+            
             // When the backspace key is hit we delete the container frame when:
             //  1) there is no text in the slots
             //  2) we are in the first slot of a frame (*first that appears in the UI*) 
