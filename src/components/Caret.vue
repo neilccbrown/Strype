@@ -1,5 +1,5 @@
 <template>
-    <div :class="{invisible: isInvisible && !areFramesDraggedOver, disabled: isPythonExecuting, 'caret-drop': areFramesDraggedOver, 'caret-drop-forbidden': areFramesDraggedOver && !areDropFramesAllowed}">
+    <div :class="{[scssVars.invisibleClassName]: isInvisible && !areFramesDraggedOver, disabled: isPythonExecuting, 'caret-drop': areFramesDraggedOver, 'caret-drop-forbidden': areFramesDraggedOver && !areDropFramesAllowed}">
         <!-- The inner content of the caret is reserved for the cross (x) that is displayed during DnD when a location is forbidden for dropping -->
          <span v-if="!isInvisible && areFramesDraggedOver && !areDropFramesAllowed" class="caret-cross-forbidden-dnd caret-cross-forbidden-dnd-arm1"></span>
          <span v-if="!isInvisible && areFramesDraggedOver && !areDropFramesAllowed" class="caret-cross-forbidden-dnd caret-cross-forbidden-dnd-arm2"></span>
@@ -13,6 +13,7 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import { PythonExecRunningState } from "@/types/types";
+import scssVars from "@/assets/style/_export.module.scss";
 
 /**
  * Caret is used as a vertical cursor for browsing
@@ -36,12 +37,17 @@ export default Vue.extend({
         isPythonExecuting(): boolean {
             return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
         },
+
+        scssVars() {
+            // just to be able to use in template
+            return scssVars;
+        },
     },
 });
 </script>
 
 <style lang="scss">
-.caret {
+.#{$strype-classname-caret} {
     width: $caret-width;
     background-color: #3467FE;
     border-radius: 6px;
@@ -49,7 +55,7 @@ export default Vue.extend({
     position: relative;
 }
 
-.caret.disabled {
+.#{$strype-classname-caret}.disabled {
     background-color: #b8bac0;
 }
 
@@ -87,7 +93,7 @@ export default Vue.extend({
     top: calc(-#{$caret-height-value}px - (15px / 2));
 }
 
-.invisible {
+.#{$strype-classname-invisible} {
     background-color: transparent !important;
     height: 0px;
 }

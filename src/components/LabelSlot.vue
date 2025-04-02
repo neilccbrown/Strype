@@ -1,5 +1,5 @@
 <template>
-    <div :id="'div_'+UID" :class="{'labelSlot-container': true, nohover: isDraggingFrame}" contenteditable="false">
+    <div :id="'div_'+UID" :class="{[scssVars.labelSlotContainerClassName]: true, nohover: isDraggingFrame}" contenteditable="false">
         <span
             autocomplete="off"
             spellcheck="false"
@@ -25,7 +25,7 @@
             @keyup.backspace="onBackSpaceKeyUp"
             @keydown="onKeyDown($event)"
             @contentPastedInSlot="onCodePaste"
-            :class="{'labelSlot-input': true, navigationPosition: isEditableSlot, errorSlot: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised, readonly: (isPythonExecuting || isDisabled)}"
+            :class="{[scssVars.labelSlotInputClassName]: true, [scssVars.navigationPositionClassName]: isEditableSlot, [scssVars.errorSlotClassName]: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised, readonly: (isPythonExecuting || isDisabled)}"
             :id="UID"
             :key="UID"
             :style="spanBackgroundStyle"
@@ -76,6 +76,7 @@ import { cloneDeep, debounce } from "lodash";
 import LabelSlotsStructure from "./LabelSlotsStructure.vue";
 import { BPopover } from "bootstrap-vue";
 import Frame from "@/components/Frame.vue";
+import scssVars from "@/assets/style/_export.module.scss";
 
 export default Vue.extend({
     name: "LabelSlot",
@@ -119,6 +120,7 @@ export default Vue.extend({
 
     data: function() {
         return {
+            scssVars, // just to be able to use in template
             //this flags indicates if the content of editable slot has been already modified during a sequence of action
             //as we don't want to save each single change of the content, but the full content change itself.
             isFirstChange: true, 
@@ -196,24 +198,24 @@ export default Vue.extend({
             switch(this.slotType){
             case SlotType.operator:
                 // For commas, we do not show the operator style but the text style and we allow a right margin
-                codeTypeCSS = (this.code==",") ? "code-slot slot-right-margin" : "operator-slot";
+                codeTypeCSS = (this.code==",") ? scssVars.frameCodeSlotClassName + " slot-right-margin" : scssVars.frameOperatorSlotClassName;
                 break;
             case SlotType.string:
             case SlotType.openingQuote:
             case SlotType.closingQuote:
-                codeTypeCSS = "string-slot";
+                codeTypeCSS = scssVars.frameStringSlotClassName;
                 break;
             default:
                 // Check comments here
                 if(this.frameType === AllFrameTypesIdentifier.comment){
-                    codeTypeCSS = "comment-slot";
+                    codeTypeCSS = scssVars.frameCommentSlotClassName;
                 }
                 else{
                     // Everything else is code, however, if we are in a function definition name slot, we want the text to show bold as well.
                     if(this.frameType === AllFrameTypesIdentifier.funcdef && this.coreSlotInfo.labelSlotsIndex == 0){
                         boldClass = " bold";
                     }
-                    codeTypeCSS = "code-slot" + boldClass;
+                    codeTypeCSS = scssVars.frameCodeSlotClassName + boldClass;
                 }
                 break;
             }
@@ -661,7 +663,7 @@ export default Vue.extend({
         
         getSelectedACItem() : Element | null {
             // As commas are special tokens in HTML selectors syntax, we need to parse them so the selector matches the element id correctly (our slot IDs may have commas).
-            return document.querySelector("#" + this.$el.id.replaceAll(",","\\,")+ " .acItem.acItemSelected");
+            return document.querySelector("#" + this.$el.id.replaceAll(",","\\,") + " ." + scssVars.acItemClassName + "." + scssVars.acItemSelectedClassName );
         },
 
         onTabKeyDown(event: KeyboardEvent){
@@ -995,7 +997,7 @@ export default Vue.extend({
                         inputSpanField.textContent = inputSpanFieldContent.substring(0, selectionStart) + getMatchingBracket(inputString, false) + inputSpanFieldContent.substring(selectionStart, selectionEnd) + inputString;
                         const newSlotCursorInfos: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: selectionEnd + 1}; // We move past the first inserted opening bracket
                         this.appStore.setSlotTextCursors(newSlotCursorInfos, newSlotCursorInfos);
-                        this.$emit("requestSlotsRefactoring", refactorFocusSpanUID, stateBeforeChanges);
+                        this.$emit(CustomEventTypes.requestSlotsRefactoring, refactorFocusSpanUID, stateBeforeChanges);
                     }
                     else if(inputSpanFieldContent.substring(selectionEnd + inputString.length).trim().length > 0 && this.coreSlotInfo.slotId.includes(",") &&
                         isFieldBracketedSlot(parentSlot as FieldSlot) && (parentSlot as SlotsStructure).openingBracketValue == getMatchingBracket(inputString, false)){
@@ -1003,7 +1005,7 @@ export default Vue.extend({
                         inputSpanField.textContent = inputSpanFieldContent.substring(selectionStart, selectionEnd) + inputString + getMatchingBracket(inputString, false) + inputSpanFieldContent.substring(selectionEnd);
                         const newSlotCursorInfos: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: selectionEnd - selectionStart}; // We move before the first inserted closing bracket
                         this.appStore.setSlotTextCursors(newSlotCursorInfos, newSlotCursorInfos);
-                        this.$emit("requestSlotsRefactoring", refactorFocusSpanUID, stateBeforeChanges);  
+                        this.$emit(CustomEventTypes.requestSlotsRefactoring, refactorFocusSpanUID, stateBeforeChanges);  
                     }
                 }
             }
@@ -1130,9 +1132,8 @@ export default Vue.extend({
                 // The logic is as such, we handle the insertion in the slot (with adequate adaptation if needed, see above)
                 // let the parsing and slot factorisation do the checkup later
                 // (we handle the insertion even if there is specific adapation because in the call to emit, the DOM has not updated)
-                return () => this.$emit("requestSlotsRefactoring", refactorFocusSpanUID, stateBeforeChanges);
-            }
-            return;
+                return () => this.$emit(CustomEventTypes.requestSlotsRefactoring, refactorFocusSpanUID, stateBeforeChanges);
+            }            
         },
 
         insertSimpleTypedKey(keyValue: string, stateBeforeChanges: any, forcedInsert?: boolean){
@@ -1271,7 +1272,7 @@ export default Vue.extend({
                 this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: newPos}, {slotInfos: this.coreSlotInfo, cursorPos: newPos});
 
                 // part 4
-                this.$emit("requestSlotsRefactoring", this.UID, stateBeforeChanges);     
+                this.$emit(CustomEventTypes.requestSlotsRefactoring, this.UID, stateBeforeChanges);     
             }
         },
 
@@ -1580,11 +1581,11 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.labelSlot-container{
+.#{$strype-classname-label-slot-container}{
     position: relative;
 }
 
-.labelSlot-input {
+.#{$strype-classname-label-slot-input} {
     display: block; // to ensure that ctrl+arrow works fine in Chrome
     border-radius: 5px;
     border: 1px solid transparent;
@@ -1598,18 +1599,18 @@ export default Vue.extend({
 
 // We can't use :empty because we use a zero-width space for the content
 // when it is empty (at which point :empty is not applied).  So we use our own version:
-.labelSlot-input[empty-content="true"]::after {
+    .#{$strype-classname-label-slot-input}[empty-content="true"]::after {
     content: attr(placeholder);
     font-style: italic;
     color: #bbb;
 }
 
-.labelSlot-input.readonly {
+.#{$strype-classname-label-slot-input}.readonly {
     cursor: default;
     user-select: none;
 }
 
-.errorSlot {
+.#{$strype-classname-error-slot} {
     display: inline-block;
     position:relative;
     background: url("~@/assets/images/wave.png") bottom repeat-x;
@@ -1622,19 +1623,19 @@ export default Vue.extend({
 }
 
 // Classes related to the different slot types (cf type.ts)
-.string-slot {
+.#{$strype-classname-frame-string-slot} {
     color: #006600 !important;
 }
 
-.operator-slot {
+.#{$strype-classname-frame-operator-slot} {
     color: blue !important;
 }
 
-.code-slot {
+.#{$strype-classname-frame-code-slot}{
     color: black !important; 
 }
 
-.comment-slot {
+.#{$strype-classname-frame-comment-slot}t {
     color: #97971E !important;
     margin-right: 2px;
 }

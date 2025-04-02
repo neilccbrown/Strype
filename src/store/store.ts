@@ -6,7 +6,7 @@ import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evalua
 import { AppPlatform, AppVersion, vm } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, actOnTurtleImport, getStrypeCommandComponentRefId, getStrypePEAComponentRefId } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, actOnTurtleImport, getStrypeCommandComponentRefId, getPEAComponentRefId, getCaretContainerUID, isCaretContainerElement } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -1472,10 +1472,10 @@ export const useStore = defineStore("app", {
 
                     // Ensure the caret (frame or text caret) is visible in the page viewport after the change.
                     // For some reason, scrollIntoView() "miss" out the caret by a slight distance (maybe because it's a div?) so we don't see it. To adjust that issue, we scroll up a bit more.
-                    const htmlElementToShowId = (this.focusSlotCursorInfos) ? getLabelSlotUID(this.focusSlotCursorInfos.slotInfos) : ("caret_"+this.currentFrame.caretPosition+"_of_frame_"+this.currentFrame.id);
+                    const htmlElementToShowId = (this.focusSlotCursorInfos) ? getLabelSlotUID(this.focusSlotCursorInfos.slotInfos) : getCaretContainerUID(this.currentFrame.caretPosition,this.currentFrame.id);
                     const caretContainerEltRect = document.getElementById(htmlElementToShowId)?.getBoundingClientRect();
                     document.getElementById(htmlElementToShowId)?.scrollIntoView();
-                    if(htmlElementToShowId.match(/caret_.*_of_frame_/) != null && caretContainerEltRect){
+                    if(isCaretContainerElement(htmlElementToShowId) && caretContainerEltRect){
                         const scrollStep = (caretContainerEltRect.top + caretContainerEltRect.height > document.documentElement.clientHeight) ? 50 : -50;
                         const currentScroll = $("#"+getEditorMiddleUID()).scrollTop();
                         $("#"+getEditorMiddleUID()).scrollTop((currentScroll??0) + scrollStep);
@@ -2417,7 +2417,7 @@ export const useStore = defineStore("app", {
             actOnTurtleImport();
 
             // Clear the Python Execution Area as it could have be run before.
-            ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getStrypePEAComponentRefId()] as any).clear();
+            ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getPEAComponentRefId()] as any).clear();
             /* FITRUE_isPython */
         },
 

@@ -1,11 +1,11 @@
 <template>
     <div class="commands">
         /* IFTRUE_isPython
-        <Splitpanes horizontal :class="{'strype-commands-split-theme': true, 'expanded-PEA': isExpandedPEA}" @resize="onCommandsSplitterResize">
+        <Splitpanes horizontal :class="{[scssVars.commandsPEASplitterThemeClassName]: true, [scssVars.expandedPEAClassName]: isExpandedPEA}" @resize="onCommandsSplitterResize">
             <pane key="1" :size="100-commandsSplitterPane2Size" :min-size="commandSplitterPane1MinSize">
         FITRUE_isPython */
-                <div class="no-PEA-commands" @wheel.stop>
-                    <div class="project-name-container">
+                <div :class="scssVars.noPEACommandsClassName" @wheel.stop>
+                    <div :class="scssVars.strypeProjectNameContainerClassName">
                         <span class="project-name">{{projectName}}</span>
                         <div @mouseover="getLastProjectSavedDateTooltip" :title="lastProjectSavedDateTooltip">
                             <img v-if="isProjectFromGoogleDrive" :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive" class="project-target-logo"/> 
@@ -21,7 +21,7 @@
                         FITRUE_isMicrobit */
                                 <div :id="commandsContainerUID" class="command-tab-content" >
                                     <div id="addFramePanel">
-                                        <div :class="{frameCommands: true/* IFTRUE_isPython , 'with-expanded-PEA': isExpandedPEA FITRUE_isPython*/}">
+                                        <div :class="{[scssVars.addFrameCommandsContainerClassName]: true/* IFTRUE_isPython , 'with-expanded-PEA': isExpandedPEA FITRUE_isPython*/}">
                                             <p>
                                                 <AddFrameCommand
                                                     v-for="addFrameCommand in addFrameCommands"
@@ -59,12 +59,12 @@
         /* IFTRUE_isPython
             </pane>           
             <pane key="2" :size="commandsSplitterPane2Size" :min-size="commandSplitterPane2MinSize">
-                <python-execution-area class="python-exec-area-container" :ref="peaComponentRefId" v-on:[peaMountedEventName]="onPEAMounted" :hasDefault43Ratio="!isCommandsSplitterChanged && !hasPEAExpanded"/>
+                <python-execution-area :class="scssVars.peaContainerClassName" :ref="peaComponentRefId" v-on:[peaMountedEventName]="onPEAMounted" :hasDefault43Ratio="!isCommandsSplitterChanged && !hasPEAExpanded"/>
             </pane>
         </Splitpanes>
         FITRUE_isPython */
         /* IFTRUE_isMicrobit      
-        <div class="python-exec-area-container">  
+        <div :class="scssVars.peaContainerClassName">  
             <div v-if="showProgress" class="progress cmd-progress-container">
                 <div 
                     class="progress-bar progress-bar-striped bg-info" 
@@ -87,7 +87,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getMenuLeftPaneUID, getStrypePEAComponentRefId, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
+import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getMenuLeftPaneUID, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -95,11 +95,12 @@ import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
 import { mapStores } from "pinia";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
+import scssVars  from "@/assets/style/_export.module.scss";
+import { isMacOSPlatform } from "@/helpers/common";
 /* IFTRUE_isPython */
 import {Splitpanes, Pane} from "splitpanes";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
-import { isMacOSPlatform } from "@/helpers/common";
-import scssVars  from "@/assets/style/_export.module.scss";
+import {getPEAConsoleId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getPEAComponentRefId} from "@/helpers/editor";
 /* FITRUE_isPython */
 /* IFTRUE_isMicrobit */
 import APIDiscovery from "@/components/APIDiscovery.vue";
@@ -123,6 +124,7 @@ export default Vue.extend({
 
     data: function () {
         return {
+            scssVars, // just to be able to use in template
             showProgress: false,
             progressPercent: 0,
             uploadThroughUSB: false,
@@ -174,9 +176,10 @@ export default Vue.extend({
         
         /* IFTRUE_isPython */
         peaComponentRefId(): string {
-            return getStrypePEAComponentRefId();
+            return getPEAComponentRefId();
         },
         /* FITRUE_isPython */
+
         /* IFTRUE_isMicrobit */
         tabIndex: {
             get(): number{
@@ -214,17 +217,19 @@ export default Vue.extend({
         },
     },
 
+    /* IFTRUE_isPython */
     watch: {
         addFrameCommands(){
             // When the commands list is regenerated, the height of the frame commands list may change, and so may the Python Exec Area.
             // So to make sure that the Turtle canvas is still showing in the right scaling, if Turtle is showing then we rescale a bit later.
             // Keep this in the watch rather directly inside the corresponding computed property as computed property shouldn't contain time functions.
-            if(document.getElementById("pythonTurtleContainerDiv")?.style.display != "none"){
-                setTimeout(() => document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged)),
+            if(document.getElementById(getPEAGraphicsContainerDivId())?.style.display != "none"){
+                setTimeout(() => document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged)),
                     800);
             }
         },
     },
+    /* FITRUE_isPython */
 
     created() {
         if(this.appStore.showKeystroke){
@@ -374,12 +379,13 @@ export default Vue.extend({
                     }
                 }
                 
+                /* IFTRUE_isPython */
                 // If ctrl-enter/cmd-enter is pressed, make sure we quit the editing (if that's the case) and run the code
-                if((event.ctrlKey || event.metaKey) && eventKeyLowCase === "enter" && this.$refs.strypePEA) {
-                    ((this.$refs.strypePEA as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).focus();
-                    ((this.$refs.strypePEA as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).click();
+                if((event.ctrlKey || event.metaKey) && eventKeyLowCase === "enter" && this.$refs[getPEAComponentRefId()]) {
+                    ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).focus();
+                    ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).click();
                     // Need to unfocus to avoid keyboard focus non-obviously remaining with the run button:
-                    ((this.$refs.strypePEA as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).blur();
+                    ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).blur();
                     
                     // Don't then process the keypress for other purposes:
                     event.preventDefault();
@@ -387,6 +393,7 @@ export default Vue.extend({
                     event.stopImmediatePropagation();
                     return;
                 }
+                /* FITRUE_isPython */
 
                 // If a context menu is currently displayed, we handle the menu keyboard interaction here
                 // (note that preventing the event here also prevents the keyboard scrolling of the page)
@@ -399,7 +406,7 @@ export default Vue.extend({
 
                 // Prevent default scrolling and navigation in the editor, except if Turtle is currently running and listening for key events
                 // (then we just leave the PEA handling it, see at the end of these conditions for related code)
-                if (!isDraggingFrames && !isEditing && !(isPythonExecuting && (this.$refs.strypePEA as InstanceType<typeof PythonExecutionArea>).$data.isTurtleListeningKeyEvents) && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"].includes(event.key)) {
+                if (!isDraggingFrames && !isEditing && /*IFTRUE_isPython !(isPythonExecuting && (this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isTurtleListeningKeyEvents) && FITRUE_isPython*/["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"].includes(event.key)) {
                     event.stopImmediatePropagation();
                     event.stopPropagation();
                     event.preventDefault();
@@ -489,12 +496,13 @@ export default Vue.extend({
                             this.$nextTick(() => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true})));
                         }
                     }
+                    /* IFTRUE_isPython */
                     else if(isPythonExecuting){
                         // The special case when the user's code is being executing, we want to handle the key events carefully.
                         // If there is a combination key (ctrl,...) we just ignore the events, otherwise, if Turtle is active we pass events to the Turtle graphics,
                         // and if it's not active AND the Python Execution console hasn't go focus, we prevents events.
                         if(!event.altKey && !event.ctrlKey && !event.metaKey){
-                            const turtlePlaceholder = document.getElementById("pythonTurtleDiv");
+                            const turtlePlaceholder = document.getElementById(getPEAGraphicsDivId());
                             const isTurtleShowing = turtlePlaceholder?.style.display != "none";
                             if(turtlePlaceholder && isTurtleShowing && document.activeElement?.id != turtlePlaceholder.id){
                                 // Give focus to the Turtle graphics first to make sure it will respond.
@@ -511,7 +519,7 @@ export default Vue.extend({
                                 }, 500);
                             }
 
-                            if(document.activeElement?.id === "pythonConsole"){
+                            if(document.activeElement?.id === getPEAConsoleId()){
                                 // Don't interfere with the Python Execution console if it's having focus
                                 return;
                             }
@@ -522,6 +530,7 @@ export default Vue.extend({
                             return;
                         }
                     }
+                    /* FITRUE_isPython */
                 }
                 else if(this.appStore.isDraggingFrame){
                     // Hitting escape during a DnD cancels it.
@@ -660,7 +669,7 @@ export default Vue.extend({
             const peaHeight = peaElement.getBoundingClientRect().height;
             const peaMargin = parseInt(scssVars.pythonExecutionAreaMargin.replace("px",""));
             // (The divider isn't exactly the size we give in CSS (I don't know why so we check it like that))
-            const commandsSplitterDivider = document.querySelector(".strype-commands-split-theme .splitpanes__splitter");
+            const commandsSplitterDivider = document.querySelector("." + scssVars.commandsPEASplitterThemeClassName + " .splitpanes__splitter");
             if(commandsSplitterDivider){
                 const commandsSplitterHeight = commandsSplitterDivider.getBoundingClientRect().height + parseInt(window.getComputedStyle(commandsSplitterDivider).marginTop.replace("px","")); 
                 const viewPortH = document.getElementsByTagName("body")[0].getBoundingClientRect().height;
@@ -679,7 +688,7 @@ export default Vue.extend({
         onCommandsSplitterResize() {
             // When the splitter is resized, we need to resize the frame commands container (wrap/unwrap)
             // and the PEA (will take the full space in its pane, breaking the initial 4/3 ratio)
-            document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
+            document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
             this.isCommandsSplitterChanged = true;
             this.setCommandsSplitterPanesMinSize();
         },
@@ -690,13 +699,13 @@ export default Vue.extend({
             // The method parameter "peaDefaultHeight" is only required when we get the min sizes the very first time
             // (because the minimum size will be that of the PEA with the 4/3 default aspect ratio).
             const viewPortH = document.getElementsByTagName("body")[0].getBoundingClientRect().height;
-            const commandsSplitterDivider = document.querySelector(".strype-commands-split-theme .splitpanes__splitter");
+            const commandsSplitterDivider = document.querySelector("." + scssVars.commandsPEASplitterThemeClassName + " .splitpanes__splitter");
             if(commandsSplitterDivider) {               
                 const commandsSplitterHeight = commandsSplitterDivider.getBoundingClientRect().height + parseInt(window.getComputedStyle(commandsSplitterDivider).marginTop.replace("px","")); 
-                const projectNameContainerDiv = document.getElementsByClassName("project-name-container")?.[0];
+                const projectNameContainerDiv = document.getElementsByClassName(scssVars.strypeProjectNameContainerClassName)?.[0];
                 // Pane 1: it is possible that at some point, the frame commands panel has a x-axis scroll bar (when the commands are wrapped). 
                 // So we need to account for that in the min size.
-                const frameCommandsContainer = (document.querySelector(".no-PEA-commands") as HTMLDivElement);
+                const frameCommandsContainer = (document.querySelector("." + scssVars.noPEACommandsClassName) as HTMLDivElement);
                 const frameCommandsScrollBarH = frameCommandsContainer.offsetHeight - frameCommandsContainer.clientHeight;
                 if(projectNameContainerDiv){                    
                     this.commandSplitterPane1MinSize = ((projectNameContainerDiv.getBoundingClientRect().height + frameCommandsScrollBarH) * 100) / (viewPortH - commandsSplitterHeight);
@@ -714,7 +723,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.project-name-container {
+.#{$strype-classname-project-name-container} {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -757,20 +766,20 @@ export default Vue.extend({
  * for the splitter in use in this component.
  */
 /* IFTRUE_isPython */
-.strype-commands-split-theme.splitpanes--horizontal>.splitpanes__splitter,
-.strype-commands-split-theme > .splitpanes--horizontal>.splitpanes__splitter {
+.#{$strype-classname-commands-pea-splitter-theme}.splitpanes--horizontal>.splitpanes__splitter,
+.#{$strype-classname-commands-pea-splitter-theme} > .splitpanes--horizontal>.splitpanes__splitter {
     height: 1px !important;
     background-color: black;
     position: relative;
 }
 
-.strype-commands-split-theme.expanded-PEA.splitpanes--horizontal>.splitpanes__splitter,
-.strype-commands-split-theme.expanded-PEA > .splitpanes--horizontal>.splitpanes__splitter {
+.#{$strype-classname-commands-pea-splitter-theme}.#{$strype-classname-expanded-pea}.splitpanes--horizontal>.splitpanes__splitter,
+.#{$strype-classname-commands-pea-splitter-theme}.#{$strype-classname-expanded-pea} > .splitpanes--horizontal>.splitpanes__splitter {
     background-color: transparent !important;    
 }
 
-.strype-commands-split-theme.splitpanes--horizontal>.splitpanes__splitter:before,
-.strype-commands-split-theme > .splitpanes--horizontal>.splitpanes__splitter:before {
+.#{$strype-classname-commands-pea-splitter-theme}.splitpanes--horizontal>.splitpanes__splitter:before,
+.#{$strype-classname-commands-pea-splitter-theme} > .splitpanes--horizontal>.splitpanes__splitter:before {
     content: "";
     position: absolute;
     left: 0;
@@ -796,7 +805,7 @@ export default Vue.extend({
   transform: translate(-50%, -50%);
 }
 
-.no-PEA-commands {
+.#{$strype-classname-no-pea-commands} {
     /* IFTRUE_isPython */
     overflow-y: hidden;
     display: flex;
@@ -828,20 +837,20 @@ export default Vue.extend({
     color:#666666;
 }
 
-.frameCommands p {
+.#{$strype-classname-add-frame-commands-container} p {
     display: flex;
     flex-direction: column;
     flex-wrap: wrap;
 }
 
-.frameCommands.with-expanded-PEA p {
+.#{$strype-classname-add-frame-commands-container}.with-expanded-PEA p {
    // So that the frame commands in expanded view expands over the commands/PEA splitter,
    // the width is set programmatically
    position: absolute; 
   
 }
 
-.python-exec-area-container {
+.#{$strype-classname-pea-container} {
     /* IFTRUE_isPython */
     margin: 0px $strype-python-exec-area-margin $strype-python-exec-area-margin $strype-python-exec-area-margin;
     /* FITRUE_isPython */

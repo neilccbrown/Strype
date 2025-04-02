@@ -4,9 +4,10 @@ import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
 import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
 import Vue from "vue";
-import { checkEditorCodeErrors, countEditorCodeErrors, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID } from "./editor";
+import { checkEditorCodeErrors, countEditorCodeErrors, getCaretContainerUID, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID } from "./editor";
 import { nextTick } from "@vue/composition-api";
 import { cloneDeep } from "lodash";
+import scssVars from "@/assets/style/_export.module.scss";
 
 export const retrieveSlotFromSlotInfos = (slotCoreInfos: SlotCoreInfos): FieldSlot => {
     // Retrieve the slot from its id (used for UI), check generateFlatSlotBases() for IDs explanation    
@@ -469,7 +470,7 @@ export const restoreSavedStateFrameTypes = function(state:{[id: string]: any}): 
     // If we have managed to load the state, then we might need to make sure the caret is in view
     if(success){
         setTimeout(() => {
-            const htmlElementToShowId = (useStore().focusSlotCursorInfos) ? getLabelSlotUID((useStore().focusSlotCursorInfos as SlotCursorInfos).slotInfos) : ("caret_"+useStore().currentFrame.caretPosition+"_of_frame_"+useStore().currentFrame.id);
+            const htmlElementToShowId = (useStore().focusSlotCursorInfos) ? getLabelSlotUID((useStore().focusSlotCursorInfos as SlotCursorInfos).slotInfos) : getCaretContainerUID(useStore().currentFrame.caretPosition, useStore().currentFrame.id);
             document.getElementById(htmlElementToShowId)?.scrollIntoView();
         }, 1000);
     }   
@@ -704,7 +705,7 @@ export const isContainedInFrame = function (currFrameId: number, caretPosition: 
 export const getAvailableNavigationPositions = function(): NavigationPosition[] {
     // We start by getting from the DOM all the available caret and editable slot positions 
     // (slots of "code" type slots, e.g. not operators -- won't appear in allCaretDOMPositions)
-    const allCaretDOMpositions = document.getElementsByClassName("navigationPosition");
+    const allCaretDOMpositions = document.getElementsByClassName(scssVars.navigationPositionClassName);
     // We create a list that hold objects of {frameId,isSlotNavigationPosition,caretPosition?,labelSlotsIndex?, slotId?) for each available navigation positions
     // and discard the locations that correspond to the editable slots of disable frames
     return Object.values(allCaretDOMpositions).map((e)=> {
