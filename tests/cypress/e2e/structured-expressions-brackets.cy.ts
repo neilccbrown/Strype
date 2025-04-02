@@ -54,6 +54,12 @@ describe("Stride TestExpressionSlot.testBrackets()", () => {
     // Test inserting bracket later:
     testMultiInsert("abc{(}def", "{abc$def}", "{abc}_({$})_{def}");
 
+    // Test inserting invalid closing bracket later:
+    testInsert(")", "{$}", false);
+    testInsert("]", "{$}", false);
+    testMultiInsert("abc{)}def", "{abc$def}", "{abc$def}");
+    testMultiInsert("abc{]}def", "{abc$def}", "{abc$def}");
+    testMultiInsert("[abc{)}def]", "{}_[{abc$def}]_{}", "{}_[{abc$def}]_{}");
 
     testMultiInsert("({(MyWorld)}getWorld()).getWidth()",
         "{}_({$getWorld}_({})_{})_{}.{getWidth}_({})_{}",
