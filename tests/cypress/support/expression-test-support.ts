@@ -11,6 +11,7 @@ Cypress.Commands.add("initialiseSupportStrypeGlobals", () => {
         });
     }
 });
+import {cleanFromHTML} from "../support/test-support";
 
 export function assertState(expectedState : string) : void {
     withSelection((info) => {
