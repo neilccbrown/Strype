@@ -13,8 +13,11 @@ import Frame from "@/components/Frame.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import FrameBody from "@/components/FrameBody.vue";
 import JointFrames from "@/components/JointFrames.vue";
+/* IFTRUE_isPython */
+import CommandsComponent from "@/components/Commands.vue";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import { debounce } from "lodash";
+/* FITRUE_isPython */
 
 export const undoMaxSteps = 200;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
@@ -1735,7 +1738,7 @@ export function actOnTurtleImport(): void {
 // We need to "fix" the size of the tabs container so the elements of the Exec Area, when it's enlarged, are correctly flowing in the page
 // and stay within the splitters (which are overlayed in App.vue).
 let manuallyResizedEditorHeight: number | undefined; // Flag used below and by App.vue - do not store this in store, it's session-lived only.
-export function setManuallyResizedEditorHeightFlag(value: number): void {
+export function setManuallyResizedEditorHeightFlag(value: number | undefined): void {
     manuallyResizedEditorHeight = value;
 }
 export function getManuallyResizedEditorHeightFlag(): number | undefined {
@@ -1787,7 +1790,6 @@ export function setPythonExecAreaLayoutButtonPos(): void{
         }
     }, 100);
 }
-/* FITRUE_isPython */
 
 /** 
  * These methods are used to control the height of the "Add frame" commands,
@@ -1834,8 +1836,16 @@ export function computeAddFrameCommandContainerSize(isExpandedPEA?: boolean): vo
                 }
             }
         }
+            
+        // When we are done, we need to check again the min size of the commands/PEA splitter pane 1, since scroll bars
+        // could have been added with the new change (need to wait for it to be effective though).
+        setTimeout(() => {
+            (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).setPEACommandsSplitterPanesMinSize();    
+        }, 100);    
     }
 }
+/* FITRUE_isPython */
+
 
 export function getCurrentFrameSelectionScope(): SelectAllFramesFuncDefScope {
     // This method checks the current selection scope that we need to know when doing select-all (for function definitions).
