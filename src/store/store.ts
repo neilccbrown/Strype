@@ -2404,9 +2404,10 @@ export const useStore = defineStore("app", {
                         // for ease of coding, we register a "one time" event listener on the modal
                         const execSetStateFunction = (event: BvModalEvent, dlgId: string) => {
                             if((event.trigger == "ok" || event.trigger=="event") && dlgId == getImportDiffVersionModalDlgId()){
-                                this.doSetStateFromJSONStr(newStateStr);      
-                                vm.$root.$off("bv::modal::hide", execSetStateFunction); 
-                                resolve();
+                                this.doSetStateFromJSONStr(newStateStr).then(() => {
+                                    vm.$root.$off("bv::modal::hide", execSetStateFunction); 
+                                    resolve();          
+                                });                          
                             }
                             else{
                                 isStateJSONStrValid = false;
@@ -2418,8 +2419,7 @@ export const useStore = defineStore("app", {
                     //
                     }
                     else{
-                        this.doSetStateFromJSONStr(newStateStr);
-                        resolve();
+                        this.doSetStateFromJSONStr(newStateStr).then(() => resolve());
                     }                
                 }
                 else{
@@ -2433,83 +2433,92 @@ export const useStore = defineStore("app", {
                 }
             });
         },
-        doSetStateFromJSONStr(stateJSONStr: string){
-            /* IFTRUE_isPython */
-            // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
-            actOnTurtleImport();
+        doSetStateFromJSONStr(stateJSONStr: string): Promise<void>{
+            return new Promise((resolve) => {
+                /* IFTRUE_isPython */
+                // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
+                actOnTurtleImport();
 
-            // Clear the Python Execution Area as it could have be run before.
-            ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getPEAComponentRefId()] as InstanceType<typeof PEAComponent>).clear(); 
-             
-            // With the PEA, the styling of the overall UI layout is quite complex as some things depend on the "natural"
-            // default state of the layout, and we handle some styling manually. To make things clearer, we always reset 
-            // back to the default layout before any layout changes need to be done. Like that we handle both the case of 
-            // when some information related to the layout are not saved, and the case of being sure we start from a sound base.
-            // So we first need to strip out the new state's information and keep a back up so we can use them later.
-            // (note: for microbit, the styling is far less complicated so we don't do anything on its only layout prop,
-            // editorCommandsSplitterPane2Size)
-            const newState = JSON.parse(stateJSONStr) as typeof this.$state;
-            const newEditorCommandsSplitterPane2Size = newState.editorCommandsSplitterPane2Size;
-            delete newState.editorCommandsSplitterPane2Size;          
-            const newPEALayout = newState.peaLayoutMode;
-            delete newState.peaLayoutMode;
-            const newPEACommandsSplitterPane2Size = newState.peaCommandsSplitterPane2Size;
-            delete newState.peaCommandsSplitterPane2Size; // will be updated manually 
-            const newPEAExpandedSplitterPane2Size = newState.peaExpandedSplitterPane2Size;
-            delete newState.peaExpandedSplitterPane2Size;
-            const newPEASplitViewSplitterPane1Size = newState.peaSplitViewSplitterPane1Size;
-            delete newState.peaSplitViewSplitterPane1Size;  
-            const commandsComponent = (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>);
+                // Clear the Python Execution Area as it could have be run before.
+                ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getPEAComponentRefId()] as InstanceType<typeof PEAComponent>).clear(); 
+                
+                // With the PEA, the styling of the overall UI layout is quite complex as some things depend on the "natural"
+                // default state of the layout, and we handle some styling manually. To make things clearer, we always reset 
+                // back to the default layout before any layout changes need to be done. Like that we handle both the case of 
+                // when some information related to the layout are not saved, and the case of being sure we start from a sound base.
+                // So we first need to strip out the new state's information and keep a back up so we can use them later.
+                // (note: for microbit, the styling is far less complicated so we don't do anything on its only layout prop,
+                // editorCommandsSplitterPane2Size)
+                const newState = JSON.parse(stateJSONStr) as typeof this.$state;
+                const newEditorCommandsSplitterPane2Size = newState.editorCommandsSplitterPane2Size;
+                delete newState.editorCommandsSplitterPane2Size;          
+                const newPEALayout = newState.peaLayoutMode;
+                delete newState.peaLayoutMode;
+                const newPEACommandsSplitterPane2Size = newState.peaCommandsSplitterPane2Size;
+                delete newState.peaCommandsSplitterPane2Size; // will be updated manually 
+                const newPEAExpandedSplitterPane2Size = newState.peaExpandedSplitterPane2Size;
+                delete newState.peaExpandedSplitterPane2Size;
+                const newPEASplitViewSplitterPane1Size = newState.peaSplitViewSplitterPane1Size;
+                delete newState.peaSplitViewSplitterPane1Size;  
+                const commandsComponent = (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>);
 
-            commandsComponent.resetPEACommmandsSplitterDefaultState().then(() => {
-                this.updateState(JSON.parse(JSON.stringify(newState)));
-                // Wait a bit after we have reset everything for the UI to get ready, then affect backed up changes
-                setTimeout(() => {
-                    let chainedTimeOuts = 400;
-                    // Now we can restore the backuped properties of the new state related to the layout.
-                    // If any of the properties for layout changes was updated, the PEA 4:3 ratio isn't any longer meaningful.
-                    if(newEditorCommandsSplitterPane2Size){
-                        this.editorCommandsSplitterPane2Size = newEditorCommandsSplitterPane2Size;
-                        // If this splitter was changed, the PEA needs to be resized once the splitter has updated
+                commandsComponent.resetPEACommmandsSplitterDefaultState().then(() => {
+                    this.updateState(JSON.parse(JSON.stringify(newState)));
+                    // If the language has been updated, we need to also update the UI accordingly
+                    this.setAppLang(this.appLang);
+                    // Wait a bit after we have reset everything for the UI to get ready, then affect backed up changes
+                    setTimeout(() => {
+                        let chainedTimeOuts = 400;
+                        // Now we can restore the backuped properties of the new state related to the layout.
+                        // If any of the properties for layout changes was updated, the PEA 4:3 ratio isn't any longer meaningful.
+                        if(newEditorCommandsSplitterPane2Size){
+                            this.editorCommandsSplitterPane2Size = newEditorCommandsSplitterPane2Size;
+                            // If this splitter was changed, the PEA needs to be resized once the splitter has updated
+                            setTimeout(() => {
+                                (vm.$children[0] as InstanceType<typeof AppComponent>).onStrypeCommandsSplitPaneResize({1: {size: newEditorCommandsSplitterPane2Size}});
+                            }, chainedTimeOuts);
+                        }
+                        if(newPEALayout){
+                            setTimeout(() => {
+                                this.peaLayoutMode = newPEALayout;
+                                ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).$refs[getPEAComponentRefId()] as InstanceType<typeof PEAComponent>).togglePEALayout(newPEALayout);
+                            }, chainedTimeOuts+=200);
+                        }
+        
+                        if(newPEACommandsSplitterPane2Size){
+                            this.peaCommandsSplitterPane2Size = newPEACommandsSplitterPane2Size;
+                            // If this splitter was changed, the PEA needs to be resized once the splitter has updated
+                            setTimeout(() => {
+                                (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).onCommandsSplitterResize({1: {size: newPEACommandsSplitterPane2Size}});
+                            }, (chainedTimeOuts += 200));
+                        }
+        
+                        if(newPEASplitViewSplitterPane1Size){
+                            this.peaSplitViewSplitterPane1Size = newPEASplitViewSplitterPane1Size;
+                        }
+        
+                        if(newPEAExpandedSplitterPane2Size) {
+                            this.peaExpandedSplitterPane2Size = newPEAExpandedSplitterPane2Size;
+                            // If this splitter was changed, the PEA needs to be resized once the splitter has updated
+                            setTimeout(() => {
+                                (vm.$children[0] as InstanceType<typeof AppComponent>).onExpandedPythonExecAreaSplitPaneResize({1: {size: newPEAExpandedSplitterPane2Size}});
+                            }, (chainedTimeOuts += 200));
+                        }
+                        
+                        // We can resolve the promise when all the changes for the UI have been done
                         setTimeout(() => {
-                            (vm.$children[0] as InstanceType<typeof AppComponent>).onStrypeCommandsSplitPaneResize({1: {size: newEditorCommandsSplitterPane2Size}});
-                        }, chainedTimeOuts);
-                    }
-                    if(newPEALayout){
-                        setTimeout(() => {
-                            this.peaLayoutMode = newPEALayout;
-                            ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).$refs[getPEAComponentRefId()] as InstanceType<typeof PEAComponent>).togglePEALayout(newPEALayout);
-                        }, chainedTimeOuts+=200);
-                    }
-    
-                    if(newPEACommandsSplitterPane2Size){
-                        this.peaCommandsSplitterPane2Size = newPEACommandsSplitterPane2Size;
-                        // If this splitter was changed, the PEA needs to be resized once the splitter has updated
-                        setTimeout(() => {
-                            (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).onCommandsSplitterResize({1: {size: newPEACommandsSplitterPane2Size}});
-                        }, (chainedTimeOuts += 200));
-                    }
-    
-                    if(newPEASplitViewSplitterPane1Size){
-                        this.peaSplitViewSplitterPane1Size = newPEASplitViewSplitterPane1Size;
-                    }
-    
-                    if(newPEAExpandedSplitterPane2Size) {
-                        this.peaExpandedSplitterPane2Size = newPEAExpandedSplitterPane2Size;
-                        // If this splitter was changed, the PEA needs to be resized once the splitter has updated
-                        setTimeout(() => {
-                            (vm.$children[0] as InstanceType<typeof AppComponent>).onExpandedPythonExecAreaSplitPaneResize({1: {size: newPEAExpandedSplitterPane2Size}});
-                        }, (chainedTimeOuts += 200));
-                    }                  
-                }, 1000);          
+                            resolve();
+                        }, chainedTimeOuts + 50);
+                    }, 1000);          
+                });
+                /* FITRUE_isPython */
+                /* IFTRUE_isMicrobit */
+                this.updateState(JSON.parse(stateJSONStr));
+                // If the language has been updated, we need to also update the UI accordingly
+                this.setAppLang(this.appLang);
+                resolve();
+                /* FITRUE_isMicrobit */
             });
-            /* FITRUE_isPython */
-            /* IFTRUE_isMicrobit */
-            this.updateState(JSON.parse(stateJSONStr));
-            /* FITRUE_isMicrobit */
-
-            // If the language has been updated, we need to also update the UI accordingly
-            this.setAppLang(this.appLang);
         },
 
         // This method can be used to copy a frame to a position.

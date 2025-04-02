@@ -1002,10 +1002,18 @@ export default Vue.extend({
                 setManuallyResizedEditorHeightFlag(editorNewMaxHeight);
                 debounceComputeAddFrameCommandContainerSize(true);
                 // Set the editor's max height (fitting within the first pane's height); as well as the "frame commands" panel's
-                (document.getElementsByClassName(scssVars.croppedEditorDivClassName)[0] as HTMLDivElement).style.maxHeight = (editorNewMaxHeight + "px");
+                const croppedEditor = document.getElementsByClassName(scssVars.croppedEditorDivClassName);
+                if(croppedEditor.length > 0){
+                    // The "cropped editor", that is when the PEA is expanded may not exist if the PEA wasn't expanded before..
+                    (croppedEditor[0] as HTMLDivElement).style.maxHeight = (editorNewMaxHeight + "px");                      
+                }
                 (document.getElementsByClassName(scssVars.noPEACommandsClassName)[0] as HTMLDivElement).style.maxHeight = (editorNewMaxHeight + "px");
                 // Set the Python Execution Area's position
-                (document.querySelector("." + scssVars.peaContainerClassName + "." + scssVars.expandedPEAClassName) as HTMLDivElement).style.top = (editorNewMaxHeight + "px");
+                const peaWithExpandedClass = document.querySelector("." + scssVars.peaContainerClassName + "." + scssVars.expandedPEAClassName);
+                if(peaWithExpandedClass){
+                    // The "expanded PEA" may not exist if the PEA wasn't expanded before..
+                    (peaWithExpandedClass as HTMLDivElement).style.top = (editorNewMaxHeight + "px");
+                }     
                 // Set the max height of the Python Execution Area's tab content
                 setPythonExecutionAreaTabsContentMaxHeight();
                 // Trigger a resized event (for scaling the Turtle canvas properly)
