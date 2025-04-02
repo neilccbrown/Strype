@@ -1103,8 +1103,10 @@ export default Vue.extend({
                                 // Start with the closing end so cursor positions are still valid for the opening
                                 closingTokenSpanField.textContent = closingTokenSpanField.textContent?.substring(0, closingTokenSpanFieldCurosorPos) 
                                     + ((isBracket) ? getMatchingBracket(inputString, true) : ((inputString == "\"") ? STRING_DOUBLEQUOTE_PLACERHOLDER : STRING_SINGLEQUOTE_PLACERHOLDER))
-                                    + closingTokenSpanField.textContent?.substring(closingTokenSpanFieldCurosorPos + (newBracketIsAtClosingEnd ? inputString.length : 0));
+                                    + closingTokenSpanField.textContent?.substring(closingTokenSpanFieldCurosorPos + (newBracketIsAtClosingEnd ? 0 : inputString.length));
 
+                                console.log("Closing now: \"" + closingTokenSpanField.textContent + "\"");
+                                
                                 openingTokenSpanField.textContent = openingTokenSpanField.textContent?.substring(0, openingTokenSpanFieldCurosorPos) 
                                     + ((isStringQuote) ? ((inputString == "\"") ? STRING_DOUBLEQUOTE_PLACERHOLDER : STRING_SINGLEQUOTE_PLACERHOLDER) : inputString)
                                     + openingTokenSpanField.textContent?.substring(openingTokenSpanFieldCurosorPos + (newBracketIsAtClosingEnd ? inputString.length : 0));

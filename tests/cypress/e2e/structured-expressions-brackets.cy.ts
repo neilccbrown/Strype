@@ -50,6 +50,11 @@ describe("Stride TestExpressionSlot.testBrackets()", () => {
 
     testInsert("(a+(b*c)+d)", "{}_({a}+{}_({b}*{c})_{}+{d})_{$}");
 
+
+    // Test inserting bracket later:
+    testMultiInsert("abc{(}def", "{abc$def}", "{abc}_({$})_{def}");
+
+
     testMultiInsert("({(MyWorld)}getWorld()).getWidth()",
         "{}_({$getWorld}_({})_{})_{}.{getWidth}_({})_{}",
         "{}_({}_({MyWorld})_{$getWorld}_({})_{})_{}.{getWidth}_({})_{}");
