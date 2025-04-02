@@ -962,8 +962,6 @@ export default Vue.extend({
                                 // So, we just don't do anything special in that situation.
                                 return;
                             }
-                            // Otherwise, just cancel the input:
-                            this.removeLastInput(inputString);
                         }
                     }
                     else{
@@ -973,11 +971,11 @@ export default Vue.extend({
                             // make sure we are inside a bracketed structure and that the opening bracket is the counterpart of the key value (closing bracket)
                             && parentBracketSlot != undefined && parentBracketSlot.openingBracketValue == getMatchingBracket(inputString, false);
                         checkMultidimBrackets = !shouldMoveToNextSlot;
-
-                        // We definitely don't want to insert the closing bracket
-                        // whether we are in the middle of end of the slot:
-                        this.removeLastInput(inputString);
                     }
+                    // We definitely don't want to insert the closing bracket
+                    // whether we are in the middle of end of the slot:
+                    this.removeLastInput(inputString);
+                    
                     // If we are at the end, we treat it as overtyping:
                     if(shouldMoveToNextSlot){
                         // focus the subslot following the closing bracket, in the next tick
