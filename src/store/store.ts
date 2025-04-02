@@ -81,9 +81,8 @@ export const useStore = defineStore("app", {
             isEditing: false,
 
             /* These state properties are for saving the layout of the UI.
-             * Some are initally set to UNDEFINED so it we can detect default state:
-             * (for example, the PEA will take its 4:3 ratio size when the commands/PEA 
-             * splitter has not changed, we it needs to be seen as such. )
+             * They are initally set to UNDEFINED so we can work out which layout changes the users have done.
+             * We always apply the changes after getting back to the default layout (when a file is loaded after first time).
              ***/ 
             editorCommandsSplitterPane2Size: undefined as number | undefined, // same as above for the divider between the editor and the commands (pane 2), default is 34%
             
