@@ -1036,58 +1036,61 @@ export default Vue.extend({
             /* FITRUE_isPython */
         },
         
-        setStateFromPythonFile(completeSource: string, fileName: string, lastSaveDate: number, fileLocation?: FileSystemFileHandle) : void {
-            const allLines = completeSource.split(/\r?\n/);
-            // Split can make an extra blank line at the end which we don't want:
-            if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
-                allLines.pop();
-            }
-            const s = splitLinesToSections(allLines);
-            // Bit awkward but we first copy each to check for errors because
-            // if there are any errors we don't want to paste any:
-            const err = copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION, s.importsMapping)
-                        ?? copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION, s.defsMapping)
-                        ?? copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION, s.mainMapping);
-            if (err != null) {
-                const msg = cloneDeep(MessageDefinitions.InvalidPythonParseImport);
-                const msgObj = msg.message as FormattedMessage;
-                msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, err);
-                
-                useStore().showMessage(msg, 10000);
-            }
-            else {
-                // Clear the current existing code (i.e. frames) of the editor
-                this.appStore.clearAllFrames();
+        setStateFromPythonFile(completeSource: string, fileName: string, lastSaveDate: number, fileLocation?: FileSystemFileHandle) : Promise<void> {
+            return new Promise((resolve) => {
+                const allLines = completeSource.split(/\r?\n/);
+                // Split can make an extra blank line at the end which we don't want:
+                if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
+                    allLines.pop();
+                }
+                const s = splitLinesToSections(allLines);
+                // Bit awkward but we first copy each to check for errors because
+                // if there are any errors we don't want to paste any:
+                const err = copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION, s.importsMapping)
+                            ?? copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION, s.defsMapping)
+                            ?? copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION, s.mainMapping);
+                if (err != null) {
+                    const msg = cloneDeep(MessageDefinitions.InvalidPythonParseImport);
+                    const msgObj = msg.message as FormattedMessage;
+                    msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, err);
+                    
+                    useStore().showMessage(msg, 10000);
+                }
+                else {
+                    // Clear the current existing code (i.e. frames) of the editor
+                    this.appStore.clearAllFrames();
 
-                copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION);
-                if (useStore().copiedSelectionFrameIds.length > 0) {
-                    getCaretContainerComponent(getFrameComponent(-1) as InstanceType<typeof FrameContainer>).doPaste(true);
-                }
-                copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION);
-                if (useStore().copiedSelectionFrameIds.length > 0) {
-                    getCaretContainerComponent(getFrameComponent(-2) as InstanceType<typeof FrameContainer>).doPaste(true);
-                }
-                if (s.main.length > 0) {
-                    copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION);
+                    copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION);
                     if (useStore().copiedSelectionFrameIds.length > 0) {
-                        getCaretContainerComponent(getFrameComponent(-3) as InstanceType<typeof FrameContainer>).doPaste(true);
+                        getCaretContainerComponent(getFrameComponent(-1) as InstanceType<typeof FrameContainer>).doPaste(true);
                     }
+                    copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION);
+                    if (useStore().copiedSelectionFrameIds.length > 0) {
+                        getCaretContainerComponent(getFrameComponent(-2) as InstanceType<typeof FrameContainer>).doPaste(true);
+                    }
+                    if (s.main.length > 0) {
+                        copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION);
+                        if (useStore().copiedSelectionFrameIds.length > 0) {
+                            getCaretContainerComponent(getFrameComponent(-3) as InstanceType<typeof FrameContainer>).doPaste(true);
+                        }
+                    }
+
+                    // Now we can clear other non-frame related elements
+                    this.appStore.clearNoneFrameRelatedState();
+                
+                    /* IFTRUE_isPython */
+                    // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
+                    actOnTurtleImport();
+
+                    // Clear the Python Execution Area as it could have be run before.
+                    ((this.$root.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getPEAComponentRefId()] as any).clear();
+                    /* FITRUE_isPython */
+
+                    // Finally, we can trigger the notifcation a file has been loaded.
+                    (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, lastSaveDate, fileLocation);
+                    resolve();
                 }
-
-                // Now we can clear other non-frame related elements
-                this.appStore.clearNoneFrameRelatedState();
-             
-                /* IFTRUE_isPython */
-                // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
-                actOnTurtleImport();
-
-                // Clear the Python Execution Area as it could have be run before.
-                ((this.$root.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getPEAComponentRefId()] as any).clear();
-                /* FITRUE_isPython */
-
-                // Finally, we can trigger the notifcation a file has been loaded.
-                (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, lastSaveDate, fileLocation);
-            }
+            });
         },
     },
 });
