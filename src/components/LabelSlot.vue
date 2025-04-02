@@ -757,6 +757,9 @@ export default Vue.extend({
             // We capture the key shortcut for opening the a/c
             if((event.metaKey || event.ctrlKey) && event.key == " "){
                 this.acRequested = true;
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
             }
 
             // When some text is cut through *a selection*, we need to handle it fully: we want to handle the slot changes in the store to reflect the
