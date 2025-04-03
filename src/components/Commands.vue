@@ -542,16 +542,6 @@ export default Vue.extend({
                     event.preventDefault();
                     return;
                 }
-
-                //prevent specific characters in specific frames (cf details)
-                if(isEditing){
-                    const frameType = this.appStore.getCurrentFrameObject.frameType.type;
-                    //space in import frame's editable slots
-                    if((frameType === AllFrameTypesIdentifier.import || frameType === AllFrameTypesIdentifier.fromimport) && event.key === " "){
-                        event.preventDefault();
-                        return;
-                    }
-                }
             }
         );
 

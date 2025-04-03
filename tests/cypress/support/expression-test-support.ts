@@ -11,6 +11,7 @@ Cypress.Commands.add("initialiseSupportStrypeGlobals", () => {
         });
     }
 });
+import {cleanFromHTML} from "../support/test-support";
 
 export function assertState(expectedState : string) : void {
     withSelection((info) => {
@@ -24,7 +25,7 @@ export function assertState(expectedState : string) : void {
             for (let i = 1; i < parts.length - 1; i++) {
                 const p : any = parts[i];
 
-                let text = p.value || p.textContent || "";
+                let text = cleanFromHTML(p.value || p.textContent || "");
 
                 // If we're the focused slot, put a dollar sign in to indicate the current cursor position:
                 if (info.id === p.getAttribute("id") && info.cursorPos >= 0) {

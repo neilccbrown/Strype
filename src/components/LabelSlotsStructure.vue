@@ -15,6 +15,7 @@
             v-for="(slotItem, slotIndex) in subSlots" 
             :key="frameId + '_'  + labelIndex + '_' + slotIndex"
             class="next-to-eachother"
+            contenteditable="false"
         >
             <!-- Note: the default text is only showing for new slots (1 subslot), we also use unicode zero width space character for empty slots for UI -->
             <LabelSlot
@@ -127,7 +128,9 @@ export default Vue.extend({
                 // We show quotes in the UI as textual opening or closing quotes
                 return getUIQuote(slot.code, slot.type == SlotType.openingQuote);
             }
-            return slot.code;
+            // On Firefox there are problems typing into completely blank slots,
+            // so we use a zero-width space if there is no code:
+            return slot.code ? slot.code : "\u200B";
         },
 
         isSlotEmphasised(slot: FlatSlotBase): boolean{
@@ -191,7 +194,7 @@ export default Vue.extend({
             // Comments do not need to be checked, so we do nothing special for them, but just enforce the caret to be placed at the right place and the code value to be updated
             const currentFocusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
             if(this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment && currentFocusSlotCursorInfos){
-                (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields[0] as BaseSlot).code = document.getElementById(getLabelSlotUID(currentFocusSlotCursorInfos.slotInfos))?.textContent??"";
+                (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields[0] as BaseSlot).code = (document.getElementById(getLabelSlotUID(currentFocusSlotCursorInfos.slotInfos))?.textContent??"").replace(/\u200B/g, "");
                 this.$nextTick(() => setDocumentSelection(currentFocusSlotCursorInfos, currentFocusSlotCursorInfos));
                 return;
             }
@@ -216,7 +219,7 @@ export default Vue.extend({
                     // Reposition the cursor now
                     labelDiv.querySelectorAll("." + scssVars.labelSlotInputClassName).forEach((spanElement) => {
                         if(!foundPos){
-                            const spanContentLength = (spanElement.textContent?.length??0);
+                            const spanContentLength = (spanElement.textContent?.replace(/\u200B/g, "")?.length??0);
                             if(setInsideNextSlot || (focusCursorAbsPos <= (newUICodeLiteralLength + spanContentLength) && focusCursorAbsPos >= newUICodeLiteralLength)){
                                 if(!setInsideNextSlot && !isElementEditableLabelSlotInput(spanElement)){
                                     setInsideNextSlot = true;
@@ -328,12 +331,6 @@ export default Vue.extend({
                     event.stopImmediatePropagation();
                 }
             }
-            // Let through various shortcuts like Ctrl-A, Ctrl-C, etc, so that they trigger the in-built
-            // actions of selectAll, copy, etc; as well as up/down and derivates keys IF WE ARE IN A COMMENT FRAME.
-            if (!event.ctrlKey && !event.metaKey && 
-                !((this.frameId in this.appStore.frameObjects) && (this.appStore.frameObjects[this.frameId].frameType.type === AllFrameTypesIdentifier.comment) && ["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"].includes(event.key))) {
-                event.preventDefault();
-            }
         },
 
         forwardPaste(event: ClipboardEvent){
@@ -359,7 +356,7 @@ export default Vue.extend({
                 // If we're trying to go off the bounds of this slot
                 // For comments, if there is a terminating line return, we do not allow the cursor to be past it (cf LabelSlot.vue onEnterOrTabKeyUp() for why)
                 if((cursorPos == 0 && event.key==="ArrowLeft") 
-                        || (((cursorPos === spanInputContent.length) || (isCommentFrame && spanInputContent.endsWith("\n") && cursorPos == spanInputContent.length - 1)) && event.key==="ArrowRight")) {
+                        || (((cursorPos >= spanInputContent.replace(/\u200B/, "").length) || (isCommentFrame && spanInputContent.endsWith("\n") && cursorPos == spanInputContent.length - 1)) && event.key==="ArrowRight")) {
                     // DO NOT request a loss of focus here, because we need to be able to know which element of the UI has focus to find the neighbour in this.appStore.leftRightKey()
                     this.appStore.isSelectingMultiSlots = event.shiftKey;
                     this.appStore.leftRightKey({key: event.key, isShiftKeyHold: event.shiftKey}).then(() => {
