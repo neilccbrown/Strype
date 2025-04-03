@@ -806,8 +806,6 @@ export default Vue.extend({
             // We need to know the current cursor pos, because inputString might appear in the slot
             // multiple times; the one we want to remove should be the one just before the cursor:
             const cursorPos = getTextStartCursorPositionOfHTMLElement(spanElement);
-            //const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: this.textCursorPos};
-            //setDocumentSelection(slotCursorInfo, slotCursorInfo);
             let content = spanElement.textContent ?? "";
             // Check the content is present just before the cursor:
             if (content.length >= toRemove.length
@@ -858,7 +856,6 @@ export default Vue.extend({
             //   with operators and brackets which can create new slots.
             // - Delete and backspace are not input events so they happen elsewhere.
             
-            console.log("Processing input: \"" + inputString + "\" on slot: " + this.UID + " index: " + this.labelSlotsIndex);
             const stateBeforeChanges = cloneDeep(this.appStore.$state);
             const slotSelectionCursorComparisonValue = getSelectionCursorsComparisonValue() as number;
             
@@ -868,6 +865,9 @@ export default Vue.extend({
             const parentSlot = retrieveParentSlotFromSlotInfos(this.coreSlotInfo);
             const nextSlotInfos = getFlatNeighbourFieldSlotInfos(this.coreSlotInfo, true, true);
   
+            // Note: this selection is remembered from before the input we are processing, so
+            // will be different to where the cursor actually is, hence we generally add inputString.length
+            // to selectionEnd, below.
             const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UID);
             const hasTextSelection = (this.appStore.anchorSlotCursorInfos && this.appStore.focusSlotCursorInfos && slotSelectionCursorComparisonValue != 0) ?? false;
             let refactorFocusSpanUID = this.UID; // by default the focus stays where we are
@@ -943,7 +943,7 @@ export default Vue.extend({
                 // we move the text cursor in the next slot, as we consider the user closed an existing already closed bracket / quote.
                 //(*) see later in this method
                 let shouldMoveToNextSlot : boolean;
-                let checkMultidimBrackets = hasTextSelection;console.log("Content: \"" + inputSpanFieldContent + "\", selStart: " + selectionStart + " end: " + isAtEndOfSlot);
+                let checkMultidimBrackets = hasTextSelection;
                 // Checking if we are escaping the quote used for this string (i.e. we are after an escaping \, and there is no quote following the caret)
                 const isEscapingString = isFieldStringSlot(currentSlot) && selectionStart > 0 && (getNumPrecedingBackslashes(inputSpanFieldContent, selectionStart) % 2) == 1
                     && ((selectionStart + inputString.length < inputSpanFieldContent.length && inputSpanFieldContent[selectionStart + inputString.length]!= inputString) || isAtEndOfSlot);
@@ -1109,8 +1109,6 @@ export default Vue.extend({
                                     + ((isBracket) ? getMatchingBracket(inputString, true) : ((inputString == "\"") ? STRING_DOUBLEQUOTE_PLACERHOLDER : STRING_SINGLEQUOTE_PLACERHOLDER))
                                     + closingTokenSpanField.textContent?.substring(closingTokenSpanFieldCurosorPos + (newBracketIsAtClosingEnd ? 0 : inputString.length));
 
-                                console.log("Closing now: \"" + closingTokenSpanField.textContent + "\"");
-                                
                                 openingTokenSpanField.textContent = openingTokenSpanField.textContent?.substring(0, openingTokenSpanFieldCurosorPos) 
                                     + ((isStringQuote) ? ((inputString == "\"") ? STRING_DOUBLEQUOTE_PLACERHOLDER : STRING_SINGLEQUOTE_PLACERHOLDER) : inputString)
                                     + openingTokenSpanField.textContent?.substring(openingTokenSpanFieldCurosorPos + (newBracketIsAtClosingEnd ? inputString.length : 0));
