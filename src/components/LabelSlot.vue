@@ -1578,6 +1578,9 @@ export default Vue.extend({
 
 <style lang="scss">
 .#{$strype-classname-label-slot-container}{
+    outline: none;
+    max-width: 100%;
+    flex-wrap: wrap;
     position: relative;
 }
 

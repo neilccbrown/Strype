@@ -9,7 +9,7 @@
         @focus="onFocus"
         @blur="blurEditableSlot"
         @paste.prevent.stop="forwardPaste"
-        class="next-to-eachother label-slot-container"
+        class="next-to-eachother label-slot-structure"
     >
         <div 
             v-for="(slotItem, slotIndex) in subSlots" 
@@ -448,7 +448,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.label-slot-container{
+.label-slot-structure{
     outline: none;
     max-width: 100%;
     flex-wrap: wrap;
