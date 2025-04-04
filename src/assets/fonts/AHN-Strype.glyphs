@@ -2,8 +2,10 @@
 .appVersion = "3343";
 .formatVersion = 3;
 DisplayStrings = (
-"⇐",
-_
+":",
+",",
+".",
+";"
 );
 axes = (
 {
@@ -63601,7 +63603,7 @@ width = 527;
 glyphname = period;
 kernLeft = period;
 kernRight = period_2;
-lastChange = "2024-11-01 12:02:53 +0000";
+lastChange = "2025-04-04 10:18:24 +0000";
 layers = (
 {
 layerId = "883DA8B6-3D8E-4908-9E9E-18B044E47F8D";
@@ -63701,22 +63703,22 @@ shapes = (
 {
 closed = 1;
 nodes = (
-(141,-12,o),
-(170,17,o),
-(170,53,cs),
-(170,89,o),
-(141,118,o),
-(105,118,cs),
-(69,118,o),
-(40,89,o),
-(40,53,cs),
-(40,17,o),
-(69,-12,o),
-(105,-12,cs)
+(200,-12,o),
+(250,38,o),
+(250,88,cs),
+(250,138,o),
+(200,188,o),
+(150,188,cs),
+(100,188,o),
+(50,138,o),
+(50,88,cs),
+(50,38,o),
+(100,-12,o),
+(150,-12,cs)
 );
 }
 );
-width = 210;
+width = 300;
 },
 {
 layerId = "77C32F3B-CDAD-439A-A41B-3F592148655B";
@@ -63796,7 +63798,7 @@ unicode = 46;
 glyphname = comma;
 kernLeft = period;
 kernRight = period_2;
-lastChange = "2024-11-01 12:02:53 +0000";
+lastChange = "2025-04-04 10:22:20 +0000";
 layers = (
 {
 layerId = "883DA8B6-3D8E-4908-9E9E-18B044E47F8D";
@@ -63908,25 +63910,25 @@ shapes = (
 {
 closed = 1;
 nodes = (
-(102,-133,l),
-(164,25,ls),
-(167,33,o),
-(170,43,o),
-(170,53,cs),
-(170,87,o),
-(141,118,o),
-(104,118,cs),
-(69,118,o),
-(40,88,o),
-(40,53,cs),
-(40,21,o),
-(63,-6,o),
-(94,-11,c),
-(47,-133,l)
+(125,-159,l),
+(223,0,ls),
+(227,6,o),
+(250,38,o),
+(250,88,cs),
+(250,138,o),
+(200,188,o),
+(150,188,cs),
+(100,188,o),
+(50,138,o),
+(50,88,cs),
+(50,38,o),
+(100,-12,o),
+(150,-12,c),
+(70,-159,l)
 );
 }
 );
-width = 210;
+width = 300;
 },
 {
 layerId = "77C32F3B-CDAD-439A-A41B-3F592148655B";
@@ -64017,7 +64019,7 @@ color = 6;
 glyphname = colon;
 kernLeft = colon;
 kernRight = colon_2;
-lastChange = "2024-11-01 12:02:53 +0000";
+lastChange = "2025-04-04 10:22:42 +0000";
 layers = (
 {
 guides = (
@@ -64112,7 +64114,7 @@ pos = (0,384);
 ref = period;
 }
 );
-width = 210;
+width = 300;
 },
 {
 guides = (
@@ -64185,7 +64187,7 @@ color = 6;
 glyphname = semicolon;
 kernLeft = colon;
 kernRight = colon_2;
-lastChange = "2024-11-01 12:02:53 +0000";
+lastChange = "2025-04-04 10:22:52 +0000";
 layers = (
 {
 guides = (
@@ -64280,7 +64282,7 @@ pos = (0,384);
 ref = period;
 }
 );
-width = 210;
+width = 300;
 },
 {
 guides = (
