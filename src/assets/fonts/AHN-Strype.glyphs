@@ -67564,7 +67564,7 @@ unicode = 8212;
 glyphname = underscore;
 kernLeft = underscore;
 kernRight = underscore;
-lastChange = "2025-04-03 17:06:20 +0000";
+lastChange = "2025-04-04 10:05:31 +0000";
 layers = (
 {
 layerId = "883DA8B6-3D8E-4908-9E9E-18B044E47F8D";
@@ -67632,14 +67632,14 @@ shapes = (
 {
 closed = 1;
 nodes = (
-(370,-79,l),
-(370,0,l),
-(30,0,l),
-(30,-79,l)
+(400,-79,l),
+(400,0,l),
+(50,0,l),
+(50,-79,l)
 );
 }
 );
-width = 400;
+width = 450;
 },
 {
 layerId = "77C32F3B-CDAD-439A-A41B-3F592148655B";
