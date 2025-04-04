@@ -357,9 +357,10 @@ function testSelectionBoth(code: string, startIndex: number, endIndex: number, t
     testSelection(code, endIndex, startIndex, thenType, expectedAfter);
 }
 
+enum CUT_COPY_TEST { CUT_ONLY, COPY_ONLY, CUT_REPASTE }
 
-function testCutCopy(code : string, startIndex: number, endIndex: number, expectedClipboard : string, expectedAfter : string, cut: boolean) : void {
-    it(`Tests selecting then ${cut ? "cutting" : "copying"} in ${code} from ${startIndex} to ${endIndex}`, () => {
+function testCutCopy(code : string, startIndex: number, endIndex: number, expectedClipboard : string, expectedAfter : string, kind: CUT_COPY_TEST) : void {
+    it(`Tests selecting then ${CUT_COPY_TEST[kind]} in ${code} from ${startIndex} to ${endIndex}`, () => {
         focusEditor();
         cy.get("body").type("{backspace}{backspace}i");
         assertState("{$}");
@@ -374,21 +375,30 @@ function testCutCopy(code : string, startIndex: number, endIndex: number, expect
             startIndex -= 1;
         }
         cy.wait(500);
-        cy.get("body").type(cut ? "{ctrl}x" : "{ctrl}c");
-        assertState(expectedAfter);
+        cy.get("body").type(kind == CUT_COPY_TEST.COPY_ONLY ? "{ctrl}c" : "{ctrl}x");
         (cy as any).assertValueCopiedToClipboard(expectedClipboard);
+        if (kind == CUT_COPY_TEST.CUT_REPASTE) {
+            (cy.focused() as any).paste(expectedClipboard);
+        }
+        assertState(expectedAfter);
     });
 }
 
 function testCutCopyBothWays(code: string, startIndex: number, endIndex: number, expectedClipboard: string, expectedAfterCut : string, expectedAfterCopy: string) : void {
     // Test cutting from start to end then end to start:
-    testCutCopy(code, startIndex, endIndex, expectedClipboard, expectedAfterCut, true);
-    testCutCopy(code, endIndex, startIndex, expectedClipboard, expectedAfterCut, true);
+    testCutCopy(code, startIndex, endIndex, expectedClipboard, expectedAfterCut, CUT_COPY_TEST.CUT_ONLY);
+    testCutCopy(code, endIndex, startIndex, expectedClipboard, expectedAfterCut, CUT_COPY_TEST.CUT_ONLY);
     // Copying is similar, but state should be unchanged:
     // Only thing is, because selection remains, cursor pos is different each way,
     // so we label with | and $ and remove/swap accordingly:
-    testCutCopy(code, startIndex, endIndex, expectedClipboard, expectedAfterCopy.replace("|", ""), false);
-    testCutCopy(code, endIndex, startIndex, expectedClipboard, expectedAfterCopy.replace("$", "").replace("|", "$"), false);
+    testCutCopy(code, startIndex, endIndex, expectedClipboard, expectedAfterCopy.replace("|", ""), CUT_COPY_TEST.COPY_ONLY);
+    testCutCopy(code, endIndex, startIndex, expectedClipboard, expectedAfterCopy.replace("$", "").replace("|", "$"), CUT_COPY_TEST.COPY_ONLY);
+    
+    // Now, test cutting followed by pasting.  Note that state after is the unmodified one,
+    // so it's actually expectedAfterCopy even though we are cutting and pasting.
+    // But the cursor will always be at the end, never at the beginning:
+    testCutCopy(code, startIndex, endIndex, expectedClipboard, expectedAfterCopy.replace("|", ""), CUT_COPY_TEST.CUT_REPASTE);
+    testCutCopy(code, endIndex, startIndex, expectedClipboard, expectedAfterCopy.replace("|", ""), CUT_COPY_TEST.CUT_REPASTE);
 }
 
 describe("Shift-Home selects to the beginning", () => {
@@ -468,6 +478,4 @@ describe("Selecting then cutting/copying", () => {
     // Check we don't see zero-width spaces:
     testCutCopyBothWays("fax()", 2,5, "x()", "{fa$}", "{fa|x}_({})_{$}");
 });
-
-// TODO test pasting (can do as part of cut; paste back?)
 
