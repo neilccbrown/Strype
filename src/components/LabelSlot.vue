@@ -1005,6 +1005,10 @@ export default Vue.extend({
                         this.appStore.setSlotTextCursors(newSlotCursorInfos, newSlotCursorInfos);
                         this.$emit(CustomEventTypes.requestSlotsRefactoring, refactorFocusSpanUID, stateBeforeChanges);  
                     }
+                    else {
+                        // We're not doing multidim brackets, just remove the input:
+                        this.removeLastInput(inputString);
+                    }
                 }
             }
             else{
