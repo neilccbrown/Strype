@@ -22,7 +22,7 @@ beforeEach(() => {
 // @ts-ignore
 Cypress.Commands.add("assertValueCopiedToClipboard", (value) => {
     cy.window().its("navigator.clipboard")
-        .invoke("readText").should("equal", value);
+        .invoke("readText").then((t) => cy.wrap(t).should("equal", value));
 });
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -222,7 +222,7 @@ function findPreviousPosition(node: Node | null, offset: number, container: Elem
     if (found && offset === 0 && previousTextNode) {
         return {
             node: previousTextNode,
-            offset: previousTextNode.textContent?.length || 0,
+            offset: (previousTextNode.textContent == "\u200B") ? 0 : (previousTextNode.textContent?.length || 0),
         };
     }
 
@@ -231,7 +231,7 @@ function findPreviousPosition(node: Node | null, offset: number, container: Elem
         // This handles the case when we're at an element node
         return {
             node: previousTextNode,
-            offset: previousTextNode.textContent?.length || 0,
+            offset: (previousTextNode.textContent == "\u200B") ? 0 : (previousTextNode.textContent?.length || 0),
         };
     }
 
@@ -253,7 +253,8 @@ function findNextPosition(node: Node | null, offset: number, container: Element)
     if (node.nodeType === Node.TEXT_NODE &&
         node.textContent &&
         offset < node.textContent.length &&
-        isNodeEditableText(node)) {
+        isNodeEditableText(node) &&
+        !(node.textContent == "\u200B" && offset == 0)) {
         return { node, offset: offset + 1 };
     }
 
@@ -295,7 +296,8 @@ function findNextPosition(node: Node | null, offset: number, container: Element)
 
     // If we found our node and we're at its end, get the next text node
     if (found && node.nodeType === Node.TEXT_NODE &&
-        node.textContent && offset >= node.textContent.length) {
+        node.textContent &&
+        (offset >= node.textContent.length || (node.textContent == "\u200B" && offset == 0))) {
         if (walker.nextNode()) {
             return { node: walker.currentNode, offset: 0 };
         }
@@ -353,6 +355,40 @@ function testSelectionBoth(code: string, startIndex: number, endIndex: number, t
     testSelection(code, startIndex, endIndex, thenType, expectedAfter);
     // Then end to start:
     testSelection(code, endIndex, startIndex, thenType, expectedAfter);
+}
+
+
+function testCutCopy(code : string, startIndex: number, endIndex: number, expectedClipboard : string, expectedAfter : string, cut: boolean) : void {
+    it(`Tests selecting then ${cut ? "cutting" : "copying"} in ${code} from ${startIndex} to ${endIndex}`, () => {
+        focusEditor();
+        cy.get("body").type("{backspace}{backspace}i");
+        assertState("{$}");
+        cy.get("body").type(" " + code);
+        cy.get("body").type("{home}" + "{rightarrow}".repeat(startIndex));
+        while (startIndex < endIndex) {
+            (cy as any).extendSelectionRight();
+            startIndex += 1;
+        }
+        while (endIndex < startIndex) {
+            (cy as any).extendSelectionLeft();
+            startIndex -= 1;
+        }
+        cy.wait(500);
+        cy.get("body").type(cut ? "{ctrl}x" : "{ctrl}c");
+        assertState(expectedAfter);
+        (cy as any).assertValueCopiedToClipboard(expectedClipboard);
+    });
+}
+
+function testCutCopyBothWays(code: string, startIndex: number, endIndex: number, expectedClipboard: string, expectedAfterCut : string, expectedAfterCopy: string) : void {
+    // Test cutting from start to end then end to start:
+    testCutCopy(code, startIndex, endIndex, expectedClipboard, expectedAfterCut, true);
+    testCutCopy(code, endIndex, startIndex, expectedClipboard, expectedAfterCut, true);
+    // Copying is similar, but state should be unchanged:
+    // Only thing is, because selection remains, cursor pos is different each way,
+    // so we label with | and $ and remove/swap accordingly:
+    testCutCopy(code, startIndex, endIndex, expectedClipboard, expectedAfterCopy.replace("|", ""), false);
+    testCutCopy(code, endIndex, startIndex, expectedClipboard, expectedAfterCopy.replace("$", "").replace("|", "$"), false);
 }
 
 describe("Shift-Home selects to the beginning", () => {
@@ -423,4 +459,15 @@ describe("Selecting then deleting in multiple slots", () => {
     testSelectionBoth("123+456", 2,5, "{backspace}", "{12$56}");
 });
 
-// TODO also test copy, and paste, with multi-slot selection
+describe("Selecting then cutting/copying", () => {
+    testCutCopyBothWays("123456", 2,4, "34", "{12$56}", "{12|34$56}");
+    testCutCopyBothWays("123+456", 2,5, "3+4", "{12$56}", "{12|3}+{4$56}");
+
+    testCutCopyBothWays("123+(456*789)-0", 2,14, "3+(456*789)-", "{12$0}", "{12|3}+{}_({456}*{789})_{}-{$0}");
+    
+    // Check we don't see zero-width spaces:
+    testCutCopyBothWays("fax()", 2,5, "x()", "{fa$}", "{fa|x}_({})_{$}");
+});
+
+// TODO test pasting (can do as part of cut; paste back?)
+
