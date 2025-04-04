@@ -1323,7 +1323,7 @@ export default Vue.extend({
                         });
                     }
                     else{
-                        const {newSlotId, cursorPosOffset} = this.appStore.deleteSlots(isForwardDeletion, this.coreSlotInfo);
+                        const {newSlotId, cursorPosOffset} = this.appStore.deleteSlots(isForwardDeletion);
                         // Restore the text cursor position (need to wait for reactive changes)
                         this.$nextTick(() => {
                             const newCurrentSlotInfoNoType = {...this.coreSlotInfo, slotId: newSlotId};
@@ -1369,7 +1369,7 @@ export default Vue.extend({
                         else{
                             // Case B: we are deleteing a selection spanning across several slots, we will get the selection where the leftmost position is:
                             // the anchor if the selection is going forward, the focus otherwise
-                            const {newSlotId} = this.appStore.deleteSlots(isForwardDeletion, this.coreSlotInfo);  
+                            const {newSlotId} = this.appStore.deleteSlots(isForwardDeletion);  
                             const newCursorPosition = ((getSelectionCursorsComparisonValue()??0) < 0) ? anchorSlotCursorInfos.cursorPos : focusSlotCursorInfos.cursorPos;  
                             // Restore the text cursor position (need to wait for reactive changes)
                             this.$nextTick(() => {
