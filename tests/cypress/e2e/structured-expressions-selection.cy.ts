@@ -348,7 +348,7 @@ function testSelectionThenDelete(code : string, selectKeys: string, expectedAfte
     });
 }
 
-function testSelectionByIndices(code: string, startIndex: number, endIndex: number, thenType: string, expectedAfter : string) : void {
+function testSelectionBoth(code: string, startIndex: number, endIndex: number, thenType: string, expectedAfter : string) : void {
     // Test selecting from start to end:
     testSelection(code, startIndex, endIndex, thenType, expectedAfter);
     // Then end to start:
@@ -375,33 +375,33 @@ describe("Shift-End selects to the end", () => {
 describe("Selecting then typing in one slot", () => {
     // Words mainly chosen to avoid having duplicate characters, to help
     // see more easily if something went wrong, and what:
-    testSelectionByIndices("neighbour", 2, 5, "fax", "{nefax$bour}");
-    testSelectionByIndices("neighbour", 2, 5, " ", "{ne $bour}");
+    testSelectionBoth("neighbour", 2, 5, "fax", "{nefax$bour}");
+    testSelectionBoth("neighbour", 2, 5, " ", "{ne $bour}");
     // Invalid entry but should still delete the selection, and replace with nothing:
-    testSelectionByIndices("neighbour", 2, 5, ")", "{ne$bour}");
+    testSelectionBoth("neighbour", 2, 5, ")", "{ne$bour}");
 
     // Replace with operator:
-    testSelectionByIndices("neighbour", 2, 5, "+", "{ne}+{$bour}");
-    testSelectionByIndices("neighbour", 2, 5, ".", "{ne}.{$bour}");
+    testSelectionBoth("neighbour", 2, 5, "+", "{ne}+{$bour}");
+    testSelectionBoth("neighbour", 2, 5, ".", "{ne}.{$bour}");
 
     // Surround with brackets:
-    testSelectionByIndices("neighbour", 5, 9, "(", "{neigh}_({$bour})_{}");
-    testSelectionByIndices("neighbour(xyz)", 5, 9, "(", "{neigh}_({$bour})_{}_({xyz})_{}");
+    testSelectionBoth("neighbour", 5, 9, "(", "{neigh}_({$bour})_{}");
+    testSelectionBoth("neighbour(xyz)", 5, 9, "(", "{neigh}_({$bour})_{}_({xyz})_{}");
     
     // Multidim brackets by closing:
-    testSelectionByIndices("fax(neighbour)", 6, 9, ")", "{fax}_({ne})_{}_({$bour})_{}");
-    testSelectionByIndices("fax(neighbour)", 1, 3, ")", "{f}_({$})_{}_({neighbour})_{}");
+    testSelectionBoth("fax(neighbour)", 6, 9, ")", "{fax}_({ne})_{}_({$bour})_{}");
+    testSelectionBoth("fax(neighbour)", 1, 3, ")", "{f}_({$})_{}_({neighbour})_{}");
     
     // Numbers:
-    testSelectionByIndices("123456", 2, 4, "+", "{12}+{$56}");
-    testSelectionByIndices("123456", 2, 4, "-", "{12}-{$56}");
-    testSelectionByIndices("123456", 2, 4, "e", "{12e$56}");
-    testSelectionByIndices("123456", 2, 4, ".", "{12.$56}");
+    testSelectionBoth("123456", 2, 4, "+", "{12}+{$56}");
+    testSelectionBoth("123456", 2, 4, "-", "{12}-{$56}");
+    testSelectionBoth("123456", 2, 4, "e", "{12e$56}");
+    testSelectionBoth("123456", 2, 4, ".", "{12.$56}");
 
     // Turn into a number slot by replacement:
-    testSelectionByIndices("abc123", 0, 3, "+", "{+$123}");
-    testSelectionByIndices("abc123", 0, 3, "-", "{-$123}");
-    testSelectionByIndices("abc123", 0, 3, "*", "{}*{$123}");
+    testSelectionBoth("abc123", 0, 3, "+", "{+$123}");
+    testSelectionBoth("abc123", 0, 3, "-", "{-$123}");
+    testSelectionBoth("abc123", 0, 3, "*", "{}*{$123}");
 });
 
 describe("Selecting then typing in multiple slots", () => {
@@ -411,16 +411,16 @@ describe("Selecting then typing in multiple slots", () => {
     // that would not be allowed in Strype (e.g. selecting across multiple bracketing levels)
     // So we just don't make those selections; we can't test that those are banned
     // programmatically.
-    testSelectionByIndices("123+456", 2,5, "0", "{120$56}");
-    testSelectionByIndices("123+456", 2,5, ".", "{12.$56}");
-    testSelectionByIndices("123+456", 2,5, "*", "{12}*{$56}");
+    testSelectionBoth("123+456", 2,5, "0", "{120$56}");
+    testSelectionBoth("123+456", 2,5, ".", "{12.$56}");
+    testSelectionBoth("123+456", 2,5, "*", "{12}*{$56}");
     
-    testSelectionByIndices("123+456", 2,5, "(", "{12}_({3}+{4})_{$56}");
+    testSelectionBoth("123+456", 2,5, "(", "{12}_({3}+{4})_{$56}");
 });
 
 describe("Selecting then deleting in multiple slots", () => {
-    testSelectionByIndices("123+456", 2,5, "{del}", "{12$56}");
-    testSelectionByIndices("123+456", 2,5, "{backspace}", "{12$56}");
+    testSelectionBoth("123+456", 2,5, "{del}", "{12$56}");
+    testSelectionBoth("123+456", 2,5, "{backspace}", "{12$56}");
 });
 
 // TODO also test copy, and paste, with multi-slot selection
