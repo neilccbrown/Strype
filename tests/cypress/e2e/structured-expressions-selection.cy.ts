@@ -1,6 +1,8 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
 import failOnConsoleError from "cypress-fail-on-console-error";
+import {assertState, focusEditor} from "../support/expression-test-support";
+
 failOnConsoleError();
 
 // Must clear all local storage between tests to reset the state:
@@ -28,50 +30,43 @@ Cypress.Commands.add("assertValueCopiedToClipboard", (value) => {
 Cypress.Commands.add("extendSelectionRight", () => {
     cy.document().then((doc: Document) => {
         const selection: Selection | null = doc.getSelection();
-        const activeElement: Element | null = doc.activeElement;
-
-        // Check if we're in a text input or contenteditable element
-        const isEditableElement = Boolean(
-            activeElement && (activeElement as HTMLElement).isContentEditable
-        );
-
-        if (!isEditableElement) {
-            cy.log("No editable element is focused");
+        if (!selection || selection.rangeCount === 0) {
+            cy.log("No selection found to extend (text item not focused?)");
             return;
         }
 
-        // Get current positions
-        let currentPos: number;
-        let text: string;
+        // Find the top-level label-slot-structure container
+        const containerSelector = ".label-slot-structure";
+        const container = doc.activeElement == null ? null : doc.activeElement.closest(containerSelector);
+        if (!container || !(container as HTMLElement).isContentEditable) {
+            cy.log(`Could not find contenteditable container with selector: ${containerSelector} starting from ${doc.activeElement?.id}, found ${container} [${container?.id}] with ${(container as HTMLElement)?.isContentEditable}`);
+            return;
+        }
+        
+        // For collapsed selection (no text selected yet)
+        if (selection.isCollapsed) {
+            // Find the next position (potentially across nodes)
+            const nextPosition = findNextPosition(selection.focusNode, selection.focusOffset, container);
 
-        if ((activeElement as HTMLElement).isContentEditable && selection && selection.rangeCount > 0) {
-            // Handle contenteditable elements
-            const range: Range = selection.getRangeAt(0);
-            currentPos = range.endOffset;
-
-            // Get text node where selection ends
-            const container: Node = range.endContainer;
-            text = container.textContent || "";
-
-            // If there's no selection, create one
-            if (range.collapsed) {
-                // Create a new range for a single character
-                if (currentPos < text.length) {
-                    cy.log("Setting initial: 1 + " + currentPos);
-                    range.setEnd(container, currentPos + 1);
-                }
+            if (nextPosition) {
+                // Set the selection from current position to the next character
+                selection.collapse(selection.focusNode, selection.focusOffset);
+                selection.extend(nextPosition.node, nextPosition.offset);
             }
-            else {
-                // Extend existing selection
-                if (currentPos < text.length) {
-                    cy.log("Extending to: 1 + " + currentPos);
-                    range.setEnd(container, currentPos + 1);
-                }
+        }
+        else {
+            if (!selection.anchorNode) {
+                return;
             }
+            
+            // For existing selection, just move the focus point
+            const focusNode = selection.focusNode;
+            const focusOffset = selection.focusOffset;
 
-            // Apply the new selection
-            selection.removeAllRanges();
-            selection.addRange(range);
+            const nextPosition = findNextPosition(focusNode, focusOffset, container);
+            if (nextPosition) {
+                selection.extend(nextPosition.node, nextPosition.offset);
+            }
         }
     });
 });
@@ -81,46 +76,244 @@ Cypress.Commands.add("extendSelectionRight", () => {
 Cypress.Commands.add("extendSelectionLeft", () => {
     cy.document().then((doc: Document) => {
         const selection: Selection | null = doc.getSelection();
-        const activeElement: Element | null = doc.activeElement;
-
-        // Check if we're in a contenteditable element
-        const isContentEditable = Boolean(
-            activeElement && (activeElement as HTMLElement).isContentEditable
-        );
-
-        if (!isContentEditable) {
-            cy.log("No contenteditable element is focused");
+        if (!selection || selection.rangeCount === 0) {
+            cy.log("No selection found to extend (text item not focused?)");
             return;
         }
 
-        if (selection && selection.rangeCount > 0) {
-            // Get the current position information
+        // Find the label-slot-structure container
+        const containerSelector = ".label-slot-structure";
+        const container = doc.activeElement == null ? null : doc.activeElement.closest(containerSelector);
+        if (!container || !(container as HTMLElement).isContentEditable) {
+            cy.log(`Could not find contenteditable container with selector: ${containerSelector}`);
+            return;
+        }
+
+        // For collapsed selection (no text selected yet)
+        if (selection.isCollapsed) {
+            // Find the previous position (potentially across nodes)
+            const previousPosition = findPreviousPosition(selection.focusNode, selection.focusOffset, container);
+
+            if (previousPosition) {
+                // Create selection from current to previous position
+                selection.collapse(selection.anchorNode, selection.anchorOffset);
+                selection.extend(previousPosition.node, previousPosition.offset);
+            }
+        }
+        else {
+            if (!selection.anchorNode) {
+                return;
+            }
+            
+            // For existing selection, just move the focus point
             const focusNode = selection.focusNode;
             const focusOffset = selection.focusOffset;
 
-            // If there's no selection (collapsed), create one
-            if (selection.isCollapsed) {
-                if (focusNode && focusOffset > 0) {
-                    // Create a selection one character to the left
-                    // First, set the caret position
-                    selection.collapse(focusNode, focusOffset);
-
-                    // Then extend one character to the left
-                    // This keeps the anchor at the current position and moves the focus
-                    selection.extend(focusNode, focusOffset - 1);
-                }
-            } else {
-                // For existing selections, we just need to extend the focus
-                if (focusNode && focusOffset > 0) {
-                    // The extend method moves the focus point while keeping the anchor fixed
-                    selection.extend(focusNode, focusOffset - 1);
-                }
+            // Forward selection (anchor on left, focus on right)
+            // Move the focus (right side) to the left
+            const previousPosition = findPreviousPosition(focusNode, focusOffset, container);
+            if (previousPosition) {
+                selection.extend(previousPosition.node, previousPosition.offset);
             }
         }
     });
 });
 
-import {assertState, focusEditor} from "../support/expression-test-support";
+// Helper function to check if a node is inside a contenteditable element
+function isNodeEditableText(node: Node | null): boolean {
+    if (!node || node.nodeType !== Node.TEXT_NODE) {
+        return false;
+    }
+
+    // Check if the nearest element ancestors is contenteditable
+    let current: Node | null = node;
+    while (current) {
+        if (current.nodeType === Node.ELEMENT_NODE) {
+            const element = current as HTMLElement;
+            if (element.isContentEditable) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+        current = current.parentNode;
+    }
+    return false;
+}
+
+// Kept for investigating test failures:
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function getPathToNode(node : Node | null): string {
+    const path = [];
+
+    while (node) {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            const nodeEl = node as Element;
+            if (nodeEl.id) {
+                path.unshift(`#${nodeEl.id}`);
+            }
+            else {
+                path.unshift(nodeEl.tagName.toLowerCase());
+            }
+        }
+
+        node = node.parentElement;
+    }
+
+    return path.join(" > ");
+}
+
+
+/**
+ * Finds the position one character to the left of the given node/offset
+ * Works across node boundaries in a nested contenteditable structure
+ * Only selects within contenteditable elements
+ */
+function findPreviousPosition(node: Node | null, offset: number, container: Element): { node: Node, offset: number } | null {
+    if (!node) {
+        return null;
+    }
+
+    // Case 1: We can simply move left within the current text node
+    if (node.nodeType === Node.TEXT_NODE && offset > 0 && isNodeEditableText(node)) {
+        return { node, offset: offset - 1 };
+    }
+
+    // Case 2: We're at the beginning of a text node or at an element node
+
+    // Create a TreeWalker to navigate text nodes within the container
+    const walker = document.createTreeWalker(
+        container,
+        NodeFilter.SHOW_TEXT,
+        {
+            acceptNode: function(node) {
+                // Only accept nodes that are within contenteditable elements
+                return isNodeEditableText(node)
+                    ? NodeFilter.FILTER_ACCEPT
+                    : NodeFilter.FILTER_REJECT;
+            },
+        } as NodeFilter
+    );
+
+    // Position the walker at our current node (or as close as possible)
+    let currentNode = node;
+    if (node.nodeType !== Node.TEXT_NODE) {
+        // If we're at an element node, find the closest text node
+        if (offset > 0 && node.childNodes.length > 0) {
+            // We're between child nodes, get the child before the offset
+            currentNode = node.childNodes[offset - 1];
+        }
+    }
+
+    let found = false;
+    let previousTextNode: Node | null = null;
+
+    // Try to find our current position in the tree
+    while (walker.nextNode()) {
+        if (walker.currentNode === currentNode) {
+            found = true;
+            break;
+        }
+        previousTextNode = walker.currentNode;
+    }
+
+    // If we found our node and we're at its start, return the end of previous text node
+    if (found && offset === 0 && previousTextNode) {
+        return {
+            node: previousTextNode,
+            offset: previousTextNode.textContent?.length || 0,
+        };
+    }
+
+    // If we didn't find our exact node but have a previous text node
+    if (!found && previousTextNode) {
+        // This handles the case when we're at an element node
+        return {
+            node: previousTextNode,
+            offset: previousTextNode.textContent?.length || 0,
+        };
+    }
+
+    // Couldn't find a previous position
+    return null;
+}
+
+/**
+ * Finds the position one character to the right of the given node/offset
+ * Works across node boundaries in a nested contenteditable structure
+ * Only selects within contenteditable elements
+ */
+function findNextPosition(node: Node | null, offset: number, container: Element): { node: Node, offset: number } | null {
+    if (!node) {
+        return null;
+    }
+
+    // Case 1: We can simply move right within the current text node
+    if (node.nodeType === Node.TEXT_NODE &&
+        node.textContent &&
+        offset < node.textContent.length &&
+        isNodeEditableText(node)) {
+        return { node, offset: offset + 1 };
+    }
+
+    // Case 2: We're at the end of a text node or at an element node
+
+    // Create a TreeWalker to navigate text nodes within the container
+    const walker = document.createTreeWalker(
+        container,
+        NodeFilter.SHOW_TEXT,
+        {
+            acceptNode: function(node) {
+                // Only accept nodes that are within contenteditable elements
+                return isNodeEditableText(node)
+                    ? NodeFilter.FILTER_ACCEPT
+                    : NodeFilter.FILTER_REJECT;
+            },
+        } as NodeFilter
+    );
+
+    // Position the walker at our current node (or as close as possible)
+    let currentNode = node;
+    if (node.nodeType !== Node.TEXT_NODE) {
+        // If we're at an element node, find the closest text node
+        if (offset < node.childNodes.length) {
+            // We're between child nodes, get the child at the offset
+            currentNode = node.childNodes[offset];
+        }
+    }
+
+    let found = false;
+
+    // Try to find our current position in the tree
+    while (walker.nextNode()) {
+        if (walker.currentNode === currentNode) {
+            found = true;
+            break;
+        }
+    }
+
+    // If we found our node and we're at its end, get the next text node
+    if (found && node.nodeType === Node.TEXT_NODE &&
+        node.textContent && offset >= node.textContent.length) {
+        if (walker.nextNode()) {
+            return { node: walker.currentNode, offset: 0 };
+        }
+    }
+
+    // If we're at an element node or we didn't find our exact node
+    if (!found || node.nodeType !== Node.TEXT_NODE) {
+        // Reset the walker and find the next editable text node
+        walker.currentNode = node;
+
+        if (walker.nextNode()) {
+            return { node: walker.currentNode, offset: 0 };
+        }
+    }
+
+    // Couldn't find a next position
+    return null;
+}
 
 function testSelection(code : string, startIndex: number, endIndex: number, secondEntry : string, expectedAfter : string) : void {
     it("Tests selecting in " + code + " from " + startIndex + " to " + endIndex + " then " + secondEntry, () => {
@@ -189,7 +382,7 @@ describe("Selecting then typing in one slot", () => {
 
     // Replace with operator:
     testSelectionByIndices("neighbour", 2, 5, "+", "{ne}+{$bour}");
-    testSelectionByIndices("neighbour", 2, 5, "+", "{ne}.{$bour}");
+    testSelectionByIndices("neighbour", 2, 5, ".", "{ne}.{$bour}");
 
     // Surround with brackets:
     testSelectionByIndices("neighbour", 5, 9, "(", "{neigh}_({$bour})_{}");
@@ -210,3 +403,24 @@ describe("Selecting then typing in one slot", () => {
     testSelectionByIndices("abc123", 0, 3, "-", "{-$123}");
     testSelectionByIndices("abc123", 0, 3, "*", "{}*{$123}");
 });
+
+describe("Selecting then typing in multiple slots", () => {
+    // Note that because of Cypress not being able to send shift-left/right in a way
+    // that the browser handles to move selection, we are moving our own selection.
+    // Thus some selections are possible (e.g. across brackets) for us to set
+    // that would not be allowed in Strype (e.g. selecting across multiple bracketing levels)
+    // So we just don't make those selections; we can't test that those are banned
+    // programmatically.
+    testSelectionByIndices("123+456", 2,5, "0", "{120$56}");
+    testSelectionByIndices("123+456", 2,5, ".", "{12.$56}");
+    testSelectionByIndices("123+456", 2,5, "*", "{12}*{$56}");
+    
+    testSelectionByIndices("123+456", 2,5, "(", "{12}_({3}+{4})_{$56}");
+});
+
+describe("Selecting then deleting in multiple slots", () => {
+    testSelectionByIndices("123+456", 2,5, "{del}", "{12$56}");
+    testSelectionByIndices("123+456", 2,5, "{backspace}", "{12$56}");
+});
+
+// TODO also test copy, and paste, with multi-slot selection
