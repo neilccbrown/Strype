@@ -503,8 +503,16 @@ export function getCaretContainerComponent(frameComponent: InstanceType<typeof F
 }
 // End for component retriever
 
-export function getSaveAsProjectModalDlg():string {
+export function getSaveAsProjectModalDlg(): string {
     return "save-strype-project-modal-dlg";
+}
+
+export function getStrypeSaveProjectNameInputId(): string {
+    return "saveStrypeFileNameInput";
+}
+
+export function getSaveStrypeProjectToFSButtonId() : string {
+    return "saveStrypeProjectToFSStrypeButton";
 }
 
 export function getEditorMiddleUID(): string {
