@@ -185,7 +185,7 @@
 //      Imports     //
 //////////////////////
 import Vue from "vue";
-import { useStore } from "@/store/store";
+import { useStore, settingsStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
 import { AppEvent, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, ShareProjectMode, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
 import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppLangSelectId, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getGoogleDriveComponentRefId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNearestErrorIndex, getSaveAsProjectModalDlg, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey } from "@/helpers/editor";
@@ -311,7 +311,7 @@ export default Vue.extend({
     },
 
     computed: {
-        ...mapStores(useStore),
+        ...mapStores(useStore, settingsStore),
         
         menuUID(): string {
             return getEditorMenuUID();
@@ -471,10 +471,10 @@ export default Vue.extend({
 
         appLang: {
             get(): string {
-                return this.appStore.appLang;
+                return this.settingsStore.locale??"en";
             },
-            set(lang: string) {
-                this.appStore.setAppLang(lang);
+            set(lang: string) {                                
+                this.settingsStore.setAppLang(lang);
             }, 
         },
 
