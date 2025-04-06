@@ -330,7 +330,7 @@ export default Vue.extend({
                         ctrlKey: event.ctrlKey,
                         metaKey: event.metaKey,
                     }));
-                if (event.key.toLowerCase() == "backspace" || event.key == "ArrowUp" || event.key == "ArrowDown") {
+                if (event.key.toLowerCase() == "backspace" || event.key.toLowerCase() == "delete" || event.key == "ArrowUp" || event.key == "ArrowDown") {
                     event.preventDefault();
                     event.stopPropagation();
                     event.stopImmediatePropagation();
