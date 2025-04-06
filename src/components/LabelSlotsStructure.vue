@@ -9,16 +9,13 @@
         @focus="onFocus"
         @blur="blurEditableSlot"
         @paste.prevent.stop="forwardPaste"
+        @input="onInput"
         class="next-to-eachother label-slot-structure"
     >
-        <div 
-            v-for="(slotItem, slotIndex) in subSlots" 
-            :key="frameId + '_'  + labelIndex + '_' + slotIndex"
-            class="next-to-eachother"
-            contenteditable="false"
-        >
             <!-- Note: the default text is only showing for new slots (1 subslot), we also use unicode zero width space character for empty slots for UI -->
             <LabelSlot
+                v-for="(slotItem, slotIndex) in subSlots"
+                :key="frameId + '_'  + labelIndex + '_' + slotIndex"
                 :labelSlotsIndex="labelIndex"
                 :slotId="slotItem.id"
                 :slotType="slotItem.type"
@@ -29,8 +26,7 @@
                 :isEditableSlot="isEditableSlot(slotItem.type)"
                 :isEmphasised="isSlotEmphasised(slotItem)"
                 v-on:[CustomEventTypes.requestSlotsRefactoring]="checkSlotRefactoring"
-            />
-        </div> 
+            /> 
     </div>
 </template>
 
@@ -132,7 +128,16 @@ export default Vue.extend({
             // so we use a zero-width space if there is no code:
             return slot.code ? slot.code : "\u200B";
         },
-
+        
+        onInput(event: InputEvent) {
+            if (this.appStore.focusSlotCursorInfos) {
+                document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
+                    ?.dispatchEvent(new InputEvent(event.type, {
+                        data: event.data,
+                        isComposing: event.isComposing,
+                    }));
+            }
+        },
         isSlotEmphasised(slot: FlatSlotBase): boolean{
             // In this method, if the flag to check a bracket emphasis (ignoreBracketEmphasisCheck) isn't set,
             // we check if the current slot bracket should be emphasised, and if so, emphasise its bracket counterpart.
