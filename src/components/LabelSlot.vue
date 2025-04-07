@@ -291,6 +291,10 @@ export default Vue.extend({
             // the cursor position and prevents composition/IME working:
             if (!input.isComposing) {
                 const toSchedule = this.processInput(input.data ?? "");
+                if (toSchedule) {
+                    this.$nextTick(toSchedule);
+                    return;
+                }
                 // Important to do this after processInput, which might have changed the content:
                 const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
                 const inputSpanFieldContent = inputSpanField.textContent ?? "";
@@ -310,15 +314,18 @@ export default Vue.extend({
                     this.updateStoreFromEditableContent();
                 }
                 
-                if (toSchedule) {
-                    this.$nextTick(toSchedule);
-                }
+                
             }
         },
 
         onCompositionEnd(input: CompositionEvent) {
-            this.processInput(input.data);
-            this.updateStoreFromEditableContent();
+            const toSchedule = this.processInput(input.data);
+            if (toSchedule) {
+                this.$nextTick(toSchedule);
+            }
+            else {
+                this.updateStoreFromEditableContent();
+            }
         },
 
         updateStoreFromEditableContent(overrideCursorPos = null as number | null) {            
