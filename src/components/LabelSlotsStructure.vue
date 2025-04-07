@@ -136,13 +136,15 @@ export default Vue.extend({
         },
         
         onInput(event: InputEvent) {
-            if (this.appStore.focusSlotCursorInfos) {
-                document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
-                    ?.dispatchEvent(new InputEvent(event.type, {
-                        data: event.data,
-                        isComposing: event.isComposing,
-                    }));
-            }
+            // It is possible that the user has deleted the focus or anchor from the DOM, e.g. if they do a multi-slot
+            // select then type.  But one of them should remain.  So we try focus first, and if that is gone, we try
+            // anchor instead:
+            ((this.appStore.focusSlotCursorInfos ? document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos)) : null)
+                ?? (this.appStore.anchorSlotCursorInfos ? document.getElementById(getLabelSlotUID(this.appStore.anchorSlotCursorInfos.slotInfos)) : null))
+                ?.dispatchEvent(new InputEvent(event.type, {
+                    data: event.data,
+                    isComposing: event.isComposing,
+                }));
         },
         isSlotEmphasised(slot: FlatSlotBase): boolean{
             // In this method, if the flag to check a bracket emphasis (ignoreBracketEmphasisCheck) isn't set,
