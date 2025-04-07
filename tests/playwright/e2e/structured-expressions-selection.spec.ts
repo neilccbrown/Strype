@@ -3,6 +3,26 @@ import {Page, test, expect} from "@playwright/test";
 let scssVars: {[varName: string]: string};
 //let strypeElIds: {[varName: string]: (...args: any[]) => string};
 test.beforeEach(async ({ page }) => {
+    // We must use a fake clipboard object to avoid issues with browser clipboard permissions:
+    await page.addInitScript(() => {
+        let mockContent = "<empty>";
+        const mockClipboard = {
+            content: "<empty>",
+            writeText: async (text: string) => {
+                mockContent = text;
+            },
+            readText: async () => mockContent,
+        };
+
+        // override the native clipboard API
+        Object.defineProperty(window.navigator, "clipboard", {
+            value: mockClipboard,
+            writable: true,
+            enumerable: true,
+            configurable: true,
+        });
+    });
+    
     // The domcontentloaded does not wait for async/defer, which is our Google scripts, but we
     // don't need them for this test.  In fact, save time by blocking that domain:
     await page.route("**/*", (route) => {
@@ -126,8 +146,8 @@ function testSelectionBoth(code: string, startIndex: number, endIndex: number, t
 
 enum CUT_COPY_TEST { CUT_ONLY, COPY_ONLY, CUT_REPASTE }
 
-function testCutCopy(code : string, startIndex: number, endIndex: number, expectedClipboard : string, expectedAfter : string, kind: CUT_COPY_TEST) : void {
-    test(`Tests selecting then ${CUT_COPY_TEST[kind]} in ${code} from ${startIndex} to ${endIndex}`, async ({page}) => {
+function testCutCopy(code : string, stepsToBegin: number, stepsWhileSelecting: number, expectedClipboard : string, expectedAfter : string, kind: CUT_COPY_TEST) : void {
+    test(`Tests selecting then ${CUT_COPY_TEST[kind]} in ${code} from ${stepsToBegin} + ${stepsWhileSelecting}`, async ({page, context}) => {        
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
         await page.keyboard.type("i");
@@ -135,44 +155,59 @@ function testCutCopy(code : string, startIndex: number, endIndex: number, expect
         await assertState(page, "{$}");
         await typeIndividually(page, code);
         await page.keyboard.press("Home");
-        for (let i = 0; i < startIndex; i++) {
+        for (let i = 0; i < stepsToBegin; i++) {
             await page.keyboard.press("ArrowRight");
         }
-        while (startIndex < endIndex) {
+        while (stepsWhileSelecting > 0) {
             await page.keyboard.press("Shift+ArrowRight");
-            startIndex += 1;
+            stepsWhileSelecting -= 1;
         }
-        while (endIndex < startIndex) {
+        while (stepsWhileSelecting < 0) {
             await page.keyboard.press("Shift+ArrowLeft");
-            startIndex -= 1;
+            stepsWhileSelecting += 1;
         }
         await page.waitForTimeout(100);
-        page.keyboard.press(kind == CUT_COPY_TEST.COPY_ONLY ? "ControlOrMeta+c" : "ControlOrMeta+x");
-        const clipboardContent = await page.evaluate(() => navigator.clipboard.readText());
+        await page.keyboard.press(kind == CUT_COPY_TEST.COPY_ONLY ? "ControlOrMeta+c" : "ControlOrMeta+x");
+        await page.waitForTimeout(100);
+        const clipboardContent : string = await page.evaluate("navigator.clipboard.readText()");
         expect(clipboardContent).toEqual(expectedClipboard);
         if (kind == CUT_COPY_TEST.CUT_REPASTE) {
-            // No need to alter clipboard because we should still have the right content on there:
-            page.keyboard.press("ControlOrMeta+v");
+            // Can't use shortcut because it doesn't read from our mock clipboard:
+            //await page.keyboard.press("ControlOrMeta+v");
+            // So instead we must send our own paste event:
+            await page.evaluate((pasteContent : string) => {
+                const pasteEvent = new ClipboardEvent("paste", {
+                    bubbles: true,
+                    cancelable: true,
+                    clipboardData: new DataTransfer(),
+                });
+
+                // Set custom clipboard data for the paste event
+                pasteEvent.clipboardData?.setData("text", pasteContent);
+
+                // Dispatch the paste event to the whole document
+                document.activeElement?.dispatchEvent(pasteEvent);
+            }, clipboardContent);
         }
         await assertState(page, expectedAfter);
     });
 }
 
-function testCutCopyBothWays(code: string, startIndex: number, endIndex: number, expectedClipboard: string, expectedAfterCut : string, expectedAfterCopy: string) : void {
+function testCutCopyBothWays(code: string, stepsToStart: number, stepsToEnd: number, stepsBetweenWithShift: number, expectedClipboard: string, expectedAfterCut : string, expectedAfterCopy: string) : void {
     // Test cutting from start to end then end to start:
-    testCutCopy(code, startIndex, endIndex, expectedClipboard, expectedAfterCut, CUT_COPY_TEST.CUT_ONLY);
-    testCutCopy(code, endIndex, startIndex, expectedClipboard, expectedAfterCut, CUT_COPY_TEST.CUT_ONLY);
+    testCutCopy(code, stepsToStart, stepsBetweenWithShift, expectedClipboard, expectedAfterCut, CUT_COPY_TEST.CUT_ONLY);
+    testCutCopy(code, stepsToEnd, -stepsBetweenWithShift, expectedClipboard, expectedAfterCut, CUT_COPY_TEST.CUT_ONLY);
     // Copying is similar, but state should be unchanged:
     // Only thing is, because selection remains, cursor pos is different each way,
     // so we label with | and $ and remove/swap accordingly:
-    testCutCopy(code, startIndex, endIndex, expectedClipboard, expectedAfterCopy.replace("|", ""), CUT_COPY_TEST.COPY_ONLY);
-    testCutCopy(code, endIndex, startIndex, expectedClipboard, expectedAfterCopy.replace("$", "").replace("|", "$"), CUT_COPY_TEST.COPY_ONLY);
+    testCutCopy(code, stepsToStart, stepsBetweenWithShift, expectedClipboard, expectedAfterCopy.replace("|", ""), CUT_COPY_TEST.COPY_ONLY);
+    testCutCopy(code, stepsToEnd, -stepsBetweenWithShift, expectedClipboard, expectedAfterCopy.replace("$", "").replace("|", "$"), CUT_COPY_TEST.COPY_ONLY);
     
     // Now, test cutting followed by pasting.  Note that state after is the unmodified one,
     // so it's actually expectedAfterCopy even though we are cutting and pasting.
     // But the cursor will always be at the end, never at the beginning:
-    testCutCopy(code, startIndex, endIndex, expectedClipboard, expectedAfterCopy.replace("|", ""), CUT_COPY_TEST.CUT_REPASTE);
-    testCutCopy(code, endIndex, startIndex, expectedClipboard, expectedAfterCopy.replace("|", ""), CUT_COPY_TEST.CUT_REPASTE);
+    testCutCopy(code, stepsToStart, stepsBetweenWithShift, expectedClipboard, expectedAfterCopy.replace("|", ""), CUT_COPY_TEST.CUT_REPASTE);
+    testCutCopy(code, stepsToEnd, -stepsBetweenWithShift, expectedClipboard, expectedAfterCopy.replace("|", ""), CUT_COPY_TEST.CUT_REPASTE);
 }
 
 function testNavigation(code: string, navigate: (page: Page) => Promise<void>, expectedAfter: string) : void {
@@ -329,12 +364,14 @@ test.describe("Selecting then deleting in multiple slots", () => {
 });
 
 test.describe("Selecting then cutting/copying", () => {
-    testCutCopyBothWays("123456", 2,4, "34", "{12$56}", "{12|34$56}");
-    testCutCopyBothWays("123+456", 2,5, "3+4", "{12$56}", "{12|3}+{4$56}");
+     
+    testCutCopyBothWays("123456", 2, 4, 2, "34", "{12$56}", "{12|34$56}");
+    testCutCopyBothWays("123+456", 2, 5, 3, "3+4", "{12$56}", "{12|3}+{4$56}");
 
-    testCutCopyBothWays("123+(456*789)-0", 2,14, "3+(456*789)-", "{12$0}", "{12|3}+{}_({456}*{789})_{}-{$0}");
+    // Note that to select the bracket is one, so to go from before 3 to before 0 is actually 4 steps
+    testCutCopyBothWays("123+(456*789)-0", 2, 14, 4, "3+(456*789)-", "{12$0}", "{12|3}+{}_({456}*{789})_{}-{$0}");
     
     // Check we don't see zero-width spaces:
-    testCutCopyBothWays("fax()", 2,5, "x()", "{fa$}", "{fa|x}_({})_{$}");
+    testCutCopyBothWays("fax()", 2, 5, 2, "x()", "{fa$}", "{fa|x}_({})_{$}");
 });
 
