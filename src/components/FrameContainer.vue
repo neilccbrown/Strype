@@ -1,8 +1,8 @@
 <template>
     <div class="frame-container" :style="frameStyle" @click.self="onOuterContainerClick">
         <div class="frame-container-header">
-            <button class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
-            <span :class="scssVars.frameContainerLabelSpanClassName" @click.self="toggleCollapse">{{containerLabel}}</span>
+            <button v-if="!isMainCodeFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
+            <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer}" @click.self="toggleCollapse">{{containerLabel}}</span>
         </div>
 
         <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
@@ -90,6 +90,10 @@ export default Vue.extend({
         getCaretContainerRef(): string {
             return getCaretContainerRef();
         },
+
+        isMainCodeFrameContainer(): boolean {
+            return this.frameId == this.appStore.getMainCodeFrameContainerId;
+        },
         
         frames: {
             get(): FrameObject[] {
@@ -118,7 +122,7 @@ export default Vue.extend({
             };
             // For the main code, add 200px at the bottom so you can scroll down to put the last bit of code
             // above the bottom of the window.
-            if (this.frameId == -3) {
+            if (this.isMainCodeFrameContainer) {
                 defaultStyle["padding-bottom"] = "200px";
             }
             return defaultStyle;
@@ -130,7 +134,8 @@ export default Vue.extend({
 
         isCollapsed: {
             get(): boolean {
-                return this.appStore.isContainerCollapsed(this.frameId);
+                // Ignore the value for "My code" container for compatibility with saved project having collapsable "My code" container.
+                return (this.isMainCodeFrameContainer)? false : this.appStore.isContainerCollapsed(this.frameId);
             },
             set(value: boolean){
                 this.appStore.setCollapseStatusContainer(
@@ -166,7 +171,10 @@ export default Vue.extend({
         },
         
         toggleCollapse(): void {
-            this.isCollapsed = !this.isCollapsed;
+            // Only collapse Imports and Definitions frame containers.
+            if(!this.isMainCodeFrameContainer){
+                this.isCollapsed = !this.isCollapsed;
+            }
         },
 
         onFrameContainerClick(event: any): void {
@@ -222,6 +230,7 @@ export default Vue.extend({
     border-color: transparent;
     background-color: transparent;
     outline:none;
+    padding-inline: 2px; // Not only for us to custom style, but because otherwise browsers set different values
 }
 
 .frame-container-btn-collapse:focus {
@@ -233,6 +242,10 @@ export default Vue.extend({
     cursor:default;
     color: #274D19;
     font-weight: 600;
+}
+
+.no-toggle-frame-container-span {
+  margin-left: 4px; // 2px in place of the button border + 2px in place of the button inline padding 
 }
 
 .container-frames {
