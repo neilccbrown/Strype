@@ -20,9 +20,8 @@ export default defineConfig({
     forbidOnly: !!process.env.CI,
     /* Don't retry even on CI */
     retries: process.env.CI ? 0 : 0,
-    /* No parallel execution (risk of both using same local storage) */
-    fullyParallel: false,
-    workers: 1,
+    fullyParallel: true,
+    workers: process.env.CI ? 1 : 4,
     /* Reporter to use. See https://playwright.dev/docs/test-reporters */
     reporter: [["list"], ["html", {"open": "never", "outputFolder": "./tests/playwright/html-report"}]],
     /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
