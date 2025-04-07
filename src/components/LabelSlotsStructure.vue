@@ -228,7 +228,6 @@ export default Vue.extend({
                 // As we will need to reposition the cursor, we keep a reference to the "absolute" position in this label's slots,
                 // so we find that out while getting through all the slots to get the literal code.
                 let {uiLiteralCode, focusSpanPos: focusCursorAbsPos, hasStringSlots} = getFrameLabelSlotLiteralCodeAndFocus(labelDiv, slotUID);
-                console.log(`Refactoring, code: ${uiLiteralCode} @ ${focusCursorAbsPos}`);
                 const parsedCodeRes = parseCodeLiteral(uiLiteralCode, {frameType: this.appStore.frameObjects[this.frameId].frameType.type, isInsideString: false, cursorPos: focusCursorAbsPos, skipStringEscape: hasStringSlots});
                 Vue.set(this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex], "slotStructures", parsedCodeRes.slots);
                 // The parser can be return a different size "code" of the slots than the code literal
@@ -237,7 +236,6 @@ export default Vue.extend({
                 this.refactorCount += 1;
                 this.$forceUpdate();
                 this.$nextTick(() => {
-                    //console.log("DOM after refactoring tick:", this.$el.innerHTML, JSON.stringify(this.subSlots));
                     let newUICodeLiteralLength = 0;
                     let foundPos = false;
                     let setInsideNextSlot = false; // The case when the cursor follow a non editable slot (i.e. operator, bracket, quote)
@@ -329,9 +327,6 @@ export default Vue.extend({
         },
 
         forwardKeyEvent(event: KeyboardEvent) {
-            console.log("LSS.forward key: " + event.key + " ctrl: " + event.ctrlKey + " active: " + document.activeElement?.id);
-            //console.log("DOM while forwarding:", this.$el.innerHTML, JSON.stringify(this.subSlots));
-            
             // The container div of this LabelSlotsStructure is editable. Editable divs capture the key events. 
             // We need to forward the event to the currently "focused" (editable) slot.
             // ** LEFT/RIGHT ARROWS ARE TREATED SEPARATELY BY THIS COMPONENT, we don't forward related events **
@@ -395,7 +390,6 @@ export default Vue.extend({
         },
 
         forwardPaste(event: ClipboardEvent){
-            console.log("forwardPaste");
             // Paste events need to be handled on the parent contenteditable div because FF will not accept
             // forwarded (untrusted) events to be hooked by the children spans. 
             this.appStore.ignoreKeyEvent = true;
