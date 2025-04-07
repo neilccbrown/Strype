@@ -230,8 +230,8 @@ test.describe("Selecting then typing in one slot", () => {
     
     // Multidim brackets by closing:
     testSelectionBoth("fax(neighbour)", 6, 9, ")", "{fax}_({ne})_{}_({$bour})_{}");
-    testSelectionBoth("fax(neighbour)", 1, 3, ")", "{f}_({$})_{}_({neighbour})_{}");
-    
+    testSelectionBoth("fax(neighbour)", 1, 3, ")", "{f|ax$}_({neighbour})_{}");
+
     // Numbers:
     testSelectionBoth("123456", 2, 4, "+", "{12}+{$56}");
     testSelectionBoth("123456", 2, 4, "-", "{12}-{$56}");
@@ -255,7 +255,7 @@ test.describe("Selecting then typing in multiple slots", () => {
     testSelectionBoth("123+456", 2,5, ".", "{12.$56}");
     testSelectionBoth("123+456", 2,5, "*", "{12}*{$56}");
     
-    testSelectionBoth("123+456", 2,5, "(", "{12}_({3}+{4})_{$56}");
+    testSelectionBoth("123+456", 2,5, "(", "{12}_({$3}+{4})_{56}");
 });
 
 test.describe("Selecting then deleting in multiple slots", () => {
