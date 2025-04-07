@@ -200,7 +200,7 @@ import { watch } from "@vue/composition-api";
 import { cloneDeep } from "lodash";
 import App from "@/App.vue";
 import appPackageJson from "@/../package.json";
-import { getAboveFrameCaretPosition } from "@/helpers/storeMethods";
+import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import { getLocaleBuildDate } from "@/main";
 import scssVars from "@/assets/style/_export.module.scss";
 
@@ -1157,38 +1157,49 @@ export default Vue.extend({
                     const isFullIndex = ((this.currentErrorNavIndex % 1) == 0);
                     this.currentErrorNavIndex += (((toNext) ? 1 : -1) / ((isFullIndex) ? 1 : 2));
                     const errorElement = getEditorCodeErrorsHTMLElements()[this.currentErrorNavIndex];
+                    // Make sure that getting to an error will result opening the container frame container (section) if it was collapsed
+                    const isErrorOnFrame = isIdAFrameId(errorElement.id);
+                    const erroneousFrameId = (isErrorOnFrame) 
+                        ? parseFrameUID(errorElement.id) 
+                        : ((isElementEditableLabelSlotInput(errorElement)) 
+                            ? parseLabelSlotUID(errorElement.id).frameId
+                            : parseFrameHeaderUID(errorElement.id));
+                    this.appStore.frameObjects[getFrameSectionIdFromFrameId(erroneousFrameId)].isCollapsed = false;
+                     
                     // The error can be in a slot or it can be for a whole frame. By convention, the location for a frame error is the caret above it.
                     // For errors in a slot: we focus on the slot of the error -- if the erroneous HTML is a slot, we just give it focus. If the error is at the frame scope
                     // we put the focus in the first slot that is editable.
-                    if(isIdAFrameId(errorElement.id)){
+                    this.$nextTick(() => {
+                        if(isErrorOnFrame){
                         // Error on a whole frame - the error message will be on the header so we need to focus it to trigger the popup.
-                        if(this.appStore.isEditing) {
-                            this.appStore.isEditing = false;
-                            this.appStore.setSlotTextCursors(undefined, undefined);
-                            document.getSelection()?.removeAllRanges(); 
-                        }
-                        const caretPosAboveFrame = getAboveFrameCaretPosition(parseFrameUID(errorElement.id));
-                        this.appStore.setCurrentFrame({id: caretPosAboveFrame.frameId, caretPosition: caretPosAboveFrame.caretPosition as CaretPosition});
-                        document.getElementById(getFrameHeaderUID(parseFrameUID(errorElement.id)))?.focus();
-                    }
-                    else{
-                        // Error on a slot
-                        const errorSlotInfos: SlotCoreInfos = (isElementEditableLabelSlotInput(errorElement))
-                            ? parseLabelSlotUID(errorElement.id)
-                            : {frameId: parseFrameHeaderUID(errorElement.id), labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code};
-                        const errorSlotCursorInfos: SlotCursorInfos = {slotInfos: errorSlotInfos, cursorPos: 0}; 
-                        this.appStore.setSlotTextCursors(errorSlotCursorInfos, errorSlotCursorInfos);
-                        setDocumentSelection(errorSlotCursorInfos, errorSlotCursorInfos);  
-                        // It's necessary to programmatically click the slot we gave focus to, so we can toggle the edition mode event chain
-                        if(isElementUIDFrameHeader(errorElement.id)){
-                            document.getElementById(getLabelSlotUID(errorSlotInfos))?.click();
+                            if(this.appStore.isEditing) {
+                                this.appStore.isEditing = false;
+                                this.appStore.setSlotTextCursors(undefined, undefined);
+                                document.getSelection()?.removeAllRanges(); 
+                            }
+                            const caretPosAboveFrame = getAboveFrameCaretPosition(parseFrameUID(errorElement.id));
+                            this.appStore.setCurrentFrame({id: caretPosAboveFrame.frameId, caretPosition: caretPosAboveFrame.caretPosition as CaretPosition});
+                            document.getElementById(getFrameHeaderUID(parseFrameUID(errorElement.id)))?.focus();
                         }
                         else{
-                            errorElement.click();
+                        // Error on a slot
+                            const errorSlotInfos: SlotCoreInfos = (isElementEditableLabelSlotInput(errorElement))
+                                ? parseLabelSlotUID(errorElement.id)
+                                : {frameId: parseFrameHeaderUID(errorElement.id), labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code};
+                            const errorSlotCursorInfos: SlotCursorInfos = {slotInfos: errorSlotInfos, cursorPos: 0}; 
+                            this.appStore.setSlotTextCursors(errorSlotCursorInfos, errorSlotCursorInfos);
+                            setDocumentSelection(errorSlotCursorInfos, errorSlotCursorInfos);  
+                            // It's necessary to programmatically click the slot we gave focus to, so we can toggle the edition mode event chain
+                            if(isElementUIDFrameHeader(errorElement.id)){
+                                document.getElementById(getLabelSlotUID(errorSlotInfos))?.click();
+                            }
+                            else{
+                                errorElement.click();
+                            }
                         }
-                    }
                    
-                    this.navigateToErrorRequested = false;
+                        this.navigateToErrorRequested = false;
+                    });
                 });
             }     
         },
