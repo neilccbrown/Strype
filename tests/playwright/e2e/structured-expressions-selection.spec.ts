@@ -175,6 +175,48 @@ function testCutCopyBothWays(code: string, startIndex: number, endIndex: number,
     testCutCopy(code, endIndex, startIndex, expectedClipboard, expectedAfterCopy.replace("|", ""), CUT_COPY_TEST.CUT_REPASTE);
 }
 
+function testNavigation(code: string, navigate: (page: Page) => Promise<void>, expectedAfter: string) : void {
+    test(code, async ({page}) => {
+        await page.keyboard.press("Backspace");
+        await page.keyboard.press("Backspace");
+        await page.keyboard.type("i");
+        await page.waitForTimeout(100);
+        await assertState(page, "{$}");
+        await typeIndividually(page, code);
+        await navigate(page);
+        await page.waitForTimeout(100);
+        await assertState(page, expectedAfter);
+    });
+}
+
+function pressN(key: string, n : number) : ((page: Page) => Promise<void>) {
+    return async (page) => {
+        for (let i = 0; i < n; i++) {
+            await page.keyboard.press(key); 
+        }
+    };
+}
+
+test.describe("Home goes to start of current level", () => {
+    testNavigation("123", pressN("Home", 1), "{$123}");
+    // Extra presses shouldn't matter:
+    testNavigation("456", pressN("Home", 2), "{$456}");
+    testNavigation("123.456", pressN("Home", 1), "{$123.456}");
+    // Check we end up where we expect to without home:
+    testNavigation("foo(bar)", async () => {}, "{foo}_({bar})_{$}");
+    testNavigation("foo(bar", async () => {}, "{foo}_({bar$})_{}");
+    // Then test home:
+    testNavigation("fax(neighbour1)", pressN("Home", 1), "{$fax}_({neighbour1})_{}");
+    testNavigation("fax(neighbour2", pressN("Home", 1), "{fax}_({$neighbour2})_{}");
+    // Multiple presses ignored:
+    testNavigation("fax(neighbour2b", pressN("Home", 2), "{fax}_({$neighbour2b})_{}");
+    testNavigation("fax(neighbour3", async (page) => {
+        await pressN("Home", 1)(page);
+        await pressN("ArrowLeft", 1)(page);
+        await pressN("Home", 1)(page);
+    }, "{$fax}_({neighbour3})_{}");
+});
+
 test.describe("Shift-Home selects to the beginning", () => {
     // Note: testSelectionThenDelete needs unique code to make a unique test name
     testSelectionThenDelete("a+b",async (page) => {
@@ -208,6 +250,12 @@ test.describe("Shift-End selects to the end", () => {
         await page.keyboard.press("ArrowRight");
         await page.keyboard.press("Shift+End");
     }, "{a$}");
+
+    testSelectionThenDelete("abcdef",async (page) => {
+        await page.keyboard.press("Home");
+        await page.keyboard.press("Shift+ArrowRight");
+        await page.keyboard.press("Shift+ArrowRight");
+    }, "{$cdef}");
 
     testSelectionThenDelete("a+abs(b)",async (page) => {
         await page.keyboard.press("Home");
