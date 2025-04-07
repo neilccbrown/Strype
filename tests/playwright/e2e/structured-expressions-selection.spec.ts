@@ -3,11 +3,18 @@ import {Page, test, expect} from "@playwright/test";
 let scssVars: {[varName: string]: string};
 //let strypeElIds: {[varName: string]: (...args: any[]) => string};
 test.beforeEach(async ({ page }) => {
-    await page.goto("./");
-    await page.waitForSelector("body");
-    await page.evaluate(() => window.localStorage.clear());
-    await page.evaluate(() => window.sessionStorage.clear());
-    await page.reload();
+    // The domcontentloaded does not wait for async/defer, which is our Google scripts, but we
+    // don't need them for this test.  In fact, save time by blocking that domain:
+    await page.route("**/*", (route) => {
+        const url = route.request().url();
+        if (url.includes("google.com")) {
+            route.abort(); // prevent loading
+        }
+        else {
+            route.continue(); // allow others
+        }
+    });
+    await page.goto("./", {waitUntil: "domcontentloaded"});
     await page.waitForSelector("body");
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
     //strypeElIds = await page.evaluate(() => (window as any)["StrypeHTMLELementsIDsGlobals"]);
@@ -20,7 +27,7 @@ test.beforeEach(async ({ page }) => {
 async function typeIndividually(page: Page, content: string) {
     for (let i = 0; i < content.length; i++) {
         await page.keyboard.type(content[i]);
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(50);
     }
 }
 
@@ -67,7 +74,7 @@ function testSelection(code : string, startIndex: number, endIndex: number, seco
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
         await page.keyboard.type("i");
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(100);
         await assertState(page, "{$}");
         await typeIndividually(page, code);
         await page.keyboard.press("Home");
@@ -82,7 +89,7 @@ function testSelection(code : string, startIndex: number, endIndex: number, seco
             await page.keyboard.press("Shift+ArrowLeft");
             startIndex -= 1;
         }
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(100);
         if (typeof secondEntry == "string") {
             await typeIndividually(page, secondEntry);
         }
@@ -99,7 +106,7 @@ function testSelectionThenDelete(code : string, doSelectKeys: (page: Page) => Pr
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
         await page.keyboard.type("i");
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(100);
         await assertState(page, "{$}");
         await typeIndividually(page, code);
         await doSelectKeys(page);
@@ -111,8 +118,10 @@ function testSelectionThenDelete(code : string, doSelectKeys: (page: Page) => Pr
 function testSelectionBoth(code: string, startIndex: number, endIndex: number, thenType: string | ((page: Page) => Promise<void>), expectedAfter : string) : void {
     // Test selecting from start to end:
     testSelection(code, startIndex, endIndex, thenType, expectedAfter);
-    // Then end to start:
-    testSelection(code, endIndex, startIndex, thenType, expectedAfter);
+    // Then end to start (if it's not exactly the same):
+    if (startIndex != endIndex) {
+        testSelection(code, endIndex, startIndex, thenType, expectedAfter);
+    }
 }
 
 enum CUT_COPY_TEST { CUT_ONLY, COPY_ONLY, CUT_REPASTE }
@@ -122,7 +131,7 @@ function testCutCopy(code : string, startIndex: number, endIndex: number, expect
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
         await page.keyboard.type("i");
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(100);
         await assertState(page, "{$}");
         await typeIndividually(page, code);
         await page.keyboard.press("Home");
@@ -137,7 +146,7 @@ function testCutCopy(code : string, startIndex: number, endIndex: number, expect
             await page.keyboard.press("Shift+ArrowLeft");
             startIndex -= 1;
         }
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(100);
         page.keyboard.press(kind == CUT_COPY_TEST.COPY_ONLY ? "ControlOrMeta+c" : "ControlOrMeta+x");
         const clipboardContent = await page.evaluate(() => navigator.clipboard.readText());
         expect(clipboardContent).toEqual(expectedClipboard);
