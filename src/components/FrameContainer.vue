@@ -202,7 +202,7 @@ export default Vue.extend({
         },
         
         onOuterContainerClick(event : any): void {
-            var containerFramesBounds = (this.$refs.containerFrames as HTMLElement).getBoundingClientRect();
+            const containerFramesBounds = (this.$refs.containerFrames as HTMLElement).getBoundingClientRect();
             
             // Was the click beneath the bottom of the frame container?
             if (event.clientY > containerFramesBounds.bottom) {
@@ -227,6 +227,9 @@ export default Vue.extend({
                 event.stopPropagation();
                 event.stopImmediatePropagation();
             }
+
+            // Make sure the container is expanded.
+            this.appStore.frameObjects[this.frameId].isCollapsed = false;
         },
     },
 });
