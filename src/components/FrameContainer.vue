@@ -6,6 +6,7 @@
         </div>
 
         <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
+        <hr v-if="isCollapsed && frames.length > 0" class="non-empty-collapsed-frame-container-hr">
         <div :id="frameUID" :style="containerStyle" class="container-frames" @click="onFrameContainerClick" tabindex="-1" ref="containerFrames">
             <CaretContainer
                 :frameId="frameId"
@@ -248,9 +249,12 @@ export default Vue.extend({
   margin-left: 4px; // 2px in place of the button border + 2px in place of the button inline padding 
 }
 
+.container-frames, .non-empty-collapsed-frame-container-hr {
+    margin-left: 10px; // 1px less than for the right margin to make the rendering neat
+    margin-right: 11px;
+}
+
 .container-frames {
-    margin-left: 14px; // 1px less than for the right margin to wake the rendering neat
-    margin-right: 15px;
     border-radius: 8px;
     border: 1px solid #B4B4B4;
     outline: none;
