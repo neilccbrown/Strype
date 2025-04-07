@@ -16,7 +16,7 @@
             <!-- Note: the default text is only showing for new slots (1 subslot), we also use unicode zero width space character for empty slots for UI -->
             <LabelSlot
                 v-for="(slotItem, slotIndex) in subSlots"
-                :key="frameId + '_'  + labelIndex + '_' + slotIndex"
+                :key="frameId + '_'  + labelIndex + '_' + slotIndex + '_' + refactorCount"
                 :labelSlotsIndex="labelIndex"
                 :slotId="slotItem.id"
                 :slotType="slotItem.type"
@@ -62,6 +62,11 @@ export default Vue.extend({
             CustomEventTypes, // just to be able to use in template
             ignoreBracketEmphasisCheck: false, // cf. isSlotEmphasised()
             isFocused: false,
+            // Because the user edits the DOM directly, Vue can fail to realise it needs to update the DOM.
+            // So we add a dummy counter variable that just increases every time we refactor (which includes all cases where
+            // the user has edited things which might affect the slot structure) in order to nudge
+            // Vue into re-rendering all items in our loop above.
+            refactorCount : 0,
         };
     },
 
@@ -222,10 +227,11 @@ export default Vue.extend({
                 // so we find that out while getting through all the slots to get the literal code.
                 let {uiLiteralCode, focusSpanPos: focusCursorAbsPos, hasStringSlots} = getFrameLabelSlotLiteralCodeAndFocus(labelDiv, slotUID);
                 const parsedCodeRes = parseCodeLiteral(uiLiteralCode, {frameType: this.appStore.frameObjects[this.frameId].frameType.type, isInsideString: false, cursorPos: focusCursorAbsPos, skipStringEscape: hasStringSlots});
-                this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures = parsedCodeRes.slots;
+                Vue.set(this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex], "slotStructures", parsedCodeRes.slots);
                 // The parser can be return a different size "code" of the slots than the code literal
                 // (that is for example the case with textual operators which requires spacing in typing, not in the UI)
                 focusCursorAbsPos += parsedCodeRes.cursorOffset;
+                this.refactorCount += 1;
                 this.$forceUpdate();
                 this.$nextTick(() => {
                     let newUICodeLiteralLength = 0;
