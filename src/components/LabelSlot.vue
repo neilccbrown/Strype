@@ -958,7 +958,7 @@ export default Vue.extend({
                 // we move the text cursor in the next slot, as we consider the user closed an existing already closed bracket / quote.
                 //(*) see later in this method
                 let shouldMoveToNextSlot : boolean;
-                let checkMultidimBrackets = hasTextSelection;
+                let checkMultidimBrackets = !hasTextSelection;
                 // Checking if we are escaping the quote used for this string (i.e. we are after an escaping \, and there is no quote following the caret)
                 const isEscapingString = isFieldStringSlot(currentSlot) && cursorPos > 0 && (getNumPrecedingBackslashes(inputSpanFieldContent, cursorPos) % 2) == 1
                     && ((cursorPos + inputString.length < inputSpanFieldContent.length && inputSpanFieldContent[cursorPos + inputString.length]!= inputString) || isAtEndOfSlot);
@@ -966,36 +966,39 @@ export default Vue.extend({
                     // Just let the input occur:
                     return;
                 }
-                if(!hasTextSelection){
-                    if(isFieldStringSlot(currentSlot)){
-                        // Check for string quotes first, note that contrary to brackets, trailing spaces in a string are meaningful
-                        shouldMoveToNextSlot = isAtEndOfSlot 
-                            && (currentSlot as StringSlot).quote == inputString;
-                        if(!shouldMoveToNextSlot){
-                            if ((currentSlot as StringSlot).quote != inputString) {
-                                // If a quote that is NOT the same as this slot's quote was typed, we can add it.
-                                // So, we just don't do anything special in that situation.
-                                return;
-                            }
+                if(isFieldStringSlot(currentSlot)){
+                    // Check for string quotes first, note that contrary to brackets, trailing spaces in a string are meaningful
+                    shouldMoveToNextSlot = isAtEndOfSlot 
+                        && (currentSlot as StringSlot).quote == inputString;
+                    if(!shouldMoveToNextSlot){
+                        if ((currentSlot as StringSlot).quote != inputString) {
+                            // If a quote that is NOT the same as this slot's quote was typed, we can add it.
+                            // So, we just don't do anything special in that situation.
+                            return;
                         }
                     }
-                    else{
-                        // It's not a string, check for bracket
-                        const parentBracketSlot = (parentSlot && isFieldBracketedSlot(parentSlot)) ? parentSlot as SlotsStructure : undefined;
-                        shouldMoveToNextSlot = inputSpanFieldContent.substring(cursorPos).replace(/\u200B/g, "").trim() == inputString
-                            // make sure we are inside a bracketed structure and that the opening bracket is the counterpart of the key value (closing bracket)
-                            && parentBracketSlot != undefined && parentBracketSlot.openingBracketValue == getMatchingBracket(inputString, false);
-                        checkMultidimBrackets = !shouldMoveToNextSlot;
-                    }
-                    // We definitely don't want to insert the closing bracket
-                    // whether we are in the middle of end of the slot:
+                }
+                else{
+                    // It's not a string, check for bracket
+                    const parentBracketSlot = (parentSlot && isFieldBracketedSlot(parentSlot)) ? parentSlot as SlotsStructure : undefined;
+                    shouldMoveToNextSlot = inputSpanFieldContent.substring(cursorPos).replace(/\u200B/g, "").trim() == inputString
+                        // make sure we are inside a bracketed structure and that the opening bracket is the counterpart of the key value (closing bracket)
+                        && parentBracketSlot != undefined && parentBracketSlot.openingBracketValue == getMatchingBracket(inputString, false)
+                        && !hasTextSelection;
+                    checkMultidimBrackets = !shouldMoveToNextSlot && !hasTextSelection;
+                }
+                
+                // We definitely don't want to insert the closing bracket
+                // whether we are in the middle or end of the slot:
+                if (!checkMultidimBrackets) {
                     this.removeLastInput(inputString);
-                    
-                    // If we are at the end, we treat it as overtyping:
-                    if(shouldMoveToNextSlot){
-                        // focus the subslot following the closing bracket, in the next tick
-                        this.doArrowRightNextTick();
-                    }
+                }
+                
+                // If we are at the end, we treat it as overtyping:
+                if(shouldMoveToNextSlot){
+                    // focus the subslot following the closing bracket, in the next tick
+                    this.doArrowRightNextTick();
+                    return;
                 }
 
                 if(checkMultidimBrackets){
@@ -1008,22 +1011,25 @@ export default Vue.extend({
                         && isFieldBracketedSlot(retrieveSlotFromSlotInfos(nextSlotInfos) as FieldSlot) && (retrieveSlotFromSlotInfos(nextSlotInfos) as SlotsStructure).openingBracketValue == getMatchingBracket(inputString, false)){
                         // Case 1 (at the end of the slot, before a bracketed slot structure of the same bracket symbol opening counterpart than typed closing bracket)
                         inputSpanField.textContent = inputSpanFieldContent.substring(0, cursorPos) + getMatchingBracket(inputString, false) + this.appStore.mostRecentSelectedText + inputString;
-                        const newSlotCursorInfos: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: cursorPos + 1}; // We move past the first inserted opening bracket
-                        this.appStore.setSlotTextCursors(newSlotCursorInfos, newSlotCursorInfos);
-                        this.$emit(CustomEventTypes.requestSlotsRefactoring, refactorFocusSpanUID, stateBeforeChanges);
+                        //const newSlotCursorInfos: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: cursorPos + 1}; // We move past the first inserted opening bracket
+                        //this.appStore.setSlotTextCursors(newSlotCursorInfos, newSlotCursorInfos);
                     }
                     else if(inputSpanFieldContent.substring(cursorPos + inputString.length).trim().length > 0 && this.coreSlotInfo.slotId.includes(",") &&
                         isFieldBracketedSlot(parentSlot as FieldSlot) && (parentSlot as SlotsStructure).openingBracketValue == getMatchingBracket(inputString, false)){
                         // Case 2 (in a bracketed structure, that is NOT empty, and of the same bracket symbol opening counterpart than typed closing bracket)
-                        inputSpanField.textContent = this.appStore.mostRecentSelectedText + inputString + getMatchingBracket(inputString, false) + inputSpanFieldContent.substring(cursorPos);
-                        const newSlotCursorInfos: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: 0}; // We move before the first inserted closing bracket
+                        inputSpanField.textContent = inputSpanFieldContent.substring(0, cursorPos) + inputString + getMatchingBracket(inputString, false) + inputSpanFieldContent.substring(cursorPos + inputString.length);
+                        const newSlotCursorInfos: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: cursorPos + 2}; // We move after the first inserted opening bracket
                         this.appStore.setSlotTextCursors(newSlotCursorInfos, newSlotCursorInfos);
-                        this.$emit(CustomEventTypes.requestSlotsRefactoring, refactorFocusSpanUID, stateBeforeChanges);  
+                        setDocumentSelection(newSlotCursorInfos, newSlotCursorInfos);
                     }
                     else {
                         // We're not doing multidim brackets, just remove the input:
                         this.removeLastInput(inputString);
+                        return;
                     }
+                }
+                else {
+                    return;
                 }
             }
             else{
@@ -1106,11 +1112,11 @@ export default Vue.extend({
                         }
                     }
                 }
-                // The logic is as such, we handle the insertion in the slot (with adequate adaptation if needed, see above)
-                // let the parsing and slot factorisation do the checkup later
-                // (we handle the insertion even if there is specific adapation because in the call to emit, the DOM has not updated)
-                return () => this.$emit(CustomEventTypes.requestSlotsRefactoring, refactorFocusSpanUID, stateBeforeChanges);
-            }            
+            }
+            // The logic is as such, we handle the insertion in the slot (with adequate adaptation if needed, see above)
+            // let the parsing and slot factorisation do the checkup later
+            // (we handle the insertion even if there is specific adapation because in the call to emit, the DOM has not updated)
+            return () => this.$emit(CustomEventTypes.requestSlotsRefactoring, refactorFocusSpanUID, stateBeforeChanges);
         },
 
         insertSimpleTypedKey(keyValue: string, stateBeforeChanges: any, forcedInsert?: boolean){
@@ -1152,6 +1158,9 @@ export default Vue.extend({
                     setDocumentSelection(newAnchorSlotCursorInfo, {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos});
                     this.appStore.setSlotTextCursors(newAnchorSlotCursorInfo, {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos});
                 });
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
             }
         },
 

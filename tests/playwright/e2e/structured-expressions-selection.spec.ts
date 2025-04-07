@@ -290,9 +290,12 @@ test.describe("Selecting then typing in one slot", () => {
     testSelectionBoth("neighbour", 5, 9, "(", "{neigh}_({$bour})_{}");
     testSelectionBoth("neighbour(xyz)", 5, 9, "(", "{neigh}_({$bour})_{}_({xyz})_{}");
     
-    // Multidim brackets by closing:
-    testSelectionBoth("fax(neighbour)", 6, 9, ")", "{fax}_({ne})_{}_({$bour})_{}");
-    testSelectionBoth("fax(neighbour)", 1, 3, ")", "{f|ax$}_({neighbour})_{}");
+    // Multidim brackets by closing with selection should replace the content but otherwise do nothing:
+    testSelectionBoth("fax(neighbour)", 6, 9, ")", "{fax}_({ne$bour})_{}");
+    testSelectionBoth("fax(neighbour)", 1, 3, ")", "{f$}_({neighbour})_{}");
+    // Not a selection but may as well test while we're here, that closing brackets do as we intended:
+    testSelectionBoth("fax(neighbour)", 9, 9, ")", "{fax}_({neigh})_{}_({$bour})_{}");
+    testSelectionBoth("fax(neighbour)", 3, 3, ")", "{fax}_({$})_{}_({neighbour})_{}");
 
     // Numbers:
     testSelectionBoth("123456", 2, 4, "+", "{12}+{$56}");
