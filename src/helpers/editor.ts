@@ -55,6 +55,7 @@ export enum CustomEventTypes {
     unsupportedByStrypeFilePicked = "unsupportedByStrypeFilePicked",
     acItemHovered="acItemHovered",
     openSharedFileDone="openSharedFileDone",
+    dropFramePositionsUpdated="dropFramePositionsUpdated",
     /* IFTRUE_isPython */
     pythonExecAreaMounted = "peaMounted",
     pythonExecAreaExpandCollapseChanged = "peaExpandCollapsChanged",
@@ -998,12 +999,17 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
         // (which can be allowed or not) on the vertical axis only.
         let closestCaretPositionIndex = -1, minVerticalDist = Number.MAX_VALUE;
         currentCaretPositionsForDnD.every((navigationPos, index) => {
+            if(navigationPos.isInCollapsedFrameContainer){
+                // A collapsed frame position is ignored until a prolonged hover triggered it to expand
+                return true;
+            }
+
             const caretEl = document.getElementById(getCaretUID(navigationPos.caretPosition as string, navigationPos.frameId));
             const caretBox = caretEl?.getBoundingClientRect() as DOMRect;
             const caretYTopPos = (caretBox.height > 0) ? caretBox.y : caretBox.y - Number.parseInt(scssVars.caretHeightValue) / 2;
             const caretYBottompPos = (caretBox.height > 0) ? caretBox.y + caretBox.height : caretBox.y + Number.parseInt(scssVars.caretHeightValue) / 2;
             const verticalDist = (mouseEvent.y <= caretYTopPos)
-                ?   caretYTopPos - mouseEvent.y
+                ? caretYTopPos - mouseEvent.y
                 : mouseEvent.y - caretYBottompPos;
             if(verticalDist < minVerticalDist){
                 minVerticalDist = verticalDist;
@@ -1112,6 +1118,18 @@ function isFrameDropAllowed(destCaretFrameId: number, destCaretPos: CaretPositio
     return !topLevelDraggedFrameIds.some((topLevelDraggedFrameId) => destinationFrameContainer.frameType.forbiddenChildrenTypes.includes(useStore().frameObjects[topLevelDraggedFrameId].frameType.type));
 }
 
+const noCaretDropFrameIds: number[] = [];
+function prepareDropPositionsForDnd() {
+    currentCaretPositionsForDnD = getAvailableNavigationPositions(true)
+        .filter((navigationPosition) => !navigationPosition.isSlotNavigationPosition 
+            && !noCaretDropFrameIds.includes(navigationPosition.frameId));
+}
+
+// Register for an update of the drop positions (needed when a collapsed frame is expanded on hover, see onFrameContainerHover() in FrameContainer.vue)
+document.addEventListener(CustomEventTypes.dropFramePositionsUpdated, () => {
+    prepareDropPositionsForDnd();
+});
+
 export function notifyDragStarted(frameId?: number):void {
     const renderingCanvas = document.getElementById(companionCanvasId) as HTMLCanvasElement;
     let html2canvasOptions: Partial<Options> = {backgroundColor: null, canvas: renderingCanvas, scale: companionImgScalingRatio};
@@ -1154,8 +1172,9 @@ export function notifyDragStarted(frameId?: number):void {
 
     // Get the list of current available caret positions: all caret positions, 
     // except the positions within a selection or within inside the children of a frame that is dragged.
-    // (The position below the dragged frame (or last selected frame) won't a suggested drop position, which is not needed anyway.)
-    const noCaretDropFrameIds: number[] = [];
+    // (The position below the dragged frame (or last selected frame) won't be a suggested drop position, which is not needed anyway.)
+    // The positions are only updated if the custom event dropFramePositionsUpdated is received.
+    noCaretDropFrameIds.splice(0);
     if(frameId){
         noCaretDropFrameIds.push(...getAllChildrenAndJointFramesIds(frameId), frameId);
     }
@@ -1163,9 +1182,10 @@ export function notifyDragStarted(frameId?: number):void {
         useStore().selectedFrames.forEach((selectedFrameId) => noCaretDropFrameIds.push(...getAllChildrenAndJointFramesIds(selectedFrameId)));
         noCaretDropFrameIds.push(...useStore().selectedFrames);
     }
-    currentCaretPositionsForDnD = getAvailableNavigationPositions()
-        .filter((navigationPosition) => !navigationPosition.isSlotNavigationPosition 
-            && !noCaretDropFrameIds.includes(navigationPosition.frameId));
+    
+    // Set the drop positions
+    prepareDropPositionsForDnd();
+
     // Change the mouse cursor for the whole app
     document.getElementsByTagName("body")[0]?.classList.add(scssVars.draggingFrameClassName);
     // And assign a mouse event event listen to allow companion "image" to follow cursor and detect when the drop is performed

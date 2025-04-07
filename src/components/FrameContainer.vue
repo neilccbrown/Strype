@@ -1,5 +1,5 @@
 <template>
-    <div class="frame-container" :style="frameStyle" @click.self="onOuterContainerClick">
+    <div class="frame-container" :style="frameStyle" @click.self="onOuterContainerClick" @mouseenter="onFrameContainerHover(true)" @mouseleave="onFrameContainerHover(false)">
         <div class="frame-container-header">
             <button v-if="!isMainCodeFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
             <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer}" @click.self="toggleCollapse">{{containerLabel}}</span>
@@ -41,7 +41,7 @@ import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
 import { CaretPosition, FrameObject, DefaultFramesDefinition, FramesDefinitions, FrameContainersDefinitions, getFrameDefType, AllFrameTypesIdentifier, PythonExecRunningState } from "@/types/types";
 import { mapStores } from "pinia";
-import { getCaretContainerRef, getCaretUID, getFrameUID} from "@/helpers/editor";
+import { CustomEventTypes, getCaretContainerRef, getCaretUID, getFrameUID} from "@/helpers/editor";
 import scssVars from "@/assets/style/_export.module.scss";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 
@@ -75,6 +75,13 @@ export default Vue.extend({
     destroyed() {
         // Remove the registration of the caret container component at the upmost level for drag and drop
         delete this.$root.$refs[getCaretUID(this.caretPosition.body, this.frameId)];
+    },
+
+    data: function(){
+        return {
+            isHovered: false,
+            currentDragAndDropHoverTimeoutHandle: -1,
+        };
     },
 
     computed: {
@@ -230,6 +237,31 @@ export default Vue.extend({
 
             // Make sure the container is expanded.
             this.appStore.frameObjects[this.frameId].isCollapsed = false;
+        },
+
+        onFrameContainerHover(isHovered: boolean): void {
+            this.isHovered = isHovered;
+            
+            // Stop the timeout if one was set
+            if(!isHovered && this.currentDragAndDropHoverTimeoutHandle > -1){
+                window.clearTimeout(this.currentDragAndDropHoverTimeoutHandle);
+                this.currentDragAndDropHoverTimeoutHandle = -1;
+            }
+
+            // During a drag and drop, if the frame container is collapsed and we've waited long enough, 
+            // we can expand the frame (and we trigger an event to allow the drag and drop mechanism to 
+            // take the new situation into account.)
+            const timeout = 1000;
+            if(isHovered && this.appStore.isDraggingFrame && !this.isMainCodeFrameContainer && this.isCollapsed){
+                this.currentDragAndDropHoverTimeoutHandle = window.setTimeout(() => {
+                    // Check if we are still hovering and dragging                
+                    if(this.isHovered && this.appStore.isDraggingFrame){
+                        this.appStore.frameObjects[this.frameId].isCollapsed = false;
+                        document.dispatchEvent(new CustomEvent(CustomEventTypes.dropFramePositionsUpdated));
+                    }
+                }, timeout);
+            }
+
         },
     },
 });

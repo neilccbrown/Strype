@@ -249,6 +249,7 @@ export interface NavigationPosition {
     labelSlotsIndex?: number;
     slotId?: string;
     slotType?: SlotType;
+    isInCollapsedFrameContainer?: boolean;
 }
 export interface AddFrameCommandDef {
     type: FramesDefinitions;
