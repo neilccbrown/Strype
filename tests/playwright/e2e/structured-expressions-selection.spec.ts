@@ -62,7 +62,7 @@ async function assertState(page: Page, expectedState : string) : Promise<void> {
     expect(s).toEqual(expectedState.replaceAll("_", ""));
 }
 
-function testSelection(code : string, startIndex: number, endIndex: number, secondEntry : string, expectedAfter : string) : void {
+function testSelection(code : string, startIndex: number, endIndex: number, secondEntry : string | ((page: Page) => Promise<void>), expectedAfter : string) : void {
     test("Tests selecting in " + code + " from " + startIndex + " to " + endIndex + " then " + secondEntry, async ({page}) => {
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
@@ -83,7 +83,12 @@ function testSelection(code : string, startIndex: number, endIndex: number, seco
             startIndex -= 1;
         }
         await page.waitForTimeout(200);
-        await typeIndividually(page, secondEntry);
+        if (typeof secondEntry == "string") {
+            await typeIndividually(page, secondEntry);
+        }
+        else {
+            await secondEntry(page);
+        }
         await page.waitForTimeout(500);
         await assertState(page, expectedAfter);
     });
@@ -103,7 +108,7 @@ function testSelectionThenDelete(code : string, doSelectKeys: (page: Page) => Pr
     });
 }
 
-function testSelectionBoth(code: string, startIndex: number, endIndex: number, thenType: string, expectedAfter : string) : void {
+function testSelectionBoth(code: string, startIndex: number, endIndex: number, thenType: string | ((page: Page) => Promise<void>), expectedAfter : string) : void {
     // Test selecting from start to end:
     testSelection(code, startIndex, endIndex, thenType, expectedAfter);
     // Then end to start:
@@ -259,8 +264,8 @@ test.describe("Selecting then typing in multiple slots", () => {
 });
 
 test.describe("Selecting then deleting in multiple slots", () => {
-    testSelectionBoth("123+456", 2,5, "{del}", "{12$56}");
-    testSelectionBoth("123+456", 2,5, "{backspace}", "{12$56}");
+    testSelectionBoth("123+456", 2,5, (page) => page.keyboard.press("Delete"), "{12$56}");
+    testSelectionBoth("123+456", 2,5, (page) => page.keyboard.press("Backspace"), "{12$56}");
 });
 
 test.describe("Selecting then cutting/copying", () => {
