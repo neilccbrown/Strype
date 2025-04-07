@@ -1921,7 +1921,7 @@ export function getEditableSelectionText() : string {
     // For multi-node selection
     const allNodes = [] as string[];
     let treeWalker = document.createTreeWalker(
-        document.body || document.documentElement,
+        range.commonAncestorContainer,
         NodeFilter.SHOW_TEXT,
         null
     );
