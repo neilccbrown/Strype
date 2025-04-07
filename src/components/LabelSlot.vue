@@ -875,7 +875,7 @@ export default Vue.extend({
             // will be different to where the cursor actually is, hence we generally add inputString.length
             // to selectionEnd, below.
             const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UID);
-            const hasTextSelection = (this.appStore.anchorSlotCursorInfos && this.appStore.focusSlotCursorInfos && slotSelectionCursorComparisonValue != 0) ?? false;
+            const hasTextSelection = !!this.appStore.mostRecentSelectedText || ((this.appStore.anchorSlotCursorInfos && this.appStore.focusSlotCursorInfos && slotSelectionCursorComparisonValue != 0) ?? false);
             let refactorFocusSpanUID = this.UID; // by default the focus stays where we are
 
             const isAtEndOfSlot = !hasTextSelection && selectionEnd + inputString.length >= inputSpanFieldContent.length;
@@ -1083,52 +1083,14 @@ export default Vue.extend({
                                         return;
                                     }
                                 }
-                                // If we didn't need to "skip" the opening bracket, or if we insert a string, add the counter part of the typed key here, so the parser can work things out properly with slots
-                                // We add the string quotes or brackets into the appropriate slots, so that if there is a text selection, regenerating the slots will be correct
-                                let openingTokenSpanField = inputSpanField;
-                                let openingTokenSpanFieldCurosorPos = selectionStart;
-                                let closingTokenSpanField = inputSpanField;
-                                let closingTokenSpanFieldCurosorPos = selectionEnd;  
-                                let closingTokenSlotInfos = this.coreSlotInfo;
-                                // We need to know where the new bracket is to remove it, like
-                                // removeLastInput but we don't want to destroy information about selection
-                                // so we don't call that function:
-                                let newBracketIsAtClosingEnd = false;
-                                if(hasTextSelection){
-                                    // Check in what direction is the selection, note that we expect the anchor and focus to be set here (we checked before), so the comparison value shouldn't be undefined.
-                                    if(slotSelectionCursorComparisonValue < 0){
-                                        // Anchor is before the focus: we only change the openingTokenSpanField
-                                        openingTokenSpanField = (document.getElementById(getLabelSlotUID((this.appStore.anchorSlotCursorInfos as SlotCursorInfos).slotInfos)) as HTMLSpanElement);
-                                        openingTokenSpanFieldCurosorPos = (this.appStore.anchorSlotCursorInfos as SlotCursorInfos).cursorPos;
-                                        newBracketIsAtClosingEnd = true;
-                                    }
-                                    else{
-                                        // Anchor is after the focus: we only change the closingTokenSpanField
-                                        closingTokenSpanField = (document.getElementById(getLabelSlotUID((this.appStore.anchorSlotCursorInfos as SlotCursorInfos).slotInfos)) as HTMLSpanElement);
-                                        closingTokenSpanFieldCurosorPos = (this.appStore.anchorSlotCursorInfos as SlotCursorInfos).cursorPos;
-                                        closingTokenSlotInfos = (this.appStore.anchorSlotCursorInfos as SlotCursorInfos).slotInfos;
-                                    }
-                                }
-                                else {
-                                    closingTokenSpanFieldCurosorPos += inputString.length;
-                                    newBracketIsAtClosingEnd = true;
-                                }
-                                
-                                // Start with the closing end so cursor positions are still valid for the opening
-                                closingTokenSpanField.textContent = closingTokenSpanField.textContent?.substring(0, closingTokenSpanFieldCurosorPos) 
-                                    + ((isBracket) ? getMatchingBracket(inputString, true) : ((inputString == "\"") ? STRING_DOUBLEQUOTE_PLACERHOLDER : STRING_SINGLEQUOTE_PLACERHOLDER))
-                                    + closingTokenSpanField.textContent?.substring(closingTokenSpanFieldCurosorPos + (newBracketIsAtClosingEnd ? 0 : inputString.length));
-
-                                openingTokenSpanField.textContent = openingTokenSpanField.textContent?.substring(0, openingTokenSpanFieldCurosorPos) 
-                                    + ((isStringQuote) ? ((inputString == "\"") ? STRING_DOUBLEQUOTE_PLACERHOLDER : STRING_SINGLEQUOTE_PLACERHOLDER) : inputString)
-                                    + openingTokenSpanField.textContent?.substring(openingTokenSpanFieldCurosorPos + (newBracketIsAtClosingEnd ? inputString.length : 0));
-                 
-                                // If there is no text selection, we "autocomplete" the opening token and want to get after it, into the structure, at position 0
-                                // if there text selection, we are wrapping the text with the tokens and we want to get after the closing token
-                                const newPos = (!hasTextSelection) ? selectionStart + 1 : closingTokenSpanFieldCurosorPos + ((openingTokenSpanField.id == closingTokenSpanField.id) ? 2 : 1);
-                                const newSlotCursorInfos: SlotCursorInfos = {slotInfos: closingTokenSlotInfos, cursorPos: newPos};
-                                // We could be now focusing a different slot (for example if we wrapped after selecting backwards)
-                                refactorFocusSpanUID = closingTokenSpanField.id;
+                                // We set the text and let the refactoring turn it into the right bracketed structure:
+                                inputSpanField.textContent = (inputSpanField?.textContent?.substring(0, selectionStart) ?? "") +
+                                    ((isStringQuote) ? ((inputString == "\"") ? STRING_DOUBLEQUOTE_PLACERHOLDER : STRING_SINGLEQUOTE_PLACERHOLDER) : inputString) +
+                                    this.appStore.mostRecentSelectedText +
+                                    ((isBracket) ? getMatchingBracket(inputString, true) : ((inputString == "\"") ? STRING_DOUBLEQUOTE_PLACERHOLDER : STRING_SINGLEQUOTE_PLACERHOLDER)) +
+                                    (inputSpanField?.textContent?.substring(selectionStart + inputString.length) ?? "");
+                                const newSlotCursorInfos: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: selectionStart + 1};
+                                refactorFocusSpanUID = inputSpanField.id;
                                 setDocumentSelection(newSlotCursorInfos, newSlotCursorInfos);
                                 this.appStore.setSlotTextCursors(newSlotCursorInfos, newSlotCursorInfos);
                             }               

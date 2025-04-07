@@ -88,6 +88,10 @@ export const useStore = defineStore("app", {
             
             // Flag to indicate when an action of selection spans across slots
             isSelectingMultiSlots : false,
+            
+            // Has to be in the store despite only going from LabelSlotsStructure to LabelSlot,
+            // because we need immediate update, faster than we get with setting a prop (trust me, I tried):
+            mostRecentSelectedText: "",
 
             // Do not write to this directly (except for assigning NoMessage), use the
             // showMessage helper instead as that also updates currentMessageId
