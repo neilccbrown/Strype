@@ -561,7 +561,7 @@ export default Vue.extend({
         },
 
         reachFirstError(): void {
-            this.$nextTick(() => {
+            setTimeout(() => {
                 // We should get only the run time error here, or at least 1 precompiled error
                 // but for sanity check, we make sure it's still there
                 const errors = getEditorCodeErrorsHTMLElements();
@@ -570,7 +570,7 @@ export default Vue.extend({
                     (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).currentErrorNavIndex = -1; 
                     (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).goToError(null, true);
                 }
-            });
+            }, 200);
         },
 
         clear(): void {

@@ -1182,7 +1182,7 @@ export default Vue.extend({
                             document.getElementById(getFrameHeaderUID(parseFrameUID(errorElement.id)))?.focus();
                         }
                         else{
-                        // Error on a slot
+                            // Error on a slot
                             const errorSlotInfos: SlotCoreInfos = (isElementEditableLabelSlotInput(errorElement))
                                 ? parseLabelSlotUID(errorElement.id)
                                 : {frameId: parseFrameHeaderUID(errorElement.id), labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code};
