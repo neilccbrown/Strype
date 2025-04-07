@@ -1502,6 +1502,10 @@ export const useStore = defineStore("app", {
                     this.focusSlotCursorInfos = undefined;
                 }
 
+                // As we will show the frame cursor that is potentiallly inside a collapsed frame container, 
+                // we make sure we set that frame container expanded to ensure the changes visibility
+                this.frameObjects[getFrameSectionIdFromFrameId(this.currentFrame.id)].isCollapsed = false;
+
                 // Just like for saveStateChanges(), we need to simulate some dummy changes so that differences between
                 // the stateBeforeChanges and the current state regarding positioning and editing are all reflected properly
                 // (we do not know where we'll be when undo/redo is invoked, so we need to make as if changes of positionning occurred)
