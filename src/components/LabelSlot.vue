@@ -66,7 +66,7 @@
 import Vue, { PropType } from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import {getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUID, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUID, getFrameUID, getFrameComponent, getEditableSelectionText} from "@/helpers/editor";
+import {getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUID, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUID, getFrameUID, getFrameComponent } from "@/helpers/editor";
 import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, FieldSlot, PythonExecRunningState, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
@@ -758,8 +758,6 @@ export default Vue.extend({
             // Any text input is now handled by the input event because that properly
             // handles behaviours such as IME and composition shortcuts (e.g. alt + keys).
             
-            // Save the current state
-            const slotSelectionCursorComparisonValue = getSelectionCursorsComparisonValue() as number;
             // We store the key.down key event.key value for the bracket/quote closing method (cf details there)
             this.keyDownStr = event.key;
 
@@ -769,24 +767,6 @@ export default Vue.extend({
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
-            }
-
-            // When some text is cut through *a selection*, we need to handle it fully: we want to handle the slot changes in the store to reflect the
-            // text change, but also we need to handle the clipboard, as doing events here on keydown results the browser not being able to get the text
-            // cut (since the slots have already disappear, and the action for cut seems to be done on the keyup event)
-            if ((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() ==  "x" || event.key.toLowerCase() ==  "c") && slotSelectionCursorComparisonValue != 0){
-                // There is a selection already, we can directly can set the text in the browser's clipboard here
-                navigator.clipboard.writeText(getEditableSelectionText());
-                //navigator.clipboard.readText().then((str) => console.log("Clipboard then: " + str));
-                if (event.key.toLowerCase() ==  "x") {
-                    this.deleteSlots(new KeyboardEvent(event.type, {
-                        key: (slotSelectionCursorComparisonValue < 0) ? "Backspace" : "Delete",
-                    }));
-                }
-                event.preventDefault();
-                event.stopPropagation();
-                event.stopImmediatePropagation();
-                return;
             }
 
             // Manage the handling of home/end and page up/page down keys

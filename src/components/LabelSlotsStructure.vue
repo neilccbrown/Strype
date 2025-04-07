@@ -343,6 +343,32 @@ export default Vue.extend({
             if(event.key.toLowerCase() == "contextmenu"){
                 return;
             }
+
+            // When some text is cut through *a selection*, we need to handle it fully: we want to handle the slot changes in the store to reflect the
+            // text change, but also we need to handle the clipboard, as doing events here on keydown results the browser not being able to get the text
+            // cut (since the slots have already disappear, and the action for cut seems to be done on the keyup event)
+            if ((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() ==  "x" || event.key.toLowerCase() ==  "c")){
+                // There is a selection already, we can directly can set the text in the browser's clipboard here
+                const selectionText = getEditableSelectionText();
+                if (selectionText) {
+                    navigator.clipboard.writeText(selectionText);
+                    if (event.key.toLowerCase() == "x" && this.appStore.focusSlotCursorInfos) {
+                        // Send fake delete key to delete the content:
+                        document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
+                            ?.dispatchEvent(new KeyboardEvent(event.type, {
+                                key: "Backspace",
+                                altKey: false,
+                                shiftKey: false,
+                                ctrlKey: false,
+                                metaKey: false,
+                            }));
+                    }
+                }
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                return;
+            }
             
             if(this.appStore.focusSlotCursorInfos){
                 document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
