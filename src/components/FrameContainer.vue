@@ -43,6 +43,7 @@ import { CaretPosition, FrameObject, DefaultFramesDefinition, FramesDefinitions,
 import { mapStores } from "pinia";
 import { getCaretContainerRef, getCaretUID, getFrameUID} from "@/helpers/editor";
 import scssVars from "@/assets/style/_export.module.scss";
+import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 
 //////////////////////
 //     Component    //
@@ -175,6 +176,18 @@ export default Vue.extend({
             // Only collapse Imports and Definitions frame containers.
             if(!this.isMainCodeFrameContainer){
                 this.isCollapsed = !this.isCollapsed;
+                
+                // Also move the frame cursor to the next uncollapsed frame container
+                // if we were inside the frame container being collapsed
+                if(this.isCollapsed && getFrameSectionIdFromFrameId(this.appStore.currentFrame.id) == this.frameId) {
+                    const nextFrameContainerIndex = this.appStore.frameObjects[this.appStore.getRootFrameContainerId].childrenIds.indexOf(this.frameId) + 1;
+                    const nextFrameContainerId = this.appStore.frameObjects[this.appStore.getRootFrameContainerId].childrenIds.at(nextFrameContainerIndex);
+                    // As we have only 3 sections, if the next section is collapsed we automatically get to "My code", as this one is never collapsed.
+                    const targetFrameContainerId = (nextFrameContainerId && !this.appStore.frameObjects[nextFrameContainerId].isCollapsed)
+                        ? nextFrameContainerId
+                        : this.appStore.getMainCodeFrameContainerId;
+                    this.appStore.setCurrentFrame({id: targetFrameContainerId, caretPosition: CaretPosition.body});
+                }
             }
         },
 
