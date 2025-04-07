@@ -688,8 +688,8 @@ export default Vue.extend({
             // if they want to use the detected (supported) language. 
             // If they refused or if we can't retrieve anything at all, we use English as default.
             let strypeSessionLocale = "en"; // default locale
-            let canCheckBrowserLocale = false;
-            if(typeof Storage !== undefined) {
+            let checkBrowserLocale = false;
+            if(typeof Storage !== "undefined") {
                 const savedSettingsState: typeof this.settingsStore = JSON.parse(localStorage.getItem(AutoSaveKeyNames.settingsState)??"{}");
                 if(savedSettingsState.locale) {
                     strypeSessionLocale = savedSettingsState.locale;
@@ -698,14 +698,14 @@ export default Vue.extend({
                     // There is no locale saved. Maybe the user wants to use the default English, but maybe
                     // they would like to use another language and their working environment won't save it,
                     // so we can ask them based on the browser's locale if they want to switch.
-                    canCheckBrowserLocale = true;
+                    checkBrowserLocale = true;
                 }
             }
             else{
-                canCheckBrowserLocale = true;
+                checkBrowserLocale = true;
             }
 
-            if(canCheckBrowserLocale){
+            if(checkBrowserLocale){
                 // We didn't retrieve a locale, but we can check if the browser's locale isn't English
                 // and use it for Strype if we provide that locale
                 const foundLanguange = navigator.language?.toLowerCase();
