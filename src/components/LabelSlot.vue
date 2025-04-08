@@ -1010,12 +1010,7 @@ export default Vue.extend({
                 if(isFieldStringSlot(currentSlot)) {
                     if((currentSlot as StringSlot).quote == inputString){
                         this.removeLastInput(inputString);
-                        return;
                     }
-                    // TODO I think this case is covered above?
-                    //this.insertSimpleTypedKey(inputString, stateBeforeChanges);
-                    //console.log("Inserting simple string char, composing: " + event.isComposing + " composed: " + event.composed + " repeat: " + event.repeat);
-                    // No need to do further processing as that method already checks for slots refactoring:
                     return;
                 }
                 else{
@@ -1089,16 +1084,6 @@ export default Vue.extend({
             // let the parsing and slot factorisation do the checkup later
             // (we handle the insertion even if there is specific adapation because in the call to emit, the DOM has not updated)
             return () => this.$emit(CustomEventTypes.requestSlotsRefactoring, refactorFocusSpanUID, stateBeforeChanges);
-        },
-
-        insertSimpleTypedKey(keyValue: string, stateBeforeChanges: any, forcedInsert?: boolean){
-            // If we have a text selection that spans several slots, we need to "replace" that selection with one slot with a new content (i.e. delete some slots and edit)
-            // in the other case (selection within a slot or no selection at all) we just change the content in the current slot
-            const hasMultiSlotTextSelection = this.appStore.focusSlotCursorInfos && this.appStore.anchorSlotCursorInfos && !areSlotCoreInfosEqual(this.appStore.focusSlotCursorInfos.slotInfos, this.appStore.anchorSlotCursorInfos.slotInfos);
-            if(hasMultiSlotTextSelection){
-                // First delete the selection -- we use the deletion method but do not add this in the undo/redo stack
-                this.deleteSlots(new KeyboardEvent("keydown", {key: "delete"}), undefined);    
-            }
         },
 
         handleFastUDNavKeys(event: KeyboardEvent){
