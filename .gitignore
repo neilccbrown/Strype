@@ -29,3 +29,8 @@ src/debug.log
 tests/cypress/downloads/*
 tests/cypress/screenshots/*
 tests/cypress/videos/*
+
+# Playwright
+/tests/playwright/test-results/
+/tests/playwright/html-report/
+

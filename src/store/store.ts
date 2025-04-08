@@ -88,6 +88,10 @@ export const useStore = defineStore("app", {
             
             // Flag to indicate when an action of selection spans across slots
             isSelectingMultiSlots : false,
+            
+            // Has to be in the store despite only going from LabelSlotsStructure to LabelSlot,
+            // because we need immediate update, faster than we get with setting a prop (trust me, I tried):
+            mostRecentSelectedText: "",
 
             // Do not write to this directly (except for assigning NoMessage), use the
             // showMessage helper instead as that also updates currentMessageId
@@ -922,7 +926,7 @@ export const useStore = defineStore("app", {
          * @param currentSlotInfos The slot where the key was pressed.
          * @returns an object containing the resulting new slot id (newSlotId), and the cursor position offset within this slot (cursorPosOffset)
          */
-        deleteSlots(isForwardDeletion: boolean, currentSlotInfos: SlotCoreInfos): {newSlotId: string, cursorPosOffset: number} {
+        deleteSlots(isForwardDeletion: boolean, currentSlotInfos?: SlotCoreInfos | undefined): {newSlotId: string, cursorPosOffset: number} {
             // Deleting slots depends on the direction of deletion (with del or backspace), the scope of deletion
             // (from a selection or a from one position of code) and the nature of the field deleted.
             // When there is no selection, we do a deletion on the basis of a slot and an operator are deleted:
@@ -931,6 +935,10 @@ export const useStore = defineStore("app", {
             // The returned value is the new ID of the current slot and the cursor position offset (to be used by UI)
             // When there is a selection, we always end up with one resulting slot. The deletion direction doesn't matter.
             if(this.anchorSlotCursorInfos && this.focusSlotCursorInfos){
+                if (!currentSlotInfos) {
+                    currentSlotInfos = this.focusSlotCursorInfos.slotInfos;
+                }
+                
                 const hasSlotSelectedToDelete = (!areSlotCoreInfosEqual(this.anchorSlotCursorInfos.slotInfos, this.focusSlotCursorInfos.slotInfos));
                 // Split the target slot ID into parent ID and the index of us within the parent:
                 const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(currentSlotInfos.slotId);

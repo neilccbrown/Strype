@@ -1888,3 +1888,63 @@ export function getCurrentFrameSelectionScope(): SelectAllFramesFuncDefScope {
     }
     return SelectAllFramesFuncDefScope.none;
 }
+
+
+/**
+ * Gets selected text from editable text nodes by traversing DOM from anchor to focus
+ * Similar to document.getSelection().toString() but only including nodes where
+ * isNodeSelectableText() returns true
+ *
+ * @returns {string} The concatenated text from all selected editable text nodes
+ */
+export function getEditableSelectionText() : string {
+    const selection = document.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+        return "";
+    }
+
+    // Get the range covering the current selection
+    const range = selection.getRangeAt(0);
+
+    // If selection is within a single node
+    if (range.startContainer === range.endContainer) {
+        if (range.startContainer.nodeType === Node.TEXT_NODE && isNodeSelectableText(range.startContainer)) {
+            return range.startContainer.nodeValue?.substring(Math.min(range.startOffset, range.endOffset), Math.max(range.startOffset, range.endOffset)) ?? "";
+        }
+        return "";
+    }
+    
+    // For multi-node selection
+    const allNodes = [] as string[];
+    const treeWalker = document.createTreeWalker(
+        range.cloneContents(),
+        NodeFilter.SHOW_TEXT,
+        null
+    );
+
+    for (let node = treeWalker.nextNode(); node; node = treeWalker.nextNode()) {
+        if (isNodeSelectableText(node)) {
+            allNodes.push(node.nodeValue ?? "");
+        }
+    }
+
+    return allNodes.join("").replace(/\u200B/g, "");
+}
+
+// Helper function to check if a node is inside a contenteditable element
+function isNodeSelectableText(node: Node | null): boolean {
+    if (!node || node.nodeType !== Node.TEXT_NODE) {
+        return false;
+    }
+
+    // Check if the nearest element ancestors is contenteditable
+    let current: Node | null = node;
+    while (current) {
+        if (current.nodeType === Node.ELEMENT_NODE) {
+            const el = current as HTMLElement;
+            return el.classList.contains(scssVars.labelSlotInputClassName);
+        }
+        current = current.parentNode;
+    }
+    return false;
+}
