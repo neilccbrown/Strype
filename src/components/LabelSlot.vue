@@ -957,6 +957,7 @@ export default Vue.extend({
                             return;
                         }
                     }
+                    checkMultidimBrackets = false;
                 }
                 else{
                     // It's not a string, check for bracket
@@ -1008,7 +1009,7 @@ export default Vue.extend({
                         return;
                     }
                 }
-                else {
+                else if (!isFieldStringSlot(currentSlot)) {
                     return;
                 }
             }
