@@ -884,6 +884,7 @@ export default Vue.extend({
                 if (isAtEndOfLastSlot) {
                     this.doArrowRightNextTick();
                 }
+                return;
             }
             // If the frame is an import frame, pressing space will automatically add the "as" operator when it makes sense to do so (see details below),
             // when we press space and we are just before  an "as", we go to the next slot.
