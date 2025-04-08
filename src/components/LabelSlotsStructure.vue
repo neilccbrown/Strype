@@ -38,7 +38,7 @@ import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
 import { CustomEventTypes, getFrameLabelSlotsStructureUID, getLabelSlotUID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, getFunctionCallDefaultText, getEditableSelectionText } from "@/helpers/editor";
-import {checkCodeErrors, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
+import {checkCodeErrors, generateFlatSlotBases, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import {calculateParamPrompt} from "@/autocompletion/acManager";
 import scssVars from "@/assets/style/_export.module.scss";
@@ -210,7 +210,29 @@ export default Vue.extend({
             this.appStore.mostRecentSelectedText = getEditableSelectionText();
         },
 
+        majorChange(before: SlotsStructure, after: SlotsStructure) : boolean {
+            const beforeFlat = generateFlatSlotBases(before);
+            const afterFlat = generateFlatSlotBases(after);
+            // Our default behaviour is to discard all AC.  We only keep it if:
+            //  - the flat length is the same, AND
+            //  - at most one slot has changed
+            if (beforeFlat.length == afterFlat.length) {
+                let changes = [] as number[];
+                for (let i = 0; i < afterFlat.length; i++) {
+                    if (beforeFlat[i].type != afterFlat[i].type) {
+                        return true;
+                    } 
+                    if (beforeFlat[i].code != afterFlat[i].code) {
+                        changes.push(i);
+                    }
+                }
+                if (changes.length <= 1) {
+                    return false;
+                }
+            }
 
+            return true;
+        },
 
         checkSlotRefactoring(slotUID: string, stateBeforeChanges: any) {
             // Comments do not need to be checked, so we do nothing special for them, but just enforce the caret to be placed at the right place and the code value to be updated
@@ -229,11 +251,14 @@ export default Vue.extend({
                 // so we find that out while getting through all the slots to get the literal code.
                 let {uiLiteralCode, focusSpanPos: focusCursorAbsPos, hasStringSlots} = getFrameLabelSlotLiteralCodeAndFocus(labelDiv, slotUID);
                 const parsedCodeRes = parseCodeLiteral(uiLiteralCode, {frameType: this.appStore.frameObjects[this.frameId].frameType.type, isInsideString: false, cursorPos: focusCursorAbsPos, skipStringEscape: hasStringSlots});
+                const majorChange = this.majorChange(this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures, parsedCodeRes.slots);
                 Vue.set(this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex], "slotStructures", parsedCodeRes.slots);
                 // The parser can be return a different size "code" of the slots than the code literal
                 // (that is for example the case with textual operators which requires spacing in typing, not in the UI)
                 focusCursorAbsPos += parsedCodeRes.cursorOffset;
-                this.refactorCount += 1;
+                if (majorChange) {
+                    this.refactorCount += 1;
+                }
                 this.$forceUpdate();
                 this.$nextTick(() => {
                     let newUICodeLiteralLength = 0;
