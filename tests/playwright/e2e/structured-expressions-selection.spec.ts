@@ -47,7 +47,7 @@ test.beforeEach(async ({ page }) => {
 async function typeIndividually(page: Page, content: string) {
     for (let i = 0; i < content.length; i++) {
         await page.keyboard.type(content[i]);
-        await page.waitForTimeout(50);
+        await page.waitForTimeout(75);
     }
 }
 
@@ -100,13 +100,16 @@ function testSelection(code : string, startIndex: number, endIndex: number, seco
         await page.keyboard.press("Home");
         for (let i = 0; i < startIndex; i++) {
             await page.keyboard.press("ArrowRight");
+            await page.waitForTimeout(75);
         }
         while (startIndex < endIndex) {
             await page.keyboard.press("Shift+ArrowRight");
+            await page.waitForTimeout(75);
             startIndex += 1;
         }
         while (endIndex < startIndex) {
             await page.keyboard.press("Shift+ArrowLeft");
+            await page.waitForTimeout(75);
             startIndex -= 1;
         }
         await page.waitForTimeout(100);
@@ -157,13 +160,16 @@ function testCutCopy(code : string, stepsToBegin: number, stepsWhileSelecting: n
         await page.keyboard.press("Home");
         for (let i = 0; i < stepsToBegin; i++) {
             await page.keyboard.press("ArrowRight");
+            await page.waitForTimeout(75);
         }
         while (stepsWhileSelecting > 0) {
             await page.keyboard.press("Shift+ArrowRight");
+            await page.waitForTimeout(75);
             stepsWhileSelecting -= 1;
         }
         while (stepsWhileSelecting < 0) {
             await page.keyboard.press("Shift+ArrowLeft");
+            await page.waitForTimeout(75);
             stepsWhileSelecting += 1;
         }
         await page.waitForTimeout(100);
