@@ -910,6 +910,7 @@ export default Vue.extend({
                             .then(() => this.appStore.saveStateChanges(stateBeforeChanges));    
                     });
                 }
+                return;
             }
             else if (inputString === " " && this.frameType === AllFrameTypesIdentifier.fromimport){
                 this.removeLastInput(inputString);
