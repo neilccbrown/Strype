@@ -348,6 +348,9 @@ test.describe("Selecting then typing in one slot", () => {
     testSelectionBoth("abc123", 0, 3, "+", "{+$123}");
     testSelectionBoth("abc123", 0, 3, "-", "{-$123}");
     testSelectionBoth("abc123", 0, 3, "*", "{}*{$123}");
+
+    testSelectionBoth("abc123", 2, 4, "\"", "{ab}_“$c1”_{23}");
+    testSelectionBoth("abc123", 2, 4, "'", "{ab}_‘$c1’_{23}");
 });
 
 test.describe("Selecting then typing in multiple slots", () => {
@@ -362,11 +365,17 @@ test.describe("Selecting then typing in multiple slots", () => {
     testSelectionBoth("123+456", 2,5, "*", "{12}*{$56}");
     
     testSelectionBoth("123+456", 2,5, "(", "{12}_({$3}+{4})_{56}");
+
+    testSelectionBoth("123+456", 2, 5, "\"", "{12}_“$3+4”_{56}");
 });
 
 test.describe("Selecting then deleting in multiple slots", () => {
     testSelectionBoth("123+456", 2,5, (page) => page.keyboard.press("Delete"), "{12$56}");
     testSelectionBoth("123+456", 2,5, (page) => page.keyboard.press("Backspace"), "{12$56}");
+    
+    // Prevent invalid selections (trying to select from outside brackets to within):
+    testSelection("123+(456)*789", 6, 12, (page) => page.keyboard.press("Backspace"), "{123}+{}_({4$})_{}*{789}");
+    testSelection("123+(456)*789", 6, 2, (page) => page.keyboard.press("Backspace"), "{123}+{}_({$56})_{}*{789}");
 });
 
 test.describe("Selecting then cutting/copying", () => {
