@@ -1905,93 +1905,26 @@ export function getEditableSelectionText() : string {
 
     // Get the range covering the current selection
     const range = selection.getRangeAt(0);
-    const startNode = range.startContainer;
-    const endNode = range.endContainer;
-    const startOffset = range.startOffset;
-    const endOffset = range.endOffset;
 
     // If selection is within a single node
-    if (startNode === endNode) {
-        if (startNode.nodeType === Node.TEXT_NODE && isNodeSelectableText(startNode)) {
-            return startNode.nodeValue?.substring(startOffset, endOffset) ?? "";
+    if (range.startContainer === range.endContainer) {
+        if (range.startContainer.nodeType === Node.TEXT_NODE && isNodeSelectableText(range.startContainer)) {
+            return range.startContainer.nodeValue?.substring(Math.min(range.startOffset, range.endOffset), Math.max(range.startOffset, range.endOffset)) ?? "";
         }
         return "";
     }
-
+    
     // For multi-node selection
     const allNodes = [] as string[];
-    let treeWalker = document.createTreeWalker(
-        range.commonAncestorContainer,
+    const treeWalker = document.createTreeWalker(
+        range.cloneContents(),
         NodeFilter.SHOW_TEXT,
         null
     );
 
-    // Find start node in tree walker
-    let node = treeWalker.nextNode();
-    let startFound = false;
-    let endFound = false;
-
-    while (node && !endFound) {
-        // Check if we found the start node
-        if (node === startNode) {
-            startFound = true;
-            if (isNodeSelectableText(node)) {
-                allNodes.push(node.nodeValue?.substring(startOffset) ?? "");
-            }
-        }
-        // Check if we found the end node
-        else if (node === endNode) {
-            endFound = true;
-            if (isNodeSelectableText(node)) {
-                allNodes.push(node.nodeValue?.substring(0, endOffset) ?? "");
-            }
-        }
-        // Add intermediate nodes
-        else if (startFound) {
-            if (isNodeSelectableText(node)) {
-                allNodes.push(node.nodeValue ?? "");
-            }
-        }
-
-        node = treeWalker.nextNode();
-    }
-
-    // If we couldn't find the end node, try iterating in the other direction
-    // This handles cases where focus is before anchor in the DOM tree
-    if (!endFound && !startFound) {
-        allNodes.length = 0;
-        treeWalker = document.createTreeWalker(
-            document.body || document.documentElement,
-            NodeFilter.SHOW_TEXT,
-            null
-        );
-
-        node = treeWalker.nextNode();
-
-        while (node && !startFound) {
-            // Check if we found the end node first (focus before anchor case)
-            if (node === endNode) {
-                endFound = true;
-                if (isNodeSelectableText(node)) {
-                    allNodes.push(node.nodeValue?.substring(0, endOffset)??"");
-                }
-            }
-            // Check if we found the start node
-            else if (node === startNode) {
-                startFound = true;
-                if (isNodeSelectableText(node)) {
-                    allNodes.push(node.nodeValue?.substring(startOffset)??"");
-                }
-                break;
-            }
-            // Add intermediate nodes
-            else if (endFound) {
-                if (isNodeSelectableText(node)) {
-                    allNodes.push(node.nodeValue??"");
-                }
-            }
-
-            node = treeWalker.nextNode();
+    for (let node = treeWalker.nextNode(); node; node = treeWalker.nextNode()) {
+        if (isNodeSelectableText(node)) {
+            allNodes.push(node.nodeValue ?? "");
         }
     }
 
