@@ -219,11 +219,18 @@ export default Vue.extend({
             if (beforeFlat.length == afterFlat.length) {
                 let changes = [] as number[];
                 for (let i = 0; i < afterFlat.length; i++) {
+                    // A change of type is a major change
                     if (beforeFlat[i].type != afterFlat[i].type) {
                         return true;
-                    } 
+                    }
+                    // One change of code in a code or string slot is allowed: 
                     if (beforeFlat[i].code != afterFlat[i].code) {
-                        changes.push(i);
+                        if (afterFlat[i].type == SlotType.string || afterFlat[i].type == SlotType.code) {
+                            changes.push(i);
+                        }
+                        else {
+                            return true;
+                        }
                     }
                 }
                 if (changes.length <= 1) {
