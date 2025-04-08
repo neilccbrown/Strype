@@ -375,7 +375,7 @@ export default Vue.extend({
             // text change, but also we need to handle the clipboard, as doing events here on keydown results the browser not being able to get the text
             // cut (since the slots have already disappear, and the action for cut seems to be done on the keyup event)
             if ((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() ==  "x" || event.key.toLowerCase() ==  "c")){
-                // There is a selection already, we can directly can set the text in the browser's clipboard here
+                // There is a selection already, we can directly set the text in the browser's clipboard here
                 const selectionText = getEditableSelectionText();
                 if (selectionText) {
                     navigator.clipboard.writeText(selectionText);
@@ -384,10 +384,6 @@ export default Vue.extend({
                         document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
                             ?.dispatchEvent(new KeyboardEvent(event.type, {
                                 key: "Backspace",
-                                altKey: false,
-                                shiftKey: false,
-                                ctrlKey: false,
-                                metaKey: false,
                             }));
                     }
                 }
