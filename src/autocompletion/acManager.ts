@@ -146,7 +146,7 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
     for (;;) {
         const frame = useStore().frameObjects[curFrameId];
         const parentId = frame.parentId;
-        if (parentId == -2) {
+        if (parentId == useStore().getFuncDefsFrameContainerId) {
             // It's a user-defined function, process accordingly
             const available = getAllUserDefinedVariablesWithinUpTo(useStore().getFramesForParentId(curFrameId), frameId).found;
             // Also add any parameters from the function:

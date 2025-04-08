@@ -1,8 +1,8 @@
 import Vue from "vue";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
-import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion, vm } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
@@ -242,6 +242,10 @@ export const useStore = defineStore("app", {
             // In this method, we check if frames can be added below the specified (disabled) frame.
             // Note: if we are in a joint structure, being below the (last) joint frame (i.e. "else" is seen as being below the root (i.e. "if") as there is no "below" a joint frame)
             return !state.frameObjects[state.frameObjects[frameId].parentId].isDisabled;
+        },
+
+        getRootFrameContainerId: (state) => {
+            return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === RootContainerFrameDefinition.type)[0].id;
         },
         
         getMainCodeFrameContainerId: (state) => {
@@ -1223,14 +1227,6 @@ export const useStore = defineStore("app", {
 
         },
 
-        setCaretVisibility(payload: {frameId: number; caretVisibility: CaretPosition}) {
-            Vue.set(
-                this.frameObjects[payload.frameId],
-                "caretVisibility",
-                payload.caretVisibility
-            );
-        },
-
         updateState(newState: Record<string, unknown>){
             //this method complete changes the state with a new state object
             Object.keys(this.$state).forEach((property) => {
@@ -1240,6 +1236,12 @@ export const useStore = defineStore("app", {
                     newState[property]
                 );
             } );
+
+            // The frame cursor cannot be left inside a collapsed frame container (section),
+            // however, for compatibility with project saved under the old behaviour (which allowed the situation),
+            // we explicitly check the frame container (section) containing the current frame cursor is expanded
+            const currentPositionFrameContainerId = getFrameSectionIdFromFrameId(this.currentFrame.id);
+            this.frameObjects[currentPositionFrameContainerId].isCollapsed = false;
 
             this.clearNoneFrameRelatedState();
         },
@@ -1499,6 +1501,10 @@ export const useStore = defineStore("app", {
                     this.anchorSlotCursorInfos = undefined;
                     this.focusSlotCursorInfos = undefined;
                 }
+
+                // As we will show the frame cursor that is potentiallly inside a collapsed frame container, 
+                // we make sure we set that frame container expanded to ensure the changes visibility
+                this.frameObjects[getFrameSectionIdFromFrameId(this.currentFrame.id)].isCollapsed = false;
 
                 // Just like for saveStateChanges(), we need to simulate some dummy changes so that differences between
                 // the stateBeforeChanges and the current state regarding positioning and editing are all reflected properly
