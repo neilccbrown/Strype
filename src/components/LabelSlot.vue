@@ -138,8 +138,6 @@ export default Vue.extend({
             requestDelayBackspaceFrameRemoval: false,
             //use to make sure that a tab event is a proper sequence (down > up) within an editable slot
             tabDownTriggered: false,
-            //we need to track the key.down events for the bracket/quote closing method (cf details there)
-            keyDownStr: "",
         };
     },
     
@@ -757,9 +755,6 @@ export default Vue.extend({
             // like ctrl-space or arrow keys or tab, etc.
             // Any text input is now handled by the input event because that properly
             // handles behaviours such as IME and composition shortcuts (e.g. alt + keys).
-            
-            // We store the key.down key event.key value for the bracket/quote closing method (cf details there)
-            this.keyDownStr = event.key;
 
             // We capture the key shortcut for opening the a/c
             if((event.metaKey || event.ctrlKey) && event.key == " "){
@@ -779,7 +774,7 @@ export default Vue.extend({
             // We can just discard any keys with length > 0
             if(event.key.length > 1 || event.ctrlKey || event.metaKey || event.altKey){
                 // Do not updated the a/c if arrows up/down, escape and enter keys are hit because it will mess with navigation of the a/c
-                if(!["ArrowUp", "ArrowDown","Enter","Escape"].includes(this.keyDownStr)) {
+                if(!["ArrowUp", "ArrowDown","Enter","Escape"].includes(event.key)) {
                     this.$nextTick(() => {
                         this.updateAC();
                     });
@@ -1055,14 +1050,14 @@ export default Vue.extend({
                         // For imports, we only allow comma and * (comma in import frame, coma and * in RHS from (* isn't treated as operator in this case)).
                         let forbidOperator = [AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.for].includes(this.frameType)
                             && this.labelSlotsIndex == 0;
-                        if(forbidOperator && this.frameType == AllFrameTypesIdentifier.for && this.keyDownStr == ","){
+                        if(forbidOperator && this.frameType == AllFrameTypesIdentifier.for && inputString == ","){
                             forbidOperator = false;
                         }
                         let planningToInsertKey = !forbidOperator;
                         if(!forbidOperator && (this.frameType == AllFrameTypesIdentifier.fromimport || this.frameType == AllFrameTypesIdentifier.import)){
                             // If we're in some import frame, we check we match the rule mentioned above
-                            planningToInsertKey = (this.frameType == AllFrameTypesIdentifier.fromimport && (this.keyDownStr == "*" || this.keyDownStr == "," || this.keyDownStr == ".")) 
-                                || (this.frameType == AllFrameTypesIdentifier.import && (this.keyDownStr == "," || this.keyDownStr == "."));
+                            planningToInsertKey = (this.frameType == AllFrameTypesIdentifier.fromimport && (inputString == "*" || inputString == "," || inputString == ".")) 
+                                || (this.frameType == AllFrameTypesIdentifier.import && (inputString == "," || inputString == "."));
                         }
                         if(!forbidOperator && planningToInsertKey){
                             if(isBracket || isStringQuote){
