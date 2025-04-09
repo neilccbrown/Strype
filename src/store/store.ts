@@ -824,21 +824,10 @@ export const useStore = defineStore("app", {
                 nextCaret.caretPosition
             );
 
-            const nextFrameObject = this.frameObjects[nextCaret.id];
-            if("isCollapsed" in nextFrameObject ) {
-                Vue.set(
-                    nextFrameObject,
-                    "isCollapsed",
-                    false
-                );
-            }
-            else if("isCollapsed" in this.frameObjects[nextFrameObject.parentId]){
-                Vue.set(
-                    this.frameObjects[nextFrameObject.parentId],
-                    "isCollapsed",
-                    false
-                );
-            }
+            // Only frame containers (sections) are collapsable, so we don't need to check if a destination frame itself is collapsed,
+            // but we do need to check if the target container is - and expand it if needed.
+            const containerId = getFrameSectionIdFromFrameId(nextCaret.id);
+            this.frameObjects[containerId].isCollapsed = false;
         },
 
         setCurrentFrame(newCurrentFrame: CurrentFrame) {
