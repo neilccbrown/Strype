@@ -1201,7 +1201,7 @@ body.#{$strype-classname-dragging-frame} {
  }
 
 #app {
-    font-family: 'Source Sans Pro', sans-serif;
+    font-family: 'AHN-Strype', sans-serif;
     font-size: 15px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
