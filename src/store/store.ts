@@ -2252,6 +2252,11 @@ export const useStore = defineStore("app", {
        
                 // The new caret
                 this.currentFrame.caretPosition = nextPosition.caretPosition as CaretPosition;
+
+                // Only frame containers (sections) are collapsable, so we don't need to check if a destination frame itself is collapsed,
+                // but we do need to check if the target container is - and expand it if needed.
+                const containerId = getFrameSectionIdFromFrameId(nextPosition.frameId);
+                this.frameObjects[containerId].isCollapsed = false;
                 
                 // And since we just left a frame, we check errors
                 checkCodeErrors();             
