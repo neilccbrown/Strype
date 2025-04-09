@@ -14,19 +14,19 @@
         > 
             <!-- category main acions-->
             <!-- new project-->
-            <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="resetProject();showMenu=false;" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')"/>
+            <a v-if="showMenu" :class="'strype-menu-link '+ scssVars.strypeMenuItemClassName" @click="resetProject();showMenu=false;" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')"/>
             <!-- open project -->
-            <a :id="loadProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" @click="openLoadProjectModal">{{$t('appMenu.loadProject')}}<span class="strype-menu-kb-shortcut">{{loadProjectKBShortcut}}</span></a>
+            <a :id="loadProjectLinkId" v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLoadProjectModal">{{$t('appMenu.loadProject')}}<span class="strype-menu-kb-shortcut">{{loadProjectKBShortcut}}</span></a>
             <ModalDlg :dlgId="loadProjectModalDlgId" showCloseBtn hideDlgBtns >
                 <div>
                     <div :ref="loadProjectTargetButtonGpId" class="project-target-button-container">
                         <span v-t="'appMessage.loadToTarget'" class="load-save-label"/>
-                        <div id="loadFromGDStrypeButton" class="project-target-button load-dlg" tabindex="0"  @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
+                        <div id="loadFromGDStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
                             @mouseenter="changeTargetFocusOnMouseOver">
                             <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive"/> 
                             <span>Google Drive</span>
                         </div>
-                        <div id="loadFromFSStrypeButton" class="project-target-button load-dlg" tabindex="0"  @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
+                        <div :id="loadFromFSStrypeButtonId" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
                             @mouseenter="changeTargetFocusOnMouseOver">
                             <img :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')"/> 
                             <span v-t="'appMessage.targetFS'"></span>
@@ -35,8 +35,8 @@
                 </div>
             </ModalDlg>
             <!-- save project -->
-            <a :id="saveProjectLinkId" v-show="showMenu" class="strype-menu-link strype-menu-item" @click="handleSaveMenuClick">{{$t('appMenu.saveProject')}}<span class="strype-menu-kb-shortcut">{{saveProjectKBShortcut}}</span></a>
-            <a v-if="showMenu" :class="{'strype-menu-link strype-menu-item': true, disabled: !isSynced }" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveAsProject'"/>
+            <a :id="saveProjectLinkId" v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="handleSaveMenuClick">{{$t('appMenu.saveProject')}}<span class="strype-menu-kb-shortcut">{{saveProjectKBShortcut}}</span></a>
+            <a v-if="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !isSynced }" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveAsProject'"/>
             <ModalDlg :dlgId="saveProjectModalDlgId" :autoFocusButton="'ok'">
                 <div class="save-project-modal-dlg-container">
                     <div class="row">
@@ -47,13 +47,13 @@
                         <span v-t="'appMessage.saveToTarget'" class="load-save-label cell" />
                         <div class="cell">
                             <div :ref="saveProjectTargetButtonGpId" class="project-target-button-container">
-                                <div id="saveToGDStrypeButton" class="project-target-button save-dlg" tabindex="0"  @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)"
-                                    :class="{saveTargetSelected: tempSyncTarget == syncGDValue || tempSyncTarget == noSyncTargetValue}">
+                                <div id="saveToGDStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)"
+                                    :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncGDValue || tempSyncTarget == noSyncTargetValue}">
                                     <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive"/> 
                                     <span>Google Drive</span>
                                 </div>
-                                <div id="saveToFSStrypeButton" class="project-target-button save-dlg" tabindex="0"  @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)"
-                                    :class="{saveTargetSelected: tempSyncTarget == syncFSValue}">
+                                <div :id="saveToFSStrypeButtonId" tabindex="0"  @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)"
+                                    :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncFSValue}">
                                     <img :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')"/> 
                                     <span v-t="'appMessage.targetFS'"></span>
                                 </div>
@@ -79,8 +79,8 @@
             <div class="menu-separator-div"></div>
             <!-- category: export -->
             <!-- share project -->
-            <a :id="shareProjectLinkId" v-show="showMenu" :class="{'strype-menu-link strype-menu-item': true, disabled: !canShareProject}" :title="$t((isSyncingToGoogleDrive)?'':'appMenu.needSaveShareProj')" @click="onShareProjectClick">{{$t('appMenu.shareProject')}}<span class="strype-menu-kb-shortcut">{{shareProjectKBShortcut}}</span></a>
-            <ModalDlg :dlgId="shareProjectModalDlgId" :okCustomTitle="$t('buttonLabel.copyLink')" :okDisabled="isSharingLinkGenerationPending" 
+            <a :id="shareProjectLinkId" v-show="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !canShareProject}" :title="$t((isSyncingToGoogleDrive)?'':'appMenu.needSaveShareProj')" @click="onShareProjectClick">{{$t('appMenu.shareProject')}}<span class="strype-menu-kb-shortcut">{{shareProjectKBShortcut}}</span></a>
+            <ModalDlg :dlgId="shareProjectModalDlgId" :okCustomTitle="$t('buttonLabel.copyLink')" :okDisabled="isSharingLinkGenerationPending" :useLoadingOK="isSharingLinkGenerationPending" 
                 :dlgTitle="$t('appMessage.createShareProjectLink')" :elementToFocusId="shareGDProjectPublicRadioBtnId">
                         <div>
                             <span class="share-mode-buttons-container-title">{{$i18n.t('appMessage.shareProjectModeLabel')}}</span>
@@ -106,17 +106,17 @@
                     </ModalDlg>
             <!-- download python/hex project -->
             /* IFTRUE_isMicrobit 
-            <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="downloadHex();showMenu=false;" v-t="'appMenu.downloadHex'" />
+            <a v-if="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="downloadHex();showMenu=false;" v-t="'appMenu.downloadHex'" />
             FITRUE_isMicrobit */
-            <a v-if="showMenu" class="strype-menu-link strype-menu-item" @click="downloadPython();showMenu=false;" v-t="'appMenu.downloadPython'" />
+            <a v-if="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="downloadPython();showMenu=false;" v-t="'appMenu.downloadPython'" />
             <!-- BLANK SPACE IN MENU TO FOOTER -->
             <div class="flex-padding" />
             <!-- category: preferences / settings -->
             <!-- Localisation -->
             <div class="appMenu-prefs-div">
                 <div>
-                    <label for="appLangSelect" v-t="'appMenu.lang'"/>&nbsp;
-                    <select name="lang" id="appLangSelect" v-model="appLang" @change="showMenu=false;" class="strype-menu-item" @click="setCurrentTabIndexFromEltId('appLangSelect')">
+                    <label :for="appLangSelectId" v-t="'appMenu.lang'"/>&nbsp;
+                    <select name="lang" :id="appLangSelectId" v-model="appLang" @change="showMenu=false;" :class="scssVars.strypeMenuItemClassName" @click="setCurrentTabIndexFromEltId(appLangSelectId)">
                         <option v-for="locale in locales" :value="locale.code" :key="locale.code">{{locale.name}}</option>
                     </select>
                 </div> 
@@ -147,7 +147,7 @@
                 :accept="acceptedInputFileFormat"
                 ref="importFileInput" 
                 @change="selectedFile" 
-                class="editor-file-input"
+                :class="scssVars.editorFileInputClassName"
             /> 
         </div>
         <div class="menu-icons-div">
@@ -185,10 +185,10 @@
 //      Imports     //
 //////////////////////
 import Vue from "vue";
-import { useStore } from "@/store/store";
+import { useStore, settingsStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
 import { AppEvent, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, ShareProjectMode, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
-import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getGoogleDriveComponentRefId, getLabelSlotUID, getNearestErrorIndex, getSaveAsProjectModalDlg, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey } from "@/helpers/editor";
+import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppLangSelectId, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getGoogleDriveComponentRefId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNearestErrorIndex, getSaveAsProjectModalDlg, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey } from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
 import GoogleDrive from "@/components/GoogleDrive.vue";
@@ -200,8 +200,9 @@ import { watch } from "@vue/composition-api";
 import { cloneDeep } from "lodash";
 import App from "@/App.vue";
 import appPackageJson from "@/../package.json";
-import { getAboveFrameCaretPosition } from "@/helpers/storeMethods";
+import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import { getLocaleBuildDate } from "@/main";
+import scssVars from "@/assets/style/_export.module.scss";
 
 //////////////////////
 //     Component    //
@@ -218,6 +219,7 @@ export default Vue.extend({
 
     data: function() {
         return {
+            scssVars, // just to be able to use in template
             showMenu: false,
             // This flag is used to know if we've added the tabindex value for the closing "button", and get the number of indexes
             retrievedTabindexesCount: -1,
@@ -309,10 +311,14 @@ export default Vue.extend({
     },
 
     computed: {
-        ...mapStores(useStore),
+        ...mapStores(useStore, settingsStore),
         
         menuUID(): string {
             return getEditorMenuUID();
+        },
+
+        appLangSelectId(): string {
+            return getAppLangSelectId();
         },
 
         locales(): Locale[] {
@@ -325,6 +331,10 @@ export default Vue.extend({
                 locales.push({code: i18nLocale, name: this.$i18n.getLocaleMessage(i18nLocale)["localeName"] as string??i18nLocale});
             });
             return locales;
+        },
+
+        loadFromFSStrypeButtonId(): string {
+            return getLoadFromFSStrypeButtonId();
         },
 
         googleDriveComponentId(): string {
@@ -357,7 +367,7 @@ export default Vue.extend({
         },       
 
         loadProjectLinkId(): string {
-            return "loadProjectLink";
+            return getLoadProjectLinkId();
         },
 
         loadProjectKBShortcut(): string {
@@ -395,9 +405,13 @@ export default Vue.extend({
         saveProjectTargetButtonGpId(): string {
             return "saveProjectProjectSelect";
         },
+
+        saveToFSStrypeButtonId(): string {
+            return getSaveStrypeProjectToFSButtonId();
+        },
         
         saveFileNameInputId(): string {
-            return "saveStrypeFileNameInput";
+            return getStrypeSaveProjectNameInputId();
         },
 
         shareProjectLinkId(): string {
@@ -461,10 +475,10 @@ export default Vue.extend({
 
         appLang: {
             get(): string {
-                return this.appStore.appLang;
+                return this.settingsStore.locale??"en";
             },
-            set(lang: string) {
-                this.appStore.setAppLang(lang);
+            set(lang: string) {                                
+                this.settingsStore.setAppLang(lang);
             }, 
         },
 
@@ -665,7 +679,7 @@ export default Vue.extend({
             else {
                 // When the load or save project dialogs are opened, we focus the Google Drive selector by default when we don't have information about the source target
                 setTimeout(() => {
-                    const targetToFocusButton =[...document.querySelectorAll(`#${dlgId} .project-target-button`)].find((targetButton) => {
+                    const targetToFocusButton =[...document.querySelectorAll(`#${dlgId} .${scssVars.projectTargetButtonClassName}`)].find((targetButton) => {
                         // As the moment we only have 2 possible source targets, we can simply check whether "Google" is in the button or not...
                         if(this.tempSyncTarget == this.noSyncTargetValue || this.tempSyncTarget == this.syncGDValue) {
                             return targetButton.querySelector("span")?.textContent?.includes("Google");
@@ -911,7 +925,7 @@ export default Vue.extend({
                         fileHandles[0].getFile().then((file: File) => {
                             const emitPayload: AppEvent = {requestAttention: true};
                             emitPayload.message = this.$i18n.t("appMessage.editorFileUpload").toString();
-                            this.$emit("app-showprogress", emitPayload);
+                            this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);
                             const reader = new FileReader();
                             reader.addEventListener("load", () => {
                                 // name is not always available so we also check if content starts with a {,
@@ -927,7 +941,7 @@ export default Vue.extend({
                                     ).then(() => fileHandles[0].getFile().then((file)=> this.onFileLoaded(fileHandles[0].name, file.lastModified, fileHandles[0])), () => {});
                                 }
                                 emitPayload.requestAttention=false;
-                                this.$emit("app-showprogress", emitPayload);  
+                                this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);  
                             });
                             reader.readAsText(file);
                         });
@@ -947,7 +961,7 @@ export default Vue.extend({
                 if(files[0].name.indexOf(".") > -1 && fileImportSupportedFormats.findIndex((extension) => extension === files[0].name.substring(files[0].name.lastIndexOf(".") + 1)) > -1) {
                     const emitPayload: AppEvent = {requestAttention: true};
                     emitPayload.message = this.$i18n.t("appMessage.editorFileUpload").toString();
-                    this.$emit("app-showprogress", emitPayload);
+                    this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);
                     // Store the file name in a variable to use it later in the callback, for some reason using files[0].name fails in Pinia, on Safari
                     const fileName = files[0].name;
                     const lastModified = files[0].lastModified;
@@ -967,7 +981,7 @@ export default Vue.extend({
                                     ).then(() => this.onFileLoaded(fileName, lastModified), () => {});
                                 }
                                 emitPayload.requestAttention=false;
-                                this.$emit("app-showprogress", emitPayload);
+                                this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);
                                 
                             }, 
                             (reason) => this.appStore.setStateFromJSONStr( 
@@ -1008,7 +1022,7 @@ export default Vue.extend({
         resetProject(): void {
             //resetting the project means removing the WebStorage saved project and reloading the page
             //we emit an event to the App so that handlers are done properly
-            this.$emit("app-reset-project");
+            this.$emit(CustomEventTypes.appResetProject);
         },
 
         handleMenuOpen(){
@@ -1016,7 +1030,7 @@ export default Vue.extend({
             // (the close button and all bits in the menu). The button is treated separately, and all other elements are found based on the CSS class.
             (document.getElementsByClassName("bm-cross-button")[0] as HTMLSpanElement).tabIndex = 0;
             this.retrievedTabindexesCount = 1;
-            document.querySelectorAll(".bm-menu .strype-menu-item").forEach((element, index) => {
+            document.querySelectorAll(".bm-menu ." + scssVars.strypeMenuItemClassName).forEach((element, index) => {
                 element.setAttribute("tabindex", (index + 1).toString());
                 this.retrievedTabindexesCount++;
             });
@@ -1079,7 +1093,7 @@ export default Vue.extend({
             // Space, left/right arrows should trigger a change of target
             if(event.key.toLowerCase() == " " || event.key.toLowerCase() == "arrowleft" || event.key.toLowerCase() == "arrowright"){
                 const currentFocusedElementID = document.activeElement?.id??"";
-                const targetButtons = [...document.querySelectorAll(`#${(isSaveAction) ? this.saveProjectModalDlgId : this.loadProjectModalDlgId} .project-target-button`)];
+                const targetButtons = [...document.querySelectorAll(`#${(isSaveAction) ? this.saveProjectModalDlgId : this.loadProjectModalDlgId} .${scssVars.projectTargetButtonClassName}`)];
                 const focusedButtonIndex = targetButtons.findIndex((target) => {
                     return target.id == currentFocusedElementID;
                 });
@@ -1101,7 +1115,7 @@ export default Vue.extend({
             // Enter should act as a button validation, if one of the target is focused.
             if(event.key.toLowerCase() == "enter"){
                 const focusedTarget = document.activeElement;
-                if(focusedTarget && focusedTarget.classList.contains("project-target-button")){
+                if(focusedTarget && focusedTarget.classList.contains(scssVars.projectTargetButtonClassName)){
                     (focusedTarget as HTMLDivElement).click();
                     if(isSaveAction){
                         // On the save dialog, the action doesn't validate the modal dialog
@@ -1143,38 +1157,49 @@ export default Vue.extend({
                     const isFullIndex = ((this.currentErrorNavIndex % 1) == 0);
                     this.currentErrorNavIndex += (((toNext) ? 1 : -1) / ((isFullIndex) ? 1 : 2));
                     const errorElement = getEditorCodeErrorsHTMLElements()[this.currentErrorNavIndex];
+                    // Make sure that getting to an error will result opening the container frame container (section) if it was collapsed
+                    const isErrorOnFrame = isIdAFrameId(errorElement.id);
+                    const erroneousFrameId = (isErrorOnFrame) 
+                        ? parseFrameUID(errorElement.id) 
+                        : ((isElementEditableLabelSlotInput(errorElement)) 
+                            ? parseLabelSlotUID(errorElement.id).frameId
+                            : parseFrameHeaderUID(errorElement.id));
+                    this.appStore.frameObjects[getFrameSectionIdFromFrameId(erroneousFrameId)].isCollapsed = false;
+                     
                     // The error can be in a slot or it can be for a whole frame. By convention, the location for a frame error is the caret above it.
                     // For errors in a slot: we focus on the slot of the error -- if the erroneous HTML is a slot, we just give it focus. If the error is at the frame scope
                     // we put the focus in the first slot that is editable.
-                    if(isIdAFrameId(errorElement.id)){
+                    this.$nextTick(() => {
+                        if(isErrorOnFrame){
                         // Error on a whole frame - the error message will be on the header so we need to focus it to trigger the popup.
-                        if(this.appStore.isEditing) {
-                            this.appStore.isEditing = false;
-                            this.appStore.setSlotTextCursors(undefined, undefined);
-                            document.getSelection()?.removeAllRanges(); 
-                        }
-                        const caretPosAboveFrame = getAboveFrameCaretPosition(parseFrameUID(errorElement.id));
-                        this.appStore.setCurrentFrame({id: caretPosAboveFrame.frameId, caretPosition: caretPosAboveFrame.caretPosition as CaretPosition});
-                        document.getElementById(getFrameHeaderUID(parseFrameUID(errorElement.id)))?.focus();
-                    }
-                    else{
-                        // Error on a slot
-                        const errorSlotInfos: SlotCoreInfos = (isElementEditableLabelSlotInput(errorElement))
-                            ? parseLabelSlotUID(errorElement.id)
-                            : {frameId: parseFrameHeaderUID(errorElement.id), labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code};
-                        const errorSlotCursorInfos: SlotCursorInfos = {slotInfos: errorSlotInfos, cursorPos: 0}; 
-                        this.appStore.setSlotTextCursors(errorSlotCursorInfos, errorSlotCursorInfos);
-                        setDocumentSelection(errorSlotCursorInfos, errorSlotCursorInfos);  
-                        // It's necessary to programmatically click the slot we gave focus to, so we can toggle the edition mode event chain
-                        if(isElementUIDFrameHeader(errorElement.id)){
-                            document.getElementById(getLabelSlotUID(errorSlotInfos))?.click();
+                            if(this.appStore.isEditing) {
+                                this.appStore.isEditing = false;
+                                this.appStore.setSlotTextCursors(undefined, undefined);
+                                document.getSelection()?.removeAllRanges(); 
+                            }
+                            const caretPosAboveFrame = getAboveFrameCaretPosition(parseFrameUID(errorElement.id));
+                            this.appStore.setCurrentFrame({id: caretPosAboveFrame.frameId, caretPosition: caretPosAboveFrame.caretPosition as CaretPosition});
+                            document.getElementById(getFrameHeaderUID(parseFrameUID(errorElement.id)))?.focus();
                         }
                         else{
-                            errorElement.click();
+                            // Error on a slot
+                            const errorSlotInfos: SlotCoreInfos = (isElementEditableLabelSlotInput(errorElement))
+                                ? parseLabelSlotUID(errorElement.id)
+                                : {frameId: parseFrameHeaderUID(errorElement.id), labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code};
+                            const errorSlotCursorInfos: SlotCursorInfos = {slotInfos: errorSlotInfos, cursorPos: 0}; 
+                            this.appStore.setSlotTextCursors(errorSlotCursorInfos, errorSlotCursorInfos);
+                            setDocumentSelection(errorSlotCursorInfos, errorSlotCursorInfos);  
+                            // It's necessary to programmatically click the slot we gave focus to, so we can toggle the edition mode event chain
+                            if(isElementUIDFrameHeader(errorElement.id)){
+                                document.getElementById(getLabelSlotUID(errorSlotInfos))?.click();
+                            }
+                            else{
+                                errorElement.click();
+                            }
                         }
-                    }
                    
-                    this.navigateToErrorRequested = false;
+                        this.navigateToErrorRequested = false;
+                    });
                 });
             }     
         },
@@ -1188,12 +1213,13 @@ export default Vue.extend({
     height: 24px;
     margin-bottom: 10px;
 }
+
 .top-left-strype-logo {
     margin-top: 10px !important;
     margin-bottom: 10px !important;
 }
 
-.editor-file-input {
+.#{$strype-classname-editor-file-input} {
     display: none;
 } 
 
@@ -1235,11 +1261,11 @@ export default Vue.extend({
     transform: translate(-25px, -50%);
 }
 
-.strype-menu-item {
+.#{$strype-classname-strype-menu-item} {
     outline: none;
 }
 
-.strype-menu-item:focus {
+.#{$strype-classname-strype-menu-item}:focus {
     border: $strype-menu-entry-focus-border;
 }
 
@@ -1349,7 +1375,7 @@ export default Vue.extend({
     align-items: center;
 }
 
-.project-target-button {
+.#{$strype-classname-project-target-button} {
     border-radius: 8px;
     border: #c5c4c1 2px solid;
     display: flex;
@@ -1361,8 +1387,8 @@ export default Vue.extend({
     width: 120px;
 }
 
-.project-target-button.load-dlg:focus,
-.project-target-button.saveTargetSelected
+.#{$strype-classname-project-target-button}.load-dlg:focus,
+.#{$strype-classname-project-target-button}.saveTargetSelected
  {
     border-color: #007bff;
     cursor: pointer;
@@ -1370,12 +1396,12 @@ export default Vue.extend({
     outline: none;
 }
 
-.project-target-button.save-dlg:focus {
+.#{$strype-classname-project-target-button}.save-dlg:focus {
     border-color: black !important;
 }
 
 
-.project-target-button.save-dlg:hover {
+.#{$strype-classname-project-target-button}.save-dlg:hover {
     box-shadow: 2px 2px 5px rgb(141, 140, 140);
 }
 

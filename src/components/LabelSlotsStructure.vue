@@ -27,7 +27,7 @@
                 :frameId="frameId"
                 :isEditableSlot="isEditableSlot(slotItem.type)"
                 :isEmphasised="isSlotEmphasised(slotItem)"
-                @requestSlotsRefactoring="checkSlotRefactoring"
+                v-on:[CustomEventTypes.requestSlotsRefactoring]="checkSlotRefactoring"
             />
         </div> 
     </div>
@@ -43,7 +43,7 @@ import { CustomEventTypes, getFrameLabelSlotsStructureUID, getLabelSlotUID, getS
 import {checkCodeErrors, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import {calculateParamPrompt} from "@/autocompletion/acManager";
-
+import scssVars from "@/assets/style/_export.module.scss";
 
 export default Vue.extend({
     name: "LabelSlotsStructure",
@@ -61,6 +61,7 @@ export default Vue.extend({
 
     data: function() {
         return {
+            CustomEventTypes, // just to be able to use in template
             ignoreBracketEmphasisCheck: false, // cf. isSlotEmphasised()
             isFocused: false,
         };
@@ -213,7 +214,7 @@ export default Vue.extend({
                     let foundPos = false;
                     let setInsideNextSlot = false; // The case when the cursor follow a non editable slot (i.e. operator, bracket, quote)
                     // Reposition the cursor now
-                    labelDiv.querySelectorAll(".labelSlot-input").forEach((spanElement) => {
+                    labelDiv.querySelectorAll("." + scssVars.labelSlotInputClassName).forEach((spanElement) => {
                         if(!foundPos){
                             const spanContentLength = (spanElement.textContent?.length??0);
                             if(setInsideNextSlot || (focusCursorAbsPos <= (newUICodeLiteralLength + spanContentLength) && focusCursorAbsPos >= newUICodeLiteralLength)){
