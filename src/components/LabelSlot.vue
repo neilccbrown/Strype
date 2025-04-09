@@ -1068,9 +1068,15 @@ export default Vue.extend({
                                     }
                                 }
                                 // We set the text and let the refactoring turn it into the right bracketed structure:
+                                let sel = this.appStore.mostRecentSelectedText;
+                                // This does have a slight disadvantage that any smart quotes the user meant to insert
+                                // (e.g. inside a string literal) will get mangled, but I think we just live with that:
+                                sel = sel.replace(new RegExp(`[${UIDoubleQuotesCharacters[0]}${UIDoubleQuotesCharacters[1]}]`, "g"), STRING_DOUBLEQUOTE_PLACERHOLDER);
+                                sel = sel.replace(new RegExp(`[${UISingleQuotesCharacters[0]}${UISingleQuotesCharacters[1]}]`, "g"), STRING_SINGLEQUOTE_PLACERHOLDER);
+                                
                                 inputSpanField.textContent = (inputSpanField?.textContent?.substring(0, cursorPos) ?? "") +
                                     ((isStringQuote) ? ((inputString == "\"") ? STRING_DOUBLEQUOTE_PLACERHOLDER : STRING_SINGLEQUOTE_PLACERHOLDER) : inputString) +
-                                    this.appStore.mostRecentSelectedText +
+                                    sel +
                                     ((isBracket) ? getMatchingBracket(inputString, true) : ((inputString == "\"") ? STRING_DOUBLEQUOTE_PLACERHOLDER : STRING_SINGLEQUOTE_PLACERHOLDER)) +
                                     (inputSpanField?.textContent?.substring(cursorPos + inputString.length) ?? "");
                                 const newSlotCursorInfos: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: cursorPos + 1};
