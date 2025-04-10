@@ -343,6 +343,7 @@ test.describe("Selecting then typing in one slot", () => {
     testSelectionBoth("123456", 2, 4, "-", "{12}-{$56}");
     testSelectionBoth("123456", 2, 4, "e", "{12e$56}");
     testSelectionBoth("123456", 2, 4, ".", "{12.$56}");
+    testSelectionBoth("123456", 0, 6, "(", "{}_({$123456})_{}");
 
     // Turn into a number slot by replacement:
     testSelectionBoth("abc123", 0, 3, "+", "{+$123}");
@@ -367,6 +368,20 @@ test.describe("Selecting then typing in multiple slots", () => {
     testSelectionBoth("123+456", 2,5, "(", "{12}_({$3}+{4})_{56}");
 
     testSelectionBoth("123+456", 2, 5, "\"", "{12}_“$3+4”_{56}");
+    
+    // Select just an operator and overtype:
+    testSelectionBoth("+", 0, 1, "a", "{a$}");
+    testSelectionBoth("+", 0, 1, "(", "{}_({$}+{})_{}");
+
+    // Select string or bracket and overtype:
+    testSelectionBoth("\"abc\"", 0, 5, "z", "{z$}");
+    testSelectionBoth("(abc)", 0, 5, "z", "{z$}");
+    
+    // Select a string and attempt to wrap in a bracket:
+    testSelectionBoth("\"abc\"", 0, 5, "(", "{}_({$}_“abc”_{})_{}");
+    // Select a bracket and attempt to wrap in another bracket:
+    testSelectionBoth("(123)", 0, 5, "(", "{}_({$}_({123})_{})_{}");
+
 });
 
 test.describe("Selecting then deleting in multiple slots", () => {
