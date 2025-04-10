@@ -211,7 +211,8 @@ export function getTextStartCursorPositionOfHTMLElement(htmlElement: HTMLSpanEle
     const sel = document.getSelection();
     if (sel && sel.rangeCount) {
         const range = sel.getRangeAt(0);
-        if (range.commonAncestorContainer.parentNode == htmlElement) {
+        if (range.commonAncestorContainer.parentNode == htmlElement
+            || range.commonAncestorContainer.parentNode?.parentNode == htmlElement) {
             caretPos = range.startOffset;
         }
     }
