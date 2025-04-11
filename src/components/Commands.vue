@@ -747,6 +747,8 @@ export default Vue.extend({
                             this.commandsSplitterPane2Size = (100 - this.commandSplitterPane1MinSize);      
                             (this.$refs.peaCommandsSplitterPane1Ref as InstanceType<typeof Pane>).$data.style.height = this.commandSplitterPane1MinSize + "%";
                             (this.$refs.peaCommandsSplitterPane2Ref as InstanceType<typeof Pane>).$data.style.height = this.commandsSplitterPane2Size + "%";
+                            // And trigger the Graphics to resize properly
+                            document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
                         }, 200);                        
                     }     
                 }    
