@@ -542,8 +542,10 @@ export default Vue.extend({
         // Event callback equivalent to what would happen for a blur event callback 
         // (the spans don't get focus anymore because the containg editable div grab it)
         onLoseCaret(keepIgnoreKeyEventFlagOn?: boolean): void {
-            // Before anything, we make sure that the current frame still exists.
-            if(this.appStore.frameObjects[this.frameId] != undefined){
+            // Before anything, we make sure that the current frame still exists,
+            // and that our slot still exists.  If we shouldn't exist any more, we should
+            // just do nothing and exit quietly:
+            if(this.appStore.frameObjects[this.frameId] != undefined && retrieveSlotFromSlotInfos(this.coreSlotInfo)){
                 if(!this.debugAC) {
                     this.showAC = false;
                     this.acRequested = false;
