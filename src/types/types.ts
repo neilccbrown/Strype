@@ -1117,7 +1117,7 @@ export interface Locale {
 }
 
 export enum StrypePEALayoutMode {
-    tabsCollapsed, // the default layout mode where PEA is collapsed and using tabs for console/graphics
+    tabsCollapsed, // the default layout mode where PEA is collapsed and using tabs for console/graphics (and selected mode for the micro:bit version)
     tabsExpanded, // the layout mode where PEA is expanded and using tabs for console/graphics
     splitCollapsed, // the layout mode where PEA is collapsed and console/graphics windows are (horizontally) split
     splitExpanded, // the layout mode where PEA is expanded and console/graphics windows are (vertically) split
@@ -1126,3 +1126,17 @@ export interface StrypePEALayoutData {
     mode: StrypePEALayoutMode, // The layout view for the PEA in Strype, see related enum
     iconName: string, // the name of the icon to be retrieved from our SVG icons + localisation key name (makes it simpler to have one property!)
 }
+
+// Typescript doesn't allow to declare types with an index signature parameter being something else than number or string or symbol.
+// So to be able to still use types, we can use this trick that will use the values of the enum we want to use for the index signature type.
+// This type however requires all values of the enum to be used as indexes - so we need to also allow undefined values for the indexes.
+export type StrypeLayoutDividerSettings = {
+    [layout in StrypePEALayoutMode]: number | undefined;
+};
+
+export const defaultEmptyStrypeLayoutDividerSettings: StrypeLayoutDividerSettings = {
+    "0": undefined,
+    "1": undefined,
+    "2": undefined,
+    "3": undefined,
+};
