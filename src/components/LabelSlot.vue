@@ -191,8 +191,8 @@ export default Vue.extend({
             let boldClass = "";               
             switch(this.slotType){
             case SlotType.operator:
-                // For commas, we do not show the operator style but the text style and we allow a right margin
-                codeTypeCSS = (this.code==",") ? scssVars.frameCodeSlotClassName + " slot-right-margin" : scssVars.frameOperatorSlotClassName;
+                // For commas, we add a right margin:
+                codeTypeCSS = scssVars.frameOperatorSlotClassName + ((this.code==",") ? " slot-right-margin" : "");
                 break;
             case SlotType.string:
             case SlotType.openingQuote:
