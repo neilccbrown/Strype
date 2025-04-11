@@ -289,7 +289,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
     let foundFocusSpan = false;
     let ignoreSpan = !!delimiters;
     let hasStringSlots = false;
-    // The container can have relevant text if Firefox has done a "bad delete":
+    // The container and intermediate divs can have relevant text if Firefox has done a "bad delete":
     frameLabelStruct.querySelectorAll("." + scssVars.labelSlotInputClassName + ", ." + scssVars.labelSlotContainerClassName).forEach((spanElement) => {
         // Sometimes div can end up with text content after a selection and overtype (a "bad delete") that seems to happen on Firefox.
         // We only care about these divs if there is text content
@@ -339,7 +339,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                 uiLiteralCode += (spanElement.textContent??"").replace(/\u200B/g, "");
             }
         
-            if(spanElement.id === currentSlotUID){
+            if(spanElement.id === currentSlotUID && !foundFocusSpan){
                 focusSpanPos += (useStore().focusSlotCursorInfos?.cursorPos??0);     
                 foundFocusSpan = true;
             }
