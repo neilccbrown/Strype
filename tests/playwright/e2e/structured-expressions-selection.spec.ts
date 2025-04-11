@@ -355,12 +355,6 @@ test.describe("Selecting then typing in one slot", () => {
 });
 
 test.describe("Selecting then typing in multiple slots", () => {
-    // Note that because of Cypress not being able to send shift-left/right in a way
-    // that the browser handles to move selection, we are moving our own selection.
-    // Thus some selections are possible (e.g. across brackets) for us to set
-    // that would not be allowed in Strype (e.g. selecting across multiple bracketing levels)
-    // So we just don't make those selections; we can't test that those are banned
-    // programmatically.
     testSelectionBoth("123+456", 2,5, "0", "{120$56}");
     testSelectionBoth("123+456", 2,5, ".", "{12.$56}");
     testSelectionBoth("123+456", 2,5, "*", "{12}*{$56}");
