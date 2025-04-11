@@ -382,6 +382,12 @@ test.describe("Selecting then typing in multiple slots", () => {
     // Select a bracket and attempt to wrap in another bracket:
     testSelectionBoth("(123)", 0, 5, "(", "{}_({$}_({123})_{})_{}");
 
+    // Select multiple strings:
+    testSelectionBoth("print(\"Hello\"+\"Goodbye\")", 6, 23, "(", "{print}_({}_({$}_“Hello”_{}+{}_“Goodbye”_{})_{})_{}");
+    // Select inside brackets:
+    testSelectionBoth("sum([(1+2),3-4])", 11, 14, "(", "{sum}_({}_[{}_({1}+{2})_{},{}_({$3}-{4})_{}]_{})_{}");
+    // String quote brackets:
+    testSelectionBoth("print((1+2))", 6, 11, "\"", "{print}({}_“$(1+2)”_{})_{}");
 });
 
 test.describe("Selecting then deleting in multiple slots", () => {
