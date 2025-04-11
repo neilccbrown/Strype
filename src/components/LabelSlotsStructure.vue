@@ -160,7 +160,8 @@ export default Vue.extend({
                 // but we must manually restore the selection if the input should have wrapped it,
                 // because our usual mechanisms for detecting this will not work.
                 // We call this a "bad delete".
-                const topLevelDiv = document.getElementById(this.labelSlotsStructDivId);
+                const closestDivId = this.appStore.focusSlotCursorInfos ? ("div_" + getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos)) : this.labelSlotsStructDivId;
+                const closestDiv = document.getElementById(closestDivId);
                 if (event.data) {
                     const openBracket = openBracketCharacters.includes(event.data);
                     if (openBracket || stringQuoteCharacters.includes(event.data)) {
@@ -174,7 +175,7 @@ export default Vue.extend({
                         sel = sel.replace(new RegExp(`[${UIDoubleQuotesCharacters[0]}${UIDoubleQuotesCharacters[1]}]`, "g"), STRING_DOUBLEQUOTE_PLACERHOLDER);
                         sel = sel.replace(new RegExp(`[${UISingleQuotesCharacters[0]}${UISingleQuotesCharacters[1]}]`, "g"), STRING_SINGLEQUOTE_PLACERHOLDER);
                         appendSel.append(sel + closing);
-                        topLevelDiv?.append(appendSel);
+                        closestDiv?.append(appendSel);
                     }
                 }
 
