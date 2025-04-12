@@ -823,7 +823,7 @@ def key_pressed(keyname):
     """
     return _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys())[keyname]
 
-def set_background(image_or_name_or_color, tile_to_fit = True):
+def set_background(image_or_name_or_color, scale_to_fit = False):
     """
     Set the current background image.
     
@@ -850,7 +850,7 @@ def set_background(image_or_name_or_color, tile_to_fit = True):
         dest = Image(808, 606)
         w = image.get_width()
         h = image.get_height()
-        if tile_to_fit:
+        if not scale_to_fit:
             # Since we centre, even if two copies would fit, we will need 3 because we need half a copy
             # each side of the centre.  So just always draw one more than we need:
             horiz_copies = (_math.ceil(808 / w) if w < 808 else 0) + 1
@@ -869,20 +869,20 @@ def set_background(image_or_name_or_color, tile_to_fit = True):
             dest._draw_part_of_image(image, (808 - scale * w) / 2, (606 - scale * h) / 2, 0, 0, w, h, scale)
         return dest
         
-    if isinstance(image_or_filename_or_color, Image):
-        bk_image = background_808_606(image_or_filename_or_color)
-    elif isinstance(image_or_filename_or_color, str):
+    if isinstance(image_or_name_or_color, Image):
+        bk_image = background_808_606(image_or_name_or_color)
+    elif isinstance(image_or_name_or_color, str):
         # We follow this heuristic: if it has a dot, slash or colon it's a filename/URL
         # otherwise it's a color name/value.
-        if _re.search(r"[.:/]", image_or_filename_or_color):
-            bk_image = background_808_606(load_image(image_or_filename_or_color))
+        if _re.search(r"[.:/]", image_or_name_or_color):
+            bk_image = background_808_606(load_image(image_or_name_or_color))
         else:
             bk_image = Image(808, 606)
-            bk_image.set_fill(image_or_filename_or_color)
+            bk_image.set_fill(image_or_name_or_color)
             bk_image.fill()
-    elif isinstance(image_or_filename_or_color, Color):
+    elif isinstance(image_or_name_or_color, Color):
         bk_image = Image(808, 606)
-        bk_image.set_fill(image_or_filename_or_color)
+        bk_image.set_fill(image_or_name_or_color)
         bk_image.fill()
     else:
         raise TypeError("image_or_filename_or_color must be an Image or a string or a Color")

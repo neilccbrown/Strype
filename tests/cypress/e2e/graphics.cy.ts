@@ -565,7 +565,7 @@ describe("World background", () => {
 
     it("Stretches smaller backgrounds", () => {
         runCodeAndCheckImage("", `
-            set_background("cat-test.jpg", False)
+            set_background("cat-test.jpg", True)
             Actor("cat-test.jpg")
         `, "background-small-scaled");
     });
@@ -576,7 +576,7 @@ describe("World background", () => {
             big.set_fill("white")
             big.set_stroke(None)
             big.circle(500, 500, 450)
-            set_background(big, False)
+            set_background(big, True)
             Actor("cat-test.jpg")
         `, "background-large-scaled");
     });
