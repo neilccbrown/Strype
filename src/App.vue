@@ -18,16 +18,16 @@
         </div>
         /* IFTRUE_isPython
         <Splitpanes class="expanded-PEA-splitter-overlay strype-split-theme" v-show="isExpandedPythonExecArea" horizontal @resize=onExpandedPythonExecAreaSplitPaneResize>
-            <pane key="1">
+            <pane key="1" :size="100 - expandedPEAOverlaySplitterPane2Size">
             </pane>
-            <pane key="2" min-size="20" max-size="80">
+            <pane ref="overlayExpandedPEAPane2Ref" key="2" :size="expandedPEAOverlaySplitterPane2Size" :min-size="peaOverlayPane2MinSize" :max-size="peaOverlayPane2MaxSize">
             </pane>
         </Splitpanes>
         FITRUE_isPython */
         <!-- Keep the style position of the row div to get proper z order layout of the app -->
         <div class="row" style="position: relative;">
             <Splitpanes class="strype-split-theme" @resize=onStrypeCommandsSplitPaneResize>
-                <Pane key="1" size="66" min-size="33" max-size="90">
+                <Pane key="1" :size="100 - editorCommandsSplitterPane2Size" min-size="33" max-size="90">
                     <!-- These data items are to enable testing: -->
                     <div :id="editorId" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos" class="print-full-height">
                         <div class="top no-print">
@@ -46,7 +46,7 @@
                             <div class="col">
                                 <div 
                                     :id="editorUID" 
-                                    :class="{'editor-code-div noselect print-full-height':true/* IFTRUE_isPython , 'full-height-editor-code-div':!isExpandedPythonExecArea, 'cropped-editor-code-div': isExpandedPythonExecArea FITRUE_isPython */}"
+                                    :class="{'editor-code-div noselect print-full-height':true/* IFTRUE_isPython , 'full-height-editor-code-div':!isExpandedPythonExecArea, [scssVars.croppedEditorDivClassName]: isExpandedPythonExecArea FITRUE_isPython */}"
                                     @mousedown="handleWholeEditorMouseDown"
                                 >
                                     <FrameContainer
@@ -64,7 +64,7 @@
                         </div>
                     </div>
                 </Pane>
-                <Pane key="2" size="34" class="no-print">
+                <Pane key="2" :size="editorCommandsSplitterPane2Size" class="no-print">
                     <Commands :id="commandsContainerId" class="noselect" :ref="strypeCommandsRefId" />
                 </Pane>
             </SplitPanes>
@@ -93,10 +93,10 @@ import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
-import {Splitpanes, Pane} from "splitpanes";
-import { useStore } from "@/store/store";
+import {Splitpanes, Pane, PaneData} from "splitpanes";
+import { useStore, settingsStore } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, GAPIState } from "@/types/types";
-import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getPEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId } from "./helpers/editor";
+import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getPEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames } from "./helpers/editor";
 /* IFTRUE_isPython */
 import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId } from "@/helpers/editor";
 /* FITRUE_isPython */
@@ -138,6 +138,7 @@ export default Vue.extend({
     data: function() {
         return {
             CustomEventTypes, // just for using in template
+            scssVars, // just for using in template
             showAppProgress: false,
             setAppNotOnTop: false,
             progressbarMessage: "",
@@ -149,7 +150,7 @@ export default Vue.extend({
     },
 
     computed: {       
-        ...mapStores(useStore),
+        ...mapStores(useStore, settingsStore),
 
         editorId(): string {
             return getEditorID();
@@ -185,14 +186,23 @@ export default Vue.extend({
             return getStrypeCommandComponentRefId();
         },
 
+        editorCommandsSplitterPane2Size: {
+            get(): number {
+                return this.appStore.editorCommandsSplitterPane2Size ?? parseFloat(scssVars.editorCommandsSplitterPane2SizePercentValue);
+            },
+            set(value: number) {
+                this.onStrypeCommandsSplitPaneResize({1: {size: value}});
+            },
+        },
+
         commandsContainerId(): string {
             return getCommandsRightPaneContainerId();
         },
 
-        localStorageAutosaveKey(): string {
-            let storageString = "PythonStrypeSavedState";
+        localStorageAutosaveEditorKey(): string {
+            let storageString = AutoSaveKeyNames.pythonEditorState;
             /* IFTRUE_isMicrobit */
-            storageString = "MicrobitStrypeSavedState";
+            storageString = AutoSaveKeyNames.mbEditor;
             /*FITRUE_isMicrobit */
             return storageString;
         },
@@ -213,9 +223,28 @@ export default Vue.extend({
             return BACKEND_SKULPT_DIV_ID;
         },
 
+        /* IFTRUE_isPython */
         isPythonExecuting(): boolean {
             return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
         },
+
+        expandedPEAOverlaySplitterPane2Size: {
+            get(): number {
+                return this.appStore.peaExpandedSplitterPane2Size ?? parseFloat(scssVars.peaExpandedOverlaySplitterPane2SizePercentValue);
+            },
+            set(value: number) {
+                this.onExpandedPythonExecAreaSplitPaneResize({1: {size: value}});                    
+            },
+        },
+
+        peaOverlayPane2MinSize(): number {
+            return 10;
+        },
+
+        peaOverlayPane2MaxSize(): number {
+            return 95;
+        },
+        /* FITRUE_isPython */
 
         getCompanionDndCanvasId(): string {
             return getCompanionDndCanvasId();
@@ -223,6 +252,10 @@ export default Vue.extend({
     },
 
     created() {
+        // The very first action we want to do is trying to restore the Strype settings:
+        // Strype locale:
+        this.setStrypeLocale();
+
         projectSaveFunctionsState[0] = {name: "WS", function: (reason: SaveRequestReason) => this.autoSaveStateToWebLocalStorage(reason)};
         window.addEventListener("beforeunload", (event) => {
             // No matter the choice the user will make on saving the page, and because it is not straight forward to know what action has been done,
@@ -402,7 +435,27 @@ export default Vue.extend({
             this.isExpandedPythonExecArea = (event as CustomEvent).detail;
             (this.$refs[this.strypeCommandsRefId] as InstanceType<typeof Commands>).isExpandedPEA = (event as CustomEvent).detail;
             (this.$refs[this.strypeCommandsRefId] as InstanceType<typeof Commands>).hasPEAExpanded ||= (event as CustomEvent).detail;
-            debounceComputeAddFrameCommandContainerSize((event as CustomEvent).detail);
+            setTimeout(() => {
+                debounceComputeAddFrameCommandContainerSize((event as CustomEvent).detail);
+                if((event as CustomEvent).detail){
+                    this.onExpandedPythonExecAreaSplitPaneResize({1: {size: this.expandedPEAOverlaySplitterPane2Size}});
+                }
+                else{
+                    const croppedEditor = document.getElementsByClassName(scssVars.croppedEditorDivClassName);
+                    if(croppedEditor.length > 0){
+                        // The "cropped editor", that is when the PEA is expanded may not exist if the PEA wasn't expanded before..
+                        (croppedEditor[0] as HTMLDivElement).style.maxHeight = "";                           
+                    }
+                    setManuallyResizedEditorHeightFlag(undefined);
+                    (document.getElementsByClassName(scssVars.noPEACommandsClassName)[0] as HTMLDivElement).style.maxHeight = "";
+                    const peaWithExpandedClass = document.querySelector("." + scssVars.peaContainerClassName + "." + scssVars.expandedPEAClassName);
+                    if(peaWithExpandedClass){
+                        // The "expanded PEA" may not exist if the PEA wasn't expanded before..
+                        (peaWithExpandedClass as HTMLDivElement).style.top = "";
+                    }              
+                }
+            }, 200);
+           
         });
         /* FITRUE_isPython */
 
@@ -425,11 +478,19 @@ export default Vue.extend({
         // Add a listener for the mouse scroll events. We do not want to allow scrolling when the context menu is shown
         document.addEventListener("wheel", this.blockScrollOnContextMenu, {passive:false});
 
+        /* IFTRUE_isPython */
         // Add a listener for the whole window resize.
         window.addEventListener("resize",() => {
+            // When the window is resized, the overlay expanded PEA splitter is properly updated. However, the underlying UI is not updated
+            // properly (because it isn't inside that splitter) so we need to manually update things.
+            if(this.isExpandedPythonExecArea) {
+                this.onExpandedPythonExecAreaSplitPaneResize({1: {size: ((this.$refs.overlayExpandedPEAPane2Ref as InstanceType<typeof Pane>).$data as PaneData).style.height.replace("%","")}}, true);
+            }
+
             // Re-scale the Turtle canvas.
             document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
         });
+        /* FITRUE_isPython */
 
         // When the page is loaded, we might load an existing code for which the caret is not visible, so we get it into view.
         setTimeout(() => {
@@ -607,19 +668,62 @@ export default Vue.extend({
         autoSaveStateToWebLocalStorage(reason: SaveRequestReason) : void {
             // save the project to the localStorage (WebStorage)
             if (!this.appStore.debugging && typeof(Storage) !== "undefined") {
-                localStorage.setItem(this.localStorageAutosaveKey, this.appStore.generateStateJSONStrWithCheckpoint(true));
-                // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
-                if(reason==SaveRequestReason.loadProject && projectSaveFunctionsState.length == 1){
-                    this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                if(reason == SaveRequestReason.saveSettings){
+                    // Save the settings
+                    localStorage.setItem(AutoSaveKeyNames.settingsState, JSON.stringify(this.settingsStore.$state));
+                }
+                else{
+                    localStorage.setItem(this.localStorageAutosaveEditorKey, this.appStore.generateStateJSONStrWithCheckpoint(true));
+                    // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
+                    if(reason==SaveRequestReason.loadProject && projectSaveFunctionsState.length == 1){
+                        this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                    }
                 }
             }
+        },
+
+        setStrypeLocale() {
+            // We need to retrieve Strype's language (session) if it exists in the localStorage.
+            // If we didn't retrieve it, we try to infer the browser's language and ask the user
+            // if they want to use the detected (supported) language. 
+            // If they refused or if we can't retrieve anything at all, we use English as default.
+            let strypeSessionLocale = "en"; // default locale
+            let checkBrowserLocale = false;
+            if(typeof Storage !== "undefined") {
+                const savedSettingsState: typeof this.settingsStore = JSON.parse(localStorage.getItem(AutoSaveKeyNames.settingsState)??"{}");
+                if(savedSettingsState.locale) {
+                    strypeSessionLocale = savedSettingsState.locale;
+                }
+                else {
+                    // There is no locale saved. Maybe the user wants to use the default English, but maybe
+                    // they would like to use another language and their working environment won't save it,
+                    // so we can ask them based on the browser's locale if they want to switch.
+                    checkBrowserLocale = true;
+                }
+            }
+            else{
+                checkBrowserLocale = true;
+            }
+
+            if(checkBrowserLocale){
+                // We didn't retrieve a locale, but we can check if the browser's locale isn't English
+                // and use it for Strype if we provide that locale
+                const foundLanguange = navigator.language?.toLowerCase();
+                const languageCode = (foundLanguange && foundLanguange.length > 1) ? foundLanguange.substring(0,2) : "en";
+                if(languageCode != "en" && this.$i18n.availableLocales.includes(languageCode)) {
+                    strypeSessionLocale = languageCode;
+                }
+            }
+
+            // Now update the UI
+            this.settingsStore.setAppLang(strypeSessionLocale);
         },
 
         loadLocalStorageProjectOnStart() {
             // Check the local storage (WebStorage) to see if there is a saved project from the previous time the user entered the system
             // if browser supports localstorage
             if (typeof(Storage) !== "undefined") {
-                const savedState = localStorage.getItem(this.localStorageAutosaveKey);
+                const savedState = localStorage.getItem(this.localStorageAutosaveEditorKey);
                 if(savedState) {
                     this.appStore.setStateFromJSONStr( 
                         {
@@ -633,7 +737,7 @@ export default Vue.extend({
                         if(this.appStore.currentGoogleDriveSaveFileId) {
                             const execGetGDFileFunction = (event: BvModalEvent, dlgId: string) => {
                                 if((event.trigger == "ok" || event.trigger=="event") && dlgId == this.resyncGDAtStartupModalDlgId){
-                                // Fetch the Google Drive component
+                                    // Fetch the Google Drive component
                                     const gdVueComponent = ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>);
                                     // Initiate a connection to Google Drive via saving mechanisms (for updating Google Drive with local changes)
                                     gdVueComponent.saveFile(SaveRequestReason.reloadBrowser);
@@ -672,7 +776,7 @@ export default Vue.extend({
             this.resetStrypeProjectFlag = true;
             // 3) delete the WebStorage key that refers to the current autosaved project
             if (typeof(Storage) !== "undefined") {
-                localStorage.removeItem(this.localStorageAutosaveKey);
+                localStorage.removeItem(this.localStorageAutosaveEditorKey);
             }
             // Finally, reload the page to reload the Strype default project (removing potential query parameters)
             window.location.href = window.location.pathname;
@@ -927,11 +1031,15 @@ export default Vue.extend({
         },
 
         /* IFTRUE_isPython */
-        onExpandedPythonExecAreaSplitPaneResize(event: any){
+        onExpandedPythonExecAreaSplitPaneResize(event: any, calledForResize?: boolean){
             // We want to know the size of the second pane (https://antoniandre.github.io/splitpanes/#emitted-events).
             // It will dictate the size of the Python execution area (expanded, with a range between 20% and 80% of the vh)
             const lowerPanelSize = event[1].size;
-            if(lowerPanelSize >= 20 && lowerPanelSize <= 80){
+            if(!calledForResize){
+                // If the call isn't trigger by a window resize, we save the panel 1 size in the project
+                this.appStore.peaExpandedSplitterPane2Size = lowerPanelSize; 
+            }
+            if(lowerPanelSize >= this.peaOverlayPane2MinSize && lowerPanelSize <= this.peaOverlayPane2MaxSize){
                 // As the splitter works in percentage, and the full app height is which of the body, we can compute the height/position
                 // of the editor and of the Python execution area.
                 const fullAppHeight= (document.getElementsByTagName("body")[0].clientHeight);
@@ -941,10 +1049,18 @@ export default Vue.extend({
                 setManuallyResizedEditorHeightFlag(editorNewMaxHeight);
                 debounceComputeAddFrameCommandContainerSize(true);
                 // Set the editor's max height (fitting within the first pane's height); as well as the "frame commands" panel's
-                (document.getElementsByClassName("cropped-editor-code-div")[0] as HTMLDivElement).style.maxHeight = (editorNewMaxHeight + "px");
+                const croppedEditor = document.getElementsByClassName(scssVars.croppedEditorDivClassName);
+                if(croppedEditor.length > 0){
+                    // The "cropped editor", that is when the PEA is expanded may not exist if the PEA wasn't expanded before..
+                    (croppedEditor[0] as HTMLDivElement).style.maxHeight = (editorNewMaxHeight + "px");                      
+                }
                 (document.getElementsByClassName(scssVars.noPEACommandsClassName)[0] as HTMLDivElement).style.maxHeight = (editorNewMaxHeight + "px");
                 // Set the Python Execution Area's position
-                (document.querySelector("." + scssVars.peaContainerClassName + "." + scssVars.expandedPEAClassName) as HTMLDivElement).style.top = (editorNewMaxHeight + "px");
+                const peaWithExpandedClass = document.querySelector("." + scssVars.peaContainerClassName + "." + scssVars.expandedPEAClassName);
+                if(peaWithExpandedClass){
+                    // The "expanded PEA" may not exist if the PEA wasn't expanded before..
+                    (peaWithExpandedClass as HTMLDivElement).style.top = (editorNewMaxHeight + "px");
+                }     
                 // Set the max height of the Python Execution Area's tab content
                 setPythonExecutionAreaTabsContentMaxHeight();
                 // Trigger a resized event (for scaling the Turtle canvas properly)
@@ -956,66 +1072,72 @@ export default Vue.extend({
         },
         /* FITRUE_isPython */
 
-        onStrypeCommandsSplitPaneResize(){
+        onStrypeCommandsSplitPaneResize(event: any){
+            // Save the new size of the RHS pane of the editor/commands splitter
+            this.appStore.editorCommandsSplitterPane2Size = event[1].size;
+
             /* IFTRUE_isPython */
-            // When the rightmost panel (with Strype commands) is resized, we need to also update the Turtle canvas and break the natural 4/3 ratio of the PEA
+            // When the rightmost panel (with Strype commands) is resized, we need to also update the Turtle canvas and break the natural 4:3 ratio of the PEA
             (this.$refs[this.strypeCommandsRefId] as InstanceType<typeof Commands>).isCommandsSplitterChanged = true;
             document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
             /* FITRUE_isPython */
         },
         
-        setStateFromPythonFile(completeSource: string, fileName: string, lastSaveDate: number, fileLocation?: FileSystemFileHandle) : void {
-            const allLines = completeSource.split(/\r?\n/);
-            // Split can make an extra blank line at the end which we don't want:
-            if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
-                allLines.pop();
-            }
-            const s = splitLinesToSections(allLines);
-            // Bit awkward but we first copy each to check for errors because
-            // if there are any errors we don't want to paste any:
-            const err = copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION, s.importsMapping)
-                        ?? copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION, s.defsMapping)
-                        ?? copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION, s.mainMapping);
-            if (err != null) {
-                const msg = cloneDeep(MessageDefinitions.InvalidPythonParseImport);
-                const msgObj = msg.message as FormattedMessage;
-                msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, err);
-                
-                useStore().showMessage(msg, 10000);
-            }
-            else {
-                // Clear the current existing code (i.e. frames) of the editor
-                this.appStore.clearAllFrames();
+        setStateFromPythonFile(completeSource: string, fileName: string, lastSaveDate: number, fileLocation?: FileSystemFileHandle) : Promise<void> {
+            return new Promise((resolve) => {
+                const allLines = completeSource.split(/\r?\n/);
+                // Split can make an extra blank line at the end which we don't want:
+                if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
+                    allLines.pop();
+                }
+                const s = splitLinesToSections(allLines);
+                // Bit awkward but we first copy each to check for errors because
+                // if there are any errors we don't want to paste any:
+                const err = copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION, s.importsMapping)
+                            ?? copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION, s.defsMapping)
+                            ?? copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION, s.mainMapping);
+                if (err != null) {
+                    const msg = cloneDeep(MessageDefinitions.InvalidPythonParseImport);
+                    const msgObj = msg.message as FormattedMessage;
+                    msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, err);
+                    
+                    useStore().showMessage(msg, 10000);
+                }
+                else {
+                    // Clear the current existing code (i.e. frames) of the editor
+                    this.appStore.clearAllFrames();
 
-                copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION);
-                if (useStore().copiedSelectionFrameIds.length > 0) {
-                    getCaretContainerComponent(getFrameComponent(-1) as InstanceType<typeof FrameContainer>).doPaste(true);
-                }
-                copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION);
-                if (useStore().copiedSelectionFrameIds.length > 0) {
-                    getCaretContainerComponent(getFrameComponent(-2) as InstanceType<typeof FrameContainer>).doPaste(true);
-                }
-                if (s.main.length > 0) {
-                    copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION);
+                    copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION);
                     if (useStore().copiedSelectionFrameIds.length > 0) {
-                        getCaretContainerComponent(getFrameComponent(-3) as InstanceType<typeof FrameContainer>).doPaste(true);
+                        getCaretContainerComponent(getFrameComponent(this.appStore.getImportsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(true);
                     }
+                    copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION);
+                    if (useStore().copiedSelectionFrameIds.length > 0) {
+                        getCaretContainerComponent(getFrameComponent(this.appStore.getFuncDefsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(true);
+                    }
+                    if (s.main.length > 0) {
+                        copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION);
+                        if (useStore().copiedSelectionFrameIds.length > 0) {
+                            getCaretContainerComponent(getFrameComponent(this.appStore.getMainCodeFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(true);
+                        }
+                    }
+
+                    // Now we can clear other non-frame related elements
+                    this.appStore.clearNoneFrameRelatedState();
+                
+                    /* IFTRUE_isPython */
+                    // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
+                    actOnTurtleImport();
+
+                    // Clear the Python Execution Area as it could have be run before.
+                    ((this.$root.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getPEAComponentRefId()] as any).clear();
+                    /* FITRUE_isPython */
+
+                    // Finally, we can trigger the notifcation a file has been loaded.
+                    (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, lastSaveDate, fileLocation);
+                    resolve();
                 }
-
-                // Now we can clear other non-frame related elements
-                this.appStore.clearNoneFrameRelatedState();
-             
-                /* IFTRUE_isPython */
-                // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
-                actOnTurtleImport();
-
-                // Clear the Python Execution Area as it could have be run before.
-                ((this.$root.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getPEAComponentRefId()] as any).clear();
-                /* FITRUE_isPython */
-
-                // Finally, we can trigger the notifcation a file has been loaded.
-                (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, lastSaveDate, fileLocation);
-            }
+            });
         },
     },
 });
@@ -1038,8 +1160,8 @@ export default Vue.extend({
 // The @media screen classes apply only for the "screen" media, that is what is displayed in the broswser.
 // We only need to put classes here that would conflict with the rendering for printing.
 @media screen {
-    .cropped-editor-code-div {
-        max-height: 50vh;
+    .#{$strype-classname-cropped-editor-code-div} {
+        max-height: #{100 - $pea-expanded-overlay-splitter-pane2-size-value}vh;
     }
 
     .full-height-editor-code-div {
@@ -1079,7 +1201,7 @@ body.#{$strype-classname-dragging-frame} {
  }
 
 #app {
-    font-family: 'Source Sans Pro', sans-serif;
+    font-family: 'AHN-Strype', sans-serif;
     font-size: 15px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -1279,15 +1401,15 @@ $divider-grey: darken($background-grey, 15%);
 }
 
 .splitpanes--vertical .splitpanes__pane {
-	-webkit-transition: width .2s ease-out;
-	-o-transition: width .2s ease-out;
-	transition: width .2s ease-out
+	-webkit-transition: width .1s ease-out;
+	-o-transition: width .1s ease-out;
+	transition: width .1s ease-out
 }
 
 .splitpanes--horizontal .splitpanes__pane {
-	-webkit-transition: height .2s ease-out;
-	-o-transition: height .2s ease-out;
-	transition: height .2s ease-out
+	-webkit-transition: height .1s ease-out;
+	-o-transition: height .1s ease-out;
+	transition: height .1s ease-out
 }
 
 .splitpanes--dragging .splitpanes__pane {

@@ -702,7 +702,9 @@ export const isContainedInFrame = function (currFrameId: number, caretPosition: 
 
 // Instead of calculating the available caret positions through the store (where the frameObjects object is hard to use for this)
 // We get the available caret positions through the DOM, where they are all present.
-export const getAvailableNavigationPositions = function(): NavigationPosition[] {
+// If showIsInCollapsedFrameContainer is set to true, we check that the frame container (section) containing the cursor is not collapsed 
+// and add the corresponding information in the results (we do that optionally as it calls a recursive method).
+export const getAvailableNavigationPositions = function(showIsInCollapsedFrameContainer?: boolean): NavigationPosition[] {
     // We start by getting from the DOM all the available caret and editable slot positions 
     // (slots of "code" type slots, e.g. not operators -- won't appear in allCaretDOMPositions)
     const allCaretDOMpositions = document.getElementsByClassName(scssVars.navigationPositionClassName);
@@ -724,8 +726,9 @@ export const getAvailableNavigationPositions = function(): NavigationPosition[] 
         return {
             frameId: (frameIdMatch != null) ? parseInt(frameIdMatch[0]) : -100, // need to check the match isn't null for TS, but it should NOT be.
             isSlotNavigationPosition: isSlotNavigationPosition, 
-            ...positionObjIdentifier,            
-        };
+            ...positionObjIdentifier,
+            isInCollapsedFrameContainer: (showIsInCollapsedFrameContainer) ? (useStore().frameObjects[getFrameSectionIdFromFrameId(parseInt(frameIdMatch?.[0]??"-100"))].isCollapsed) : undefined,            
+        } as NavigationPosition;
     }).filter((navigationPosition) => useStore().frameObjects[navigationPosition.frameId] && !(navigationPosition.isSlotNavigationPosition && useStore().frameObjects[navigationPosition.frameId].isDisabled)) as NavigationPosition[]; 
 };
 
