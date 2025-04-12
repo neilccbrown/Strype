@@ -651,19 +651,6 @@ class Actor:
         :return: The :class:`Actor` we are touching, if any, or None if we are not touching any actor. 
         """
         return next(iter(self.get_all_touching(tag)), None)
-    
-    def set_can_touch(self, can_touch):
-        """
-        Changes whether the actor is part of the collision detection system.
-        
-        If you turn it off then this actor will never show up in the collision checking.
-        You may want to do this if you have an actor which makes no sense to collide (such
-        as a score board, or game over text), and/or to speed up the simulation for actors
-        where you don't need collision detection (e.g. visual effects).
-        
-        :param can_touch: Whether this actor can participate in collisions.
-        """
-        _strype_input_internal.setCollidable(self.__id, can_touch)
 
     #@@ list
     def get_all_touching(self, tag = None):
@@ -760,6 +747,7 @@ class Actor:
             sayImg.set_stroke("#555555FF")
             sayImg.draw_rounded_rect(0, 0, textDimensions.width + 2 * padding, textDimensions.height + 2 * padding, padding)
             sayImg._draw_part_of_image(textOnlyImg, padding, padding, 0, 0, textDimensions.width, textDimensions.height)
+            # The None for associated object means it won't be collidable:
             self.__say = _strype_graphics_internal.addImage(sayImg._Image__image, None)
             self._update_say_position()
             
