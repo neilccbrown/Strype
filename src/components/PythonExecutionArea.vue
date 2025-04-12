@@ -18,7 +18,7 @@
         <div :id="tabContentContainerDivId" :class="{'pea-tab-content-container': true, 'flex-padding': true, 'pea-43-ratio': hasDefault43Ratio}">
             <!-- the SplitPanes is used in all layout configurations: for tabs, we only show 1 of the panes and disable moving the divider, and for stacked window it acts as normal -->
             <Splitpanes :class="{'strype-PEA-split-theme': true, 'with-expanded-PEA': isExpandedPEA, 'tabs-PEA': isTabsLayout}" :horizontal="!isExpandedPEA" @resize="onSplitterPane1Resize">
-                <pane :id="graphicsSplitPaneId" key="1" v-show="isGraphicsAreaShowing" :size="(isTabsLayout) ? 100 : currentSplitterPane1Size">
+                <pane :id="graphicsSplitPaneId" key="1" v-show="isGraphicsAreaShowing" :size="(isTabsLayout) ? 100 : currentSplitterPane1Size" min-size="5">
                     <div :id="graphicsContainerDivId" @wheel.stop :class="{'pea-graphics-container': true, hidden: graphicsTemporaryHidden}">
                         <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
                             <div :id="graphicsDivId" ref="pythonTurtleDiv" class="pea-graphics-div"></div>
@@ -26,7 +26,7 @@
                         <span v-if="isGraphicsAreaShowing && !turtleGraphicsImported" class="pea-no-graphics-import-span">{{$t('PEA.importTurtle')}}</span> 
                     </div>
                 </pane>
-                <pane key="2" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)">
+                <pane key="2" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)" min-size="5">
                     <textarea 
                         :id="pythonConsoleId"
                         ref="pythonConsole"
@@ -97,7 +97,6 @@ export default Vue.extend({
             isTurtleListeningMouseEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for mouse events on Turtle
             isTurtleListeningTimerEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for timer events on Turtle
             stopTurtleUIEventListeners: undefined as ((keepShowingTurtleUI: boolean)=>void) | undefined, // registered callback method to clear the Turtle listeners mentioned above
-            currentSplitterPane1Size: 50, // the current size (in %) of the splitter's pane 1, we keep this to maintain visual aspects when layout switches,
             PEALayoutsData: [
                 {iconName: "PEA-layout-tabs-collapsed", mode: StrypePEALayoutMode.tabsCollapsed},
                 {iconName: "PEA-layout-tabs-expanded", mode: StrypePEALayoutMode.tabsExpanded},
@@ -167,22 +166,32 @@ export default Vue.extend({
             // Register an observer when the tab content dimension changes: we need to reflect this on the canvas scaling (cf. above)
             // DO NOT use ResizeObserver to do so: it gets messy with the events loop ("ResizeObserver loop completed with undelivered notifications.")
             const debouncePEASizeChangedCallback = debounce(() => {
-                // We should only scale the canvas if there is at least a canvas to scale! (i.e. we show turtle graphics...)
-                const graphicsCanvasSelector = "#" + getPEAGraphicsDivId() + " canvas";
-                if (document.querySelectorAll(graphicsCanvasSelector).length > 0) {
-                    this.graphicsTemporaryHidden = true;
-                    setTimeout(() => {
-                        if(document.querySelectorAll(graphicsCanvasSelector).length > 0){
-                            this.scaleTurtleCanvas(tabContentContainerDiv,graphicsSplitPaneDiv, turtlePlaceholderDiv);
-                        }
-                    }, 100);                    
+                // If Strype is shown in its default view (PEA has 4:3 ratio, we need to update the splitter so the PEA stay visible)
+                let waitSplitterToAdaptTimeout = 0;
+                if(this.hasDefault43Ratio) {
+                    waitSplitterToAdaptTimeout = 200;
+                    this.$emit(CustomEventTypes.pythonExecAreaMounted);
                 }
-                
+
                 setTimeout(() => {
-                    debounceComputeAddFrameCommandContainerSize(this.isExpandedPEA);
-                    setPythonExecAreaLayoutButtonPos();
-                }, 100);
+                    // We should only scale the canvas if there is at least a canvas to scale! (i.e. we show turtle graphics...)
+                    const graphicsCanvasSelector = "#" + getPEAGraphicsDivId() + " canvas";
+                    if (document.querySelectorAll(graphicsCanvasSelector).length > 0) {
+                        this.graphicsTemporaryHidden = true;
+                        setTimeout(() => {
+                            if(document.querySelectorAll(graphicsCanvasSelector).length > 0){
+                                this.scaleTurtleCanvas(tabContentContainerDiv,graphicsSplitPaneDiv, turtlePlaceholderDiv);
+                            }
+                        }, 100);                    
+                    }
+                
+                    setTimeout(() => {
+                        debounceComputeAddFrameCommandContainerSize(this.isExpandedPEA);
+                        setPythonExecAreaLayoutButtonPos();
+                    }, 100);
+                }, waitSplitterToAdaptTimeout);
             }, 100);
+            
             tabContentContainerDiv.addEventListener(CustomEventTypes.pythonExecAreaSizeChanged, debouncePEASizeChangedCallback);
 
             // Register to the window event listener for Skulpt Turtle mouse and timer events listening off notification
@@ -258,6 +267,13 @@ export default Vue.extend({
             return useStore().pythonExecRunningState != PythonExecRunningState.NotRunning;
         },
 
+        currentSplitterPane1Size(): number {
+            // The current size (in %) of the splitter's pane 1, we keep this as a variable not directly affected to the splitter's 
+            // pane size to maintain visual aspects when layout switches (the actual size may be explicitly changed to 0 or 100
+            // depending on the layout mode).
+            return this.appStore.peaSplitViewSplitterPane1Size ?? parseFloat(scssVars.peaSplitViewSplitterPane1SizePercentValue);
+        },
+
         runCodeButtonIconText(): string {
             switch (useStore().pythonExecRunningState) {
             case PythonExecRunningState.Running:
@@ -301,7 +317,8 @@ export default Vue.extend({
         onSplitterPane1Resize(event: any) {
             // Only update the panel size when we are in stacked layout
             if(!this.isTabsLayout){
-                this.currentSplitterPane1Size = event[0].size;
+                // Save the PEA splitter's pane 1 size with the project (it will update currentSplitterPane1Size by reactivity)
+                this.appStore.peaSplitViewSplitterPane1Size = event[0].size;
             }
 
             // Notify a resize of the PEA happened
@@ -466,6 +483,9 @@ export default Vue.extend({
         },
 
         togglePEALayout(layoutMode: StrypePEALayoutMode){
+            // Save the layout mode with the project
+            this.appStore.peaLayoutMode  = layoutMode;
+              
             const newTabsLayout = (layoutMode == StrypePEALayoutMode.tabsCollapsed || layoutMode == StrypePEALayoutMode.tabsExpanded);
             const newExpandLayout = (layoutMode == StrypePEALayoutMode.tabsExpanded || layoutMode == StrypePEALayoutMode.splitExpanded);
             const tabsLayoutChanged  = (newTabsLayout != this.isTabsLayout);
@@ -497,17 +517,16 @@ export default Vue.extend({
 
                 // A delay can occur when we swap between the tabs / split layout or between split directions,
                 // so we need a delay to make sure the splitter has operated properly (we do it in any case)
-                setTimeout(() => {
-                    document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
-
-                    setPythonExecAreaLayoutButtonPos();
-
+                const refreshUITimeout = 100;
+                if(expandLayoutChanged){
                     // Other parts of the UI need to be updated when the PEA default size is changed, so we emit an event
                     // (in case we rely on the current changes, we do it a bit later)
-                    if(expandLayoutChanged){
-                        this.$nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaExpandCollapseChanged, {detail: this.isExpandedPEA})));
-                    }
-                }, 100);
+                    setTimeout(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaExpandCollapseChanged, {detail: this.isExpandedPEA})),
+                        refreshUITimeout);
+                }                
+                setTimeout(() => {
+                    document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
+                }, refreshUITimeout + 100);
             }
         },
 
@@ -542,7 +561,7 @@ export default Vue.extend({
         },
 
         reachFirstError(): void {
-            this.$nextTick(() => {
+            setTimeout(() => {
                 // We should get only the run time error here, or at least 1 precompiled error
                 // but for sanity check, we make sure it's still there
                 const errors = getEditorCodeErrorsHTMLElements();
@@ -551,7 +570,7 @@ export default Vue.extend({
                     (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).currentErrorNavIndex = -1; 
                     (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).goToError(null, true);
                 }
-            });
+            }, 200);
         },
 
         clear(): void {
@@ -578,10 +597,10 @@ export default Vue.extend({
 <style lang="scss">
     .pea-component.#{$strype-classname-expanded-pea} {
         width: 100vw;
-        top:50vh;
-        bottom:0px;
-        left:0px;
-        position:fixed;
+        top: #{$pea-expanded-overlay-splitter-pane2-size-value}vh;
+        bottom: 0px;
+        left: 0px;
+        position: fixed;
         margin: 0px !important;
     }
 
@@ -593,7 +612,7 @@ export default Vue.extend({
         display: flex;
         column-gap: 5px;        
         width:100%;
-        background-color: rgb(240,240,240);
+        background-color: $pea-outer-background-color;
         align-items: center;
     }
 
@@ -602,6 +621,7 @@ export default Vue.extend({
         border-radius: 10px;
         border: 1px solid transparent;
         outline: none;
+        background-color: transparent;
     }
 
     .pea-controls-div button:hover {
@@ -748,7 +768,7 @@ export default Vue.extend({
      * The following CSS classes are for the Splitter component in use here
      */
     .splitpanes.strype-PEA-split-theme.with-expanded-PEA {
-        background-color: rgb(240,240,240);
+        background-color: $pea-outer-background-color;
     }
     
     .strype-PEA-split-theme.splitpanes--horizontal>.splitpanes__splitter,
@@ -764,5 +784,14 @@ export default Vue.extend({
     .strype-PEA-split-theme.tabs-PEA.splitpanes--vertical>.splitpanes__splitter,
     .strype-PEA-split-theme.tabs-PEA .splitpanes--vertical>.splitpanes__splitter {
         display: none;
+    }
+
+    .strype-PEA-split-theme.splitpanes--vertical > .splitpanes__splitter:before,
+    .strype-PEA-split-theme > .splitpanes--vertical > .splitpanes__splitter:before {
+        content: "";
+        position: absolute;
+        height: 100% !important;
+        width: 8px !important;
+        transform: none !important;
     }
 </style>

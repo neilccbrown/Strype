@@ -13,8 +13,11 @@ import Frame from "@/components/Frame.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import FrameBody from "@/components/FrameBody.vue";
 import JointFrames from "@/components/JointFrames.vue";
+/* IFTRUE_isPython */
+import CommandsComponent from "@/components/Commands.vue";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import { debounce } from "lodash";
+/* FITRUE_isPython */
 
 export const undoMaxSteps = 200;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
@@ -24,7 +27,13 @@ export const autoSaveFreqMins = 2; // The number of minutes between each autosav
 export const sharedStrypeProjectTargetKey = "shared_proj_targ"; 
 // The URL of the project, with the URL pattern (template) for each possible target
 export const sharedStrypeProjectIdKey = "shared_proj_id";
-//export const sharedStrypeProjectURLSrcTemplates: {target: StrypeSyncTarget, URLTemplate: string}[] = [{target: StrypeSyncTarget.gd, URLTemplate: "https://drive.google.com/file/{0}"}];
+
+// LocalStorage keys used by Strype 
+export enum AutoSaveKeyNames {
+    settingsState = "StrypeSettingsState",
+    pythonEditorState = "PythonStrypeSavedState",
+    mbEditor = "MicrobitStrypeSavedState",
+}
 
 // Custom JS events in Strype
 export enum CustomEventTypes {
@@ -46,6 +55,7 @@ export enum CustomEventTypes {
     unsupportedByStrypeFilePicked = "unsupportedByStrypeFilePicked",
     acItemHovered="acItemHovered",
     openSharedFileDone="openSharedFileDone",
+    dropFramePositionsUpdated="dropFramePositionsUpdated",
     /* IFTRUE_isPython */
     pythonExecAreaMounted = "peaMounted",
     pythonExecAreaExpandCollapseChanged = "peaExpandCollapsChanged",
@@ -220,7 +230,7 @@ export function getTextStartCursorPositionOfHTMLElement(htmlElement: HTMLSpanEle
 }
 
 export function getFocusedEditableSlotTextSelectionStartEnd(labelSlotUID: string): {selectionStart: number, selectionEnd: number} {
-    // A helper function to get the selection relative to a *focused* slot: if the selection spans across several slots, we get the right boudary values for the given slot
+    // A helper function to get the selection relative to a *focused* slot: if the selection spans across several slots, we get the right boundary values for the given slot
     const focusCursorInfos = useStore().focusSlotCursorInfos;
     const anchorCursorInfos = useStore().anchorSlotCursorInfos;
     if(anchorCursorInfos != null && focusCursorInfos != null ){
@@ -517,8 +527,16 @@ export function getCaretContainerComponent(frameComponent: InstanceType<typeof F
 }
 // End for component retriever
 
-export function getSaveAsProjectModalDlg():string {
+export function getSaveAsProjectModalDlg(): string {
     return "save-strype-project-modal-dlg";
+}
+
+export function getStrypeSaveProjectNameInputId(): string {
+    return "saveStrypeFileNameInput";
+}
+
+export function getSaveStrypeProjectToFSButtonId() : string {
+    return "saveStrypeProjectToFSStrypeButton";
 }
 
 export function getEditorMiddleUID(): string {
@@ -843,7 +861,8 @@ export function generateAllFrameCommandsDefs():void {
             type: getFrameDefType(AllFrameTypesIdentifier.blank),
             description: i18n.t("frame.blank_desc") as string,
             shortcuts: ["\x13"],
-            symbol: "↵",
+            symbol: "enter",
+            isSVGIconSymbol: true,
         }],
         "t": [{
             type: getFrameDefType(AllFrameTypesIdentifier.try),
@@ -1004,12 +1023,17 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
         // (which can be allowed or not) on the vertical axis only.
         let closestCaretPositionIndex = -1, minVerticalDist = Number.MAX_VALUE;
         currentCaretPositionsForDnD.every((navigationPos, index) => {
+            if(navigationPos.isInCollapsedFrameContainer){
+                // A collapsed frame position is ignored until a prolonged hover triggered it to expand
+                return true;
+            }
+
             const caretEl = document.getElementById(getCaretUID(navigationPos.caretPosition as string, navigationPos.frameId));
             const caretBox = caretEl?.getBoundingClientRect() as DOMRect;
             const caretYTopPos = (caretBox.height > 0) ? caretBox.y : caretBox.y - Number.parseInt(scssVars.caretHeightValue) / 2;
             const caretYBottompPos = (caretBox.height > 0) ? caretBox.y + caretBox.height : caretBox.y + Number.parseInt(scssVars.caretHeightValue) / 2;
             const verticalDist = (mouseEvent.y <= caretYTopPos)
-                ?   caretYTopPos - mouseEvent.y
+                ? caretYTopPos - mouseEvent.y
                 : mouseEvent.y - caretYBottompPos;
             if(verticalDist < minVerticalDist){
                 minVerticalDist = verticalDist;
@@ -1118,6 +1142,18 @@ function isFrameDropAllowed(destCaretFrameId: number, destCaretPos: CaretPositio
     return !topLevelDraggedFrameIds.some((topLevelDraggedFrameId) => destinationFrameContainer.frameType.forbiddenChildrenTypes.includes(useStore().frameObjects[topLevelDraggedFrameId].frameType.type));
 }
 
+const noCaretDropFrameIds: number[] = [];
+function prepareDropPositionsForDnd() {
+    currentCaretPositionsForDnD = getAvailableNavigationPositions(true)
+        .filter((navigationPosition) => !navigationPosition.isSlotNavigationPosition 
+            && !noCaretDropFrameIds.includes(navigationPosition.frameId));
+}
+
+// Register for an update of the drop positions (needed when a collapsed frame is expanded on hover, see onFrameContainerHover() in FrameContainer.vue)
+document.addEventListener(CustomEventTypes.dropFramePositionsUpdated, () => {
+    prepareDropPositionsForDnd();
+});
+
 export function notifyDragStarted(frameId?: number):void {
     const renderingCanvas = document.getElementById(companionCanvasId) as HTMLCanvasElement;
     let html2canvasOptions: Partial<Options> = {backgroundColor: null, canvas: renderingCanvas, scale: companionImgScalingRatio};
@@ -1160,8 +1196,9 @@ export function notifyDragStarted(frameId?: number):void {
 
     // Get the list of current available caret positions: all caret positions, 
     // except the positions within a selection or within inside the children of a frame that is dragged.
-    // (The position below the dragged frame (or last selected frame) won't a suggested drop position, which is not needed anyway.)
-    const noCaretDropFrameIds: number[] = [];
+    // (The position below the dragged frame (or last selected frame) won't be a suggested drop position, which is not needed anyway.)
+    // The positions are only updated if the custom event dropFramePositionsUpdated is received.
+    noCaretDropFrameIds.splice(0);
     if(frameId){
         noCaretDropFrameIds.push(...getAllChildrenAndJointFramesIds(frameId), frameId);
     }
@@ -1169,9 +1206,10 @@ export function notifyDragStarted(frameId?: number):void {
         useStore().selectedFrames.forEach((selectedFrameId) => noCaretDropFrameIds.push(...getAllChildrenAndJointFramesIds(selectedFrameId)));
         noCaretDropFrameIds.push(...useStore().selectedFrames);
     }
-    currentCaretPositionsForDnD = getAvailableNavigationPositions()
-        .filter((navigationPosition) => !navigationPosition.isSlotNavigationPosition 
-            && !noCaretDropFrameIds.includes(navigationPosition.frameId));
+    
+    // Set the drop positions
+    prepareDropPositionsForDnd();
+
     // Change the mouse cursor for the whole app
     document.getElementsByTagName("body")[0]?.classList.add(scssVars.draggingFrameClassName);
     // And assign a mouse event event listen to allow companion "image" to follow cursor and detect when the drop is performed
@@ -1758,7 +1796,7 @@ export function actOnTurtleImport(): void {
 // We need to "fix" the size of the tabs container so the elements of the Exec Area, when it's enlarged, are correctly flowing in the page
 // and stay within the splitters (which are overlayed in App.vue).
 let manuallyResizedEditorHeight: number | undefined; // Flag used below and by App.vue - do not store this in store, it's session-lived only.
-export function setManuallyResizedEditorHeightFlag(value: number): void {
+export function setManuallyResizedEditorHeightFlag(value: number | undefined): void {
     manuallyResizedEditorHeight = value;
 }
 export function getManuallyResizedEditorHeightFlag(): number | undefined {
@@ -1810,7 +1848,6 @@ export function setPythonExecAreaLayoutButtonPos(): void{
         }
     }, 100);
 }
-/* FITRUE_isPython */
 
 /** 
  * These methods are used to control the height of the "Add frame" commands,
@@ -1857,8 +1894,16 @@ export function computeAddFrameCommandContainerSize(isExpandedPEA?: boolean): vo
                 }
             }
         }
+            
+        // When we are done, we need to check again the min size of the commands/PEA splitter pane 1, since scroll bars
+        // could have been added with the new change (need to wait for it to be effective though).
+        setTimeout(() => {
+            (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).setPEACommandsSplitterPanesMinSize();    
+        }, 100);    
     }
 }
+/* FITRUE_isPython */
+
 
 export function getCurrentFrameSelectionScope(): SelectAllFramesFuncDefScope {
     // This method checks the current selection scope that we need to know when doing select-all (for function definitions).
