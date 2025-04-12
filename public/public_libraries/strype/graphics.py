@@ -202,7 +202,7 @@ class Image:
         _strype_graphics_internal.canvas_setPixel(self.__image, x, y, (color.red, color.green, color.blue, color.alpha))
 
     #@@ list
-    def bulk_get_pixels(self):
+    def _bulk_get_pixels(self):
         """
         Gets the values of the pixels of the image in one large array.  Index 0 in the array is the red value,
         of the pixel at the top-left (0,0) in the image.  Indexes 1, 2 and 3 are the green, blue and alpha of that pixel.
@@ -213,25 +213,20 @@ class Image:
         """
         return _strype_graphics_internal.canvas_getAllPixels(self.__image)
 
-    def bulk_set_pixels(self, rgba_array):
+    def _bulk_set_pixels(self, rgba_array):
         """
         Sets the values of the pixels from RGBA values in one giant array.  The pixels should be arranged as described
-        in `bulk_get_pixels()`.  The array should thus be of length width * height * 4.
+        in `_bulk_get_pixels()`.  The array should thus be of length width * height * 4.
         
         :param rgba_array: An array of 0-255 RGBA values organised as described above.
         """
         _strype_graphics_internal.canvas_setAllPixelsRGBA(self.__image, rgba_array)
 
-    def clear_rect(self, x, y, width, height):
+    def clear(self):
         """
-        Clears the given rectangle (i.e. sets all the pixels to be fully transparent).
-        
-        :param x: The left x coordinate of the rectangle (inclusive).
-        :param y: The top y coordinate of the rectangle (inclusive).
-        :param width: The width of the rectangle
-        :param height: The height of the rectangle.
+        Clears the image (i.e. sets all the pixels to be fully transparent).
         """
-        _strype_graphics_internal.canvas_clearRect(self.__image, x, y, width, height)
+        _strype_graphics_internal.canvas_clearRect(self.__image, 0, 0, self.get_width(), self.get_height())
 
     def draw_image(self, image, x, y):
         """
@@ -244,7 +239,7 @@ class Image:
         dim = _strype_graphics_internal.getCanvasDimensions(image._Image__image)
         _strype_graphics_internal.canvas_drawImagePart(self.__image, image._Image__image, x, y, 0, 0, dim[0], dim[1], 1.0)
 
-    def draw_part_of_image(self, image, x, y, sx, sy, width, height, scale = 1.0):
+    def _draw_part_of_image(self, image, x, y, sx, sy, width, height, scale = 1.0):
         """
         Draws part of the given image into this image.
         
@@ -277,7 +272,7 @@ class Image:
         """
         return _strype_graphics_internal.getCanvasDimensions(self.__image)[1]
 
-    def draw_text(self, text, x, y, font_size, max_width = 0, max_height = 0, font_family = None):
+    def draw_text(self, text, x, y, font_size = 32, max_width = 0, max_height = 0, font_family = None):
         """
         Draw text onto the image.  If a maximum width is specified, the text will be wrapped to fit the given width.  
         If a maximum height is specified as well, the font size will be reduced if necessary to fit within the width and height.  
@@ -786,7 +781,7 @@ class Actor:
             sayImg.set_fill("white")
             sayImg.set_stroke("#555555FF")
             sayImg.draw_rounded_rect(0, 0, textDimensions.width + 2 * padding, textDimensions.height + 2 * padding, padding)
-            sayImg.draw_part_of_image(textOnlyImg, padding, padding, 0, 0, textDimensions.width, textDimensions.height)
+            sayImg._draw_part_of_image(textOnlyImg, padding, padding, 0, 0, textDimensions.width, textDimensions.height)
             self.__say = _strype_graphics_internal.addImage(sayImg._Image__image, None)
             self._update_say_position()
             
@@ -916,7 +911,7 @@ def set_background(image_or_name_or_color, tile_to_fit = True):
                     dest.draw_image(image, x_offset + i * w, y_offset + j * h)
         else:
             scale = min(808 / w, 606 / h)
-            dest.draw_part_of_image(image, (808 - scale * w) / 2, (606 - scale * h) / 2, 0, 0, w, h, scale)
+            dest._draw_part_of_image(image, (808 - scale * w) / 2, (606 - scale * h) / 2, 0, 0, w, h, scale)
         return dest
         
     if isinstance(image_or_filename_or_color, Image):

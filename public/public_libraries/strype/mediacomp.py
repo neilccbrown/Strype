@@ -267,7 +267,7 @@ MainImage = None
 def _invalidateCache(picture, writeback = True):
     if writeback and hasattr(picture, "mediacomp_pixels") and hasattr(picture, "mediacomp_written_to") and picture.mediacomp_written_to:
         # We don't know where we wrote so we have to set all:
-        picture.bulk_set_pixels(picture.mediacomp_pixels)
+        picture._bulk_set_pixels(picture.mediacomp_pixels)
     if hasattr(picture, "mediacomp_pixels"):
         delattr(picture, "mediacomp_pixels")
     if hasattr(picture, "mediacomp_written_to"):
@@ -486,7 +486,7 @@ def getHeight(picture):
     return picture.get_height()
 
 def _cachePixels(picture):
-    picture.mediacomp_pixels = picture.bulk_get_pixels()
+    picture.mediacomp_pixels = picture._bulk_get_pixels()
     picture.mediacomp_written_to = False
 
 def getPixels(picture):
