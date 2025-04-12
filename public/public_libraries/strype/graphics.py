@@ -84,7 +84,7 @@ class Color:
         self.alpha = _round_and_clamp_0_255(alpha)
 
     #@@ str    
-    def to_html(self):
+    def _to_html(self):
         """
         Get the HTML version of this Color, in the format #RRGGBBAA where each pair is 2 hexadecimal digits.
         
@@ -156,7 +156,7 @@ class Image:
         :param fill: The color to use for filling.  It can be either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0"), a :class:`Color` object, or None.
         """
         if isinstance(color, Color):
-            _strype_graphics_internal.canvas_setFill(self.__image, color.to_html())
+            _strype_graphics_internal.canvas_setFill(self.__image, color._to_html())
         elif isinstance(color, str) or color is None:
             _strype_graphics_internal.canvas_setFill(self.__image, color)
         else:
@@ -170,7 +170,7 @@ class Image:
         :param fill: The color to use for drawing.  It can be either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0"), a :class:`Color` object, or None.
         """
         if isinstance(color, Color):
-            _strype_graphics_internal.canvas_setStroke(self.__image, color.to_html())
+            _strype_graphics_internal.canvas_setStroke(self.__image, color._to_html())
         elif isinstance(color, str) or color is None:
             _strype_graphics_internal.canvas_setStroke(self.__image, color)
         else:
