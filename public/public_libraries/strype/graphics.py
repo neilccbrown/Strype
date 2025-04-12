@@ -298,7 +298,7 @@ class Image:
         dim = _strype_graphics_internal.canvas_drawText(self.__image, text, x, y, font_size, max_width, max_height, font_family._FontFamily__font if font_family is not None else None)
         return Dimension(dim['width'], dim['height'])
         
-    def rounded_rectangle(self, x, y, width, height, corner_size):
+    def draw_rounded_rect(self, x, y, width, height, corner_size = 10):
         """
         Draw a rectangle with rounded corners.  The border is drawn using the stroke color (see `set_stroke`) 
         and filled using the current fill color (see `set_fill`).
@@ -307,11 +307,11 @@ class Image:
         :param y: The y coordinate of the top-left of the rectangle.
         :param width: The width of the rectangle.
         :param height: The height of the rectangle.
-        :param corner_size: The radius of the rounded corners of the rectangle.
+        :param corner_size: The radius of the rounded corners of the rectangle.  Defaults to 10 if omitted.
         """
         _strype_graphics_internal.canvas_roundedRect(self.__image, x, y, width, height, corner_size)
         
-    def rectangle(self, x, y, width, height):
+    def draw_rect(self, x, y, width, height):
         """
         Draw a rectangle.  The border is drawn using the stroke color (see `set_stroke`) 
         and filled using the current fill color (see `set_fill`).
@@ -323,7 +323,7 @@ class Image:
         """
         _strype_graphics_internal.canvas_roundedRect(self.__image, x, y, width, height, 0)
         
-    def line(self, start_x, start_y, end_x, end_y):
+    def draw_line(self, start_x, start_y, end_x, end_y):
         """
         Draw a line.  The line is drawn in the current stroke color.
         
@@ -334,26 +334,28 @@ class Image:
         """
         _strype_graphics_internal.canvas_line(self.__image, start_x, start_y, end_x, end_y)
         
-    def arc(self, centre_x, centre_y, width, height, angle_start, angle_amount):
+    def draw_oval(self, centre_x, centre_y, x_radius, y_radius, angle_start = 0, angle_amount = 360):
         """
-        Draws an arc (a part of an ellipse, an ellipse being a circle with a width than can be different than height).
-        Imagine an ellipse with a given centre position and width and height.  The `angle_start` parameter
+        Draws an oval or part of one (also known as an ellipse; a circle with a width that can be different than height).
+        
+        If you want to draw part of an oval, pass the last two parameters.
+        Imagine an oval with a given centre position and X/Y radius.  The `angle_start` parameter
         is the angle from the centre to the start of the arc, in degrees (0 points to the right, positive values go clockwise),
         and the `angle_amount` is the amount of degrees to travel (positive goes clockwise, negative goes anti-clockwise) to
         the end point.
         
-        The arc will be filled with the current fill (see `set_fill()`) and drawn in the current stroke (see `set_stroke()`).
+        The oval will be filled with the current fill (see `set_fill()`) and drawn in the current stroke (see `set_stroke()`).
         
-        :param centre_x: The centre x coordinate of the arc.
-        :param centre_y: The centre y coordinate of the arc.
-        :param width: The width of the ellipse that describes the arc.
-        :param height: The height of the ellipse that describes the arc.
+        :param centre_x: The centre x coordinate of the oval.
+        :param centre_y: The centre y coordinate of the oval.
+        :param x_radius: The radius of the oval on the X axis.
+        :param y_radius: The radius of the oval on the Y axis.
         :param angle_start: The starting angle of the arc, in degrees (0 points to the right).
         :param angle_amount: The amount of degrees to travel (positive goes clockwise).
         """
-        _strype_graphics_internal.canvas_arc(self.__image, centre_x, centre_y, width, height, angle_start, angle_amount)
+        _strype_graphics_internal.canvas_arc(self.__image, centre_x, centre_y, x_radius * 2, y_radius * 2, angle_start, angle_amount)
 
-    def circle(self, centre_x, centre_y, radius):
+    def draw_circle(self, centre_x, centre_y, radius):
         """
         Draw a circle at a given position.  The border is drawn using the stroke color (see `set_stroke`) 
         and filled using the current fill color (see `set_fill`).
@@ -364,7 +366,7 @@ class Image:
         """
         self.arc(centre_x, centre_y, radius, radius, 0, 360)
 
-    def polygon(self, points):
+    def draw_polygon(self, points):
         """
         Draw a polygon with the given corner points.  The last point will be connected to the first point to close the polygon.
         
@@ -376,7 +378,7 @@ class Image:
         _strype_graphics_internal.polygon_xy_pairs(self.__image, points)
 
     #@@ Image
-    def make_copy(self):
+    def clone(self):
         """
         Return a copy of this image.
         
@@ -795,7 +797,7 @@ class Actor:
             # We draw a rounded rect for the background, then draw the text on:
             sayImg.set_fill("white")
             sayImg.set_stroke("#555555FF")
-            sayImg.rounded_rectangle(0, 0, textDimensions.width + 2 * padding, textDimensions.height + 2 * padding, padding)
+            sayImg.draw_rounded_rect(0, 0, textDimensions.width + 2 * padding, textDimensions.height + 2 * padding, padding)
             sayImg.draw_part_of_image(textOnlyImg, padding, padding, 0, 0, textDimensions.width, textDimensions.height)
             self.__say = _strype_graphics_internal.addImage(sayImg._Image__image, None)
             self._update_say_position()
