@@ -713,7 +713,7 @@ def show(picture):
     """
     global MainImage
     if not MainImage:
-        MainImage = _graphics.Actor(_graphics.Image(800, 600), 0, 0).edit_image()
+        MainImage = _graphics.Actor(_graphics.Image(800, 600), 0, 0).get_image()
     MainImage.set_fill("white")
     MainImage.fill()
     # This will write any changes to the picture:

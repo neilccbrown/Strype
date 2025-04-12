@@ -440,7 +440,7 @@ class Actor:
     
     # Private attributes:
     # __id: the identifier of the PersistentImage that represents this actor on screen.  Should never be None
-    # __editable_image: the editable image of this actor, if the user has ever called edit_image() on us.
+    # __editable_image: the editable image of this actor, if the user has ever called get_image() on us.
     # __tag: the user-supplied tag of the actor.  Useful to leave the type flexible, we just pass it in and out.
     # __say: the identifier of the PersistentImage with the current speech bubble for this actor.  Is None when there is no current speech.
     # Note that __say can be removed on the Javascript side without our code executing, due to a timeout.  So
@@ -601,18 +601,19 @@ class Actor:
         # If rotation is None, do nothing
 
     #@@ bool   
-    def is_at_edge(self):
+    def is_at_edge(self, distance = 2):
         """
         Check whether the actor is at the edge of the world.  An actor is considered to be at the edge 
-        if its location (its center point) is within two pixels of the world bounds.
+        if its location (its center point) is within `distance` pixels of the world bounds.
         
-        :return: True if the actor is at the edge of the world, False otherwise. 
+        :param: distance The amount of pixels to use as edge of world.  Must be greater than zero.
+        :return: True if the actor is within `distance pixels of the edge of the world, False otherwise. 
         """
         x = self.get_exact_x()
         y = self.get_exact_y()
         if x is None or y is None:
             return False
-        return x < -397 or x > 398 or y < -297 or y > 298
+        return x < (-399 + distance) or x > (400 - distance) or y < (-299 + distance) or y > (300 - distance)
 
     #@@ bool   
     def is_touching(self, actor_or_tag):
@@ -691,10 +692,10 @@ class Actor:
             a.remove()
 
     #@@ list
-    def get_all_nearby(self, distance, tag = None):
+    def get_in_range(self, distance, tag = None):
         """
         Return all actors which are within a given distance of this actor.  The distance is measured as the 
-        distance of the logication location (the center point) of each actor.
+        distance of the logical location (the center point) of each actor.
         
         If a tag is specified, only actors with the given tag will be returned.
         
@@ -706,7 +707,7 @@ class Actor:
 
 
     #@@ Image
-    def edit_image(self):
+    def get_image(self):
         """
         Return the image of this actor.  The image object returned is the actual actor's live image -- drawing on it will 
         become visible on the actor's image.
