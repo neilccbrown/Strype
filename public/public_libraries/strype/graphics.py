@@ -437,18 +437,6 @@ class FontFamily:
             raise Exception("Could not load font " + font_name)
         self.__font = font_name
 
-
-#@@ bool
-def in_bounds(x, y):
-    """
-    Checks if the given X, Y position is in the visible bounds of (-399,-299) inclusive to (400, 300) exclusive.
-    
-    :param x: The x position to check
-    :param y: The y position to check
-    :return: A boolean indicating whether it is in the visible bounds: True if it is in bounds, False if it is not.
-    """
-    return -399 <= x < 400 and -299 <= y < 300
-
 class Actor:
     """
     An Actor is an item in the world with a specific image, position, rotation and scale.  If an actor is created,
