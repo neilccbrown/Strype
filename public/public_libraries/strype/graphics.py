@@ -96,19 +96,7 @@ class Color:
         a = _round_and_clamp_0_255(self.alpha)
         return "#{:02x}{:02x}{:02x}{:02x}".format(r, g, b, a)
 
-class Dimension:
-    """
-    A dimension value indicating a width and a height, for example the size of an image.
-    """
-    def __init__(self, width, height):
-        """
-        Constructs a dimension value with the given width and height.
-        
-        :param width: The width.
-        :param height: The height.
-        """
-        self.width = width
-        self.height = height
+_Dimension = _collections.namedtuple("Dimension", ["width", "height"])
 
 class Image:
     """
@@ -287,11 +275,12 @@ class Image:
         :param max_width: The maximum width of the text (or 0 for no maximum).
         :param max_height: The maximum height of the text (or 0 for no maximum).
         :param font_family: The font family for the text. Use None for the default font family.
+        :return: A named tuple width width and height of the actually drawn area.
         """
         if font_family is not None and not isinstance(font_family, FontFamily):
             raise TypeError("Font family must be an instance of FontFamily")
         dim = _strype_graphics_internal.canvas_drawText(self.__image, text, x, y, font_size, max_width, max_height, font_family._FontFamily__font if font_family is not None else None)
-        return Dimension(dim['width'], dim['height'])
+        return _Dimension(dim['width'], dim['height'])
         
     def draw_rounded_rect(self, x, y, width, height, corner_size = 10):
         """
