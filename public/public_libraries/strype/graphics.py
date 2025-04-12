@@ -497,19 +497,7 @@ class Actor:
         """
         _strype_graphics_internal.setImageRotation(self.__id, degrees)
         # Note: no need to update say position if we are just rotating
-        
-    def set_scale(self, scale):
-        """
-        Sets the actor's scale (size multiplier).  The default is 1, larger values make it bigger (for example, 2 is double size),
-        and smaller values make it smaller (for example, 0.5 is half size).  It must be a positive number greater than zero.
-        
-        :param scale: The new scale to set, replacing the old scale.
-        """
-        if scale <= 0:
-            raise ValueError("Scale must be greater than zero")
-        _strype_graphics_internal.setImageScale(self.__id, scale)
-        self._update_say_position()
-        
+                
     #@@ float
     def get_rotation(self):
         """
@@ -518,17 +506,6 @@ class Actor:
         :return: The rotation of this Actor, in degrees, or None if the actor has been removed from the world.
         """
         return _strype_graphics_internal.getImageRotation(self.__id)
-
-    #@@ float
-    def get_scale(self):
-        """
-        Gets the current scale of this Actor.
-        
-        Note: returns None if the actor has been removed by a call to remove().
-        
-        :return: The scale of this Actor, where 1.0 is the default scale. 
-        """
-        return _strype_graphics_internal.getImageScale(self.__id)
     
     def get_tag(self):
         """
