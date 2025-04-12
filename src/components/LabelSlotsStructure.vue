@@ -180,7 +180,8 @@ export default Vue.extend({
                 }
 
                 const stateBeforeChanges = cloneDeep(this.appStore.$state);
-                // Must increment refactorCount in case the changed content doesn't trigger a noticeable refactor;
+                // Must increment refactorCount in case the changed content doesn't trigger a noticeable refactor
+                // (i.e. in case it doesn't change the number/type of slots);
                 // we definitely need to completely redo all the slots if Firefox has deleted a bunch of nodes
                 this.refactorCount += 1;
                 this.checkSlotRefactoring("", stateBeforeChanges);
