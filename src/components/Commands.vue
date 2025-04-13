@@ -90,7 +90,7 @@
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getMenuLeftPaneUID, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
+import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, defaultEmptyStrypeLayoutDividerSettings, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
 import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
@@ -715,8 +715,14 @@ export default Vue.extend({
             // We also save the value in the store. We do not want to set commandsSplitterPane2Size as get/set computed property
             // (and call the appStore change in set()) because we set the value based on other settings (the 4:3 ratio) when PEA is mounted,
             // that value then shouldn't be saved in the store.
-            this.appStore.peaCommandsSplitterPane2Size = this.commandsSplitterPane2Size;
-        },
+            if(this.appStore.peaCommandsSplitterPane2Size != undefined){
+                this.appStore.peaCommandsSplitterPane2Size[this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed] = this.commandsSplitterPane2Size;
+            }
+            else {
+                // The tricky case of when the state property has never been set
+                this.appStore.peaCommandsSplitterPane2Size = {...defaultEmptyStrypeLayoutDividerSettings, [this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed]: event[1].size};
+            }
+        }, 
 
         setPEACommandsSplitterPanesMinSize() {
             // Called to get the right min sizes of the pea/Commands splitter.
@@ -748,6 +754,8 @@ export default Vue.extend({
                             this.commandsSplitterPane2Size = (100 - this.commandSplitterPane1MinSize);      
                             (this.$refs.peaCommandsSplitterPane1Ref as InstanceType<typeof Pane>).$data.style.height = this.commandSplitterPane1MinSize + "%";
                             (this.$refs.peaCommandsSplitterPane2Ref as InstanceType<typeof Pane>).$data.style.height = this.commandsSplitterPane2Size + "%";
+                            // And trigger the Graphics to resize properly
+                            document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
                         }, 200);                        
                     }     
                 }    
