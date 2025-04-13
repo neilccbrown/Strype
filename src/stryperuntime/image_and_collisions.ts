@@ -1,4 +1,4 @@
-import {System, Box, Point, Circle} from "detect-collisions";
+import {System, Box, Point} from "detect-collisions";
 
 export interface PersistentImage {
     id: number,
@@ -236,22 +236,32 @@ export class PersistentImageManager {
         return r;
     }
 
-    // Gets the associatedObject of all items which overlap the given persistent image id.
+    // Gets the associatedObject of all items which have centres within the specific radius of the given persistent image id.
     public getAllNearby(id: number, radius: number) : any[] {
         const us = this.persistentImages.get(id);
         const all: PersistentImage[] = [];
         if (us) {
-            const collisionCircle = new Circle({x: us.x, y: us.y}, radius);
-            this.collisionSystem.insert(collisionCircle);
+            const candidates = this.collisionSystem.search({
+                minX: us.x - radius,
+                minY: us.y - radius,
+                maxX: us.x + radius,
+                maxY: us.y + radius,
+            }) as Box[];
             
-            this.collisionSystem.checkOne(collisionCircle, (found) => {
-                const pimg = this.boxToImageMap.get(found.b as Box);
-                // Don't include ourselves in the results:
-                if (pimg && pimg.id != id) {
-                    all.push(pimg.associatedObject);
+            const radius_squared = radius * radius;
+
+            // Filter down to only those whose center is truly inside the circle
+            candidates.forEach((body) => {
+                const dx = body.pos.x - us.x;
+                const dy = body.pos.y - us.y;
+                if (dx * dx + dy * dy <= radius_squared) {
+                    const pimg = this.boxToImageMap.get(body);
+                    // Don't include ourselves in the results:
+                    if (pimg && pimg.id != id) {
+                        all.push(pimg.associatedObject);
+                    }
                 }
             });
-            this.collisionSystem.remove(collisionCircle);
         }
         return all;
     }
