@@ -23,7 +23,7 @@
                         <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
                             <div :id="graphicsDivId" ref="pythonTurtleDiv" class="pea-graphics-div"></div>
                         </div>
-                        <span v-if="isGraphicsAreaShowing && !turtleGraphicsImported" class="pea-no-graphics-import-span">{{$t('PEA.importTurtle')}}</span> 
+                        <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @click.stop="graphicsCanvasClick"></canvas> 
                     </div>
                 </pane>
                 <pane key="2" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)" min-size="5">
@@ -47,10 +47,6 @@
                     @click="togglePEALayout(layoutData.mode)" :title="$t('PEA.'+layoutData.iconName)">
                     <SVGIcon :name="layoutData.iconName" customClass="pea-toggle-layout-button" />
                 </div>
-                <div id="pythonGraphicsContainer"><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
-                    <div id="pythonTurtleDiv" ref="pythonTurtleDiv" @click.stop="graphicsCanvasClick"></div>
-                </div>
-                <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @click.stop="graphicsCanvasClick"></canvas>
             </div>
         </div>
     </div>
@@ -678,7 +674,7 @@ export default Vue.extend({
         
         getPersistentImageManager() : PersistentImageManager {
             this.isRunningStrypeGraphics = true;
-            this.peaDisplayTabIndex = 1;
+            this.peaDisplayTabIndex = PEATabIndexes.graphics;
             return persistentImageManager;
         },
         
