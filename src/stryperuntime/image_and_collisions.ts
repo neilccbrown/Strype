@@ -9,7 +9,7 @@ export interface PersistentImage {
     scale: number, // 1.0 means same size as original image
     collisionBox: Box | null, // The item in the collision detection system.  Null if the object is not collidable
     dirty: boolean,
-    associatedObject: any, // The object to remember for this PersistentImage (so far, this is the Actor from the strype.graphics Python module)
+    associatedObject: any | null, // The object to remember for this PersistentImage (so far, this is the Actor from the strype.graphics Python module)
 }
 
 export const WORLD_WIDTH = 800;
@@ -234,6 +234,10 @@ export class PersistentImageManager {
             });
         }
         return r;
+    }
+    
+    public getAllActors() : any[] {
+        return Array.from(this.persistentImages.values()).map((p) => p.associatedObject).filter((x) => x != null);
     }
 
     // Gets the associatedObject of all items which have centres within the specific radius of the given persistent image id.

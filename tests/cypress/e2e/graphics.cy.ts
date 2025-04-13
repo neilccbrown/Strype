@@ -373,6 +373,40 @@ describe("Collision detection", () => {
                 sq.get_image().fill()
             `, "graphics-colliding-radius");
     });
+    
+    // Not a collision, but similar method:
+    it("Allows getting all actors", () => {
+        // We make a grid of white squares every 50 pixels that are 20x20
+        // Then we find all the colliding ones in a radius and colour them red
+        runCodeAndCheckImage("", `
+            circle_guide = Image(800, 600)
+            circle_guide.set_stroke(None)
+            circle_guide.set_fill("#555555")
+            circle_guide.draw_circle(400, 300, 200)
+            set_background(circle_guide)
+            white_square = Image(20, 20)
+            white_square.set_fill("white")
+            white_square.fill()
+            squares = []
+            spacing = 50
+            alternating = False
+            for y in range(-300//spacing, 300//spacing):
+                for x in range(-400//spacing, 400//spacing):
+                    if alternating:
+                        tag = "alternating"
+                    else:
+                        tag = None
+                    alternating = not alternating
+                    squares.append(Actor(white_square.clone(), x*spacing, y*spacing, tag))
+            # All of them get rotated:
+            for sq in get_actors():
+                sq.turn(45);
+            # Just the alternating ones turn red:
+            for sq in get_actors("alternating"):
+                sq.get_image().set_fill("red")
+                sq.get_image().fill()
+            `, "graphics-get-actors");
+    });
 });
 
 describe("Image download", () => {

@@ -917,7 +917,19 @@ def get_background():
     :return: The live background image.
     """
     return _bk_image
-    
+
+#@@ list
+def get_actors(tag = None):
+    """
+        Gets all actors.
+        
+        If the tag is specified, only actors with the given tag will be included.
+        
+        :param tag: The tag to use to filter the returned actors (or None to return all actors)
+        :return: A list of all actors (that have not been removed via the `remove()` call).
+        """
+    return [a for a in _strype_input_internal.getAllActors() if tag is None or tag == a.get_tag()]
+
 def stop():
     """
     Stop the execution of the program.  This function will not return.
