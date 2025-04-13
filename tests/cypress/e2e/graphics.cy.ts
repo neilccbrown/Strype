@@ -577,3 +577,21 @@ describe("World background", () => {
         `, "background-large-scaled");
     });
 });
+
+describe("Saying", () => {
+    if (Cypress.env("mode") == "microbit") {
+        // Graphics tests can't run in microbit
+        return;
+    }
+    
+    it("Says top-right when room", () => {
+        runCodeAndCheckImage("", `
+            Actor(load_image("cat-test.jpg").clone(0.5)).say("Meow!", 48);
+        `, "saying-top-right");
+    });
+    it("Says top-left when not room top-right", () => {
+        runCodeAndCheckImage("", `
+            Actor(load_image("cat-test.jpg").clone(0.5), 300).say("Meow!", 48);
+        `, "saying-top-left");
+    });
+});

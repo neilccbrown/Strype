@@ -706,7 +706,7 @@ class Actor:
             self.__editable_image._Image__image = _strype_graphics_internal.makeImageEditable(self.__id) 
         return self.__editable_image
     
-    def say(self, text, font_size = 20, max_width = 300, max_height = 200, font_family = None):
+    def say(self, text, font_size = 24, max_width = 300, max_height = 200, font_family = None):
         """
         Show a speech bubble next to the actor with the given text.  The only required parameter is the
         text, all others are optional.  \\n can be used to start a new line.
@@ -771,7 +771,9 @@ class Actor:
             for p in placements:
                 # Note, we halve the width/height of the actor because we're going from centre of actor,
                 # but we do not halve the width/height of the say here because we want to see if the whole bubble fits:
-                fits = in_bounds(self.get_x() + p[0]*(width/2 + say_dim['width']), self.get_y() + p[1]*(height/2 + say_dim['height']))
+                poss_x = self.get_x() + p[0]*(width/2 + say_dim['width'])
+                poss_y = self.get_y() + p[1]*(height/2 + say_dim['height'])
+                fits = poss_x >= -399 and poss_x <= 400 and poss_y >= -299 and poss_y <= 300
                 # If it fits or its our last fallback:
                 if fits or p == [0,0] :
                     # Here we do halve both widths/heights because we are placing the centre:

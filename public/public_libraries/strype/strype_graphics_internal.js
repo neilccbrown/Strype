@@ -263,7 +263,15 @@ var $builtinmodule = function(name)  {
     });
     
     const sayFont="\"Klee One\", sans-serif";
+    // Load font:
+    let myFont = new FontFace(
+        "Klee One",
+        "url(fonts/klee-one-v12-latin-regular.woff2)"
+    );
 
+    myFont.load().then((font) => {
+        document.fonts.add(font);
+    });
     // Since this is quite expensive, we cache it in case users repeatedly redraw the same text:
     // The map can only really use string keys, so we assemble the key into a string of the format:
     // $fontSize:$maxWidth:$maxHeight:$text
