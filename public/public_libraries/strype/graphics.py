@@ -362,14 +362,22 @@ class Image:
         _strype_graphics_internal.polygon_xy_pairs(self.__image, points)
 
     #@@ Image
-    def clone(self):
+    def clone(self, scale = 1.0):
         """
         Return a copy of this image.
         
+        :param: The scaling factor of the new image.  1.0 returns an identical image,
+                0.5 will return an image half the size, 2.0 will return an image double the size.
         :return: The new :class:`Image` that is a copy of this image.
         """
-        copy = Image(self.get_width(), self.get_height())
-        copy.draw_image(self, 0, 0)
+        if scale == 1:
+            copy = Image(self.get_width(), self.get_height())
+            copy.draw_image(self, 0, 0)
+        elif scale <= 0:
+            raise ValueError("Clone scale must be greater than zero")
+        else:
+            copy = Image(self.get_width() * scale, self.get_height() * scale)
+            copy._draw_part_of_image(self, 0, 0, 0, 0, self.get_width(), self.get_height(), scale)
         return copy
 
     def download(self, filename="strype-image"):
