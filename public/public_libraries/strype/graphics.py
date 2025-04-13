@@ -827,13 +827,13 @@ def key_pressed(keyname):
     Check if a given key is currently pressed down.
 
     The names of printable keys are the character they print (e.g. "a" for the a-key). Other keys have names 
-    describing their function. These include "left", "right", "up, "down", "Enter", "Tab", "Escape", "Shift", 
-    "Control", "Alt", "Backspace", Delete".
+    describing their function. These include "left", "right", "up, "down", "enter", "tab", "escape", "shift", 
+    "control", "alt", "backspace", delete".
     
     :param keyname: The name of the key to check.
     :return: True if the key is currently pressed down, False otherwise.
     """
-    return _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys())[keyname]
+    return _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys())[keyname.lower()]
 
 def set_background(image_or_name_or_color, scale_to_fit = False):
     """

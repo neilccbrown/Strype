@@ -670,10 +670,10 @@ export default Vue.extend({
             return r;
         },
         graphicsCanvasKeyDown(event: KeyboardEvent) {
-            pressedKeys.set(keyMapping.get(event.key) ?? event.key, true);
+            pressedKeys.set(keyMapping.get(event.key) ?? event.key.toLowerCase(), true);
         },
         graphicsCanvasKeyUp(event: KeyboardEvent) {
-            pressedKeys.set(keyMapping.get(event.key) ?? event.key, false);
+            pressedKeys.set(keyMapping.get(event.key) ?? event.key.toLowerCase(), false);
         },
         getPressedKeys() {
             return pressedKeys;
