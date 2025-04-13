@@ -1,7 +1,56 @@
 :export {
+  // These variables are used to share style/CSS values in the Strype code
+  // (note that a variable ending with "value" denotes a numerical variable without unit)
   caretHeightValue: $caret-height-value;
   frameContainerMinHeight: $frame-container-min-height;
-  pythonExecutionAreaExpandButtonPosOffset: $strype-python-exec-area-expand-button-pos-offset;
+  pythonExecutionAreaLayoutButtonsPosOffset: $strype-python-exec-area-layout-buttons-pos-offset;
+  pythonExecutionAreaMargin: $strype-python-exec-area-margin;
   nonMainCodeContainerBackground: $strype-non-main-code-container-background;
   mainCodeContainerBackground: $strype-main-code-container-background;
+  editorCommandsSplitterPane2SizePercentValue: $editor-commands-splitter-pane2-size-value;
+  peaExpandedOverlaySplitterPane2SizePercentValue: $pea-expanded-overlay-splitter-pane2-size-value;
+  peaSplitViewSplitterPane1SizePercentValue: $pea-splitview-splitter-pane1-size-value;
+
+  // These variables are used to share class names in the Strype code
+  // editor related
+  invisibleClassName: $strype-classname-invisible;
+  caretClassName: $strype-classname-caret;
+  errorClassName: $strype-classname-error;
+  caretContainerClassName: $strype-classname-caret-container;
+  navigationPositionClassName: $strype-classname-navigation-position;
+  draggingFrameClassName: $strype-classname-dragging-frame;
+  frameDivClassName: $strype-classname-frame-div;
+  frameHeaderClassName: $strype-classname-frame-header;
+  frameContainerLabelSpanClassName: $strype-classname-frame-container-label-span;
+  frameColouredLabelClassName: $strype-classname-frame-coloured-label;
+  framePythonTokenClassName: $strype-classname-frame-python-token;
+  labelSlotContainerClassName: $strype-classname-label-slot-container;
+  labelSlotInputClassName: $strype-classname-label-slot-input;
+  errorSlotClassName: $strype-classname-error-slot;
+  frameStringSlotClassName: $strype-classname-frame-string-slot;
+  frameOperatorSlotClassName: $strype-classname-frame-operator-slot;
+  frameCommentSlotClassName: $strype-classname-frame-comment-slot;
+  frameCodeSlotClassName: $strype-classname-frame-code-slot;
+  croppedEditorDivClassName: $strype-classname-cropped-editor-code-div;
+  // autocompletion related
+  acPopupContainerClassName: $strype-classname-ac-popup-container;
+  acPopupItemClassName: $strype-classname-ac-popup-item;
+  acItemClassName: $strype-classname-ac-item;
+  acItemSelectedClassName: $strype-classname-ac-item-selected;
+  acEmptyResultsContainerClassName: $strype-classname-ac-empty-results-container;
+  // commands pane related (+ PEA) 
+  strypeProjectNameContainerClassName: $strype-classname-project-name-container;
+  addFrameCommandsContainerClassName: $strype-classname-add-frame-commands-container;
+  commandsPEASplitterThemeClassName: $strype-classname-commands-pea-splitter-theme;
+  peaContainerClassName: $strype-classname-pea-container;
+  peaToggleLayoutButtonsContainerClassName: $strype-classname-pea-toggle-layout-buttons-container;
+  expandedPEAClassName: $strype-classname-expanded-pea;
+  peaNoTabsPlaceholderSpanClassName: $strype-classname-pea-no-tabs-placeholder-span;
+  noPEACommandsClassName: $strype-classname-no-pea-commands;
+  // app wide related
+  editorFileInputClassName: $strype-classname-editor-file-input;
+  messageBannerContainerClassName: $strype-classname-message-banner-container;
+  messageBannerCrossClassName: $strype-classname-message-banner-cross;
+  projectTargetButtonClassName: $strype-classname-project-target-button;
+  strypeMenuItemClassName: $strype-classname-strype-menu-item;
 }

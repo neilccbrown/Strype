@@ -18,20 +18,33 @@ chai.Assertion.addMethod("beLocaleSorted", function () {
     expect(actual).to.deep.equal(expected);
 });
 
+import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
 
-// Must clear all local storage between tests to reset the state:
+// Must clear all local storage between tests to reset the state,
+// and also retrieve the shared CSS and HTML elements IDs exposed
+// by Strype via the Window object of the app.
+let scssVars: {[varName: string]: string};
+let strypeElIds: {[varName: string]: (...args: any[]) => string};
 beforeEach(() => {
     cy.clearLocalStorage();
     cy.visit("/",  {onBeforeLoad: (win) => {
         win.localStorage.clear();
         win.sessionStorage.clear();
-    }});
+    }}).then(() => {       
+        // Only need to get the global variables if we haven't done so
+        if(scssVars == undefined){
+            cy.window().then((win) => {
+                scssVars = (win as any)[WINDOW_STRYPE_SCSSVARS_PROPNAME];
+                strypeElIds = (win as any)[WINDOW_STRYPE_HTMLIDS_PROPNAME];
+            });
+        }
+    });
 });
 
 function withFrameId(inner : (frameId: number) => void) : void {
     // We need a delay to make sure last DOM update has occurred:
     cy.wait(600);
-    cy.get("#editor").then((eds) => {
+    cy.get("#" + strypeElIds.getEditorID()).then((eds) => {
         const ed = eds.get()[0];
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
@@ -44,13 +57,13 @@ function withFrameId(inner : (frameId: number) => void) : void {
 function focusEditorAC(): void {
     // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
     // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
-    cy.get("#frame_id_-3").focus();
+    cy.get("#" + strypeElIds.getFrameUID(-3)).focus();
 }
 
 function withSelection(inner : (arg0: { id: string, cursorPos : number }) => void) : void {
     // We need a delay to make sure last DOM update has occurred:
     cy.wait(200);
-    cy.get("#editor").then((eds) => {
+    cy.get("#" + strypeElIds.getEditorID()).then((eds) => {
         const ed = eds.get()[0];
         inner({id : ed.getAttribute("data-slot-focus-id") || "", cursorPos : parseInt(ed.getAttribute("data-slot-cursor") || "-2")});
     });
@@ -65,7 +78,7 @@ const BUILTIN = "Python";
 function assertState(frameId: number, expectedState : string, expectedStateWithPlaceholders?: string) : void {
     expectedStateWithPlaceholders = expectedStateWithPlaceholders ?? expectedState.replaceAll("$", "");
     withSelection((info) => {    
-        cy.get("#frameHeader_" + frameId + " #labelSlotsStruct" + frameId + "_0 .labelSlot-input").then((parts) => {
+        cy.get("#" + strypeElIds.getFrameHeaderUID(frameId) + " #" + strypeElIds.getFrameLabelSlotsStructureUID(frameId, 0) + " ." + scssVars.labelSlotInputClassName).then((parts) => {
             let content = "";
             let contentWithPlaceholders = "";
             for (let i = 0; i < parts.length; i++) {

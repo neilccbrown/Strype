@@ -1,12 +1,12 @@
 import Vue from "vue";
-import {FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, MediaSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, SlotInfosOptionalMedia} from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, SlotInfosOptionalMedia } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
-import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion, vm } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, actOnTurtleImport, getStrypeCommandComponentRefId, getStrypePEAComponentRefId } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getStrypeCommandComponentRefId, getCaretContainerUID, isCaretContainerElement } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -15,6 +15,12 @@ import $ from "jquery";
 import { BvModalEvent } from "bootstrap-vue";
 import { nextTick } from "@vue/composition-api";
 import { TPyParser } from "tigerpython-parser";
+import AppComponent from "@/App.vue";
+/* IFTRUE_isPython */
+import PEAComponent from "@/components/PythonExecutionArea.vue";
+import CommandsComponent from "@/components/Commands.vue";
+import { actOnTurtleImport, getPEAComponentRefId } from "@/helpers/editor";
+/* FITRUE_isPython */
 
 let initialState: StateAppObject = initialStates["initialPythonState"];
 /* IFTRUE_isMicrobit */
@@ -74,9 +80,27 @@ export const useStore = defineStore("app", {
 
             isEditing: false,
 
+            /* These state properties are for saving the layout of the UI.
+             * They are initally set to UNDEFINED so we can work out which layout changes the users have done.
+             * We always apply the changes after getting back to the default layout (when a file is loaded after first time).
+             ***/ 
+            editorCommandsSplitterPane2Size: undefined as number | undefined, // same as above for the divider between the editor and the commands (pane 2), default is 34%
+            
+            /* IFTRUE_isPython */
+            peaLayoutMode:  undefined as StrypePEALayoutMode | undefined, // the project layout view is saved with the store
+            
+            // The size of the commands/PEA splitter pane 2 size is saved with the store.
+            // We can't have a default value as the default size will depend on the viewport (to have the PEA in 4:3 ratio)
+            peaCommandsSplitterPane2Size: undefined as number | undefined, 
+
+            peaSplitViewSplitterPane1Size: undefined as number | undefined, // same as above for the split view PEA divider (pane 1), this time a default value is 50%
+            
+            peaExpandedSplitterPane2Size: undefined as number | undefined, // same as above for the expanded view divider (pane 2), this time a default value is 50%
+            /* FITRUE_isPython */
+            /* end properties for saving layout */
+
             // This flag indicates if the user code is being executed in the Python Execution Area
             pythonExecRunningState: PythonExecRunningState.NotRunning,
-
 
             // This flag can be used anywhere a key event should be ignored within the application
             ignoreKeyEvent: false,
@@ -148,8 +172,6 @@ export const useStore = defineStore("app", {
 
             selectedFrames: [] as number[],
 
-            appLang: "en",
-
             tigerPythonLang: "en", // The locale for TigerPython, see parser.ts as to why it's here
 
             isAppMenuOpened: false,
@@ -220,6 +242,10 @@ export const useStore = defineStore("app", {
             // In this method, we check if frames can be added below the specified (disabled) frame.
             // Note: if we are in a joint structure, being below the (last) joint frame (i.e. "else" is seen as being below the root (i.e. "if") as there is no "below" a joint frame)
             return !state.frameObjects[state.frameObjects[frameId].parentId].isDisabled;
+        },
+
+        getRootFrameContainerId: (state) => {
+            return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === RootContainerFrameDefinition.type)[0].id;
         },
         
         getMainCodeFrameContainerId: (state) => {
@@ -630,29 +656,6 @@ export const useStore = defineStore("app", {
     },
     
     actions:{
-        setAppLang(lang: string) {
-            // Set the language in the store first
-            this.appLang = lang;
-
-            // Then change the UI via i18n
-            i18n.locale = lang;
-
-            // And also change TigerPython locale -- if Strype locale is not available in TigerPython, we use English instead
-            const tpLangs = TPyParser.getLanguages as any as string[]; // TODO remove this casting once TigerPython's type for getLanguages is fixed
-            this.tigerPythonLang = (tpLangs.includes(lang)) ? lang : "en";
-
-            // Change all frame definition types to update the localised bits
-            generateAllFrameDefinitionTypes(true);
-
-            // Change the frame command labels / details 
-            generateAllFrameCommandsDefs();
-
-            /* IFTRUE_isMicrobit */
-            //change the API description content here, as we don't want to construct the textual API description every time we need it
-            getAPIItemTextualDescriptions(true);
-            /* FITRUE_isMicrobit */
-        },
-        
         showMessage(newMessage: MessageDefinition, timeoutMillis: number | null) {
             this.currentMessage = newMessage;
             const ourId = ++this.currentMessageId;
@@ -821,21 +824,10 @@ export const useStore = defineStore("app", {
                 nextCaret.caretPosition
             );
 
-            const nextFrameObject = this.frameObjects[nextCaret.id];
-            if("isCollapsed" in nextFrameObject ) {
-                Vue.set(
-                    nextFrameObject,
-                    "isCollapsed",
-                    false
-                );
-            }
-            else if("isCollapsed" in this.frameObjects[nextFrameObject.parentId]){
-                Vue.set(
-                    this.frameObjects[nextFrameObject.parentId],
-                    "isCollapsed",
-                    false
-                );
-            }
+            // Only frame containers (sections) are collapsable, so we don't need to check if a destination frame itself is collapsed,
+            // but we do need to check if the target container is - and expand it if needed.
+            const containerId = getFrameSectionIdFromFrameId(nextCaret.id);
+            this.frameObjects[containerId].isCollapsed = false;
         },
 
         setCurrentFrame(newCurrentFrame: CurrentFrame) {
@@ -1251,14 +1243,6 @@ export const useStore = defineStore("app", {
 
         },
 
-        setCaretVisibility(payload: {frameId: number; caretVisibility: CaretPosition}) {
-            Vue.set(
-                this.frameObjects[payload.frameId],
-                "caretVisibility",
-                payload.caretVisibility
-            );
-        },
-
         updateState(newState: Record<string, unknown>){
             //this method complete changes the state with a new state object
             Object.keys(this.$state).forEach((property) => {
@@ -1268,6 +1252,12 @@ export const useStore = defineStore("app", {
                     newState[property]
                 );
             } );
+
+            // The frame cursor cannot be left inside a collapsed frame container (section),
+            // however, for compatibility with project saved under the old behaviour (which allowed the situation),
+            // we explicitly check the frame container (section) containing the current frame cursor is expanded
+            const currentPositionFrameContainerId = getFrameSectionIdFromFrameId(this.currentFrame.id);
+            this.frameObjects[currentPositionFrameContainerId].isCollapsed = false;
 
             this.clearNoneFrameRelatedState();
         },
@@ -1501,10 +1491,10 @@ export const useStore = defineStore("app", {
 
                     // Ensure the caret (frame or text caret) is visible in the page viewport after the change.
                     // For some reason, scrollIntoView() "miss" out the caret by a slight distance (maybe because it's a div?) so we don't see it. To adjust that issue, we scroll up a bit more.
-                    const htmlElementToShowId = (this.focusSlotCursorInfos) ? getLabelSlotUID(this.focusSlotCursorInfos.slotInfos) : ("caret_"+this.currentFrame.caretPosition+"_of_frame_"+this.currentFrame.id);
+                    const htmlElementToShowId = (this.focusSlotCursorInfos) ? getLabelSlotUID(this.focusSlotCursorInfos.slotInfos) : getCaretContainerUID(this.currentFrame.caretPosition,this.currentFrame.id);
                     const caretContainerEltRect = document.getElementById(htmlElementToShowId)?.getBoundingClientRect();
                     document.getElementById(htmlElementToShowId)?.scrollIntoView();
-                    if(htmlElementToShowId.match(/caret_.*_of_frame_/) != null && caretContainerEltRect){
+                    if(isCaretContainerElement(htmlElementToShowId) && caretContainerEltRect){
                         const scrollStep = (caretContainerEltRect.top + caretContainerEltRect.height > document.documentElement.clientHeight) ? 50 : -50;
                         const currentScroll = $("#"+getEditorMiddleUID()).scrollTop();
                         $("#"+getEditorMiddleUID()).scrollTop((currentScroll??0) + scrollStep);
@@ -1527,6 +1517,10 @@ export const useStore = defineStore("app", {
                     this.anchorSlotCursorInfos = undefined;
                     this.focusSlotCursorInfos = undefined;
                 }
+
+                // As we will show the frame cursor that is potentiallly inside a collapsed frame container, 
+                // we make sure we set that frame container expanded to ensure the changes visibility
+                this.frameObjects[getFrameSectionIdFromFrameId(this.currentFrame.id)].isCollapsed = false;
 
                 // Just like for saveStateChanges(), we need to simulate some dummy changes so that differences between
                 // the stateBeforeChanges and the current state regarding positioning and editing are all reflected properly
@@ -2290,6 +2284,11 @@ export const useStore = defineStore("app", {
        
                 // The new caret
                 this.currentFrame.caretPosition = nextPosition.caretPosition as CaretPosition;
+
+                // Only frame containers (sections) are collapsable, so we don't need to check if a destination frame itself is collapsed,
+                // but we do need to check if the target container is - and expand it if needed.
+                const containerId = getFrameSectionIdFromFrameId(nextPosition.frameId);
+                this.frameObjects[containerId].isCollapsed = false;
                 
                 // And since we just left a frame, we check errors
                 checkCodeErrors();             
@@ -2407,17 +2406,18 @@ export const useStore = defineStore("app", {
                 if(isStateJSONStrValid){  
                     const newStateStr = JSON.stringify(newStateObj);     
                     if(!isVersionCorrect) {
-                    // If the version isn't correct, we ask confirmation to the user before continuing 
-                    // for ease of coding, we register a "one time" event listener on the modal
+                        // If the version isn't correct, we ask confirmation to the user before continuing 
+                        // for ease of coding, we register a "one time" event listener on the modal
                         const execSetStateFunction = (event: BvModalEvent, dlgId: string) => {
                             if((event.trigger == "ok" || event.trigger=="event") && dlgId == getImportDiffVersionModalDlgId()){
-                                this.doSetStateFromJSONStr(newStateStr);      
-                                vm.$root.$off("bv::modal::hide", execSetStateFunction); 
-                                resolve();
+                                this.doSetStateFromJSONStr(newStateStr).then(() => {
+                                    vm.$root.$off("bv::modal::hide", execSetStateFunction); 
+                                    resolve();          
+                                });                          
                             }
                             else{
                                 isStateJSONStrValid = false;
-                                reject();
+                                reject(errorDetailMessage);
                             }
                         };
                         vm.$root.$on("bv::modal::hide", execSetStateFunction); 
@@ -2425,34 +2425,102 @@ export const useStore = defineStore("app", {
                     //
                     }
                     else{
-                        this.doSetStateFromJSONStr(newStateStr);
-                        resolve();
+                        this.doSetStateFromJSONStr(newStateStr).then(() => resolve());
                     }                
                 }
                 else{
-                    const message = cloneDeep(MessageDefinitions.UploadEditorFileError);
-                    const msgObj: FormattedMessage = (message.message as FormattedMessage);
-                    msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, errorDetailMessage);
-                    this.showMessage(message, null);
-                    reject();
+                    if(payload.showMessage??true){
+                        const message = cloneDeep(MessageDefinitions.UploadEditorFileError);
+                        const msgObj: FormattedMessage = (message.message as FormattedMessage);
+                        msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, errorDetailMessage);
+                        this.showMessage(message, null);
+                    }
+                    reject(errorDetailMessage);
                 }
             });
         },
+        doSetStateFromJSONStr(stateJSONStr: string): Promise<void>{
+            return new Promise((resolve) => {
+                /* IFTRUE_isPython */
+                // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
+                actOnTurtleImport();
 
-        doSetStateFromJSONStr(stateJSONStr: string){
-            this.updateState(
-                JSON.parse(stateJSONStr)
-            );
-            // If the language has been updated, we need to also update the UI accordingly
-            this.setAppLang(this.appLang);
+                // Clear the Python Execution Area as it could have be run before.
+                ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getPEAComponentRefId()] as InstanceType<typeof PEAComponent>).clear(); 
+                
+                // With the PEA, the styling of the overall UI layout is quite complex as some things depend on the "natural"
+                // default state of the layout, and we handle some styling manually. To make things clearer, we always reset 
+                // back to the default layout before any layout changes need to be done. Like that we handle both the case of 
+                // when some information related to the layout are not saved, and the case of being sure we start from a sound base.
+                // So we first need to strip out the new state's information and keep a back up so we can use them later.
+                // (note: for microbit, the styling is far less complicated so we don't do anything on its only layout prop,
+                // editorCommandsSplitterPane2Size)
+                const newState = JSON.parse(stateJSONStr) as typeof this.$state;
+                const newEditorCommandsSplitterPane2Size = newState.editorCommandsSplitterPane2Size;
+                delete newState.editorCommandsSplitterPane2Size;          
+                const newPEALayout = newState.peaLayoutMode;
+                delete newState.peaLayoutMode;
+                const newPEACommandsSplitterPane2Size = newState.peaCommandsSplitterPane2Size;
+                delete newState.peaCommandsSplitterPane2Size; // will be updated manually 
+                const newPEAExpandedSplitterPane2Size = newState.peaExpandedSplitterPane2Size;
+                delete newState.peaExpandedSplitterPane2Size;
+                const newPEASplitViewSplitterPane1Size = newState.peaSplitViewSplitterPane1Size;
+                delete newState.peaSplitViewSplitterPane1Size;  
+                const commandsComponent = (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>);
 
-            /* IFTRUE_isPython */
-            // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
-            actOnTurtleImport();
-
-            // Clear the Python Execution Area as it could have be run before.
-            ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getStrypePEAComponentRefId()] as any).clear();
-            /* FITRUE_isPython */
+                commandsComponent.resetPEACommmandsSplitterDefaultState().then(() => {
+                    this.updateState(JSON.parse(JSON.stringify(newState)));
+                    // Wait a bit after we have reset everything for the UI to get ready, then affect backed up changes
+                    setTimeout(() => {
+                        let chainedTimeOuts = 400;
+                        // Now we can restore the backuped properties of the new state related to the layout.
+                        // If any of the properties for layout changes was updated, the PEA 4:3 ratio isn't any longer meaningful.
+                        if(newEditorCommandsSplitterPane2Size){
+                            this.editorCommandsSplitterPane2Size = newEditorCommandsSplitterPane2Size;
+                            // If this splitter was changed, the PEA needs to be resized once the splitter has updated
+                            setTimeout(() => {
+                                (vm.$children[0] as InstanceType<typeof AppComponent>).onStrypeCommandsSplitPaneResize({1: {size: newEditorCommandsSplitterPane2Size}});
+                            }, chainedTimeOuts);
+                        }
+                        if(newPEALayout){
+                            setTimeout(() => {
+                                this.peaLayoutMode = newPEALayout;
+                                ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).$refs[getPEAComponentRefId()] as InstanceType<typeof PEAComponent>).togglePEALayout(newPEALayout);
+                            }, chainedTimeOuts+=200);
+                        }
+        
+                        if(newPEACommandsSplitterPane2Size){
+                            this.peaCommandsSplitterPane2Size = newPEACommandsSplitterPane2Size;
+                            // If this splitter was changed, the PEA needs to be resized once the splitter has updated
+                            setTimeout(() => {
+                                (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).onCommandsSplitterResize({1: {size: newPEACommandsSplitterPane2Size}});
+                            }, (chainedTimeOuts += 200));
+                        }
+        
+                        if(newPEASplitViewSplitterPane1Size){
+                            this.peaSplitViewSplitterPane1Size = newPEASplitViewSplitterPane1Size;
+                        }
+        
+                        if(newPEAExpandedSplitterPane2Size) {
+                            this.peaExpandedSplitterPane2Size = newPEAExpandedSplitterPane2Size;
+                            // If this splitter was changed, the PEA needs to be resized once the splitter has updated
+                            setTimeout(() => {
+                                (vm.$children[0] as InstanceType<typeof AppComponent>).onExpandedPythonExecAreaSplitPaneResize({1: {size: newPEAExpandedSplitterPane2Size}});
+                            }, (chainedTimeOuts += 200));
+                        }
+                        
+                        // We can resolve the promise when all the changes for the UI have been done
+                        setTimeout(() => {
+                            resolve();
+                        }, chainedTimeOuts + 50);
+                    }, 1000);          
+                });
+                /* FITRUE_isPython */
+                /* IFTRUE_isMicrobit */
+                this.updateState(JSON.parse(stateJSONStr));
+                resolve();
+                /* FITRUE_isMicrobit */
+            });
         },
 
         // This method can be used to copy a frame to a position.
@@ -2843,6 +2911,46 @@ export const useStore = defineStore("app", {
                 previousFramesSelection = [...this.selectedFrames];
                 this.selectMultipleFrames(direction);
             } while (previousFramesSelection.length !== this.selectedFrames.length && !this.selectedFrames.includes(stopId));
+        },
+    },
+});
+
+export const settingsStore = defineStore("settings", {
+    state: () => {
+        return {
+            // The local in this store settings is to keep the language throught the session (i.e. localStorage)
+            // regardless the local *of the project*. When we cannot retrieve this property, we fall back
+            // on the project's locale.
+            // The default state is undefined so we can detect real undefined locale to the default English...
+            locale: undefined as undefined | string,
+        };
+    },
+
+    actions:{
+        setAppLang(lang: string) {
+            // Set the language in the store first
+            this.locale = lang;
+
+            // Then change the UI via i18n
+            i18n.locale = lang;
+
+            // And also change TigerPython locale -- if Strype locale is not available in TigerPython, we use English instead
+            const tpLangs = TPyParser.getLanguages as any as string[]; // TODO remove this casting once TigerPython's type for getLanguages is fixed
+            useStore().tigerPythonLang = (tpLangs.includes(lang)) ? lang : "en";
+
+            // Change all frame definition types to update the localised bits
+            generateAllFrameDefinitionTypes(true);
+
+            // Change the frame command labels / details 
+            generateAllFrameCommandsDefs();
+
+            /* IFTRUE_isMicrobit */
+            //change the API description content here, as we don't want to construct the textual API description every time we need it
+            getAPIItemTextualDescriptions(true);
+            /* FITRUE_isMicrobit */
+
+            // Save the settings
+            (vm.$children[0] as InstanceType<typeof AppComponent>).autoSaveStateToWebLocalStorage(SaveRequestReason.saveSettings);
         },
     },
 });

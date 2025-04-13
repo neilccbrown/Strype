@@ -1,6 +1,8 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
+import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
 import "@testing-library/cypress/add-commands";
+
 // Needed for the "be.sorted" assertion:
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 chai.use(require("chai-sorted"));
@@ -18,20 +20,31 @@ chai.Assertion.addMethod("beLocaleSorted", function () {
     expect(actual).to.deep.equal(expected);
 });
 
-
-// Must clear all local storage between tests to reset the state:
+// Must clear all local storage between tests to reset the state,
+// and also retrieve the shared CSS and HTML elements IDs exposed
+// by Strype via the Window object of the app.
+let scssVars: {[varName: string]: string};
+let strypeElIds: {[varName: string]: (...args: any[]) => string};
 beforeEach(() => {
     cy.clearLocalStorage();
     cy.visit("/",  {onBeforeLoad: (win) => {
         win.localStorage.clear();
         win.sessionStorage.clear();
-    }});
+    }}).then(() => {       
+        // Only need to get the global variables if we haven't done so
+        if(scssVars == undefined){
+            cy.window().then((win) => {
+                scssVars = (win as any)[WINDOW_STRYPE_SCSSVARS_PROPNAME];
+                strypeElIds = (win as any)[WINDOW_STRYPE_HTMLIDS_PROPNAME];
+            });
+        }
+    });
 });
 
 function withAC(inner : (acIDSel : string, frameId: number) => void, skipSortedCheck?: boolean) : void {
     // We need a delay to make sure last DOM update has occurred:
     cy.wait(600);
-    cy.get("#editor").then((eds) => {
+    cy.get("#" + strypeElIds.getEditorID()).then((eds) => {
         const ed = eds.get()[0];
         // Find the auto-complete corresponding to the currently focused slot:
         // Must escape any commas in the ID because they can confuse CSS selectors:
@@ -51,13 +64,13 @@ function withAC(inner : (acIDSel : string, frameId: number) => void, skipSortedC
 function focusEditorAC(): void {
     // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
     // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
-    cy.get("#frame_id_-3").focus();
+    cy.get("#" + strypeElIds.getFrameUID(-3)).focus();
 }
 
 function withSelection(inner : (arg0: { id: string, cursorPos : number }) => void) : void {
     // We need a delay to make sure last DOM update has occurred:
     cy.wait(200);
-    cy.get("#editor").then((eds) => {
+    cy.get("#" + strypeElIds.getEditorID()).then((eds) => {
         const ed = eds.get()[0];
         inner({id : ed.getAttribute("data-slot-focus-id") || "", cursorPos : parseInt(ed.getAttribute("data-slot-cursor") || "-2")});
     });
@@ -67,7 +80,7 @@ function withSelection(inner : (arg0: { id: string, cursorPos : number }) => voi
 // Given a selector for the auto-complete and text for an item, checks that exactly one item with that text
 // exists in the autocomplete
 function checkExactlyOneItem(acIDSel : string, category: string | null, text : string) : void {
-    cy.get(acIDSel + " .popupContainer " + (category == null ? "" : "div[data-title='" + category + "']")).within(() => {
+    cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName + (category == null ? "" : " div[data-title='" + category + "']")).within(() => {
         // Logging; useful in case of failure but we don't want it on by default:
         // cy.findAllByText(text, { exact: true}).each(x => cy.log(x.get()[0].id));
         cy.findAllByText(text, { exact: true}).should("have.length", 1);
@@ -77,11 +90,11 @@ function checkExactlyOneItem(acIDSel : string, category: string | null, text : s
 // Given a selector for the auto-complete and text for an item, checks that no items with that text
 // exists in the autocomplete
 function checkNoItems(acIDSel : string, text : string, exact? : boolean) : void {
-    cy.get(acIDSel + " .popupContainer").within(() => cy.findAllByText(text, { exact: exact ?? false}).should("not.exist"));
+    cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).within(() => cy.findAllByText(text, { exact: exact ?? false}).should("not.exist"));
 }
 
 function checkNoneAvailable(acIDSel : string) {
-    cy.get(acIDSel + " .popupContainer").within(() => {
+    cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).within(() => {
         cy.findAllByText("No completion available", { exact: true}).should("have.length", 1);
     });
 }
@@ -100,12 +113,12 @@ function checkAutocompleteSorted(acIDSel: string) : void {
     // Other items (like the names of variables when you do var.) will come out as -1,
     // which works nicely because they should be first:
     const intendedOrder : string[] = [MYVARS, MYFUNCS, "microbit", "microbit.accelerometer", "time", BUILTIN];
-    cy.get(acIDSel + " div.module:not(.empty-results) > em")
+    cy.get(acIDSel + " div.module:not(." + scssVars.acEmptyResultsContainerClassName + ") > em")
         .then((items) => [...items].map((item) => intendedOrder.indexOf(item.innerText.trim())))
         .should("be.sorted");
 
-    cy.get(acIDSel + " .popupContainer ul > div").each((section) => {
-        cy.wrap(section).find("li.popUpItems")
+    cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName + " ul > div").each((section) => {
+        cy.wrap(section).find("li.ac-popup-item")
             // Replace opening bracket onwards as we want to check it's sorted by function name, ignoring params:
             .then((items) => [...items].map((item) => item.innerText.toLowerCase().replace(new RegExp("\\(.*"), "")))
             .should("beLocaleSorted");
@@ -119,7 +132,7 @@ function checkAutocompleteSorted(acIDSel: string) : void {
 function assertState(frameId: number, expectedState : string, expectedStateWithPlaceholders?: string) : void {
     expectedStateWithPlaceholders = expectedStateWithPlaceholders ?? expectedState.replaceAll("$", "");
     withSelection((info) => {    
-        cy.get("#frameHeader_" + frameId + " #labelSlotsStruct" + frameId + "_0 .labelSlot-input").then((parts) => {
+        cy.get("#" + strypeElIds.getFrameHeaderUID(frameId) + " #" + strypeElIds.getFrameLabelSlotsStructureUID(frameId, 0) + " ." + scssVars.labelSlotInputClassName).then((parts) => {
             let content = "";
             let contentWithPlaceholders = "";
             for (let i = 0; i < parts.length; i++) {
@@ -322,7 +335,7 @@ describe("Modules", () => {
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             if (Cypress.env("mode") == "microbit") {
-                cy.get(acIDSel + " .popupContainer").should("be.visible");
+                cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
                 checkExactlyOneItem(acIDSel, null, "machine");
                 checkExactlyOneItem(acIDSel, null, "microbit");
                 checkExactlyOneItem(acIDSel, null, "random");
@@ -347,7 +360,7 @@ describe("Modules", () => {
                 cy.get(acIDSel).contains("Pins, images, sounds, temperature and volume.");
             }
             else {
-                cy.get(acIDSel + " .popupContainer").should("be.visible");
+                cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
                 checkExactlyOneItem(acIDSel, null, "antigravity");
                 checkExactlyOneItem(acIDSel, null, "array");
                 checkExactlyOneItem(acIDSel, null, "signal");
@@ -381,7 +394,7 @@ describe("Modules", () => {
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             if (Cypress.env("mode") == "microbit") {
-                cy.get(acIDSel + " .popupContainer").should("be.visible");
+                cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
                 checkExactlyOneItem(acIDSel, null, "machine");
                 checkExactlyOneItem(acIDSel, null, "microbit");
                 checkExactlyOneItem(acIDSel, null, "random");
@@ -405,7 +418,7 @@ describe("Modules", () => {
                 checkAutocompleteSorted(acIDSel);
             }
             else {
-                cy.get(acIDSel + " .popupContainer").should("be.visible");
+                cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
                 checkExactlyOneItem(acIDSel, null, "antigravity");
                 checkExactlyOneItem(acIDSel, null, "array");
                 checkExactlyOneItem(acIDSel, null, "signal");
@@ -446,7 +459,7 @@ describe("Modules", () => {
         // Trigger auto-complete:
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
-            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, null, "*");
             checkExactlyOneItem(acIDSel, null, target);
             checkNoItems(acIDSel, target + targetParams); // Shouldn't show brackets in import, even though it is a function
@@ -469,7 +482,7 @@ describe("Modules", () => {
         cy.get("body").type("{ctrl} ");
         // We can check same item again; we don't deduplicate based on what is already imported:
         withAC((acIDSel) => {
-            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, null, "*");
             checkExactlyOneItem(acIDSel, null, target);
             checkNoItems(acIDSel, nonAvailable);
@@ -488,7 +501,7 @@ describe("Modules", () => {
         cy.get("body").type("{rightarrow}{downarrow}{downarrow}");
         cy.get("body").type(" {ctrl} ");
         withAC((acIDSel) => {
-            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, "time", target + targetParams);
             checkNoItems(acIDSel, nonAvailable);
             // Once we type first character, should be the same:
@@ -521,7 +534,7 @@ describe("Modules", () => {
             // Microbit and Python have different items in the time module, so pick accordingly:
             const target = Cypress.env("mode") == "microbit" ? "ticks_add(ticks, delta)" : "gmtime()";
             const nonAvailable = Cypress.env("mode") == "microbit" ? "gmtime()" : "ticks_add(ticks, delta)";
-            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             // Should have time related queries, but not the standard completions:
             checkExactlyOneItem(acIDSel, "time", target);
             checkNoItems(acIDSel, nonAvailable);
@@ -558,7 +571,7 @@ describe("Modules", () => {
             const target = Cypress.env("mode") == "microbit" ? "ticks_add(ticks, delta)" : "gmtime()";
             const nonAvailable = Cypress.env("mode") == "microbit" ? "gmtime" : "ticks_add";
             const sleepCall = Cypress.env("mode") == "microbit" ? "sleep_ms(ms)" : "sleep()";
-            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             // Should have time related queries, but not the standard completions:
             checkExactlyOneItem(acIDSel, "time", target);
             checkNoItems(acIDSel, nonAvailable);
@@ -585,7 +598,7 @@ describe("User-defined items", () => {
         // Trigger auto-complete:
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel, frameId) => {
-            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, MYFUNCS, "foo()");
             cy.get("body").type("foo");
             cy.wait(600);
@@ -602,7 +615,7 @@ describe("User-defined items", () => {
         // Trigger auto-completion:
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
-            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, MYVARS, "myVar");
             // Not a function, so shouldn't show brackets:
             checkNoItems(acIDSel, "myVar()");
@@ -617,7 +630,7 @@ describe("User-defined items", () => {
         // Trigger auto-completion:
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
-            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, MYVARS, "myParam");
             // Go out of this call and into the main body:
             cy.get("body").type("{backspace}");
@@ -627,7 +640,7 @@ describe("User-defined items", () => {
         // Make a function call and check myParam doesn't show there:
         cy.get("body").type(" {ctrl} ");
         withAC((acIDSel) => {
-            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkNoItems(acIDSel, "myParam", true);
         });
     });
@@ -639,7 +652,7 @@ describe("User-defined items", () => {
         // Trigger auto-completion in a new function call frame:
         cy.get("body").type(" {ctrl} ");
         withAC((acIDSel) => {
-            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, MYVARS, "myIterator");
             checkNoItems(acIDSel, "imaginaryList");
             // Go out of this call and beneath the loop:
@@ -651,7 +664,7 @@ describe("User-defined items", () => {
         // are that the loop variable is available after the loop:
         cy.get("body").type(" {ctrl} ");
         withAC((acIDSel) => {
-            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, MYVARS, "myIterator");
             checkNoItems(acIDSel, "imaginaryList");
         });
@@ -665,7 +678,7 @@ describe("User-defined items", () => {
         // Trigger auto-complete:
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
-            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, "myVar", "lower()");
             checkExactlyOneItem(acIDSel, "myVar", "upper()");
             checkNoItems(acIDSel, "divmod");
@@ -689,7 +702,7 @@ describe("User-defined items", () => {
         // Trigger auto-complete:
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
-            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
             checkNoItems(acIDSel, "myVar");
         });
@@ -735,7 +748,7 @@ describe("Nested modules", () => {
         cy.get("body").type("{downarrow}{downarrow}");
         cy.get("body").type(" " + targetModule + ".{ctrl} ");
         withAC((acIDSel) => {
-            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             // The modules we are retrieving are generated in our API files (see changes of commit 3073c074090c68dfb5cfc633686aa3916e55f0ca),
             // therefore, we will have the parameters in the autocompletion data.
             checkExactlyOneItem(acIDSel, targetModule, targetFunctionWithParam);
@@ -755,7 +768,7 @@ describe("Nested modules", () => {
         cy.get("body").type("{downarrow}{downarrow}");
         cy.get("body").type(" {ctrl} ");
         withAC((acIDSel) => {
-            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, targetModule, targetFunctionWithParam);
             checkExactlyOneItem(acIDSel, null, "abs(x)");
         });
@@ -773,7 +786,7 @@ describe("Nested modules", () => {
         cy.get("body").type("{downarrow}{downarrow}");
         cy.get("body").type(" {ctrl} ");
         withAC((acIDSel) => {
-            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, targetModule, targetFunctionWithParam);
             checkExactlyOneItem(acIDSel, null, "abs(x)");
         });
@@ -819,7 +832,7 @@ describe("Imported items", () => {
         focusEditorAC();
         cy.get("body").type(" " + targetModule + ".{ctrl} ");
         withAC((acIDSel) => {
-            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             // Should show nothing available if we haven't imported the module:
             checkNoneAvailable(acIDSel);
             checkNoItems(acIDSel, targetFunction);
@@ -838,7 +851,7 @@ describe("Imported items", () => {
         cy.get("body").type("{downarrow}{downarrow}");
         cy.get("body").type(" " + targetModule + ".{ctrl} ");
         withAC((acIDSel) => {
-            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             // Should show because it's imported:
             checkExactlyOneItem(acIDSel, targetModule, targetFunction);
             checkNoItems(acIDSel, "abs");
@@ -856,7 +869,7 @@ describe("Imported items", () => {
         cy.get("body").type("{downarrow}{downarrow}");
         cy.get("body").type(" " + targetModule + ".{ctrl} ");
         withAC((acIDSel) => {
-            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             // Should show nothing available if we haven't imported the module itself, only used a from:
             checkNoneAvailable(acIDSel);
             checkNoItems(acIDSel, targetFunction);
@@ -864,7 +877,7 @@ describe("Imported items", () => {
         // Then if we delete back to "t" and type ".":
         cy.get("body").type("{backspace}{backspace}{backspace}{backspace}.{ctrl} ");
         withAC((acIDSel) => {
-            cy.get(acIDSel + " .popupContainer").should("be.visible");
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             // Should show because we're using the correct alias now:
             checkExactlyOneItem(acIDSel, "t", targetFunction);
             checkNoItems(acIDSel, "abs");

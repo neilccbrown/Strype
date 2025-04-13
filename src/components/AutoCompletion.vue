@@ -1,6 +1,6 @@
 <template>
     <div>
-        <div class="popupContainer" spellcheck="false">
+        <div :class="scssVars.acPopupContainerClassName" spellcheck="false">
             <div
                 :style="popupPosition"
                 class="popup"
@@ -21,7 +21,7 @@
                         </div>
                         <PopUpItem
                             v-for="(item) in resultsToShow[module]"
-                            class="popUpItems"
+                            :class="scssVars.acPopupItemClassName"
                             :id="UID+'_'+item.index"
                             :index="item.index"
                             :item="textForAC(item)"
@@ -37,7 +37,7 @@
                 </ul>
                 <div v-show="!areResultsToShow()">
                     <div 
-                        class="module empty-results"
+                        :class="'module ' + scssVars.acEmptyResultsContainerClassName"
                         @mousedown.prevent.stop
                         @mouseup.prevent.stop
                     >
@@ -81,6 +81,7 @@ import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvaila
 import Parser from "@/parser/parser";
 import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
 import {TPyParser} from "tigerpython-parser";
+import scssVars from "@/assets/style/_export.module.scss";
 
 //////////////////////
 export default Vue.extend({
@@ -101,6 +102,7 @@ export default Vue.extend({
 
     data: function() {
         return {
+            scssVars, // just to be able to use in template 
             acResults: {} as AcResultsWithCategory,
             resultsToShow: {} as IndexedAcResultWithCategory,
             documentation: [] as string[],
@@ -347,7 +349,7 @@ export default Vue.extend({
                 this.allowHoverSelection = true;
                 this.$nextTick(() => {
                     // Select the item immediately manually, because otherwise we need to wait that another item is selected for hover to work
-                    const selectedItem = document.querySelector(".acItem:hover");
+                    const selectedItem = document.querySelector("." + scssVars.acItemClassName + ":hover");
                     if(selectedItem){
                         const indexOfSelected = parseInt(selectedItem.id.replace(this.UID + "_",""));
                         this.handleACItemHover(indexOfSelected);
@@ -383,7 +385,7 @@ export default Vue.extend({
             this.currentDocumentation = this.getCurrentDocumentation();
 
             // now scroll to the selected view
-            const items = this.$el.querySelectorAll(".popUpItems");
+            const items = this.$el.querySelectorAll(".ac-popup-item");
             // we want to get the selected item to the end of the scrolling area (so inline set to "end", the other properties are used
             // to avoid the whole page to scroll down (bug #279), see https://stackoverflow.com/questions/11039885/scrollintoview-causing-the-whole-page-to-move).
             items[this.selected].scrollIntoView({block:"nearest", inline:"end"});
@@ -427,7 +429,7 @@ export default Vue.extend({
                 // With CSS, we simply look up the parent of the *hovered* item (one of the LIs) and retrieve its data-title attribute.
                 // There SHOULD be a selection, but in case something is messed up and we don't retrieve, we'll return the current module.
                 // (we use "hover" because when this method is called, the new selection isn't yet reflected in the change of styling);
-                const selectedLIElementParent = document.querySelector("li.acItem:hover")?.parentElement;
+                const selectedLIElementParent = document.querySelector("li." + scssVars.acItemClassName +":hover")?.parentElement;
                 return (selectedLIElementParent?.getAttribute("data-title")) ?? this.currentModule;
             }
         },
@@ -470,12 +472,12 @@ export default Vue.extend({
     cursor: default;
 }
 
-.empty-results {
+.#{$strype-classname-ac-empty-results-container} {
     white-space: nowrap;
     padding-right: 3px;
 }
 
-.popupContainer {
+.#{$strype-classname-ac-popup-container} {
     display: flex;
 }
 

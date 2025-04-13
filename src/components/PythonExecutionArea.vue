@@ -1,42 +1,57 @@
 
 <template>
-    <div id="peaComponent" :class="{'expanded-PEA': isExpandedPEA}" ref="peaComponent" @mousedown="handlePEAMouseDown">
-        <div id="peaControlsDiv" :class="{'expanded-PEA-controls': isExpandedPEA}">           
-            <b-tabs v-model="peaDisplayTabIndex" no-key-nav>
-                <b-tab :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab" active></b-tab>
-                <b-tab :button-id="graphicsTabId" :title="'\uD83D\uDC22 '+$t('PEA.Graphics')" title-link-class="pea-display-tab"></b-tab>
+    <div :id="peaComponentId" :class="{'pea-component': true, [scssVars.expandedPEAClassName]: isExpandedPEA, 'no-43-ratio-collapsed-PEA': !hasDefault43Ratio && !isExpandedPEA}" ref="peaComponent" @mousedown="handlePEAMouseDown">
+        <div :id="controlsDivId" :class="{'pea-controls-div': true, 'expanded-PEA-controls': isExpandedPEA}">           
+            <b-tabs v-show="isTabsLayout" v-model="peaDisplayTabIndex" no-key-nav>
+                <b-tab v-show="isTabsLayout" :button-id="graphicsTabId" :title="'\uD83D\uDC22 '+$t('PEA.Graphics')" title-link-class="pea-display-tab"></b-tab>
+                <b-tab v-show="isTabsLayout" :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab" active></b-tab>
             </b-tabs>
-            <div class="flex-padding"/>
+            <!-- IMPORTANT: keep this div with "invisible" text for proper layout rendering, it replaces the tabs -->
+            <span v-if="!isTabsLayout" :class="scssVars.peaNoTabsPlaceholderSpanClassName">c+g</span>
+            <div class="flex-padding"/>            
             <button id="runButton" ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'">
                 <img v-if="!isPythonExecuting" src="favicon.png" class="pea-play-img">
                 <span v-else class="python-running">{{runCodeButtonIconText}}</span>
                 <span>{{runCodeButtonLabel}}</span>
             </button>
         </div>
-        <div id="tabContentContainerDiv">
-            <textarea 
-                id="pythonConsole"
-                ref="pythonConsole"
-                v-show="peaDisplayTabIndex==0"
-                @focus="onFocus()"
-                @change="onChange"
-                @wheel.stop
-                @keydown.self.stop="handleKeyEvent"
-                @keyup.self="handleKeyEvent"
-                disabled
-                spellcheck="false"
-            >    
-            </textarea>
-            <div v-show="peaDisplayTabIndex==1" id="pythonTurtleContainerDiv" @wheel.stop>
+        <div :id="tabContentContainerDivId" :class="{'pea-tab-content-container': true, 'flex-padding': true, 'pea-43-ratio': hasDefault43Ratio}">
+            <!-- the SplitPanes is used in all layout configurations: for tabs, we only show 1 of the panes and disable moving the divider, and for stacked window it acts as normal -->
+            <Splitpanes :class="{'strype-PEA-split-theme': true, 'with-expanded-PEA': isExpandedPEA, 'tabs-PEA': isTabsLayout}" :horizontal="!isExpandedPEA" @resize="onSplitterPane1Resize">
+                <pane :id="graphicsSplitPaneId" key="1" v-show="isGraphicsAreaShowing" :size="(isTabsLayout) ? 100 : currentSplitterPane1Size" min-size="5">
+                    <div :id="graphicsContainerDivId" @wheel.stop :class="{'pea-graphics-container': true, hidden: graphicsTemporaryHidden}">
+                        <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
+                            <div :id="graphicsDivId" ref="pythonTurtleDiv" class="pea-graphics-div"></div>
+                        </div>
+                        <span v-if="isGraphicsAreaShowing && !turtleGraphicsImported" class="pea-no-graphics-import-span">{{$t('PEA.importTurtle')}}</span> 
+                    </div>
+                </pane>
+                <pane key="2" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)" min-size="5">
+                    <textarea 
+                        :id="pythonConsoleId"
+                        ref="pythonConsole"
+                        class="pea-console"
+                        @focus="onFocus()"
+                        @change="onChange"
+                        @wheel.stop
+                        @keydown.self.stop="handleKeyEvent"
+                        @keyup.self="handleKeyEvent"
+                        disabled
+                        spellcheck="false"
+                    >    
+                    </textarea>
+                </pane>
+            </Splitpanes>
+            <div :class="{[scssVars.peaToggleLayoutButtonsContainerClassName]: true, hidden: (!isTabContentHovered || isPythonExecuting)}">
+                <div v-for="(layoutData, index) in PEALayoutsData" :key="'strype-PEA-Layout-'+index" 
+                    @click="togglePEALayout(layoutData.mode)" :title="$t('PEA.'+layoutData.iconName)">
+                    <SVGIcon :name="layoutData.iconName" customClass="pea-toggle-layout-button" />
+                </div>
                 <div id="pythonGraphicsContainer"><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
                     <div id="pythonTurtleDiv" ref="pythonTurtleDiv" @click.stop="graphicsCanvasClick"></div>
                 </div>
                 <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @click.stop="graphicsCanvasClick"></canvas>
             </div>
-            <div @click="toggleExpandCollapse" :class="{'pea-toggle-size-button': true,'dark-mode': (peaDisplayTabIndex==0),'hidden': !isTabContentHovered}">
-                <span :class="{'fas': true, 'fa-expand': !isExpandedPEA, 'fa-compress': isExpandedPEA}" :title="$t((isExpandedPEA)?'PEA.collapse':'PEA.expand')"></span>
-            </div>
-            <!-- <span id="noTurtleSpan" v-if="peaDisplayTabIndex==1 && !turtleGraphicsImported">{{$t('PEA.importTurtle')}}</span> --> 
         </div>
     </div>
 </template>
@@ -47,11 +62,18 @@ import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
 import { execPythonCode } from "@/helpers/execPythonCode";
 import { mapStores } from "pinia";
-import { checkEditorCodeErrors, computeAddFrameCommandContainerHeight, countEditorCodeErrors, CustomEventTypes, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, hasPrecompiledCodeError,  resetAddFrameCommandContainerHeight, setPythonExecAreaExpandButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
+import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId,  getPEATabContentContainerDivId, hasPrecompiledCodeError, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
 import i18n from "@/i18n";
-import { PythonExecRunningState } from "@/types/types";
+import { PythonExecRunningState, StrypePEALayoutData, StrypePEALayoutMode } from "@/types/types";
 import { PersistentImage, PersistentImageManager, WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
 import Menu from "@/components/Menu.vue";
+import SVGIcon from "@/components/SVGIcon.vue";
+import {Splitpanes, Pane} from "splitpanes";
+import { debounce } from "lodash";
+import scssVars from "@/assets/style/_export.module.scss";
+
+// Helper to keep indexed tabs (for maintenance if we add some tabs etc)
+const enum PEATabIndexes {graphics, console}
 
 const persistentImageManager = new PersistentImageManager();
 let domContext : CanvasRenderingContext2D | null = null;
@@ -74,11 +96,24 @@ const graphicsCanvasLogicalHeight = WORLD_HEIGHT;
 export default Vue.extend({
     name: "PythonExecutionArea",
 
+    components: {
+        Splitpanes,
+        Pane,
+        SVGIcon,
+    },
+
+    props:{
+        hasDefault43Ratio: Boolean,
+    },
+
     data: function() {
         return {
+            scssVars, // just to be able to use in template
             isExpandedPEA: false,
+            isTabsLayout: true, // flag to indicate the PEA's layout - tabs by default
+            graphicsTemporaryHidden: false, //flag to use when we need to temporary hide the graphics for UI reasons (like before a layout of the PEA is performed, so we can compute things right)
             turtleGraphicsImported: false, // by default, Turtle isn't imported - this flag is updated when we detect the import (see event registration in mounted())
-            peaDisplayTabIndex: 0, // the index of the PEA tab (console/turtle), we use it equally as a flag to indicate if we are on Turtle
+            peaDisplayTabIndex: PEATabIndexes.console, // the index of the PEA tab (graphics/console), we use it equally as a flag to indicate if we are on one or other tab
             interruptedTurtle: false,
             isTabContentHovered: false,
             isTurtleListeningKeyEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for key events on Turtle
@@ -86,7 +121,12 @@ export default Vue.extend({
             isTurtleListeningTimerEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for timer events on Turtle
             isRunningStrypeGraphics : false,
             stopTurtleUIEventListeners: undefined as ((keepShowingTurtleUI: boolean)=>void) | undefined, // registered callback method to clear the Turtle listeners mentioned above
-            
+            PEALayoutsData: [
+                {iconName: "PEA-layout-tabs-collapsed", mode: StrypePEALayoutMode.tabsCollapsed},
+                {iconName: "PEA-layout-tabs-expanded", mode: StrypePEALayoutMode.tabsExpanded},
+                {iconName: "PEA-layout-split-collapsed", mode: StrypePEALayoutMode.splitCollapsed},
+                {iconName: "PEA-layout-split-expanded", mode: StrypePEALayoutMode.splitExpanded},
+            ] as StrypePEALayoutData[],
         };
     },
     
@@ -95,21 +135,23 @@ export default Vue.extend({
         useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
         
         // Register an event listen on the tab content container on hover (in/out) to handle some styling
-        (document.getElementById("tabContentContainerDiv"))?.addEventListener("mouseenter", () => this.isTabContentHovered = true);
-        (document.getElementById("tabContentContainerDiv"))?.addEventListener("mouseleave", () => this.isTabContentHovered = false);
+        (document.getElementById(getPEATabContentContainerDivId()))?.addEventListener("mouseenter", () => this.isTabContentHovered = true);
+        (document.getElementById(getPEATabContentContainerDivId()))?.addEventListener("mouseleave", () => this.isTabContentHovered = false);
 
         // Have to use nextTick because Bootstrap won't have created the actual HTML parts until then:
-        this.$nextTick(() => document.querySelectorAll("#peaControlsDiv .nav-item a").forEach((el) => {
+        this.$nextTick(() => document.querySelectorAll("#" + getPEAControlsDivId() + " .nav-item a").forEach((el) => {
             // When a tab header is clicked, lose focus, because we want focus back to the editor:
             el.addEventListener("click", (e) => {
                 (el as HTMLElement).blur();
             });
         }));
 
-        const pythonConsole = document.getElementById("pythonConsole");
-        const turtlePlaceholderDiv = document.getElementById("pythonTurtleDiv");
-        const tabContentContainerDiv = document.getElementById("tabContentContainerDiv");
-        if(pythonConsole != undefined && turtlePlaceholderDiv != undefined && tabContentContainerDiv != undefined){
+        const pythonConsole = document.getElementById(getPEAConsoleId());
+        const turtlePlaceholderDiv = document.getElementById(getPEAGraphicsDivId());
+        const tabContentContainerDiv = document.getElementById(getPEATabContentContainerDivId());
+        const graphicsSplitPaneDiv = document.getElementById(this.graphicsSplitPaneId);
+
+        if(pythonConsole != undefined && turtlePlaceholderDiv != undefined && tabContentContainerDiv != undefined && graphicsSplitPaneDiv != undefined){
             // Register an event listener on the textarea for the request focus event
             pythonConsole.addEventListener(CustomEventTypes.pythonConsoleRequestFocus, this.handleConsoleFocusRequest);
 
@@ -119,10 +161,10 @@ export default Vue.extend({
             // Register an event listener on this component for the notification of the turtle library import usage
             (this.$refs.peaComponent as HTMLDivElement).addEventListener(CustomEventTypes.notifyTurtleUsage, (event) => {
                 this.turtleGraphicsImported = (event as CustomEvent).detail;
-                const pythonTurtleDiv = document.getElementById("pythonTurtleDiv");
+                const pythonTurtleDiv = document.getElementById(getPEAGraphicsDivId());
                 if(!this.turtleGraphicsImported && pythonTurtleDiv != undefined) {
                     // If we don't import turtle anymore, we "clear" any potential graphics to have the "import Turtle" message clearly showing.
-                    document.querySelectorAll("#pythonTurtleDiv canvas").forEach((canvasEl) => pythonTurtleDiv.removeChild(canvasEl));                    
+                    document.querySelectorAll("#" + getPEAGraphicsDivId() + " canvas").forEach((canvasEl) => pythonTurtleDiv.removeChild(canvasEl));                    
                 }
             });    
 
@@ -131,33 +173,50 @@ export default Vue.extend({
             // (Note: that is very important because every time the user code is run, Skulpt regenerates the canvases)
             const turtleDivPlaceholderObserver = new MutationObserver(() => {
                 // We don't need to change the canvas size for EVERY canvases added by Skulpt, we only do it on the first one added.
-                if(document.querySelectorAll("#pythonTurtleDiv canvas").length == 1){
-                    this.scaleTurtleCanvas(tabContentContainerDiv, turtlePlaceholderDiv);
-                    // When a canvas has been added we can select the TUrtle tab
-                    this.peaDisplayTabIndex = 1;
+                if(document.querySelectorAll("#" + getPEAGraphicsDivId() + " canvas").length == 1){
+                    // Adding graphics in the split view may mess up with our styling (scroll bars are added) so before running 
+                    // we hide the graphics container, it will be shown again later when scalling is called
+                    this.graphicsTemporaryHidden = true;
+                    setTimeout(() => {
+                        this.scaleTurtleCanvas(tabContentContainerDiv, graphicsSplitPaneDiv, turtlePlaceholderDiv);
+                    }, 100);
+
+                    // When a canvas has been added we can select the Graphics tab
+                    this.peaDisplayTabIndex = PEATabIndexes.graphics;
                 }
             });
             turtleDivPlaceholderObserver.observe(turtlePlaceholderDiv, {childList: true});   
             
             // Register an observer when the tab content dimension changes: we need to reflect this on the canvas scaling (cf. above)
             // DO NOT use ResizeObserver to do so: it gets messy with the events loop ("ResizeObserver loop completed with undelivered notifications.")
-            tabContentContainerDiv.addEventListener(CustomEventTypes.pythonExecAreaSizeChanged, () => {
-                resetAddFrameCommandContainerHeight();
-
-                // We should only scale the canvas if there is at least a canvas to scale! (i.e. we show turtle graphics...)
-                if (document.querySelectorAll("#pythonTurtleDiv canvas").length > 0) {
-                    setTimeout(() => {
-                        if(document.querySelectorAll("#pythonTurtleDiv canvas").length > 0){
-                            this.scaleTurtleCanvas(tabContentContainerDiv, turtlePlaceholderDiv);
-                        }
-                    }, 100);                    
+            const debouncePEASizeChangedCallback = debounce(() => {
+                // If Strype is shown in its default view (PEA has 4:3 ratio, we need to update the splitter so the PEA stay visible)
+                let waitSplitterToAdaptTimeout = 0;
+                if(this.hasDefault43Ratio) {
+                    waitSplitterToAdaptTimeout = 200;
+                    this.$emit(CustomEventTypes.pythonExecAreaMounted);
                 }
 
-                setTimeout(() => computeAddFrameCommandContainerHeight(), 100);
-            });
-
-            // First time the PEA is mounted, we need to resize the "Add Frame" commands area if needed
-            setTimeout(() => computeAddFrameCommandContainerHeight(), 500);
+                setTimeout(() => {
+                    // We should only scale the canvas if there is at least a canvas to scale! (i.e. we show turtle graphics...)
+                    const graphicsCanvasSelector = "#" + getPEAGraphicsDivId() + " canvas";
+                    if (document.querySelectorAll(graphicsCanvasSelector).length > 0) {
+                        this.graphicsTemporaryHidden = true;
+                        setTimeout(() => {
+                            if(document.querySelectorAll(graphicsCanvasSelector).length > 0){
+                                this.scaleTurtleCanvas(tabContentContainerDiv,graphicsSplitPaneDiv, turtlePlaceholderDiv);
+                            }
+                        }, 100);                    
+                    }
+                
+                    setTimeout(() => {
+                        debounceComputeAddFrameCommandContainerSize(this.isExpandedPEA);
+                        setPythonExecAreaLayoutButtonPos();
+                    }, 100);
+                }, waitSplitterToAdaptTimeout);
+            }, 100);
+            
+            tabContentContainerDiv.addEventListener(CustomEventTypes.pythonExecAreaSizeChanged, debouncePEASizeChangedCallback);
 
             // Register to the window event listener for Skulpt Turtle mouse and timer events listening off notification
             window.addEventListener(CustomEventTypes.skulptMouseEventListenerOff, () => {
@@ -203,17 +262,65 @@ export default Vue.extend({
         // Listen to size changes, and call now:
         new ResizeObserver(adjustCanvasSize).observe(domCanvas);
         adjustCanvasSize();
+        // Once everything is ready, we can notify the application (via events) that the PEA is ready
+        // Note that because of all the timeouts used throught the rendering we give ourselves some lease time.
+        setTimeout(() => {
+            this.$emit(CustomEventTypes.pythonExecAreaMounted);
+        }, 500);
     },
 
     computed:{
         ...mapStores(useStore),
 
+        peaComponentId(): string {
+            return getPEAComponentRefId();
+        },
+
+        controlsDivId(): string {
+            return getPEAControlsDivId();
+        },
+
         graphicsTabId(): string {
-            return "strypeGraphicsPEATab";
+            return "graphicsPEATab";
+        },
+
+        tabContentContainerDivId(): string {
+            return getPEATabContentContainerDivId();
+        },
+
+        graphicsContainerDivId(): string {
+            return getPEAGraphicsContainerDivId();
+        },
+
+        graphicsDivId(): string {
+            return getPEAGraphicsDivId();
+        },
+
+        graphicsSplitPaneId(): string {
+            return "peaGraphicsSplitPane";
+        },
+
+        pythonConsoleId(): string {
+            return getPEAConsoleId();
+        },
+
+        isConsoleAreaShowing(): boolean {
+            return !this.isTabsLayout || (this.isTabsLayout && this.peaDisplayTabIndex == PEATabIndexes.console);
+        },
+
+        isGraphicsAreaShowing(): boolean {
+            return !this.isTabsLayout || (this.isTabsLayout && this.peaDisplayTabIndex == PEATabIndexes.graphics);
         },
 
         isPythonExecuting(): boolean {
             return useStore().pythonExecRunningState != PythonExecRunningState.NotRunning;
+        },
+
+        currentSplitterPane1Size(): number {
+            // The current size (in %) of the splitter's pane 1, we keep this as a variable not directly affected to the splitter's 
+            // pane size to maintain visual aspects when layout switches (the actual size may be explicitly changed to 0 or 100
+            // depending on the layout mode).
+            return this.appStore.peaSplitViewSplitterPane1Size ?? parseFloat(scssVars.peaSplitViewSplitterPane1SizePercentValue);
         },
 
         runCodeButtonIconText(): string {
@@ -246,7 +353,7 @@ export default Vue.extend({
     watch: {
         peaDisplayTabIndex(){
             // When we change tab, we also check the position of the expand/collapse button
-            setPythonExecAreaExpandButtonPos();
+            setPythonExecAreaLayoutButtonPos();
         },
     },
 
@@ -254,6 +361,17 @@ export default Vue.extend({
         handlePEAMouseDown() {
             // Force the Strype menu to close in case it was opened
             (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).toggleMenuOnOff(null);
+        },
+
+        onSplitterPane1Resize(event: any) {
+            // Only update the panel size when we are in stacked layout
+            if(!this.isTabsLayout){
+                // Save the PEA splitter's pane 1 size with the project (it will update currentSplitterPane1Size by reactivity)
+                this.appStore.peaSplitViewSplitterPane1Size = event[0].size;
+            }
+
+            // Notify a resize of the PEA happened
+            document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
         },
 
         runClicked() {
@@ -307,7 +425,7 @@ export default Vue.extend({
         execPythonCode() {
             const pythonConsole = this.$refs.pythonConsole as HTMLTextAreaElement;
             pythonConsole.value = "";
-            setPythonExecAreaExpandButtonPos();
+            setPythonExecAreaLayoutButtonPos();
             
             // Make sure the text area is disabled when we run the code
             pythonConsole.disabled = true;
@@ -373,7 +491,7 @@ export default Vue.extend({
                     window.removeEventListener("keydown", this.graphicsCanvasKeyDown);
                     window.removeEventListener("keyup", this.graphicsCanvasKeyUp);
                     this.isRunningStrypeGraphics = false;
-                    setPythonExecAreaExpandButtonPos();
+                    setPythonExecAreaLayoutButtonPos();
                     // A runtime error may happen whenever the user code failed, therefore we should check if an error
                     // when Skulpt indicates the code execution has finished.
                     this.checkNonePrecompiledErrors();
@@ -392,28 +510,28 @@ export default Vue.extend({
                 // If there is an error, we reach it and, if Turtle is active, we make sure we show the Python console
                 if(this.appStore.errorCount > 0){
                     this.reachFirstError();
-                    this.peaDisplayTabIndex = 0;
+                    this.peaDisplayTabIndex = PEATabIndexes.console;
                 }
             });
         },
 
         onFocus(): void {
             this.appStore.isEditing = false;
-            this.peaDisplayTabIndex = 0;
+            this.peaDisplayTabIndex = PEATabIndexes.console;
         },
 
         handleConsoleFocusRequest(): void {
             // This method is responsible for handling when a focus on the console (textarea) is requrested programmatically
             // (typically when the Python input() function is encountered)
             
-            //First we switch between Turtle and the console shall the Turtle be showing at the moment
-            if(this.peaDisplayTabIndex == 1){
+            //First we switch between Graphics and the console shall the Turtle be showing at the moment
+            if(this.peaDisplayTabIndex == PEATabIndexes.graphics){
                 this.interruptedTurtle = true;
-                this.peaDisplayTabIndex = 0;
+                this.peaDisplayTabIndex = PEATabIndexes.console;
             }
 
             //In any case, then we focus the console (keep setTimeout rather than nextTick to have enough time to be effective)
-            setTimeout(() => document.getElementById("pythonConsole")?.focus(), 200);
+            setTimeout(() => document.getElementById(getPEAConsoleId())?.focus(), 200);
         },
 
         handlePostInputConsole(): void {
@@ -421,7 +539,7 @@ export default Vue.extend({
             // If there was a Turtle being shown, we get back to it. If not, we just stay on the console.
             if(this.turtleGraphicsImported && this.interruptedTurtle){
                 this.interruptedTurtle = false;
-                this.peaDisplayTabIndex = 1;
+                this.peaDisplayTabIndex = PEATabIndexes.graphics;
             }
         },
 
@@ -442,52 +560,69 @@ export default Vue.extend({
             }
 
             // As typing may result in the scrollbar appearing, we can check the position of the expand/collapse button here
-            setPythonExecAreaExpandButtonPos();
+            setPythonExecAreaLayoutButtonPos();
         },
 
-        toggleExpandCollapse(){
-            this.isExpandedPEA = !this.isExpandedPEA;
-            // We handle the styling for the Python Execution Area (PEA)'s tab content sizing here.
-            if(!this.isExpandedPEA){
-                // When the PEA is minimized, we remove any max height styling that had been added when enlarging the PEA: defined CSS will be used.
-                const tabContentDiv = (document.getElementById("tabContentContainerDiv") as HTMLDivElement);
-                tabContentDiv.style.maxHeight = "";
-                tabContentDiv.style.height = "";
-                // We can now reset the dimension of the flex div (containing the Turtle div) to set it to default size
-                const turtlePlaceholderContainer = document.getElementById("pythonTurtleContainerDiv") as HTMLDivElement;
-                (turtlePlaceholderContainer.children[0] as HTMLDivElement).style.width = "";
-                (turtlePlaceholderContainer.children[0] as HTMLDivElement).style.height = "";
-            }
-            else{
-                // When the PEA is maximized, we set the max height via styling: this rules over CSS.
-                setPythonExecutionAreaTabsContentMaxHeight();
-            }
-            document.getElementById("tabContentContainerDiv")?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
+        togglePEALayout(layoutMode: StrypePEALayoutMode){
+            // Save the layout mode with the project
+            this.appStore.peaLayoutMode  = layoutMode;
+              
+            const newTabsLayout = (layoutMode == StrypePEALayoutMode.tabsCollapsed || layoutMode == StrypePEALayoutMode.tabsExpanded);
+            const newExpandLayout = (layoutMode == StrypePEALayoutMode.tabsExpanded || layoutMode == StrypePEALayoutMode.splitExpanded);
+            const tabsLayoutChanged  = (newTabsLayout != this.isTabsLayout);
+            const expandLayoutChanged = (newExpandLayout != this.isExpandedPEA);
+            // Only do something if a new layout is requested...
+            if(tabsLayoutChanged || expandLayoutChanged ){                
+                this.isTabsLayout = newTabsLayout;
+                this.isExpandedPEA = newExpandLayout;
 
-            setPythonExecAreaExpandButtonPos();
-            
-            // Other parts of the UI need to be updated when the PEA default size is changed, so we emit an event
-            // (in case we rely on the current changes, we do it a bit later)
-            this.$nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaExpandCollapseChanged, {detail: this.isExpandedPEA})));
+                // We handle the styling for the Python Execution Area (PEA)'s tab content sizing here.
+                if(!this.isExpandedPEA){
+                    // We can now reset the dimension of the flex div (containing the Turtle div) to set it to default size
+                    const turtlePlaceholderContainer = document.getElementById(getPEAGraphicsContainerDivId()) as HTMLDivElement;
+                    (turtlePlaceholderContainer.children[0] as HTMLDivElement).style.width = "";
+                    (turtlePlaceholderContainer.children[0] as HTMLDivElement).style.height = "";
+                    (document.getElementById(getPEATabContentContainerDivId()) as HTMLDivElement).style.maxHeight = "";                                     
+                }
+                else{
+                    // When the PEA is maximized, we set the max height via styling: this rules over CSS.
+                    setPythonExecutionAreaTabsContentMaxHeight();
+                }
+
+                // If we are switching to the split view (or between split views) and graphics exists, it can add scrolling bars which then mess up the rendering.
+                // So before the reactive the splitter, we make the Graphics area hidden to make sure no scroll bar will be involved.
+                // Further calls to events will resize the Graphics are as it should.
+                if((tabsLayoutChanged || (expandLayoutChanged && !tabsLayoutChanged && !this.isTabsLayout)) && !newTabsLayout && document.querySelectorAll("#" + getPEAGraphicsDivId() + " canvas").length > 0){
+                    this.graphicsTemporaryHidden = true;
+                }
+
+                // A delay can occur when we swap between the tabs / split layout or between split directions,
+                // so we need a delay to make sure the splitter has operated properly (we do it in any case)
+                const refreshUITimeout = 100;
+                if(expandLayoutChanged){
+                    // Other parts of the UI need to be updated when the PEA default size is changed, so we emit an event
+                    // (in case we rely on the current changes, we do it a bit later)
+                    setTimeout(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaExpandCollapseChanged, {detail: this.isExpandedPEA})),
+                        refreshUITimeout);
+                }                
+                setTimeout(() => {
+                    document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
+                }, refreshUITimeout + 100);
+            }
         },
 
-        scaleTurtleCanvas(tabContentContainerDiv: HTMLElement, turtlePlaceholderDiv: HTMLElement){
+        scaleTurtleCanvas(tabContentContainerDiv: HTMLElement, graphicsSplitterPaneDiv: HTMLElement, turtlePlaceholderDiv: HTMLElement){
             // Resize and scale the Python Exec Area (PEA) Turtle container accordingly to the Turtle canvas:
             // - scale the placeholder to fit the viewport (the tab content) and preserve the canvas ratio, no scroll bar should appear
             // - set the placeholder container (the flex div) to the correct dimension to make sure the positioning (centered) is preserved
             //    -- SCALING WITH CSS DOES NOT MAKES THE DOM "SEEING" NEW DIMENSIONS
-            const turtleCanvas = document.querySelector("#pythonTurtleDiv canvas") as HTMLCanvasElement;
+            // Note that when we are in split layout view, we need to work with the split pane.
+            const turtleCanvas = document.querySelector("#" + getPEAGraphicsDivId() + " canvas") as HTMLCanvasElement;
             const canvasW = turtleCanvas.width;
             const canvasH = turtleCanvas.height;
-            const tabContentElementBoundingClientRect = tabContentContainerDiv.getBoundingClientRect();
+            const tabContentElementBoundingClientRect = (this.isTabsLayout) ? tabContentContainerDiv.getBoundingClientRect() : graphicsSplitterPaneDiv.getBoundingClientRect();
             let {width: tabContentW, height: tabContentH} = tabContentElementBoundingClientRect;
-
-            // If we are minimising the PEA, we make sure we don't expand the tab container more than the default 4:3 ratio.
-            // (larger canvas will expand the PEA, but we want to keep it at a consistent size all the time.)
-            if(!this.isExpandedPEA){
-                tabContentH = tabContentW * 0.75;
-                tabContentContainerDiv.style.height = tabContentH+"px";
-            }
+            
 
             // Scale to fit: we scale to fit whichever dimension will be scaled-limited by the viewport.
             // The Turtle div keeps a 5px margin around the Turtle canvases, so we need to take it into account when computing the scaling.
@@ -501,10 +636,13 @@ export default Vue.extend({
             // (to make sure we don't fit to a smaller size than the tab content itself!)
             (turtlePlaceholderDiv.parentElement as HTMLDivElement).style.width = Math.max((canvasW * turtleCanvasScaleRatio + 10), tabContentW) +"px";
             (turtlePlaceholderDiv.parentElement as HTMLDivElement).style.height = Math.max((canvasH * turtleCanvasScaleRatio + 10), tabContentH) +"px";
+
+            // Restore the Graphics container visibility
+            this.graphicsTemporaryHidden = false;
         },
 
         reachFirstError(): void {
-            this.$nextTick(() => {
+            setTimeout(() => {
                 // We should get only the run time error here, or at least 1 precompiled error
                 // but for sanity check, we make sure it's still there
                 const errors = getEditorCodeErrorsHTMLElements();
@@ -513,15 +651,15 @@ export default Vue.extend({
                     (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).currentErrorNavIndex = -1; 
                     (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).goToError(null, true);
                 }
-            });
+            }, 200);
         },
 
         clear(): void {
             // This method clears the UI elements and flags related to Python code execution.
-            (document.getElementById("pythonConsole") as HTMLTextAreaElement).value = "";
-            const pythonTurtleDiv = document.getElementById("pythonTurtleDiv");
+            (document.getElementById(getPEAConsoleId()) as HTMLTextAreaElement).value = "";
+            const pythonTurtleDiv = document.getElementById(getPEAGraphicsDivId());
             if(pythonTurtleDiv != undefined) {
-                document.querySelectorAll("#pythonTurtleDiv canvas").forEach((canvasEl) => pythonTurtleDiv.removeChild(canvasEl));                    
+                document.querySelectorAll("#" + getPEAGraphicsDivId() + " canvas").forEach((canvasEl) => pythonTurtleDiv.removeChild(canvasEl));                    
             }
             this.isTurtleListeningKeyEvents = false; 
             this.isTurtleListeningMouseEvents = false;
@@ -684,33 +822,44 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-    .expanded-PEA {
+    .pea-component.#{$strype-classname-expanded-pea} {
         width: 100vw;
-        top:50vh;
-        bottom:0px;
-        left:0px;
-        position:fixed;
+        top: #{$pea-expanded-overlay-splitter-pane2-size-value}vh;
+        bottom: 0px;
+        left: 0px;
+        position: fixed;
         margin: 0px !important;
     }
 
-    #peaControlsDiv {
+    .no-43-ratio-collapsed-PEA {
+        height: calc(100% - $strype-python-exec-area-margin);
+    }
+
+    .pea-controls-div {
         display: flex;
         column-gap: 5px;        
         width:100%;
-        background-color: rgb(240,240,240);
+        background-color: $pea-outer-background-color;
+        align-items: center;
     }
 
-    #peaControlsDiv button {
+    .pea-controls-div button {
         z-index: 10;
         border-radius: 10px;
         border: 1px solid transparent;
         outline: none;
+        background-color: transparent;
     }
 
-    #peaControlsDiv button:hover {
+    .pea-controls-div button:hover {
         border-color: lightgray !important;
     }
 
+    .#{$strype-classname-pea-no-tabs-placeholder-span} {
+        color: transparent;
+        padding: 9px 0 8px 0px;
+    }
+    
     .expanded-PEA-controls {
         border-top: black 1px solid;
     }
@@ -719,30 +868,26 @@ export default Vue.extend({
         color: red;
     }
 
-    .pea-toggle-size-button {
+    .#{$strype-classname-pea-toggle-layout-buttons-container} {
         position: absolute;
-        bottom: $strype-python-exec-area-expand-button-pos-offset;
-        right: $strype-python-exec-area-expand-button-pos-offset;
-        color: black;
+        bottom: $strype-python-exec-area-layout-buttons-pos-offset;
+        right: $strype-python-exec-area-layout-buttons-pos-offset;
+        display: flex;
+        column-gap: 5px;
+        padding: 3px 3px;
+        border-radius: 5px;
+        background: rgba(69, 68, 68, 0.8) !important;
+    }
+
+    .#{$strype-classname-pea-toggle-layout-buttons-container} > div {
+        line-height: 0px; // Thanks copilot! needs to be 0 for making sure the divs are same heights as content
+    }
+
+    .pea-toggle-layout-button {
+        color: white;
         cursor: pointer;
-        padding: 8px;
-    }
-
-    .pea-toggle-size-button.dark-mode {        
-        color: white !important;
-    }
-
-    .pea-toggle-size-button:hover {        
-        background: rgb(151, 151, 151) !important;
-        border-radius: 50px;
-    }
-
-    .pea-toggle-size-button.dark-mode:hover {        
-        background: rgb(69, 68, 68) !important;
-    }
-
-    .pea-toggle-size-button span{        
-        display: block; // to ensure the containing div wraps the span tight
+        width: 20px;
+        height: 20px;
     }
 
     .show-error-icon {
@@ -763,16 +908,25 @@ export default Vue.extend({
         width: 1.3em;
     }
 
+    .pea-layout-img-button {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+        vertical-align: middle;
+
+    }
+
     .pea-play-img {
         width: 16px;
         vertical-align: sub;
     }
 
-    #tabContentContainerDiv {
-        flex-grow: 2;
+    .pea-tab-content-container {
         width: 100%;
-        max-height: 60vh;
         position: relative;
+    }
+
+    .pea-tab-content-container.pea-43-ratio {
         aspect-ratio: 4/3;
     }
 
@@ -783,7 +937,7 @@ export default Vue.extend({
         resize: none !important;
     }
     
-    #pythonConsole {
+    .pea-console {
         width:100%;
         height: 100%;
         background-color: #333;
@@ -793,46 +947,80 @@ export default Vue.extend({
         font-family: monospace;
     }
 
-    #pythonConsole:disabled {
+    .pea-console:disabled {
         -webkit-text-fill-color: #ffffff; // Required for Safari
         color: white;
     }
 
     // Mac Safari: always show scrollbar (when content is large enough to require one), and make it light
-    #pythonConsole::-webkit-scrollbar {
+    .pea-console::-webkit-scrollbar {
         width: 8px;
     }    
-    #pythonConsole::-webkit-scrollbar-track {
+    .pea-console::-webkit-scrollbar-track {
         background: #333;
     }
-    #pythonConsole::-webkit-scrollbar-thumb {
+    .pea-console::-webkit-scrollbar-thumb {
         background: #888;
         border-radius: 5px;
     }
 
-    #pythonTurtleContainerDiv {
+    .pea-graphics-container {
         width:100%;
         height: 100%;
         background-color: grey;
         overflow:auto;
+        position: relative;
     }
 
-    #pythonTurtleContainerDiv > div {
+
+    .pea-graphics-container > div {
         display: flex;
         align-items: center;
         justify-content: center;
     }
 
-    #pythonTurtleDiv {
+    .pea-graphics-div {
         background-color: white;
         margin:5px;
         outline: none;
     }
     
-    #noTurtleSpan {
+    .pea-no-graphics-import-span {
         position: absolute;
         top: 10px;
         left: 10px;
+    }
+
+    /**
+     * The following CSS classes are for the Splitter component in use here
+     */
+    .splitpanes.strype-PEA-split-theme.with-expanded-PEA {
+        background-color: $pea-outer-background-color;
+    }
+    
+    .strype-PEA-split-theme.splitpanes--horizontal>.splitpanes__splitter,
+    .strype-PEA-split-theme .splitpanes--horizontal>.splitpanes__splitter {
+        height: 8px !important;
+    }
+
+    .strype-PEA-split-theme.tabs-PEA.splitpanes--horizontal>.splitpanes__splitter,
+    .strype-PEA-split-theme.tabs-PEA .splitpanes--horizontal>.splitpanes__splitter {
+        display: none;
+    }
+
+    .strype-PEA-split-theme.tabs-PEA.splitpanes--vertical>.splitpanes__splitter,
+    .strype-PEA-split-theme.tabs-PEA .splitpanes--vertical>.splitpanes__splitter {
+        display: none;
+    }
+
+    .strype-PEA-split-theme.splitpanes--vertical > .splitpanes__splitter:before,
+    .strype-PEA-split-theme > .splitpanes--vertical > .splitpanes__splitter:before {
+        content: "";
+        position: absolute;
+        height: 100% !important;
+        width: 8px !important;
+        transform: none !important;
+    }
     }   
     
     #pythonGraphicsContainer {

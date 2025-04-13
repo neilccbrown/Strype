@@ -30,6 +30,10 @@ export default defineConfig({
                         });
                     });
                 },
+                renameFile(args: {srcPath: string, destPath: string}) {
+                    fs.renameSync(args.srcPath, args.destPath);
+                    return null;
+                },
             });
             // Allow logging to console (although only the first message seems to get logged?)
             on("task", {
