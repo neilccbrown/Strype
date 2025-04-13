@@ -36,6 +36,8 @@ _color_map = {"aliceblue":"#f0f8ff","antiquewhite":"#faebd7","aqua":"#00ffff","a
 def _round_and_clamp_0_255(number):
     return min(max(int(round(number)), 0), 255)
 
+_bk_image = None
+
 #@@ Color
 def color_from_string(html_string):
     """
@@ -897,7 +899,24 @@ def set_background(image_or_name_or_color, scale_to_fit = False):
     else:
         raise TypeError("image_or_filename_or_color must be an Image or a string or a Color")
 
+    global _bk_image
+    _bk_image = bk_image
     _strype_graphics_internal.setBackground(bk_image._Image__image)        
+
+def get_background():
+    """
+    Gets the current background image.
+    
+    Any changes to the image (such as drawing on it) will be shown on the live display.
+    
+    Note that the image returned by get_background() will not be the same as that passed
+    to set_background().  The image may have been tiled or stretched.  It may also not be exactly
+    800 x 600; the image may be slightly oversized (e.g. 808 x 606) to make sure it covers
+    the edges fully.  But its centre will be at (0, 0).
+    
+    :return: The live background image.
+    """
+    return _bk_image
     
 def stop():
     """

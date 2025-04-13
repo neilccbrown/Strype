@@ -576,6 +576,16 @@ describe("World background", () => {
             Actor("cat-test.jpg")
         `, "background-large-scaled");
     });
+    it("Allows drawing on live background", () => {
+        runCodeAndCheckImage("", `
+            set_background("red")
+            bk = get_background()
+            bk.set_fill("yellow")
+            bk.draw_circle(bk.get_width()/2, bk.get_height()/2, 250)
+            Actor("cat-test.jpg")
+            sleep(1)
+        `, "background-with-circle-drawn");
+    });
 });
 
 describe("Saying", () => {
