@@ -571,7 +571,7 @@ describe("World background", () => {
             big = Image(1000, 1000)
             big.set_fill("white")
             big.set_stroke(None)
-            big.draw_circle(500, 500, 450)
+            big.draw_circle(500, 500, 500)
             set_background(big, True)
             Actor("cat-test.jpg")
         `, "background-large-scaled");

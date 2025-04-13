@@ -877,7 +877,7 @@ def set_background(image_or_name_or_color, scale_to_fit = False):
                 for j in range(0, vert_copies):
                     dest.draw_image(image, x_offset + i * w, y_offset + j * h)
         else:
-            scale = min(808 / w, 606 / h)
+            scale = max(808 / w, 606 / h)
             dest._draw_part_of_image(image, (808 - scale * w) / 2, (606 - scale * h) / 2, 0, 0, w, h, scale)
         return dest
         
