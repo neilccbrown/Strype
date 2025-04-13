@@ -123,7 +123,7 @@ class Image:
         # Note: for internal purposes we sometimes don't want to make an image, so we pass -1,-1 for that case:
         if width > 0 and height > 0:
             self.__image = _strype_graphics_internal.makeCanvasOfSize(width, height)
-            self.clear_rect(0, 0, width, height)
+            self.clear()
             _strype_graphics_internal.canvas_setFill(self.__image, "white")
             _strype_graphics_internal.canvas_setStroke(self.__image, "black")
         else:
@@ -337,7 +337,7 @@ class Image:
         :param angle_start: The starting angle of the arc, in degrees (0 points to the right).
         :param angle_amount: The amount of degrees to travel (positive goes clockwise).
         """
-        _strype_graphics_internal.canvas_arc(self.__image, centre_x, centre_y, x_radius * 2, y_radius * 2, angle_start, angle_amount)
+        _strype_graphics_internal.canvas_arc(self.__image, centre_x, centre_y, x_radius, y_radius, angle_start, angle_amount)
 
     def draw_circle(self, centre_x, centre_y, radius):
         """
@@ -348,7 +348,7 @@ class Image:
         :param centre_y: The y coordinate of the centre of the circle.
         :param width: The radius of the circle.
         """
-        self.arc(centre_x, centre_y, radius, radius, 0, 360)
+        self.draw_oval(centre_x, centre_y, radius, radius)
 
     def draw_polygon(self, points):
         """
@@ -796,7 +796,7 @@ def load_image(name):
     :return: An :class:`Image` object with the library image.
     """
     img = Image(-1, -1)
-    img._Image__image = _strype_graphics_internal.htmlImageToCanvas(_strype_graphics_internal.loadAndWaitForImage(filename))
+    img._Image__image = _strype_graphics_internal.htmlImageToCanvas(_strype_graphics_internal.loadAndWaitForImage(name))
     return img
 
 #@@ Actor

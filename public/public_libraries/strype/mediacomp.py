@@ -289,7 +289,7 @@ def addArc(picture, startX, startY, width, height, start, angle, color="black"):
     _invalidateCache(picture)
     picture.set_fill(None)
     picture.set_stroke(_convertColor(color))
-    picture.arc(startX, startY, width, height, start, angle)
+    picture.draw_oval(startX, startY, width, height, start, angle)
 
 def addArcFilled(picture, startX, startY, width, height, start, angle, color="black"):
     """
@@ -307,7 +307,7 @@ def addArcFilled(picture, startX, startY, width, height, start, angle, color="bl
     _invalidateCache(picture)
     picture.set_fill(_convertColor(color))
     picture.set_stroke(_convertColor(color))
-    picture.arc(startX, startY, width, height, start, angle)
+    picture.draw_oval(startX, startY, width, height, start, angle)
 
 def addLine(picture, startX, startY, endX, endY, color="black"):
     """
@@ -321,7 +321,7 @@ def addLine(picture, startX, startY, endX, endY, color="black"):
     """
     _invalidateCache(picture)
     picture.set_stroke(_convertColor(color))
-    picture.line(startX, startY, endX, endY)
+    picture.draw_line(startX, startY, endX, endY)
 
 def addOval(picture, startX, startY, width, height, color="black"):
     """
@@ -336,7 +336,7 @@ def addOval(picture, startX, startY, width, height, color="black"):
     _invalidateCache(picture)
     picture.set_fill(None)
     picture.set_stroke(_convertColor(color))
-    picture.arc(startX, startY, width, height, 0, 360)
+    picture.draw_oval(startX, startY, width, height, 0, 360)
 
 def addOvalFilled(picture, startX, startY, width, height, color="black"):
     """
@@ -351,7 +351,7 @@ def addOvalFilled(picture, startX, startY, width, height, color="black"):
     _invalidateCache(picture)
     picture.set_fill(_convertColor(color))
     picture.set_stroke(_convertColor(color))
-    picture.arc(startX, startY, width, height, 0, 360)
+    picture.draw_oval(startX, startY, width, height, 0, 360)
 
 def addRect(picture, startX, startY, width, height, color="black"):
     """
@@ -366,7 +366,7 @@ def addRect(picture, startX, startY, width, height, color="black"):
     _invalidateCache(picture)
     picture.set_fill(None)
     picture.set_stroke(_convertColor(color))
-    picture.rectangle(startX, startY, width, height)
+    picture.draw_rect(startX, startY, width, height)
 
 def addRectFilled(picture, startX, startY, width, height, color="black"):
     """
@@ -381,7 +381,7 @@ def addRectFilled(picture, startX, startY, width, height, color="black"):
     _invalidateCache(picture)
     picture.set_fill(_convertColor(color))
     picture.set_stroke(_convertColor(color))
-    picture.rectangle(startX, startY, width, height)
+    picture.draw_rect(startX, startY, width, height)
 
 def addText(picture, xpos, ypos, text, color="black"):
     """
@@ -571,7 +571,7 @@ def makeBrighter(color):
                 elif c[i] > 0 and c[i] == 2:
                     c[i] += 2
             lighterColor = Color(c[0], c[1], c[2])
-        return lighterColor
+    return lighterColor
 
 
 def makeDarker(color):
