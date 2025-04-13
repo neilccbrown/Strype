@@ -1020,7 +1020,6 @@ export default Vue.extend({
         height: 100% !important;
         width: 8px !important;
         transform: none !important;
-    }
     }   
     
     #pythonGraphicsContainer {
