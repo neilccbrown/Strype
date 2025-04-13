@@ -123,7 +123,7 @@ function checkImageViaDownload(functions: string, main: string, downloadStem: st
     focusEditorPasteAndClear();
     // The timestamp should be between before and after:
     const before = Date.now();
-    enterAndExecuteCode(functions, main);
+    enterAndExecuteCode(functions, main, 5000);
 
     const foundFiles : string[] = [];
     (cy.task("downloads") as Cypress.Chainable<string[]>).then((allFiles: string[]) => {
@@ -154,16 +154,16 @@ function checkImageViaDownload(functions: string, main: string, downloadStem: st
     });
 }
 
-function enterAndExecuteCode(functions: string, main: string, timeToWaitMillis = 5000) {
+function enterAndExecuteCode(functions: string, main: string, timeToWaitMillis = 2000) {
     cy.get("body").type("{uparrow}{uparrow}");
     (cy.get("body") as any).paste("from strype.graphics import *\nfrom time import sleep\nimport math\n");
-    cy.wait(2000);
+    cy.wait(1000);
     cy.get("body").type("{downarrow}");
     (cy.get("body") as any).paste(functions);
-    cy.wait(3000);
+    cy.wait(1000);
     cy.get("body").type("{downarrow}");
     (cy.get("body") as any).paste(main);
-    cy.wait(3000);
+    cy.wait(1000);
     cy.contains("a", "Graphics").click();
     cy.get("#runButton").contains("Run");
     cy.get("#runButton").click();
@@ -262,8 +262,7 @@ describe("Image manipulation", () => {
                         img.set_pixel(x, y, "#0080FF")
                     else:
                         img.set_pixel(x, y, "YELLOW")
-            a = Actor(img)
-            a.set_scale(6)
+            a = Actor(img.clone(6))
         `, "image-set-pixel-string-colors");
     });
     it("Draws circles", () => {
@@ -271,13 +270,13 @@ describe("Image manipulation", () => {
             img = Image(800, 600)
             img.set_fill("white")
             img.set_stroke("red")
-            img.circle(200,200,150)
+            img.draw_circle(200,200,150)
             img.set_fill(None)
             img.set_stroke("#ff00ff")
-            img.circle(300, 500, 300)
+            img.draw_circle(300, 500, 300)
             img.set_fill("LIMEGREEN")
             img.set_stroke(None)
-            img.circle(600, 200, 100)
+            img.draw_circle(600, 200, 100)
             
             Actor(img)
         `, "image-draw-circles");
@@ -288,13 +287,13 @@ describe("Image manipulation", () => {
             img = Image(800, 600)
             img.set_fill("white")
             img.set_stroke("red")
-            img.polygon([(100, 100), (400, 300), (100, 300)])
+            img.draw_polygon([(100, 100), (400, 300), (100, 300)])
             img.set_stroke(None)
             img.set_fill("#ffff00")
             points = []
             for p in range(5):
                 points = points + [(500 + 200*math.cos(math.radians(p * 360 / 5)), 300 + 200*math.sin(math.radians(p * 360 / 5)))] 
-            img.polygon(points)
+            img.draw_polygon(points)
             
             Actor(img)
         `, "image-draw-polygons");
@@ -319,37 +318,36 @@ describe("Collision detection", () => {
             spacing = 50
             for y in range(-300//spacing, 300//spacing):
                 for x in range(-400//spacing, 400//spacing):
-                    squares.append(Actor(white_square.make_copy(), x*spacing, y*spacing))
+                    squares.append(Actor(white_square.clone(), x*spacing, y*spacing))
             for sq in cat.get_all_touching():
-                sq.edit_image().set_fill("red")
-                sq.edit_image().fill()
+                sq.get_image().set_fill("red")
+                sq.get_image().fill()
             `, "graphics-colliding-squares-cat-60");
     });
-    it("Collisions with cat rotated -75 after turning collisions off and on", () => {
+    it("Collisions with cat rotated -75 based on tag", () => {
         // We make a grid of white squares every 50 pixels that are 20x20
         // We turn off collisions on everything, turn it back on but only on every other square
         // Then we find all the colliding ones and colour them red
         runCodeAndCheckImage("", `
             cat = Actor('cat-test.jpg')
             cat.set_rotation(-75)
-            cat.set_can_touch(False)
             white_square = Image(20, 20)
             white_square.set_fill("white")
             white_square.fill()
             squares = []
             spacing = 50
+            collide = True
             for y in range(-300//spacing, 300//spacing):
                 for x in range(-400//spacing, 400//spacing):
-                    squares.append(Actor(white_square.make_copy(), x*spacing, y*spacing))
-            for sq in squares:
-                sq.set_can_touch(False)
-            # Now turn collisions back on on cat, and every other square:
-            cat.set_can_touch(True)
-            for sq in squares[::2]:
-                sq.set_can_touch(True)
-            for sq in cat.get_all_touching():
-                sq.edit_image().set_fill("red")
-                sq.edit_image().fill()
+                    if collide:
+                        tag = "collidable"
+                    else:
+                        tag = None
+                    collide = not collide
+                    squares.append(Actor(white_square.clone(), x*spacing, y*spacing, tag))
+            for sq in cat.get_all_touching("collidable"):
+                sq.get_image().set_fill("red")
+                sq.get_image().fill()
             `, "graphics-colliding-every-other-square-cat-minus-75");
     });
     it("Collisions in a radius", () => {
@@ -359,10 +357,9 @@ describe("Collision detection", () => {
             circle_guide = Image(800, 600)
             circle_guide.set_stroke(None)
             circle_guide.set_fill("#555555")
-            circle_guide.circle(400, 300, 200)
+            circle_guide.draw_circle(400, 300, 200)
             set_background(circle_guide)
-            cat = Actor('cat-test.jpg')
-            cat.set_scale(0.2)
+            cat = Actor(load_image('cat-test.jpg').clone(0.2))
             white_square = Image(20, 20)
             white_square.set_fill("white")
             white_square.fill()
@@ -370,10 +367,10 @@ describe("Collision detection", () => {
             spacing = 50
             for y in range(-300//spacing, 300//spacing):
                 for x in range(-400//spacing, 400//spacing):
-                    squares.append(Actor(white_square.make_copy(), x*spacing, y*spacing))
-            for sq in cat.get_all_nearby(200):
-                sq.edit_image().set_fill("red")
-                sq.edit_image().fill()
+                    squares.append(Actor(white_square.clone(), x*spacing, y*spacing))
+            for sq in cat.get_in_range(200):
+                sq.get_image().set_fill("red")
+                sq.get_image().fill()
             `, "graphics-colliding-radius");
     });
 });
@@ -387,16 +384,16 @@ describe("Image download", () => {
     it("Downloads plain cat", () => {
         checkImageViaDownload("", `
             cat = Actor('cat-test.jpg')
-            cat.edit_image().download()`, "strype-image", "download-plain-cat");
+            cat.get_image().download()`, "strype-image", "download-plain-cat");
     });
 
     it("Downloads cat with coloured cross", () => {
         checkImageViaDownload("", `
             cat = load_image('cat-test.jpg')
             cat.set_stroke("red")
-            cat.line(0, 0, cat.get_width(), cat.get_height())
+            cat.draw_line(0, 0, cat.get_width(), cat.get_height())
             cat.set_stroke("blue")
-            cat.line(cat.get_width(), 0, 0, cat.get_height())
+            cat.draw_line(cat.get_width(), 0, 0, cat.get_height())
             cat.download("cat-crossed")`, "cat-crossed", "download-cat-crossed");
     });
     
@@ -479,9 +476,8 @@ describe("World bounds", () => {
             yellow_rect = Image(50, 50)
             yellow_rect.set_fill("yellow")
             yellow_rect.fill()
-            mover = Actor(yellow_rect)
             # We scale so that the diagonal will be 50 in total:
-            mover.set_scale(1/math.sqrt(2))
+            mover = Actor(yellow_rect.clone(1/math.sqrt(2)))
             mover.set_rotation(45)
             # We want to move to 325, 325
             # It should complete the X move (and thus touch red: 325 + 25 either side) but be constrained in Y dimension: 
@@ -557,7 +553,7 @@ describe("World background", () => {
             big = Image(1000, 1000)
             big.set_fill("white")
             big.set_stroke(None)
-            big.circle(500, 500, 450)
+            big.draw_circle(500, 500, 450)
             set_background(big)
             Actor("cat-test.jpg")
         `, "background-large-centred");
@@ -575,7 +571,7 @@ describe("World background", () => {
             big = Image(1000, 1000)
             big.set_fill("white")
             big.set_stroke(None)
-            big.circle(500, 500, 450)
+            big.draw_circle(500, 500, 450)
             set_background(big, True)
             Actor("cat-test.jpg")
         `, "background-large-scaled");
