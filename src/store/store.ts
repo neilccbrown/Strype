@@ -1,5 +1,5 @@
 import Vue from "vue";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, SlotInfosOptionalMedia, MediaSlot } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, SlotInfosOptionalMedia, MediaSlot } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
@@ -81,21 +81,22 @@ export const useStore = defineStore("app", {
             isEditing: false,
 
             /* These state properties are for saving the layout of the UI.
-             * They are initally set to UNDEFINED so we can work out which layout changes the users have done.
+             * They are initally set to UNDEFINED so we can work out which layout changes the users have done ("delete" needs optional properties).
              * We always apply the changes after getting back to the default layout (when a file is loaded after first time).
+             * All the splitters' size properties are expressed PER layout so users can have different configurations for each layout.
              ***/ 
-            editorCommandsSplitterPane2Size: undefined as number | undefined, // same as above for the divider between the editor and the commands (pane 2), default is 34%
+            editorCommandsSplitterPane2Size: undefined as StrypeLayoutDividerSettings | undefined, // same as above for the divider between the editor and the commands (pane 2), default is 34%
             
             /* IFTRUE_isPython */
             peaLayoutMode:  undefined as StrypePEALayoutMode | undefined, // the project layout view is saved with the store
             
             // The size of the commands/PEA splitter pane 2 size is saved with the store.
             // We can't have a default value as the default size will depend on the viewport (to have the PEA in 4:3 ratio)
-            peaCommandsSplitterPane2Size: undefined as number | undefined, 
+            peaCommandsSplitterPane2Size: undefined as StrypeLayoutDividerSettings | undefined, 
 
-            peaSplitViewSplitterPane1Size: undefined as number | undefined, // same as above for the split view PEA divider (pane 1), this time a default value is 50%
+            peaSplitViewSplitterPane1Size: undefined as StrypeLayoutDividerSettings | undefined, // same as above for the split view PEA divider (pane 1), this time a default value is 50%
             
-            peaExpandedSplitterPane2Size: undefined as number | undefined, // same as above for the expanded view divider (pane 2), this time a default value is 50%
+            peaExpandedSplitterPane2Size: undefined as StrypeLayoutDividerSettings | undefined, // same as above for the expanded view divider (pane 2), this time a default value is 50%
             /* FITRUE_isPython */
             /* end properties for saving layout */
 
@@ -2475,11 +2476,11 @@ export const useStore = defineStore("app", {
                         let chainedTimeOuts = 400;
                         // Now we can restore the backuped properties of the new state related to the layout.
                         // If any of the properties for layout changes was updated, the PEA 4:3 ratio isn't any longer meaningful.
-                        if(newEditorCommandsSplitterPane2Size){
+                        if(newEditorCommandsSplitterPane2Size != undefined && newEditorCommandsSplitterPane2Size[newPEALayout??StrypePEALayoutMode.tabsCollapsed] != undefined){
                             this.editorCommandsSplitterPane2Size = newEditorCommandsSplitterPane2Size;
                             // If this splitter was changed, the PEA needs to be resized once the splitter has updated
                             setTimeout(() => {
-                                (vm.$children[0] as InstanceType<typeof AppComponent>).onStrypeCommandsSplitPaneResize({1: {size: newEditorCommandsSplitterPane2Size}});
+                                (vm.$children[0] as InstanceType<typeof AppComponent>).onStrypeCommandsSplitPaneResize({1: {size: newEditorCommandsSplitterPane2Size[newPEALayout??StrypePEALayoutMode.tabsCollapsed]}}, newPEALayout);
                             }, chainedTimeOuts);
                         }
                         if(newPEALayout){
@@ -2492,21 +2493,26 @@ export const useStore = defineStore("app", {
                         if(newPEACommandsSplitterPane2Size){
                             this.peaCommandsSplitterPane2Size = newPEACommandsSplitterPane2Size;
                             // If this splitter was changed, the PEA needs to be resized once the splitter has updated
-                            setTimeout(() => {
-                                (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).onCommandsSplitterResize({1: {size: newPEACommandsSplitterPane2Size}});
-                            }, (chainedTimeOuts += 200));
+                            if(newPEALayout != undefined && newPEACommandsSplitterPane2Size[newPEALayout] != undefined) {
+                                setTimeout(() => {
+                                    (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).onCommandsSplitterResize({1: {size: newPEACommandsSplitterPane2Size[newPEALayout]}});
+                                }, (chainedTimeOuts += 200));
+                            }
                         }
         
-                        if(newPEASplitViewSplitterPane1Size){
+                        if(newPEASplitViewSplitterPane1Size != undefined && newPEALayout != undefined && newPEASplitViewSplitterPane1Size[newPEALayout] != undefined){
                             this.peaSplitViewSplitterPane1Size = newPEASplitViewSplitterPane1Size;
                         }
         
-                        if(newPEAExpandedSplitterPane2Size) {
+                        if(newPEAExpandedSplitterPane2Size != undefined) {
                             this.peaExpandedSplitterPane2Size = newPEAExpandedSplitterPane2Size;
                             // If this splitter was changed, the PEA needs to be resized once the splitter has updated
-                            setTimeout(() => {
-                                (vm.$children[0] as InstanceType<typeof AppComponent>).onExpandedPythonExecAreaSplitPaneResize({1: {size: newPEAExpandedSplitterPane2Size}});
-                            }, (chainedTimeOuts += 200));
+                            
+                            if(newPEALayout != undefined && newPEAExpandedSplitterPane2Size[newPEALayout] != undefined) { 
+                                setTimeout(() => {
+                                    (vm.$children[0] as InstanceType<typeof AppComponent>).onExpandedPythonExecAreaSplitPaneResize({1: {size: newPEAExpandedSplitterPane2Size[newPEALayout]}});
+                                }, (chainedTimeOuts += 200));
+                            }
                         }
                         
                         // We can resolve the promise when all the changes for the UI have been done

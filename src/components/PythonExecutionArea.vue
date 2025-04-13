@@ -58,11 +58,12 @@ import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
 import { execPythonCode } from "@/helpers/execPythonCode";
 import { mapStores } from "pinia";
-import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId,  getPEATabContentContainerDivId, hasPrecompiledCodeError, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
+import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId,  getPEATabContentContainerDivId, getStrypeCommandComponentRefId, hasPrecompiledCodeError, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
 import i18n from "@/i18n";
-import { PythonExecRunningState, StrypePEALayoutData, StrypePEALayoutMode } from "@/types/types";
+import { defaultEmptyStrypeLayoutDividerSettings, PythonExecRunningState, StrypePEALayoutData, StrypePEALayoutMode } from "@/types/types";
 import { PersistentImage, PersistentImageManager, WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
 import Menu from "@/components/Menu.vue";
+import CommandsComponent from "@/components/Commands.vue";
 import SVGIcon from "@/components/SVGIcon.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { debounce } from "lodash";
@@ -316,7 +317,9 @@ export default Vue.extend({
             // The current size (in %) of the splitter's pane 1, we keep this as a variable not directly affected to the splitter's 
             // pane size to maintain visual aspects when layout switches (the actual size may be explicitly changed to 0 or 100
             // depending on the layout mode).
-            return this.appStore.peaSplitViewSplitterPane1Size ?? parseFloat(scssVars.peaSplitViewSplitterPane1SizePercentValue);
+            return (this.appStore.peaSplitViewSplitterPane1Size != undefined && this.appStore.peaLayoutMode != undefined && this.appStore.peaSplitViewSplitterPane1Size[this.appStore.peaLayoutMode] != undefined)
+                ? this.appStore.peaSplitViewSplitterPane1Size[this.appStore.peaLayoutMode] as number
+                : parseFloat(scssVars.peaSplitViewSplitterPane1SizePercentValue);
         },
 
         runCodeButtonIconText(): string {
@@ -363,7 +366,13 @@ export default Vue.extend({
             // Only update the panel size when we are in stacked layout
             if(!this.isTabsLayout){
                 // Save the PEA splitter's pane 1 size with the project (it will update currentSplitterPane1Size by reactivity)
-                this.appStore.peaSplitViewSplitterPane1Size = event[0].size;
+                if(this.appStore.peaSplitViewSplitterPane1Size != undefined){
+                    this.appStore.peaSplitViewSplitterPane1Size[this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed] = event[0].size;
+                }
+                else {
+                    // The tricky case of when the state property has never been set
+                    this.appStore.peaSplitViewSplitterPane1Size = {...defaultEmptyStrypeLayoutDividerSettings, [this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed]: event[0].size};
+                }
             }
 
             // Notify a resize of the PEA happened
@@ -583,6 +592,14 @@ export default Vue.extend({
                 else{
                     // When the PEA is maximized, we set the max height via styling: this rules over CSS.
                     setPythonExecutionAreaTabsContentMaxHeight();
+                }
+
+                // As now the dividers positions are saved by PEA layout modes, we need to set 
+                // the right position of the divider between the commands and the PEA (in collapsed layouts)
+                if((layoutMode == StrypePEALayoutMode.tabsCollapsed || layoutMode == StrypePEALayoutMode.splitCollapsed)
+                    && this.appStore.peaCommandsSplitterPane2Size && this.appStore.peaCommandsSplitterPane2Size[layoutMode] != undefined){
+                    (this.$root.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).commandsSplitterPane2Size
+                         = this.appStore.peaCommandsSplitterPane2Size[layoutMode] as number;
                 }
 
                 // If we are switching to the split view (or between split views) and graphics exists, it can add scrolling bars which then mess up the rendering.
