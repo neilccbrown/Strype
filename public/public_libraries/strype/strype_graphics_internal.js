@@ -93,6 +93,9 @@ var $builtinmodule = function(name)  {
     mod.addImage = new Sk.builtin.func(function(image, assoc) {
         return peaComponent.__vue__.getPersistentImageManager().addPersistentImage(image, assoc);
     });
+    mod.updateImage = new Sk.builtin.func(function(id, image) {
+        return peaComponent.__vue__.getPersistentImageManager().setPersistentImageImage(id, image);
+    });
     mod.imageExists = new Sk.builtin.func(function(image) {
         return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageManager().hasPersistentImage(image));
     });
@@ -263,7 +266,15 @@ var $builtinmodule = function(name)  {
     });
     
     const sayFont="\"Klee One\", sans-serif";
+    // Load font:
+    let myFont = new FontFace(
+        "Klee One",
+        "url(fonts/klee-one-v12-latin-regular.woff2)"
+    );
 
+    myFont.load().then((font) => {
+        document.fonts.add(font);
+    });
     // Since this is quite expensive, we cache it in case users repeatedly redraw the same text:
     // The map can only really use string keys, so we assemble the key into a string of the format:
     // $fontSize:$maxWidth:$maxHeight:$text

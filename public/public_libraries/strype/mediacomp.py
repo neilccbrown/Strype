@@ -267,7 +267,7 @@ MainImage = None
 def _invalidateCache(picture, writeback = True):
     if writeback and hasattr(picture, "mediacomp_pixels") and hasattr(picture, "mediacomp_written_to") and picture.mediacomp_written_to:
         # We don't know where we wrote so we have to set all:
-        picture.bulk_set_pixels(picture.mediacomp_pixels)
+        picture._bulk_set_pixels(picture.mediacomp_pixels)
     if hasattr(picture, "mediacomp_pixels"):
         delattr(picture, "mediacomp_pixels")
     if hasattr(picture, "mediacomp_written_to"):
@@ -289,7 +289,7 @@ def addArc(picture, startX, startY, width, height, start, angle, color="black"):
     _invalidateCache(picture)
     picture.set_fill(None)
     picture.set_stroke(_convertColor(color))
-    picture.arc(startX, startY, width, height, start, angle)
+    picture.draw_oval(startX, startY, width, height, start, angle)
 
 def addArcFilled(picture, startX, startY, width, height, start, angle, color="black"):
     """
@@ -307,7 +307,7 @@ def addArcFilled(picture, startX, startY, width, height, start, angle, color="bl
     _invalidateCache(picture)
     picture.set_fill(_convertColor(color))
     picture.set_stroke(_convertColor(color))
-    picture.arc(startX, startY, width, height, start, angle)
+    picture.draw_oval(startX, startY, width, height, start, angle)
 
 def addLine(picture, startX, startY, endX, endY, color="black"):
     """
@@ -321,7 +321,7 @@ def addLine(picture, startX, startY, endX, endY, color="black"):
     """
     _invalidateCache(picture)
     picture.set_stroke(_convertColor(color))
-    picture.line(startX, startY, endX, endY)
+    picture.draw_line(startX, startY, endX, endY)
 
 def addOval(picture, startX, startY, width, height, color="black"):
     """
@@ -336,7 +336,7 @@ def addOval(picture, startX, startY, width, height, color="black"):
     _invalidateCache(picture)
     picture.set_fill(None)
     picture.set_stroke(_convertColor(color))
-    picture.arc(startX, startY, width, height, 0, 360)
+    picture.draw_oval(startX, startY, width, height, 0, 360)
 
 def addOvalFilled(picture, startX, startY, width, height, color="black"):
     """
@@ -351,7 +351,7 @@ def addOvalFilled(picture, startX, startY, width, height, color="black"):
     _invalidateCache(picture)
     picture.set_fill(_convertColor(color))
     picture.set_stroke(_convertColor(color))
-    picture.arc(startX, startY, width, height, 0, 360)
+    picture.draw_oval(startX, startY, width, height, 0, 360)
 
 def addRect(picture, startX, startY, width, height, color="black"):
     """
@@ -366,7 +366,7 @@ def addRect(picture, startX, startY, width, height, color="black"):
     _invalidateCache(picture)
     picture.set_fill(None)
     picture.set_stroke(_convertColor(color))
-    picture.rectangle(startX, startY, width, height)
+    picture.draw_rect(startX, startY, width, height)
 
 def addRectFilled(picture, startX, startY, width, height, color="black"):
     """
@@ -381,7 +381,7 @@ def addRectFilled(picture, startX, startY, width, height, color="black"):
     _invalidateCache(picture)
     picture.set_fill(_convertColor(color))
     picture.set_stroke(_convertColor(color))
-    picture.rectangle(startX, startY, width, height)
+    picture.draw_rect(startX, startY, width, height)
 
 def addText(picture, xpos, ypos, text, color="black"):
     """
@@ -486,7 +486,7 @@ def getHeight(picture):
     return picture.get_height()
 
 def _cachePixels(picture):
-    picture.mediacomp_pixels = picture.bulk_get_pixels()
+    picture.mediacomp_pixels = picture._bulk_get_pixels()
     picture.mediacomp_written_to = False
 
 def getPixels(picture):
@@ -571,7 +571,7 @@ def makeBrighter(color):
                 elif c[i] > 0 and c[i] == 2:
                     c[i] += 2
             lighterColor = Color(c[0], c[1], c[2])
-        return lighterColor
+    return lighterColor
 
 
 def makeDarker(color):
@@ -626,7 +626,7 @@ def makeStyle(fontName, emphasis, size):
     :param size: The font size.
     :return the style made from the inputs
     """
-    return Font(_graphics.FontFamily(fontName), size)
+    return Font(fontName, size)
 
 
 def setColor(pixel, color):
@@ -713,7 +713,7 @@ def show(picture):
     """
     global MainImage
     if not MainImage:
-        MainImage = _graphics.Actor(_graphics.Image(800, 600), 0, 0).edit_image()
+        MainImage = _graphics.Actor(_graphics.Image(800, 600), 0, 0).get_image()
     MainImage.set_fill("white")
     MainImage.fill()
     # This will write any changes to the picture:

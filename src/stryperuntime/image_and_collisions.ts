@@ -1,4 +1,4 @@
-import {System, Box, Point, Circle} from "detect-collisions";
+import {System, Box, Point} from "detect-collisions";
 
 export interface PersistentImage {
     id: number,
@@ -9,7 +9,7 @@ export interface PersistentImage {
     scale: number, // 1.0 means same size as original image
     collisionBox: Box | null, // The item in the collision detection system.  Null if the object is not collidable
     dirty: boolean,
-    associatedObject: any, // The object to remember for this PersistentImage (so far, this is the Actor from the strype.graphics Python module)
+    associatedObject: any | null, // The object to remember for this PersistentImage (so far, this is the Actor from the strype.graphics Python module)
 }
 
 export const WORLD_WIDTH = 800;
@@ -98,7 +98,20 @@ export class PersistentImageManager {
     public removePersistentImageAfter(id: number, secs: number): void {
         setTimeout(() => this.removePersistentImage(id), secs * 1000);
     }
-    
+
+    public setPersistentImageImage(id: number, imageOrCanvas : HTMLImageElement | OffscreenCanvas): void {
+        const obj = this.persistentImages.get(id);
+        if (obj != undefined) {
+            obj.img = imageOrCanvas;
+            obj.dirty = true;
+            if (obj.collisionBox != null) {
+                // To update box size, easiest to re-add:
+                this.setPersistentImageCollidable(id, false);
+                this.setPersistentImageCollidable(id, true);
+                
+            }
+        }
+    }
 
     public setPersistentImageLocation(id: number, x: number, y: number): void {
         const obj = this.persistentImages.get(id);
@@ -235,23 +248,37 @@ export class PersistentImageManager {
         }
         return r;
     }
+    
+    public getAllActors() : any[] {
+        return Array.from(this.persistentImages.values()).map((p) => p.associatedObject).filter((x) => x != null);
+    }
 
-    // Gets the associatedObject of all items which overlap the given persistent image id.
+    // Gets the associatedObject of all items which have centres within the specific radius of the given persistent image id.
     public getAllNearby(id: number, radius: number) : any[] {
         const us = this.persistentImages.get(id);
         const all: PersistentImage[] = [];
         if (us) {
-            const collisionCircle = new Circle({x: us.x, y: us.y}, radius);
-            this.collisionSystem.insert(collisionCircle);
+            const candidates = this.collisionSystem.search({
+                minX: us.x - radius,
+                minY: us.y - radius,
+                maxX: us.x + radius,
+                maxY: us.y + radius,
+            }) as Box[];
             
-            this.collisionSystem.checkOne(collisionCircle, (found) => {
-                const pimg = this.boxToImageMap.get(found.b as Box);
-                // Don't include ourselves in the results:
-                if (pimg && pimg.id != id) {
-                    all.push(pimg.associatedObject);
+            const radius_squared = radius * radius;
+
+            // Filter down to only those whose center is truly inside the circle
+            candidates.forEach((body) => {
+                const dx = body.pos.x - us.x;
+                const dy = body.pos.y - us.y;
+                if (dx * dx + dy * dy <= radius_squared) {
+                    const pimg = this.boxToImageMap.get(body);
+                    // Don't include ourselves in the results:
+                    if (pimg && pimg.id != id) {
+                        all.push(pimg.associatedObject);
+                    }
                 }
             });
-            this.collisionSystem.remove(collisionCircle);
         }
         return all;
     }

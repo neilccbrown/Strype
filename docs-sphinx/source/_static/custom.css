@@ -1,8 +1,24 @@
 div.sphinxsidebar {
     width: 24em !important;
+    background-color: seashell;
 }
+div.sphinxsidebar a, div.sphinxsidebar h3, div.sphinxsidebar h3 a, div.sphinxsidebar ul {
+    color: #20435c;
+}
+div.related, div.footer {
+    position: sticky;
+    top: 0;
+    z-index: 999;
+}
+div.footer {
+    background-color: #133f52;
+}
+
 div.bodywrapper {
     margin: 0 0 0 calc(24em + 30px) !important;
+}
+div.document {
+    background-color: white;
 }
 
 dl.method > dt.sig {

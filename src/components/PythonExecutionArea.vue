@@ -78,6 +78,7 @@ let targetContext : OffscreenCanvasRenderingContext2D | null = null;
 let targetCanvas : OffscreenCanvas | null = null;
 let audioContext : AudioContext | null = null; // Important we don't initialise here, for permission reasons
 let mostRecentClickedItems : PersistentImage[] = []; // All the items under the mouse cursor at last click
+let mostRecentClickDetails : number[] | null = null; // Array of four numbers: x, y, button, click_count
 const pressedKeys = new Map<string, boolean>();
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
 const bufferToSource = new Map<AudioBuffer, AudioBufferSourceNode>(); // Used to stop playing sounds
@@ -461,6 +462,7 @@ export default Vue.extend({
                 persistentImageManager.clear();
                 // Clear input:
                 mostRecentClickedItems = [];
+                mostRecentClickDetails = null;
                 pressedKeys.clear();
                 window.addEventListener("keydown", this.graphicsCanvasKeyDown);
                 window.addEventListener("keyup", this.graphicsCanvasKeyUp);
@@ -803,7 +805,7 @@ export default Vue.extend({
             }
             // It's not an error if source is null, it either means the sound hasn't been playing, or it already finished
         },
-        graphicsCanvasClick(event: MouseEvent) {
+        graphicsCanvasClick(event: PointerEvent) {
             const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
             // The canvas might be e.g. 200 x 160 (with positive Y down) and we need to translate to the 800x600
             // logical canvas (with 0, 0 centre) and positive U upwards.
@@ -814,17 +816,23 @@ export default Vue.extend({
             // We have to invert the Y axis because positive is up there, hence * -1 on the end:
             const adjustedY = ((event.offsetY / domCanvas.getBoundingClientRect().height) - 0.5) * graphicsCanvasLogicalHeight * -1;
             mostRecentClickedItems = this.getPersistentImageManager().calculateAllOverlappingAtPos(adjustedX, adjustedY);
+            mostRecentClickDetails = [adjustedX, adjustedY, event.button, event.detail];
         },
         consumeLastClickedItems() : PersistentImage[] {
             const r = mostRecentClickedItems;
             mostRecentClickedItems = [];
             return r;
         },
+        consumeLastClickDetails() : number[] | null {
+            const d = mostRecentClickDetails;
+            mostRecentClickDetails = null;
+            return d;
+        },
         graphicsCanvasKeyDown(event: KeyboardEvent) {
-            pressedKeys.set(keyMapping.get(event.key) ?? event.key, true);
+            pressedKeys.set(keyMapping.get(event.key) ?? event.key.toLowerCase(), true);
         },
         graphicsCanvasKeyUp(event: KeyboardEvent) {
-            pressedKeys.set(keyMapping.get(event.key) ?? event.key, false);
+            pressedKeys.set(keyMapping.get(event.key) ?? event.key.toLowerCase(), false);
         },
         getPressedKeys() {
             return pressedKeys;

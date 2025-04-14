@@ -1114,7 +1114,7 @@ describe("Graphics library", () => {
         });
     });
 
-    it("Shows completions for Image methods on make_copy()", () => {
+    it("Shows completions for Image methods on clone()", () => {
         focusEditorAC();
         // Add graphics import:
         cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
@@ -1123,7 +1123,7 @@ describe("Graphics library", () => {
         // Add a function frame and trigger auto-complete:
         cy.get("body").type(" ");
         cy.wait(500);
-        cy.get("body").type("e.make_copy().{ctrl} ");
+        cy.get("body").type("e.clone().{ctrl} ");
         withAC((acIDSel, frameId) => {
             cy.get(acIDSel).should("be.visible");
             checkExactlyOneItem(acIDSel, null, "get_width()");
@@ -1134,7 +1134,7 @@ describe("Graphics library", () => {
         });
     });
 
-    it("Shows completions for Image methods on Actor.edit_image()", () => {
+    it("Shows completions for Image methods on Actor.get_image()", () => {
         focusEditorAC();
         // Add graphics import:
         cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
@@ -1143,7 +1143,7 @@ describe("Graphics library", () => {
         // Add a function frame and trigger auto-complete:
         cy.get("body").type(" ");
         cy.wait(500);
-        cy.get("body").type("a.edit_image().{ctrl} ");
+        cy.get("body").type("a.get_image().{ctrl} ");
         withAC((acIDSel, frameId) => {
             cy.get(acIDSel).should("be.visible");
             checkExactlyOneItem(acIDSel, null, "get_width()");

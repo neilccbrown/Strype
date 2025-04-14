@@ -36,6 +36,8 @@ _color_map = {"aliceblue":"#f0f8ff","antiquewhite":"#faebd7","aqua":"#00ffff","a
 def _round_and_clamp_0_255(number):
     return min(max(int(round(number)), 0), 255)
 
+_bk_image = None
+
 #@@ Color
 def color_from_string(html_string):
     """
@@ -84,7 +86,7 @@ class Color:
         self.alpha = _round_and_clamp_0_255(alpha)
 
     #@@ str    
-    def to_html(self):
+    def _to_html(self):
         """
         Get the HTML version of this Color, in the format #RRGGBBAA where each pair is 2 hexadecimal digits.
         
@@ -96,19 +98,7 @@ class Color:
         a = _round_and_clamp_0_255(self.alpha)
         return "#{:02x}{:02x}{:02x}{:02x}".format(r, g, b, a)
 
-class Dimension:
-    """
-    A dimension value indicating a width and a height, for example the size of an image.
-    """
-    def __init__(self, width, height):
-        """
-        Constructs a dimension value with the given width and height.
-        
-        :param width: The width.
-        :param height: The height.
-        """
-        self.width = width
-        self.height = height
+_Dimension = _collections.namedtuple("Dimension", ["width", "height"])
 
 class Image:
     """
@@ -135,7 +125,7 @@ class Image:
         # Note: for internal purposes we sometimes don't want to make an image, so we pass -1,-1 for that case:
         if width > 0 and height > 0:
             self.__image = _strype_graphics_internal.makeCanvasOfSize(width, height)
-            self.clear_rect(0, 0, width, height)
+            self.clear()
             _strype_graphics_internal.canvas_setFill(self.__image, "white")
             _strype_graphics_internal.canvas_setStroke(self.__image, "black")
         else:
@@ -156,7 +146,7 @@ class Image:
         :param fill: The color to use for filling.  It can be either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0"), a :class:`Color` object, or None.
         """
         if isinstance(color, Color):
-            _strype_graphics_internal.canvas_setFill(self.__image, color.to_html())
+            _strype_graphics_internal.canvas_setFill(self.__image, color._to_html())
         elif isinstance(color, str) or color is None:
             _strype_graphics_internal.canvas_setFill(self.__image, color)
         else:
@@ -170,7 +160,7 @@ class Image:
         :param fill: The color to use for drawing.  It can be either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0"), a :class:`Color` object, or None.
         """
         if isinstance(color, Color):
-            _strype_graphics_internal.canvas_setStroke(self.__image, color.to_html())
+            _strype_graphics_internal.canvas_setStroke(self.__image, color._to_html())
         elif isinstance(color, str) or color is None:
             _strype_graphics_internal.canvas_setStroke(self.__image, color)
         else:
@@ -202,7 +192,7 @@ class Image:
         _strype_graphics_internal.canvas_setPixel(self.__image, x, y, (color.red, color.green, color.blue, color.alpha))
 
     #@@ list
-    def bulk_get_pixels(self):
+    def _bulk_get_pixels(self):
         """
         Gets the values of the pixels of the image in one large array.  Index 0 in the array is the red value,
         of the pixel at the top-left (0,0) in the image.  Indexes 1, 2 and 3 are the green, blue and alpha of that pixel.
@@ -213,25 +203,20 @@ class Image:
         """
         return _strype_graphics_internal.canvas_getAllPixels(self.__image)
 
-    def bulk_set_pixels(self, rgba_array):
+    def _bulk_set_pixels(self, rgba_array):
         """
         Sets the values of the pixels from RGBA values in one giant array.  The pixels should be arranged as described
-        in `bulk_get_pixels()`.  The array should thus be of length width * height * 4.
+        in `_bulk_get_pixels()`.  The array should thus be of length width * height * 4.
         
         :param rgba_array: An array of 0-255 RGBA values organised as described above.
         """
         _strype_graphics_internal.canvas_setAllPixelsRGBA(self.__image, rgba_array)
 
-    def clear_rect(self, x, y, width, height):
+    def clear(self):
         """
-        Clears the given rectangle (i.e. sets all the pixels to be fully transparent).
-        
-        :param x: The left x coordinate of the rectangle (inclusive).
-        :param y: The top y coordinate of the rectangle (inclusive).
-        :param width: The width of the rectangle
-        :param height: The height of the rectangle.
+        Clears the image (i.e. sets all the pixels to be fully transparent).
         """
-        _strype_graphics_internal.canvas_clearRect(self.__image, x, y, width, height)
+        _strype_graphics_internal.canvas_clearRect(self.__image, 0, 0, self.get_width(), self.get_height())
 
     def draw_image(self, image, x, y):
         """
@@ -244,7 +229,7 @@ class Image:
         dim = _strype_graphics_internal.getCanvasDimensions(image._Image__image)
         _strype_graphics_internal.canvas_drawImagePart(self.__image, image._Image__image, x, y, 0, 0, dim[0], dim[1], 1.0)
 
-    def draw_part_of_image(self, image, x, y, sx, sy, width, height, scale = 1.0):
+    def _draw_part_of_image(self, image, x, y, sx, sy, width, height, scale = 1.0):
         """
         Draws part of the given image into this image.
         
@@ -277,7 +262,8 @@ class Image:
         """
         return _strype_graphics_internal.getCanvasDimensions(self.__image)[1]
 
-    def draw_text(self, text, x, y, font_size, max_width = 0, max_height = 0, font_family = None):
+    #@@ _Dimension
+    def draw_text(self, text, x, y, font_size = 32, max_width = 0, max_height = 0, font_family = None):
         """
         Draw text onto the image.  If a maximum width is specified, the text will be wrapped to fit the given width.  
         If a maximum height is specified as well, the font size will be reduced if necessary to fit within the width and height.  
@@ -291,14 +277,16 @@ class Image:
         :param font_size: The size of the text, in pixels.
         :param max_width: The maximum width of the text (or 0 for no maximum).
         :param max_height: The maximum height of the text (or 0 for no maximum).
-        :param font_family: The font family for the text. Use None for the default font family.
+        :return: A named tuple width width and height of the actually drawn area.
         """
-        if font_family is not None and not isinstance(font_family, FontFamily):
-            raise TypeError("Font family must be an instance of FontFamily")
-        dim = _strype_graphics_internal.canvas_drawText(self.__image, text, x, y, font_size, max_width, max_height, font_family._FontFamily__font if font_family is not None else None)
-        return Dimension(dim['width'], dim['height'])
+        if font_family is not None:
+            font_family = _strype_graphics_internal.canvas_loadFont("google", font_name)
+            if not font_family:
+                raise Exception("Could not load font " + font_name)
+        dim = _strype_graphics_internal.canvas_drawText(self.__image, text, x, y, font_size, max_width, max_height, font_family)
+        return _Dimension(dim['width'], dim['height'])
         
-    def rounded_rectangle(self, x, y, width, height, corner_size):
+    def draw_rounded_rect(self, x, y, width, height, corner_size = 10):
         """
         Draw a rectangle with rounded corners.  The border is drawn using the stroke color (see `set_stroke`) 
         and filled using the current fill color (see `set_fill`).
@@ -307,11 +295,11 @@ class Image:
         :param y: The y coordinate of the top-left of the rectangle.
         :param width: The width of the rectangle.
         :param height: The height of the rectangle.
-        :param corner_size: The radius of the rounded corners of the rectangle.
+        :param corner_size: The radius of the rounded corners of the rectangle.  Defaults to 10 if omitted.
         """
         _strype_graphics_internal.canvas_roundedRect(self.__image, x, y, width, height, corner_size)
         
-    def rectangle(self, x, y, width, height):
+    def draw_rect(self, x, y, width, height):
         """
         Draw a rectangle.  The border is drawn using the stroke color (see `set_stroke`) 
         and filled using the current fill color (see `set_fill`).
@@ -323,7 +311,7 @@ class Image:
         """
         _strype_graphics_internal.canvas_roundedRect(self.__image, x, y, width, height, 0)
         
-    def line(self, start_x, start_y, end_x, end_y):
+    def draw_line(self, start_x, start_y, end_x, end_y):
         """
         Draw a line.  The line is drawn in the current stroke color.
         
@@ -334,26 +322,28 @@ class Image:
         """
         _strype_graphics_internal.canvas_line(self.__image, start_x, start_y, end_x, end_y)
         
-    def arc(self, centre_x, centre_y, width, height, angle_start, angle_amount):
+    def draw_oval(self, centre_x, centre_y, x_radius, y_radius, angle_start = 0, angle_amount = 360):
         """
-        Draws an arc (a part of an ellipse, an ellipse being a circle with a width than can be different than height).
-        Imagine an ellipse with a given centre position and width and height.  The `angle_start` parameter
+        Draws an oval or part of one (also known as an ellipse; a circle with a width that can be different than height).
+        
+        If you want to draw part of an oval, pass the last two parameters.
+        Imagine an oval with a given centre position and X/Y radius.  The `angle_start` parameter
         is the angle from the centre to the start of the arc, in degrees (0 points to the right, positive values go clockwise),
         and the `angle_amount` is the amount of degrees to travel (positive goes clockwise, negative goes anti-clockwise) to
         the end point.
         
-        The arc will be filled with the current fill (see `set_fill()`) and drawn in the current stroke (see `set_stroke()`).
+        The oval will be filled with the current fill (see `set_fill()`) and drawn in the current stroke (see `set_stroke()`).
         
-        :param centre_x: The centre x coordinate of the arc.
-        :param centre_y: The centre y coordinate of the arc.
-        :param width: The width of the ellipse that describes the arc.
-        :param height: The height of the ellipse that describes the arc.
+        :param centre_x: The centre x coordinate of the oval.
+        :param centre_y: The centre y coordinate of the oval.
+        :param x_radius: The radius of the oval on the X axis.
+        :param y_radius: The radius of the oval on the Y axis.
         :param angle_start: The starting angle of the arc, in degrees (0 points to the right).
         :param angle_amount: The amount of degrees to travel (positive goes clockwise).
         """
-        _strype_graphics_internal.canvas_arc(self.__image, centre_x, centre_y, width, height, angle_start, angle_amount)
+        _strype_graphics_internal.canvas_arc(self.__image, centre_x, centre_y, x_radius, y_radius, angle_start, angle_amount)
 
-    def circle(self, centre_x, centre_y, radius):
+    def draw_circle(self, centre_x, centre_y, radius):
         """
         Draw a circle at a given position.  The border is drawn using the stroke color (see `set_stroke`) 
         and filled using the current fill color (see `set_fill`).
@@ -362,9 +352,9 @@ class Image:
         :param centre_y: The y coordinate of the centre of the circle.
         :param width: The radius of the circle.
         """
-        self.arc(centre_x, centre_y, radius, radius, 0, 360)
+        self.draw_oval(centre_x, centre_y, radius, radius)
 
-    def polygon(self, points):
+    def draw_polygon(self, points):
         """
         Draw a polygon with the given corner points.  The last point will be connected to the first point to close the polygon.
         
@@ -376,14 +366,22 @@ class Image:
         _strype_graphics_internal.polygon_xy_pairs(self.__image, points)
 
     #@@ Image
-    def make_copy(self):
+    def clone(self, scale = 1.0):
         """
         Return a copy of this image.
         
+        :param: The scaling factor of the new image.  1.0 returns an identical image,
+                0.5 will return an image half the size, 2.0 will return an image double the size.
         :return: The new :class:`Image` that is a copy of this image.
         """
-        copy = Image(self.get_width(), self.get_height())
-        copy.draw_image(self, 0, 0)
+        if scale == 1:
+            copy = Image(self.get_width(), self.get_height())
+            copy.draw_image(self, 0, 0)
+        elif scale <= 0:
+            raise ValueError("Clone scale must be greater than zero")
+        else:
+            copy = Image(self.get_width() * scale, self.get_height() * scale)
+            copy._draw_part_of_image(self, 0, 0, 0, 0, self.get_width(), self.get_height(), scale)
         return copy
 
     def download(self, filename="strype-image"):
@@ -412,41 +410,6 @@ class Image:
         _strype_graphics_internal.canvas_downloadPNG(self.__image, filename)
         Image.__last_download = _time.time()
 
-class FontFamily:
-    """
-    A font family is a particular font type, e.g. Arial or Courier.
-    """
-    def __init__(self, font_provider, font_name):
-        """
-        Loads the given font name from the given font provider.  At the moment, the only font provider which is supported is
-        "google", meaning `Google Fonts <https://fonts.google.com>`.  So if you find a particular font you like on Google Fonts, say Roboto, you can load it
-        by calling:
-        
-        .. code-block:: python
-        
-            FontFamily("google", "Roboto") 
-            
-        If the font cannot be loaded, you will get an error.  This usually indicates either an issue with your Internet connection, or that you have entered the font name wrongly.
-          
-        :param font_provider: The provider of the fonts.  Currently only "google" is supported.
-        :param font_name: The name of the font to load, as shown on that provider.
-        """
-        if not _strype_graphics_internal.canvas_loadFont(font_provider, font_name):
-            raise Exception("Could not load font " + font_name)
-        self.__font = font_name
-
-
-#@@ bool
-def in_bounds(x, y):
-    """
-    Checks if the given X, Y position is in the visible bounds of (-399,-299) inclusive to (400, 300) exclusive.
-    
-    :param x: The x position to check
-    :param y: The y position to check
-    :return: A boolean indicating whether it is in the visible bounds: True if it is in bounds, False if it is not.
-    """
-    return -399 <= x < 400 and -299 <= y < 300
-
 class Actor:
     """
     An Actor is an item in the world with a specific image, position, rotation and scale.  If an actor is created,
@@ -455,7 +418,7 @@ class Actor:
     
     # Private attributes:
     # __id: the identifier of the PersistentImage that represents this actor on screen.  Should never be None
-    # __editable_image: the editable image of this actor, if the user has ever called edit_image() on us.
+    # __editable_image: the editable image of this actor, if the user has ever called get_image() on us.
     # __tag: the user-supplied tag of the actor.  Useful to leave the type flexible, we just pass it in and out.
     # __say: the identifier of the PersistentImage with the current speech bubble for this actor.  Is None when there is no current speech.
     # Note that __say can be removed on the Javascript side without our code executing, due to a timeout.  So
@@ -512,19 +475,7 @@ class Actor:
         """
         _strype_graphics_internal.setImageRotation(self.__id, degrees)
         # Note: no need to update say position if we are just rotating
-        
-    def set_scale(self, scale):
-        """
-        Sets the actor's scale (size multiplier).  The default is 1, larger values make it bigger (for example, 2 is double size),
-        and smaller values make it smaller (for example, 0.5 is half size).  It must be a positive number greater than zero.
-        
-        :param scale: The new scale to set, replacing the old scale.
-        """
-        if scale <= 0:
-            raise ValueError("Scale must be greater than zero")
-        _strype_graphics_internal.setImageScale(self.__id, scale)
-        self._update_say_position()
-        
+                
     #@@ float
     def get_rotation(self):
         """
@@ -533,17 +484,6 @@ class Actor:
         :return: The rotation of this Actor, in degrees, or None if the actor has been removed from the world.
         """
         return _strype_graphics_internal.getImageRotation(self.__id)
-
-    #@@ float
-    def get_scale(self):
-        """
-        Gets the current scale of this Actor.
-        
-        Note: returns None if the actor has been removed by a call to remove().
-        
-        :return: The scale of this Actor, where 1.0 is the default scale. 
-        """
-        return _strype_graphics_internal.getImageScale(self.__id)
     
     def get_tag(self):
         """
@@ -639,18 +579,19 @@ class Actor:
         # If rotation is None, do nothing
 
     #@@ bool   
-    def is_at_edge(self):
+    def is_at_edge(self, distance = 2):
         """
         Check whether the actor is at the edge of the world.  An actor is considered to be at the edge 
-        if its location (its center point) is within two pixels of the world bounds.
+        if its location (its center point) is within `distance` pixels of the world bounds.
         
-        :return: True if the actor is at the edge of the world, False otherwise. 
+        :param: distance The amount of pixels to use as edge of world.  Must be greater than zero.
+        :return: True if the actor is within `distance pixels of the edge of the world, False otherwise. 
         """
         x = self.get_exact_x()
         y = self.get_exact_y()
         if x is None or y is None:
             return False
-        return x < -397 or x > 398 or y < -297 or y > 298
+        return x < (-399 + distance) or x > (400 - distance) or y < (-299 + distance) or y > (300 - distance)
 
     #@@ bool   
     def is_touching(self, actor_or_tag):
@@ -688,19 +629,6 @@ class Actor:
         :return: The :class:`Actor` we are touching, if any, or None if we are not touching any actor. 
         """
         return next(iter(self.get_all_touching(tag)), None)
-    
-    def set_can_touch(self, can_touch):
-        """
-        Changes whether the actor is part of the collision detection system.
-        
-        If you turn it off then this actor will never show up in the collision checking.
-        You may want to do this if you have an actor which makes no sense to collide (such
-        as a score board, or game over text), and/or to speed up the simulation for actors
-        where you don't need collision detection (e.g. visual effects).
-        
-        :param can_touch: Whether this actor can participate in collisions.
-        """
-        _strype_input_internal.setCollidable(self.__id, can_touch)
 
     #@@ list
     def get_all_touching(self, tag = None):
@@ -729,10 +657,10 @@ class Actor:
             a.remove()
 
     #@@ list
-    def get_all_nearby(self, distance, tag = None):
+    def get_in_range(self, distance, tag = None):
         """
         Return all actors which are within a given distance of this actor.  The distance is measured as the 
-        distance of the logication location (the center point) of each actor.
+        distance of the logical location (the center point) of each actor.
         
         If a tag is specified, only actors with the given tag will be returned.
         
@@ -744,7 +672,7 @@ class Actor:
 
 
     #@@ Image
-    def edit_image(self):
+    def get_image(self):
         """
         Return the image of this actor.  The image object returned is the actual actor's live image -- drawing on it will 
         become visible on the actor's image.
@@ -753,13 +681,32 @@ class Actor:
         """
         # Note: we don't want to have an editable image by default because it is slower to render
         # the editable canvas than to render the unedited image (I think!?)
+        # That is, if you load an image from a file it's kept internally as an HTML Image,
+        # but if you call get_image() we turn it into an off-screen canvas so that it can be edited.
         if self.__editable_image is None:
             # The -1, -1 sizing indicates we will set the image ourselves afterwards:
             self.__editable_image = Image(-1, -1)
             self.__editable_image._Image__image = _strype_graphics_internal.makeImageEditable(self.__id) 
         return self.__editable_image
     
-    def say(self, text, font_size = 20, max_width = 300, max_height = 200, font_family = None):
+    def set_image(self, image_or_filename):
+        """
+        Set an actor's image
+        
+        The image parameter can be either an :class:`Image` object or an image name (a string).  If it is a name, it refers to an image 
+        from Strype's image library.
+        :param image_or_filename: Either an :class:`Image` object, or a string with an image name (from Strype's library).
+        """
+        if isinstance(image_or_filename, Image):
+            _strype_graphics_internal.updateImage(self.__id, image_or_filename._Image__image)
+            self.__editable_image = image_or_filename
+        elif isinstance(image_or_filename, str):
+            _strype_graphics_internal.updateImage(self.__id, _strype_graphics_internal.loadAndWaitForImage(image_or_filename))
+            self.__editable_image = None
+        else:
+            raise TypeError("Actor image parameter must be string or Image")
+    
+    def say(self, text, font_size = 24, max_width = 300, max_height = 200, font_family = None):
         """
         Show a speech bubble next to the actor with the given text.  The only required parameter is the
         text, all others are optional.  \\n can be used to start a new line.
@@ -795,8 +742,9 @@ class Actor:
             # We draw a rounded rect for the background, then draw the text on:
             sayImg.set_fill("white")
             sayImg.set_stroke("#555555FF")
-            sayImg.rounded_rectangle(0, 0, textDimensions.width + 2 * padding, textDimensions.height + 2 * padding, padding)
-            sayImg.draw_part_of_image(textOnlyImg, padding, padding, 0, 0, textDimensions.width, textDimensions.height)
+            sayImg.draw_rounded_rect(0, 0, textDimensions.width + 2 * padding, textDimensions.height + 2 * padding, padding)
+            sayImg._draw_part_of_image(textOnlyImg, padding, padding, 0, 0, textDimensions.width, textDimensions.height)
+            # The None for associated object means it won't be collidable:
             self.__say = _strype_graphics_internal.addImage(sayImg._Image__image, None)
             self._update_say_position()
             
@@ -823,7 +771,9 @@ class Actor:
             for p in placements:
                 # Note, we halve the width/height of the actor because we're going from centre of actor,
                 # but we do not halve the width/height of the say here because we want to see if the whole bubble fits:
-                fits = in_bounds(self.get_x() + p[0]*(width/2 + say_dim['width']), self.get_y() + p[1]*(height/2 + say_dim['height']))
+                poss_x = self.get_x() + p[0]*(width/2 + say_dim['width'])
+                poss_y = self.get_y() + p[1]*(height/2 + say_dim['height'])
+                fits = poss_x >= -399 and poss_x <= 400 and poss_y >= -299 and poss_y <= 300
                 # If it fits or its our last fallback:
                 if fits or p == [0,0] :
                     # Here we do halve both widths/heights because we are placing the centre:
@@ -863,11 +813,29 @@ def load_image(name):
 def get_clicked_actor():
     """
     Return the last actor receiving a mouse click.  If no actor was clicked since this function was last called, None is returned.
-    Every click will be reported only once -- a seccond call to this function in quick succession will return None.
+    Every click will be reported only once -- a second call to this function in quick succession will return None.
     
     :return: The most recently clicked :class:`Actor`, or None if no actor was clicked since the last call.
     """
     return _strype_input_internal.getAndResetClickedItem()
+
+_ClickDetails = _collections.namedtuple("ClickDetails", ["x", "y", "button", "click_count"])
+
+#@@ _ClickDetails
+def get_mouse_click():
+    """
+    Get the details for the last mouse click.  If the mouse was not clicked since this function was last called, None is returned.
+    Every click will be reported only once -- a second call to this function in quick succession will return None.
+    
+    This function is independent of `get_clicked_actor()`; they will potentially report details of the same mouse click it was on an actor.
+    
+    :return: A named tuple with details of the last click: `(x, y, button, click_count)` where button is 0 for primary (left), 1 for secondary (right); or None if the mouse was not clicked since the last call.
+    """
+    c = _strype_input_internal.getAndResetClickDetails()
+    if c is None:
+        return None
+    else:
+        return _ClickDetails(c[0], c[1], c[2], c[3])
 
 #@@ bool
 def key_pressed(keyname):
@@ -875,15 +843,15 @@ def key_pressed(keyname):
     Check if a given key is currently pressed down.
 
     The names of printable keys are the character they print (e.g. "a" for the a-key). Other keys have names 
-    describing their function. These include "left", "right", "up, "down", "Enter", "Tab", "Escape", "Shift", 
-    "Control", "Alt", "Backspace", Delete".
+    describing their function. These include "left", "right", "up, "down", "enter", "tab", "escape", "shift", 
+    "control", "alt", "backspace", delete".
     
     :param keyname: The name of the key to check.
     :return: True if the key is currently pressed down, False otherwise.
     """
-    return _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys())[keyname]
+    return _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys())[keyname.lower()]
 
-def set_background(image_or_name_or_color, tile_to_fit = True):
+def set_background(image_or_name_or_color, scale_to_fit = False):
     """
     Set the current background image.
     
@@ -910,7 +878,7 @@ def set_background(image_or_name_or_color, tile_to_fit = True):
         dest = Image(808, 606)
         w = image.get_width()
         h = image.get_height()
-        if tile_to_fit:
+        if not scale_to_fit:
             # Since we centre, even if two copies would fit, we will need 3 because we need half a copy
             # each side of the centre.  So just always draw one more than we need:
             horiz_copies = (_math.ceil(808 / w) if w < 808 else 0) + 1
@@ -925,8 +893,8 @@ def set_background(image_or_name_or_color, tile_to_fit = True):
                 for j in range(0, vert_copies):
                     dest.draw_image(image, x_offset + i * w, y_offset + j * h)
         else:
-            scale = min(808 / w, 606 / h)
-            dest.draw_part_of_image(image, (808 - scale * w) / 2, (606 - scale * h) / 2, 0, 0, w, h, scale)
+            scale = max(808 / w, 606 / h)
+            dest._draw_part_of_image(image, (808 - scale * w) / 2, (606 - scale * h) / 2, 0, 0, w, h, scale)
         return dest
         
     if isinstance(image_or_name_or_color, Image):
@@ -947,25 +915,66 @@ def set_background(image_or_name_or_color, tile_to_fit = True):
     else:
         raise TypeError("image_or_filename_or_color must be an Image or a string or a Color")
 
+    global _bk_image
+    _bk_image = bk_image
     _strype_graphics_internal.setBackground(bk_image._Image__image)        
+
+#@@ Image
+def get_background():
+    """
+    Gets the current background image.
     
+    Any changes to the image (such as drawing on it) will be shown on the live display.
+    
+    Note that the image returned by get_background() will not be the same as that passed
+    to set_background().  The image may have been tiled or stretched.  It may also not be exactly
+    800 x 600; the image may be slightly oversized (e.g. 808 x 606) to make sure it covers
+    the edges fully.  But its centre will be at (0, 0).
+    
+    :return: The live background image.
+    """
+    return _bk_image
+
+#@@ list
+def get_actors(tag = None):
+    """
+        Gets all actors.
+        
+        If the tag is specified, only actors with the given tag will be included.
+        
+        :param tag: The tag to use to filter the returned actors (or None to return all actors)
+        :return: A list of all actors (that have not been removed via the `remove()` call).
+        """
+    return [a for a in _strype_input_internal.getAllActors() if tag is None or tag == a.get_tag()]
+
 def stop():
     """
     Stop the execution of the program.  This function will not return.
     """
     raise SystemExit()
 
+def pause(seconds):
+    """
+    Pause for the given amount of seconds.
+    
+    This can be a fractional amount, such as 0.5, or 1.2.  The entire code
+    will pause for that length of time before beginning to execute.
+    
+    :param seconds: The amount of seconds to wait for.
+    """
+    _time.sleep(seconds)
+
 _last_frame = _time.time()
 
-def pause(actions_per_second = 25):
+def pace(actions_per_second = 25):
     """
-    Wait for a suitable amount of time since the last call to pause().  This is almost always used as follows:
+    Wait for a suitable amount of time since the last call to pace().  This is almost always used as follows:
     
     .. code-block:: python
     
         while True:
             # Do all the actions you want to do in one iteration
-            pause(30)
+            pace(30)
     
     
     Where 30 is the number of times you want to do those actions per second.  It is like sleeping
@@ -973,13 +982,13 @@ def pause(actions_per_second = 25):
     so it aims to keep you executing the actions 30 times per second (or whatever value you pass
     for actions_per_second).
     
-    :param actions_per_second: The amount of times you want to call pause() per second, 25 by default.
+    :param actions_per_second: The amount of times you want to call pace() per second, 25 by default.
     """
     global _last_frame
     now = _time.time()
     # We sleep for 1/Nth minus the time since we last slept.  If it's negative (because we can't keep
     # up that frame rate), we just "sleep" for 0, so go as fast as we can:
-    sleep_for = max(0.0, 1 / actions_per_second - (now - _last_frame))
-    _last_frame = now
+    sleep_for = max(0.0, 1 / actions_per_second - max(0.0, now - _last_frame))
+    _last_frame = now + sleep_for
     _time.sleep(sleep_for)
     
