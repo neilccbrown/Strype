@@ -98,7 +98,20 @@ export class PersistentImageManager {
     public removePersistentImageAfter(id: number, secs: number): void {
         setTimeout(() => this.removePersistentImage(id), secs * 1000);
     }
-    
+
+    public setPersistentImageImage(id: number, imageOrCanvas : HTMLImageElement | OffscreenCanvas): void {
+        const obj = this.persistentImages.get(id);
+        if (obj != undefined) {
+            obj.img = imageOrCanvas;
+            obj.dirty = true;
+            if (obj.collisionBox != null) {
+                // To update box size, easiest to re-add:
+                this.setPersistentImageCollidable(id, false);
+                this.setPersistentImageCollidable(id, true);
+                
+            }
+        }
+    }
 
     public setPersistentImageLocation(id: number, x: number, y: number): void {
         const obj = this.persistentImages.get(id);

@@ -681,11 +681,30 @@ class Actor:
         """
         # Note: we don't want to have an editable image by default because it is slower to render
         # the editable canvas than to render the unedited image (I think!?)
+        # That is, if you load an image from a file it's kept internally as an HTML Image,
+        # but if you call get_image() we turn it into an off-screen canvas so that it can be edited.
         if self.__editable_image is None:
             # The -1, -1 sizing indicates we will set the image ourselves afterwards:
             self.__editable_image = Image(-1, -1)
             self.__editable_image._Image__image = _strype_graphics_internal.makeImageEditable(self.__id) 
         return self.__editable_image
+    
+    def set_image(self, image_or_filename):
+        """
+        Set an actor's image
+        
+        The image parameter can be either an :class:`Image` object or an image name (a string).  If it is a name, it refers to an image 
+        from Strype's image library.
+        :param image_or_filename: Either an :class:`Image` object, or a string with an image name (from Strype's library).
+        """
+        if isinstance(image_or_filename, Image):
+            _strype_graphics_internal.updateImage(self.__id, image_or_filename._Image__image)
+            self.__editable_image = image_or_filename
+        elif isinstance(image_or_filename, str):
+            _strype_graphics_internal.updateImage(self.__id, _strype_graphics_internal.loadAndWaitForImage(image_or_filename))
+            self.__editable_image = None
+        else:
+            raise TypeError("Actor image parameter must be string or Image")
     
     def say(self, text, font_size = 24, max_width = 300, max_height = 200, font_family = None):
         """

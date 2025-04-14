@@ -93,6 +93,9 @@ var $builtinmodule = function(name)  {
     mod.addImage = new Sk.builtin.func(function(image, assoc) {
         return peaComponent.__vue__.getPersistentImageManager().addPersistentImage(image, assoc);
     });
+    mod.updateImage = new Sk.builtin.func(function(id, image) {
+        return peaComponent.__vue__.getPersistentImageManager().setPersistentImageImage(id, image);
+    });
     mod.imageExists = new Sk.builtin.func(function(image) {
         return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageManager().hasPersistentImage(image));
     });

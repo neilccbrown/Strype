@@ -350,6 +350,49 @@ describe("Collision detection", () => {
                 sq.get_image().fill()
             `, "graphics-colliding-every-other-square-cat-minus-75");
     });
+    it("Collisions before/after changing to smaller image", () => {
+        // We make a grid of white squares every 50 pixels that are 20x20
+        // We turn off collisions on everything, turn it back on but only on every other square
+        // Then we find all the colliding ones and colour them red
+        runCodeAndCheckImage("", `
+            cat = Actor('cat-test.jpg')
+            cat.set_rotation(-75)
+            white_square = Image(20, 20)
+            white_square.set_fill("white")
+            white_square.fill()
+            squares = []
+            spacing = 50
+            cat.set_image('mouse-test.jpg')
+            for y in range(-300//spacing, 300//spacing):
+                for x in range(-400//spacing, 400//spacing):
+                    squares.append(Actor(white_square.clone(), x*spacing, y*spacing))
+            for sq in cat.get_all_touching():
+                sq.get_image().set_fill("red")
+                sq.get_image().fill()
+            `, "graphics-colliding-cat-turned-to-mouse");
+    });
+    it("Collisions before/after changing to larger image", () => {
+        // We make a grid of white squares every 50 pixels that are 20x20
+        // We turn off collisions on everything, turn it back on but only on every other square
+        // Then we find all the colliding ones and colour them red
+        runCodeAndCheckImage("", `
+            cat = Actor('mouse-test.jpg')
+            cat.set_rotation(-75)
+            white_square = Image(20, 20)
+            white_square.set_fill("white")
+            white_square.fill()
+            squares = []
+            spacing = 50
+            cat.set_image('cat-test.jpg')
+            for y in range(-300//spacing, 300//spacing):
+                for x in range(-400//spacing, 400//spacing):
+                    squares.append(Actor(white_square.clone(), x*spacing, y*spacing))
+            for sq in cat.get_all_touching():
+                sq.get_image().set_fill("red")
+                sq.get_image().fill()
+            `, "graphics-colliding-mouse-turned-to-cat");
+    });
+    
     it("Collisions in a radius", () => {
         // We make a grid of white squares every 50 pixels that are 20x20
         // Then we find all the colliding ones in a radius and colour them red
