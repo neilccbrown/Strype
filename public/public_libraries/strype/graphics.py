@@ -936,17 +936,28 @@ def stop():
     """
     raise SystemExit()
 
+def pause(seconds):
+    """
+    Pause for the given amount of seconds.
+    
+    This can be a fractional amount, such as 0.5, or 1.2.  The entire code
+    will pause for that length of time before beginning to execute.
+    
+    :param seconds: The amount of seconds to wait for.
+    """
+    _time.sleep(seconds)
+
 _last_frame = _time.time()
 
-def pause(actions_per_second = 25):
+def pace(actions_per_second = 25):
     """
-    Wait for a suitable amount of time since the last call to pause().  This is almost always used as follows:
+    Wait for a suitable amount of time since the last call to pace().  This is almost always used as follows:
     
     .. code-block:: python
     
         while True:
             # Do all the actions you want to do in one iteration
-            pause(30)
+            pace(30)
     
     
     Where 30 is the number of times you want to do those actions per second.  It is like sleeping
@@ -954,13 +965,13 @@ def pause(actions_per_second = 25):
     so it aims to keep you executing the actions 30 times per second (or whatever value you pass
     for actions_per_second).
     
-    :param actions_per_second: The amount of times you want to call pause() per second, 25 by default.
+    :param actions_per_second: The amount of times you want to call pace() per second, 25 by default.
     """
     global _last_frame
     now = _time.time()
     # We sleep for 1/Nth minus the time since we last slept.  If it's negative (because we can't keep
     # up that frame rate), we just "sleep" for 0, so go as fast as we can:
-    sleep_for = max(0.0, 1 / actions_per_second - (now - _last_frame))
-    _last_frame = now
+    sleep_for = max(0.0, 1 / actions_per_second - max(0.0, now - _last_frame))
+    _last_frame = now + sleep_for
     _time.sleep(sleep_for)
     
