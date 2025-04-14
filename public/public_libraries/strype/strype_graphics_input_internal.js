@@ -17,6 +17,11 @@ var $builtinmodule = function(name)  {
         }
         return Sk.ffi.remapToPy(null);
     });
+    mod.getAndResetClickDetails = new Sk.builtin.func(function() {
+        const d = peaComponent.__vue__.consumeLastClickDetails();
+        // Should be an array of four numbers so no special mapping consideration needed:
+        return Sk.ffi.remapToPy(d);
+    });
 
     mod.getPressedKeys = new Sk.builtin.func(function() {
         return Sk.ffi.remapToPy(peaComponent.__vue__.getPressedKeys());

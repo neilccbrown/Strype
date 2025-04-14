@@ -262,6 +262,7 @@ class Image:
         """
         return _strype_graphics_internal.getCanvasDimensions(self.__image)[1]
 
+    #@@ _Dimension
     def draw_text(self, text, x, y, font_size = 32, max_width = 0, max_height = 0, font_family = None):
         """
         Draw text onto the image.  If a maximum width is specified, the text will be wrapped to fit the given width.  
@@ -815,11 +816,29 @@ def load_image(name):
 def get_clicked_actor():
     """
     Return the last actor receiving a mouse click.  If no actor was clicked since this function was last called, None is returned.
-    Every click will be reported only once -- a seccond call to this function in quick succession will return None.
+    Every click will be reported only once -- a second call to this function in quick succession will return None.
     
     :return: The most recently clicked :class:`Actor`, or None if no actor was clicked since the last call.
     """
     return _strype_input_internal.getAndResetClickedItem()
+
+_ClickDetails = _collections.namedtuple("ClickDetails", ["x", "y", "button", "click_count"])
+
+#@@ _ClickDetails
+def get_mouse_click():
+    """
+    Get the details for the last mouse click.  If the mouse was not clicked since this function was last called, None is returned.
+    Every click will be reported only once -- a second call to this function in quick succession will return None.
+    
+    This function is independent of `get_clicked_actor()`; they will potentially report details of the same mouse click it was on an actor.
+    
+    :return: A named tuple with details of the last click: `(x, y, button, click_count)` where button is 0 for primary (left), 1 for secondary (right); or None if the mouse was not clicked since the last call.
+    """
+    c = _strype_input_internal.getAndResetClickDetails()
+    if c is None:
+        return None
+    else:
+        return _ClickDetails(c[0], c[1], c[2], c[3])
 
 #@@ bool
 def key_pressed(keyname):
@@ -903,6 +922,7 @@ def set_background(image_or_name_or_color, scale_to_fit = False):
     _bk_image = bk_image
     _strype_graphics_internal.setBackground(bk_image._Image__image)        
 
+#@@ Image
 def get_background():
     """
     Gets the current background image.
