@@ -270,12 +270,14 @@ export interface NavigationPosition {
     labelSlotsIndex?: number;
     slotId?: string;
     slotType?: SlotType;
+    isInCollapsedFrameContainer?: boolean;
 }
 export interface AddFrameCommandDef {
     type: FramesDefinitions;
     description: string; // The label that shown next to the key shortcut button
     shortcuts: [string, string?]; // The keyboard key shortcuts to be used to add a frame (eg "i" for an if frame), usually that's a single value array, but we can have 1 hidden shortcut as well
-    symbol?: string; // The symbol to show in the key shortcut button when the key it's not easily reprenstable (e.g. "⌴" for space)
+    symbol?: string; // The SVGIcon name for a symbol OR a string representation of the symbol to show in the key shortcut button when the key it's not easily representable
+    isSVGIconSymbol?: boolean; // To differenciate between the two situations mentioned above
     index?: number; // the index of frame type when a shortcut matches more than 1 context-distinct frames
 }
 
@@ -679,16 +681,19 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
     /*3) if required, update the types in all the frames existing in the editor (needed to update default texts and frame container labels) */
     if(regenerateExistingFrames){
         Object.values(useStore().frameObjects).forEach((frameObject: FrameObject) => {
-            // For containers, we just assign the label manually again here
+            // For containers, we just assign the label manually again here and change the definitons
             switch(frameObject.frameType.type){
             case ImportsContainerDefinition.type:
                 frameObject.frameType.labels[0].label = i18n.t("appMessage.importsContainer") as string;
+                ImportsContainerDefinition.labels[0].label = i18n.t("appMessage.importsContainer") as string;
                 break;
             case FuncDefContainerDefinition.type:
                 frameObject.frameType.labels[0].label = i18n.t("appMessage.funcDefsContainer") as string;
+                FuncDefContainerDefinition.labels[0].label = i18n.t("appMessage.funcDefsContainer") as string;
                 break;
             case MainFramesContainerDefinition.type:
                 frameObject.frameType.labels[0].label = i18n.t("appMessage.mainContainer") as string;
+                MainFramesContainerDefinition.labels[0].label = i18n.t("appMessage.mainContainer") as string;
                 break;
             default:
                 // For all normal frames, we rely on the frame definition type                
@@ -1046,6 +1051,17 @@ export enum StrypeSyncTarget {
     gd, // Google Drive
 }
 
+export enum GAPIState {
+    unloaded, // default state : the Google API hasn't been loaded yet
+    loaded, // when the Google API has been loaded
+    failed, // when the Google API failed to load
+}
+
+export enum ShareProjectMode {
+    public, // A public sharing (generic cases)
+    withinGD, // A share within Google Drive access rights
+}
+
 export enum SaveRequestReason {
     autosave,
     saveProjectAtLocation, // explicit save at the given location in the dialog
@@ -1054,6 +1070,7 @@ export enum SaveRequestReason {
     loadProject,
     unloadPage,
     reloadBrowser, // for Google Drive: when a project was previously saved in GD and the browser is reloaded and the user requested to save the local changes to GD.
+    saveSettings, // for saving Strype settings
 }
 
 export interface SaveExistingGDProjectInfos {
@@ -1120,6 +1137,31 @@ export interface Locale {
     code: string, // a 2 letter code idenitifying the locale (e.g.: "en")
     name: string, // the user-friendly locale's name (e.g.: "English")
 }
+
+export enum StrypePEALayoutMode {
+    tabsCollapsed, // the default layout mode where PEA is collapsed and using tabs for console/graphics (and selected mode for the micro:bit version)
+    tabsExpanded, // the layout mode where PEA is expanded and using tabs for console/graphics
+    splitCollapsed, // the layout mode where PEA is collapsed and console/graphics windows are (horizontally) split
+    splitExpanded, // the layout mode where PEA is expanded and console/graphics windows are (vertically) split
+}
+export interface StrypePEALayoutData {
+    mode: StrypePEALayoutMode, // The layout view for the PEA in Strype, see related enum
+    iconName: string, // the name of the icon to be retrieved from our SVG icons + localisation key name (makes it simpler to have one property!)
+}
+
+// Typescript doesn't allow to declare types with an index signature parameter being something else than number or string or symbol.
+// So to be able to still use types, we can use this trick that will use the values of the enum we want to use for the index signature type.
+// This type however requires all values of the enum to be used as indexes - so we need to also allow undefined values for the indexes.
+export type StrypeLayoutDividerSettings = {
+    [layout in StrypePEALayoutMode]: number | undefined;
+};
+
+export const defaultEmptyStrypeLayoutDividerSettings: StrypeLayoutDividerSettings = {
+    "0": undefined,
+    "1": undefined,
+    "2": undefined,
+    "3": undefined,
+};
 
 export interface LoadedMedia {
     mediaType: string,

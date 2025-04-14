@@ -7,7 +7,7 @@
         <!-- keep the tabIndex attribute, it is necessary to handle focus with Safari -->
         <div 
             :style="frameStyle" 
-            :class="{frameDiv: true, blockFrameDiv: isBlockFrame && !isJointFrame, statementFrameDiv: !isBlockFrame && !isJointFrame, error: hasParsingError, disabled: isDisabled}"
+            :class="{[scssVars.frameDivClassName]: true, blockFrameDiv: isBlockFrame && !isJointFrame, statementFrameDiv: !isBlockFrame && !isJointFrame, [scssVars.errorClassName]: hasParsingError, disabled: isDisabled}"
             :id="UID"
             @click="toggleCaret($event)"
             @contextmenu="handleClick($event)"
@@ -32,7 +32,7 @@
                 :frameId="frameId"
                 :frameType="frameType.type"
                 :labels="frameType.labels"
-                :class="{'frame-header': true, error: hasRuntimeError}"
+                :class="{[scssVars.frameHeaderClassName]: true, [scssVars.errorClassName]: hasRuntimeError}"
                 :style="frameMarginStyle['header']"
                 :frameAllowChildren="allowChildren"
                 :erroneous="hasRuntimeError"
@@ -97,7 +97,7 @@ import { mapStores } from "pinia";
 import { BPopover } from "bootstrap-vue";
 import html2canvas from "html2canvas";
 import { saveAs } from "file-saver";
-import scssVars  from "@/assets/style/_export.module.scss";
+import scssVars from "@/assets/style/_export.module.scss";
 import { getDateTimeFormatted } from "@/helpers/common";
 
 //////////////////////
@@ -139,6 +139,7 @@ export default Vue.extend({
 
     data: function () {
         return {
+            scssVars, // just to be able to use in template
             // Prepare an empty version of the menu: it will be updated as required in handleClick()
             frameContextMenuItems: [] as {name: string; method: VoidFunction; type?: "divider", actionName?: FrameContextMenuActionName}[],
             // Flag to indicate a frame is selected via the context menu (differs from a user selection)
@@ -741,7 +742,7 @@ export default Vue.extend({
             // Disabled frames behaves as "unit": if a frame is disabled all inner positions aren't accessible (no caret),
             // therefore, a click inside a disabled block frame should place the frame caret either before or after, but not inside.
             const frameRect = (this.isDisabled) ? document.getElementById(this.UID)?.getBoundingClientRect() : frameClickedDiv.getBoundingClientRect();
-            const headerRect = document.querySelector("#"+this.UID+ " .frame-header")?.getBoundingClientRect();
+            const headerRect = document.querySelector("#" + this.UID + " ." + scssVars.frameHeaderClassName)?.getBoundingClientRect();
             if(frameRect && headerRect){            
                 let newCaretPosition: NavigationPosition = {frameId: this.frameId, caretPosition: CaretPosition.none, isSlotNavigationPosition: false}; 
                 // The following logic applies to select a caret position based on the frame and the location of the click:
@@ -1124,7 +1125,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.frameDiv {    
+.#{$strype-classname-frame-div} {    
     padding-top: 1px;
     padding-bottom: 1px;
     border-radius: 8px;
@@ -1133,7 +1134,7 @@ export default Vue.extend({
     outline: none;
 }
 
-.frame-header {
+.#{$strype-classname-frame-header} {
     border-radius: 5px;
     display: flex; 
     justify-content: space-between;
