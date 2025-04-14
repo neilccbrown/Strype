@@ -856,7 +856,7 @@ def load_image(name):
     :return: An :class:`Image` object with the library image.
     """
     img = Image(-1, -1)
-    img._Image__image = _strype_graphics_internal.htmlImageToCanvas(_strype_graphics_internal.loadAndWaitForImage(filename))
+    img._Image__image = _strype_graphics_internal.htmlImageToCanvas(_strype_graphics_internal.loadAndWaitForImage(name))
     return img
 
 #@@ Actor
@@ -929,20 +929,20 @@ def set_background(image_or_name_or_color, tile_to_fit = True):
             dest.draw_part_of_image(image, (808 - scale * w) / 2, (606 - scale * h) / 2, 0, 0, w, h, scale)
         return dest
         
-    if isinstance(image_or_filename_or_color, Image):
-        bk_image = background_808_606(image_or_filename_or_color)
-    elif isinstance(image_or_filename_or_color, str):
+    if isinstance(image_or_name_or_color, Image):
+        bk_image = background_808_606(image_or_name_or_color)
+    elif isinstance(image_or_name_or_color, str):
         # We follow this heuristic: if it has a dot, slash or colon it's a filename/URL
         # otherwise it's a color name/value.
-        if _re.search(r"[.:/]", image_or_filename_or_color):
-            bk_image = background_808_606(load_image(image_or_filename_or_color))
+        if _re.search(r"[.:/]", image_or_name_or_color):
+            bk_image = background_808_606(load_image(image_or_name_or_color))
         else:
             bk_image = Image(808, 606)
-            bk_image.set_fill(image_or_filename_or_color)
+            bk_image.set_fill(image_or_name_or_color)
             bk_image.fill()
-    elif isinstance(image_or_filename_or_color, Color):
+    elif isinstance(image_or_name_or_color, Color):
         bk_image = Image(808, 606)
-        bk_image.set_fill(image_or_filename_or_color)
+        bk_image.set_fill(image_or_name_or_color)
         bk_image.fill()
     else:
         raise TypeError("image_or_filename_or_color must be an Image or a string or a Color")

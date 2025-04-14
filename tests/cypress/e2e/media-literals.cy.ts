@@ -118,7 +118,7 @@ function checkGraphicsCanvasContent(expectedImageFileName : string, comparison =
 }
 
 function checkConsoleContent(expectedContent : string) {
-    cy.get("#pythonConsole").should("have.value", expectedContent);
+    cy.get("#peaConsole").should("have.value", expectedContent);
 }
 
 function enterImports() {
