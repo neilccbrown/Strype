@@ -267,7 +267,7 @@ var $builtinmodule = function(name)  {
     
     const sayFont="\"Klee One\", sans-serif";
     // Load font:
-    let myFont = new FontFace(
+    const myFont = new FontFace(
         "Klee One",
         "url(fonts/klee-one-v12-latin-regular.woff2)"
     );
