@@ -626,7 +626,7 @@ def makeStyle(fontName, emphasis, size):
     :param size: The font size.
     :return the style made from the inputs
     """
-    return Font(_graphics.FontFamily(fontName), size)
+    return Font(fontName, size)
 
 
 def setColor(pixel, color):

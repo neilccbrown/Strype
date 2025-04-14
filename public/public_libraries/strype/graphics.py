@@ -277,12 +277,13 @@ class Image:
         :param font_size: The size of the text, in pixels.
         :param max_width: The maximum width of the text (or 0 for no maximum).
         :param max_height: The maximum height of the text (or 0 for no maximum).
-        :param font_family: The font family for the text. Use None for the default font family.
         :return: A named tuple width width and height of the actually drawn area.
         """
-        if font_family is not None and not isinstance(font_family, FontFamily):
-            raise TypeError("Font family must be an instance of FontFamily")
-        dim = _strype_graphics_internal.canvas_drawText(self.__image, text, x, y, font_size, max_width, max_height, font_family._FontFamily__font if font_family is not None else None)
+        if font_family is not None:
+            font_family = _strype_graphics_internal.canvas_loadFont("google", font_name)
+            if not font_family:
+                raise Exception("Could not load font " + font_name)
+        dim = _strype_graphics_internal.canvas_drawText(self.__image, text, x, y, font_size, max_width, max_height, font_family)
         return _Dimension(dim['width'], dim['height'])
         
     def draw_rounded_rect(self, x, y, width, height, corner_size = 10):
@@ -408,29 +409,6 @@ class Image:
             _time.sleep(Image.__last_download + 2 - now)
         _strype_graphics_internal.canvas_downloadPNG(self.__image, filename)
         Image.__last_download = _time.time()
-
-class FontFamily:
-    """
-    A font family is a particular font type, e.g. Arial or Courier.
-    """
-    def __init__(self, font_provider, font_name):
-        """
-        Loads the given font name from the given font provider.  At the moment, the only font provider which is supported is
-        "google", meaning `Google Fonts <https://fonts.google.com>`.  So if you find a particular font you like on Google Fonts, say Roboto, you can load it
-        by calling:
-        
-        .. code-block:: python
-        
-            FontFamily("google", "Roboto") 
-            
-        If the font cannot be loaded, you will get an error.  This usually indicates either an issue with your Internet connection, or that you have entered the font name wrongly.
-          
-        :param font_provider: The provider of the fonts.  Currently only "google" is supported.
-        :param font_name: The name of the font to load, as shown on that provider.
-        """
-        if not _strype_graphics_internal.canvas_loadFont(font_provider, font_name):
-            raise Exception("Could not load font " + font_name)
-        self.__font = font_name
 
 class Actor:
     """
