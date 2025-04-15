@@ -169,7 +169,7 @@ export default Vue.extend({
             const debouncePEASizeChangedCallback = debounce((onlyResizePEA?: boolean) => {
                 // If Strype is shown in its default view (PEA has 4:3 ratio, we need to update the splitter so the PEA stay visible)
                 let waitSplitterToAdaptTimeout = 0;
-                if(this.hasDefault43Ratio) {
+                if(this.hasDefault43Ratio && !onlyResizePEA) {
                     waitSplitterToAdaptTimeout = 200;
                     this.$emit(CustomEventTypes.pythonExecAreaMounted);
                 }
