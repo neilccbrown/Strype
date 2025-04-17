@@ -166,10 +166,10 @@ export default Vue.extend({
             
             // Register an observer when the tab content dimension changes: we need to reflect this on the canvas scaling (cf. above)
             // DO NOT use ResizeObserver to do so: it gets messy with the events loop ("ResizeObserver loop completed with undelivered notifications.")
-            const debouncePEASizeChangedCallback = debounce(() => {
+            const debouncePEASizeChangedCallback = debounce((onlyResizePEA?: boolean) => {
                 // If Strype is shown in its default view (PEA has 4:3 ratio, we need to update the splitter so the PEA stay visible)
                 let waitSplitterToAdaptTimeout = 0;
-                if(this.hasDefault43Ratio) {
+                if(this.hasDefault43Ratio && !onlyResizePEA) {
                     waitSplitterToAdaptTimeout = 200;
                     this.$emit(CustomEventTypes.pythonExecAreaMounted);
                 }
@@ -187,13 +187,15 @@ export default Vue.extend({
                     }
                 
                     setTimeout(() => {
-                        debounceComputeAddFrameCommandContainerSize(this.isExpandedPEA);
+                        if(!onlyResizePEA){
+                            debounceComputeAddFrameCommandContainerSize(this.isExpandedPEA);
+                        }
                         setPythonExecAreaLayoutButtonPos();
                     }, 100);
                 }, waitSplitterToAdaptTimeout);
             }, 100);
             
-            tabContentContainerDiv.addEventListener(CustomEventTypes.pythonExecAreaSizeChanged, debouncePEASizeChangedCallback);
+            tabContentContainerDiv.addEventListener(CustomEventTypes.pythonExecAreaSizeChanged, ((event) => debouncePEASizeChangedCallback((event as CustomEvent<boolean|undefined>).detail)));
 
             // Register to the window event listener for Skulpt Turtle mouse and timer events listening off notification
             window.addEventListener(CustomEventTypes.skulptMouseEventListenerOff, () => {

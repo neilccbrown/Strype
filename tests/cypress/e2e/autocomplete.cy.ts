@@ -41,7 +41,7 @@ beforeEach(() => {
     });
 });
 
-function withAC(inner : (acIDSel : string, frameId: number) => void, skipSortedCheck?: boolean) : void {
+function withAC(inner : (acIDSel : string, frameId: number) => void, isInFuncCallFrame:boolean, skipSortedCheck?: boolean) : void {
     // We need a delay to make sure last DOM update has occurred:
     cy.wait(600);
     cy.get("#" + strypeElIds.getEditorID()).then((eds) => {
@@ -51,7 +51,7 @@ function withAC(inner : (acIDSel : string, frameId: number) => void, skipSortedC
         const acIDSel = "#" + ed.getAttribute("data-slot-focus-id")?.replace(",", "\\,") + "_AutoCompletion";
         // Should always be sorted:
         if (!skipSortedCheck) {
-            checkAutocompleteSorted(acIDSel);
+            checkAutocompleteSorted(acIDSel, isInFuncCallFrame);
         }
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
@@ -107,12 +107,20 @@ const BUILTIN = "Python";
 // Checks all sections in the autocomplete are internally sorted (i.e. that the items
 // within that section are in alphabetical order).  Also checks that the sections
 // themselves are in the correct order.
-function checkAutocompleteSorted(acIDSel: string) : void {
+function checkAutocompleteSorted(acIDSel: string, isInFuncCallFrame: boolean) : void {
     // The autocomplete only updates after 500ms:
     cy.wait(1000);
     // Other items (like the names of variables when you do var.) will come out as -1,
-    // which works nicely because they should be first:
-    const intendedOrder : string[] = [MYVARS, MYFUNCS, "microbit", "microbit.accelerometer", "time", BUILTIN];
+    // which works nicely because they should be first 
+    // (if we are in a function call definition (isInFuncCallFrame true) "My Functions"
+    // comes before "My Variables", and the other way around if not):
+    const intendedOrder = [
+        ...(isInFuncCallFrame ? [MYFUNCS, MYVARS] : [MYVARS, MYFUNCS]),
+        "microbit",
+        "microbit.accelerometer",
+        "time",
+        BUILTIN,
+    ];
     cy.get(acIDSel + " div.module:not(." + scssVars.acEmptyResultsContainerClassName + ") > em")
         .then((items) => [...items].map((item) => intendedOrder.indexOf(item.innerText.trim())))
         .should("be.sorted");
@@ -186,7 +194,7 @@ describe("Built-ins", () => {
             checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
             checkNoItems(acIDSel, "ZeroDivisionError");
             checkNoItems(acIDSel, "zip");
-            checkAutocompleteSorted(acIDSel);
+            checkAutocompleteSorted(acIDSel, true);
             // Once we type "b", should show things beginning with AB but not the others:
             cy.get("body").type("b");
             cy.wait(600);
@@ -194,7 +202,7 @@ describe("Built-ins", () => {
             checkNoItems(acIDSel, "AssertionError");
             checkNoItems(acIDSel, "ZeroDivisionError");
             checkNoItems(acIDSel, "zip");
-            checkAutocompleteSorted(acIDSel);
+            checkAutocompleteSorted(acIDSel, true);
             // Check docs are showing for built-in function:
             cy.get(acIDSel).contains("Return the absolute value of the argument.");
             
@@ -204,7 +212,7 @@ describe("Built-ins", () => {
 
             cy.get("body").type("{enter}");
             assertState(frameId, "abs($)", "abs(x)");
-        });
+        }, true);
     });
     it("Shows text when no documentation available", () => {
         focusEditorAC();
@@ -224,7 +232,7 @@ describe("Built-ins", () => {
             const acIDDoc = acIDSel.replace("#", "#popupAC").replace("_AutoCompletion", "documentation");
             cy.get(acIDDoc).should("be.visible");
             cy.get(acIDDoc).contains("No documentation available");
-        });
+        }, true);
     });
 });
 
@@ -263,7 +271,7 @@ describe("Behaviour with operators, brackets and complex expressions", () => {
                 checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
                 checkNoItems(acIDSel, "ZeroDivisionError");
                 checkNoItems(acIDSel, "zip");
-                checkAutocompleteSorted(acIDSel);
+                checkAutocompleteSorted(acIDSel, true);
                 // Once we type "b", should show things beginning with AB but not the others:
                 cy.get("body").type("b");
                 cy.wait(600);
@@ -271,10 +279,10 @@ describe("Behaviour with operators, brackets and complex expressions", () => {
                 checkNoItems(acIDSel, "AssertionError");
                 checkNoItems(acIDSel, "ZeroDivisionError");
                 checkNoItems(acIDSel, "zip");
-                checkAutocompleteSorted(acIDSel);
+                checkAutocompleteSorted(acIDSel, true);
                 // Check docs are showing for built-in function:
                 cy.get(acIDSel).contains("Return the absolute value of the argument.");
-            });
+            }, true);
         });
     }
 
@@ -297,11 +305,11 @@ describe("Behaviour with operators, brackets and complex expressions", () => {
                 checkNoItems(acIDSel, "lower");
                 checkExactlyOneItem(acIDSel, null, "upper()");
                 checkNoItems(acIDSel, "divmod");
-                checkAutocompleteSorted(acIDSel);
+                checkAutocompleteSorted(acIDSel, true);
                 // Check docs show:
                 cy.get("body").type("pper");
                 cy.get(acIDSel).contains(UPPER_DOC);
-            });
+            }, true);
         });
     }
 
@@ -321,7 +329,7 @@ describe("Behaviour with operators, brackets and complex expressions", () => {
                 checkNoItems(acIDSel, "AssertionError");
                 checkNoItems(acIDSel, "ZeroDivisionError");
                 checkNoItems(acIDSel, "zip");
-            }, true);
+            }, true, true);
         });
     }
 });
@@ -348,7 +356,7 @@ describe("Modules", () => {
                 checkExactlyOneItem(acIDSel, null, "microbit");
                 checkNoItems(acIDSel, "random");
                 checkNoItems(acIDSel, "time");
-                checkAutocompleteSorted(acIDSel);
+                checkAutocompleteSorted(acIDSel, false);
                 // Once we type "i", should show things beginning with MI but not the others:
                 cy.get("body").type("i");
                 cy.wait(600);
@@ -356,7 +364,7 @@ describe("Modules", () => {
                 checkExactlyOneItem(acIDSel, null, "microbit");
                 checkNoItems(acIDSel, "random");
                 checkNoItems(acIDSel, "time");
-                checkAutocompleteSorted(acIDSel);
+                checkAutocompleteSorted(acIDSel, false);
                 cy.get(acIDSel).contains("Pins, images, sounds, temperature and volume.");
             }
             else {
@@ -373,17 +381,17 @@ describe("Modules", () => {
                 checkExactlyOneItem(acIDSel, null, "array");
                 checkNoItems(acIDSel, "signal");
                 checkNoItems(acIDSel, "webbrowser");
-                checkAutocompleteSorted(acIDSel);
+                checkAutocompleteSorted(acIDSel, false);
                 // Once we type "r", should show things beginning with AR but not the others:
                 cy.get("body").type("r");
                 checkNoItems(acIDSel, "antigravity");
                 checkExactlyOneItem(acIDSel, null, "array");
                 checkNoItems(acIDSel, "signal");
                 checkNoItems(acIDSel, "webbrowser");
-                checkAutocompleteSorted(acIDSel);
+                checkAutocompleteSorted(acIDSel, false);
                 cy.get(acIDSel).contains("Efficient arrays of numeric values.");
             }
-        });
+        }, false);
     });
 
     it("Offers auto-complete in LHS of from...import frames", () => {
@@ -407,7 +415,7 @@ describe("Modules", () => {
                 checkExactlyOneItem(acIDSel, null, "microbit");
                 checkNoItems(acIDSel, "random");
                 checkNoItems(acIDSel, "time");
-                checkAutocompleteSorted(acIDSel);
+                checkAutocompleteSorted(acIDSel, false);
                 // Once we type "i", should show things beginning with MI but not the others:
                 cy.get("body").type("i");
                 cy.wait(600);
@@ -415,7 +423,7 @@ describe("Modules", () => {
                 checkExactlyOneItem(acIDSel, null, "microbit");
                 checkNoItems(acIDSel, "random");
                 checkNoItems(acIDSel, "time");
-                checkAutocompleteSorted(acIDSel);
+                checkAutocompleteSorted(acIDSel, false);
             }
             else {
                 cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
@@ -431,16 +439,16 @@ describe("Modules", () => {
                 checkExactlyOneItem(acIDSel, null, "array");
                 checkNoItems(acIDSel, "signal");
                 checkNoItems(acIDSel, "webbrowser");
-                checkAutocompleteSorted(acIDSel);
+                checkAutocompleteSorted(acIDSel, false);
                 // Once we type "r", should show things beginning with AR but not the others:
                 cy.get("body").type("r");
                 checkNoItems(acIDSel, "antigravity");
                 checkExactlyOneItem(acIDSel, null, "array");
                 checkNoItems(acIDSel, "signal");
                 checkNoItems(acIDSel, "webbrowser");
-                checkAutocompleteSorted(acIDSel);
+                checkAutocompleteSorted(acIDSel, false);
             }
-        });
+        }, false);
     });
 
     it("Offers auto-complete in RHS of from...import frames", () => {
@@ -470,14 +478,14 @@ describe("Modules", () => {
             checkExactlyOneItem(acIDSel, null, target);
             checkNoItems(acIDSel, nonAvailable);
             checkNoItems(acIDSel, "*");
-            checkAutocompleteSorted(acIDSel);
+            checkAutocompleteSorted(acIDSel, false);
             cy.get(acIDSel).contains(targetDoc);
             // Type rest of target then enter a comma:
             cy.get("body").type(target.substring(1) + ",");
             cy.wait(500);
             // That should have dismissed the autocomplete and put us in a new slot:
             cy.get(acIDSel).should("not.be.visible");
-        });
+        }, false);
         // Trigger auto-complete:
         cy.get("body").type("{ctrl} ");
         // We can check same item again; we don't deduplicate based on what is already imported:
@@ -492,12 +500,12 @@ describe("Modules", () => {
             checkExactlyOneItem(acIDSel, null, target);
             checkNoItems(acIDSel, nonAvailable);
             checkNoItems(acIDSel, "*");
-            checkAutocompleteSorted(acIDSel);
+            checkAutocompleteSorted(acIDSel, false);
             cy.get(acIDSel).contains(targetDoc);
             // Remove character and comma, to make it import just the one valid item:
             cy.get("body").type("{backspace}{backspace}");
-        });
-        // Now check in the body for docs on the autocomplete:
+        }, false);
+        // Now check in the body for docs on the autocomplete (we should be in a function call frame):
         cy.get("body").type("{rightarrow}{downarrow}{downarrow}");
         cy.get("body").type(" {ctrl} ");
         withAC((acIDSel) => {
@@ -510,10 +518,10 @@ describe("Modules", () => {
             checkExactlyOneItem(acIDSel, "time", target + targetParams);
             checkNoItems(acIDSel, nonAvailable);
             checkNoItems(acIDSel, "*");
-            checkAutocompleteSorted(acIDSel);
+            checkAutocompleteSorted(acIDSel, true);
             // Check documentation is showing for it:
             cy.get(acIDSel).contains(targetDoc);
-        });
+        }, true);
     });
     
     it("Offers auto-completion for imported modules", () => {
@@ -548,8 +556,8 @@ describe("Modules", () => {
             checkNoItems(acIDSel, "sleep");
             checkNoItems(acIDSel, "abs");
             checkNoItems(acIDSel, "AssertionError");
-            checkAutocompleteSorted(acIDSel);
-        });
+            checkAutocompleteSorted(acIDSel, true);
+        }, true);
     });
 
     it("Offers auto-completion for imported modules with a from import *", () => {
@@ -585,8 +593,8 @@ describe("Modules", () => {
             checkNoItems(acIDSel, sleepCall);
             checkNoItems(acIDSel, "abs", true);
             checkNoItems(acIDSel, "AssertionError");
-            checkAutocompleteSorted(acIDSel);
-        });
+            checkAutocompleteSorted(acIDSel, true);
+        }, true);
     });
 });
 describe("User-defined items", () => {
@@ -604,7 +612,7 @@ describe("User-defined items", () => {
             cy.wait(600);
             cy.get("body").type("{enter}");
             assertState(frameId, "foo($)");
-        });
+        }, true);
     });
 
     it("Offers auto-complete for user-defined variables", () => {
@@ -619,7 +627,7 @@ describe("User-defined items", () => {
             checkExactlyOneItem(acIDSel, MYVARS, "myVar");
             // Not a function, so shouldn't show brackets:
             checkNoItems(acIDSel, "myVar()");
-        });
+        }, true);
     });
 
     it("Offers auto-complete for user-defined function parameters", () => {
@@ -636,13 +644,13 @@ describe("User-defined items", () => {
             cy.get("body").type("{backspace}");
             cy.wait(500);
             cy.get("body").type("{downarrow}{downarrow}");
-        });
+        }, true);
         // Make a function call and check myParam doesn't show there:
         cy.get("body").type(" {ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkNoItems(acIDSel, "myParam", true);
-        });
+        }, true);
     });
 
     it("Offers auto-complete for for-loop iterating variables", () => {
@@ -659,7 +667,7 @@ describe("User-defined items", () => {
             cy.get("body").type("{backspace}");
             cy.wait(500);
             cy.get("body").type("{downarrow}");
-        });
+        }, true);
         // Make a function call and check myIterator shows there -- Python semantics
         // are that the loop variable is available after the loop:
         cy.get("body").type(" {ctrl} ");
@@ -667,7 +675,7 @@ describe("User-defined items", () => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, MYVARS, "myIterator");
             checkNoItems(acIDSel, "imaginaryList");
-        });
+        }, true);
     });
 
     it("Offers auto-complete for items on user-defined variables", () => {
@@ -687,11 +695,11 @@ describe("User-defined items", () => {
             checkNoItems(acIDSel, "lower");
             checkExactlyOneItem(acIDSel, "myVar", "upper()");
             checkNoItems(acIDSel, "divmod");
-            checkAutocompleteSorted(acIDSel);
+            checkAutocompleteSorted(acIDSel, true);
             // Check docs show:
             cy.get("body").type("pper");
             cy.get(acIDSel).contains(UPPER_DOC);
-        });
+        }, true);
     });
 
     it("Offers auto-complete for user-defined variables but not before declaration", () => {
@@ -705,7 +713,7 @@ describe("User-defined items", () => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
             checkNoItems(acIDSel, "myVar");
-        });
+        }, true);
     });
 });
 
@@ -723,7 +731,7 @@ describe("Versions", () => {
                 checkExactlyOneItem(acIDSel, null, "speaker");
                 cy.get(acIDSel + " li:contains('compass') > .api-item-version:contains('v2')").should("not.exist");
                 cy.get(acIDSel + " li:contains('speaker') > .api-item-version:contains('v2')").should("exist");
-            });
+            }, true);
         });
     }
 });
@@ -753,7 +761,7 @@ describe("Nested modules", () => {
             // therefore, we will have the parameters in the autocompletion data.
             checkExactlyOneItem(acIDSel, targetModule, targetFunctionWithParam);
             checkNoItems(acIDSel, "abs");
-        });
+        }, true);
     });
 
     it("Offers auto-completion for modules with names a.b when imported as a.b.* with from", () => {
@@ -771,7 +779,7 @@ describe("Nested modules", () => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, targetModule, targetFunctionWithParam);
             checkExactlyOneItem(acIDSel, null, "abs(x)");
-        });
+        }, true);
     });
 
     it("Offers auto-completion for modules with names a.b when imported as a.b.func with from", () => {
@@ -789,7 +797,7 @@ describe("Nested modules", () => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, targetModule, targetFunctionWithParam);
             checkExactlyOneItem(acIDSel, null, "abs(x)");
-        });
+        }, true);
     });
 
     it("Deals with different microbit items correctly", () => {
@@ -807,7 +815,7 @@ describe("Nested modules", () => {
                 checkExactlyOneItem(acIDSel, "microbit", "button_a");
                 checkExactlyOneItem(acIDSel, "microbit", "compass");
                 checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
-            });
+            }, true);
             // Now let's delete the import and check they both vanish:
             cy.get("body").type("{leftarrow}{uparrow}{uparrow}{backspace}{downarrow}{downarrow}");
             // Enter frame again:
@@ -819,7 +827,7 @@ describe("Nested modules", () => {
                 checkNoItems(acIDSel, "button_a");
                 checkNoItems(acIDSel, "compass");
                 checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
-            });
+            }, true);
         }
     });
 });
@@ -836,7 +844,7 @@ describe("Imported items", () => {
             // Should show nothing available if we haven't imported the module:
             checkNoneAvailable(acIDSel);
             checkNoItems(acIDSel, targetFunction);
-        }, true);
+        }, true, true);
     });
 
     it("Offers auto-complete when module is imported", () => {
@@ -855,7 +863,7 @@ describe("Imported items", () => {
             // Should show because it's imported:
             checkExactlyOneItem(acIDSel, targetModule, targetFunction);
             checkNoItems(acIDSel, "abs");
-        });
+        }, true);
     });
 
     it("Doesn't offer auto-complete on original name when module is imported using as", () => {
@@ -873,7 +881,7 @@ describe("Imported items", () => {
             // Should show nothing available if we haven't imported the module itself, only used a from:
             checkNoneAvailable(acIDSel);
             checkNoItems(acIDSel, targetFunction);
-        }, true);
+        }, true, true);
         // Then if we delete back to "t" and type ".":
         cy.get("body").type("{backspace}{backspace}{backspace}{backspace}.{ctrl} ");
         withAC((acIDSel) => {
@@ -881,7 +889,7 @@ describe("Imported items", () => {
             // Should show because we're using the correct alias now:
             checkExactlyOneItem(acIDSel, "t", targetFunction);
             checkNoItems(acIDSel, "abs");
-        });
+        }, true);
     });
 });
 
@@ -907,10 +915,10 @@ describe("Underscore handling", () => {
             checkNoItems(acIDSel, "abs(x)");
             checkNoItems(acIDSel, "AssertionError");
             checkExactlyOneItem(acIDSel, BUILTIN, importFunc);
-            checkAutocompleteSorted(acIDSel);
+            checkAutocompleteSorted(acIDSel, true);
             // Check docs are showing for built-in function:
             cy.get(acIDSel).contains("Import a module.");
-        });
+        }, true);
     });
     // Python rules say we never import anything with underscores from modules with import *:
     it("Does not offer underscore items on modules at all", () => {
@@ -939,10 +947,10 @@ describe("Underscore handling", () => {
             checkExactlyOneItem(acIDSel, BUILTIN, importFunc);
             checkNoItems(acIDSel, "__doc__");
             checkNoItems(acIDSel, "__name__");
-            checkAutocompleteSorted(acIDSel);
+            checkAutocompleteSorted(acIDSel, true);
             // Now cancel this:
             cy.get("body").type("{backspace}{backspace}");
-        });
+        }, true);
     });
     /* TODO restore once TigerPython supports these items:
     it("Does not offer underscore items on object until typed", () => {
@@ -967,10 +975,10 @@ describe("Underscore handling", () => {
             checkExactlyOneItem(acIDSel, "myVar", "__class__()");
             cy.get("body").type("_dir");
             cy.wait(600);
-            checkAutocompleteSorted(acIDSel);
+            checkAutocompleteSorted(acIDSel, true);
             // Check docs are showing for built-in function:
             cy.get(acIDSel).contains("Default dir() implementation.");
-        });
+        }, true);
     });
      */
     it("Offers user's own definitions, even if they start with underscores", () => {
@@ -997,8 +1005,8 @@ describe("Underscore handling", () => {
             checkExactlyOneItem(acIDSel, BUILTIN, importFunc);
             checkExactlyOneItem(acIDSel, MYFUNCS, "__myFunction(myParam)");
             checkExactlyOneItem(acIDSel, MYVARS, "__myVar");
-            checkAutocompleteSorted(acIDSel);
-        });
+            checkAutocompleteSorted(acIDSel, true);
+        }, true);
     });
 });
 
@@ -1014,6 +1022,6 @@ describe("Control flow", () => {
             cy.get(acIDSel).should("be.visible");
             checkExactlyOneItem(acIDSel, null, "capitalize()");
             checkExactlyOneItem(acIDSel, null, "lower()");
-        });
+        }, true);
     });
 });
