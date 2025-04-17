@@ -98,11 +98,14 @@ function testRoundTripImportAndDownload(filepath: string) {
 }
 
 describe("Loads and re-saves fixture files", () => {
-    it("Shows an error for invalid code", () => {
-        if (Cypress.env("mode") === "microbit") {
-            // TODO instead issue a warning dialog when loading from another platform:
-            return;
-        }
+    if (Cypress.env("mode") === "microbit") {
+        // TODO instead issue a warning dialog when loading from another platform:
+        return;
+    }
+    it("Loads a basic project", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic.spy");
+    });
+    it("Loads a basic trisection project", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic-trisection.spy");
     });
 });
