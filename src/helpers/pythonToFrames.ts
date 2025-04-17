@@ -2,6 +2,8 @@ import {CaretPosition, AllFrameTypesIdentifier, FrameObject, LabelSlotsContent, 
 import {useStore} from "@/store/store";
 import {operators, trimmedKeywordOperators} from "@/helpers/editor";
 import i18n from "@/i18n";
+import {escapeRegExp} from "lodash";
+import {AppSPYPrefix} from "@/main";
 
 const TOP_LEVEL_TEMP_ID = -999;
 
@@ -100,10 +102,11 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}) :
 // The main entry point to this module.  Given a string of Python code that the user
 // has pasted in, copy it to the store's copiedFrames/copiedSelectionFrameIds fields,
 // ready to be pasted immediately afterwards.
-// If successful, returns null.  If unsuccessful, returns a string with some info about
+// If successful, returns a map with key-value Strype directives.  If unsuccessful, returns a string with some info about
 // where the Python parse failed.
-export function copyFramesFromParsedPython(code: string, currentStrypeLocation: STRYPE_LOCATION, linenoMapping?: Record<number, number>) : string | null {
+export function copyFramesFromParsedPython(code: string, currentStrypeLocation: STRYPE_LOCATION, linenoMapping?: Record<number, number>) : string | null | Map<string, string> {
     const mapLineno = (lineno : number) : number => linenoMapping ? linenoMapping[lineno] : lineno;
+    const strypeDirectives = new Map<string, string>();
     
     // Preprocess; first take off trailing whitespace:
     code = code.trimEnd();
@@ -193,7 +196,16 @@ export function copyFramesFromParsedPython(code: string, currentStrypeLocation: 
         // Look for # with only space before them, or a # with no quote after:
         const match = /^ +#(.*)$/.exec(codeLines[i]) ?? /#([^"]+)$/.exec(codeLines[i]);
         if (match) {
-            comments.push({lineNumber: i + 1, content: match[1]});
+            const directiveMatch = new RegExp("^ *#" + escapeRegExp(AppSPYPrefix) + "([^:]+):(.*)$").exec(codeLines[i]);
+            if (directiveMatch) {
+                // By default, directives are just added to the map:
+                const key = directiveMatch[1];
+                const value = directiveMatch[2];
+                strypeDirectives.set(key, value);
+            }
+            else {
+                comments.push({lineNumber: i + 1, content: match[1]});
+            }
         }
         else if (codeLines[i].trim() === "") {
             // Blank line:

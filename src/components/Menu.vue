@@ -201,8 +201,9 @@ import { cloneDeep } from "lodash";
 import App from "@/App.vue";
 import appPackageJson from "@/../package.json";
 import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
-import { getLocaleBuildDate } from "@/main";
+import {AppPlatform, AppSPYPrefix, AppSPYSaveVersion, getLocaleBuildDate} from "@/main";
 import scssVars from "@/assets/style/_export.module.scss";
+import {parseCodeAndGetParseElements} from "@/parser/parser";
 
 //////////////////////
 //     Component    //
@@ -855,9 +856,14 @@ export default Vue.extend({
                             this.currentModalButtonGroupIDInAction = "";
                             return;
                         }
-                        // Save the JSON file of the state, we try to use the file picker if the browser allows it, otherwise, download to the default download repertory of the browser.
+                        // Save the .spy file of the state, we try to use the file picker if the browser allows it, otherwise, download to the default download repertory of the browser.
+                        let saveContent = parseCodeAndGetParseElements(false, true).parsedOutput;
+                        // We add the initial headers:
+                        const headers = new Map<string, string>();
+                        headers.set("Strype", AppSPYSaveVersion + ":" + AppPlatform);
+                        saveContent = Array.from(headers.entries()).map((e) => "#" + AppSPYPrefix + " " + e[0] + ":" + e[1] + "\n").join("") + saveContent;
                         if(canBrowserSaveFilePicker){
-                            saveFile(saveFileName, this.strypeProjMIMEDescArray, this.appStore.strypeProjectLocation, this.appStore.generateStateJSONStrWithCheckpoint(), (fileHandle: FileSystemFileHandle) => {
+                            saveFile(saveFileName, this.strypeProjMIMEDescArray, this.appStore.strypeProjectLocation, saveContent, (fileHandle: FileSystemFileHandle) => {
                                 this.appStore.strypeProjectLocation = fileHandle;
                                 this.appStore.projectName = fileHandle.name.substring(0, fileHandle.name.lastIndexOf("."));
                                 this.appStore.projectLastSaveDate = Date.now();
@@ -869,7 +875,7 @@ export default Vue.extend({
                             });
                         }
                         else{
-                            saveContentToFile(this.appStore.generateStateJSONStrWithCheckpoint(), saveFileName + "." + strypeFileExtension);
+                            saveContentToFile(saveContent, saveFileName + "." + strypeFileExtension);
                             // We cannot retrieve the file name ultimately set by the user or the browser when it's being saved with a click,
                             // however we should still at least update the project name with what the user set in our own save as dialog
                             this.appStore.projectName = saveFileName.trim();

@@ -3,22 +3,23 @@ import { hasEditorCodeErrors, trimmedKeywordOperators } from "@/helpers/editor";
 import { generateFlatSlotBases, retrieveSlotByPredicate } from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AllFrameTypesIdentifier, BaseSlot, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, ParserElements, SlotsStructure, SlotType } from "@/types/types";
+import {AllFrameTypesIdentifier, BaseSlot, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, ParserElements, SlotsStructure, SlotType} from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 /*IFTRUE_isPython */
 import { actOnTurtleImport } from "@/helpers/editor";
+import {AppSPYPrefix} from "@/main";
 /*FITRUE_isPython */
 const INDENT = "    ";
 const DISABLEDFRAMES_FLAG =  "\"\"\""; 
 
 // Parse the code contained in the editor, and generate a compiler for this code if no error are found.
 // The method returns an object containing the output code and the compiler.
-export function parseCodeAndGetParseElements(requireCompilation: boolean): ParserElements{
+export function parseCodeAndGetParseElements(requireCompilation: boolean, insertStrypeSectionDirectives?: boolean): ParserElements{
     // Errors in the code (precompiled errors and TigerPython errors) are looked up at code edition.
     // Therefore, we expect the errors to already be found out when this method is called, and we don't need
     // to retrieve them again.
     const parser = new Parser();
-    const out = parser.parse();
+    const out = parser.parse(undefined, undefined, undefined, insertStrypeSectionDirectives);
 
     const hasErrors = hasEditorCodeErrors();
     const compiler = new Compiler();
@@ -157,7 +158,7 @@ export default class Parser {
         return output;
     }
 
-    private parseFrames(codeUnits: FrameObject[], indentation = ""): string {
+    private parseFrames(codeUnits: FrameObject[], indentation = "", insertStrypeSectionDirectives?: boolean): string {
         let output = "";
         let lineCode = "";
 
@@ -171,6 +172,20 @@ export default class Parser {
                 }
                 break;
             }
+            
+            if (insertStrypeSectionDirectives && frame.frameType.type === ContainerTypesIdentifiers.framesMainContainer) {
+                output += "#" + AppSPYPrefix + " Section:Main\n";
+                this.line += 1;
+            }
+            else if (insertStrypeSectionDirectives && frame.frameType.type === ContainerTypesIdentifiers.funcDefsContainer) {
+                output += "#" + AppSPYPrefix + " Section:Definitions\n";
+                this.line += 1;
+            }
+            else if (insertStrypeSectionDirectives && frame.frameType.type === ContainerTypesIdentifiers.importsContainer) {
+                output += "#" + AppSPYPrefix + " Section:Imports\n";
+                this.line += 1;
+            }
+            
             //if the frame is disabled and we were not in a disabled group of frames, add the comments flag
             //(to avoid weird Python code, if that first disabled frame is a joint frame (like "else") then we align the comment with the other joint/root bodies)
             let disabledFrameBlockFlag = "";
@@ -208,7 +223,7 @@ export default class Parser {
         return output;
     }
 
-    public parse(startAtFrameId?: number, stopAtFrameId?: number, excludeLoopsAndCommentsAndCloseTry?: boolean): string {
+    public parse(startAtFrameId?: number, stopAtFrameId?: number, excludeLoopsAndCommentsAndCloseTry?: boolean, insertStrypeSectionDirectives?: boolean): string {
         let output = "";
         if(startAtFrameId){
             this.startAtFrameId = startAtFrameId;
@@ -227,7 +242,7 @@ export default class Parser {
         /* FITRUE_isPython */
 
         //console.time();
-        output += this.parseFrames((this.startAtFrameId > -100) ? [useStore().frameObjects[this.startAtFrameId]] : useStore().getFramesForParentId(0));
+        output += this.parseFrames((this.startAtFrameId > -100) ? [useStore().frameObjects[this.startAtFrameId]] : useStore().getFramesForParentId(0), "", insertStrypeSectionDirectives);
         // We could have disabled frame(s) just at the end of the code. 
         // Since no further frame would be used in the parse to close the ongoing comment block we need to check
         // if there are disabled frames being rendered when reaching the end of the editor's code.

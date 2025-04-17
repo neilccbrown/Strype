@@ -17,6 +17,12 @@ Vue.config.productionTip = false;
 // note: that is not an offical software version of Strype, just a way to help us dealing with compatibility issues.
 // it MUST be kept as an integer matching value
 export const AppVersion = "5";
+// The version used in the new .spy file format.  We may increment this in future
+// if we introduce a breaking change to that file format.
+export const AppSPYSaveVersion = "1";
+// The prefix to use in comments directly after the "#" to indicate a Strype
+// special directive or metadata:
+export const AppSPYPrefix = "(=>";
 let appPlatform = StrypePlatform.standard;
 /* IFTRUE_isMicrobit */
 appPlatform = StrypePlatform.microbit;

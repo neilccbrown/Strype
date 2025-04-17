@@ -1128,12 +1128,16 @@ export default Vue.extend({
                     allLines.pop();
                 }
                 const s = splitLinesToSections(allLines);
-                // Bit awkward but we first copy each to check for errors because
+                // Bit awkward but we first attempt to copy each to check for errors because
                 // if there are any errors we don't want to paste any:
-                const err = copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION, s.importsMapping)
-                            ?? copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION, s.defsMapping)
-                            ?? copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION, s.mainMapping);
-                if (err != null) {
+                let err = copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION, s.importsMapping);
+                if (typeof err != "string") {
+                    err = copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION, s.defsMapping);
+                }
+                if (typeof err != "string") {
+                    err = copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION, s.mainMapping);
+                }
+                if (typeof err == "string") {
                     const msg = cloneDeep(MessageDefinitions.InvalidPythonParseImport);
                     const msgObj = msg.message as FormattedMessage;
                     msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, err);

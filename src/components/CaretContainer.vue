@@ -191,7 +191,7 @@ export default Vue.extend({
                     // But we trim for the purposes of checking if there's any content at all:
                     if (pythonCode?.trim()) {
                         const error = copyFramesFromParsedPython(pythonCode, findCurrentStrypeLocation());
-                        if (error) {
+                        if (typeof error == "string") {
                             const msg = cloneDeep(MessageDefinitions.InvalidPythonParsePaste);
                             const msgObj = msg.message as FormattedMessage;
                             msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, error);
