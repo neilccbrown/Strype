@@ -400,32 +400,6 @@ export default class Parser {
             (slot: FieldSlot) => ((slot as BaseSlot).error?.length??0) > 0) != undefined;
     }
 
-    private isCompoundStatement(line: string, spaces: string[]): boolean {
-        // it's a compound statement if
-        return line.startsWith(spaces+"elif ") ||  // it's an elif statement OR
-               line.startsWith(spaces+"else ") ||  // it's an else statement OR
-               line.startsWith(spaces+"finally "); // it's a finally statement
-        
-        // We do not have to check try and except here as they are checked by getCodeWithoutErrors       
-    }
-
-    private isTryOrExcept(line: string, spaces: string[]): boolean {
-        return this.isTry(line,spaces) || this.isExcept(line,spaces);
-    }
-
-    private isTry(line: string, spaces: string[]): boolean {
-        return line.startsWith(spaces+"try:");  // it's a try statement
-    }
-
-    private isExcept(line: string, spaces: string[]): boolean {
-        return line.startsWith(spaces+"except ") || line.startsWith(spaces+"except:"); // it's an except statement
-    }
-
-    private isFunctionDef(line: string, spaces: string[]): boolean {
-        // it's not a function definition  if
-        return line.startsWith(spaces+"def ");  // it starts with a def
-    }
-
     public getFramePositionMap(): LineAndSlotPositions {
         return this.framePositionMap;
     }
