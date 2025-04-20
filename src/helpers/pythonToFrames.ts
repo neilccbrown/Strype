@@ -1,4 +1,4 @@
-import {CaretPosition, AllFrameTypesIdentifier, FrameObject, LabelSlotsContent, getFrameDefType, SlotsStructure, StringSlot, BaseSlot, ContainerTypesIdentifiers} from "@/types/types";
+import {CaretPosition, AllFrameTypesIdentifier, FrameObject, LabelSlotsContent, getFrameDefType, SlotsStructure, StringSlot, BaseSlot, ContainerTypesIdentifiers, EditorFrameObjects} from "@/types/types";
 import {useStore} from "@/store/store";
 import {operators, trimmedKeywordOperators} from "@/helpers/editor";
 import i18n from "@/i18n";
@@ -24,6 +24,7 @@ interface LocatedCommentOrBlankLine {
 interface CopyState {
     nextId: number; // The next ID to use for a new frame
     addTo: number[]; // List to add frames to
+    loadedFrames: EditorFrameObjects; // Map to put all loaded frames into
     parent: FrameObject | null; // The parent, if any, for borrowing the parent ID
     pendingComments: LocatedCommentOrBlankLine[]; // Modified in-place
 }
@@ -64,7 +65,7 @@ function debugToString(p : ParsedConcreteTree, curIndent: string) : string {
 function addFrame(frame: FrameObject, s: CopyState) : CopyState {
     const id = s.nextId;
     frame.id = id;
-    useStore().copiedFrames[id] = frame;
+    s.loadedFrames[id] = frame;
     s.addTo.push(id);
     if (!frame.frameType.isJointFrame) {
         if (s.parent != null) {
@@ -217,7 +218,7 @@ export function copyFramesFromParsedPython(code: string, currentStrypeLocation: 
     useStore().copiedSelectionFrameIds = [];
     try {
         // Use the next available ID to avoid clashing with any existing IDs:
-        copyFramesFromPython(parsedBySkulpt, {nextId: useStore().nextAvailableId, addTo: useStore().copiedSelectionFrameIds, pendingComments: comments, parent: null});
+        copyFramesFromPython(parsedBySkulpt, {nextId: useStore().nextAvailableId, addTo: useStore().copiedSelectionFrameIds, loadedFrames: useStore().copiedFrames, pendingComments: comments, parent: null});
         // At this stage, we can make a sanity check that we can copy the given Python code in the current position in Strype (for example, no "import" in a function definition section)
         if(!canPastePythonAtStrypeLocation(currentStrypeLocation)){
             useStore().copiedFrames = {};
