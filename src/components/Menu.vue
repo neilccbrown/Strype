@@ -201,7 +201,7 @@ import { cloneDeep } from "lodash";
 import App from "@/App.vue";
 import appPackageJson from "@/../package.json";
 import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
-import {AppPlatform, AppSPYPrefix, AppSPYSaveVersion, getLocaleBuildDate} from "@/main";
+import { AppName, AppPlatform, AppSPYPrefix, AppSPYSaveVersion, getLocaleBuildDate } from "@/main";
 import scssVars from "@/assets/style/_export.module.scss";
 import {parseCodeAndGetParseElements} from "@/parser/parser";
 
@@ -860,7 +860,7 @@ export default Vue.extend({
                         let saveContent = parseCodeAndGetParseElements(false, true).parsedOutput;
                         // We add the initial headers:
                         const headers = new Map<string, string>();
-                        headers.set("Strype", AppSPYSaveVersion + ":" + AppPlatform);
+                        headers.set(AppName, AppSPYSaveVersion + ":" + AppPlatform);
                         saveContent = Array.from(headers.entries()).map((e) => "#" + AppSPYPrefix + " " + e[0] + ":" + e[1] + "\n").join("") + saveContent;
                         if(canBrowserSaveFilePicker){
                             saveFile(saveFileName, this.strypeProjMIMEDescArray, this.appStore.strypeProjectLocation, saveContent, (fileHandle: FileSystemFileHandle) => {

@@ -20,6 +20,7 @@ export const AppVersion = "5";
 // The version used in the new .spy file format.  We may increment this in future
 // if we introduce a breaking change to that file format.
 export const AppSPYSaveVersion = "1";
+export const AppName = "Strype";
 // The prefix to use in comments directly after the "#" to indicate a Strype
 // special directive or metadata:
 export const AppSPYPrefix = "(=>";
