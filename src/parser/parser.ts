@@ -5,9 +5,9 @@ import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import {AllFrameTypesIdentifier, BaseSlot, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, ParserElements, SlotsStructure, SlotType} from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
+import {AppSPYPrefix} from "@/main";
 /*IFTRUE_isPython */
 import { actOnTurtleImport } from "@/helpers/editor";
-import {AppSPYPrefix} from "@/main";
 /*FITRUE_isPython */
 const INDENT = "    ";
 const DISABLEDFRAMES_FLAG =  "\"\"\""; 
