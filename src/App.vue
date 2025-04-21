@@ -992,8 +992,12 @@ export default Vue.extend({
                     this.appStore.setSlotTextCursors(anchorSlotCursorInfos, focusCursorInfoToUse);
                     setDocumentSelection(anchorSlotCursorInfos, focusCursorInfoToUse);
                     // Explicitly set the focused property to the focused slot
-                    this.appStore.setFocusEditableSlot({frameSlotInfos: focusCursorInfoToUse.slotInfos, 
-                        caretPosition: (this.appStore.frameObjects[focusCursorInfoToUse.slotInfos.frameId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below});
+                    if (this.appStore.frameObjects[focusCursorInfoToUse.slotInfos.frameId]) {
+                        this.appStore.setFocusEditableSlot({
+                            frameSlotInfos: focusCursorInfoToUse.slotInfos,
+                            caretPosition: (this.appStore.frameObjects[focusCursorInfoToUse.slotInfos.frameId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below,
+                        });
+                    }
                 }
             });     
         },
