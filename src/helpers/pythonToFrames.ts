@@ -398,7 +398,7 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
             return {fields: [{code: ""}, str, {code: ""}], operators: [{code: ""}, {code: ""}]};
         }
         else {
-            return {fields: [{code: val}], operators: []};
+            return {fields: [{code: val == "___strype_blank" ? "" : val}], operators: []};
         }
     }
     

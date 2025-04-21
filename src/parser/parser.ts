@@ -58,7 +58,7 @@ export default class Parser {
         let output = "";
         const children = useStore().getFramesForParentId(block.id);
 
-        if(this.checkIfFrameHasError(block)) {
+        if(this.checkIfFrameHasError(block) && !this.saveAsSPY) {
             return "";
         }
 
@@ -112,7 +112,7 @@ export default class Parser {
         let output = indentation;
         const labelSlotsPositionLengths: {[labelSlotsIndex: number]: LabelSlotsPositions} = {};
         
-        if(this.checkIfFrameHasError(statement)){
+        if(this.checkIfFrameHasError(statement) && !this.saveAsSPY){
             return "";
         }
 
@@ -140,7 +140,7 @@ export default class Parser {
             if(label.showSlots??true){
                 // Record each slots' vertical positions for that label.
                 const currentPosition = output.length;
-                const slotStartsLengthsAndCode = this.getSlotStartsLengthsAndCodeForFrameLabel(useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures, currentPosition);
+                const slotStartsLengthsAndCode = this.getSlotStartsLengthsAndCodeForFrameLabel(useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures, currentPosition, label.optionalSlot ?? false);
                 labelSlotsPositionLengths[labelSlotsIndex] = {
                     slotStarts: slotStartsLengthsAndCode.slotStarts, 
                     slotLengths: slotStartsLengthsAndCode.slotLengths,
@@ -419,7 +419,7 @@ export default class Parser {
         return this.framePositionMap;
     }
 
-    public getSlotStartsLengthsAndCodeForFrameLabel(slotStructures: SlotsStructure, currentOutputPosition: number): LabelSlotPositionsAndCode {
+    public getSlotStartsLengthsAndCodeForFrameLabel(slotStructures: SlotsStructure, currentOutputPosition: number, optionalSlot : boolean): LabelSlotPositionsAndCode {
         // To retrieve this information, we procede with the following: 
         // we get the flat map of the slots and operate a consumer at each iteration to retrieve the infos we need
         let code = "";
@@ -435,7 +435,7 @@ export default class Parser {
             slotTypes.push(type);
         };
 
-        generateFlatSlotBases(slotStructures, "", (flatSlot: FlatSlotBase) => {
+        generateFlatSlotBases(slotStructures, "", (flatSlot: FlatSlotBase, besidesOp: boolean) => {
             if(isSlotQuoteType(flatSlot.type) || isSlotBracketType(flatSlot.type)){
                 // a quote or a bracket is a 1 character token, shown in the code
                 // but it's not editable so we don't include it in the slot positions
@@ -453,10 +453,19 @@ export default class Parser {
             else{        
                 // that's an editable (code) slot, we get the position and length for that slot
                 // we trim the field's code when we are not in a string literal
-                const flatSlotCode = (isSlotStringLiteralType(flatSlot.type) ? flatSlot.code : flatSlot.code.trim());
+                let flatSlotCode = (isSlotStringLiteralType(flatSlot.type) ? flatSlot.code : flatSlot.code.trim());
+                if (besidesOp && this.saveAsSPY && flatSlotCode === "") {
+                    flatSlotCode = "___strype_blank";
+                }
                 addSlotInPositionLengths(flatSlotCode.length, flatSlot.id, flatSlotCode, flatSlot.type);
             }
         });
+
+        // There are a few fields which are permitted to be blank:
+        if (this.saveAsSPY && code == "" && !optionalSlot) {
+            code = "___strype_blank";
+        }
+        
         return {code: code, slotLengths: slotLengths, slotStarts: slotStarts, slotIds: slotIds, slotTypes: slotTypes}; 
     }
 }

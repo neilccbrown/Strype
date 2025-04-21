@@ -47,16 +47,16 @@ export const retrieveParentSlotFromSlotInfos = (slotInfos: SlotCoreInfos): Field
 // for example if the root slot has only 3 same level children (field/operator/field), ids will respectively be "0", "0" and "1"
 // if the root slot as 3 level children and the second of them has 3 same level children (again field/operator/field), ids will respectively be:
 // "0", "1,0", "1,0", "1,1", "2"
-export const generateFlatSlotBases = (slotStructure: SlotsStructure, parentId?: string, flatSlotConsumer?: (slot: FlatSlotBase) => void): FlatSlotBase[] => {
+export const generateFlatSlotBases = (slotStructure: SlotsStructure, parentId?: string, flatSlotConsumer?: (slot: FlatSlotBase, besidesOp: boolean) => void): FlatSlotBase[] => {
     // The operators always get in between the fields, and we always have one 1 root structure for a label,
     // and bracketed structures can never be found at 1st or last position
     let currIndex = -1;
     const flatSlotBases: FlatSlotBase[] = [];
-    const addFlatSlot = (flatSlot: FlatSlotBase) => {
+    const addFlatSlot = (flatSlot: FlatSlotBase, besidesOp: boolean) => {
         flatSlotBases.push(flatSlot);
         // If a flat slot consumer is defined, we call it here
         if(flatSlotConsumer){
-            flatSlotConsumer(flatSlot);
+            flatSlotConsumer(flatSlot, besidesOp);
         }
     };
 
@@ -68,37 +68,42 @@ export const generateFlatSlotBases = (slotStructure: SlotsStructure, parentId?: 
         if(isFieldBracketedSlot(fieldSlot)){
             // We have a bracketed structure, so we need to get into the nested level.
             // 1) add the opening bracket
-            addFlatSlot({id: slotId, code: fieldSlot.openingBracketValue as string, type:SlotType.openingBracket});
+            addFlatSlot({id: slotId, code: fieldSlot.openingBracketValue as string, type:SlotType.openingBracket}, false);
             // 2) add what is inside the brackets
             flatSlotBases.push(...generateFlatSlotBases(fieldSlot as SlotsStructure, slotId, flatSlotConsumer));
             // 3) add the closing bracket
-            addFlatSlot({id: slotId, code: getMatchingBracket(fieldSlot.openingBracketValue as string, true), type:SlotType.closingBracket});
+            addFlatSlot({id: slotId, code: getMatchingBracket(fieldSlot.openingBracketValue as string, true), type:SlotType.closingBracket}, false);
 
         }
         else if(isFieldStringSlot(fieldSlot)){
             // We have a string slot
             // 1) add the opening quote
-            addFlatSlot({id: slotId, code: fieldSlot.quote as string, type:SlotType.openingQuote});
+            addFlatSlot({id: slotId, code: fieldSlot.quote as string, type:SlotType.openingQuote}, false);
             // 2) add what is inside the quotes
-            addFlatSlot({id: slotId, code: fieldSlot.code, type:SlotType.string});
+            addFlatSlot({id: slotId, code: fieldSlot.code, type:SlotType.string}, false);
             // 3) add the closing quote
-            addFlatSlot({id: slotId, code: fieldSlot.quote as string, type:SlotType.closingQuote});
+            addFlatSlot({id: slotId, code: fieldSlot.quote as string, type:SlotType.closingQuote}, false);
         }
         else{
             // we have a simple slot, we check if we can infer the detailed type (i.e. number or boolean literals)
             // otherwise we consider it is just a code slot
-            addFlatSlot({...(fieldSlot as BaseSlot), id: slotId, type: evaluateSlotType(fieldSlot)});
+            
+            // We pass true if we're beside an operator and the other side is the end or a non-blank operator
+            const adjacentOp =
+                (operatorSlot.code !== "" && (index == 0 || slotStructure.operators[index - 1].code != ""))
+                || (index > 0 && slotStructure.operators[index - 1].code != "" && operatorSlot.code !== "");
+            addFlatSlot({...(fieldSlot as BaseSlot), id: slotId, type: evaluateSlotType(fieldSlot)}, adjacentOp);
         }   
 
         // Add this operator only if it is not blank
         if(operatorSlot.code.length > 0) {
-            addFlatSlot({...operatorSlot, id: slotId, type: SlotType.operator});
+            addFlatSlot({...operatorSlot, id: slotId, type: SlotType.operator}, false);
         }
     });
 
     // Add the last remaining field and call the consumer (if provided)
     currIndex++;
-    addFlatSlot({...(slotStructure.fields.at(-1) as BaseSlot), id: getSlotIdFromParentIdAndIndexSplit(parentId??"", currIndex), type: evaluateSlotType(slotStructure.fields.at(-1) as FieldSlot)});
+    addFlatSlot({...(slotStructure.fields.at(-1) as BaseSlot), id: getSlotIdFromParentIdAndIndexSplit(parentId??"", currIndex), type: evaluateSlotType(slotStructure.fields.at(-1) as FieldSlot)}, slotStructure.operators.length > 0 && slotStructure.operators.at(-1)?.code != "");
 
     return flatSlotBases;
 };
