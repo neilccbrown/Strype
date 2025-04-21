@@ -1,0 +1,12 @@
+#(=> Strype:1:std
+#(=> Section:Imports
+import x as ___strype_blank 
+from ___strype_blank import ___strype_blank 
+#(=> Section:Definitions
+def ___strype_blank ( ) :
+    if ___strype_blank  :
+        () 
+    return  
+#(=> Section:Main
+raise  
+___strype_blank  = 1+___strype_blank*___strype_blank/()-___strype_blank 

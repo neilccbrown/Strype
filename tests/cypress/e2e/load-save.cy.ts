@@ -96,7 +96,13 @@ function testRoundTripImportAndDownload(filepath: string) {
             const matching = spans.filter((el) => el.textContent?.trim().startsWith("(=>"));
             expect(matching.length).to.eq(0);
         });
-
+        
+        // We make sure there are no slots containing ___strype_blank because they should have been turned into blanks:
+        cy.document().then((doc) => {
+            const spans = Array.from(doc.querySelectorAll("span"));
+            const matching = spans.filter((el) => el.textContent?.trim() === "___strype_blank");
+            expect(matching.length).to.eq(0);
+        });
 
         checkDownloadedFileEquals(spy, filepath.split("/").pop() ?? "My project.spy");
     });
@@ -164,4 +170,29 @@ describe("Tests disabling frames", () => {
     it("Loads and saves a complex disable project", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-complex-disable.spy");
     });
+});
+
+describe("Tests blanks", () => {
+    if (Cypress.env("mode") === "microbit") {
+        // TODO instead issue a warning dialog when loading from another platform:
+        return;
+    }
+    it("Outputs a file with lots of blanks", () => {
+        // import x as ___strype_blank
+        // from ___strype_blank import ___strype_blank
+        // def ___strype_blank ( ) :
+        //     if ___strype_blank  :
+        //         ( )
+        //     return
+        // raise ___strype_blank
+        // ___strype_blank = 1 + ___strype_blank * ___strype_blank / () - __strype_blank
+        testEntryDisableAndSave("{uparrow}{uparrow}" +
+            "ix {rightarrow}f{downarrow}{downarrow}" +
+            "f{downarrow}i{rightarrow} {downarrow}{downarrow}r{rightarrow}{downarrow}{downarrow}" +
+            "a{rightarrow}==1+*/()-", [], "tests/cypress/fixtures/project-blanks.spy");
+    });
+    it("Loads and saves with lots of blanks", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-blanks.spy");
+    });
+    
 });
