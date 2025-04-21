@@ -3,7 +3,7 @@ import {useStore} from "@/store/store";
 import {operators, trimmedKeywordOperators} from "@/helpers/editor";
 import i18n from "@/i18n";
 import {escapeRegExp} from "lodash";
-import {AppSPYPrefix} from "@/main";
+import {AppName, AppSPYPrefix} from "@/main";
 
 const TOP_LEVEL_TEMP_ID = -999;
 
@@ -12,21 +12,31 @@ export interface ParsedConcreteTree {
     type: number;
     value: null | string;
     lineno? : number;
-    col_offset?: number;
+    //col_offset?: number;  -- Don't use this as it seems to have surprising values
     children: null | ParsedConcreteTree[];
 }
-// A comment or blank line, plus a line number location in the original Python:
+// One of three possible things:
+//  - A comment (content is non-null single string, disabledBlock is false)
+//  - A blank line (content is null)
+//  - A block of disabled comments (content is non-null string array, one entry per line with the "Disabled:" prefix stripped)
+//  Plus a line number location in the original Python:
 interface LocatedCommentOrBlankLine {
     lineNumber: number;
-    content: string | null; // If null, it's a blank line (not a blank comment!)
+    indentation: string;
+    content: string | string[] | null; // If null, it's a blank line (not a blank comment!)
 }
 // The state passed around while copying from Python code into frames
 interface CopyState {
     nextId: number; // The next ID to use for a new frame
-    addTo: number[]; // List to add frames to
+    lastLineProcessed: number | undefined; // The number of the last line we processed
+    addToJoint: number[] | undefined; // List to add frames to
+    addToNonJoint: number[]; // List to add frames to
     loadedFrames: EditorFrameObjects; // Map to put all loaded frames into
     parent: FrameObject | null; // The parent, if any, for borrowing the parent ID
+    jointParent: FrameObject | null; // The joint parent, if any, for borrowing the parent ID
     pendingComments: LocatedCommentOrBlankLine[]; // Modified in-place
+    disableFrames: boolean; // Whether to set loaded frames to disabled
+    lineNumberToIndentation: Map<number, string>; // Maps a line number to a string of indentation
 }
 
 // Declare Skulpt:
@@ -39,6 +49,12 @@ export enum STRYPE_LOCATION {
     IN_FUNCDEF,
     FUNCDEF_SECTION,
     IMPORTS_SECTION
+}
+
+// Copies nextId and lastLineProcessed from src to dest
+function updateFrom(dest : CopyState, src : CopyState) {
+    dest.nextId = src.nextId;
+    dest.lastLineProcessed = src.lastLineProcessed;
 }
 
 // Simplifies a tree (by collapsing all single-child nodes into the child) in order to make
@@ -62,12 +78,13 @@ function debugToString(p : ParsedConcreteTree, curIndent: string) : string {
 
 // Given a frame, assigns it a new ID and adds it to the list specified in the CopyState
 // If it is not a joint frame, set its parent.
-function addFrame(frame: FrameObject, s: CopyState) : CopyState {
+function addFrame(frame: FrameObject, lineno: number | undefined, s: CopyState) : CopyState {
     const id = s.nextId;
     frame.id = id;
     s.loadedFrames[id] = frame;
-    s.addTo.push(id);
+    frame.isDisabled = s.disableFrames;
     if (!frame.frameType.isJointFrame) {
+        s.addToNonJoint?.push(id);
         if (s.parent != null) {
             frame.parentId = s.parent.id;
             // Don't need to add to children because that will already be the addTo array
@@ -78,7 +95,13 @@ function addFrame(frame: FrameObject, s: CopyState) : CopyState {
             frame.parentId = TOP_LEVEL_TEMP_ID;
         }
     }
-    return {...s, nextId: s.nextId + 1};
+    else {
+        s.addToJoint?.push(id);
+        if (s.jointParent) {
+            frame.jointParentId = s.jointParent.id;
+        }
+    }
+    return {...s, nextId: s.nextId + 1, lastLineProcessed: lineno};
 }
 
 // Makes a basic frame object with the given type and slots, and dummy/default values for all other fields
@@ -100,49 +123,7 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}) :
     };
 }
 
-// The main entry point to this module.  Given a string of Python code that the user
-// has pasted in, copy it to the store's copiedFrames/copiedSelectionFrameIds fields,
-// ready to be pasted immediately afterwards.
-// If successful, returns a map with key-value Strype directives.  If unsuccessful, returns a string with some info about
-// where the Python parse failed.
-export function copyFramesFromParsedPython(code: string, currentStrypeLocation: STRYPE_LOCATION, linenoMapping?: Record<number, number>) : string | null | Map<string, string> {
-    const mapLineno = (lineno : number) : number => linenoMapping ? linenoMapping[lineno] : lineno;
-    const strypeDirectives = new Map<string, string>();
-    
-    // Preprocess; first take off trailing whitespace:
-    code = code.trimEnd();
-
-    const codeLines = code.split(/\r?\n/);
-    // Then find the common amount of indentation on non-blank lines and remove it:
-    // This way if the user parses in something like this from the middle of some Python:
-    // "    if x > 8:"
-    // "      x = 10"
-    // "    else:"
-    // "      x = 12"
-    // (which is invalid in Python because you can't have a leading indent on the first line),
-    // we interpret it as :
-    // "if x > 8:"
-    // "  x = 10"
-    // "else:"
-    // "  x = 12"
-    // (note that just removing indent on first line wouldn't make the else line up correctly)
-    let lowestIndent = 999999;
-    for (const codeLine of codeLines) {
-        if (codeLine.trim() != "") {
-            // Is bound to match because even the empty line matches:
-            const indent = (codeLine.match(/^\s*/) as RegExpMatchArray)[0].length;
-            if (indent < lowestIndent) {
-                lowestIndent = indent;
-            }
-        }
-    }
-    // Now remove that indent if it exists:
-    if (lowestIndent > 0) {
-        for (let i = 0; i < codeLines.length; i++) {
-            codeLines[i] = codeLines[i].slice(lowestIndent);
-        }
-    }
-
+function parseWithSkulpt(codeLines: string[], mapLineno : (lineno : number) => number) : string | { parseTree: any, addedFakeJoinParent: number } {
     // Special case: things beginning with joint frames (else, elif, except, finally) are
     // not parsed by Skulpt as-is (because they lack the main construct before), but we
     // would like to support parsing them.  So we look for them and try gluing on
@@ -156,7 +137,7 @@ export function copyFramesFromParsedPython(code: string, currentStrypeLocation: 
     const firstNonBlank = codeLines.find((l) => l.trim() != "");
     if (firstNonBlank) {
         const leadingIndent = firstNonBlank.replace(/[^ ].*/, "");
-        const firstWord = firstNonBlank.replace(/[^a-z].*/, "");
+        const firstWord = firstNonBlank.replace(/[^a-z].*/, "").trim();
         switch(firstWord) {
         case "elif":
             // We glue an if on:
@@ -187,7 +168,63 @@ export function copyFramesFromParsedPython(code: string, currentStrypeLocation: 
     catch (e) {
         return ((e as any).$offset?.v?.[2]?.$mangled ?? (e as any).$msg?.$mangled) + " line: " + mapLineno((e as any).traceback?.[0].lineno);
     }
-    const parsedBySkulpt = parsed["cst"];
+    return {parseTree: parsed["cst"], addedFakeJoinParent: addedFakeJoinParent};
+}
+
+// Gets the leading indent of a string
+function getIndent(codeLine: string) {
+    return (codeLine.match(/^\s*/) as RegExpMatchArray)[0];
+}
+
+
+// The main entry point to this module.  Given a string of Python code that the user
+// has pasted in, copy it to the store's copiedFrames/copiedSelectionFrameIds fields,
+// ready to be pasted immediately afterwards.
+// If successful, returns a map with key-value Strype directives.  If unsuccessful, returns a string with some info about
+// where the Python parse failed.
+export function copyFramesFromParsedPython(code: string, currentStrypeLocation: STRYPE_LOCATION, linenoMapping?: Record<number, number>) : string | null | Map<string, string> {
+    const mapLineno = (lineno : number) : number => linenoMapping ? linenoMapping[lineno] : lineno;
+    const strypeDirectives = new Map<string, string>();
+    const indents = new Map<number, string>();
+    
+    // Preprocess; first take off trailing whitespace:
+    code = code.trimEnd();
+
+    const codeLines = code.split(/\r?\n/);
+    // Then find the common amount of indentation on non-blank lines and remove it:
+    // This way if the user parses in something like this from the middle of some Python:
+    // "    if x > 8:"
+    // "      x = 10"
+    // "    else:"
+    // "      x = 12"
+    // (which is invalid in Python because you can't have a leading indent on the first line),
+    // we interpret it as :
+    // "if x > 8:"
+    // "  x = 10"
+    // "else:"
+    // "  x = 12"
+    // (note that just removing indent on first line wouldn't make the else line up correctly)
+    let lowestIndent = 999999;
+    for (const codeLine of codeLines) {
+        if (codeLine.trim() != "") {
+            // Is bound to match because even the empty line matches:
+            const indent = getIndent(codeLine).length;
+            if (indent < lowestIndent) {
+                lowestIndent = indent;
+            }
+        }
+    }
+    // Now remove that indent if it exists, and record remaining indent:
+    for (let i = 0; i < codeLines.length; i++) {
+        codeLines[i] = codeLines[i].slice(lowestIndent);
+        indents.set(i + 1, getIndent(codeLines[i]));
+    }
+
+    const parsedBySkulpt = parseWithSkulpt(codeLines, mapLineno);
+    if (typeof parsedBySkulpt === "string") {
+        return parsedBySkulpt;
+    }
+    const addedFakeJoinParent = parsedBySkulpt.addedFakeJoinParent;
     
     // Skulpt doesn't preserve blanks or comments so we must find them then later reinsert them
     // ourselves at the right points:
@@ -195,22 +232,44 @@ export function copyFramesFromParsedPython(code: string, currentStrypeLocation: 
     const comments : LocatedCommentOrBlankLine[] = [];
     for (let i = 0; i < codeLines.length; i++) {
         // Look for # with only space before them, or a # with no quote after:
-        const match = /^ +#(.*)$/.exec(codeLines[i]) ?? /#([^"]+)$/.exec(codeLines[i]);
+        const match = /^( +)#(.*)$/.exec(codeLines[i]) ?? /()#([^"]+)$/.exec(codeLines[i]);
         if (match) {
             const directiveMatch = new RegExp("^ *#" + escapeRegExp(AppSPYPrefix) + "([^:]+):(.*)$").exec(codeLines[i]);
             if (directiveMatch) {
                 // By default, directives are just added to the map:
-                const key = directiveMatch[1];
+                // Note we trim() keys but not values; space may well be important in values:
+                const key = directiveMatch[1].trim();
                 const value = directiveMatch[2];
-                strypeDirectives.set(key, value);
+                if (key == "Disabled") {
+                    comments.push({lineNumber: i + 1, indentation: match[1], content: [value]});
+                }
+                else {
+                    strypeDirectives.set(key, value);
+                }
             }
             else {
-                comments.push({lineNumber: i + 1, content: match[1]});
+                comments.push({lineNumber: i + 1, indentation: match[1], content: match[2]});
             }
         }
         else if (codeLines[i].trim() === "") {
             // Blank line:
-            comments.push({lineNumber: i + 1, content: null});
+            comments.push({lineNumber: i + 1, indentation: "", content: null});
+        }
+    }
+    // We then do a second pass to tag and concatenate any disabled blocks with the same indent.
+    // We manipulate the array so we go backwards to minimise index change consideration.
+    // And we don't need to process i = 0 because it can't combine with i-1.
+    for (let i = comments.length - 1; i > 0; i--) {
+        const prevContent = comments[i-1].content;
+        const ourContent = comments[i].content;
+        if (comments[i-1].lineNumber == comments[i].lineNumber - 1 
+            && comments[i-1].indentation == comments[i].indentation
+            && prevContent != null && typeof prevContent != "string"
+            && ourContent != null && typeof ourContent != "string") {
+            // Past line is directly before, and is disabled and we are disabled, so we can combine:
+            prevContent.push(...ourContent);
+            // Then delete us:
+            comments.splice(i, 1);
         }
     }
     
@@ -218,7 +277,7 @@ export function copyFramesFromParsedPython(code: string, currentStrypeLocation: 
     useStore().copiedSelectionFrameIds = [];
     try {
         // Use the next available ID to avoid clashing with any existing IDs:
-        copyFramesFromPython(parsedBySkulpt, {nextId: useStore().nextAvailableId, addTo: useStore().copiedSelectionFrameIds, loadedFrames: useStore().copiedFrames, pendingComments: comments, parent: null});
+        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: useStore().nextAvailableId, addToNonJoint: useStore().copiedSelectionFrameIds, addToJoint: undefined, loadedFrames: useStore().copiedFrames, pendingComments: comments, parent: null, jointParent: null, disableFrames: false, lastLineProcessed: 0, lineNumberToIndentation: indents});
         // At this stage, we can make a sanity check that we can copy the given Python code in the current position in Strype (for example, no "import" in a function definition section)
         if(!canPastePythonAtStrypeLocation(currentStrypeLocation)){
             useStore().copiedFrames = {};
@@ -426,33 +485,92 @@ function applyIndex(p : ParsedConcreteTree, index: number | number[]) : ParsedCo
 }
 
 // Make a frame using the given frame type, the given index/indices of p's children for the slots,
+function getRealLineNo(p: ParsedConcreteTree) : number | undefined {
+    if (p.type == Sk.ParseTables.sym.suite) {
+        // I don't really understand what this item is (it seems to have the raw content as extra children),
+        // but it seems if we ignore these extra children we can proceed and it will all work:
+        for (const child of children(p)) {
+            if (child.type > 250) { // Only count the non-expression nodes
+                return child.lineno;
+            }
+        }
+    }
+    return p.lineno;
+}
+
 // the given index for the body, and call addFrame on it.
-function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, childrenIndicesForSlots: (number | number[])[], childIndexForBody: number, s : CopyState, afterwards? : ((f : FrameObject) => void)) : CopyState {
+function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, childrenIndicesForSlots: (number | number[])[], childIndexForBody: number, s : CopyState) : {s: CopyState, frame: FrameObject} {
     const slots : { [index: number]: LabelSlotsContent} = {};
     for (let slotIndex = 0; slotIndex < childrenIndicesForSlots.length; slotIndex++) {
         slots[slotIndex] = {slotStructures : toSlots(applyIndex(p, childrenIndicesForSlots[slotIndex]))};
     }
     const frame = makeFrame(frameType, slots);
-    s = addFrame(frame, s);
-    const nextId = copyFramesFromPython(children(p)[childIndexForBody], {...s, addTo: frame.childrenIds, parent: frame}).nextId;
-    if (afterwards !== undefined) {
-        afterwards(frame);
+    s = addFrame(frame, p.lineno, s);
+    const frameChildren = children(p);
+    const afterChild = copyFramesFromPython(frameChildren[childIndexForBody], {...s, addToNonJoint: frame.childrenIds, addToJoint: undefined, parent: frame});
+    s = {...s, nextId: afterChild.nextId, lastLineProcessed: afterChild.lastLineProcessed};
+    if (s.lastLineProcessed != undefined) {
+        updateFrom(s, flushComments(s.lastLineProcessed + 1, {...s, addToNonJoint: frame.childrenIds, addToJoint: undefined, parent: frame}, s.lineNumberToIndentation.get(getRealLineNo(frameChildren[childIndexForBody]) ?? 0) ?? ""));
     }
-    return {...s, nextId: nextId};
+    return {s: s, frame: frame};
 }
 
 // Check if there any comments/blanks in s.pendingComments that appear at or before the given line number,
 // and insert them as blanks/comment frames at the given point 
-function flushComments(lineno: number, s: CopyState) {
+function flushComments(lineno: number, s: CopyState, requiredIndentation: string, ...filterKeywords: string[]) : CopyState {
     while (s.pendingComments.length > 0 && s.pendingComments[0].lineNumber <= lineno) {
-        if (s.pendingComments[0].content === null) {
-            s = addFrame(makeFrame(AllFrameTypesIdentifier.blank, {}), s);
+        const content = s.pendingComments[0].content;
+        const indentation = s.pendingComments[0].indentation;
+        // Remove first item:
+        const considering = s.pendingComments.splice(0, 1);
+        
+        if (content === null) {
+            s = addFrame(makeFrame(AllFrameTypesIdentifier.blank, {}), lineno, s);
+        }
+        else if (typeof content == "string" && indentation == requiredIndentation) {
+            s = addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: content}], operators: []}}}), lineno, s);
+        }
+        else if (typeof content != "string" && indentation == requiredIndentation && (filterKeywords.length == 0 || (content.length > 0 && filterKeywords.some((k) => content[0].startsWith(k))))) {
+            // Parse and insert disabled frame(s):
+            const parsed = parseWithSkulpt(content, (n) => n + lineno);
+            if (typeof parsed == "string") {
+                // Error; add it as comment so it's not lost:
+                s = addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: content.join("\n")}], operators: []}}}), lineno, s);
+            }
+            else {
+                // Add CopyState flag for disabling them
+                const beforeAdd = s.addToNonJoint.length;
+                // We don't want to try processing more comments while processing a comment, so hide them:
+                const beforeComments = s.pendingComments;
+                s = copyFramesFromPython(parsed.parseTree, {...s, pendingComments: [], disableFrames: true});
+                s.disableFrames = false;
+                s.pendingComments = beforeComments;
+                s.lastLineProcessed = lineno + content.length - 1;
+                // Now check if we need to remove some added fake join parents:
+                if (parsed.addedFakeJoinParent > 0) {
+                    if (s.addToNonJoint.length > beforeAdd) {
+                        s.loadedFrames[s.addToNonJoint[beforeAdd]].jointFrameIds.slice(0, parsed.addedFakeJoinParent - 1).forEach((id) => {
+                            delete s.loadedFrames[id];
+                        });
+                        const joints = s.loadedFrames[s.addToNonJoint[beforeAdd]].jointFrameIds.slice(parsed.addedFakeJoinParent - 1);
+                        joints.forEach((j) => {
+                            if (s.jointParent) {
+                                s.loadedFrames[j].jointParentId = s.jointParent.id;
+                            }
+                        });
+                        s.addToJoint?.push(...joints);
+                        const deleted = s.addToNonJoint.splice(beforeAdd, 1);
+                        deleted.forEach((id) => {
+                            delete s.loadedFrames[id];
+                        });
+                    }
+                }
+            }
         }
         else {
-            s = addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: s.pendingComments[0].content}], operators: []}}}), s);
+            s.pendingComments.unshift(...considering);
+            break;
         }
-        // Remove first item:
-        s.pendingComments.splice(0, 1);
     }
     return s;
 }
@@ -462,7 +580,7 @@ function flushComments(lineno: number, s: CopyState) {
 function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState {
     //console.log("Processing type: " + (Sk.ParseTables.number2symbol[p.type] || ("#" + p.type)));
     if (p.lineno) {
-        s = flushComments(p.lineno, s);
+        s = flushComments(p.lineno, s, s.lineNumberToIndentation.get(p.lineno ?? 0) ?? "");
     }
     
     switch (p.type) {
@@ -490,81 +608,97 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
                 // An assignment
                 const lhs = toSlots({...p, children: p.children.slice(0, index)});
                 const rhs = toSlots({...p, children: p.children.slice(index + 1)});
-                s = addFrame(makeFrame(AllFrameTypesIdentifier.varassign, {0: {slotStructures: lhs}, 1: {slotStructures: rhs}}), s);
+                s = addFrame(makeFrame(AllFrameTypesIdentifier.varassign, {0: {slotStructures: lhs}, 1: {slotStructures: rhs}}), p.lineno, s);
             }
             else {
                 // Everything else goes in method call:
-                s = addFrame(makeFrame(AllFrameTypesIdentifier.funccall, {0: {slotStructures: toSlots(p)}}), s);
+                s = addFrame(makeFrame(AllFrameTypesIdentifier.funccall, {0: {slotStructures: toSlots(p)}}), p.lineno, s);
             }
         }
         break;
     case Sk.ParseTables.sym.pass_stmt:
-        // We do not insert pass frames
+        // We do not insert pass frames.  But we do record the line number
+        // because it may matter for processing following comments:
+        s = {...s, lastLineProcessed: p.lineno};
         break;
     case Sk.ParseTables.sym.break_stmt:
-        s = addFrame(makeFrame(AllFrameTypesIdentifier.break, {}), s);
+        s = addFrame(makeFrame(AllFrameTypesIdentifier.break, {}), p.lineno, s);
         break;
     case Sk.ParseTables.sym.continue_stmt:
-        s = addFrame(makeFrame(AllFrameTypesIdentifier.continue, {}), s);
+        s = addFrame(makeFrame(AllFrameTypesIdentifier.continue, {}), p.lineno, s);
         break;
     case Sk.ParseTables.sym.global_stmt:
-        s = addFrame(makeFrame(AllFrameTypesIdentifier.global, {0: {slotStructures: toSlots(children(p)[1])}}), s);
+        s = addFrame(makeFrame(AllFrameTypesIdentifier.global, {0: {slotStructures: toSlots(children(p)[1])}}), p.lineno, s);
         break;
     case Sk.ParseTables.sym.import_name:
-        s = addFrame(makeFrame(AllFrameTypesIdentifier.import, {0: {slotStructures: toSlots(children(p)[1])}}), s);
+        s = addFrame(makeFrame(AllFrameTypesIdentifier.import, {0: {slotStructures: toSlots(children(p)[1])}}), p.lineno, s);
         break;
     case Sk.ParseTables.sym.import_from:
-        s = addFrame(makeFrame(AllFrameTypesIdentifier.fromimport, {0: {slotStructures: toSlots(children(p)[1])}, 1: {slotStructures: toSlots(children(p)[3])}}), s);
+        s = addFrame(makeFrame(AllFrameTypesIdentifier.fromimport, {0: {slotStructures: toSlots(children(p)[1])}, 1: {slotStructures: toSlots(children(p)[3])}}), p.lineno, s);
         break;
     case Sk.ParseTables.sym.raise_stmt:
-        s = addFrame(makeFrame(AllFrameTypesIdentifier.raise, {0: {slotStructures: toSlots(children(p)[1])}}), s);
+        s = addFrame(makeFrame(AllFrameTypesIdentifier.raise, {0: {slotStructures: toSlots(children(p)[1])}}), p.lineno, s);
         break;
     case Sk.ParseTables.sym.return_stmt:
         // Return may or may not have an expression child after it:
         if (children(p).length >= 2) {
-            s = addFrame(makeFrame(AllFrameTypesIdentifier.return, {0: {slotStructures: toSlots(children(p)[1])}}), s);
+            s = addFrame(makeFrame(AllFrameTypesIdentifier.return, {0: {slotStructures: toSlots(children(p)[1])}}), p.lineno, s);
         }
         else {
-            s = addFrame(makeFrame(AllFrameTypesIdentifier.return, {0: {slotStructures: {fields: [{code: ""}], operators: []}}}), s);
+            s = addFrame(makeFrame(AllFrameTypesIdentifier.return, {0: {slotStructures: {fields: [{code: ""}], operators: []}}}), p.lineno, s);
         }
         break;
     case Sk.ParseTables.sym.if_stmt: {
         // First child is keyword, second is the condition, third is colon, fourth is body
-        const ifFrame: FrameObject[] = [];
-        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.if, [1], 3, s, (f : FrameObject) => ifFrame.push(f));
+        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.if, [1], 3, s);
+        s = r.s;
+        const ifFrame = r.frame;
+        // Could be disabled item between if and non-disabled items:
+        if (s.lastLineProcessed) {
+            const indent = s.lineNumberToIndentation.get(getRealLineNo(p) ?? 0) ?? "";
+            updateFrom(s, flushComments(s.lastLineProcessed + 1, {...s, addToJoint: ifFrame.jointFrameIds, jointParent: ifFrame}, indent,  "else", "elif"));
+        }
+        
         // If can have elif, else, so keep going to check for that:
         for (let i = 4; i < children(p).length; i++) {
             if (children(p)[i].value === "else") {
                 // Skip the else and the colon, which are separate tokens:
                 i += 2;
-                s.nextId = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.else, [], i, {...s, addTo: ifFrame[0].jointFrameIds, parent: null}, (f) => {
-                    f.jointParentId = ifFrame[0].id;
-                }).nextId;
+                updateFrom(s, makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.else, [], i, {...s, addToJoint: ifFrame.jointFrameIds, jointParent: ifFrame}).s);
             }
             else if (children(p)[i].value === "elif") {
                 // Skip the elif:
                 i += 1;
-                s.nextId = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.elif, [i], i + 2, {...s, addTo: ifFrame[0].jointFrameIds, parent: null}, (f) => {
-                    f.jointParentId = ifFrame[0].id;
-                }).nextId;
+                updateFrom(s, makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.elif, [i], i + 2, {...s, addToJoint: ifFrame.jointFrameIds, jointParent: ifFrame}).s);
                 // Skip the condition and the colon:
                 i += 2;
+            }
+            if (s.lastLineProcessed) {
+                const indent = s.lineNumberToIndentation.get(getRealLineNo(children(p)[i]) ?? 0) ?? "";
+                updateFrom(s, flushComments(s.lastLineProcessed + 1, {...s, addToJoint: ifFrame.jointFrameIds, jointParent: ifFrame}, indent,  "else", "elif"));
             }
         }
         break;
     }
     case Sk.ParseTables.sym.while_stmt:
         // First child is keyword, second is the condition, third is colon, fourth is body
-        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.while, [1], 3, s);
+        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.while, [1], 3, s).s;
         break;
     case Sk.ParseTables.sym.for_stmt:
         // First child is keyword, second is the loop var, third is keyword, fourth is collection, fifth is colon, sixth is body
-        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.for, [1, 3], 5, s);
+        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.for, [1, 3], 5, s).s;
         break;
     case Sk.ParseTables.sym.try_stmt: {
         // First is keyword, second is colon, third is body
-        const tryFrame : FrameObject[] = [];
-        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.try, [], 2, s, (f) => tryFrame.push(f));
+        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.try, [], 2, s);
+        const tryFrame = r.frame;
+        s = r.s;
+        // Could be a disabled frame between try and non-disabled items:
+        if (s.lastLineProcessed) {
+            const indent = s.lineNumberToIndentation.get(getRealLineNo(p) ?? 0) ?? "";
+            updateFrom(s, flushComments(s.lastLineProcessed + 1, {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame}, indent, "else", "except", "finally"));
+        }
+        
         // The except clauses are descendants of the try block, so we must iterate through later children:
         for (let i = 3; i < children(p).length; i++) {
             const child = children(p)[i];
@@ -583,7 +717,13 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
                 }
                 else if (grandchildren.length == 2) {
                     // except varName:
-                    exceptFrame = makeFrame(AllFrameTypesIdentifier.except, {0: {slotStructures: toSlots(grandchildren[1])}});
+                    const asSlots = toSlots(grandchildren[1]);
+                    if (asSlots.fields.length == 1 && (asSlots.fields[0] as BaseSlot)?.code == "___strype_dummy") {
+                        exceptFrame = null;
+                    }
+                    else {
+                        exceptFrame = makeFrame(AllFrameTypesIdentifier.except, {0: {slotStructures: asSlots}});
+                    }
                 }
                 else if (grandchildren.length == 1) {
                     // Just the except keyword, i.e. blank except:
@@ -593,26 +733,39 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
                     // Shouldn't happen, but skip if so:
                     continue;
                 }
-                exceptFrame.jointParentId = tryFrame[0].id;
-                s.nextId = addFrame(exceptFrame, {...s, addTo: tryFrame[0].jointFrameIds, parent: null}).nextId;
-                // The children of the except actually follow as a sibling of the clause, after the colon (hence i + 2):
-                s.nextId = copyFramesFromPython(children(p)[i+2], {...s, parent: exceptFrame, addTo: exceptFrame.childrenIds}).nextId;
+                if (exceptFrame) {
+                    updateFrom(s, addFrame(exceptFrame, getRealLineNo(child), {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame}));
+                    // The children of the except actually follow as a sibling of the clause, after the colon (hence i + 2):
+                    if (s.lastLineProcessed != undefined) {
+                        updateFrom(s, copyFramesFromPython(children(p)[i + 2], {...s, addToNonJoint: exceptFrame.childrenIds, parent: exceptFrame}));
+                        updateFrom(s, flushComments(s.lastLineProcessed + 1, {...s, parent: exceptFrame, addToNonJoint: exceptFrame.childrenIds}, s.lineNumberToIndentation.get(getRealLineNo(children(p)[i + 2]) ?? 0) ?? ""));
+                    }
+                }
+                else if (s.lastLineProcessed) {
+                    // We know it's dummy header + pass body, so just add two:
+                    s.lastLineProcessed += 2;
+                }
             }
             else if (child.value === "finally") {
                 // Weirdly, finally doesn't seem to have a proper node type, it's just a normal child
                 // followed by a colon followed by a body
-                s.nextId = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.finally, [], i + 2, {...s, addTo: tryFrame[0].jointFrameIds, parent: null}, (f) => f.jointParentId = tryFrame[0].id).nextId;
+                updateFrom(s, makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.finally, [], i + 2, {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame}).s);
             }
             else if (child.value === "else") {
                 // else is the same as finally, a normal child then colon then body:
-                s.nextId = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.else, [], i + 2, {...s, addTo: tryFrame[0].jointFrameIds, parent: null}, (f) => f.jointParentId = tryFrame[0].id).nextId;
+                updateFrom(s, makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.else, [], i + 2, {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame}).s);
+            }
+            
+            if (s.lastLineProcessed) {
+                const indent = s.lineNumberToIndentation.get(getRealLineNo(p) ?? 0) ?? "";
+                updateFrom(s, flushComments(s.lastLineProcessed + 1, {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame}, indent, "else", "except", "finally"));
             }
         }
         break;
     }
     case Sk.ParseTables.sym.with_stmt:
         // First child is keyword, second is with_item that has [LHS, "as", RHS] as children, third is colon, fourth is body
-        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.with, [[1, 0], [1, 2]], 3, s);
+        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.with, [[1, 0], [1, 2]], 3, s).s;
         break;
     case Sk.ParseTables.sym.suite:
         // I don't really understand what this item is (it seems to have the raw content as extra children),
@@ -625,7 +778,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         break;
     case Sk.ParseTables.sym.funcdef:
         // First child is keyword, second is the name, third is params, fourth is colon, fifth is body
-        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.funcdef, [1, 2], 4, s);
+        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.funcdef, [1, 2], 4, s).s;
         break;
     }
     return s;
@@ -723,6 +876,50 @@ function makeMapping(section: NumberedLine[]) : Record<number, number> {
 // With Python's indentation rules, this operation is actually easier at line level than it is post-parse.
 // The mappings map line numbers in the returned sections to line numbers in the original
 export function splitLinesToSections(allLines : string[]) : {imports: string[]; defs: string[]; main: string[], importsMapping: Record<number, number>, defsMapping: Record<number, number>, mainMapping: Record<number, number>} {
+    // There's two possibilities:
+    //  - we're loading a .spy with section headings, or
+    //  - we're loading a .py where we must infer it.
+    // Easy way to find out: check if the first line is a .spy header:
+    if (allLines[0].match(new RegExp("^#" + escapeRegExp(AppSPYPrefix) + " *" + AppName + " *:"))) {
+        // It's a .spy!  Easy street, let's find the headings:
+        let line = 1;
+        const r = {
+            imports: [] as string[],
+            defs: [] as string[],
+            main: [] as string[],
+            importsMapping: {} as Record<number, number>,
+            defsMapping: {} as Record<number, number>,
+            mainMapping: {} as Record<number, number>,
+        };
+        while (line < allLines.length && !allLines[line].match(new RegExp("^#" + escapeRegExp(AppSPYPrefix) + " *Section *:Imports"))) {
+            line += 1;
+            // Everything here should be metadata, ignore for now (in future we'll load preferences here)
+        }
+        line += 1;
+        const firstImportLine = line;
+        while (line < allLines.length && !allLines[line].match(new RegExp("^#" + escapeRegExp(AppSPYPrefix) + " *Section *:Definitions"))) {
+            r.imports.push(allLines[line]);
+            r.importsMapping[line - firstImportLine] = line;
+            line += 1;
+        }
+        line += 1;
+        const firstDefsLine = line;
+        while (line < allLines.length && !allLines[line].match(new RegExp("^#" + escapeRegExp(AppSPYPrefix) + " *Section *:Main"))) {
+            r.defs.push(allLines[line]);
+            r.defsMapping[line - firstDefsLine] = line;
+            line += 1;
+        }
+        line += 1;
+        const firstMainLine = line;
+        while (line < allLines.length && !allLines[line].match(new RegExp("^#" + escapeRegExp(AppSPYPrefix) + " *Section *:Main"))) {
+            r.main.push(allLines[line]);
+            r.mainMapping[line - firstMainLine] = line;
+            line += 1;
+        }
+
+        return r;
+    }
+    
     // We associate comments with the line immediately following them, so we keep a list of the most recent comments:
     let latestComments: NumberedLine[] = [];
     const imports: NumberedLine[] = [];
