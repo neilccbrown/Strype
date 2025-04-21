@@ -637,7 +637,13 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         s = addFrame(makeFrame(AllFrameTypesIdentifier.fromimport, {0: {slotStructures: toSlots(children(p)[1])}, 1: {slotStructures: toSlots(children(p)[3])}}), p.lineno, s);
         break;
     case Sk.ParseTables.sym.raise_stmt:
-        s = addFrame(makeFrame(AllFrameTypesIdentifier.raise, {0: {slotStructures: toSlots(children(p)[1])}}), p.lineno, s);
+        // Raise may or may not have an expression child after it:
+        if (children(p).length >= 2) {
+            s = addFrame(makeFrame(AllFrameTypesIdentifier.raise, {0: {slotStructures: toSlots(children(p)[1])}}), p.lineno, s);
+        }
+        else {
+            s = addFrame(makeFrame(AllFrameTypesIdentifier.raise, {0: {slotStructures: {fields: [{code: ""}], operators: []}}}), p.lineno, s);
+        }
         break;
     case Sk.ParseTables.sym.return_stmt:
         // Return may or may not have an expression child after it:
