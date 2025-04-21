@@ -50,7 +50,7 @@ function focusEditorPasteAndClear(): void {
     cy.get("body").type("{uparrow}{uparrow}{uparrow}{del}{downarrow}{downarrow}{downarrow}{downarrow}{backspace}{backspace}");
 }
 
-function checkDownloadedFileEquals(fullContent: string, filename: string) : void {
+function checkDownloadedFileEquals(fullContent: string, filename: string, firstSave?: boolean) : void {
     const downloadsFolder = Cypress.config("downloadsFolder");
     const destFile = path.join(downloadsFolder, filename);
     cy.task("deleteFile", destFile);
@@ -58,6 +58,11 @@ function checkDownloadedFileEquals(fullContent: string, filename: string) : void
     // Force these because sometimes cypress gives false alarm about webpack overlay being on top:
     cy.get("button#" + strypeElIds.getEditorMenuUID()).click({force: true});
     cy.contains(i18n.t("appMenu.saveProject") as string).click({force: true});
+    if (firstSave) {
+        // For testing, we always want to save to this device:
+        cy.contains(i18n.t("appMessage.targetFS") as string).click({force: true});
+        cy.contains(i18n.t("OK") as string).click({force: true});
+    }
 
     cy.readFile(destFile).then((p : string) => {
         // Print out full version in message (without escaped \n), to make it easier to diff:
@@ -97,6 +102,22 @@ function testRoundTripImportAndDownload(filepath: string) {
     });
 }
 
+function testEntryDisableAndSave(commands: string, disableFrames: string[], filepath: string) {
+    cy.readFile(filepath).then((spy) => {
+        // Delete existing:
+        focusEditorPasteAndClear();
+        
+        cy.get("body").type(commands);
+        
+        disableFrames.forEach((txt) => {
+            cy.contains("span", txt).rightclick();
+            cy.contains("*", i18n.t("contextMenu.disable") as string).click();
+        });
+
+        checkDownloadedFileEquals(spy, "My project.spy", true);
+    });
+} 
+
 describe("Loads and re-saves fixture files", () => {
     if (Cypress.env("mode") === "microbit") {
         // TODO instead issue a warning dialog when loading from another platform:
@@ -107,5 +128,40 @@ describe("Loads and re-saves fixture files", () => {
     });
     it("Loads a basic trisection project", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic-trisection.spy");
+    });
+    it("Outputs a dummy for solo try", () => {
+        // Make an empty try, which should save with a placeholder:
+        testEntryDisableAndSave("tpmsg{enter}{downarrow}{backspace}", [], "tests/cypress/fixtures/project-try-solo.spy");
+    });
+    it("Loads and saves a solo try", () => {
+        // Make an empty try, which should save with a placeholder:
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-try-solo.spy");
+    });
+});
+
+describe("Tests disabling frames", () => {
+    if (Cypress.env("mode") === "microbit") {
+        // TODO instead issue a warning dialog when loading from another platform:
+        return;
+    }
+    it("Outputs a dummy for try with disabled except", () => {
+        // Make an empty try, which should save with a placeholder:
+        testEntryDisableAndSave("tpmsg{enter}{rightarrow}extype{rightarrow}pword", ["extype"], "tests/cypress/fixtures/project-try-disabled-except.spy");
+    });
+    it("Loads and saves a try with disabled except", () => {
+        // Make an empty try, which should save with a placeholder:
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-try-disabled-except.spy");
+    });
+    
+    it("Save a basic disable project", () => {
+        testEntryDisableAndSave("=msg=\"Hello\"{enter} print(msg)", ["print"], "tests/cypress/fixtures/project-basic-disable.spy");
+    });
+    it("Loads and saves a basic disable project", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic-disable.spy");
+    });
+
+    
+    it("Loads and saves a complex disable project", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-complex-disable.spy");
     });
 });
