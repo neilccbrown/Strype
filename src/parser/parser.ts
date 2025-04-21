@@ -14,12 +14,12 @@ const DISABLEDFRAMES_FLAG =  "\"\"\"";
 
 // Parse the code contained in the editor, and generate a compiler for this code if no error are found.
 // The method returns an object containing the output code and the compiler.
-export function parseCodeAndGetParseElements(requireCompilation: boolean, insertStrypeSectionDirectives?: boolean): ParserElements{
+export function parseCodeAndGetParseElements(requireCompilation: boolean, saveAsSPY?: boolean): ParserElements{
     // Errors in the code (precompiled errors and TigerPython errors) are looked up at code edition.
     // Therefore, we expect the errors to already be found out when this method is called, and we don't need
     // to retrieve them again.
-    const parser = new Parser();
-    const out = parser.parse(undefined, undefined, undefined, insertStrypeSectionDirectives);
+    const parser = new Parser(false, saveAsSPY);
+    const out = parser.parse(undefined, undefined, undefined);
 
     const hasErrors = hasEditorCodeErrors();
     const compiler = new Compiler();
@@ -40,19 +40,21 @@ export default class Parser {
     private disabledBlockIndent = "";
     private excludeLoopsAndCommentsAndCloseTry = false;
     private ignoreCheckErrors = false;
+    private saveAsSPY = false;
     private stoppedIndentation = ""; // The indentation level when we encountered the stop frame.
 
-    constructor(ignoreCheckErrors?: boolean){
+    constructor(ignoreCheckErrors?: boolean, saveAsSPY?: boolean) {
         if(ignoreCheckErrors != undefined){
             this.ignoreCheckErrors = ignoreCheckErrors;
         }
+        this.saveAsSPY = saveAsSPY ?? false;
     }
     
     public getStoppedIndentation() : string {
         return this.stoppedIndentation;
     }
 
-    private parseBlock(block: FrameObject, saveAsSPY : boolean, indentation: string): string {
+    private parseBlock(block: FrameObject, indentation: string): string {
         let output = "";
         const children = useStore().getFramesForParentId(block.id);
 
@@ -66,7 +68,7 @@ export default class Parser {
 
         output += 
             ((!passBlock)? this.parseStatement(block, indentation) : "") +
-            ((saveAsSPY && !block.isDisabled && children.filter((c) => !c.isDisabled).length == 0)
+            ((this.saveAsSPY && !block.isDisabled && children.filter((c) => !c.isDisabled).length == 0)
                 ? indentation + conditionalIndent +"pass" + "\n" : "") +
             // We replace an empty block frame content by "pass". We also replace the frame's content if
             // the children are ALL blank or simple comment frames, because Python will see it as a problem. 
@@ -79,13 +81,12 @@ export default class Parser {
                 ?
                 this.parseFrames(
                     children,
-                    saveAsSPY,
                     indentation + conditionalIndent
                 ) :
                 // When we replace empty body frames by "pass", if that's because we have only blank or comments, we need to
                 // replace EACH of these frames by "pass", so we keep the match between the frames and Python code lines coherent...
                 ((children.length > 0) ?
-                    this.parsePseudoEmptyBlockContent(children, saveAsSPY, indentation, conditionalIndent)
+                    this.parsePseudoEmptyBlockContent(children, indentation, conditionalIndent)
                     : indentation + conditionalIndent +"pass" + "\n")
             ) 
             +
@@ -93,19 +94,18 @@ export default class Parser {
                 ? indentation + "except ___strype_dummy:\n" + indentation + "    pass\n" : "") +
             this.parseFrames(
                 useStore().getJointFramesForFrameId(block.id),
-                saveAsSPY,
                 indentation
             );
         
         return output;
     }
 
-    private parsePseudoEmptyBlockContent(children: FrameObject[], saveAsSPY: boolean, indentation: string, conditionalIndent: string): string {
+    private parsePseudoEmptyBlockContent(children: FrameObject[], indentation: string, conditionalIndent: string): string {
         // This method is called when parsing the content of a block frame that only contains simple comments or blank frames,
         // effectively making the block content empty. However, we need to 1) allow "passing" the content for Python to 
         // compile properly, and 2) make sure we keep the slots/lines mapping for proper errors handling.
-        const emptyContent = this.parseFrames(children, saveAsSPY);
-        return saveAsSPY ? emptyContent : (indentation + conditionalIndent +"pass" + "\n").repeat(children.length);
+        const emptyContent = this.parseFrames(children);
+        return this.saveAsSPY ? emptyContent : (indentation + conditionalIndent +"pass" + "\n").repeat(children.length);
     }
     
     private parseStatement(statement: FrameObject, indentation = ""): string {
@@ -164,7 +164,7 @@ export default class Parser {
         return output;
     }
 
-    private parseFrames(codeUnits: FrameObject[], saveAsSPY: boolean, indentation = ""): string {
+    private parseFrames(codeUnits: FrameObject[], indentation = ""): string {
         let output = "";
         let lineCode = "";
 
@@ -179,15 +179,15 @@ export default class Parser {
                 break;
             }
             
-            if (saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.framesMainContainer) {
+            if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.framesMainContainer) {
                 output += "#" + AppSPYPrefix + " Section:Main\n";
                 this.line += 1;
             }
-            else if (saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.funcDefsContainer) {
+            else if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.funcDefsContainer) {
                 output += "#" + AppSPYPrefix + " Section:Definitions\n";
                 this.line += 1;
             }
-            else if (saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.importsContainer) {
+            else if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.importsContainer) {
                 output += "#" + AppSPYPrefix + " Section:Imports\n";
                 this.line += 1;
             }
@@ -196,18 +196,18 @@ export default class Parser {
             //(to avoid weird Python code, if that first disabled frame is a joint frame (like "else") then we align the comment with the other joint/root bodies)
             let disabledFrameBlockFlag = "";
             let thisIndentation = indentation;
-            if(!saveAsSPY && (frame.isDisabled ? !this.isDisabledFramesTriggered : this.isDisabledFramesTriggered)) {
+            if(!this.saveAsSPY && (frame.isDisabled ? !this.isDisabledFramesTriggered : this.isDisabledFramesTriggered)) {
                 this.isDisabledFramesTriggered = !this.isDisabledFramesTriggered;
                 if(frame.isDisabled) {
                     this.disabledBlockIndent = (indentation + ((frame.frameType.isJointFrame) ? INDENT : ""));
                 }
-                disabledFrameBlockFlag = saveAsSPY ? "" : (this.disabledBlockIndent + DISABLEDFRAMES_FLAG + "\n");
+                disabledFrameBlockFlag = this.saveAsSPY ? "" : (this.disabledBlockIndent + DISABLEDFRAMES_FLAG + "\n");
                 
                 //and also increment the line number that we use for mapping frames and code lines (even if the disabled frames don't map exactly, 
                 //it doesn't matter since we will not have errors to show in those anyway)
                 this.line += 1;
             }
-            else if (saveAsSPY && frame.isDisabled) {
+            else if (this.saveAsSPY && frame.isDisabled) {
                 disabledFrameBlockFlag = "";
                 // Don't add the disabled prefix twice:
                 if (!indentation.match(/^ *#/)) {
@@ -219,10 +219,10 @@ export default class Parser {
                 // frame with children
                 (Object.values(FrameContainersDefinitions).find((e) => e.type ===frame.frameType.type))?
                     // for containers call parseFrames again on their frames
-                    this.parseFrames(useStore().getFramesForParentId(frame.id), saveAsSPY, "") 
+                    this.parseFrames(useStore().getFramesForParentId(frame.id), "") 
                     :
                     // for simple block frames (i.e. if) call parseBlock
-                    this.parseBlock(frame, saveAsSPY, thisIndentation) 
+                    this.parseBlock(frame, thisIndentation) 
                 : 
                 // single line frame
                 this.parseStatement(frame, thisIndentation);
@@ -238,7 +238,7 @@ export default class Parser {
         return output;
     }
 
-    public parse(startAtFrameId?: number, stopAtFrameId?: number, excludeLoopsAndCommentsAndCloseTry?: boolean, saveAsSPY?: boolean): string {
+    public parse(startAtFrameId?: number, stopAtFrameId?: number, excludeLoopsAndCommentsAndCloseTry?: boolean): string {
         let output = "";
         if(startAtFrameId){
             this.startAtFrameId = startAtFrameId;
@@ -257,12 +257,12 @@ export default class Parser {
         /* FITRUE_isPython */
 
         //console.time();
-        output += this.parseFrames((this.startAtFrameId > -100) ? [useStore().frameObjects[this.startAtFrameId]] : useStore().getFramesForParentId(0), saveAsSPY ?? false, "");
+        output += this.parseFrames((this.startAtFrameId > -100) ? [useStore().frameObjects[this.startAtFrameId]] : useStore().getFramesForParentId(0), "");
         // We could have disabled frame(s) just at the end of the code. 
         // Since no further frame would be used in the parse to close the ongoing comment block we need to check
         // if there are disabled frames being rendered when reaching the end of the editor's code.
         let disabledFrameBlockFlag = "";
-        if(this.isDisabledFramesTriggered && !saveAsSPY) {
+        if(this.isDisabledFramesTriggered && !this.saveAsSPY) {
             this.isDisabledFramesTriggered = !this.isDisabledFramesTriggered;
             disabledFrameBlockFlag = this.disabledBlockIndent + DISABLEDFRAMES_FLAG ;
         }
