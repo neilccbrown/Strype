@@ -3,7 +3,10 @@ on: [push,pull_request]
 jobs:
   test:
     timeout-minutes: 60
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]    
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
