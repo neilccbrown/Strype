@@ -30,7 +30,7 @@ export default defineConfig({
         baseURL: BASE_URL,
 
         /* Store info only on test failure */
-        trace: "retain-on-failure",
+        trace: "on-first-retry",
         screenshot: "only-on-failure",
         video: "retain-on-failure",
     },
