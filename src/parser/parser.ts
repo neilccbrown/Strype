@@ -502,33 +502,35 @@ export default class Parser {
                 // that's an editable (code) slot, we get the position and length for that slot
                 // we trim the field's code when we are not in a string literal
                 let flatSlotCode = (isSlotStringLiteralType(flatSlot.type) ? flatSlot.code : flatSlot.code.trim());
-                if (besidesOp && this.saveAsSPY && flatSlotCode === "") {
-                    flatSlotCode = "___strype_blank";
-                }
-                if (this.saveAsSPY && flatSlotCode != "") {
-                    let valid = true;
-                    switch (allowed) {
-                    case AllowedSlotContent.ONLY_NAMES:
-                        valid = isValidPythonName(flatSlotCode);
-                        break;
-                    case AllowedSlotContent.ONLY_NAMES_OR_STAR:
-                        valid = flatSlotCode.trim() == "*" || isValidPythonName(flatSlotCode);
-                        break;
-                    case AllowedSlotContent.TERMINAL_EXPRESSION:
-                        valid = ["False", "None", "True"].includes(flatSlotCode.trim()) ||
-                                    isValidPythonName(flatSlotCode) ||
-                                    isValidPythonNumber(flatSlotCode);
-                        // There is one very specific case that confuses the Python parser
-                        // If there is a valid number followed by dot operator followed by something
-                        // else (which won't be a valid number; if it was, we would have already made it one slot).
-                        // So if we are a number followed by dot operator, we are considered invalid:
-                        if (opAfter === "." && isValidPythonNumber(flatSlotCode)) {
-                            valid = false;
-                        }
-                        break;
+                if (flatSlot.type != SlotType.string) {
+                    if (besidesOp && this.saveAsSPY && flatSlotCode === "") {
+                        flatSlotCode = "___strype_blank";
                     }
-                    if (!valid) {
-                        flatSlotCode = "___strype_invalid_" + toUnicodeEscapes(flatSlotCode);
+                    if (this.saveAsSPY && flatSlotCode != "") {
+                        let valid = true;
+                        switch (allowed) {
+                        case AllowedSlotContent.ONLY_NAMES:
+                            valid = isValidPythonName(flatSlotCode);
+                            break;
+                        case AllowedSlotContent.ONLY_NAMES_OR_STAR:
+                            valid = flatSlotCode.trim() == "*" || isValidPythonName(flatSlotCode);
+                            break;
+                        case AllowedSlotContent.TERMINAL_EXPRESSION:
+                            valid = ["False", "None", "True"].includes(flatSlotCode.trim()) ||
+                                isValidPythonName(flatSlotCode) ||
+                                isValidPythonNumber(flatSlotCode);
+                            // There is one very specific case that confuses the Python parser
+                            // If there is a valid number followed by dot operator followed by something
+                            // else (which won't be a valid number; if it was, we would have already made it one slot).
+                            // So if we are a number followed by dot operator, we are considered invalid:
+                            if (opAfter === "." && isValidPythonNumber(flatSlotCode)) {
+                                valid = false;
+                            }
+                            break;
+                        }
+                        if (!valid) {
+                            flatSlotCode = "___strype_invalid_" + toUnicodeEscapes(flatSlotCode);
+                        }
                     }
                 }
                 addSlotInPositionLengths(flatSlotCode.length, flatSlot.id, flatSlotCode, flatSlot.type);
