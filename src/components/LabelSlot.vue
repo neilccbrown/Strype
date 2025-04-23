@@ -1132,12 +1132,34 @@ export default Vue.extend({
         },
 
         onCodePaste(event: CustomEvent) {
-            this.onCodePasteImpl(event.detail);
+            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+            const anchorSlotCursorInfos = this.appStore.anchorSlotCursorInfos;
+
+            if (focusSlotCursorInfos && anchorSlotCursorInfos && (!areSlotCoreInfosEqual(focusSlotCursorInfos.slotInfos, anchorSlotCursorInfos.slotInfos) || focusSlotCursorInfos.cursorPos != anchorSlotCursorInfos.cursorPos)) {
+                this.deleteSlots(undefined, (resultingSlotUID, stateBeforeChanges) => {
+                    (this.$parent as InstanceType<typeof LabelSlotsStructure>).checkSlotRefactoring(resultingSlotUID, stateBeforeChanges, () => {
+                        // The focused slot might no longer be us after the delete, so we must send the paste again to the new focus.
+                        const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+                        const anchorSlotCursorInfos = this.appStore.anchorSlotCursorInfos;
+                        
+                        // We need this sanity check (which must be identical to the above) to avoid going round in an infinite loop
+                        // in case focus is somehow lost or a selection remains; better to ignore the paste than crash in an infinite loop.
+                        if (focusSlotCursorInfos && !(focusSlotCursorInfos && anchorSlotCursorInfos &&
+                                (!areSlotCoreInfosEqual(focusSlotCursorInfos.slotInfos, anchorSlotCursorInfos.slotInfos) || focusSlotCursorInfos.cursorPos != anchorSlotCursorInfos.cursorPos))) {
+                            document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos))
+                                ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: event.detail}));
+                        }
+                    });
+                });
+            }
+            else {
+                this.onCodePasteImpl(event.detail);
+            }
         },
         
-        onCodePasteImpl(content : string) {
+        onCodePasteImpl(content : string, stateBeforeChanges?: any) {
             // Save the current state
-            const stateBeforeChanges = cloneDeep(this.appStore.$state);
+            stateBeforeChanges = stateBeforeChanges ?? cloneDeep(this.appStore.$state);
 
             // Pasted code is done in several steps:
             // 0) clean up the content
@@ -1229,19 +1251,15 @@ export default Vue.extend({
             }
         },
 
-        deleteSlots(event: KeyboardEvent, chainedActionFunction?: VoidFunction){
-            event.preventDefault();
-            event.stopImmediatePropagation();
+        deleteSlots(event?: KeyboardEvent, chainedActionFunction?: (resultingSlotUID: string, stateBeforeChanges: any) => void){
+            event?.preventDefault();
+            event?.stopImmediatePropagation();
 
-            // Save the current state only if we are NOT in a chained action workflow
-            let stateBeforeChanges: any = null;
-            if(chainedActionFunction == undefined) {
-                stateBeforeChanges = cloneDeep(this.appStore.$state);
-            }
+            let stateBeforeChanges: any = cloneDeep(this.appStore.$state);
                
             const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
             const anchorSlotCursorInfos = this.appStore.anchorSlotCursorInfos;
-            const isForwardDeletion = (event.key.toLowerCase() == "delete");
+            const isForwardDeletion = (event?.key.toLowerCase() == "delete");
             const nextSlotInfos = getFlatNeighbourFieldSlotInfos(this.coreSlotInfo, true);
             const previousSlotInfos = getFlatNeighbourFieldSlotInfos(this.coreSlotInfo, false);
             const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UID);
@@ -1360,7 +1378,7 @@ export default Vue.extend({
                     }
                     else{
                         // we continue doing the chained action if a function has been specified
-                        this.$nextTick(() => chainedActionFunction());
+                        this.$nextTick(() => chainedActionFunction(resultingSlotUID, stateBeforeChanges));
                     }
                 }
             }            

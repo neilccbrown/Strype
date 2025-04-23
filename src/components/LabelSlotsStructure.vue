@@ -282,12 +282,15 @@ export default Vue.extend({
             return true;
         },
 
-        checkSlotRefactoring(slotUID: string, stateBeforeChanges: any) {
+        checkSlotRefactoring(slotUID: string, stateBeforeChanges: any, doAfterCursorSet?: () => void) {
             // Comments do not need to be checked, so we do nothing special for them, but just enforce the caret to be placed at the right place and the code value to be updated
             const currentFocusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
             if(this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment && currentFocusSlotCursorInfos){
                 (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields[0] as BaseSlot).code = (document.getElementById(getLabelSlotUID(currentFocusSlotCursorInfos.slotInfos))?.textContent??"").replace(/\u200B/g, "");
-                this.$nextTick(() => setDocumentSelection(currentFocusSlotCursorInfos, currentFocusSlotCursorInfos));
+                this.$nextTick(() => {
+                    setDocumentSelection(currentFocusSlotCursorInfos, currentFocusSlotCursorInfos);
+                    doAfterCursorSet?.();
+                });
                 return;
             }
 
@@ -383,6 +386,7 @@ export default Vue.extend({
                                             this.$nextTick(() => this.$nextTick(() => {
                                                 setDocumentSelection(newCursorSlotInfos, newCursorSlotInfos);
                                                 this.appStore.setSlotTextCursors(newCursorSlotInfos, newCursorSlotInfos);
+                                                doAfterCursorSet?.();
                                                 // Save changes only when arrived here (for undo/redo)
                                                 this.appStore.saveStateChanges(stateBeforeChanges);
                                             }));
@@ -391,6 +395,7 @@ export default Vue.extend({
                                     else{
                                         setDocumentSelection(cursorInfos, cursorInfos);
                                         this.appStore.setSlotTextCursors(cursorInfos, cursorInfos);
+                                        doAfterCursorSet?.();
                                         // Save changes only when arrived here (for undo/redo)
                                         this.appStore.saveStateChanges(stateBeforeChanges);
                                     }
