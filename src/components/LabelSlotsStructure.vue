@@ -12,6 +12,7 @@
         @blur="blurEditableSlot"
         @paste.prevent.stop="forwardPaste"
         @input="onInput"
+        @compositionend="onCompositionEnd"
         class="next-to-eachother label-slot-structure"
     >
             <!-- Note: the default text is only showing for new slots (1 subslot), we also use unicode zero width space character for empty slots for UI -->
@@ -43,6 +44,7 @@ import {checkCodeErrors, generateFlatSlotBases, getSlotIdFromParentIdAndIndexSpl
 import { cloneDeep } from "lodash";
 import {calculateParamPrompt} from "@/autocompletion/acManager";
 import scssVars from "@/assets/style/_export.module.scss";
+import {detectBrowser} from "@/helpers/browser";
 
 export default Vue.extend({
     name: "LabelSlotsStructure",
@@ -134,6 +136,21 @@ export default Vue.extend({
             // On Firefox there are problems typing into completely blank slots,
             // so we use a zero-width space if there is no code:
             return slot.code ? slot.code : "\u200B";
+        },
+        
+        onCompositionEnd(event: CompositionEvent) {
+            // On Chrome and Safari, the final input event (with composing: false) doesn't seem to fire.
+            // So we have to forward the earlier onCompositionEnd event instead.  We don't want to do this
+            // on Firefox because otherwise we'll get a double input when it does fire input with composing:false.
+            if (["chrome", "safari", "webkit"].includes(detectBrowser())) {
+                const targetEl = (this.appStore.focusSlotCursorInfos ? document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos)) : null)
+                    ?? (this.appStore.anchorSlotCursorInfos ? document.getElementById(getLabelSlotUID(this.appStore.anchorSlotCursorInfos.slotInfos)) : null);
+                if (targetEl != null) {
+                    targetEl.dispatchEvent(new CompositionEvent(event.type, {
+                        data: event.data,
+                    }));
+                }
+            }
         },
         
         onInput(event: InputEvent) {
