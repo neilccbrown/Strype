@@ -64,8 +64,8 @@
 import Vue, { PropType } from "vue";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUID, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUID, getFrameUID, getFrameComponent } from "@/helpers/editor";
-import { CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, FieldSlot, PythonExecRunningState, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
+import { checkCanReachAnotherCommentLine, closeBracketCharacters, CustomEventTypes, getACLabelSlotUID, getFocusedEditableSlotTextSelectionStartEnd, getFrameComponent, getFrameHeaderUID, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFrameUID, getLabelSlotUID, getMatchingBracket, getNumPrecedingBackslashes, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, keywordOperatorsWithSurroundSpaces, openBracketCharacters, operators, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringDoubleQuoteChar, stringQuoteCharacters, stringSingleQuoteChar, UIDoubleQuotesCharacters, UISingleQuotesCharacters } from "@/helpers/editor";
+import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CursorPosition, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, isFieldBracketedSlot, isFieldStringSlot, MessageDefinitions, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
 import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
@@ -1181,7 +1181,7 @@ export default Vue.extend({
                         const specifyFromImportFrame = (this.frameType == AllFrameTypesIdentifier.fromimport) ? AllFrameTypesIdentifier.fromimport : undefined;
                         const {slots: tempSlots, cursorOffset: tempcursorOffset} = parseCodeLiteral(content, {frameType: specifyFromImportFrame});
                         const parser = new Parser();
-                        correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0, false).code;
+                        correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0, false, AllowedSlotContent.TERMINAL_EXPRESSION).code;
                         cursorOffset = tempcursorOffset;
 
                         // We do a small check here to avoid as much as we can invalid pasted code inside imports.

@@ -389,16 +389,27 @@ function parseNextTerm(ps : ParseState) : SlotsStructure {
     return toSlots(term);
 }
 
+function fromUnicodeEscapes(input: string): string {
+    const regex = /u([0-9a-fA-F]{4})/g;
+    return input.replace(regex, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+}
+
 function toSlots(p: ParsedConcreteTree) : SlotsStructure {
     // Handle terminal nodes by just plonking them into a single-field slot:
     if (p.children == null || p.children.length == 0) {
-        const val = p.value ?? "";
+        let val = p.value ?? "";
         if (val.startsWith("\"") || val.startsWith("'")) {
             const str : StringSlot = {code: val.slice(1, val.length - 1), quote: val.slice(0, 1)};
             return {fields: [{code: ""}, str, {code: ""}], operators: [{code: ""}, {code: ""}]};
         }
         else {
-            return {fields: [{code: val == "___strype_blank" ? "" : val}], operators: []};
+            if (val == "___strype_blank") {
+                val = "";
+            }
+            else if (val.startsWith("___strype_invalid_")) {
+                val = fromUnicodeEscapes(val.slice("___strype_invalid_".length));
+            }
+            return {fields: [{code: val}], operators: []};
         }
     }
     

@@ -47,16 +47,16 @@ export const retrieveParentSlotFromSlotInfos = (slotInfos: SlotCoreInfos): Field
 // for example if the root slot has only 3 same level children (field/operator/field), ids will respectively be "0", "0" and "1"
 // if the root slot as 3 level children and the second of them has 3 same level children (again field/operator/field), ids will respectively be:
 // "0", "1,0", "1,0", "1,1", "2"
-export const generateFlatSlotBases = (slotStructure: SlotsStructure, parentId?: string, flatSlotConsumer?: (slot: FlatSlotBase, besidesOp: boolean) => void): FlatSlotBase[] => {
+export const generateFlatSlotBases = (slotStructure: SlotsStructure, parentId?: string, flatSlotConsumer?: (slot: FlatSlotBase, besidesOp: boolean, opAfter?: string) => void): FlatSlotBase[] => {
     // The operators always get in between the fields, and we always have one 1 root structure for a label,
     // and bracketed structures can never be found at 1st or last position
     let currIndex = -1;
     const flatSlotBases: FlatSlotBase[] = [];
-    const addFlatSlot = (flatSlot: FlatSlotBase, besidesOp: boolean) => {
+    const addFlatSlot = (flatSlot: FlatSlotBase, besidesOp: boolean, opAfter?: string) => {
         flatSlotBases.push(flatSlot);
         // If a flat slot consumer is defined, we call it here
         if(flatSlotConsumer){
-            flatSlotConsumer(flatSlot, besidesOp);
+            flatSlotConsumer(flatSlot, besidesOp, opAfter);
         }
     };
 
@@ -92,7 +92,7 @@ export const generateFlatSlotBases = (slotStructure: SlotsStructure, parentId?: 
             const adjacentOp =
                 (operatorSlot.code !== "" && (index == 0 || slotStructure.operators[index - 1].code != ""))
                 || (index > 0 && slotStructure.operators[index - 1].code != "" && operatorSlot.code !== "");
-            addFlatSlot({...(fieldSlot as BaseSlot), id: slotId, type: evaluateSlotType(fieldSlot)}, adjacentOp);
+            addFlatSlot({...(fieldSlot as BaseSlot), id: slotId, type: evaluateSlotType(fieldSlot)}, adjacentOp, operatorSlot.code);
         }   
 
         // Add this operator only if it is not blank

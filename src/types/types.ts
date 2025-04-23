@@ -128,6 +128,12 @@ export interface FrameObject {
     runTimeError?: string; //this contains the error message for a runtime error, as the granularity of the Skulpt doesn't go beyond the line number
 }
 
+export enum AllowedSlotContent {
+    ONLY_NAMES,
+    ONLY_NAMES_OR_STAR,
+    TERMINAL_EXPRESSION
+}
+
 export interface FrameLabel {
     label: string;
     hidableLabelSlots?: boolean; // default false, true indicate that this label and associated slots can be hidden (ex: "as" in import frame)
@@ -136,6 +142,7 @@ export interface FrameLabel {
     defaultText: string;
     optionalSlot?: boolean; //default false (indicate that this label does not require at least 1 slot value)
     acceptAC?: boolean; //default true
+    allowed?: AllowedSlotContent; // default TERMINAL_EXPRESSION; what the slot accepts
 }
 
 export enum CaretPosition {
@@ -443,7 +450,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
     const GlobalDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.global,
-        labels: [{ label: "global ", defaultText: i18n.t("frame.defaultText.variable") as string}],
+        labels: [{ label: "global ", defaultText: i18n.t("frame.defaultText.variable") as string, allowed: AllowedSlotContent.ONLY_NAMES}],
         colour: scssVars.mainCodeContainerBackground,
     };
 
@@ -488,7 +495,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...StatementDefinition,
         type: ImportFrameTypesIdentifiers.import,
         labels: [
-            { label: "import ", defaultText: i18n.t("frame.defaultText.modulePart") as string},
+            { label: "import ", defaultText: i18n.t("frame.defaultText.modulePart") as string, allowed: AllowedSlotContent.ONLY_NAMES },
             // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
             // and thus not giving us back any AC results on the shortcut
             //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
@@ -501,8 +508,8 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...StatementDefinition,
         type: ImportFrameTypesIdentifiers.fromimport,
         labels: [
-            { label: "from ", defaultText: i18n.t("frame.defaultText.module") as string},
-            { label: "import ", defaultText: i18n.t("frame.defaultText.modulePart") as string},
+            { label: "from ", defaultText: i18n.t("frame.defaultText.module") as string, allowed: AllowedSlotContent.ONLY_NAMES },
+            { label: "import ", defaultText: i18n.t("frame.defaultText.modulePart") as string, allowed: AllowedSlotContent.ONLY_NAMES_OR_STAR },
             // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
             // and thus not giving us back any AC results on the shortcut
             //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
@@ -580,7 +587,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.except,
         labels: [
-            { label: "except ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: true},
+            { label: "except ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: true, allowed: AllowedSlotContent.ONLY_NAMES},
             { label: " :", showSlots: false, defaultText: ""},
         ],
         jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
@@ -612,8 +619,8 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: FuncDefIdentifiers.funcdef,
         labels: [
-            { label: "def ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false},
-            { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: true, acceptAC: false},
+            { label: "def ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false, allowed: AllowedSlotContent.ONLY_NAMES },
+            { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: true, acceptAC: false, allowed: AllowedSlotContent.ONLY_NAMES },
             { label: ") :", showSlots: false, defaultText: ""},
         ],
         colour: "#ECECC8",
@@ -624,7 +631,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         type: StandardFrameTypesIdentifiers.with,
         labels: [
             { label: "with ", defaultText: i18n.t("frame.defaultText.expression") as string},
-            { label: " as ", defaultText: i18n.t("frame.defaultText.identifier") as string},
+            { label: " as ", defaultText: i18n.t("frame.defaultText.identifier") as string, allowed: AllowedSlotContent.ONLY_NAMES },
             { label: " :", showSlots: false, defaultText: ""},
         ],
         colour: "#ede8f2",

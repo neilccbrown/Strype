@@ -97,10 +97,10 @@ function testRoundTripImportAndDownload(filepath: string) {
             expect(matching.length).to.eq(0);
         });
         
-        // We make sure there are no slots containing ___strype_blank because they should have been turned into blanks:
+        // We make sure there are no slots containing ___strype_ because they should have been processed:
         cy.document().then((doc) => {
             const spans = Array.from(doc.querySelectorAll("span"));
-            const matching = spans.filter((el) => el.textContent?.trim() === "___strype_blank");
+            const matching = spans.filter((el) => el.textContent?.includes("___strype_"));
             expect(matching.length).to.eq(0);
         });
 
@@ -195,4 +195,20 @@ describe("Tests blanks", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-blanks.spy");
     });
     
+});
+
+describe("Tests invalid characters", () => {
+    if (Cypress.env("mode") === "microbit") {
+        // TODO instead issue a warning dialog when loading from another platform:
+        return;
+    }
+    it("Outputs a file with invalid chars", () => {
+        testEntryDisableAndSave("{uparrow}{uparrow}" +
+            "i100{rightarrow}ffoo{rightarrow}£1000{downarrow}i50{downarrow}ifoo（）{downarrow}{downarrow}" +
+            "f#include{rightarrow}100,abc,#35{downarrow}r$50{downarrow}{downarrow}{downarrow}" +
+            " 100($50, 24.24a)", [], "tests/cypress/fixtures/project-invalid-chars.spy");
+    });
+    it("Loads and saves a file with invalid chars", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-invalid-chars.spy");
+    });
 });

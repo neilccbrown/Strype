@@ -3,7 +3,7 @@ import { hasEditorCodeErrors, trimmedKeywordOperators } from "@/helpers/editor";
 import { generateFlatSlotBases, retrieveSlotByPredicate } from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import {AllFrameTypesIdentifier, BaseSlot, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, ParserElements, SlotsStructure, SlotType} from "@/types/types";
+import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, ParserElements, SlotsStructure, SlotType} from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 import {AppSPYPrefix} from "@/main";
 /*IFTRUE_isPython */
@@ -28,6 +28,54 @@ export function parseCodeAndGetParseElements(requireCompilation: boolean, saveAs
     }
 
     return {parsedOutput: out, hasErrors: hasErrors, compiler: compiler};
+}
+
+function isValidPythonName(name: string): boolean {
+    // Match Unicode identifiers: start with a Unicode letter or _, then letters/digits/underscores
+    // \p{ID_Start} and \p{ID_Continue} are Unicode property escapes (ECMAScript 2018+)
+    const identifierRegex = /^[\p{ID_Start}_][\p{ID_Continue}_]*$/u;
+
+    const pythonKeywords = new Set([
+        "False", "None", "True", "and", "as", "assert", "async", "await",
+        "break", "class", "continue", "def", "del", "elif", "else", "except",
+        "finally", "for", "from", "global", "if", "import", "in", "is", "lambda",
+        "nonlocal", "not", "or", "pass", "raise", "return", "try", "while", "with", "yield",
+    ]);
+
+    return identifierRegex.test(name) && !pythonKeywords.has(name);
+}
+
+function isValidPythonNumber(str: string): boolean {
+    const trimmed = str.trim();
+
+    // Regex patterns for Python-style numbers
+
+    const decimalInt = /^[+-]?(0|[1-9][0-9_]*)$/;
+    const binaryInt = /^[+-]?0[bB][01_]+$/;
+    const octalInt = /^[+-]?0[oO][0-7_]+$/;
+    const hexInt = /^[+-]?0[xX][0-9a-fA-F_]+$/;
+
+    const floatNum = /^[+-]?((\d+(_\d+)*(\.\d*(_\d+)*)?)|(\.\d+(_\d+)*))([eE][+-]?\d+(_\d+)*)?$/;
+
+    const complexNum = /^[+-]?((\d+(\.\d*)?)|(\.\d+))?[jJ]$/;
+
+    return (
+        decimalInt.test(trimmed) ||
+        binaryInt.test(trimmed) ||
+        octalInt.test(trimmed) ||
+        hexInt.test(trimmed) ||
+        floatNum.test(trimmed) ||
+        complexNum.test(trimmed)
+    );
+}
+
+function toUnicodeEscapes(input: string): string {
+    return Array.from(input)
+        .map((char) => {
+            const code = char.codePointAt(0) ?? 0;
+            return "u" + code.toString(16).padStart(4, "0");
+        })
+        .join("");
 }
 
 export default class Parser {
@@ -140,7 +188,7 @@ export default class Parser {
             if(label.showSlots??true){
                 // Record each slots' vertical positions for that label.
                 const currentPosition = output.length;
-                const slotStartsLengthsAndCode = this.getSlotStartsLengthsAndCodeForFrameLabel(useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures, currentPosition, label.optionalSlot ?? false);
+                const slotStartsLengthsAndCode = this.getSlotStartsLengthsAndCodeForFrameLabel(useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures, currentPosition, label.optionalSlot ?? false, label.allowed ?? AllowedSlotContent.TERMINAL_EXPRESSION);
                 labelSlotsPositionLengths[labelSlotsIndex] = {
                     slotStarts: slotStartsLengthsAndCode.slotStarts, 
                     slotLengths: slotStartsLengthsAndCode.slotLengths,
@@ -419,7 +467,7 @@ export default class Parser {
         return this.framePositionMap;
     }
 
-    public getSlotStartsLengthsAndCodeForFrameLabel(slotStructures: SlotsStructure, currentOutputPosition: number, optionalSlot : boolean): LabelSlotPositionsAndCode {
+    public getSlotStartsLengthsAndCodeForFrameLabel(slotStructures: SlotsStructure, currentOutputPosition: number, optionalSlot: boolean, allowed: AllowedSlotContent): LabelSlotPositionsAndCode {
         // To retrieve this information, we procede with the following: 
         // we get the flat map of the slots and operate a consumer at each iteration to retrieve the infos we need
         let code = "";
@@ -435,7 +483,7 @@ export default class Parser {
             slotTypes.push(type);
         };
 
-        generateFlatSlotBases(slotStructures, "", (flatSlot: FlatSlotBase, besidesOp: boolean) => {
+        generateFlatSlotBases(slotStructures, "", (flatSlot: FlatSlotBase, besidesOp: boolean, opAfter: undefined | string) => {
             if(isSlotQuoteType(flatSlot.type) || isSlotBracketType(flatSlot.type)){
                 // a quote or a bracket is a 1 character token, shown in the code
                 // but it's not editable so we don't include it in the slot positions
@@ -456,6 +504,32 @@ export default class Parser {
                 let flatSlotCode = (isSlotStringLiteralType(flatSlot.type) ? flatSlot.code : flatSlot.code.trim());
                 if (besidesOp && this.saveAsSPY && flatSlotCode === "") {
                     flatSlotCode = "___strype_blank";
+                }
+                if (this.saveAsSPY && flatSlotCode != "") {
+                    let valid = true;
+                    switch (allowed) {
+                    case AllowedSlotContent.ONLY_NAMES:
+                        valid = isValidPythonName(flatSlotCode);
+                        break;
+                    case AllowedSlotContent.ONLY_NAMES_OR_STAR:
+                        valid = flatSlotCode.trim() == "*" || isValidPythonName(flatSlotCode);
+                        break;
+                    case AllowedSlotContent.TERMINAL_EXPRESSION:
+                        valid = ["False", "None", "True"].includes(flatSlotCode.trim()) ||
+                                    isValidPythonName(flatSlotCode) ||
+                                    isValidPythonNumber(flatSlotCode);
+                        // There is one very specific case that confuses the Python parser
+                        // If there is a valid number followed by dot operator followed by something
+                        // else (which won't be a valid number; if it was, we would have already made it one slot).
+                        // So if we are a number followed by dot operator, we are considered invalid:
+                        if (opAfter === "." && isValidPythonNumber(flatSlotCode)) {
+                            valid = false;
+                        }
+                        break;
+                    }
+                    if (!valid) {
+                        flatSlotCode = "___strype_invalid_" + toUnicodeEscapes(flatSlotCode);
+                    }
                 }
                 addSlotInPositionLengths(flatSlotCode.length, flatSlot.id, flatSlotCode, flatSlot.type);
             }
