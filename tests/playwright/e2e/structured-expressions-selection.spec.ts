@@ -431,4 +431,12 @@ test.describe("Paste over selection", () => {
     testPasteOverBoth("(474+8)", 0, 7, "1/2", "{1}/{2$}");
     testPasteOverBoth("(474+8)", 0, 7, "\"bye\"", "{}_“bye”_{$}");
     testPasteOverBoth("(474+8)", 0, 7, "foo", "{foo$}");
+    
+    testPasteOverBoth("(474+8)", 3, 5, "foo", "{}_({47foo$8})_{}");
+    testPasteOverBoth("(474+8)", 3, 5, "2.", "{}_({472.$8})_{}");
+    testPasteOverBoth("(474+8)", 3, 5, "1/", "{}_({471}/{$8})_{}");
+
+    testPasteOverBoth("11+(22*33)/44", 4, 9, "55", "{11}+{}_({55$})_{}/{44}");
+    testPasteOverBoth("11+(22*33)/44", 5, 8, "55", "{11}+{}_({255$3})_{}/{44}");
+    testPasteOverBoth("11+(22*33)/44", 4, 9, "55*(66-77)", "{11}+{}_({55}*{}_({66}-{77})_{$})_{}/{44}");
 });
