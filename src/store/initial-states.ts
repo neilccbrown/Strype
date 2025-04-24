@@ -35,6 +35,13 @@ const initialStates: StateAppObjects = {
         showKeystroke: false,
         nextAvailableId: 18,
     },
+    
+    "initialEmptyState": {
+        debugging: false,
+        initialState: emptyState,
+        showKeystroke: false,
+        nextAvailableId: 1,
+    },
 
     "initialPythonState": {
         debugging: false,
