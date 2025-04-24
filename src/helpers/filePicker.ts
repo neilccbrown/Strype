@@ -8,9 +8,13 @@ import { MIMEDesc, ProjectLocation } from "@/types/types";
  * The API support can be tested via the values of the 2 flags canBrowserOpenFilePicker and canBrowserSaveFilePicker.
  */
 
-const noTypedWindow = window as any; 
-export const canBrowserOpenFilePicker = (noTypedWindow.showOpenFilePicker != undefined) && !window.Cypress && !noTypedWindow.Playwright;
-export const canBrowserSaveFilePicker = (noTypedWindow.showSaveFilePicker != undefined) && !window.Cypress && !noTypedWindow.Playwright;
+const noTypedWindow = window as any;
+export function canBrowserOpenFilePicker() : boolean {
+    return (noTypedWindow.showOpenFilePicker != undefined) && !window.Cypress && !noTypedWindow.Playwright;
+}
+export function canBrowserSaveFilePicker() : boolean {
+    return (noTypedWindow.showSaveFilePicker != undefined) && !window.Cypress && !noTypedWindow.Playwright;
+} 
 
 export function saveFile(suggestedFileName: string, mimeTypesArray: MIMEDesc[], startInFolder: ProjectLocation, fileContent: string, onSuccess: (fileHandle: FileSystemFileHandle) => void): void{
     const options = {
