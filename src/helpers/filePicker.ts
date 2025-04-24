@@ -9,8 +9,8 @@ import { MIMEDesc, ProjectLocation } from "@/types/types";
  */
 
 const noTypedWindow = window as any; 
-export const canBrowserOpenFilePicker = (noTypedWindow.showOpenFilePicker != undefined) && !window.Cypress;
-export const canBrowserSaveFilePicker = (noTypedWindow.showSaveFilePicker != undefined) && !window.Cypress;
+export const canBrowserOpenFilePicker = (noTypedWindow.showOpenFilePicker != undefined) && !window.Cypress && !noTypedWindow.Playwright;
+export const canBrowserSaveFilePicker = (noTypedWindow.showSaveFilePicker != undefined) && !window.Cypress && !noTypedWindow.Playwright;
 
 export function saveFile(suggestedFileName: string, mimeTypesArray: MIMEDesc[], startInFolder: ProjectLocation, fileContent: string, onSuccess: (fileHandle: FileSystemFileHandle) => void): void{
     const options = {
