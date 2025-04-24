@@ -685,7 +685,6 @@ export default Vue.extend({
                         key: (goToNextSlot) ? "ArrowRight" : "ArrowLeft",
                     })
                 );
-                this.appStore.ignoreKeyEvent = true;
             }
             event.preventDefault();
             event.stopPropagation();

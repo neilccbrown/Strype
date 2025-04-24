@@ -27,19 +27,27 @@ test.beforeEach(async ({ page }) => {
     });
 });
 
-async function checkFrameXorTextCursor(page: Page) {
+// If the last param is given, we check for frame cursor (true) or text (false)
+// If it's not given, no specific check
+async function checkFrameXorTextCursor(page: Page, specificFrameCursor?: boolean) {
     // Check exactly one caret visible or focused input field:
-    const result = await page.evaluate(() => {
+    const hasTextCursor = await page.evaluate(() => {
+        return document?.getSelection()?.focusNode != null;
+    });
+    const numFrameCursors = await page.evaluate(() => {
         const scssVars = (window as any)["StrypeSCSSVarsGlobals"];
         const visibleFrameCursorElements = document.querySelectorAll("."+ scssVars.caretClassName + ":not(." + scssVars.invisibleClassName +")");
-        if (document?.getSelection()?.focusNode == null) {
-            return visibleFrameCursorElements.length == 1;
+        return visibleFrameCursorElements.length;
+    });
+    expect(numFrameCursors).toEqual(hasTextCursor ? 0 : 1);
+    if (specificFrameCursor !== undefined) {
+        if (specificFrameCursor == true) {
+            expect(numFrameCursors).toEqual(1);
         }
         else {
-            return visibleFrameCursorElements.length == 0;
+            expect(hasTextCursor).toEqual(true);
         }
-    });
-    expect(result).toEqual(true);
+    }
 }
 
 async function clickId(page: Page, getIdClientSide: () => void) {
@@ -129,14 +137,23 @@ test.describe("Check navigation", async () => {
             await page.keyboard.press("Shift+Tab");
         }
     });
-    test("Tab through two empty assignments", async ({page}) => {
+    test("Tab through two empty assignments", async ({page}, testInfo) => {
+        if (testInfo.project.name === "chromium") {
+            test.skip(); // See comment above
+        }
+        await page.keyboard.press("Delete");
+        await page.keyboard.press("Delete");
         await page.keyboard.press("=");
         await page.keyboard.press("ArrowDown");
         await page.keyboard.press("=");
         await page.keyboard.press("ArrowUp");
         await page.keyboard.press("ArrowUp");
-        for (let i = 0; i < 5; i++) {
-            await checkFrameXorTextCursor(page);
+        // We had a bug where tab needed to be pressed twice after coming out of the frame, so
+        // we check explicitly here the ordering of text and frame.  Essentially, we start on frame cursor,
+        // tab through both empty text slots then back to frame cursor.  Tab again at the end shouldn't change things:
+        const expectedFrameCursor = [true, false, false, true, false, false, true, true];
+        for (let i = 0; i < expectedFrameCursor.length; i++) {
+            await checkFrameXorTextCursor(page, expectedFrameCursor[i]);
             await page.keyboard.press("Tab");
             await page.waitForTimeout(75);
         }
