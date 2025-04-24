@@ -6,7 +6,7 @@ import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evalua
 import { AppPlatform, AppVersion, vm } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getStrypeCommandComponentRefId, getCaretContainerUID, isCaretContainerElement } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getStrypeCommandComponentRefId, getCaretContainerUID, isCaretContainerElement, AutoSaveKeyNames } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -22,17 +22,42 @@ import CommandsComponent from "@/components/Commands.vue";
 import { actOnTurtleImport, getPEAComponentRefId } from "@/helpers/editor";
 /* FITRUE_isPython */
 
-let initialState: StateAppObject = initialStates["initialPythonState"];
-/* IFTRUE_isMicrobit */
-initialState = initialStates["initialMicrobitState"];
-/* FITRUE_isMicrobit */
+function getState(): StateAppObject {
+    // If we have a state available in the local (browser's) storage, we strip off the frame contents
+    // from the default state, for a smoother visual rendering. Note that App.vue is responsible for
+    // loading the local state later. Here, we only check something exists in the local storage.
+    let isExistingStateLocated = false;
+    let returnedState;
+    if(typeof(Storage) !== "undefined") {
+        let storageString = AutoSaveKeyNames.pythonEditorState;
+        /* IFTRUE_isMicrobit */
+        storageString = AutoSaveKeyNames.mbEditor;
+        /* FITRUE_isMicrobit */
+        const savedState = localStorage.getItem(storageString);
+        if(savedState) {
+            isExistingStateLocated = true;
+            returnedState = initialStates["initialEmptyState"];        
+        }
+    }
+    
+    if(!isExistingStateLocated) {
+        /* IFTRUE_isPython */
+        returnedState = initialStates["initialPythonState"];
+        /* FITRUE_isPython */
+        /* IFTRUE_isMicrobit */
+        returnedState = initialStates["initialMicrobitState"];
+        /* FITRUE_isMicrobit */
+    }
+    return (returnedState as StateAppObject);
+}
+
+const initialState = getState();
 
 // These are deliberately held outside the store because:
 // (a) we used to blank them on page load anyway
 // (b) there was a bug where sometimes we could end up diffing-the-diffs which led to quadratic memory and CPU consumption.
 const diffToPreviousState : ObjectPropertyDiff[][] = [];
 const diffToNextState: ObjectPropertyDiff[][] = [];
-
 
 export const useStore = defineStore("app", {
     state: () => {
