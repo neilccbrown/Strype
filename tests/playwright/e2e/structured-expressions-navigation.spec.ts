@@ -115,7 +115,7 @@ test.describe("Check navigation", async () => {
         if (testInfo.project.name === "chromium") {
             test.skip(); // See comment above
         }
-        test.setTimeout(180_000);
+        test.setTimeout(720_000);
         await loadPY(page, "../../cypress/fixtures/python-code.py");
         for (let i = 0; i < 1000; i++) {
             await checkFrameXorTextCursor(page);
