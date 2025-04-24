@@ -1316,7 +1316,6 @@ export const useStore = defineStore("app", {
         },
 
         saveStateChanges(previousState: (typeof this.$state)) {
-            console.log("in savestatchanged");
             this.isEditorContentModified = true;
             // Saves the state changes in diffPreviousState.
             // We do not simply save the differences between the state and the previous state, because when undo/redo will be invoked, we cannot know what will be 
