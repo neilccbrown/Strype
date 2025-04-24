@@ -480,6 +480,7 @@ export default Vue.extend({
                     || event.key == "ArrowDown"
                     || event.key == "Home"
                     || event.key == "End"
+                    || event.key == "Tab"
                     || (event.key == " " && (event.ctrlKey || event.metaKey))) {
                     event.preventDefault();
                     event.stopPropagation();
