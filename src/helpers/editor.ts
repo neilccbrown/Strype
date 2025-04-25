@@ -1974,8 +1974,9 @@ export function getEditableSelectionText() : string {
     // Get the range covering the current selection
     const range = selection.getRangeAt(0);
 
-    // If selection is within a single node
-    if (range.startContainer === range.endContainer) {
+    // If selection is within a single node.  Note that if it's within an element it might be in Firefox
+    // where it's possible for the selection to be in the parent div 
+    if (range.startContainer === range.endContainer && range.startContainer.nodeType != Node.ELEMENT_NODE) {
         if (range.startContainer.nodeType === Node.TEXT_NODE && isNodeSelectableText(range.startContainer)) {
             return range.startContainer.nodeValue?.substring(Math.min(range.startOffset, range.endOffset), Math.max(range.startOffset, range.endOffset)) ?? "";
         }
