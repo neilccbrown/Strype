@@ -194,6 +194,13 @@ export default Vue.extend({
                         appendSel.append(sel + closing);
                         closestDiv?.append(appendSel);
                     }
+                    else if (closestDiv && closestDiv?.classList?.contains(scssVars.labelSlotContainerClassName) && event.data.charCodeAt(0) >= 128 && closestDiv?.textContent?.startsWith(event.data)) {
+                        // Firefox has a weird behaviour when you do the input of holding down a character on Mac followed by a number
+                        // to get a vowel variant (e.g. ö by holding o and pressing 4).  It puts the new character in the outer div,
+                        // and removes the CSS class from the inner span.  If we put the CSS class back, we get the right result:
+                        const firstDirectSpan = Array.from(closestDiv.children).find((child) => child.tagName.toLowerCase() === "span") as HTMLSpanElement | undefined || null;
+                        firstDirectSpan?.classList.add(scssVars.labelSlotInputClassName);
+                    }
                 }
 
                 const stateBeforeChanges = cloneDeep(this.appStore.$state);
