@@ -104,7 +104,7 @@ function testRoundTripImportAndDownload(filepath: string) {
             expect(matching.length).to.eq(0);
         });
 
-        checkDownloadedFileEquals(spy, filepath.split("/").pop() ?? "My project.spy");
+        checkDownloadedFileEquals(spy.replaceAll("\r\n", "\n"), filepath.split("/").pop() ?? "My project.spy");
     });
 }
 
@@ -120,7 +120,7 @@ function testEntryDisableAndSave(commands: string, disableFrames: string[], file
             cy.contains("*", i18n.t("contextMenu.disable") as string).click();
         });
 
-        checkDownloadedFileEquals(spy, "My project.spy", true);
+        checkDownloadedFileEquals(spy.replaceAll("\r\n", "\n"), "My project.spy", true);
     });
 } 
 
