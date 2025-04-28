@@ -357,7 +357,6 @@ export default Vue.extend({
                 // because we clear the timeout in the latter case (see clearAutoCloseErrorPopupHandle()).
                 (this.$refs.errorPopover as InstanceType<typeof BPopover>)?.$emit("close");
             }, 3000);
-
         },
 
         // Event callback equivalent to what would happen for a focus event callback 
