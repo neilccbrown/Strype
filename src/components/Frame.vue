@@ -48,7 +48,7 @@
                 :content="errorPopupContent"
                 :custom-class="(hasRuntimeError || hasParsingError) ? 'error-popover modified-title-popover': 'error-popover'"
                 placement="left"
-                @shown="setAutoCloseErroPopup"
+                @shown="setAutoCloseErrorPopup"
                 @hide="clearAutoCloseErrorPopupHandle"
             >
             </b-popover>
@@ -1127,16 +1127,16 @@ export default Vue.extend({
         },
 
         clearAutoCloseErrorPopupHandle(event: BvEvent) {
-            const closeErrorPupHandleId = document.getElementById(event.componentId??"undef" )?.getAttribute("popup-close-tiemouthandle");
+            const closeErrorPupHandleId = document.getElementById(event.componentId??"undef" )?.getAttribute("popup-close-timeouthandle");
             if(closeErrorPupHandleId){
                 clearTimeout(this.currentErrorPopupCloseTimeoutHandles[closeErrorPupHandleId]);
                 delete this.currentErrorPopupCloseTimeoutHandles[closeErrorPupHandleId];
             }
         },
 
-        setAutoCloseErroPopup(event: BvEvent){
+        setAutoCloseErrorPopup(event: BvEvent){
             this.currentErrorPopupInstanceCounter++;
-            document.getElementById(event.componentId??"undef")?.setAttribute("popup-close-tiemouthandle", this.currentErrorPopupInstanceCounter.toString());
+            document.getElementById(event.componentId??"undef")?.setAttribute("popup-close-timeouthandle", this.currentErrorPopupInstanceCounter.toString());
             this.currentErrorPopupCloseTimeoutHandles[this.currentErrorPopupInstanceCounter] = setTimeout(() => {
                 // We close the popup programmatically when no explicit closing action occurred from the user.
                 // The closing timeout will be called on a hanging popup and not on an explicitly closed popup
