@@ -12,6 +12,7 @@
         @blur="blurEditableSlot"
         @paste.prevent.stop="forwardPaste"
         @input="onInput"
+        @compositionend="onCompositionEnd"
         class="next-to-eachother label-slot-structure"
     >
             <!-- Note: the default text is only showing for new slots (1 subslot), we also use unicode zero width space character for empty slots for UI -->
@@ -43,6 +44,7 @@ import {checkCodeErrors, generateFlatSlotBases, getSlotIdFromParentIdAndIndexSpl
 import { cloneDeep } from "lodash";
 import {calculateParamPrompt} from "@/autocompletion/acManager";
 import scssVars from "@/assets/style/_export.module.scss";
+import {detectBrowser} from "@/helpers/browser";
 
 export default Vue.extend({
     name: "LabelSlotsStructure",
@@ -136,6 +138,21 @@ export default Vue.extend({
             return slot.code ? slot.code : "\u200B";
         },
         
+        onCompositionEnd(event: CompositionEvent) {
+            // On Chrome and Safari, the final input event (with composing: false) doesn't seem to fire.
+            // So we have to forward the earlier onCompositionEnd event instead.  We don't want to do this
+            // on Firefox because otherwise we'll get a double input when it does fire input with composing:false.
+            if (["chrome", "safari", "webkit"].includes(detectBrowser())) {
+                const targetEl = (this.appStore.focusSlotCursorInfos ? document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos)) : null)
+                    ?? (this.appStore.anchorSlotCursorInfos ? document.getElementById(getLabelSlotUID(this.appStore.anchorSlotCursorInfos.slotInfos)) : null);
+                if (targetEl != null) {
+                    targetEl.dispatchEvent(new CompositionEvent(event.type, {
+                        data: event.data,
+                    }));
+                }
+            }
+        },
+        
         onInput(event: InputEvent) {
             // It is possible that the user has deleted the focus or anchor from the DOM, e.g. if they do a multi-slot
             // select then type.  But usually one of them should remain.  So we try focus first, and if that is gone, we try
@@ -176,6 +193,13 @@ export default Vue.extend({
                         sel = sel.replace(new RegExp(`[${UISingleQuotesCharacters[0]}${UISingleQuotesCharacters[1]}]`, "g"), STRING_SINGLEQUOTE_PLACERHOLDER);
                         appendSel.append(sel + closing);
                         closestDiv?.append(appendSel);
+                    }
+                    else if (closestDiv && closestDiv?.classList?.contains(scssVars.labelSlotContainerClassName) && event.data.charCodeAt(0) >= 128 && closestDiv?.textContent?.startsWith(event.data)) {
+                        // Firefox has a weird behaviour when you do the input of holding down a character on Mac followed by a number
+                        // to get a vowel variant (e.g. ö by holding o and pressing 4).  It puts the new character in the outer div,
+                        // and removes the CSS class from the inner span.  If we put the CSS class back, we get the right result:
+                        const firstDirectSpan = Array.from(closestDiv.children).find((child) => child.tagName.toLowerCase() === "span") as HTMLSpanElement | undefined || null;
+                        firstDirectSpan?.classList.add(scssVars.labelSlotInputClassName);
                     }
                 }
 
@@ -282,12 +306,15 @@ export default Vue.extend({
             return true;
         },
 
-        checkSlotRefactoring(slotUID: string, stateBeforeChanges: any) {
+        checkSlotRefactoring(slotUID: string, stateBeforeChanges: any, doAfterCursorSet?: () => void) {
             // Comments do not need to be checked, so we do nothing special for them, but just enforce the caret to be placed at the right place and the code value to be updated
             const currentFocusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
             if(this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment && currentFocusSlotCursorInfos){
                 (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields[0] as BaseSlot).code = (document.getElementById(getLabelSlotUID(currentFocusSlotCursorInfos.slotInfos))?.textContent??"").replace(/\u200B/g, "");
-                this.$nextTick(() => setDocumentSelection(currentFocusSlotCursorInfos, currentFocusSlotCursorInfos));
+                this.$nextTick(() => {
+                    setDocumentSelection(currentFocusSlotCursorInfos, currentFocusSlotCursorInfos);
+                    doAfterCursorSet?.();
+                });
                 return;
             }
 
@@ -383,6 +410,7 @@ export default Vue.extend({
                                             this.$nextTick(() => this.$nextTick(() => {
                                                 setDocumentSelection(newCursorSlotInfos, newCursorSlotInfos);
                                                 this.appStore.setSlotTextCursors(newCursorSlotInfos, newCursorSlotInfos);
+                                                doAfterCursorSet?.();
                                                 // Save changes only when arrived here (for undo/redo)
                                                 this.appStore.saveStateChanges(stateBeforeChanges);
                                             }));
@@ -391,6 +419,7 @@ export default Vue.extend({
                                     else{
                                         setDocumentSelection(cursorInfos, cursorInfos);
                                         this.appStore.setSlotTextCursors(cursorInfos, cursorInfos);
+                                        doAfterCursorSet?.();
                                         // Save changes only when arrived here (for undo/redo)
                                         this.appStore.saveStateChanges(stateBeforeChanges);
                                     }
@@ -458,6 +487,7 @@ export default Vue.extend({
                     || event.key == "ArrowDown"
                     || event.key == "Home"
                     || event.key == "End"
+                    || event.key == "Tab"
                     || (event.key == " " && (event.ctrlKey || event.metaKey))) {
                     event.preventDefault();
                     event.stopPropagation();

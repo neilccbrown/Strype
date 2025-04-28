@@ -89,8 +89,8 @@ async function assertState(page: Page, expectedState : string) : Promise<void> {
     expect(s).toEqual(expectedState.replaceAll("_", ""));
 }
 
-function testSelection(code : string, startIndex: number, endIndex: number, secondEntry : string | ((page: Page) => Promise<void>), expectedAfter : string) : void {
-    test("Tests selecting in " + code + " from " + startIndex + " to " + endIndex + " then " + secondEntry, async ({page}) => {
+function testSelection(code : string, startIndex: number, endIndex: number, secondEntry : string | ((page: Page) => Promise<void>), expectedAfter : string, extraTitle?: string) : void {
+    test("Tests selecting in " + code + " from " + startIndex + " to " + endIndex + " then " + secondEntry + " " + extraTitle, async ({page}) => {
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
         await page.keyboard.type("i");
@@ -147,7 +147,32 @@ function testSelectionBoth(code: string, startIndex: number, endIndex: number, t
     }
 }
 
+function testPasteOverBoth(code: string, startIndex: number, endIndex: number, thenPaste: string, expectedAfter : string) : void {
+    // Test selecting from start to end:
+    testSelection(code, startIndex, endIndex, (page) => doPagePaste(page, thenPaste), expectedAfter, "paste " + thenPaste);
+    // Then end to start (if it's not exactly the same):
+    if (startIndex != endIndex) {
+        testSelection(code, endIndex, startIndex, (page) => doPagePaste(page, thenPaste), expectedAfter, "paste " + thenPaste);
+    }
+}
+
 enum CUT_COPY_TEST { CUT_ONLY, COPY_ONLY, CUT_REPASTE }
+
+function doPagePaste(page: Page, clipboardContent: string) {
+    return page.evaluate((pasteContent: string) => {
+        const pasteEvent = new ClipboardEvent("paste", {
+            bubbles: true,
+            cancelable: true,
+            clipboardData: new DataTransfer(),
+        });
+
+        // Set custom clipboard data for the paste event
+        pasteEvent.clipboardData?.setData("text", pasteContent);
+
+        // Dispatch the paste event to the whole document
+        document.activeElement?.dispatchEvent(pasteEvent);
+    }, clipboardContent);
+}
 
 function testCutCopy(code : string, stepsToBegin: number, stepsWhileSelecting: number, expectedClipboard : string, expectedAfter : string, kind: CUT_COPY_TEST) : void {
     test(`Tests selecting then ${CUT_COPY_TEST[kind]} in ${code} from ${stepsToBegin} + ${stepsWhileSelecting}`, async ({page, context}) => {        
@@ -181,19 +206,7 @@ function testCutCopy(code : string, stepsToBegin: number, stepsWhileSelecting: n
             // Can't use shortcut because it doesn't read from our mock clipboard:
             //await page.keyboard.press("ControlOrMeta+v");
             // So instead we must send our own paste event:
-            await page.evaluate((pasteContent : string) => {
-                const pasteEvent = new ClipboardEvent("paste", {
-                    bubbles: true,
-                    cancelable: true,
-                    clipboardData: new DataTransfer(),
-                });
-
-                // Set custom clipboard data for the paste event
-                pasteEvent.clipboardData?.setData("text", pasteContent);
-
-                // Dispatch the paste event to the whole document
-                document.activeElement?.dispatchEvent(pasteEvent);
-            }, clipboardContent);
+            await doPagePaste(page, clipboardContent);
         }
         await assertState(page, expectedAfter);
     });
@@ -405,3 +418,25 @@ test.describe("Selecting then cutting/copying", () => {
     testCutCopyBothWays("fax()", 2, 5, 2, "x()", "{fa$}", "{fa|x}_({})_{$}");
 });
 
+test.describe("Paste over selection", () => {
+    testPasteOverBoth("foo", 0, 0, "to", "{to$foo}");
+    testPasteOverBoth("man", 1, 2, "oo", "{moo$n}");
+    testPasteOverBoth("foo.bar", 3, 4, "z", "{fooz$bar}");
+
+    testPasteOverBoth("\"hi\"", 0, 4, "bye", "{bye$}");
+    testPasteOverBoth("474+8", 0, 5, "1/2", "{1}/{2$}");
+    testPasteOverBoth("474+8", 0, 5, "\"bye\"", "{}_“bye”_{$}");
+    testPasteOverBoth("474+8", 0, 5, "foo", "{foo$}");
+
+    testPasteOverBoth("(474+8)", 0, 7, "1/2", "{1}/{2$}");
+    testPasteOverBoth("(474+8)", 0, 7, "\"bye\"", "{}_“bye”_{$}");
+    testPasteOverBoth("(474+8)", 0, 7, "foo", "{foo$}");
+    
+    testPasteOverBoth("(474+8)", 3, 5, "foo", "{}_({47foo$8})_{}");
+    testPasteOverBoth("(474+8)", 3, 5, "2.", "{}_({472.$8})_{}");
+    testPasteOverBoth("(474+8)", 3, 5, "1/", "{}_({471}/{$8})_{}");
+
+    testPasteOverBoth("11+(22*33)/44", 4, 9, "55", "{11}+{}_({55$})_{}/{44}");
+    testPasteOverBoth("11+(22*33)/44", 5, 8, "55", "{11}+{}_({255$3})_{}/{44}");
+    testPasteOverBoth("11+(22*33)/44", 4, 9, "55*(66-77)", "{11}+{}_({55}*{}_({66}-{77})_{$})_{}/{44}");
+});
