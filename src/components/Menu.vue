@@ -187,13 +187,14 @@
 import Vue from "vue";
 import { useStore, settingsStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
-import { AppEvent, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, ShareProjectMode, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
+import { AppEvent, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, ShareProjectMode, SlotCoreInfos, SlotCursorInfos, SlotType, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppLangSelectId, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getGoogleDriveComponentRefId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNearestErrorIndex, getSaveAsProjectModalDlg, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey } from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
 import GoogleDrive from "@/components/GoogleDrive.vue";
 import { downloadHex, downloadPython } from "@/helpers/download";
 import { canBrowserOpenFilePicker, canBrowserSaveFilePicker, openFile, saveFile } from "@/helpers/filePicker";
+import { saveDivider } from "@/helpers/load-save";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { BvModalEvent } from "bootstrap-vue";
 import { watch } from "@vue/composition-api";
@@ -859,9 +860,16 @@ export default Vue.extend({
                         // Save the .spy file of the state, we try to use the file picker if the browser allows it, otherwise, download to the default download repertory of the browser.
                         let saveContent = parseCodeAndGetParseElements(false, true).parsedOutput;
                         // We add the initial headers:
-                        const headers = new Map<string, string>();
+                        const headers = new Map<string, string | undefined>();
                         headers.set(AppName, AppSPYSaveVersion + ":" + AppPlatform);
-                        saveContent = Array.from(headers.entries()).map((e) => "#" + AppSPYPrefix + " " + e[0] + ":" + e[1] + "\n").join("") + saveContent;
+                        headers.set("editorCommandsSplitterPane2Size", saveDivider(this.appStore.editorCommandsSplitterPane2Size));
+                        /* IFTRUE_isPython */
+                        headers.set("peaLayoutMode", this.appStore.peaLayoutMode === undefined ? undefined : StrypePEALayoutMode[this.appStore.peaLayoutMode]);
+                        headers.set("peaCommandsSplitterPane2Size", saveDivider(this.appStore.peaCommandsSplitterPane2Size));
+                        headers.set("peaSplitViewSplitterPane1Size", saveDivider(this.appStore.peaSplitViewSplitterPane1Size));
+                        headers.set("editorCommandsSplitterPane2Size", saveDivider(this.appStore.peaExpandedSplitterPane2Size));
+                        /* FITRUE_isPython */
+                        saveContent = Array.from(headers.entries()).filter(([k, v]) => v !== undefined).map((e) => "#" + AppSPYPrefix + " " + e[0] + ":" + e[1] + "\n").join("") + saveContent;
                         if(canBrowserSaveFilePicker){
                             saveFile(saveFileName, this.strypeProjMIMEDescArray, this.appStore.strypeProjectLocation, saveContent, (fileHandle: FileSystemFileHandle) => {
                                 this.appStore.strypeProjectLocation = fileHandle;

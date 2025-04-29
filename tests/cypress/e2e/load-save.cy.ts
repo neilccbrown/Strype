@@ -212,3 +212,16 @@ describe("Tests invalid characters", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-invalid-chars.spy");
     });
 });
+
+describe("Tests saving layout metadata", () => {
+    if (Cypress.env("mode") === "microbit") {
+        return;
+    }
+    it("Saves changed layout to tabsExpanded", () => {
+        focusEditorPasteAndClear();
+        cy.get("#" + strypeElIds.getPEATabContentContainerDivId()).trigger("mouseenter");
+        cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-expanded") + "']").click();
+
+        cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded.spy").then((f) => checkDownloadedFileEquals(f, "My project.spy", true));
+    });
+});
