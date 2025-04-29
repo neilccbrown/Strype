@@ -114,6 +114,7 @@ import GoogleDrive from "@/components/GoogleDrive.vue";
 import { BvModalEvent } from "bootstrap-vue";
 import axios from "axios";
 import scssVars from "@/assets/style/_export.module.scss";
+import {loadDivider} from "@/helpers/load-save";
 
 let autoSaveTimerId = -1;
 let projectSaveFunctionsState : ProjectSaveFunction[] = [];
@@ -1177,10 +1178,20 @@ export default Vue.extend({
                     // Clear the Python Execution Area as it could have be run before.
                     ((this.$root.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getPEAComponentRefId()] as any).clear();
                     /* FITRUE_isPython */
-
-                    // Finally, we can trigger the notifcation a file has been loaded.
-                    (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, lastSaveDate, fileLocation);
-                    resolve();
+                    
+                    this.appStore.setDividerStates(
+                        loadDivider(s.headers["editorCommandsSplitterPane2Size"]),
+                        s.headers["peaLayoutMode"] !== undefined ? StrypePEALayoutMode[s.headers["peaLayoutMode"] as keyof typeof StrypePEALayoutMode] : undefined,
+                        loadDivider(s.headers["peaCommandsSplitterPane2Size"]),
+                        loadDivider(s.headers["peaSplitViewSplitterPane1Size"]),
+                        loadDivider(s.headers["peaExpandedSplitterPane2Size"]),
+                        () => {
+                            // Finally, we can trigger the notifcation a file has been loaded.
+                            (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, lastSaveDate, fileLocation);
+                            resolve();
+                        }
+                    );
+                    
                 }
             });
         },

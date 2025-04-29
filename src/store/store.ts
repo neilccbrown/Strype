@@ -2433,7 +2433,56 @@ export const useStore = defineStore("app", {
                 }
             });
         },
-        doSetStateFromJSONStr(stateJSONStr: string): Promise<void>{
+        setDividerStates(newEditorCommandsSplitterPane2Size: StrypeLayoutDividerSettings | undefined, newPEALayout: StrypePEALayoutMode | undefined, newPEACommandsSplitterPane2Size: StrypeLayoutDividerSettings | undefined, newPEASplitViewSplitterPane1Size: StrypeLayoutDividerSettings | undefined, newPEAExpandedSplitterPane2Size: StrypeLayoutDividerSettings | undefined, resolve: (value: (PromiseLike<void> | void)) => void) {
+            setTimeout(() => {
+                let chainedTimeOuts = 400;
+                // Now we can restore the backuped properties of the new state related to the layout.
+                // If any of the properties for layout changes was updated, the PEA 4:3 ratio isn't any longer meaningful.
+                if (newEditorCommandsSplitterPane2Size != undefined && newEditorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed] != undefined) {
+                    this.editorCommandsSplitterPane2Size = newEditorCommandsSplitterPane2Size;
+                    // If this splitter was changed, the PEA needs to be resized once the splitter has updated
+                    setTimeout(() => {
+                        (vm.$children[0] as InstanceType<typeof AppComponent>).onStrypeCommandsSplitPaneResize({1: {size: newEditorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed]}}, newPEALayout);
+                    }, chainedTimeOuts);
+                }
+                if (newPEALayout) {
+                    setTimeout(() => {
+                        this.peaLayoutMode = newPEALayout;
+                        ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).$refs[getPEAComponentRefId()] as InstanceType<typeof PEAComponent>).togglePEALayout(newPEALayout);
+                    }, chainedTimeOuts += 200);
+                }
+
+                if (newPEACommandsSplitterPane2Size) {
+                    this.peaCommandsSplitterPane2Size = newPEACommandsSplitterPane2Size;
+                    // If this splitter was changed, the PEA needs to be resized once the splitter has updated
+                    if (newPEALayout != undefined && newPEACommandsSplitterPane2Size[newPEALayout] != undefined) {
+                        setTimeout(() => {
+                            (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).onCommandsSplitterResize({1: {size: newPEACommandsSplitterPane2Size[newPEALayout]}});
+                        }, (chainedTimeOuts += 200));
+                    }
+                }
+
+                if (newPEASplitViewSplitterPane1Size != undefined && newPEALayout != undefined && newPEASplitViewSplitterPane1Size[newPEALayout] != undefined) {
+                    this.peaSplitViewSplitterPane1Size = newPEASplitViewSplitterPane1Size;
+                }
+
+                if (newPEAExpandedSplitterPane2Size != undefined) {
+                    this.peaExpandedSplitterPane2Size = newPEAExpandedSplitterPane2Size;
+                    // If this splitter was changed, the PEA needs to be resized once the splitter has updated
+
+                    if (newPEALayout != undefined && newPEAExpandedSplitterPane2Size[newPEALayout] != undefined) {
+                        setTimeout(() => {
+                            (vm.$children[0] as InstanceType<typeof AppComponent>).onExpandedPythonExecAreaSplitPaneResize({1: {size: newPEAExpandedSplitterPane2Size[newPEALayout]}});
+                        }, (chainedTimeOuts += 200));
+                    }
+                }
+
+                // We can resolve the promise when all the changes for the UI have been done
+                setTimeout(() => {
+                    resolve();
+                }, chainedTimeOuts + 50);
+            }, 1000);
+        }, doSetStateFromJSONStr(stateJSONStr: string): Promise<void>{
             return new Promise((resolve) => {
                 /* IFTRUE_isPython */
                 // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
@@ -2465,54 +2514,7 @@ export const useStore = defineStore("app", {
                 commandsComponent.resetPEACommmandsSplitterDefaultState().then(() => {
                     this.updateState(JSON.parse(JSON.stringify(newState)));
                     // Wait a bit after we have reset everything for the UI to get ready, then affect backed up changes
-                    setTimeout(() => {
-                        let chainedTimeOuts = 400;
-                        // Now we can restore the backuped properties of the new state related to the layout.
-                        // If any of the properties for layout changes was updated, the PEA 4:3 ratio isn't any longer meaningful.
-                        if(newEditorCommandsSplitterPane2Size != undefined && newEditorCommandsSplitterPane2Size[newPEALayout??StrypePEALayoutMode.tabsCollapsed] != undefined){
-                            this.editorCommandsSplitterPane2Size = newEditorCommandsSplitterPane2Size;
-                            // If this splitter was changed, the PEA needs to be resized once the splitter has updated
-                            setTimeout(() => {
-                                (vm.$children[0] as InstanceType<typeof AppComponent>).onStrypeCommandsSplitPaneResize({1: {size: newEditorCommandsSplitterPane2Size[newPEALayout??StrypePEALayoutMode.tabsCollapsed]}}, newPEALayout);
-                            }, chainedTimeOuts);
-                        }
-                        if(newPEALayout){
-                            setTimeout(() => {
-                                this.peaLayoutMode = newPEALayout;
-                                ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).$refs[getPEAComponentRefId()] as InstanceType<typeof PEAComponent>).togglePEALayout(newPEALayout);
-                            }, chainedTimeOuts+=200);
-                        }
-        
-                        if(newPEACommandsSplitterPane2Size){
-                            this.peaCommandsSplitterPane2Size = newPEACommandsSplitterPane2Size;
-                            // If this splitter was changed, the PEA needs to be resized once the splitter has updated
-                            if(newPEALayout != undefined && newPEACommandsSplitterPane2Size[newPEALayout] != undefined) {
-                                setTimeout(() => {
-                                    (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).onCommandsSplitterResize({1: {size: newPEACommandsSplitterPane2Size[newPEALayout]}});
-                                }, (chainedTimeOuts += 200));
-                            }
-                        }
-        
-                        if(newPEASplitViewSplitterPane1Size != undefined && newPEALayout != undefined && newPEASplitViewSplitterPane1Size[newPEALayout] != undefined){
-                            this.peaSplitViewSplitterPane1Size = newPEASplitViewSplitterPane1Size;
-                        }
-        
-                        if(newPEAExpandedSplitterPane2Size != undefined) {
-                            this.peaExpandedSplitterPane2Size = newPEAExpandedSplitterPane2Size;
-                            // If this splitter was changed, the PEA needs to be resized once the splitter has updated
-                            
-                            if(newPEALayout != undefined && newPEAExpandedSplitterPane2Size[newPEALayout] != undefined) { 
-                                setTimeout(() => {
-                                    (vm.$children[0] as InstanceType<typeof AppComponent>).onExpandedPythonExecAreaSplitPaneResize({1: {size: newPEAExpandedSplitterPane2Size[newPEALayout]}});
-                                }, (chainedTimeOuts += 200));
-                            }
-                        }
-                        
-                        // We can resolve the promise when all the changes for the UI have been done
-                        setTimeout(() => {
-                            resolve();
-                        }, chainedTimeOuts + 50);
-                    }, 1000);          
+                    this.setDividerStates(newEditorCommandsSplitterPane2Size, newPEALayout, newPEACommandsSplitterPane2Size, newPEASplitViewSplitterPane1Size, newPEAExpandedSplitterPane2Size, resolve);
                 });
                 /* FITRUE_isPython */
                 /* IFTRUE_isMicrobit */

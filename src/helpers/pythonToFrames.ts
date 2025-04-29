@@ -892,7 +892,7 @@ function makeMapping(section: NumberedLine[]) : Record<number, number> {
 // Each line of the original will end up in exactly one of the three parts of the return.
 // With Python's indentation rules, this operation is actually easier at line level than it is post-parse.
 // The mappings map line numbers in the returned sections to line numbers in the original
-export function splitLinesToSections(allLines : string[]) : {imports: string[]; defs: string[]; main: string[], importsMapping: Record<number, number>, defsMapping: Record<number, number>, mainMapping: Record<number, number>} {
+export function splitLinesToSections(allLines : string[]) : {imports: string[]; defs: string[]; main: string[], importsMapping: Record<number, number>, defsMapping: Record<number, number>, mainMapping: Record<number, number>, headers: Record<string, string>} {
     // There's two possibilities:
     //  - we're loading a .spy with section headings, or
     //  - we're loading a .py where we must infer it.
@@ -907,10 +907,16 @@ export function splitLinesToSections(allLines : string[]) : {imports: string[]; 
             importsMapping: {} as Record<number, number>,
             defsMapping: {} as Record<number, number>,
             mainMapping: {} as Record<number, number>,
+            headers: {} as Record<string, string>,
         };
         while (line < allLines.length && !allLines[line].match(new RegExp("^#" + escapeRegExp(AppSPYPrefix) + " *Section *:Imports"))) {
+            // Everything here should be metadata, add it to headers:
+            const m = allLines[line].match(new RegExp("^#" + escapeRegExp(AppSPYPrefix) + "([^:]+):(.*)"));
+            if (m) {
+                // Note: we only trim left-hand side, right-hand side is as-is:
+                r.headers[m[1].trim()] = m[2];
+            }
             line += 1;
-            // Everything here should be metadata, ignore for now (in future we'll load preferences here)
         }
         line += 1;
         const firstImportLine = line;
@@ -983,5 +989,6 @@ export function splitLinesToSections(allLines : string[]) : {imports: string[]; 
         importsMapping : makeMapping(imports),
         defsMapping : makeMapping(defs),
         mainMapping : makeMapping(main),
+        headers: {} as Record<string, string>,
     };
 }

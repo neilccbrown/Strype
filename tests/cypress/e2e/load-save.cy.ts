@@ -15,6 +15,7 @@ import i18n from "@/i18n";
 import "../support/expression-test-support";
 import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
 
+
 // Must clear all local storage between tests to reset the state,
 // and also retrieve the shared CSS and HTML elements IDs exposed
 // by Strype via the Window object of the app.
@@ -213,7 +214,7 @@ describe("Tests invalid characters", () => {
     });
 });
 
-describe("Tests saving layout metadata", () => {
+describe.only("Tests saving layout metadata", () => {
     if (Cypress.env("mode") === "microbit") {
         return;
     }
@@ -224,4 +225,18 @@ describe("Tests saving layout metadata", () => {
 
         cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded.spy").then((f) => checkDownloadedFileEquals(f, "My project.spy", true));
     });
+    it("Saves changed layout to tabsExpanded and back", () => {
+        focusEditorPasteAndClear();
+        cy.get("#" + strypeElIds.getPEATabContentContainerDivId()).trigger("mouseenter");
+        cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-expanded") + "']").click();
+        cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-collapsed") + "']").click();
+
+        cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded-collapsed.spy").then((f) => checkDownloadedFileEquals(f, "My project.spy", true));
+    });
+    it("Loads and saves a file with tabsExpanded layout", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-layout-tabs-expanded.spy");
+    });
+    //it("Loads and saves a file with tabsExpanded layout and collapsed", () => {
+    //    testRoundTripImportAndDownload("tests/cypress/fixtures/project-layout-tabs-expanded-collapsed.spy");
+    //});
 });
