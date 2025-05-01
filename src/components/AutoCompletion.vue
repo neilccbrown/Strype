@@ -72,7 +72,7 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import PopUpItem from "@/components/PopUpItem.vue";
-import {DefaultCursorPosition, IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWithCategory, BaseSlot} from "@/types/types";
+import {IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWithCategory, BaseSlot, AllFrameTypesIdentifier} from "@/types/types";
 import _ from "lodash";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
@@ -94,10 +94,6 @@ export default Vue.extend({
     props: {
         list: [String],
         slotId: String,
-        cursorPosition: {
-            type: Object,
-            default: () => DefaultCursorPosition,
-        },
     },
 
     data: function() {
@@ -132,14 +128,14 @@ export default Vue.extend({
         popupPosition(): Record<string, string> {
             return {
                 "float" : "left",
-                "left": (this.cursorPosition.left+25)+"px",
+                "left": "25px",
             }; 
         },
 
         popupDocumentationPosition(): Record<string, string> {
             return {
                 "float" : "right",
-                "right": -(this.cursorPosition.left+25)+"px",
+                "right": "-25px",
                 //this is needed to avoid showing an empty documentation pane
                 "min-width":((this.documentation[this.selected]?.length>0)?"200px":"0px"),
             }; 
@@ -154,13 +150,14 @@ export default Vue.extend({
         sortCategories(categories : string[]) : string[] {
             // Other items (like the names of variables when you do var.) will come out as -1,
             // which works nicely because they should be first:
+            const isInsideFuncCallFrame = this.appStore.frameObjects[(parseLabelSlotUID(this.slotId).frameId)].frameType.type === AllFrameTypesIdentifier.funccall;
             const getOrder = (cat : string) => {
-                // First is my variables and my functions
+                // First is my variables and my functions (in that order, except when we are inside a function call frame.)
                 if (cat === this.$i18n.t("autoCompletion.myVariables")) {
-                    return 0;
+                    return (isInsideFuncCallFrame) ? 1 : 0;
                 }
                 else if (cat === this.$i18n.t("autoCompletion.myFunctions")) {
-                    return 1;
+                    return (isInsideFuncCallFrame) ? 0 : 1;
                 }
                 else if (cat === this.$i18n.t("autoCompletion.importedModules")) {
                     return 2;

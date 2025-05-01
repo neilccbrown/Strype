@@ -221,7 +221,8 @@ export function getTextStartCursorPositionOfHTMLElement(htmlElement: HTMLSpanEle
     const sel = document.getSelection();
     if (sel && sel.rangeCount) {
         const range = sel.getRangeAt(0);
-        if (range.commonAncestorContainer.parentNode == htmlElement) {
+        if (range.commonAncestorContainer.parentNode == htmlElement
+            || range.commonAncestorContainer.parentNode?.parentNode == htmlElement) {
             caretPos = range.startOffset;
         }
     }
@@ -247,7 +248,7 @@ export function getFocusedEditableSlotTextSelectionStartEnd(labelSlotUID: string
             }
             else{
                 // the anchor is somewhere after the focus cursor: the selection end is at the end of the slot
-                return {selectionStart: focusCursorInfos.cursorPos, selectionEnd: (document.getElementById(labelSlotUID) as HTMLSpanElement).textContent?.length??0};
+                return {selectionStart: focusCursorInfos.cursorPos, selectionEnd: (document.getElementById(labelSlotUID) as HTMLSpanElement).textContent?.replace(/\u200B/g, "")?.length??0};
             }
         }
     }
@@ -299,7 +300,29 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
     let ignoreSpan = !!delimiters;
     let hasStringSlots = false;
     const imageLiterals : {code: string, mediaType: string}[] = [];
-    frameLabelStruct.querySelectorAll("."  + scssVars.labelSlotInputClassName + ",.labelSlot-media").forEach((spanElement) => {
+    // The container and intermediate divs can have relevant text if Firefox has done a "bad delete"
+    // (see comment in LabelSlotsStructure.onInput):
+    frameLabelStruct.querySelectorAll("." + scssVars.labelSlotInputClassName + ", ." + scssVars.labelSlotContainerClassName).forEach((spanElement) => {
+        // Sometimes div can end up with text content after a selection and overtype (a "bad delete") that seems to happen on Firefox.
+        // We only care about these divs if there is text content
+        // directly inside the div (which shouldn't happen except in this situation)
+        if (spanElement.classList.contains(scssVars.labelSlotContainerClassName)) {
+            // Find all the text node direct children:
+            const directTextNodes = Array.from(spanElement.childNodes).filter(
+                (child) => child.nodeType === Node.TEXT_NODE
+            );
+            // Combine the text content from all direct text nodes (should only be one, but no harm doing all):
+            const content = directTextNodes.map((textNode) => textNode.textContent).join("");
+            if (content.length > 0) {
+                // Found this bad input:
+                uiLiteralCode += content;
+                // Also, we know the cursor should be directly after this bad input:
+                foundFocusSpan = true;
+                focusSpanPos += content.length;
+            }
+            return;
+        }
+
         if (spanElement.classList.contains("labelSlot-media")) {
             const code = spanElement.getAttribute("data-code");
             // We add the code, but also record the image literal for later manipulation:
@@ -313,6 +336,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
             }
             return;
         }
+        
         if(delimiters && (delimiters.startSlotUID == spanElement.id || delimiters.stopSlotUID == spanElement.id)){
             ignoreSpan = !ignoreSpan ;
         } 
@@ -338,10 +362,10 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                 if((spanElement.textContent?.includes(STRING_DOUBLEQUOTE_PLACERHOLDER) || spanElement.textContent?.includes(STRING_SINGLEQUOTE_PLACERHOLDER)) as boolean){
                     hasStringSlots = true;
                 }
-                uiLiteralCode += (spanElement.textContent);
+                uiLiteralCode += (spanElement.textContent??"").replace(/\u200B/g, "");
             }
         
-            if(spanElement.id === currentSlotUID){
+            if(spanElement.id === currentSlotUID && !foundFocusSpan){
                 focusSpanPos += (useStore().focusSlotCursorInfos?.cursorPos??0);     
                 foundFocusSpan = true;
             }
@@ -351,7 +375,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                 // therefore we need to account for them when dealing with such operators;
                 // and if we parse the string quotes, we need to set the position value as if the quotes were still here (because they are in the UI)
                 let spacesOffset = 0;
-                const spanElementContentLength = (spanElement.textContent?.length??0);
+                const spanElementContentLength = (spanElement.textContent?.replace(/\u200B/g, "")?.length??0);
                 const ignoreAsKW = (spanElement.textContent == "as" && useStore().frameObjects[parseLabelSlotUID(spanElement.id).frameId].frameType.type != AllFrameTypesIdentifier.import);
                 if(!ignoreAsKW && !isSlotStringLiteralType(labelSlotCoreInfos.slotType) && (trimmedKeywordOperators.includes(spanElement.textContent??""))){
                     spacesOffset = 2;
@@ -1936,7 +1960,7 @@ export function computeAddFrameCommandContainerSize(isExpandedPEA?: boolean): vo
         // When we are done, we need to check again the min size of the commands/PEA splitter pane 1, since scroll bars
         // could have been added with the new change (need to wait for it to be effective though).
         setTimeout(() => {
-            (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).setPEACommandsSplitterPanesMinSize();    
+            (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).setPEACommandsSplitterPanesMinSize(true);    
         }, 100);    
     }
 }
@@ -1993,6 +2017,67 @@ export function getCurrentFrameSelectionScope(): SelectAllFramesFuncDefScope {
         return SelectAllFramesFuncDefScope.wholeFunctionBody;
     }
     return SelectAllFramesFuncDefScope.none;
+}
+
+
+/**
+ * Gets selected text from editable text nodes by traversing DOM from anchor to focus
+ * Similar to document.getSelection().toString() but only including nodes where
+ * isNodeSelectableText() returns true
+ *
+ * @returns {string} The concatenated text from all selected editable text nodes
+ */
+export function getEditableSelectionText() : string {
+    const selection = document.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+        return "";
+    }
+
+    // Get the range covering the current selection
+    const range = selection.getRangeAt(0);
+
+    // If selection is within a single node.  Note that if it's within an element it might be in Firefox
+    // where it's possible for the selection to be in the parent div 
+    if (range.startContainer === range.endContainer && range.startContainer.nodeType != Node.ELEMENT_NODE) {
+        if (range.startContainer.nodeType === Node.TEXT_NODE && isNodeSelectableText(range.startContainer)) {
+            return range.startContainer.nodeValue?.substring(Math.min(range.startOffset, range.endOffset), Math.max(range.startOffset, range.endOffset)) ?? "";
+        }
+        return "";
+    }
+    
+    // For multi-node selection
+    const allNodes = [] as string[];
+    const treeWalker = document.createTreeWalker(
+        range.cloneContents(),
+        NodeFilter.SHOW_TEXT,
+        null
+    );
+
+    for (let node = treeWalker.nextNode(); node; node = treeWalker.nextNode()) {
+        if (isNodeSelectableText(node)) {
+            allNodes.push(node.nodeValue ?? "");
+        }
+    }
+
+    return allNodes.join("").replace(/\u200B/g, "");
+}
+
+// Helper function to check if a node is inside a contenteditable element
+function isNodeSelectableText(node: Node | null): boolean {
+    if (!node || node.nodeType !== Node.TEXT_NODE) {
+        return false;
+    }
+
+    // Check if the nearest element ancestors is contenteditable
+    let current: Node | null = node;
+    while (current) {
+        if (current.nodeType === Node.ELEMENT_NODE) {
+            const el = current as HTMLElement;
+            return el.classList.contains(scssVars.labelSlotInputClassName);
+        }
+        current = current.parentNode;
+    }
+    return false;
 }
 
 // Gets all the HTML elements which are part of the window text selection.

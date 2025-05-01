@@ -31,6 +31,9 @@ beforeEach(() => {
         // The Strype IDs and CSS class names aren't directly used in the test
         // but they are used in the support file, so we make them available.
         cy.initialiseSupportStrypeGlobals();
+
+        // Wait for code initialisation
+        cy.wait(2000);
     });
 });
 
@@ -59,7 +62,7 @@ Cypress.Commands.add("paste",
 function focusEditorPasteAndClear(): void {
     // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
     // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
-    cy.get("#" + strypeElIds.getFrameUID(-3)).focus();
+    cy.get("#" + strypeElIds.getFrameUID(-3), {timeout: 15 * 1000}).focus();
     // Delete existing content (bit of a hack):
     cy.get("body").type("{uparrow}{uparrow}{uparrow}{del}{downarrow}{downarrow}{downarrow}{downarrow}{backspace}{backspace}");
 }
@@ -119,7 +122,7 @@ function testRoundTripImportAndDownload(filepath: string, expected?: string) {
         cy.get("#" + strypeElIds.getLoadProjectLinkId()).click();
         // If the current state of the project is modified,
         // we first need to discard the changes (we check the button is available)
-        cy.get("button").contains("Discard changes").should("exist").click();
+        cy.get("button").contains(i18n.t("buttonLabel.discardChanges") as string).should("exist").click();
         cy.wait(2000);
         // The "button" for the target selection is now a div element.
         cy.get("#" + strypeElIds.getLoadFromFSStrypeButtonId()).click();

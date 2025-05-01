@@ -1,23 +1,24 @@
 <template>
     <div 
         :id="labelSlotsStructDivId"
+        :key="refactorCount"
         contenteditable="true"
         @keydown.left="onLRKeyDown($event)"
         @keydown.right="onLRKeyDown($event)"
+        @beforeinput="beforeInput"
         @keydown="forwardKeyEvent($event)"
         @keyup="forwardKeyEvent($event)"
         @focus="onFocus"
         @blur="blurEditableSlot"
         @paste.prevent.stop="forwardPaste"
-        class="next-to-eachother label-slot-container"
+        @input="onInput"
+        @compositionend="onCompositionEnd"
+        class="next-to-eachother label-slot-structure"
     >
-        <div 
-            v-for="(slotItem, slotIndex) in subSlots" 
-            :key="frameId + '_'  + labelIndex + '_' + slotIndex"
-            class="next-to-eachother"
-        >
             <!-- Note: the default text is only showing for new slots (1 subslot), we also use unicode zero width space character for empty slots for UI -->
             <LabelSlot
+                v-for="(slotItem, slotIndex) in subSlots"
+                :key="frameId + '_'  + labelIndex + '_' + slotIndex + '_' + refactorCount"
                 :labelSlotsIndex="labelIndex"
                 :slotId="slotItem.id"
                 :slotType="slotItem.type"
@@ -28,8 +29,7 @@
                 :isEditableSlot="isEditableSlot(slotItem.type)"
                 :isEmphasised="isSlotEmphasised(slotItem)"
                 v-on:[CustomEventTypes.requestSlotsRefactoring]="checkSlotRefactoring"
-            />
-        </div> 
+            /> 
     </div>
 </template>
 
@@ -39,13 +39,13 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
-import { CustomEventTypes, getFrameLabelSlotsStructureUID, getLabelSlotUID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, getFunctionCallDefaultText } from "@/helpers/editor";
-import {checkCodeErrors, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
+import {CustomEventTypes, getFrameLabelSlotsStructureUID, getLabelSlotUID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, getFunctionCallDefaultText, getEditableSelectionText, openBracketCharacters, stringQuoteCharacters, getMatchingBracket, UIDoubleQuotesCharacters, STRING_DOUBLEQUOTE_PLACERHOLDER, UISingleQuotesCharacters, STRING_SINGLEQUOTE_PLACERHOLDER} from "@/helpers/editor";
+import {checkCodeErrors, generateFlatSlotBases, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import {calculateParamPrompt} from "@/autocompletion/acManager";
 import scssVars from "@/assets/style/_export.module.scss";
 import {readFileAsyncAsData, readImageSizeFromDataURI, splitByRegexMatches} from "@/helpers/common";
-
+import {detectBrowser} from "@/helpers/browser";
 
 export default Vue.extend({
     name: "LabelSlotsStructure",
@@ -66,6 +66,11 @@ export default Vue.extend({
             CustomEventTypes, // just to be able to use in template
             ignoreBracketEmphasisCheck: false, // cf. isSlotEmphasised()
             isFocused: false,
+            // Because the user edits the DOM directly, Vue can fail to realise it needs to update the DOM.
+            // So we add a dummy counter variable that just increases every time we refactor (which includes all cases where
+            // the user has edited things which might affect the slot structure) in order to nudge
+            // Vue into re-rendering all items in our loop above.
+            refactorCount : 0,
         };
     },
 
@@ -129,9 +134,84 @@ export default Vue.extend({
                 // We show quotes in the UI as textual opening or closing quotes
                 return getUIQuote(slot.code, slot.type == SlotType.openingQuote);
             }
-            return slot.code;
+            // On Firefox there are problems typing into completely blank slots,
+            // so we use a zero-width space if there is no code:
+            return slot.code ? slot.code : "\u200B";
         },
+        
+        onCompositionEnd(event: CompositionEvent) {
+            // On Chrome and Safari, the final input event (with composing: false) doesn't seem to fire.
+            // So we have to forward the earlier onCompositionEnd event instead.  We don't want to do this
+            // on Firefox because otherwise we'll get a double input when it does fire input with composing:false.
+            if (["chrome", "safari", "webkit"].includes(detectBrowser())) {
+                const targetEl = (this.appStore.focusSlotCursorInfos ? document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos)) : null)
+                    ?? (this.appStore.anchorSlotCursorInfos ? document.getElementById(getLabelSlotUID(this.appStore.anchorSlotCursorInfos.slotInfos)) : null);
+                if (targetEl != null) {
+                    targetEl.dispatchEvent(new CompositionEvent(event.type, {
+                        data: event.data,
+                    }));
+                }
+            }
+        },
+        
+        onInput(event: InputEvent) {
+            // It is possible that the user has deleted the focus or anchor from the DOM, e.g. if they do a multi-slot
+            // select then type.  But usually one of them should remain.  So we try focus first, and if that is gone, we try
+            // anchor instead:
+            const targetEl = (this.appStore.focusSlotCursorInfos ? document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos)) : null)
+                ?? (this.appStore.anchorSlotCursorInfos ? document.getElementById(getLabelSlotUID(this.appStore.anchorSlotCursorInfos.slotInfos)) : null);
+            if (targetEl != null) {
+                targetEl.dispatchEvent(new InputEvent(event.type, {
+                    data: event.data,
+                    isComposing: event.isComposing,
+                }));
+            }
+            else {
+                // So it seems that if you select from one empty slot to another
+                // e.g. typing "+" in an empty slot then selecting around it, or
+                //      selecting around a bracketed structure that has nothing directly adjacent
+                // the browser behaviour in Firefox can be to delete all the involved spans
+                // (despite the remaining zero-width space at the end of the last one)
+                // and put the content in the parent div.  Which messes up our structure.
+                // We know what this content is because it's the input string, and we know
+                // the selection that was deleted because it's in mostRecentSelectedText,
+                // but we must manually restore the selection if the input should have wrapped it,
+                // because our usual mechanisms for detecting this will not work.
+                // We call this a "bad delete".
+                const closestDivId = this.appStore.focusSlotCursorInfos ? ("div_" + getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos)) : this.labelSlotsStructDivId;
+                const closestDiv = document.getElementById(closestDivId);
+                if (event.data) {
+                    const openBracket = openBracketCharacters.includes(event.data);
+                    if (openBracket || stringQuoteCharacters.includes(event.data)) {
+                        // We make a fake element with the content we are restoring so that the rest of the code works properly:
+                        const appendSel = document.createElement("div");
+                        appendSel.classList.add(scssVars.labelSlotInputClassName);
+                        const closing = openBracket ? getMatchingBracket(event.data, true) : event.data;
+                        let sel = this.appStore.mostRecentSelectedText;
+                        // This does have a slight disadvantage that any smart quotes the user meant to insert
+                        // (e.g. inside a string literal) will get mangled, but I think we just live with that:
+                        sel = sel.replace(new RegExp(`[${UIDoubleQuotesCharacters[0]}${UIDoubleQuotesCharacters[1]}]`, "g"), STRING_DOUBLEQUOTE_PLACERHOLDER);
+                        sel = sel.replace(new RegExp(`[${UISingleQuotesCharacters[0]}${UISingleQuotesCharacters[1]}]`, "g"), STRING_SINGLEQUOTE_PLACERHOLDER);
+                        appendSel.append(sel + closing);
+                        closestDiv?.append(appendSel);
+                    }
+                    else if (closestDiv && closestDiv?.classList?.contains(scssVars.labelSlotContainerClassName) && event.data.charCodeAt(0) >= 128 && closestDiv?.textContent?.startsWith(event.data)) {
+                        // Firefox has a weird behaviour when you do the input of holding down a character on Mac followed by a number
+                        // to get a vowel variant (e.g. ö by holding o and pressing 4).  It puts the new character in the outer div,
+                        // and removes the CSS class from the inner span.  If we put the CSS class back, we get the right result:
+                        const firstDirectSpan = Array.from(closestDiv.children).find((child) => child.tagName.toLowerCase() === "span") as HTMLSpanElement | undefined || null;
+                        firstDirectSpan?.classList.add(scssVars.labelSlotInputClassName);
+                    }
+                }
 
+                const stateBeforeChanges = cloneDeep(this.appStore.$state);
+                // Must increment refactorCount in case the changed content doesn't trigger a noticeable refactor
+                // (i.e. in case it doesn't change the number/type of slots);
+                // we definitely need to completely redo all the slots if Firefox has deleted a bunch of nodes
+                this.refactorCount += 1;
+                this.checkSlotRefactoring("", stateBeforeChanges);
+            }
+        },
         isSlotEmphasised(slot: FlatSlotBase): boolean{
             // In this method, if the flag to check a bracket emphasis (ignoreBracketEmphasisCheck) isn't set,
             // we check if the current slot bracket should be emphasised, and if so, emphasise its bracket counterpart.
@@ -189,12 +269,53 @@ export default Vue.extend({
             return false;
         },
 
-        checkSlotRefactoring(slotUID: string, stateBeforeChanges: any) {
+
+        beforeInput(e: InputEvent) {
+            // beforeInput comes to us not the slot, so we must be responsible
+            // for remembering the selection at this point:
+            this.appStore.mostRecentSelectedText = getEditableSelectionText();
+        },
+
+        majorChange(before: SlotsStructure, after: SlotsStructure) : boolean {
+            const beforeFlat = generateFlatSlotBases(before);
+            const afterFlat = generateFlatSlotBases(after);
+            // Our default behaviour is to discard all AC.  We only keep it if:
+            //  - the flat length is the same, AND
+            //  - at most one slot has changed
+            if (beforeFlat.length == afterFlat.length) {
+                let changes = [] as number[];
+                for (let i = 0; i < afterFlat.length; i++) {
+                    // A change of type is a major change
+                    if (beforeFlat[i].type != afterFlat[i].type) {
+                        return true;
+                    }
+                    // One change of code in a code or string slot is allowed: 
+                    if (beforeFlat[i].code != afterFlat[i].code) {
+                        if (afterFlat[i].type == SlotType.string || afterFlat[i].type == SlotType.code) {
+                            changes.push(i);
+                        }
+                        else {
+                            return true;
+                        }
+                    }
+                }
+                if (changes.length <= 1) {
+                    return false;
+                }
+            }
+
+            return true;
+        },
+
+        checkSlotRefactoring(slotUID: string, stateBeforeChanges: any, doAfterCursorSet?: () => void) {
             // Comments do not need to be checked, so we do nothing special for them, but just enforce the caret to be placed at the right place and the code value to be updated
             const currentFocusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
             if(this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment && currentFocusSlotCursorInfos){
-                (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields[0] as BaseSlot).code = document.getElementById(getLabelSlotUID(currentFocusSlotCursorInfos.slotInfos))?.textContent??"";
-                this.$nextTick(() => setDocumentSelection(currentFocusSlotCursorInfos, currentFocusSlotCursorInfos));
+                (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields[0] as BaseSlot).code = (document.getElementById(getLabelSlotUID(currentFocusSlotCursorInfos.slotInfos))?.textContent??"").replace(/\u200B/g, "");
+                this.$nextTick(() => {
+                    setDocumentSelection(currentFocusSlotCursorInfos, currentFocusSlotCursorInfos);
+                    doAfterCursorSet?.();
+                });
                 return;
             }
 
@@ -206,12 +327,24 @@ export default Vue.extend({
                 // so we find that out while getting through all the slots to get the literal code.
                 let {uiLiteralCode, focusSpanPos: focusCursorAbsPos, hasStringSlots, imageLiterals} = getFrameLabelSlotLiteralCodeAndFocus(labelDiv, slotUID);
                 const parsedCodeRes = parseCodeLiteral(uiLiteralCode, {frameType: this.appStore.frameObjects[this.frameId].frameType.type, isInsideString: false, cursorPos: focusCursorAbsPos, skipStringEscape: hasStringSlots, imageLiterals: imageLiterals});
-                this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures = parsedCodeRes.slots;
+                const majorChange = this.majorChange(this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures, parsedCodeRes.slots);
+                Vue.set(this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex], "slotStructures", parsedCodeRes.slots);
                 // The parser can be return a different size "code" of the slots than the code literal
                 // (that is for example the case with textual operators which requires spacing in typing, not in the UI)
                 focusCursorAbsPos += parsedCodeRes.cursorOffset;
+                if (majorChange) {
+                    this.refactorCount += 1;
+                }
                 this.$forceUpdate();
                 this.$nextTick(() => {
+                    // If it was a major change, our entire old div element may have been removed
+                    // from the tree and re-added, so it's crucial we refetch the new element in
+                    // this next tick code:
+                    const labelDiv = document.getElementById(this.labelSlotsStructDivId);
+                    if (!labelDiv) {
+                        // Shouldn't happen, but make Typescript happy:
+                        return;
+                    }
                     let newUICodeLiteralLength = 0;
                     let foundPos = false;
                     let setInsideNextSlot = false; // The case when the cursor follow a non editable slot (i.e. operator, bracket, quote)
@@ -224,8 +357,7 @@ export default Vue.extend({
                                 // Go on to the next selector item:
                                 return;
                             }
-                            
-                            const spanContentLength = (spanElement.textContent?.length??0);
+                            const spanContentLength = (spanElement.textContent?.replace(/\u200B/g, "")?.length??0);
                             if(setInsideNextSlot || (focusCursorAbsPos <= (newUICodeLiteralLength + spanContentLength) && focusCursorAbsPos >= newUICodeLiteralLength)){
                                 if(!setInsideNextSlot && !isElementEditableLabelSlotInput(spanElement)){
                                     setInsideNextSlot = true;
@@ -285,6 +417,7 @@ export default Vue.extend({
                                             this.$nextTick(() => this.$nextTick(() => {
                                                 setDocumentSelection(newCursorSlotInfos, newCursorSlotInfos);
                                                 this.appStore.setSlotTextCursors(newCursorSlotInfos, newCursorSlotInfos);
+                                                doAfterCursorSet?.();
                                                 // Save changes only when arrived here (for undo/redo)
                                                 this.appStore.saveStateChanges(stateBeforeChanges);
                                             }));
@@ -293,6 +426,7 @@ export default Vue.extend({
                                     else{
                                         setDocumentSelection(cursorInfos, cursorInfos);
                                         this.appStore.setSlotTextCursors(cursorInfos, cursorInfos);
+                                        doAfterCursorSet?.();
                                         // Save changes only when arrived here (for undo/redo)
                                         this.appStore.saveStateChanges(stateBeforeChanges);
                                     }
@@ -321,6 +455,28 @@ export default Vue.extend({
             if(event.key.toLowerCase() == "contextmenu"){
                 return;
             }
+
+            // When some text is cut through *a selection*, we need to handle it fully: we want to handle the slot changes in the store to reflect the
+            // text change, but also we need to handle the clipboard, as doing events here on keydown results the browser not being able to get the text
+            // cut (since the slots have already disappear, and the action for cut seems to be done on the keyup event)
+            if ((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() ==  "x" || event.key.toLowerCase() ==  "c")){
+                // There is a selection already, we can directly set the text in the browser's clipboard here
+                const selectionText = getEditableSelectionText();
+                if (selectionText) {
+                    navigator.clipboard.writeText(selectionText);
+                    if (event.key.toLowerCase() == "x" && this.appStore.focusSlotCursorInfos) {
+                        // Send fake delete key to delete the content:
+                        document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
+                            ?.dispatchEvent(new KeyboardEvent(event.type, {
+                                key: "Backspace",
+                            }));
+                    }
+                }
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                return;
+            }
             
             if(this.appStore.focusSlotCursorInfos){
                 document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
@@ -331,17 +487,19 @@ export default Vue.extend({
                         ctrlKey: event.ctrlKey,
                         metaKey: event.metaKey,
                     }));
-                if (event.key.toLowerCase() == "backspace" || event.key == "ArrowUp" || event.key == "ArrowDown") {
+                if (event.key.toLowerCase() == "backspace"
+                    || event.key.toLowerCase() == "delete"
+                    || event.key.toLowerCase() == "enter"
+                    || event.key == "ArrowUp"
+                    || event.key == "ArrowDown"
+                    || event.key == "Home"
+                    || event.key == "End"
+                    || event.key == "Tab"
+                    || (event.key == " " && (event.ctrlKey || event.metaKey))) {
                     event.preventDefault();
                     event.stopPropagation();
                     event.stopImmediatePropagation();
                 }
-            }
-            // Let through various shortcuts like Ctrl-A, Ctrl-C, etc, so that they trigger the in-built
-            // actions of selectAll, copy, etc; as well as up/down and derivates keys IF WE ARE IN A COMMENT FRAME.
-            if (!event.ctrlKey && !event.metaKey && 
-                !((this.frameId in this.appStore.frameObjects) && (this.appStore.frameObjects[this.frameId].frameType.type === AllFrameTypesIdentifier.comment) && ["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"].includes(event.key))) {
-                event.preventDefault();
             }
         },
 
@@ -431,7 +589,7 @@ export default Vue.extend({
                 // If we're trying to go off the bounds of this slot
                 // For comments, if there is a terminating line return, we do not allow the cursor to be past it (cf LabelSlot.vue onEnterOrTabKeyUp() for why)
                 if((cursorPos == 0 && event.key==="ArrowLeft") 
-                        || (((cursorPos === spanInputContent.length) || (isCommentFrame && spanInputContent.endsWith("\n") && cursorPos == spanInputContent.length - 1)) && event.key==="ArrowRight")) {
+                        || (((cursorPos >= spanInputContent.replace(/\u200B/, "").length) || (isCommentFrame && spanInputContent.endsWith("\n") && cursorPos == spanInputContent.length - 1)) && event.key==="ArrowRight")) {
                     // DO NOT request a loss of focus here, because we need to be able to know which element of the UI has focus to find the neighbour in this.appStore.leftRightKey()
                     this.appStore.isSelectingMultiSlots = event.shiftKey;
                     this.appStore.leftRightKey({key: event.key, isShiftKeyHold: event.shiftKey}).then(() => {
@@ -523,7 +681,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.label-slot-container{
+.label-slot-structure{
     outline: none;
     max-width: 100%;
     flex-wrap: wrap;

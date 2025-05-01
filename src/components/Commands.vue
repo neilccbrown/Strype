@@ -543,16 +543,6 @@ export default Vue.extend({
                     event.preventDefault();
                     return;
                 }
-
-                //prevent specific characters in specific frames (cf details)
-                if(isEditing){
-                    const frameType = this.appStore.getCurrentFrameObject.frameType.type;
-                    //space in import frame's editable slots
-                    if((frameType === AllFrameTypesIdentifier.import || frameType === AllFrameTypesIdentifier.fromimport) && event.key === " "){
-                        event.preventDefault();
-                        return;
-                    }
-                }
             }
         );
 
@@ -724,7 +714,7 @@ export default Vue.extend({
             }
         }, 
 
-        setPEACommandsSplitterPanesMinSize() {
+        setPEACommandsSplitterPanesMinSize(onlyResizePEA?: boolean) {
             // Called to get the right min sizes of the pea/Commands splitter.
             // The minimum size the first pane of the splitter can take is set to guarantee
             // the project name is visible, and the first row of add frame commands + potential scrollbars.
@@ -755,7 +745,7 @@ export default Vue.extend({
                             (this.$refs.peaCommandsSplitterPane1Ref as InstanceType<typeof Pane>).$data.style.height = this.commandSplitterPane1MinSize + "%";
                             (this.$refs.peaCommandsSplitterPane2Ref as InstanceType<typeof Pane>).$data.style.height = this.commandsSplitterPane2Size + "%";
                             // And trigger the Graphics to resize properly
-                            document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
+                            document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged, {detail: onlyResizePEA}));
                         }, 200);                        
                     }     
                 }    
