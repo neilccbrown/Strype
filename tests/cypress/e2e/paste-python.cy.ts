@@ -31,6 +31,9 @@ beforeEach(() => {
         // The Strype IDs and CSS class names aren't directly used in the test
         // but they are used in the support file, so we make them available.
         cy.initialiseSupportStrypeGlobals();
+
+        // Wait for code initialisation
+        cy.wait(2000);
     });
 });
 
@@ -119,7 +122,7 @@ function testRoundTripImportAndDownload(filepath: string, expected?: string) {
         cy.get("#" + strypeElIds.getLoadProjectLinkId()).click();
         // If the current state of the project is modified,
         // we first need to discard the changes (we check the button is available)
-        cy.get("button").contains("Discard changes").should("exist").click();
+        cy.get("button").contains(i18n.t("buttonLabel.discardChanges") as string).should("exist").click();
         cy.wait(2000);
         // The "button" for the target selection is now a div element.
         cy.get("#" + strypeElIds.getLoadFromFSStrypeButtonId()).click();

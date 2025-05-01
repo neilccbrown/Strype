@@ -64,7 +64,7 @@
                         </div>
                     </div>
                 </Pane>
-                <Pane key="2" :size="editorCommandsSplitterPane2Size" class="no-print">
+                <Pane key="2" ref="editorCommandsSplitterPane2" :size="editorCommandsSplitterPane2Size" class="no-print">
                     <Commands :id="commandsContainerId" class="noselect" :ref="strypeCommandsRefId" />
                 </Pane>
             </SplitPanes>
@@ -95,7 +95,7 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane, PaneData} from "splitpanes";
 import { useStore, settingsStore } from "@/store/store";
-import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, GAPIState } from "@/types/types";
+import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, GAPIState, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings } from "@/types/types";
 import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getPEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames } from "./helpers/editor";
 /* IFTRUE_isPython */
 import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId } from "@/helpers/editor";
@@ -188,7 +188,20 @@ export default Vue.extend({
 
         editorCommandsSplitterPane2Size: {
             get(): number {
-                return this.appStore.editorCommandsSplitterPane2Size ?? parseFloat(scssVars.editorCommandsSplitterPane2SizePercentValue);
+                let value = (this.appStore.editorCommandsSplitterPane2Size != undefined && this.appStore.editorCommandsSplitterPane2Size[StrypePEALayoutMode.tabsCollapsed] != undefined) 
+                    ? this.appStore.editorCommandsSplitterPane2Size[StrypePEALayoutMode.tabsCollapsed] 
+                    : parseFloat(scssVars.editorCommandsSplitterPane2SizePercentValue);
+                /* IFTRUE_isPython */
+                value = (this.appStore.peaLayoutMode != undefined && this.appStore.editorCommandsSplitterPane2Size != undefined && this.appStore.editorCommandsSplitterPane2Size[this.appStore.peaLayoutMode] != undefined) 
+                    ? this.appStore.editorCommandsSplitterPane2Size[this.appStore.peaLayoutMode] as number
+                    // When there is no set value for a given layout mode,
+                    // whe check that any change in another layout has ever been made: if yes we just keep the divider as it is, if not, we use the default value.
+                    : ((this.appStore.editorCommandsSplitterPane2Size != undefined)
+                        ? parseFloat(((this.$refs.editorCommandsSplitterPane2 as InstanceType<typeof Pane>).$data as PaneData).style.width.replace("%",""))
+                        : parseFloat(scssVars.editorCommandsSplitterPane2SizePercentValue));
+                /* FITRUE_isPython */
+                return value;
+                
             },
             set(value: number) {
                 this.onStrypeCommandsSplitPaneResize({1: {size: value}});
@@ -230,7 +243,18 @@ export default Vue.extend({
 
         expandedPEAOverlaySplitterPane2Size: {
             get(): number {
-                return this.appStore.peaExpandedSplitterPane2Size ?? parseFloat(scssVars.peaExpandedOverlaySplitterPane2SizePercentValue);
+                const value = (this.appStore.peaExpandedSplitterPane2Size != undefined && this.appStore.peaLayoutMode != undefined && this.appStore.peaExpandedSplitterPane2Size[this.appStore.peaLayoutMode] != undefined)
+                    ? this.appStore.peaExpandedSplitterPane2Size[this.appStore.peaLayoutMode] as number
+                    // When there is no set value for a given layout mode,
+                    // whe check that any change in another layout has ever been made: if yes we just keep the divider as it is, if not, we use the default value.
+                    : ((this.appStore.peaExpandedSplitterPane2Size != undefined)
+                        ? parseFloat(((this.$refs.overlayExpandedPEAPane2Ref as InstanceType<typeof Pane>).$data as PaneData).style.height.replace("%",""))
+                        :  parseFloat(scssVars.peaExpandedOverlaySplitterPane2SizePercentValue));
+                // The PEA needs to react to the change of value when we are in an expanded mode
+                if(this.appStore.peaLayoutMode == StrypePEALayoutMode.tabsExpanded || this.appStore.peaLayoutMode == StrypePEALayoutMode.splitExpanded){
+                    this.$nextTick(() => this.onExpandedPythonExecAreaSplitPaneResize({1: {size: value}}));
+                }
+                return value;
             },
             set(value: number) {
                 this.onExpandedPythonExecAreaSplitPaneResize({1: {size: value}});                    
@@ -1034,10 +1058,17 @@ export default Vue.extend({
         onExpandedPythonExecAreaSplitPaneResize(event: any, calledForResize?: boolean){
             // We want to know the size of the second pane (https://antoniandre.github.io/splitpanes/#emitted-events).
             // It will dictate the size of the Python execution area (expanded, with a range between 20% and 80% of the vh)
-            const lowerPanelSize = event[1].size;
+            const lowerPanelSize = event[1].size as number;
             if(!calledForResize){
                 // If the call isn't trigger by a window resize, we save the panel 1 size in the project
-                this.appStore.peaExpandedSplitterPane2Size = lowerPanelSize; 
+                if(this.appStore.peaExpandedSplitterPane2Size != undefined) {
+                    this.appStore.peaExpandedSplitterPane2Size[this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed] = lowerPanelSize; 
+                }
+                else{
+                    // The tricky case of when the state property has never been set
+                    this.appStore.peaExpandedSplitterPane2Size = {...defaultEmptyStrypeLayoutDividerSettings, [this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed]: lowerPanelSize};
+
+                }
             }
             if(lowerPanelSize >= this.peaOverlayPane2MinSize && lowerPanelSize <= this.peaOverlayPane2MaxSize){
                 // As the splitter works in percentage, and the full app height is which of the body, we can compute the height/position
@@ -1072,9 +1103,15 @@ export default Vue.extend({
         },
         /* FITRUE_isPython */
 
-        onStrypeCommandsSplitPaneResize(event: any){
+        onStrypeCommandsSplitPaneResize(event: any, useSpecificPEALayout?: StrypePEALayoutMode){
             // Save the new size of the RHS pane of the editor/commands splitter
-            this.appStore.editorCommandsSplitterPane2Size = event[1].size;
+            if(this.appStore.editorCommandsSplitterPane2Size != undefined) {
+                this.appStore.editorCommandsSplitterPane2Size[useSpecificPEALayout??(this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed)] = event[1].size;                
+            }
+            else {
+                // The tricky case of when the state property has never been set
+                this.appStore.editorCommandsSplitterPane2Size = {...defaultEmptyStrypeLayoutDividerSettings, [useSpecificPEALayout??(this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed)]: event[1].size};
+            }
 
             /* IFTRUE_isPython */
             // When the rightmost panel (with Strype commands) is resized, we need to also update the Turtle canvas and break the natural 4:3 ratio of the PEA

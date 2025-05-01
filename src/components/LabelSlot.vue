@@ -45,6 +45,8 @@
             :content="errorMessage"
             custom-class="error-popover modified-title-popover"
             placement="bottom"
+            @shown="setAutoCloseErrorPopup"
+            @hide="clearAutoCloseErrorPopupHandle"
         >
         </b-popover>
 
@@ -73,7 +75,7 @@ import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getO
 import Parser from "@/parser/parser";
 import { cloneDeep, debounce } from "lodash";
 import LabelSlotsStructure from "./LabelSlotsStructure.vue";
-import { BPopover } from "bootstrap-vue";
+import { BPopover, BvEvent } from "bootstrap-vue";
 import Frame from "@/components/Frame.vue";
 import scssVars from "@/assets/style/_export.module.scss";
 
@@ -134,6 +136,9 @@ export default Vue.extend({
             //or that the slot is initially empty
             canBackspaceDeleteFrame: true,
             requestDelayBackspaceFrameRemoval: false,
+            //flags for the auto-close timers dictionnary to be used for auto-closing
+            currentErrorPopupInstanceCounter: 0,
+            currentErrorPopupCloseTimeoutHandles: {} as {[id: string]: NodeJS.Timeout},
         };
     },
     
@@ -353,6 +358,25 @@ export default Vue.extend({
         erroneous(): boolean {
             // Only show the popup when there is an error and the code hasn't changed
             return this.isFirstChange && this.appStore.isErroneousSlot(this.coreSlotInfo);
+        },
+
+        clearAutoCloseErrorPopupHandle(event: BvEvent) {
+            const closeErrorPupHandleId = document.getElementById(event.componentId??"undef" )?.getAttribute("popup-close-timeouthandle");
+            if(closeErrorPupHandleId){
+                clearTimeout(this.currentErrorPopupCloseTimeoutHandles[closeErrorPupHandleId]);
+                delete this.currentErrorPopupCloseTimeoutHandles[closeErrorPupHandleId];
+            }
+        },
+
+        setAutoCloseErrorPopup(event: BvEvent){
+            this.currentErrorPopupInstanceCounter++;
+            document.getElementById(event.componentId??"undef")?.setAttribute("popup-close-timeouthandle", this.currentErrorPopupInstanceCounter.toString());
+            this.currentErrorPopupCloseTimeoutHandles[this.currentErrorPopupInstanceCounter] = setTimeout(() => {
+                // We close the popup programmatically when no explicit closing action occurred from the user.
+                // The closing timeout will be called on a hanging popup and not on an explicitly closed popup
+                // because we clear the timeout in the latter case (see clearAutoCloseErrorPopupHandle()).
+                (this.$refs.errorPopover as InstanceType<typeof BPopover>)?.$emit("close");
+            }, 3000);
         },
 
         // Event callback equivalent to what would happen for a focus event callback 
