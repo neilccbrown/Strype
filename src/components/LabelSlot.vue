@@ -649,7 +649,7 @@ export default Vue.extend({
         
         onEscKeyUp(event: KeyboardEvent) {
             // When an error popup is showing, the popup takes precedence
-            if([...document.getElementsByClassName("popover b-popover error-popover")].map((popup) => (popup as HTMLDivElement).style.display != "none").some((popupShowing) => popupShowing)) {
+            if([...document.getElementsByClassName("popover b-popover error-popover")].some((popup) => (popup as HTMLDivElement).style.display != "none")) {
                 return;
             }
 
