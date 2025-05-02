@@ -72,7 +72,7 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import PopUpItem from "@/components/PopUpItem.vue";
-import {DefaultCursorPosition, IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWithCategory, BaseSlot, AllFrameTypesIdentifier} from "@/types/types";
+import {IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWithCategory, BaseSlot, AllFrameTypesIdentifier} from "@/types/types";
 import _ from "lodash";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
@@ -94,10 +94,6 @@ export default Vue.extend({
     props: {
         list: [String],
         slotId: String,
-        cursorPosition: {
-            type: Object,
-            default: () => DefaultCursorPosition,
-        },
     },
 
     data: function() {
@@ -132,14 +128,14 @@ export default Vue.extend({
         popupPosition(): Record<string, string> {
             return {
                 "float" : "left",
-                "left": (this.cursorPosition.left+25)+"px",
+                "left": "25px",
             }; 
         },
 
         popupDocumentationPosition(): Record<string, string> {
             return {
                 "float" : "right",
-                "right": -(this.cursorPosition.left+25)+"px",
+                "right": "-25px",
                 //this is needed to avoid showing an empty documentation pane
                 "min-width":((this.documentation[this.selected]?.length>0)?"200px":"0px"),
             }; 

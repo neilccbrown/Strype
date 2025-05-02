@@ -1,6 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
 import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
+import {cleanFromHTML} from "../support/test-support";
 import "@testing-library/cypress/add-commands";
 
 // Needed for the "be.sorted" assertion:
@@ -148,7 +149,7 @@ function assertState(frameId: number, expectedState : string, expectedStateWithP
             let contentWithPlaceholders = "";
             for (let i = 0; i < parts.length; i++) {
                 const p : any = parts[i];
-                let text = p.value || p.textContent || "";
+                let text = cleanFromHTML(p.value || p.textContent || "");
 
                 // If the text for a span is blank, use the placeholder since that's what the user will be seeing:
                 if (!text) {
