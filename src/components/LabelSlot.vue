@@ -648,6 +648,11 @@ export default Vue.extend({
         },
         
         onEscKeyUp(event: KeyboardEvent) {
+            // When an error popup is showing, the popup takes precedence
+            if([...document.getElementsByClassName("popover b-popover error-popover")].map((popup) => (popup as HTMLDivElement).style.display != "none").some((popupShowing) => popupShowing)) {
+                return;
+            }
+
             // If the AC is loaded we want to close it with an ESC and stay focused on the editableSlot
             if(this.showAC && this.acRequested) {
                 event.preventDefault();
