@@ -349,9 +349,9 @@ export default Vue.extend({
                     let foundPos = false;
                     let setInsideNextSlot = false; // The case when the cursor follow a non editable slot (i.e. operator, bracket, quote)
                     // Reposition the cursor now
-                    labelDiv.querySelectorAll("." + scssVars.labelSlotInputClassName + ",.labelSlot-media").forEach((spanElement) => {
+                    labelDiv.querySelectorAll("." + scssVars.labelSlotInputClassName + ",." + scssVars.labelSlotMediaClassName).forEach((spanElement) => {
                         if(!foundPos){
-                            if (spanElement.classList.contains("labelSlot-media")) {
+                            if (spanElement.classList.contains(scssVars.labelSlotMediaClassName)) {
                                 // Media literals are considered to be one character wide:
                                 newUICodeLiteralLength += 1;
                                 // Go on to the next selector item:

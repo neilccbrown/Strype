@@ -302,7 +302,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
     const imageLiterals : {code: string, mediaType: string}[] = [];
     // The container and intermediate divs can have relevant text if Firefox has done a "bad delete"
     // (see comment in LabelSlotsStructure.onInput):
-    frameLabelStruct.querySelectorAll("." + scssVars.labelSlotInputClassName + ", ." + scssVars.labelSlotContainerClassName + ", .labelSlot-media").forEach((spanElement) => {
+    frameLabelStruct.querySelectorAll("." + scssVars.labelSlotInputClassName + ", ." + scssVars.labelSlotContainerClassName + ", ." + scssVars.labelSlotMediaClassName).forEach((spanElement) => {
         // Sometimes div can end up with text content after a selection and overtype (a "bad delete") that seems to happen on Firefox.
         // We only care about these divs if there is text content
         // directly inside the div (which shouldn't happen except in this situation)
@@ -323,7 +323,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
             return;
         }
 
-        if (spanElement.classList.contains("labelSlot-media")) {
+        if (spanElement.classList.contains(scssVars.labelSlotMediaClassName)) {
             const code = spanElement.getAttribute("data-code");
             // We add the code, but also record the image literal for later manipulation:
             if (code) {

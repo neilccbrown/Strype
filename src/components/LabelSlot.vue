@@ -39,7 +39,7 @@
         <img
             :src="mediaPreview.imageDataURL"
             v-if="isMediaSlot"
-            class="labelSlot-media limited-height-inline-image"
+            :class="{[scssVars.labelSlotMediaClassName]: true, 'limited-height-inline-image': true}"
             alt="Media literal"
             @mouseenter="showMediaPreviewPopup($event)"
             @mouseleave="startHideMediaPreviewPopup"
