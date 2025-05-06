@@ -974,12 +974,12 @@ def pace(actions_per_second = 25):
     
         while True:
             # Do all the actions you want to do in one iteration
-            pace(30)
+            pace(25)
     
     
-    Where 30 is the number of times you want to do those actions per second.  It is like sleeping
-    for 1/30th of a second, but it accounts for the fact that your actions may have taken some time,
-    so it aims to keep you executing the actions 30 times per second (or whatever value you pass
+    Where 25 is the number of times you want to do those actions per second.  It is like sleeping
+    for 1/25th of a second, but it accounts for the fact that your actions may have taken some time,
+    so it aims to keep you executing the actions 25 times per second (or whatever value you pass
     for actions_per_second).
     
     :param actions_per_second: The amount of times you want to call pace() per second, 25 by default.

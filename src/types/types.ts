@@ -1005,23 +1005,6 @@ export interface LibraryPath {
     aliasFor: string;
 }
 
-export interface CursorPosition {
-    top: number;
-    left: number;
-    height: number;
-}
-
-export const DefaultCursorPosition: CursorPosition = {
-    top: 0,
-    left: 0,
-    height: 0,
-};
-
-export interface EditableSlotReachInfos {
-    isKeyboard: boolean;
-    direction: -1 | 1;
-}
-
 export interface StateAppObject {
     debugging: boolean;
     initialState: EditorFrameObjects;

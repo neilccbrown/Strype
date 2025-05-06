@@ -1,12 +1,12 @@
 import Vue from "vue";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, SlotInfosOptionalMedia, MediaSlot } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion, vm } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getStrypeCommandComponentRefId, getCaretContainerUID, isCaretContainerElement } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getStrypeCommandComponentRefId, getCaretContainerUID, isCaretContainerElement, AutoSaveKeyNames } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -22,17 +22,42 @@ import CommandsComponent from "@/components/Commands.vue";
 import { actOnTurtleImport, getPEAComponentRefId } from "@/helpers/editor";
 /* FITRUE_isPython */
 
-let initialState: StateAppObject = initialStates["initialPythonState"];
-/* IFTRUE_isMicrobit */
-initialState = initialStates["initialMicrobitState"];
-/* FITRUE_isMicrobit */
+function getState(): StateAppObject {
+    // If we have a state available in the local (browser's) storage, we strip off the frame contents
+    // from the default state, for a smoother visual rendering. Note that App.vue is responsible for
+    // loading the local state later. Here, we only check something exists in the local storage.
+    let isExistingStateLocated = false;
+    let returnedState;
+    if(typeof(Storage) !== "undefined") {
+        let storageString = AutoSaveKeyNames.pythonEditorState;
+        /* IFTRUE_isMicrobit */
+        storageString = AutoSaveKeyNames.mbEditor;
+        /* FITRUE_isMicrobit */
+        const savedState = localStorage.getItem(storageString);
+        if(savedState) {
+            isExistingStateLocated = true;
+            returnedState = initialStates["initialEmptyState"];        
+        }
+    }
+    
+    if(!isExistingStateLocated) {
+        /* IFTRUE_isPython */
+        returnedState = initialStates["initialPythonState"];
+        /* FITRUE_isPython */
+        /* IFTRUE_isMicrobit */
+        returnedState = initialStates["initialMicrobitState"];
+        /* FITRUE_isMicrobit */
+    }
+    return (returnedState as StateAppObject);
+}
+
+const initialState = getState();
 
 // These are deliberately held outside the store because:
 // (a) we used to blank them on page load anyway
 // (b) there was a bug where sometimes we could end up diffing-the-diffs which led to quadratic memory and CPU consumption.
 const diffToPreviousState : ObjectPropertyDiff[][] = [];
 const diffToNextState: ObjectPropertyDiff[][] = [];
-
 
 export const useStore = defineStore("app", {
     state: () => {
@@ -113,6 +138,10 @@ export const useStore = defineStore("app", {
             
             // Flag to indicate when an action of selection spans across slots
             isSelectingMultiSlots : false,
+            
+            // Has to be in the store despite only going from LabelSlotsStructure to LabelSlot,
+            // because we need immediate update, faster than we get with setting a prop (trust me, I tried):
+            mostRecentSelectedText: "",
 
             // Do not write to this directly (except for assigning NoMessage), use the
             // showMessage helper instead as that also updates currentMessageId
@@ -183,8 +212,6 @@ export const useStore = defineStore("app", {
 
             simpleModalDlgMsg: "",
 
-            editableSlotViaKeyboard: {isKeyboard: false, direction: 1} as EditableSlotReachInfos, //indicates when a slot is reached via keyboard arrows, and the direction (-1 for left/up and 1 for right/down)
-        
             /* The following wrapper is used for interacting with the microbit board via DAP*/
             DAPWrapper: {} as DAPWrapper,
 
@@ -941,7 +968,7 @@ export const useStore = defineStore("app", {
          * @param currentSlotInfos The slot where the key was pressed.
          * @returns an object containing the resulting new slot id (newSlotId), and the cursor position offset within this slot (cursorPosOffset)
          */
-        deleteSlots(isForwardDeletion: boolean, currentSlotInfos: SlotCoreInfos): {newSlotId: string, cursorPosOffset: number} {
+        deleteSlots(isForwardDeletion: boolean, currentSlotInfos?: SlotCoreInfos | undefined): {newSlotId: string, cursorPosOffset: number} {
             // Deleting slots depends on the direction of deletion (with del or backspace), the scope of deletion
             // (from a selection or a from one position of code) and the nature of the field deleted.
             // When there is no selection, we do a deletion on the basis of a slot and an operator are deleted:
@@ -950,6 +977,10 @@ export const useStore = defineStore("app", {
             // The returned value is the new ID of the current slot and the cursor position offset (to be used by UI)
             // When there is a selection, we always end up with one resulting slot. The deletion direction doesn't matter.
             if(this.anchorSlotCursorInfos && this.focusSlotCursorInfos){
+                if (!currentSlotInfos) {
+                    currentSlotInfos = this.focusSlotCursorInfos.slotInfos;
+                }
+                
                 const hasSlotSelectedToDelete = (!areSlotCoreInfosEqual(this.anchorSlotCursorInfos.slotInfos, this.focusSlotCursorInfos.slotInfos));
                 // Split the target slot ID into parent ID and the index of us within the parent:
                 const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(currentSlotInfos.slotId);
@@ -1177,7 +1208,7 @@ export const useStore = defineStore("app", {
         setSlotTextCursors(anchorCursorInfos: SlotCursorInfos | undefined, focusCursorInfos: SlotCursorInfos | undefined){
             // If we set a new object in these properties then it causes a lot of updates throughout
             // the whole tree.  So we check if the two objects are (deep) equal before
-            // we update, to avoid unnecessary updates and rendersL
+            // we update, to avoid unnecessary updates and renders:
             if (!isEqual(this.anchorSlotCursorInfos, anchorCursorInfos)) {
                 Vue.set(this, "anchorSlotCursorInfos", anchorCursorInfos);
             }
@@ -2229,8 +2260,6 @@ export const useStore = defineStore("app", {
             // If next position is an editable slot
             if(nextPosition.isSlotNavigationPosition){
                 this.isEditing = true;
-                const slotReachInfos: EditableSlotReachInfos = {isKeyboard: true, direction: directionDelta};
-                this.editableSlotViaKeyboard = slotReachInfos;
 
                 const nextSlotCoreInfos = {
                     frameId: nextPosition.frameId,
@@ -2253,7 +2282,7 @@ export const useStore = defineStore("app", {
                 // If we are reaching a comment frame, coming from the blue caret underneath, we neeed to check if there is a terminating line return:
                 // if that's the case, we do not get just after it, but before it; see LabelSlot.vue onEnterOrTabKeyUp() for why.
                 Vue.nextTick(() => {
-                    let textCursorPos = (directionDelta == 1) ? 0 : (document.getElementById(getLabelSlotUID(nextSlotCoreInfos))?.textContent?.length)??0;
+                    let textCursorPos = (directionDelta == 1) ? 0 : (document.getElementById(getLabelSlotUID(nextSlotCoreInfos))?.textContent?.replace(/\u200B/, "")?.length)??0;
                     const isCommentFrame = this.frameObjects[nextSlotCoreInfos.frameId as number].frameType.type == AllFrameTypesIdentifier.comment;
                     if(isCommentFrame && (document.getElementById(getLabelSlotUID(nextSlotCoreInfos))?.textContent??"").endsWith("\n") && directionDelta == -1){
                         textCursorPos--;

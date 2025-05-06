@@ -848,7 +848,7 @@ export default Vue.extend({
                     // Reset the temporary sync file flag
                     this.tempSyncTarget = this.appStore.syncTarget;
                     if(selectValue != StrypeSyncTarget.gd){
-                        if(!canBrowserSaveFilePicker && saveFileName.trim().match(fileNameRegex) == null){
+                        if(!canBrowserSaveFilePicker() && saveFileName.trim().match(fileNameRegex) == null){
                             // Show an error message and do nothing special
                             this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.fileNameError") as string;
                             this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
@@ -856,7 +856,7 @@ export default Vue.extend({
                             return;
                         }
                         // Save the JSON file of the state, we try to use the file picker if the browser allows it, otherwise, download to the default download repertory of the browser.
-                        if(canBrowserSaveFilePicker){
+                        if(canBrowserSaveFilePicker()){
                             saveFile(saveFileName, this.strypeProjMIMEDescArray, this.appStore.strypeProjectLocation, this.appStore.generateStateJSONStrWithCheckpoint(), (fileHandle: FileSystemFileHandle) => {
                                 this.appStore.strypeProjectLocation = fileHandle;
                                 this.appStore.projectName = fileHandle.name.substring(0, fileHandle.name.lastIndexOf("."));
@@ -918,7 +918,7 @@ export default Vue.extend({
             }
             else{               
                 // And let the user choose a file
-                if(canBrowserOpenFilePicker){
+                if(canBrowserOpenFilePicker()){
                     openFile([...this.strypeProjMIMEDescArray, ...this.pythonImportMIMEDescArray], this.appStore.strypeProjectLocation, (fileHandles: FileSystemFileHandle[]) => {
                         // We select 1 file so we can get the first element of the returned array
                         // We need to get the file content (hope for the best) and update the store
@@ -946,9 +946,6 @@ export default Vue.extend({
                             reader.readAsText(file);
                         });
                     });                        
-                }
-                else{
-                    (this.$refs.importFileInput as HTMLInputElement).click();
                 }
             }        
             this.currentModalButtonGroupIDInAction = "";
