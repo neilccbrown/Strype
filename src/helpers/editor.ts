@@ -302,7 +302,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
     const imageLiterals : {code: string, mediaType: string}[] = [];
     // The container and intermediate divs can have relevant text if Firefox has done a "bad delete"
     // (see comment in LabelSlotsStructure.onInput):
-    frameLabelStruct.querySelectorAll("." + scssVars.labelSlotInputClassName + ", ." + scssVars.labelSlotContainerClassName).forEach((spanElement) => {
+    frameLabelStruct.querySelectorAll("." + scssVars.labelSlotInputClassName + ", ." + scssVars.labelSlotContainerClassName + ", .labelSlot-media").forEach((spanElement) => {
         // Sometimes div can end up with text content after a selection and overtype (a "bad delete") that seems to happen on Firefox.
         // We only care about these divs if there is text content
         // directly inside the div (which shouldn't happen except in this situation)
@@ -2054,6 +2054,16 @@ export function getEditableSelectionText() : string {
     );
 
     for (let node = treeWalker.nextNode(); node; node = treeWalker.nextNode()) {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            const el = node as HTMLElement;
+            if (el.classList.contains(".labelSlot-Media")) {
+                const code = el.getAttribute("data-code");
+                if (code) {
+                    allNodes.push(code);
+                }
+                continue;
+            }
+        }
         if (isNodeSelectableText(node)) {
             allNodes.push(node.nodeValue ?? "");
         }

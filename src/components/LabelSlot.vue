@@ -45,7 +45,6 @@
             @mouseleave="startHideMediaPreviewPopup"
             :data-code="code"
             :data-mediaType="getMediaType()">
-        <span v-if="isMediaSlot" class="labelSlot-invisible-media-code" contenteditable="false">{{code}}</span>
                
         <b-popover
             v-if="erroneous()"
@@ -897,7 +896,7 @@ export default Vue.extend({
             // The browser generally has support for doing IME properly.  In a contenteditable span, it should
             // enter the original English (abc) and then substitute it for the non-ASCII at the right point.
             // So our plan here is as follows:
-            // - If there is a multi-slot selection when an input event occurs, we must perform a delete first (TODO!).
+            // - If there is a multi-slot selection when an input event occurs, we must perform a delete first.
             // - In general, we let the native input event process fully.
             // - Once input has occurred and finished, we check if we need to reprocess the slots.  This is especially
             //   with operators and brackets which can create new slots.
@@ -1243,7 +1242,7 @@ export default Vue.extend({
             const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
             const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UID);
             if (type.startsWith("image") || type.startsWith("audio")) {
-                this.appStore.addNewSlot(parseLabelSlotUID(this.UID), type, inputSpanField.textContent?.substring(0, selectionStart) ?? "", inputSpanField.textContent?.substring(selectionEnd) ?? "", SlotType.media, false, content);
+                this.appStore.addNewSlot(parseLabelSlotUID(this.UID), type, (inputSpanField.textContent?.substring(0, selectionStart) ?? "").replace(/\u200B/g, ""), (inputSpanField.textContent?.substring(selectionEnd) ?? "").replace(/\u200B/g, ""), SlotType.media, false, content);
                 this.$nextTick(() => {
                     this.appStore.leftRightKey({key: "ArrowRight"});
                 });
@@ -1773,10 +1772,5 @@ export default Vue.extend({
        We copy the Python code to produce it instead: */
     user-select: none;
     -webkit-user-select: none; /* For Safari */
-}
-.labelSlot-invisible-media-code {
-    opacity: 0;
-    position: absolute;
-    pointer-events: none;
 }
 </style>
