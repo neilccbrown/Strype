@@ -36,6 +36,8 @@ beforeEach(() => {
                 strypeElIds = (win as any)[WINDOW_STRYPE_HTMLIDS_PROPNAME];
             });
         }
+        // Wait for code initialisation
+        cy.wait(2000);
     });
 });
 

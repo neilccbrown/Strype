@@ -23,6 +23,9 @@ beforeEach(() => {
         // The Strype IDs and CSS class names aren't directly used in the test
         // but they are used in the support file, so we make them available.
         cy.initialiseSupportStrypeGlobals();
+
+        // Wait for code initialisation
+        cy.wait(2000);
     });
 });
 
