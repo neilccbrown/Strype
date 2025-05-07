@@ -293,7 +293,7 @@ export function getFrameLabelSlotsStructureUID(frameId: number, labelIndex: numb
 // frameLabelStruct: the HTML element representing the current frame label structure
 // currentSlotUID: the HTML id for the current editable slot we are in
 // delimiters: optional object to indicate from and to which slots parsing the code, requires the slots UID and stop is exclusive
-export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUID: string, delimiters?: {startSlotUID: string, stopSlotUID: string}): {uiLiteralCode: string, focusSpanPos: number, hasStringSlots: boolean, imageLiterals: {code: string, mediaType: string}[]}{
+export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUID: string, delimiters?: {startSlotUID: string, stopSlotUID: string}): {uiLiteralCode: string, focusSpanPos: number, hasStringSlots: boolean, mediaLiterals: {code: string, mediaType: string}[]}{
     let focusSpanPos = 0;
     let uiLiteralCode = "";
     let foundFocusSpan = false;
@@ -302,7 +302,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
     const imageLiterals : {code: string, mediaType: string}[] = [];
     // The container and intermediate divs can have relevant text if Firefox has done a "bad delete"
     // (see comment in LabelSlotsStructure.onInput):
-    frameLabelStruct.querySelectorAll("." + scssVars.labelSlotInputClassName + ", ." + scssVars.labelSlotContainerClassName).forEach((spanElement) => {
+    frameLabelStruct.querySelectorAll("." + scssVars.labelSlotInputClassName + ", ." + scssVars.labelSlotContainerClassName + ", ." + scssVars.labelSlotMediaClassName).forEach((spanElement) => {
         // Sometimes div can end up with text content after a selection and overtype (a "bad delete") that seems to happen on Firefox.
         // We only care about these divs if there is text content
         // directly inside the div (which shouldn't happen except in this situation)
@@ -323,7 +323,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
             return;
         }
 
-        if (spanElement.classList.contains("labelSlot-media")) {
+        if (spanElement.classList.contains(scssVars.labelSlotMediaClassName)) {
             const code = spanElement.getAttribute("data-code");
             // We add the code, but also record the image literal for later manipulation:
             if (code) {
@@ -397,7 +397,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
             }
         }
     });    
-    return {uiLiteralCode: uiLiteralCode, focusSpanPos: focusSpanPos, hasStringSlots: hasStringSlots, imageLiterals: imageLiterals};
+    return {uiLiteralCode: uiLiteralCode, focusSpanPos: focusSpanPos, hasStringSlots: hasStringSlots, mediaLiterals: imageLiterals};
 }
 
 
@@ -2054,6 +2054,16 @@ export function getEditableSelectionText() : string {
     );
 
     for (let node = treeWalker.nextNode(); node; node = treeWalker.nextNode()) {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            const el = node as HTMLElement;
+            if (el.classList.contains(".labelSlot-Media")) {
+                const code = el.getAttribute("data-code");
+                if (code) {
+                    allNodes.push(code);
+                }
+                continue;
+            }
+        }
         if (isNodeSelectableText(node)) {
             allNodes.push(node.nodeValue ?? "");
         }

@@ -325,8 +325,8 @@ export default Vue.extend({
             if(labelDiv){ // keep TS happy
                 // As we will need to reposition the cursor, we keep a reference to the "absolute" position in this label's slots,
                 // so we find that out while getting through all the slots to get the literal code.
-                let {uiLiteralCode, focusSpanPos: focusCursorAbsPos, hasStringSlots, imageLiterals} = getFrameLabelSlotLiteralCodeAndFocus(labelDiv, slotUID);
-                const parsedCodeRes = parseCodeLiteral(uiLiteralCode, {frameType: this.appStore.frameObjects[this.frameId].frameType.type, isInsideString: false, cursorPos: focusCursorAbsPos, skipStringEscape: hasStringSlots, imageLiterals: imageLiterals});
+                let {uiLiteralCode, focusSpanPos: focusCursorAbsPos, hasStringSlots, mediaLiterals} = getFrameLabelSlotLiteralCodeAndFocus(labelDiv, slotUID);
+                const parsedCodeRes = parseCodeLiteral(uiLiteralCode, {frameType: this.appStore.frameObjects[this.frameId].frameType.type, isInsideString: false, cursorPos: focusCursorAbsPos, skipStringEscape: hasStringSlots, imageLiterals: mediaLiterals});
                 const majorChange = this.majorChange(this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures, parsedCodeRes.slots);
                 Vue.set(this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex], "slotStructures", parsedCodeRes.slots);
                 // The parser can be return a different size "code" of the slots than the code literal
@@ -349,9 +349,9 @@ export default Vue.extend({
                     let foundPos = false;
                     let setInsideNextSlot = false; // The case when the cursor follow a non editable slot (i.e. operator, bracket, quote)
                     // Reposition the cursor now
-                    labelDiv.querySelectorAll("." + scssVars.labelSlotInputClassName + ",.labelSlot-media").forEach((spanElement) => {
+                    labelDiv.querySelectorAll("." + scssVars.labelSlotInputClassName + ",." + scssVars.labelSlotMediaClassName).forEach((spanElement) => {
                         if(!foundPos){
-                            if (spanElement.classList.contains("labelSlot-media")) {
+                            if (spanElement.classList.contains(scssVars.labelSlotMediaClassName)) {
                                 // Media literals are considered to be one character wide:
                                 newUICodeLiteralLength += 1;
                                 // Go on to the next selector item:
