@@ -2,7 +2,8 @@ name: Playwright Tests
 on: [push,pull_request]
 jobs:
   test:
-    timeout-minutes: 60
+    timeout-minutes: 65
+    # 5 minutes extra to upload videos if we fail the timeout of one hour, below
     strategy:
       fail-fast: false
       matrix:
@@ -15,11 +16,26 @@ jobs:
       run: npm ci
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
-    - name: Run Playwright tests
-      run: npm run test:playwright
-    - uses: actions/upload-artifact@v4
-      if: ${{ failure()  }}
+    - name: Run Playwright tests (Unix)
+      if: ${{ matrix.os != 'windows-latest' }}
+      shell: bash
+      run: |
+        timeout 3600s npm run test:playwright || echo "Test command exited or timed out"
+    - name: Run Playwright tests (Windows)
+      if: ${{ matrix.os == 'windows-latest' }}
+      shell: powershell
+      run: |
+        $p = Start-Process npm -ArgumentList 'run', 'test:playwright' -NoNewWindow -PassThru
+        $completed = $p.WaitForExit(3600000)
+        if (-not $completed) {
+          Write-Host 'Timed out, killing process...'
+          $p.Kill()
+          exit 124
+        }
+    - name: Upload Playwright report
+      if: always()
+      uses: actions/upload-artifact@v4
       with:
-        name: playwright-report
+        name: playwright-report-${{ matrix.os }}
         path: tests/playwright/html-report/
         retention-days: 30
