@@ -190,7 +190,7 @@ describe("Tests blanks", () => {
         testEntryDisableAndSave("{uparrow}{uparrow}" +
             "ix {rightarrow}f{downarrow}{downarrow}" +
             "f{downarrow}i{rightarrow} {downarrow}{downarrow}r{rightarrow}{downarrow}{downarrow}" +
-            "a{rightarrow}==1+*/()-", [], "tests/cypress/fixtures/project-blanks.spy");
+            "a{rightarrow}={rightarrow}1+*/()-", [], "tests/cypress/fixtures/project-blanks.spy");
     });
     it("Loads and saves with lots of blanks", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-blanks.spy");
@@ -214,7 +214,7 @@ describe("Tests invalid characters", () => {
     });
 });
 
-describe.only("Tests saving layout metadata", () => {
+describe("Tests saving layout metadata", () => {
     if (Cypress.env("mode") === "microbit") {
         return;
     }
