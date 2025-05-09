@@ -463,6 +463,11 @@ export default Vue.extend({
                 event.stopPropagation();
                 return;
             }
+
+            // Handle "escape" on error popover: if an error popover is showing, escape should discard the popup.
+            if(event.key == "Escape" && !this.appStore.isAppMenuOpened && !this.isPythonExecuting && !this.appStore.isDraggingFrame){
+                [...document.getElementsByClassName("popover b-popover error-popover")].forEach((popup) => (popup as HTMLDivElement).style.display = "none");
+            }
         });
 
         /* IFTRUE_isPython */
