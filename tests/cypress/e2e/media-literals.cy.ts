@@ -18,10 +18,7 @@ beforeEach(() => {
     cy.visit("/",  {onBeforeLoad: (win) => {
         win.localStorage.clear();
         win.sessionStorage.clear();
-    }}).then(() => {
-        // Wait for code initialisation
-        cy.wait(2000);
-    });
+    }});
 });
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment

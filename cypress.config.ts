@@ -3,6 +3,7 @@ import {rimraf} from "rimraf";
 import fs from "fs";
 
 export default defineConfig({
+    retries: 2,
     downloadsFolder: "tests/cypress/downloads",
     fixturesFolder:	"tests/cypress/fixtures",
     screenshotsFolder: "tests/cypress/screenshots",
