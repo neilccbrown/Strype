@@ -1,6 +1,6 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesFuncDefScope, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesFuncDefScope, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameContainer, getFrameSectionIdFromFrameId } from "./storeMethods";
 import { strypeFileExtension } from "./common";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
@@ -221,7 +221,8 @@ export function getTextStartCursorPositionOfHTMLElement(htmlElement: HTMLSpanEle
     const sel = document.getSelection();
     if (sel && sel.rangeCount) {
         const range = sel.getRangeAt(0);
-        if (range.commonAncestorContainer.parentNode == htmlElement) {
+        if (range.commonAncestorContainer.parentNode == htmlElement
+            || range.commonAncestorContainer.parentNode?.parentNode == htmlElement) {
             caretPos = range.startOffset;
         }
     }
@@ -247,7 +248,7 @@ export function getFocusedEditableSlotTextSelectionStartEnd(labelSlotUID: string
             }
             else{
                 // the anchor is somewhere after the focus cursor: the selection end is at the end of the slot
-                return {selectionStart: focusCursorInfos.cursorPos, selectionEnd: (document.getElementById(labelSlotUID) as HTMLSpanElement).textContent?.length??0};
+                return {selectionStart: focusCursorInfos.cursorPos, selectionEnd: (document.getElementById(labelSlotUID) as HTMLSpanElement).textContent?.replace(/\u200B/g, "")?.length??0};
             }
         }
     }
@@ -292,13 +293,50 @@ export function getFrameLabelSlotsStructureUID(frameId: number, labelIndex: numb
 // frameLabelStruct: the HTML element representing the current frame label structure
 // currentSlotUID: the HTML id for the current editable slot we are in
 // delimiters: optional object to indicate from and to which slots parsing the code, requires the slots UID and stop is exclusive
-export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUID: string, delimiters?: {startSlotUID: string, stopSlotUID: string}): {uiLiteralCode: string, focusSpanPos: number, hasStringSlots: boolean}{
+export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUID: string, delimiters?: {startSlotUID: string, stopSlotUID: string}): {uiLiteralCode: string, focusSpanPos: number, hasStringSlots: boolean, mediaLiterals: {code: string, mediaType: string}[]}{
     let focusSpanPos = 0;
     let uiLiteralCode = "";
     let foundFocusSpan = false;
     let ignoreSpan = !!delimiters;
     let hasStringSlots = false;
-    frameLabelStruct.querySelectorAll("." + scssVars.labelSlotInputClassName).forEach((spanElement) => {
+    const imageLiterals : {code: string, mediaType: string}[] = [];
+    // The container and intermediate divs can have relevant text if Firefox has done a "bad delete"
+    // (see comment in LabelSlotsStructure.onInput):
+    frameLabelStruct.querySelectorAll("." + scssVars.labelSlotInputClassName + ", ." + scssVars.labelSlotContainerClassName + ", ." + scssVars.labelSlotMediaClassName).forEach((spanElement) => {
+        // Sometimes div can end up with text content after a selection and overtype (a "bad delete") that seems to happen on Firefox.
+        // We only care about these divs if there is text content
+        // directly inside the div (which shouldn't happen except in this situation)
+        if (spanElement.classList.contains(scssVars.labelSlotContainerClassName)) {
+            // Find all the text node direct children:
+            const directTextNodes = Array.from(spanElement.childNodes).filter(
+                (child) => child.nodeType === Node.TEXT_NODE
+            );
+            // Combine the text content from all direct text nodes (should only be one, but no harm doing all):
+            const content = directTextNodes.map((textNode) => textNode.textContent).join("");
+            if (content.length > 0) {
+                // Found this bad input:
+                uiLiteralCode += content;
+                // Also, we know the cursor should be directly after this bad input:
+                foundFocusSpan = true;
+                focusSpanPos += content.length;
+            }
+            return;
+        }
+
+        if (spanElement.classList.contains(scssVars.labelSlotMediaClassName)) {
+            const code = spanElement.getAttribute("data-code");
+            // We add the code, but also record the image literal for later manipulation:
+            if (code) {
+                uiLiteralCode += code;
+                imageLiterals.push({code: code, mediaType: spanElement.getAttribute("data-mediaType") ?? ""});
+            }
+            // Media literals are considered to be one character wide:
+            if (!foundFocusSpan) {
+                focusSpanPos += 1;
+            }
+            return;
+        }
+        
         if(delimiters && (delimiters.startSlotUID == spanElement.id || delimiters.stopSlotUID == spanElement.id)){
             ignoreSpan = !ignoreSpan ;
         } 
@@ -324,10 +362,10 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                 if((spanElement.textContent?.includes(STRING_DOUBLEQUOTE_PLACERHOLDER) || spanElement.textContent?.includes(STRING_SINGLEQUOTE_PLACERHOLDER)) as boolean){
                     hasStringSlots = true;
                 }
-                uiLiteralCode += (spanElement.textContent);
+                uiLiteralCode += (spanElement.textContent??"").replace(/\u200B/g, "");
             }
         
-            if(spanElement.id === currentSlotUID){
+            if(spanElement.id === currentSlotUID && !foundFocusSpan){
                 focusSpanPos += (useStore().focusSlotCursorInfos?.cursorPos??0);     
                 foundFocusSpan = true;
             }
@@ -337,7 +375,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                 // therefore we need to account for them when dealing with such operators;
                 // and if we parse the string quotes, we need to set the position value as if the quotes were still here (because they are in the UI)
                 let spacesOffset = 0;
-                const spanElementContentLength = (spanElement.textContent?.length??0);
+                const spanElementContentLength = (spanElement.textContent?.replace(/\u200B/g, "")?.length??0);
                 const ignoreAsKW = (spanElement.textContent == "as" && useStore().frameObjects[parseLabelSlotUID(spanElement.id).frameId].frameType.type != AllFrameTypesIdentifier.import);
                 if(!ignoreAsKW && !isSlotStringLiteralType(labelSlotCoreInfos.slotType) && (trimmedKeywordOperators.includes(spanElement.textContent??""))){
                     spacesOffset = 2;
@@ -359,7 +397,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
             }
         }
     });    
-    return {uiLiteralCode: uiLiteralCode, focusSpanPos: focusSpanPos, hasStringSlots: hasStringSlots};
+    return {uiLiteralCode: uiLiteralCode, focusSpanPos: focusSpanPos, hasStringSlots: hasStringSlots, mediaLiterals: imageLiterals};
 }
 
 
@@ -1382,11 +1420,14 @@ export const getSameLevelAncestorIndex = (slotId: string, sameLevelThanSlotParen
 };
 
 const FIELD_PLACERHOLDER = "$strype_field_placeholder$";
+export const IMAGE_PLACERHOLDER = "$strype_image_placeholder$";
 // The placeholders for the string quotes when strings are extracted FROM THE EDITOR SLOTS,
 // both placeholders need to have THE SAME LENGHT so sustitution operations are done with more ease
 export const STRING_SINGLEQUOTE_PLACERHOLDER = "$strype_StrSgQuote_placeholder$";
 export const STRING_DOUBLEQUOTE_PLACERHOLDER = "$strype_StrDbQuote_placeholder$";
-export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: boolean, cursorPos?: number, skipStringEscape?: boolean, frameType?: string,}): {slots: SlotsStructure, cursorOffset: number} => {
+
+export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: boolean, cursorPos?: number, skipStringEscape?: boolean, frameType?: string, imageLiterals?: {code: string, mediaType: string}[]}): {slots: SlotsStructure, cursorOffset: number} => {
+    const imageLiterals : { code: string, mediaType: string }[] = flags?.imageLiterals ?? [];
     // This method parse a code literal to generate the equivalent slot structure.
     // For example, if the code is <"hi" + "hello"> it will generate the following slot (simmplified)
     //  {fields: {"", s1, "", "", s2, ""}, operators: ["", "", "+", "", ""] }}
@@ -1403,6 +1444,11 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         const escapedQuote = "\\" + codeLiteral.charAt(0);
         codeLiteral = codeLiteral.substring(1, codeLiteral.length - 1).replaceAll(escapedQuote, (match) => match.charAt(1));
     }
+    
+    // Start by replacing image literals with placeholders to avoid them getting processed like normal code:
+    imageLiterals.forEach((imageLiteral, i) => {
+        codeLiteral = codeLiteral.replace(imageLiteral.code, IMAGE_PLACERHOLDER + i + "$");
+    });
 
     // First we look for string literals, as their content should not generate "subslot":
     // We simply use an equivalent size placeholder so it wont interfere the parsing later.
@@ -1424,7 +1470,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             return codeStrQuotes + " ".repeat(match.length - 2) + codeStrQuotes;
         }
         else {
-            if(!match.endsWith(match[0]) || (match.endsWith("\\" + match[0]) && getNumPrecedingBackslashes(match, match.length - 1) % 2 == 1)){
+            if(!match.endsWith(match[0]) || match.length == 1 || (match.endsWith("\\" + match[0]) && getNumPrecedingBackslashes(match, match.length - 1) % 2 == 1)){
                 missingClosingQuote = match[0];
             }
             return match[0] + " ".repeat(match.length - ((missingClosingQuote.length == 1) ? 1 : 2)) + match[0];
@@ -1435,6 +1481,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         // The blanking above would have already terminate the string quote in blankedStringCodeLiteral if needed,
         // we need to update the original codeLiteral too
         codeLiteral += missingClosingQuote;
+        cursorOffset -= 1;
     }     
 
     // 1- Look for a bracket structure
@@ -1469,7 +1516,10 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
                     innerOpeningBracketCount--;
                     startLookingOtherOpeningBracketsPos = closingBracketPos + 1;
                 }
-            }            
+            }
+            else {
+                cursorOffset -= 1;
+            }
         }
         while (innerOpeningBracketCount != 0 && closingBracketPos != -1);
        
@@ -1488,9 +1538,10 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         if(afterBracketCode.length > 0){
             afterBracketCode = FIELD_PLACERHOLDER + afterBracketCode;
         }
-        const {slots: structBeforeBracket, cursorOffset: beforeBracketCursorOffset} = parseCodeLiteral(beforeBracketCode, {isInsideString:false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape});
+        // Note: we need to pass (all) imageLiterals to the recursive calls because they might reverse our replacement:
+        const {slots: structBeforeBracket, cursorOffset: beforeBracketCursorOffset} = parseCodeLiteral(beforeBracketCode, {isInsideString:false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         cursorOffset += beforeBracketCursorOffset;
-        const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, {isInsideString: false, cursorPos: (flags?.cursorPos) ? flags.cursorPos - (firstOpenedBracketPos + 1) : undefined, skipStringEscape: flags?.skipStringEscape});
+        const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, {isInsideString: false, cursorPos: (flags?.cursorPos) ? flags.cursorPos - (firstOpenedBracketPos + 1) : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         if (openingBracketValue === "(") {
             // First scan and find all the comma-separated parameters that are a single field:
             let lastParamStart = -1;
@@ -1526,7 +1577,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             actualCodeClosingBracketPos -= (placeholder.length - 1);
         });
 
-        const {slots: structAfterBracket, cursorOffset: afterBracketCursorOffset} = parseCodeLiteral(afterBracketCode, {isInsideString: false, cursorPos: (flags && flags.cursorPos && afterBracketCode.startsWith(FIELD_PLACERHOLDER)) ? flags.cursorPos - (actualCodeClosingBracketPos + 1) + FIELD_PLACERHOLDER.length : undefined, skipStringEscape: flags?.skipStringEscape});
+        const {slots: structAfterBracket, cursorOffset: afterBracketCursorOffset} = parseCodeLiteral(afterBracketCode, {isInsideString: false, cursorPos: (flags && flags.cursorPos && afterBracketCode.startsWith(FIELD_PLACERHOLDER)) ? flags.cursorPos - (actualCodeClosingBracketPos + 1) + FIELD_PLACERHOLDER.length : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         cursorOffset += afterBracketCursorOffset;
         // Remove the bracket field placeholder from structAfterBracket: we trim the placeholder value from the start of the first field of the structure.
         // (the conditional test may be overdoing it, but at least we are sure we won't get fooled by the user code...)
@@ -1557,10 +1608,10 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
                 afterStringCode = FIELD_PLACERHOLDER + afterStringCode;
             }
             // When we construct the parts before and after the string, we need to internally set the cursor "fake" position, that is, the cursor offset by the bits we are evaluating
-            const {slots: structBeforeString, cursorOffset: beforeStringCursortOffset} = parseCodeLiteral(beforeStringCode, {isInsideString: false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape});
+            const {slots: structBeforeString, cursorOffset: beforeStringCursortOffset} = parseCodeLiteral(beforeStringCode, {isInsideString: false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
             cursorOffset += beforeStringCursortOffset;
             const structOfString: StringSlot = {code: stringContentCode, quote: openingQuoteValue};
-            const {slots: structAfterString, cursorOffset: afterStringCursorOffset} = parseCodeLiteral(afterStringCode, {isInsideString: false, cursorPos: (flags?.cursorPos??0) - closingQuoteIndex + (2*(quoteTokenLength -1)) + FIELD_PLACERHOLDER.length, skipStringEscape: flags?.skipStringEscape});
+            const {slots: structAfterString, cursorOffset: afterStringCursorOffset} = parseCodeLiteral(afterStringCode, {isInsideString: false, cursorPos: (flags?.cursorPos??0) - closingQuoteIndex + (2*(quoteTokenLength -1)) + FIELD_PLACERHOLDER.length, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
             cursorOffset += afterStringCursorOffset;
             if((structAfterString.fields[0] as BaseSlot).code.startsWith(FIELD_PLACERHOLDER)){
                 (structAfterString.fields[0] as BaseSlot).code = (structAfterString.fields[0] as BaseSlot).code.substring(FIELD_PLACERHOLDER.length);
@@ -1576,6 +1627,43 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             resStructSlot.operators = operatorSplitsStruct.operators;
         }
     }
+    
+    // Reverse replacement of image literals:
+    imageLiterals.forEach((imageLiteral, i) => {
+        const target = IMAGE_PLACERHOLDER + i + "$";
+        for (let j = 0; j < resStructSlot.fields.length; j++) {
+            if (isFieldBaseSlot(resStructSlot.fields[j])) {
+                const code = (resStructSlot.fields[j] as BaseSlot).code;
+                const pos = code.indexOf(target);
+                if (pos != -1) {
+                    const before = code.substring(0, pos).trim();
+                    const after = code.substring(pos + target.length).trim();
+                    
+                    // Replace field with image literal:
+                    resStructSlot.fields[j] = {...resStructSlot.fields[j], code: imageLiteral.code, mediaType: imageLiteral.mediaType } as MediaSlot;
+                    // Image literals must be surrounded by a plain field before and after, with blank operator, so that you can position
+                    // the cursor next to them to edit (either adding content next to them, or deleting the literal itself)
+                    // Without this, for example, if you put a media literal in a bracket, you can't put the cursor anywhere inside the
+                    // bracket because there will be a single field (for the media literal) and no actual possible cursor positions.
+                    if (before.length > 0 || j == 0 || !isFieldBaseSlot(resStructSlot.fields[j-1]) || resStructSlot.operators[j-1].code != "") {
+                        // If there's no plain slot before or the operator isn't blank, we need to add a blank operator and blank field:
+                        resStructSlot.operators.splice(j, 0, {code: ""});
+                        resStructSlot.fields.splice(j, 0, {code: before} as BaseSlot);
+                        // Need to compensate for what we just added:
+                        j += 1;
+                    }
+                    if (after.length > 0 || j >= resStructSlot.fields.length - 1 || !isFieldBaseSlot(resStructSlot.fields[j+1]) || resStructSlot.operators[j].code != "") {
+                        // If there's no plain slot after or the operator isn't blank, we need to add a blank operator and blank field:
+                        resStructSlot.operators.splice(j, 0, {code: ""});
+                        resStructSlot.fields.splice(j+1, 0, {code: after} as BaseSlot);
+                        // No need to compensate because we're about to return from this whole code segment:
+                    }
+                    // Note: this returns the forEach part and looks for the next media literal
+                    return;
+                }
+            }
+        }
+    });
 
     return {slots: resStructSlot, cursorOffset: cursorOffset};
 };
@@ -1687,10 +1775,7 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
     // (and we also need to remove "dead" closing brackets)
     let code = codeLiteral.substring(lookOffset).trimStart();
     closeBracketCharacters.forEach((closingBracket) => {
-        code = code.replaceAll(closingBracket, () => {
-            cursorOffset += -1;
-            return "";
-        });
+        code = code.replaceAll(closingBracket, "");
     });
     resStructSlot.fields.push({code: code});
     return {slots: resStructSlot, cursorOffset: cursorOffset};
@@ -1932,4 +2017,95 @@ export function getCurrentFrameSelectionScope(): SelectAllFramesFuncDefScope {
         return SelectAllFramesFuncDefScope.wholeFunctionBody;
     }
     return SelectAllFramesFuncDefScope.none;
+}
+
+
+/**
+ * Gets selected text from editable text nodes by traversing DOM from anchor to focus
+ * Similar to document.getSelection().toString() but only including nodes where
+ * isNodeSelectableText() returns true
+ *
+ * @returns {string} The concatenated text from all selected editable text nodes
+ */
+export function getEditableSelectionText() : string {
+    const selection = document.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+        return "";
+    }
+
+    // Get the range covering the current selection
+    const range = selection.getRangeAt(0);
+
+    // If selection is within a single node.  Note that if it's within an element it might be in Firefox
+    // where it's possible for the selection to be in the parent div 
+    if (range.startContainer === range.endContainer && range.startContainer.nodeType != Node.ELEMENT_NODE) {
+        if (range.startContainer.nodeType === Node.TEXT_NODE && isNodeSelectableText(range.startContainer)) {
+            return range.startContainer.nodeValue?.substring(Math.min(range.startOffset, range.endOffset), Math.max(range.startOffset, range.endOffset)) ?? "";
+        }
+        return "";
+    }
+    
+    // For multi-node selection
+    const allNodes = [] as string[];
+    const treeWalker = document.createTreeWalker(
+        range.cloneContents(),
+        NodeFilter.SHOW_TEXT,
+        null
+    );
+
+    for (let node = treeWalker.nextNode(); node; node = treeWalker.nextNode()) {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            const el = node as HTMLElement;
+            if (el.classList.contains(".labelSlot-Media")) {
+                const code = el.getAttribute("data-code");
+                if (code) {
+                    allNodes.push(code);
+                }
+                continue;
+            }
+        }
+        if (isNodeSelectableText(node)) {
+            allNodes.push(node.nodeValue ?? "");
+        }
+    }
+
+    return allNodes.join("").replace(/\u200B/g, "");
+}
+
+// Helper function to check if a node is inside a contenteditable element
+function isNodeSelectableText(node: Node | null): boolean {
+    if (!node || node.nodeType !== Node.TEXT_NODE) {
+        return false;
+    }
+
+    // Check if the nearest element ancestors is contenteditable
+    let current: Node | null = node;
+    while (current) {
+        if (current.nodeType === Node.ELEMENT_NODE) {
+            const el = current as HTMLElement;
+            return el.classList.contains(scssVars.labelSlotInputClassName);
+        }
+        current = current.parentNode;
+    }
+    return false;
+}
+
+// Gets all the HTML elements which are part of the window text selection.
+// The returned list may contain duplicates
+export function getElementsInSelection() : Element[] {
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount) {
+        return [];
+    }
+
+    const elements = [];
+
+    for (let i = 0; i < selection.rangeCount; i++) {
+        const range = selection.getRangeAt(i);
+        // Clone the selected content to be able to access the sub-elements:
+        const fragment = range.cloneContents();
+        elements.push(...fragment.querySelectorAll("*"));
+    }
+
+    return elements;
 }

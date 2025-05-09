@@ -176,11 +176,30 @@
     "stopping": "Stopping...",
     "runtimeErrorConsole": "Runtime error",
     "console": "Console",
-    "TurtleGraphics": "Turtle Graphics",
+    "Graphics": "Graphics",
     "importTurtle": "Import the module 'turtle' to use Turtle Graphics.",
     "PEA-layout-tabs-collapsed": "Collapsed and tabs layout",
     "PEA-layout-tabs-expanded":"Expanded and tabs layout",
     "PEA-layout-split-collapsed": "Collapsed and split layout",
     "PEA-layout-split-expanded": "Expanded and split layout"
+  },
+  "media": {
+    "edit": "Edit",
+    "imageChangedSize": "Changed size (approx): ",
+    "imageCrop": "Image Crop",
+    "imageDetails": "Image Details",
+    "imageOriginalSize": "Original size: ",
+    "imageScale": "Image Scale",
+    "pixels": "pixels",
+    "preview": "Preview",
+    "soundAverageVolume": "Average volume:",
+    "soundChangedLength": "Result length:",
+    "soundCrop": "Sound Trimming",
+    "soundDetails": "Sound Details",
+    "soundNormaliseVolume": "Normalise volume",
+    "soundPlay": "Play",
+    "soundSeconds": "seconds",
+    "soundStop": "Stop",
+    "volumeScale": "Volume Scaling"
   }
 }

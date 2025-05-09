@@ -29,3 +29,14 @@ src/debug.log
 tests/cypress/downloads/*
 tests/cypress/screenshots/*
 tests/cypress/videos/*
+tests/cypress/expected-screenshots/comparison/*
+tests/cypress/expected-screenshots/diff/*
+
+# Files generated while running tasks
+/temp-scripts
+/docs-sphinx/build
+
+# Playwright
+/tests/playwright/test-results/
+/tests/playwright/html-report/
+

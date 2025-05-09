@@ -1,5 +1,5 @@
 import Vue from "vue";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
@@ -138,6 +138,10 @@ export const useStore = defineStore("app", {
             
             // Flag to indicate when an action of selection spans across slots
             isSelectingMultiSlots : false,
+            
+            // Has to be in the store despite only going from LabelSlotsStructure to LabelSlot,
+            // because we need immediate update, faster than we get with setting a prop (trust me, I tried):
+            mostRecentSelectedText: "",
 
             // Do not write to this directly (except for assigning NoMessage), use the
             // showMessage helper instead as that also updates currentMessageId
@@ -208,8 +212,6 @@ export const useStore = defineStore("app", {
 
             simpleModalDlgMsg: "",
 
-            editableSlotViaKeyboard: {isKeyboard: false, direction: 1} as EditableSlotReachInfos, //indicates when a slot is reached via keyboard arrows, and the direction (-1 for left/up and 1 for right/down)
-        
             /* The following wrapper is used for interacting with the microbit board via DAP*/
             DAPWrapper: {} as DAPWrapper,
 
@@ -903,6 +905,30 @@ export const useStore = defineStore("app", {
                 (parentFieldSlot.fields[slotIndex] as BaseSlot).code = codeForCurrentSlot;
                 parentFieldSlot.fields.splice(otherOperandSlotIndex, 0, {code: codeForOtherOperandSlot});                
             }
+            else if (addingSlotType==SlotType.media){
+                // We are adding a media literal. In this context, the function arguments have this meaning:
+                // operatorOrBracket: the mediaType
+                // lhsCode: the code on the slot that precedes the media literal we insert
+                // rhsCode: the code on the slot that follows the media literal we insert
+                // midCode: the code that should be added for the media literal we insert 
+                // Adding a new media literal means we also add the empty operators "around" it:
+                // we replace the slot where we add the literal into this:
+                // <base slot (LHS)><empty operator><media literal slot><empty operator><basic slot (RHS)>
+
+                // Create the fields first
+                const newFields: FieldSlot[] = [];
+                // the LHS part
+                newFields[0] = {code: lhsCode};
+                // the new bracketed structure or string slot depending what we are adding
+                newFields[1] = {mediaType: operatorOrBracket, code: midCode} as MediaSlot;
+                // the RHS part
+                newFields[2] = {code: rhsCode};
+                // now we can replace the existing slot
+                parentFieldSlot.fields.splice(slotIndex, 1, ...newFields);
+
+                // Create the operators
+                parentFieldSlot.operators.splice(slotIndex, 0, ...[{code: ""}, {code: ""}]);
+            }
             else{
                 // We are adding a bracketed structure or a string slot. In this context, the function arguments have this meaning:
                 // operatorOrBracket: the opening bracket [resp. quote] of that structure [resp. string slot]
@@ -942,7 +968,7 @@ export const useStore = defineStore("app", {
          * @param currentSlotInfos The slot where the key was pressed.
          * @returns an object containing the resulting new slot id (newSlotId), and the cursor position offset within this slot (cursorPosOffset)
          */
-        deleteSlots(isForwardDeletion: boolean, currentSlotInfos: SlotCoreInfos): {newSlotId: string, cursorPosOffset: number} {
+        deleteSlots(isForwardDeletion: boolean, currentSlotInfos?: SlotCoreInfos | undefined): {newSlotId: string, cursorPosOffset: number} {
             // Deleting slots depends on the direction of deletion (with del or backspace), the scope of deletion
             // (from a selection or a from one position of code) and the nature of the field deleted.
             // When there is no selection, we do a deletion on the basis of a slot and an operator are deleted:
@@ -951,6 +977,10 @@ export const useStore = defineStore("app", {
             // The returned value is the new ID of the current slot and the cursor position offset (to be used by UI)
             // When there is a selection, we always end up with one resulting slot. The deletion direction doesn't matter.
             if(this.anchorSlotCursorInfos && this.focusSlotCursorInfos){
+                if (!currentSlotInfos) {
+                    currentSlotInfos = this.focusSlotCursorInfos.slotInfos;
+                }
+                
                 const hasSlotSelectedToDelete = (!areSlotCoreInfosEqual(this.anchorSlotCursorInfos.slotInfos, this.focusSlotCursorInfos.slotInfos));
                 // Split the target slot ID into parent ID and the index of us within the parent:
                 const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(currentSlotInfos.slotId);
@@ -974,6 +1004,7 @@ export const useStore = defineStore("app", {
                         // de facto in a bracket.
                         const isRemovingBrackets = (parentId != slotToDeleteParentId);
                         const isRemovingString = (slotToDeleteInfos.slotType == SlotType.string) || (currentSlotInfos.slotType == SlotType.string);
+                        const isRemovingMedia = (slotToDeleteInfos.slotType == SlotType.media);
 
                         // Deal with bracket / string partial deletion as a particular case
                         if(isRemovingBrackets || isRemovingString){
@@ -1066,13 +1097,15 @@ export const useStore = defineStore("app", {
                             }
                         }                    
 
-                        // Change the slot content first, to avoid issues with indexes once things are deleted from the store...
-                        // Now we merge the 2 fields surrouding the deleted operator:
-                        // when forward deleting, that means appening the next field content to the current slot's content,
-                        // when backward deleting, that means prepending the previous field content to the current's slot content.
-                        const slotToDeleteCode = (slotToDelete as BaseSlot).code;
-                        const currentSlotCode = (retrieveSlotFromSlotInfos(currentSlotInfos) as BaseSlot).code;
-                        (retrieveSlotFromSlotInfos(currentSlotInfos) as BaseSlot).code = (isForwardDeletion) ? (currentSlotCode + slotToDeleteCode) : (slotToDeleteCode + currentSlotCode); 
+                        if (!isRemovingMedia) {
+                            // Change the slot content first, to avoid issues with indexes once things are deleted from the store...
+                            // Now we merge the 2 fields surrouding the deleted operator:
+                            // when forward deleting, that means appening the next field content to the current slot's content,
+                            // when backward deleting, that means prepending the previous field content to the current's slot content.
+                            const slotToDeleteCode = (slotToDelete as BaseSlot).code;
+                            const currentSlotCode = (retrieveSlotFromSlotInfos(currentSlotInfos) as BaseSlot).code;
+                            (retrieveSlotFromSlotInfos(currentSlotInfos) as BaseSlot).code = (isForwardDeletion) ? (currentSlotCode + slotToDeleteCode) : (slotToDeleteCode + currentSlotCode);
+                        }
 
                         // Now we do the fields/operator deletion:
                                 
@@ -1175,7 +1208,7 @@ export const useStore = defineStore("app", {
         setSlotTextCursors(anchorCursorInfos: SlotCursorInfos | undefined, focusCursorInfos: SlotCursorInfos | undefined){
             // If we set a new object in these properties then it causes a lot of updates throughout
             // the whole tree.  So we check if the two objects are (deep) equal before
-            // we update, to avoid unnecessary updates and rendersL
+            // we update, to avoid unnecessary updates and renders:
             if (!isEqual(this.anchorSlotCursorInfos, anchorCursorInfos)) {
                 Vue.set(this, "anchorSlotCursorInfos", anchorCursorInfos);
             }
@@ -1664,7 +1697,8 @@ export const useStore = defineStore("app", {
             });
         },
 
-        async setFrameEditableSlotContent(frameSlotInfos: SlotInfos) {
+        // Returns stateBeforeChanges
+        async setFrameEditableSlotContent(frameSlotInfos: SlotInfosOptionalMedia) {
             //This action is called EVERY time a unitary change is made on the editable slot.
             //We save changes at the entire slot level: therefore, we need to remove the last
             //previous state to replace it with the difference between the state even before and now;            
@@ -1677,7 +1711,11 @@ export const useStore = defineStore("app", {
             //save the previous state
             const stateBeforeChanges = cloneDeep(this.$state);
 
-            (retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot).code = frameSlotInfos.code;
+            const destSlot = retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot;
+            destSlot.code = frameSlotInfos.code;
+            if (frameSlotInfos.mediaType) {
+                (destSlot as MediaSlot).mediaType = frameSlotInfos.mediaType;
+            }
 
             //save state changes
             this.saveStateChanges(stateBeforeChanges);
@@ -2222,8 +2260,6 @@ export const useStore = defineStore("app", {
             // If next position is an editable slot
             if(nextPosition.isSlotNavigationPosition){
                 this.isEditing = true;
-                const slotReachInfos: EditableSlotReachInfos = {isKeyboard: true, direction: directionDelta};
-                this.editableSlotViaKeyboard = slotReachInfos;
 
                 const nextSlotCoreInfos = {
                     frameId: nextPosition.frameId,
@@ -2246,7 +2282,7 @@ export const useStore = defineStore("app", {
                 // If we are reaching a comment frame, coming from the blue caret underneath, we neeed to check if there is a terminating line return:
                 // if that's the case, we do not get just after it, but before it; see LabelSlot.vue onEnterOrTabKeyUp() for why.
                 Vue.nextTick(() => {
-                    let textCursorPos = (directionDelta == 1) ? 0 : (document.getElementById(getLabelSlotUID(nextSlotCoreInfos))?.textContent?.length)??0;
+                    let textCursorPos = (directionDelta == 1) ? 0 : (document.getElementById(getLabelSlotUID(nextSlotCoreInfos))?.textContent?.replace(/\u200B/, "")?.length)??0;
                     const isCommentFrame = this.frameObjects[nextSlotCoreInfos.frameId as number].frameType.type == AllFrameTypesIdentifier.comment;
                     if(isCommentFrame && (document.getElementById(getLabelSlotUID(nextSlotCoreInfos))?.textContent??"").endsWith("\n") && directionDelta == -1){
                         textCursorPos--;

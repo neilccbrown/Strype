@@ -484,7 +484,7 @@ export default class Parser {
         };
 
         generateFlatSlotBases(slotStructures, "", (flatSlot: FlatSlotBase, besidesOp: boolean, opAfter: undefined | string) => {
-            if(isSlotQuoteType(flatSlot.type) || isSlotBracketType(flatSlot.type)){
+            if(isSlotQuoteType(flatSlot.type) || isSlotBracketType(flatSlot.type) || flatSlot.type === SlotType.media){
                 // a quote or a bracket is a 1 character token, shown in the code
                 // but it's not editable so we don't include it in the slot positions
                 code += flatSlot.code;

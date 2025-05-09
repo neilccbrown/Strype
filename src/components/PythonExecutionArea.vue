@@ -3,13 +3,13 @@
     <div :id="peaComponentId" :class="{'pea-component': true, [scssVars.expandedPEAClassName]: isExpandedPEA, 'no-43-ratio-collapsed-PEA': !hasDefault43Ratio && !isExpandedPEA}" ref="peaComponent" @mousedown="handlePEAMouseDown">
         <div :id="controlsDivId" :class="{'pea-controls-div': true, 'expanded-PEA-controls': isExpandedPEA}">           
             <b-tabs v-show="isTabsLayout" v-model="peaDisplayTabIndex" no-key-nav>
-                <b-tab v-show="isTabsLayout" :button-id="graphicsTabId" :title="'\uD83D\uDC22 '+$t('PEA.TurtleGraphics')" title-link-class="pea-display-tab"></b-tab>
+                <b-tab v-show="isTabsLayout" :button-id="graphicsTabId" :title="'\uD83D\uDC22 '+$t('PEA.Graphics')" title-link-class="pea-display-tab"></b-tab>
                 <b-tab v-show="isTabsLayout" :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab" active></b-tab>
             </b-tabs>
             <!-- IMPORTANT: keep this div with "invisible" text for proper layout rendering, it replaces the tabs -->
             <span v-if="!isTabsLayout" :class="scssVars.peaNoTabsPlaceholderSpanClassName">c+g</span>
             <div class="flex-padding"/>            
-            <button ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'">
+            <button id="runButton" ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'">
                 <img v-if="!isPythonExecuting" src="favicon.png" class="pea-play-img">
                 <span v-else class="python-running">{{runCodeButtonIconText}}</span>
                 <span>{{runCodeButtonLabel}}</span>
@@ -23,7 +23,7 @@
                         <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
                             <div :id="graphicsDivId" ref="pythonTurtleDiv" class="pea-graphics-div"></div>
                         </div>
-                        <span v-if="isGraphicsAreaShowing && !turtleGraphicsImported" class="pea-no-graphics-import-span">{{$t('PEA.importTurtle')}}</span> 
+                        <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @click.stop="graphicsCanvasClick"></canvas> 
                     </div>
                 </pane>
                 <pane key="2" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)" min-size="5">
@@ -61,6 +61,7 @@ import { mapStores } from "pinia";
 import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId,  getPEATabContentContainerDivId, getStrypeCommandComponentRefId, hasPrecompiledCodeError, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
 import i18n from "@/i18n";
 import { defaultEmptyStrypeLayoutDividerSettings, PythonExecRunningState, StrypePEALayoutData, StrypePEALayoutMode } from "@/types/types";
+import { PersistentImage, PersistentImageManager, WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
 import Menu from "@/components/Menu.vue";
 import CommandsComponent from "@/components/Commands.vue";
 import SVGIcon from "@/components/SVGIcon.vue";
@@ -70,6 +71,25 @@ import scssVars from "@/assets/style/_export.module.scss";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
+
+const persistentImageManager = new PersistentImageManager();
+let domContext : CanvasRenderingContext2D | null = null;
+let targetContext : OffscreenCanvasRenderingContext2D | null = null;
+let targetCanvas : OffscreenCanvas | null = null;
+let audioContext : AudioContext | null = null; // Important we don't initialise here, for permission reasons
+let mostRecentClickedItems : PersistentImage[] = []; // All the items under the mouse cursor at last click
+let mostRecentClickDetails : number[] | null = null; // Array of four numbers: x, y, button, click_count
+const pressedKeys = new Map<string, boolean>();
+const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
+const bufferToSource = new Map<AudioBuffer, AudioBufferSourceNode>(); // Used to stop playing sounds
+
+// We draw our actual graphics canvas (for strype.graphics) at the size it is on the page,
+// given the 4:3 aspect ratio.  But we also have a logical size that is constant, which is 800x600.
+// This means that if you draw an image say 400x300 pixels it will always take up a quarter of the canvas
+// (well, a half of the canvas in each dimension) no matter what size the user's window is or whether they've
+// expanded the canvas
+const graphicsCanvasLogicalWidth = WORLD_WIDTH;
+const graphicsCanvasLogicalHeight = WORLD_HEIGHT;
 
 export default Vue.extend({
     name: "PythonExecutionArea",
@@ -97,6 +117,7 @@ export default Vue.extend({
             isTurtleListeningKeyEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for key events on Turtle
             isTurtleListeningMouseEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for mouse events on Turtle
             isTurtleListeningTimerEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for timer events on Turtle
+            isRunningStrypeGraphics : false,
             stopTurtleUIEventListeners: undefined as ((keepShowingTurtleUI: boolean)=>void) | undefined, // registered callback method to clear the Turtle listeners mentioned above
             PEALayoutsData: [
                 {iconName: "PEA-layout-tabs-collapsed", mode: StrypePEALayoutMode.tabsCollapsed},
@@ -106,7 +127,7 @@ export default Vue.extend({
             ] as StrypePEALayoutData[],
         };
     },
-
+    
     mounted(){
         // Just to prevent any inconsistency with a uncompatible state, set a state value here and we'll know we won't get in some error
         useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
@@ -212,10 +233,35 @@ export default Vue.extend({
         this.$nextTick(() => {
             const graphicTaBElement = document.getElementById(this.graphicsTabId);
             if(graphicTaBElement){
-                graphicTaBElement.innerHTML = graphicTaBElement.innerHTML.replace("\uD83D\uDC22", `<img src="${require("@/assets/images/turtle.png")}" alt="${this.$i18n.t("PEA.TurtleGraphics")}" class="pea-turtle-img" />`);
+                graphicTaBElement.innerHTML = graphicTaBElement.innerHTML.replace("\uD83D\uDC22", `<img src="${require("@/assets/images/turtle.png")}" alt="${this.$i18n.t("PEA.Graphics")}" class="pea-turtle-img" />`);
             }
         });
        
+        
+        // Setup Canvas:
+        const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
+        domContext = domCanvas.getContext("2d", {alpha: false}) as CanvasRenderingContext2D | null;
+        // Need to resize off-screen canvas to match, if the on-screen canvas changes size: 
+        let adjustCanvasSize = function() {
+            // This confused me at first: the <canvas> has a width and height property.  These are initially set
+            // to 300 and 150 if you don't specify them.  They stay at these defaults even if the HTML <canvas> element
+            // changes its on-screen size, but it will then scale up the displayed image from 300 x 150 to whatever its
+            // in-page size is.  Which looks horrible if the sizes are different.  So we need to explicitly set the <canvas>
+            // width and height to be the on-page width and height to avoid this:
+            const realWidth = domCanvas.getBoundingClientRect().width;
+            const realHeight = domCanvas.getBoundingClientRect().height;
+            domCanvas.width = realWidth;
+            domCanvas.height = realHeight;
+            // It's possible for the on-screen canvas to be the wrong aspect ratio, which we do not prevent.
+            // But we make the off-screen canvas the right aspect ratio:
+            const maxHeight = Math.min(realHeight, (3 / 4) * realWidth);
+            const maxWidth = (4 / 3) * maxHeight;
+            targetCanvas = new OffscreenCanvas(maxWidth, maxHeight);
+            targetContext = targetCanvas?.getContext("2d", {alpha: false}) as OffscreenCanvasRenderingContext2D;
+        };
+        // Listen to size changes, and call now:
+        new ResizeObserver(adjustCanvasSize).observe(domCanvas);
+        adjustCanvasSize();
         // Once everything is ready, we can notify the application (via events) that the PEA is ready
         // Note that because of all the timeouts used throught the rendering we give ourselves some lease time.
         setTimeout(() => {
@@ -344,6 +390,9 @@ export default Vue.extend({
             switch (useStore().pythonExecRunningState) {
             case PythonExecRunningState.NotRunning:
                 useStore().pythonExecRunningState = PythonExecRunningState.Running;
+                // Important to call this when responding to a click, because browser won't allow
+                // sound to start unless we create it in response to a user action:
+                audioContext = new AudioContext();
                 this.execPythonCode();
                 return;
             case PythonExecRunningState.Running:
@@ -408,6 +457,28 @@ export default Vue.extend({
                 const parser = new Parser();
                 const userCode = parser.getFullCode();
                 parser.getErrorsFormatted(userCode);
+                // Clear the graphics area:
+                if (targetCanvas != null) {
+                    targetContext?.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+                }
+                persistentImageManager.clear();
+                // Clear input:
+                mostRecentClickedItems = [];
+                mostRecentClickDetails = null;
+                pressedKeys.clear();
+                window.addEventListener("keydown", this.graphicsCanvasKeyDown);
+                window.addEventListener("keyup", this.graphicsCanvasKeyUp);
+                // Start the redraw loop:
+                // eslint-disable-next-line @typescript-eslint/no-this-alias
+                const t = this;
+                function redraw() {
+                    t.redrawCanvasIfNeeded();
+                    if (useStore().pythonExecRunningState != PythonExecRunningState.RunningAwaitingStop) {
+                        requestAnimationFrame(redraw);
+                    }
+                }
+                requestAnimationFrame(redraw);
+                
                 // Trigger the actual Python code execution launch
                 execPythonCode(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),() => useStore().pythonExecRunningState != PythonExecRunningState.RunningAwaitingStop, (finishedWithError: boolean, isTurtleListeningKeyEvents: boolean, isTurtleListeningMouseEvents: boolean, isTurtleListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => {
                     // After Skulpt has executed the user code, we need to check if a keyboard listener is still pending from that user code.
@@ -417,10 +488,18 @@ export default Vue.extend({
                     this.stopTurtleUIEventListeners = stopTurtleListeners;
                     if (finishedWithError) {
                         this.updateTurtleListeningEvents();
+                        // Don't draw last state if we finished with an error because we may be in an inconsistent state:
+                        persistentImageManager.resetDirty();
+                        for (let persistentImage of persistentImageManager.getPersistentImages()) {
+                            persistentImage.dirty = false;
+                        }
                     }
                     if(!this.isTurtleListeningEvents) {
                         useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                     }
+                    window.removeEventListener("keydown", this.graphicsCanvasKeyDown);
+                    window.removeEventListener("keyup", this.graphicsCanvasKeyUp);
+                    this.isRunningStrypeGraphics = false;
                     setPythonExecAreaLayoutButtonPos();
                     // A runtime error may happen whenever the user code failed, therefore we should check if an error
                     // when Skulpt indicates the code execution has finished.
@@ -607,9 +686,161 @@ export default Vue.extend({
             if(useStore().pythonExecRunningState) {
                 useStore().pythonExecRunningState = PythonExecRunningState.RunningAwaitingStop;              
             }
+            this.isRunningStrypeGraphics = false;
+            pressedKeys.clear();
+            // Important not to use the accessor here as that will switch to the tab:
+            persistentImageManager.clear();
+            this.redrawCanvas();
+        },
+        
+        getPersistentImageManager() : PersistentImageManager {
+            this.isRunningStrypeGraphics = true;
+            this.peaDisplayTabIndex = PEATabIndexes.graphics;
+            return persistentImageManager;
+        },
+        
+        getAudioContext() : AudioContext {
+            if (audioContext == null) {
+                throw new Error("Problem initialising audio");
+            }
+            return audioContext;
+        },
+        
+        redrawCanvasIfNeeded() : void {
+            // Draws canvas if anything has changed:
+            if (persistentImageManager.isDirty()) {
+                this.redrawCanvas();
+            }
+        },
+        redrawCanvas() : void {
+            const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
+            const c = targetCanvas;
+            if (c == null) {
+                // We can't redraw if there's no canvas
+                return;
+            }
+            // We clear the full canvas size including the bit which might not be drawn on
+            // because of the canvas aspect ratio meaning the whole image is not used:
+            targetContext?.clearRect(0, 0, c.width, c.height);
+            
+            // The HTML canvas has 0,0 in the top left and 800, 600 in the bottom right (i.e. positive Y downward)
+            // Our actors have positions where 0,0 is in the middle, and positive Y upward
+            // with a bounds from -399, -299 to 400, 300.  0,0 in actor coordinates is actually 399, 300 in the canvas
+            // because of this translation.
+            // We can't do this by using translate etc on targetContent because to flip the Y axis we'd need to
+            // use scale() which would flip the Y axis and thus mirror all the images vertically.  So we need to
+            // translate ourselves.  All the examples here assume a width of 800 but we don't hardcode it.
+            const mapX = function(x : number) : number {
+                // Maps e.g. -50 to 349, 0 to 399, 50 to 449,
+                return x + graphicsCanvasLogicalWidth / 2 - 1;
+            };
+            const mapY = function(y : number) : number {
+                // Maps e.g. -50 to 450, 0 to 400, 50 to 350,
+                return graphicsCanvasLogicalHeight / 2 - y;
+            };
+            // Also: we must scale the canvas from the logical 800x600 to its actual on-screen size.  This
+            // we can do with a scale transformation.  We find which dimension must shrink most (smallest scale value)
+            // then use that for both scale dimensions so we preserve the aspect ratio:
+            const scaleToFitX = c.width / graphicsCanvasLogicalWidth;
+            const scaleToFitY = c.height / graphicsCanvasLogicalHeight;
+            const scaleToFit = Math.min(scaleToFitX, scaleToFitY);
+            targetContext?.save();
+            targetContext?.scale(scaleToFit, scaleToFit);
+            
+            for (let obj of persistentImageManager.getPersistentImages()) {
+                if (obj.rotation != 0) {
+                    // These translations are in terms of the 0,0 top left system, but we call mapX/mapY
+                    // on the coords we pass in, so it works out:
+                    targetContext?.save();
+                    targetContext?.translate(mapX(obj.x), mapY(obj.y));
+                    targetContext?.rotate(-obj.rotation * Math.PI / 180);
+                    targetContext?.scale(obj.scale, obj.scale);
+                    targetContext?.drawImage(obj.img, -0.5 * obj.img.width, -0.5 * obj.img.height);
+                    targetContext?.restore();
+                } 
+                else {
+                    // Simpler case; no rotation means we can use single call:
+                    let dwidth = obj.scale * obj.img.width;
+                    let dheight = obj.scale * obj.img.height;
+                    targetContext?.drawImage(obj.img, mapX(obj.x) - dwidth*0.5, mapY(obj.y)-dheight*0.5, dwidth, dheight);
+                }
+                obj.dirty = false;
+            }
+            persistentImageManager.resetDirty();
+            // Restore the scale:
+            targetContext?.restore();
+            
+            // Actually copy the resulting off-screen image to the DOM canvas:
+            // When the graphics tab has never been selected, the off-screen image can be empty
+            // which gives an error:
+            if (c.width > 0 && c.height > 0) {
+                // Important on Safari to clear the canvas first, otherwise the new frame
+                // gets blended on top.  Firefox and Chrome don't do this by default (different alpha blending mode?):
+                domContext?.clearRect(0, 0, domCanvas.width, domCanvas.height);
+                // The target canvas can be smaller than the real one, and we want to centre it:
+                domContext?.drawImage(c, (domCanvas.width - (targetCanvas?.width ?? 0)) / 2, (domCanvas.height - (targetCanvas?.height ?? 0)) / 2);
+            }
+        },
+
+        playAudioBuffer(audioBuffer : AudioBuffer) : Promise<void> | null {
+            if (audioContext) {
+                const source = audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(audioContext.destination);
+                return new Promise(function (resolve, reject) {
+                    source.onended = (ev) => {
+                        bufferToSource.delete(audioBuffer);
+                        resolve();
+                    };
+                    bufferToSource.set(audioBuffer, source);
+                    source.start();
+                });
+            }
+            else {
+                return null;
+            }
+        },
+        stopAudioBuffer(audioBuffer: AudioBuffer) : void {
+            const source = bufferToSource.get(audioBuffer);
+            if (source) {
+                source.stop();
+            }
+            // It's not an error if source is null, it either means the sound hasn't been playing, or it already finished
+        },
+        graphicsCanvasClick(event: PointerEvent) {
+            const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
+            // The canvas might be e.g. 200 x 160 (with positive Y down) and we need to translate to the 800x600
+            // logical canvas (with 0, 0 centre) and positive U upwards.
+            // So we first divide by the width or height to get to a 0->1 value (where 0, 0 is top-left), then
+            // we subtract 0.5 to get to -0.5->0.5.  We multiply by 800 or 600 to get us to -399 to 400 (or -299 to 300),
+            // and for Y we also multiply by -1 to flip it:
+            const adjustedX = ((event.offsetX / domCanvas.getBoundingClientRect().width) - 0.5) * graphicsCanvasLogicalWidth + 1;
+            // We have to invert the Y axis because positive is up there, hence * -1 on the end:
+            const adjustedY = ((event.offsetY / domCanvas.getBoundingClientRect().height) - 0.5) * graphicsCanvasLogicalHeight * -1;
+            mostRecentClickedItems = this.getPersistentImageManager().calculateAllOverlappingAtPos(adjustedX, adjustedY);
+            mostRecentClickDetails = [adjustedX, adjustedY, event.button, event.detail];
+        },
+        consumeLastClickedItems() : PersistentImage[] {
+            const r = mostRecentClickedItems;
+            mostRecentClickedItems = [];
+            return r;
+        },
+        consumeLastClickDetails() : number[] | null {
+            const d = mostRecentClickDetails;
+            mostRecentClickDetails = null;
+            return d;
+        },
+        graphicsCanvasKeyDown(event: KeyboardEvent) {
+            pressedKeys.set(keyMapping.get(event.key) ?? event.key.toLowerCase(), true);
+        },
+        graphicsCanvasKeyUp(event: KeyboardEvent) {
+            pressedKeys.set(keyMapping.get(event.key) ?? event.key.toLowerCase(), false);
+        },
+        getPressedKeys() {
+            return pressedKeys;
         },
     },
-
+    
 });
 </script>
 
@@ -812,5 +1043,23 @@ export default Vue.extend({
         height: 100% !important;
         width: 8px !important;
         transform: none !important;
+    }   
+    
+    #pythonGraphicsContainer {
+        position: relative;
+    }
+    #pythonGraphicsContainer > * {
+        top: 0;
+        left: 0;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+    }
+    #pythonGraphicsCanvas {
+        top: 0;
+        left: 0;
+        position: absolute;
+        width: 100%;
+        height: 100%;
     }
 </style>

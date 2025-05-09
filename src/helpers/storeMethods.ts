@@ -2,7 +2,7 @@ import { getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
-import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
+import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, isFieldMediaSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
 import Vue from "vue";
 import { checkEditorCodeErrors, countEditorCodeErrors, getCaretContainerUID, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID } from "./editor";
 import { nextTick } from "@vue/composition-api";
@@ -209,6 +209,9 @@ export const evaluateSlotType = (slot: FieldSlot): SlotType => {
     }
     else if (isFieldStringSlot(slot)){
         return  SlotType.string;
+    }
+    else if (isFieldMediaSlot(slot)){
+        return SlotType.media;
     }
     else {
         // Other things are just "code"

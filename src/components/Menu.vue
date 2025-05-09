@@ -850,7 +850,7 @@ export default Vue.extend({
                     // Reset the temporary sync file flag
                     this.tempSyncTarget = this.appStore.syncTarget;
                     if(selectValue != StrypeSyncTarget.gd){
-                        if(!canBrowserSaveFilePicker && saveFileName.trim().match(fileNameRegex) == null){
+                        if(!canBrowserSaveFilePicker() && saveFileName.trim().match(fileNameRegex) == null){
                             // Show an error message and do nothing special
                             this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.fileNameError") as string;
                             this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
@@ -870,7 +870,7 @@ export default Vue.extend({
                         headers.set("editorCommandsSplitterPane2Size", saveDivider(this.appStore.peaExpandedSplitterPane2Size));
                         /* FITRUE_isPython */
                         saveContent = Array.from(headers.entries()).filter(([k, v]) => v !== undefined).map((e) => "#" + AppSPYPrefix + " " + e[0] + ":" + e[1] + "\n").join("") + saveContent;
-                        if(canBrowserSaveFilePicker){
+                        if(canBrowserSaveFilePicker()){
                             saveFile(saveFileName, this.strypeProjMIMEDescArray, this.appStore.strypeProjectLocation, saveContent, (fileHandle: FileSystemFileHandle) => {
                                 this.appStore.strypeProjectLocation = fileHandle;
                                 this.appStore.projectName = fileHandle.name.substring(0, fileHandle.name.lastIndexOf("."));
@@ -932,7 +932,7 @@ export default Vue.extend({
             }
             else{               
                 // And let the user choose a file
-                if(canBrowserOpenFilePicker){
+                if(canBrowserOpenFilePicker()){
                     openFile([...this.strypeProjMIMEDescArray, ...this.pythonImportMIMEDescArray], this.appStore.strypeProjectLocation, (fileHandles: FileSystemFileHandle[]) => {
                         // We select 1 file so we can get the first element of the returned array
                         // We need to get the file content (hope for the best) and update the store
@@ -960,9 +960,6 @@ export default Vue.extend({
                             reader.readAsText(file);
                         });
                     });                        
-                }
-                else{
-                    (this.$refs.importFileInput as HTMLInputElement).click();
                 }
             }        
             this.currentModalButtonGroupIDInAction = "";
@@ -1171,6 +1168,10 @@ export default Vue.extend({
                     const isFullIndex = ((this.currentErrorNavIndex % 1) == 0);
                     this.currentErrorNavIndex += (((toNext) ? 1 : -1) / ((isFullIndex) ? 1 : 2));
                     const errorElement = getEditorCodeErrorsHTMLElements()[this.currentErrorNavIndex];
+                    if (errorElement == null) {
+                        // If there's no longer an error, don't do anything:
+                        return;
+                    }
                     // Make sure that getting to an error will result opening the container frame container (section) if it was collapsed
                     const isErrorOnFrame = isIdAFrameId(errorElement.id);
                     const erroneousFrameId = (isErrorOnFrame) 

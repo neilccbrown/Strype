@@ -1,4 +1,4 @@
-import {CaretPosition, AllFrameTypesIdentifier, FrameObject, LabelSlotsContent, getFrameDefType, SlotsStructure, StringSlot, BaseSlot, ContainerTypesIdentifiers, EditorFrameObjects} from "@/types/types";
+import {EditorFrameObjects, CaretPosition, AllFrameTypesIdentifier, FrameObject, LabelSlotsContent, getFrameDefType, SlotsStructure, StringSlot, BaseSlot, ContainerTypesIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot} from "@/types/types";
 import {useStore} from "@/store/store";
 import {operators, trimmedKeywordOperators} from "@/helpers/editor";
 import i18n from "@/i18n";
@@ -317,7 +317,7 @@ function concatSlots(lhs: SlotsStructure, operator: string, rhs: SlotsStructure)
     for (let i = 0; i < joined.operators.length; i++) {
         if (joined.operators[i].code === "") {
             // Check LHS and RHS:
-            if (!(joined.fields[i] as SlotsStructure)?.openingBracketValue && !(joined.fields[i] as StringSlot)?.quote && !(joined.fields[i+1] as SlotsStructure)?.openingBracketValue && !(joined.fields[i+1] as StringSlot)?.quote) {
+            if (isFieldBaseSlot(joined.fields[i])  && isFieldBaseSlot(joined.fields[i+1])) {
                 // We can join the two:
                 joined.fields[i] = {code: (joined.fields[i] as BaseSlot).code + (joined.fields[i+1] as BaseSlot).code};
                 joined.fields.splice(i + 1, 1);
@@ -387,6 +387,66 @@ function parseNextTerm(ps : ParseState) : SlotsStructure {
     const term = ps.seq[ps.nextIndex];
     ps.nextIndex += 1;
     return toSlots(term);
+}
+
+function replaceMediaLiterals(s : SlotsStructure) : SlotsStructure {
+    // We descend the tree, looking for the pattern:
+    // <ident>(<string>)
+    // and then check the ident and string
+    
+    // Note: we don't bother with last field because it can't be followed by brackets
+    for (let i = 0; i < s.fields.length - 1; i++) {
+        if (isFieldBaseSlot(s.fields[i])
+            && ["load_image", "load_sound"].includes((s.fields[i] as BaseSlot).code)
+            && s.operators[i].code === ""
+            && isFieldBracketedSlot(s.fields[i + 1])) {
+            // Check the bracket is just a string literal, which will have two blanks either side:
+            const sub = s.fields[i+1] as SlotsStructure;
+            const funcCall = (s.fields[i] as BaseSlot).code;
+            if (sub.fields.length == 3
+                && sub.openingBracketValue == "("
+                && isFieldBaseSlot(sub.fields[0]) && !(sub.fields[0] as BaseSlot).code
+                && !sub.operators[0].code
+                && isFieldStringSlot(sub.fields[1])
+                && !sub.operators[1].code
+                && isFieldBaseSlot(sub.fields[2]) && !(sub.fields[2] as BaseSlot).code) {
+                
+                // Need to check ident and content of the bracket:
+                const stringArg = (sub.fields[1] as StringSlot).code;
+                let replaced = false;
+                if (funcCall == "load_image"
+                    && stringArg.startsWith("data:image/")) {
+                    s.fields[i] = {code: "load_image(\"" + stringArg + "\")", mediaType: /data:([^;]+)/.exec(stringArg)?.[1] ?? "image"};
+                    replaced = true;
+                }
+                else if (funcCall == "load_sound"
+                    && stringArg.startsWith("data:audio/")) {
+                    s.fields[i] = {code: "load_sound(\"" + stringArg + "\")", mediaType: /data:([^;]+)/.exec(stringArg)?.[1] ?? "audio"};
+                    replaced = true;
+                }
+                // Otherwise don't substitute
+                // But if we did, tidy up surrounding slots:
+                if (replaced) {
+                    // First delete the bracketed arg that we don't need:
+                    s.fields.splice(i+1, 1);
+                    s.operators.splice(i, 1);
+                    // Then check we have blank operators either side:
+                    if (s.operators[i].code) {
+                        // Check RHS first so we don't need to adjust index:
+                        s.operators.splice(i, 0, {code: ""});
+                        s.fields.splice(i+1,0, {code: ""});
+                    }
+                    if (i == 0 || s.operators[i-1].code) {
+                        s.operators.splice(i-1, 0, {code: ""});
+                        s.fields.splice(i,0, {code: ""});
+                    }
+                }
+                
+            }
+        }
+        // We don't descend because toSlots already calls us on any compound slot
+    }
+    return s;
 }
 
 function fromUnicodeEscapes(input: string): string {
@@ -469,7 +529,7 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
             throw new Sk.builtin.SyntaxError("Unknown operator: " + child.type + " \"" + op + "\"", null, p.lineno);
         }
     }
-    return latest;
+    return replaceMediaLiterals(latest);
 }
 
 // Get the children of the node, and throw an error if they are null.  This

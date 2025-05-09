@@ -173,7 +173,7 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         executionFinished(finishedWithError, isTurtleListeningKB, isTurtleListeningMouse, isTurtleListeningTimer, stopTurtleListeners);
     }
     
-    Sk.configure({output:outf, read:skulptReadPythonLib, inputfun:sInput, inputfunTakesPrompt: true, yieldLimit:100,  killableWhile: true, killableFor: true});
+    Sk.configure({output:outf, read:skulptReadPythonLib, inputfun:sInput, inputfunTakesPrompt: true, yieldLimit:100,  killableWhile: true, killableFor: false});
     
     const myPromise = Sk.misceval.asyncToPromise(function() {
         return Sk.importMainWithBody("<stdin>", false, userCode, true);
@@ -195,6 +195,12 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         // what line of code maps with what frame in case of an execution error.
         // We need to extract the line from the error message sent by Skulpt.
         const skulptErrStr: string = err.toString();
+        if (skulptErrStr.startsWith("SystemExit")) {
+            // SystemExit is an error, but not one we print out because it is a deliberate
+            // exit from the program (e.g. from strype.graphics.stop()).  So we just silently stop for that one:
+            handleExecutionFinished(false);
+            return;
+        }
         let moreInfo = "";
         let errorLine = -1;
         if (err.traceback) {
@@ -209,7 +215,7 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
                     // Turn the filename into a module name:
                     const modulename = filename.replace(".py", "").replace("./", "").replace("/", ".");
                     if (index == 0) {
-                        moreInfo += "\n  Error raised in module " + modulename;
+                        moreInfo += "\n  Error raised in module " + modulename + " (line " + entry.lineno + ")";
                     }
                     else if (modulename != lastmodule) {
                         // Only tell them the module if it's different to adjacent item in the traceback:
