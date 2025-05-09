@@ -48,8 +48,6 @@
                 :content="errorPopupContent"
                 :custom-class="(hasRuntimeError || hasParsingError) ? 'error-popover modified-title-popover': 'error-popover'"
                 placement="left"
-                @shown="setAutoCloseErrorPopup"
-                @hide="clearAutoCloseErrorPopupHandle"
             >
             </b-popover>
             <FrameBody
@@ -96,7 +94,7 @@ import VueContext, {VueContextConstructor}  from "vue-context";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParent, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
 import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getCaretUID, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID } from "@/helpers/editor";
 import { mapStores } from "pinia";
-import { BPopover, BvEvent } from "bootstrap-vue";
+import { BPopover } from "bootstrap-vue";
 import html2canvas from "html2canvas";
 import { saveAs } from "file-saver";
 import scssVars from "@/assets/style/_export.module.scss";
@@ -154,9 +152,6 @@ export default Vue.extend({
             // We keep a data property for frame run time error, even if that's a duplication, we need to keep it because
             // when the error in the frame is lifted, the error message disappear, and we need to use it in the popup
             runtimeErrorAtLastRunMsg: "",
-            //flags for the auto-close timers dictionnary to be used for auto-closing
-            currentErrorPopupInstanceCounter: 0,
-            currentErrorPopupCloseTimeoutHandles: {} as {[id: string]: NodeJS.Timeout},
         };
     },
 
@@ -1124,25 +1119,6 @@ export default Vue.extend({
             if(this.appStore.frameObjects[this.frameId] && this.hasParsingError){
                 (this.$refs.errorPopover as InstanceType<typeof BPopover>).$emit((isFocusing) ? "open" : "close");
             }
-        },
-
-        clearAutoCloseErrorPopupHandle(event: BvEvent) {
-            const closeErrorPupHandleId = document.getElementById(event.componentId??"undef" )?.getAttribute("popup-close-timeouthandle");
-            if(closeErrorPupHandleId){
-                clearTimeout(this.currentErrorPopupCloseTimeoutHandles[closeErrorPupHandleId]);
-                delete this.currentErrorPopupCloseTimeoutHandles[closeErrorPupHandleId];
-            }
-        },
-
-        setAutoCloseErrorPopup(event: BvEvent){
-            this.currentErrorPopupInstanceCounter++;
-            document.getElementById(event.componentId??"undef")?.setAttribute("popup-close-timeouthandle", this.currentErrorPopupInstanceCounter.toString());
-            this.currentErrorPopupCloseTimeoutHandles[this.currentErrorPopupInstanceCounter] = setTimeout(() => {
-                // We close the popup programmatically when no explicit closing action occurred from the user.
-                // The closing timeout will be called on a hanging popup and not on an explicitly closed popup
-                // because we clear the timeout in the latter case (see clearAutoCloseErrorPopupHandle()).
-                (this.$refs.errorPopover as InstanceType<typeof BPopover>)?.$emit("close");
-            }, 3000);
         },
     },
 });
