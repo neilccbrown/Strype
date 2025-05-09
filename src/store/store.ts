@@ -1,5 +1,5 @@
 import Vue from "vue";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
@@ -905,6 +905,30 @@ export const useStore = defineStore("app", {
                 (parentFieldSlot.fields[slotIndex] as BaseSlot).code = codeForCurrentSlot;
                 parentFieldSlot.fields.splice(otherOperandSlotIndex, 0, {code: codeForOtherOperandSlot});                
             }
+            else if (addingSlotType==SlotType.media){
+                // We are adding a media literal. In this context, the function arguments have this meaning:
+                // operatorOrBracket: the mediaType
+                // lhsCode: the code on the slot that precedes the media literal we insert
+                // rhsCode: the code on the slot that follows the media literal we insert
+                // midCode: the code that should be added for the media literal we insert 
+                // Adding a new media literal means we also add the empty operators "around" it:
+                // we replace the slot where we add the literal into this:
+                // <base slot (LHS)><empty operator><media literal slot><empty operator><basic slot (RHS)>
+
+                // Create the fields first
+                const newFields: FieldSlot[] = [];
+                // the LHS part
+                newFields[0] = {code: lhsCode};
+                // the new bracketed structure or string slot depending what we are adding
+                newFields[1] = {mediaType: operatorOrBracket, code: midCode} as MediaSlot;
+                // the RHS part
+                newFields[2] = {code: rhsCode};
+                // now we can replace the existing slot
+                parentFieldSlot.fields.splice(slotIndex, 1, ...newFields);
+
+                // Create the operators
+                parentFieldSlot.operators.splice(slotIndex, 0, ...[{code: ""}, {code: ""}]);
+            }
             else{
                 // We are adding a bracketed structure or a string slot. In this context, the function arguments have this meaning:
                 // operatorOrBracket: the opening bracket [resp. quote] of that structure [resp. string slot]
@@ -980,6 +1004,7 @@ export const useStore = defineStore("app", {
                         // de facto in a bracket.
                         const isRemovingBrackets = (parentId != slotToDeleteParentId);
                         const isRemovingString = (slotToDeleteInfos.slotType == SlotType.string) || (currentSlotInfos.slotType == SlotType.string);
+                        const isRemovingMedia = (slotToDeleteInfos.slotType == SlotType.media);
 
                         // Deal with bracket / string partial deletion as a particular case
                         if(isRemovingBrackets || isRemovingString){
@@ -1072,13 +1097,15 @@ export const useStore = defineStore("app", {
                             }
                         }                    
 
-                        // Change the slot content first, to avoid issues with indexes once things are deleted from the store...
-                        // Now we merge the 2 fields surrouding the deleted operator:
-                        // when forward deleting, that means appening the next field content to the current slot's content,
-                        // when backward deleting, that means prepending the previous field content to the current's slot content.
-                        const slotToDeleteCode = (slotToDelete as BaseSlot).code;
-                        const currentSlotCode = (retrieveSlotFromSlotInfos(currentSlotInfos) as BaseSlot).code;
-                        (retrieveSlotFromSlotInfos(currentSlotInfos) as BaseSlot).code = (isForwardDeletion) ? (currentSlotCode + slotToDeleteCode) : (slotToDeleteCode + currentSlotCode); 
+                        if (!isRemovingMedia) {
+                            // Change the slot content first, to avoid issues with indexes once things are deleted from the store...
+                            // Now we merge the 2 fields surrouding the deleted operator:
+                            // when forward deleting, that means appening the next field content to the current slot's content,
+                            // when backward deleting, that means prepending the previous field content to the current's slot content.
+                            const slotToDeleteCode = (slotToDelete as BaseSlot).code;
+                            const currentSlotCode = (retrieveSlotFromSlotInfos(currentSlotInfos) as BaseSlot).code;
+                            (retrieveSlotFromSlotInfos(currentSlotInfos) as BaseSlot).code = (isForwardDeletion) ? (currentSlotCode + slotToDeleteCode) : (slotToDeleteCode + currentSlotCode);
+                        }
 
                         // Now we do the fields/operator deletion:
                                 
@@ -1670,7 +1697,8 @@ export const useStore = defineStore("app", {
             });
         },
 
-        async setFrameEditableSlotContent(frameSlotInfos: SlotInfos) {
+        // Returns stateBeforeChanges
+        async setFrameEditableSlotContent(frameSlotInfos: SlotInfosOptionalMedia) {
             //This action is called EVERY time a unitary change is made on the editable slot.
             //We save changes at the entire slot level: therefore, we need to remove the last
             //previous state to replace it with the difference between the state even before and now;            
@@ -1683,7 +1711,11 @@ export const useStore = defineStore("app", {
             //save the previous state
             const stateBeforeChanges = cloneDeep(this.$state);
 
-            (retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot).code = frameSlotInfos.code;
+            const destSlot = retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot;
+            destSlot.code = frameSlotInfos.code;
+            if (frameSlotInfos.mediaType) {
+                (destSlot as MediaSlot).mediaType = frameSlotInfos.mediaType;
+            }
 
             //save state changes
             this.saveStateChanges(stateBeforeChanges);

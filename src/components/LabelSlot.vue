@@ -33,8 +33,18 @@
             @compositionend="onCompositionEnd"
             @dragstart.prevent
             v-text="code"
+            v-if="!isMediaSlot"
         >
         </span>
+        <img
+            :src="mediaPreview.imageDataURL"
+            v-if="isMediaSlot"
+            :class="{[scssVars.labelSlotMediaClassName]: true, 'limited-height-inline-image': true}"
+            alt="Media literal"
+            @mouseenter="showMediaPreviewPopup($event)"
+            @mouseleave="startHideMediaPreviewPopup"
+            :data-code="code"
+            :data-mediaType="getMediaType()">
                
         <b-popover
             v-if="erroneous()"
@@ -63,10 +73,11 @@
 
 <script lang="ts">
 import Vue, { PropType } from "vue";
+import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import {getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUID, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUID, getFrameUID, getFrameComponent } from "@/helpers/editor";
-import { CaretPosition, FrameObject, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, FieldSlot, PythonExecRunningState, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
+import { CaretPosition, FrameObject, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, EditImageInDialogFunction, FieldSlot, LoadedMedia, MediaSlot, PythonExecRunningState, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
 import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
@@ -76,6 +87,11 @@ import LabelSlotsStructure from "./LabelSlotsStructure.vue";
 import { BPopover } from "bootstrap-vue";
 import Frame from "@/components/Frame.vue";
 import scssVars from "@/assets/style/_export.module.scss";
+import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
+import {drawSoundOnCanvas} from "@/helpers/media";
+
+// Default time to keep in cache: 5 minutes.
+const soundPreviewImages = new Cache<LoadedMedia>({ defaultTtl: 5 * 60 * 1000 });
 
 export default Vue.extend({
     name: "LabelSlot",
@@ -97,6 +113,8 @@ export default Vue.extend({
         isEditableSlot: Boolean,
         isEmphasised: Boolean,
     },
+    
+    inject: ["mediaPreviewPopupInstance", "editImageInDialog"],    
 
     mounted(){
         // To make sure the a/c component shows just below the spans, we set its top position here based on the span height.
@@ -104,6 +122,11 @@ export default Vue.extend({
         const acElement = document.getElementById(this.AC_UID);
         if(spanH && acElement){
             acElement.style.top = (spanH + "px");
+        }
+        if (this.isMediaSlot) {
+            this.loadMediaPreview().then((m) => {
+                this.mediaPreview = m;
+            });
         }
     },
 
@@ -134,6 +157,8 @@ export default Vue.extend({
             //or that the slot is initially empty
             canBackspaceDeleteFrame: true,
             requestDelayBackspaceFrameRemoval: false,
+            //the preview for media literal (blank string if not media literal):
+            mediaPreview: {mediaType: "", imageDataURL: ""} as LoadedMedia,
         };
     },
     
@@ -159,6 +184,10 @@ export default Vue.extend({
                 return (retrieveSlotFromSlotInfos(this.coreSlotInfo) as StringSlot).quote;
             }
             return "";
+        },
+        
+        isMediaSlot(): boolean {
+            return this.slotType == SlotType.media;
         },
         
         frameType(): string{
@@ -268,6 +297,14 @@ export default Vue.extend({
 
         isPythonExecuting(): boolean {
             return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
+        },
+
+        mediaPreviewPopupRef(): InstanceType<typeof MediaPreviewPopup> | null {
+            return ((this as any).mediaPreviewPopupInstance as () => InstanceType<typeof MediaPreviewPopup>)?.();
+        },
+
+        doEditImageInDialog() : EditImageInDialogFunction {
+            return (this as any).editImageInDialog as EditImageInDialogFunction;
         },
     },
 
@@ -840,7 +877,7 @@ export default Vue.extend({
             // The browser generally has support for doing IME properly.  In a contenteditable span, it should
             // enter the original English (abc) and then substitute it for the non-ASCII at the right point.
             // So our plan here is as follows:
-            // - If there is a multi-slot selection when an input event occurs, we must perform a delete first (TODO!).
+            // - If there is a multi-slot selection when an input event occurs, we must perform a delete first.
             // - In general, we let the native input event process fully.
             // - Once input has occurred and finished, we check if we need to reprocess the slots.  This is especially
             //   with operators and brackets which can create new slots.
@@ -1157,11 +1194,21 @@ export default Vue.extend({
                 });
             }
             else {
-                this.onCodePasteImpl(event.detail);
+                // If the user pastes a large image (>= 1000 pixels in either dimension)
+                // we figure they probably want to trim it down before pasting, so we
+                // show the image editing dialog:
+                if (event.detail.type.startsWith("image/") && (event.detail.width >= 1000 || event.detail.height >= 1000)) {
+                    this.doEditImageInDialog(/"([^"]+)"/.exec(event.detail.content)?.[1] ?? "", () => {}, (replacement : {code: string, mediaType: string}) => {
+                        this.onCodePasteImpl(replacement.code, replacement.mediaType);
+                    });
+                }
+                else {
+                    this.onCodePasteImpl(event.detail.content, event.detail.type);
+                }
             }
         },
         
-        onCodePasteImpl(content : string, stateBeforeChanges?: any) {
+        onCodePasteImpl(content : string, type : string, stateBeforeChanges?: any) {
             // Save the current state
             stateBeforeChanges = stateBeforeChanges ?? cloneDeep(this.appStore.$state);
 
@@ -1175,7 +1222,15 @@ export default Vue.extend({
             const isCommentFrame = (this.frameType == AllFrameTypesIdentifier.comment);
             const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
             const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UID);
-            if(inputSpanField && inputSpanField.textContent != undefined){ //Keep TS happy
+            if (type.startsWith("image") || type.startsWith("audio")) {
+                this.appStore.addNewSlot(parseLabelSlotUID(this.UID), type, (inputSpanField.textContent?.substring(0, selectionStart) ?? "").replace(/\u200B/g, ""), (inputSpanField.textContent?.substring(selectionEnd) ?? "").replace(/\u200B/g, ""), SlotType.media, false, content);
+                this.$nextTick(() => {
+                    this.appStore.leftRightKey({key: "ArrowRight"});
+                });
+                return;
+            }
+            
+            if (inputSpanField && inputSpanField.textContent != undefined){ //Keep TS happy
                 // part 0 : the code copied from the interface contains unwanted CRLF added by the browser between the spans
                 // We want to clear that, we replace them by spaces to avoid issues with keyword operators, except for
                 // - before/after the content (we trime before doing anything)
@@ -1519,7 +1574,7 @@ export default Vue.extend({
             this.appStore.setSlotTextCursors(slotCursorInfo, slotCursorInfo);
             setDocumentSelection(slotCursorInfo, slotCursorInfo);
             // Then "paste" in the completion:
-            this.onCodePasteImpl(newCode);
+            this.onCodePasteImpl(newCode, "text");
 
             if(!isInSubModuleImportPathPart) {
                 // Slight hack; if it ended in a bracket, go left one place to end up back in the bracket:
@@ -1550,6 +1605,62 @@ export default Vue.extend({
    
         isImportFrame(): boolean {
             return this.appStore.isImportFrame(this.frameId);
+        },
+        
+        async loadMediaPreview(): Promise<LoadedMedia> {
+            let slot = retrieveSlotFromSlotInfos(this.coreSlotInfo) as MediaSlot;
+            if (slot.mediaType.startsWith("image") && !slot.mediaType.startsWith("image/svg+xml")) {
+                return {mediaType: slot.mediaType, imageDataURL: "data:" + slot.mediaType + ";" + /base64,[^"']+/.exec(slot.code)?.[0]};
+            }
+            else if (slot.mediaType.startsWith("audio")) {
+                let val = soundPreviewImages.get(slot.code);
+                if (val == null) {
+                    let audioBuffer = await new OfflineAudioContext(1, 1, 48000).decodeAudioData(Uint8Array.from(atob(/base64,([^"']+)/.exec(slot.code)?.[1] ?? ""), (char) => char.charCodeAt(0)).buffer);
+                    val = {mediaType: slot.mediaType, imageDataURL: drawSoundOnCanvas(audioBuffer, 200, 50, 1.0, 0.75), audioBuffer: audioBuffer};
+                    soundPreviewImages.put(slot.code, val);
+                }
+                return val;
+            }
+            return {mediaType: "", imageDataURL: ""};
+        },
+        getMediaType(): string {
+            let slot = retrieveSlotFromSlotInfos(this.coreSlotInfo) as MediaSlot;
+            return slot.mediaType;
+        },
+        showMediaPreviewPopup(event : MouseEvent) {
+            if (!this.isPythonExecuting) {
+                this.mediaPreviewPopupRef?.showPopup(event, this.mediaPreview, (repl : { code: string, mediaType : string }) => {
+                    this.appStore.setFrameEditableSlotContent(
+                        {
+                            ...this.coreSlotInfo,
+                            code: repl.code,
+                            mediaType: repl.mediaType,
+                            initCode: "",
+                            isFirstChange: true,
+                        }
+                    );
+                });
+            }
+        },
+        startHideMediaPreviewPopup() {
+            this.mediaPreviewPopupRef?.startHidePopup();
+        },
+    },
+    watch: {
+        slotType: function() {
+            if (this.isMediaSlot) {
+                this.loadMediaPreview().then((m) => {
+                    this.mediaPreview = m;
+                });
+            }
+        },
+        // If the image is edited, the slotType won't change but code will so we need to watch it:
+        code: function() {
+            if (this.isMediaSlot) {
+                this.loadMediaPreview().then((m) => {
+                    this.mediaPreview = m;
+                });
+            }
         },
     },
 });
@@ -1633,5 +1744,14 @@ export default Vue.extend({
     position: absolute;
     left: 0px;
     z-index: 10;
+}
+
+.limited-height-inline-image {
+    max-height: 1.5em;
+    border:1px solid #333;
+    /* Prevent selection to prevent it being copied to clipboard as part of a selection.
+       We copy the Python code to produce it instead: */
+    user-select: none;
+    -webkit-user-select: none; /* For Safari */
 }
 </style>

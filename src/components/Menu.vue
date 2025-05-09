@@ -1154,6 +1154,10 @@ export default Vue.extend({
                     const isFullIndex = ((this.currentErrorNavIndex % 1) == 0);
                     this.currentErrorNavIndex += (((toNext) ? 1 : -1) / ((isFullIndex) ? 1 : 2));
                     const errorElement = getEditorCodeErrorsHTMLElements()[this.currentErrorNavIndex];
+                    if (errorElement == null) {
+                        // If there's no longer an error, don't do anything:
+                        return;
+                    }
                     // Make sure that getting to an error will result opening the container frame container (section) if it was collapsed
                     const isErrorOnFrame = isIdAFrameId(errorElement.id);
                     const erroneousFrameId = (isErrorOnFrame) 

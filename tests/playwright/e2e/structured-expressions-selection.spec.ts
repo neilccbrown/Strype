@@ -22,18 +22,6 @@ test.beforeEach(async ({ page }) => {
             configurable: true,
         });
     });
-    
-    // The domcontentloaded does not wait for async/defer, which is our Google scripts, but we
-    // don't need them for this test.  In fact, save time by blocking that domain:
-    await page.route("**/*", (route) => {
-        const url = route.request().url();
-        if (url.includes("google.com")) {
-            route.abort(); // prevent loading
-        }
-        else {
-            route.continue(); // allow others
-        }
-    });
     await page.goto("./", {waitUntil: "domcontentloaded"});
     await page.waitForSelector("body");
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
