@@ -467,6 +467,10 @@ export function getMenuLeftPaneUID(): string {
     return "menu-bar";
 }
 
+export function getNewProjectLinkId(): string {
+    return "newProjectLink";
+}
+
 export function getLoadProjectLinkId(): string {
     return "loadProjectLink";
 }
