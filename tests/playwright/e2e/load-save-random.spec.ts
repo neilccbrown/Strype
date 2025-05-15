@@ -6,16 +6,16 @@ import {allFrameCommandsDefs, FuncDefIdentifiers, getFrameDefType, CommentFrameT
 import seedrandom from "seedrandom";
 import en from "../../../src/localisation/en/en_main.json";
 
-import {WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME} from "../../../src/helpers/sharedIdCssWithTests";
+import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "../../../src/helpers/sharedIdCssWithTests";
 import {Page, test, expect, ElementHandle, JSHandle} from "@playwright/test";
-import path from "path";
+import { rename } from "fs/promises";
 import {checkFrameXorTextCursor, typeIndividually} from "../support/editor";
 
 function createBrowserProxy(page: Page, objectName: string) : any {
     return new Proxy({}, {
         get(_, prop: string) {
             return async (...args: any[]) => {
-                return page.evaluate(
+                return await page.evaluate(
                     ([objectName, method, args]) =>
                         (window as any)[objectName as string][method as string](...args),
                     [objectName, prop, args]
@@ -26,9 +26,8 @@ function createBrowserProxy(page: Page, objectName: string) : any {
 }
 
 let scssVars: {[varName: string]: string};
-let strypeElIds: {[varName: string]: (...args: any[]) => string};
+let strypeElIds: {[varName: string]: (...args: any[]) => Promise<string>};
 test.beforeEach(async ({ page }) => {
-    scssVars = createBrowserProxy(page, WINDOW_STRYPE_SCSSVARS_PROPNAME);
     strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
@@ -191,44 +190,47 @@ async function getFramesFromDOM(page: Page) : Promise<FrameEntry[][]> {
     return Promise.all(containers.map((container) => getAllFrames(container as ElementHandle<HTMLElement>)));
 }
 
-
-const filename = "My project.spy";
-
-function load() : void {
-    const downloadsFolder = Cypress.config("downloadsFolder");
-    const filepath = path.join(downloadsFolder, filename);
+async function load(page: Page, filepath: string) : Promise<void> {
     
-    cy.get("#" + strypeElIds.getEditorMenuUID()).click();
-    cy.get("#" + strypeElIds.getLoadProjectLinkId()).click();
-    // If the current state of the project is modified,
-    // we first need to discard the changes (we check the button is available)
-    cy.get("button").contains(en.buttonLabel.discardChanges).should("exist").click();
-    cy.wait(2000);
+    await page.click("#" + await strypeElIds.getEditorMenuUID());
+    await page.click("#" + await strypeElIds.getLoadProjectLinkId());
     // The "button" for the target selection is now a div element.
-    cy.get("#" + strypeElIds.getLoadFromFSStrypeButtonId()).click();
+    await page.click("#" + await strypeElIds.getLoadFromFSStrypeButtonId());
     // Must force because the <input> is hidden:
-    cy.get("." + scssVars.editorFileInputClassName).selectFile(filepath, {force : true});
-    cy.wait(2000);
+    await page.setInputFiles("." + scssVars.editorFileInputClassName, filepath);
+    await page.waitForTimeout(2000);
 }
 
-function save(firstSave = true) : void {
-    const downloadsFolder = Cypress.config("downloadsFolder");
-    const destFile = path.join(downloadsFolder, filename);
-    cy.task("deleteFile", destFile);
-    // Save is located in the menu, so we need to open it first, then find the link and click on it
-    // Force these because sometimes cypress gives false alarm about webpack overlay being on top:
-    cy.get("button#" + strypeElIds.getEditorMenuUID()).click({force: true});
-    cy.contains(en.appMenu.saveProject).click({force: true});
+async function save(page: Page, firstSave = true) : Promise<string> {
+    // Save is located in the menu, so we need to open it first, then find the link and click on it:
+    await page.click("#" + await strypeElIds.getEditorMenuUID());
+    
+    let download;
     if (firstSave) {
+        await page.click("#" + await strypeElIds.getSaveProjectLinkId());
         // For testing, we always want to save to this device:
-        cy.contains(en.appMessage.targetFS).click({force: true});
-        cy.contains(en.buttonLabel.ok).click({force: true});
+        await page.getByText(en.appMessage.targetFS).click();
+        [download] = await Promise.all([
+            page.waitForEvent("download"),
+            page.click("button.btn:has-text('OK')"),
+        ]);
     }
+    else {
+        [download] = await Promise.all([
+            page.waitForEvent("download"),
+            page.click("#" + await strypeElIds.getSaveProjectLinkId()),
+        ]);
+    }
+    const filePath = await download.path();
+    return filePath;
 }
 
-function newProject() : void {
-    cy.get("#" + strypeElIds.getNewProjectLinkId()).click();
-    cy.wait(2000);
+async function newProject(page: Page) : Promise<void> {
+    // New is located in the menu, so we need to open it first, then find the link and click on it:
+    await page.click("#" + await strypeElIds.getEditorMenuUID());
+    await page.waitForTimeout(200);
+    await page.click("#" + await strypeElIds.getNewProjectLinkId());
+    await page.waitForTimeout(2000);
 }
 
 test.describe("Enters, saves and loads random frame", () => {
@@ -242,6 +244,9 @@ test.describe("Enters, saves and loads random frame", () => {
             if (testInfo.project.name === "chromium") {
                 test.skip(); // See comment above
             }
+            
+            // Increase test timeout:
+            test.slow();
             
             await page.keyboard.press("Delete");
             await page.keyboard.press("Delete");
@@ -264,12 +269,15 @@ test.describe("Enters, saves and loads random frame", () => {
             }
             const dom = await getFramesFromDOM(page);
             expect(dom, seed).toEqual(frames);
-            /*
-            save();
-            newProject();
-            load();
-            getFramesFromDOM().then((dom) => expect(dom).to.deep.equal(frames, seed));
-             */
+            const savePath = await save(page);
+            await newProject(page);
+            // Must make it have .spy extension:
+            await rename(savePath, savePath + ".spy");
+            await load(page, savePath + ".spy");
+            const dom2 = await getFramesFromDOM(page);
+            // Just one should be needed, but why not both just in case:
+            expect(dom2, seed).toEqual(frames);
+            expect(dom2, seed).toEqual(dom);
         });
     }
 });

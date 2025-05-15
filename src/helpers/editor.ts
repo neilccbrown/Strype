@@ -475,6 +475,10 @@ export function getLoadProjectLinkId(): string {
     return "loadProjectLink";
 }
 
+export function getSaveProjectLinkId(): string {
+    return "saveStrypeProjLink";
+}
+
 export function getGoogleDriveComponentRefId(): string {
     return "googleDriveComponent";
 }
