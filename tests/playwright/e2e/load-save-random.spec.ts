@@ -27,7 +27,14 @@ function createBrowserProxy(page: Page, objectName: string) : any {
 
 let scssVars: {[varName: string]: string};
 let strypeElIds: {[varName: string]: (...args: any[]) => Promise<string>};
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page }, testInfo) => {
+    // With regards to Chromium: several of these tests fail on Chromium in Playwright on Mac and
+    // I can't figure out why.  I've tried them manually in Chrome and Chromium on the same
+    // machine and it works fine, but I see in the video that the test fails in Playwright
+    // (pressing right out of a comment frame puts the cursor at the beginning and makes a frame cursor).
+    // Since it works in the real browsers, and on Webkit and Firefox, we just skip the tests in Chromium
+    test.skip(testInfo.project.name == "chromium", "Cannot run in Chromium");    
+    
     strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
@@ -66,7 +73,11 @@ function pick<T>(ts: T[]): T {
 }
 
 function genRandomString() : string {
-    return "foo";
+    // These are some easy valid characters and some awkward invalid ones, but
+    // none that are valid Python operators:
+    const candidates = "aB01#$!@_\\ü";
+    const len = 1 + getRandomInt(6);
+    return Array.from({ length: len }, () => pick(candidates.split(""))).join("");
 }
 
 function genRandomFrame(fromFrames: string[]): FrameEntry {
@@ -233,18 +244,35 @@ async function newProject(page: Page) : Promise<void> {
     await page.waitForTimeout(2000);
 }
 
+async function testSpecific(page: Page, sections: FrameEntry[][]) : Promise<void> {
+    await page.keyboard.press("Delete");
+    await page.keyboard.press("Delete");
+    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("ArrowUp");
+
+    for (let section = 0; section < 3; section++) {
+        for (let j = 0; j < sections[section].length; j++) {
+            await enterFrame(page, sections[section][j]);
+        }
+        await page.keyboard.press("ArrowDown");
+        await page.waitForTimeout(100);
+    }
+    const dom = await getFramesFromDOM(page);
+    expect(dom).toEqual(sections);
+    const savePath = await save(page);
+    await newProject(page);
+    // Must make it have .spy extension:
+    await rename(savePath, savePath + ".spy");
+    await load(page, savePath + ".spy");
+    const dom2 = await getFramesFromDOM(page);
+    // Just one should be needed, but why not both just in case:
+    expect(dom2).toEqual(sections);
+    expect(dom2).toEqual(dom);
+}
+
 test.describe("Enters, saves and loads random frame", () => {
     for (let i = 0; i < 2/*20*/; i++) {
         test("Tests random entry #" + i, async ({page}, testInfo) => {
-            // With regards to Chromium: several of these tests fail on Chromium in Playwright on Mac and
-            // I can't figure out why.  I've tried them manually in Chrome and Chromium on the same
-            // machine and it works fine, but I see in the video that the test fails in Playwright
-            // (pressing right out of a comment frame puts the cursor at the beginning and makes a frame cursor).
-            // Since it works in the real browsers, and on Webkit and Firefox, we just skip the tests in Chromium
-            if (testInfo.project.name === "chromium") {
-                test.skip(); // See comment above
-            }
-            
             // Increase test timeout:
             test.slow();
             
@@ -263,7 +291,6 @@ test.describe("Enters, saves and loads random frame", () => {
                     await enterFrame(page, f);
                     frames[section].push(f);
                 }
-                await page.waitForTimeout(2000); // TEMP
                 await page.keyboard.press("ArrowDown");
                 await page.waitForTimeout(100);
             }
@@ -280,4 +307,35 @@ test.describe("Enters, saves and loads random frame", () => {
             expect(dom2, seed).toEqual(dom);
         });
     }
+});
+
+// Here we test some specifics which previously failed:
+test.describe("Enters, saves and loads specific frames", () => {
+    test("Tests funccall beginning with #", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "funccall", slotContent: ["foo"], body: undefined},
+            {frameType: "funccall", slotContent: ["#foo"], body: undefined},
+            {frameType: "funccall", slotContent: ["foo"], body: undefined},
+        ]]);
+    });
+    test("Tests trailing blank line", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "blank", slotContent: [], body: undefined},
+            {frameType: "funccall", slotContent: ["foo()"], body: undefined},
+            {frameType: "blank", slotContent: [], body: undefined},
+        ]]);
+    });
+    test("Tests blank between while and if", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "while", slotContent: ["foo"], body: []},
+            {frameType: "blank", slotContent: [], body: undefined},
+            {frameType: "if", slotContent: ["foo"], body: []},
+        ]]);
+    });
+
+    test("Test weird number on assignment LHS", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "varassign", slotContent: ["1_", "#!0"], body: undefined},
+        ]]);
+    });
 });
