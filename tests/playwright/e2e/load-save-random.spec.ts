@@ -282,6 +282,7 @@ test.describe("Enters, saves and loads random frame", () => {
             await page.keyboard.press("ArrowUp");
 
             const seed = Math.random().toString();
+            console.log(`Seed: "${seed}"`);
             rng = seedrandom(seed).int32;
             const frames = [[], [], []] as FrameEntry[][];
             for (let section = 0; section < 3; section++) {
