@@ -66,7 +66,7 @@ function isValidPythonNumber(str: string): boolean {
         hexInt.test(trimmed) ||
         floatNum.test(trimmed) ||
         complexNum.test(trimmed)
-    );
+    ) && !trimmed.endsWith("_");
 }
 
 function toUnicodeEscapes(input: string): string {
@@ -167,7 +167,7 @@ export default class Parser {
         // Comments are treated separately for 2 reasons: 1) when we are parsing for a/c we don't want to parse the comments because they mess up with the try block surrounding the lines of code,
         // and 2) we need to check if the comment is multilines for setting the right comment indicator (''' instead of #). A comment is always a single slot so there is no extra logic to consider.
         if((statement.frameType.type === AllFrameTypesIdentifier.comment) 
-        || (statement.frameType.type === AllFrameTypesIdentifier.funccall && isFieldBaseSlot(statement.labelSlotsDict[0].slotStructures.fields[0]) && (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.startsWith("#"))){
+        || (!this.saveAsSPY && statement.frameType.type === AllFrameTypesIdentifier.funccall && isFieldBaseSlot(statement.labelSlotsDict[0].slotStructures.fields[0]) && (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.startsWith("#"))){
             const commentContent = (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code;
             // Before returning, we update the line counter used for the frame mapping in the parser:
             // +1 except if we are in a multiline comment (and not excluding them) when we then return the number of lines-1 + 2 for the multi quotes
@@ -281,6 +281,10 @@ export default class Parser {
                 // We need to add an extra except to finish the try frame off and make it valid:
                 output += thisIndentation + "except:\n" + thisIndentation + "    pass\n"; 
             }
+        }
+        
+        if (this.saveAsSPY) {
+            output += "#" + AppSPYPrefix + " Section:End\n";
         }
 
         return output;
