@@ -10,6 +10,7 @@ import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "../../../src/helpers/sharedIdCssWi
 import {Page, test, expect, ElementHandle, JSHandle} from "@playwright/test";
 import { rename } from "fs/promises";
 import {checkFrameXorTextCursor, typeIndividually} from "../support/editor";
+import {readFileSync} from "node:fs";
 
 function createBrowserProxy(page: Page, objectName: string) : any {
     return new Proxy({}, {
@@ -261,6 +262,15 @@ async function testSpecific(page: Page, sections: FrameEntry[][]) : Promise<void
     expect(dom).toEqual(sections);
     const savePath = await save(page);
     await newProject(page);
+    
+    // Log for debugging purposes:
+    try {
+        const contents = readFileSync(savePath, "utf8");
+        console.log(contents);
+    } catch (err) {
+        console.error("Error reading file:", err);
+    }
+    
     // Must make it have .spy extension:
     await rename(savePath, savePath + ".spy");
     await load(page, savePath + ".spy");
@@ -330,6 +340,14 @@ test.describe("Enters, saves and loads specific frames", () => {
         await testSpecific(page, [[], [], [
             {frameType: "while", slotContent: ["foo"], body: []},
             {frameType: "blank", slotContent: [], body: undefined},
+            {frameType: "if", slotContent: ["foo"], body: []},
+        ]]);
+    });
+    test("Tests blank inside while", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "while", slotContent: ["foo"], body: [
+                {frameType: "blank", slotContent: [], body: undefined},
+            ]},
             {frameType: "if", slotContent: ["foo"], body: []},
         ]]);
     });
