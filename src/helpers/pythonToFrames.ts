@@ -593,9 +593,11 @@ function flushComments(lineno: number, s: CopyState, requiredIndentation: string
         
         if (content === null && indentation == requiredIndentation) {
             s = addFrame(makeFrame(AllFrameTypesIdentifier.blank, {}), lineno, s);
+            lineno += 1;
         }
         else if (typeof content == "string" && indentation == requiredIndentation) {
             s = addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: content}], operators: []}}}), lineno, s);
+            lineno += 1;
         }
         else if (content != null && typeof content != "string" && indentation == requiredIndentation && (filterKeywords.length == 0 || (content.length > 0 && filterKeywords.some((k) => content[0].startsWith(k))))) {
             // Parse and insert disabled frame(s):
@@ -633,6 +635,7 @@ function flushComments(lineno: number, s: CopyState, requiredIndentation: string
                     }
                 }
             }
+            lineno += content.length;
         }
         else {
             s.pendingComments.unshift(...considering);
