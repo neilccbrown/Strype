@@ -334,7 +334,12 @@ export default class Parser {
             code = this.parse();
         }
 
-        return TPyParser.findAllErrors(code);
+        try {
+            return TPyParser.findAllErrors(code);
+        }
+        catch (e) {
+            return [{line:1, offset: 0, msg: "Unknown TigerPython error", code: ""}];
+        }
     }
 
     public getErrorsFormatted(inputCode = ""): string {
