@@ -339,4 +339,30 @@ test.describe("Enters, saves and loads specific frames", () => {
             {frameType: "varassign", slotContent: ["1_", "#!0"], body: undefined},
         ]]);
     });
+
+    test("Comments at the end of funcdefs", async ({page}) => {
+        await testSpecific(page, [[], [
+            {frameType: "funcdef", slotContent: ["foo", ""], body: [
+                {frameType: "varassign", slotContent: ["1_", "#!0"], body: undefined},
+                {frameType: "while", slotContent: ["foo"], body: []},
+                {frameType: "comment", slotContent: ["Inside def"], body: undefined},
+            ]},
+            {frameType: "comment", slotContent: ["Outside def"], body: undefined},
+        ], [
+            {frameType: "blank", slotContent: [], body: undefined},
+            {frameType: "while", slotContent: ["foo"], body: [
+                {frameType: "comment", slotContent: ["Inside while"], body: undefined}
+            ]},
+            {frameType: "comment", slotContent: ["Outside while"], body: undefined},
+        ]]);
+    });
+
+    test("Comment-only body", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "while", slotContent: ["foo"], body: [
+                {frameType: "comment", slotContent: ["Only comment in body"], body: undefined},
+            ]},
+            {frameType: "raise", slotContent: ["foo"], body: undefined},
+        ]]);
+    });
 });
