@@ -288,10 +288,14 @@ async function testSpecific(page: Page, sections: FrameEntry[][]) : Promise<void
 }
 
 test.describe("Enters, saves and loads random frame", () => {
-    for (let i = 0; i < 2/*20*/; i++) {
+    for (let i = 0; i < 10; i++) {
         test("Tests random entry #" + i, async ({page}, testInfo) => {
             // Increase test timeout:
             test.slow();
+            // Don't retry these tests; if they fail, we want to know:
+            if (testInfo.retry > 0) {
+                return;
+            }
             
             await page.keyboard.press("Delete");
             await page.keyboard.press("Delete");
@@ -356,6 +360,24 @@ test.describe("Enters, saves and loads specific frames", () => {
                 {frameType: "blank", slotContent: [], body: undefined},
             ]},
             {frameType: "if", slotContent: ["foo"], body: []},
+        ]]);
+    });
+
+    test("Blanks at the end of funcdef", async ({page}) => {
+        await testSpecific(page, [[], [
+            {frameType: "funcdef", slotContent: ["foo", ""], body: [
+                {frameType: "blank", slotContent: [], body: undefined},
+                {frameType: "while", slotContent: ["foo"], body: [
+                    {frameType: "comment", slotContent: ["Inside def"], body: undefined},
+                ]},
+                {frameType: "blank", slotContent: [], body: undefined},
+            ]},
+        ], [
+            {frameType: "blank", slotContent: [], body: undefined},
+            {frameType: "while", slotContent: ["foo"], body: [
+                {frameType: "comment", slotContent: ["Inside while"], body: undefined}
+            ]},
+            {frameType: "comment", slotContent: ["Outside while"], body: undefined},
         ]]);
     });
 
