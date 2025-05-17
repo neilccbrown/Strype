@@ -593,7 +593,7 @@ function flushComments(lineno: number, s: CopyState, requiredIndentation: string
         // Remove first item:
         const considering = s.pendingComments.splice(0, 1);
         
-        if (content === null && indentation == requiredIndentation) {
+        if (content === null && (indentation == requiredIndentation || !inclConsecutiveMatchingIndent)) {
             s = addFrame(makeFrame(AllFrameTypesIdentifier.blank, {}), lineno, s);
             if (inclConsecutiveMatchingIndent) {
                 lineno += 1;
