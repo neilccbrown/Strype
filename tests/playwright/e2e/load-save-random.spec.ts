@@ -274,7 +274,8 @@ async function testSpecific(page: Page, sections: FrameEntry[][]) : Promise<void
     try {
         const contents = readFileSync(savePath, "utf8");
         console.log(contents);
-    } catch (err) {
+    }
+    catch (err) {
         console.error("Error reading file:", err);
     }
     
@@ -392,7 +393,7 @@ test.describe("Enters, saves and loads specific frames", () => {
         ], [
             {frameType: "blank", slotContent: [], body: undefined},
             {frameType: "while", slotContent: ["foo"], body: [
-                {frameType: "comment", slotContent: ["Inside while"], body: undefined}
+                {frameType: "comment", slotContent: ["Inside while"], body: undefined},
             ]},
             {frameType: "comment", slotContent: ["Outside while"], body: undefined},
         ]]);
@@ -433,7 +434,7 @@ test.describe("Enters, saves and loads specific frames", () => {
         ], [
             {frameType: "blank", slotContent: [], body: undefined},
             {frameType: "while", slotContent: ["foo"], body: [
-                {frameType: "comment", slotContent: ["Inside while"], body: undefined}
+                {frameType: "comment", slotContent: ["Inside while"], body: undefined},
             ]},
             {frameType: "comment", slotContent: ["Outside while"], body: undefined},
         ]]);
