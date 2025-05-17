@@ -1152,12 +1152,12 @@ export default Vue.extend({
                 const s = splitLinesToSections(allLines);
                 // Bit awkward but we first attempt to copy each to check for errors because
                 // if there are any errors we don't want to paste any:
-                let err = copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION, s.importsMapping);
+                let err = copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.importsMapping);
                 if (typeof err != "string") {
-                    err = copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION, s.defsMapping);
+                    err = copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.FUNCDEF_SECTION, s.defsMapping);
                 }
                 if (typeof err != "string") {
-                    err = copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION, s.mainMapping);
+                    err = copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION, s.mainMapping);
                 }
                 if (typeof err == "string") {
                     const msg = cloneDeep(MessageDefinitions.InvalidPythonParseImport);
@@ -1170,16 +1170,16 @@ export default Vue.extend({
                     // Clear the current existing code (i.e. frames) of the editor
                     this.appStore.clearAllFrames();
 
-                    copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION);
+                    copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION);
                     if (useStore().copiedSelectionFrameIds.length > 0) {
                         getCaretContainerComponent(getFrameComponent(this.appStore.getImportsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(true);
                     }
-                    copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION);
+                    copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.FUNCDEF_SECTION);
                     if (useStore().copiedSelectionFrameIds.length > 0) {
                         getCaretContainerComponent(getFrameComponent(this.appStore.getFuncDefsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(true);
                     }
                     if (s.main.length > 0) {
-                        copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION);
+                        copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION);
                         if (useStore().copiedSelectionFrameIds.length > 0) {
                             getCaretContainerComponent(getFrameComponent(this.appStore.getMainCodeFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(true);
                         }

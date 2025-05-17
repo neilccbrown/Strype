@@ -182,15 +182,11 @@ function getIndent(codeLine: string) {
 // ready to be pasted immediately afterwards.
 // If successful, returns a map with key-value Strype directives.  If unsuccessful, returns a string with some info about
 // where the Python parse failed.
-export function copyFramesFromParsedPython(code: string, currentStrypeLocation: STRYPE_LOCATION, linenoMapping?: Record<number, number>) : string | null | Map<string, string> {
+export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, linenoMapping?: Record<number, number>) : string | null | Map<string, string> {
     const mapLineno = (lineno : number) : number => linenoMapping ? linenoMapping[lineno] : lineno;
     const strypeDirectives = new Map<string, string>();
     const indents = new Map<number, string>();
     
-    // Preprocess; first take off trailing whitespace:
-    code = code.trimEnd();
-
-    const codeLines = code.split(/\r?\n/);
     // Then find the common amount of indentation on non-blank lines and remove it:
     // This way if the user parses in something like this from the middle of some Python:
     // "    if x > 8:"
