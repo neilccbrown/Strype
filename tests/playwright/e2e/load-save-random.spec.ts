@@ -77,7 +77,7 @@ function genRandomString() : string {
     // These are some easy valid characters and some awkward invalid ones, but
     // none that are valid Python operators:
     const candidates = "aB01#$!@_\\ü";
-    const len = 1 + getRandomInt(6);
+    const len = getRandomInt(6);
     return Array.from({ length: len }, () => pick(candidates.split(""))).join("");
 }
 
@@ -340,6 +340,13 @@ test.describe("Enters, saves and loads specific frames", () => {
             {frameType: "funccall", slotContent: ["foo"], body: undefined},
         ]]);
     });
+    test("Empty comments", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "comment", slotContent: [""], body: undefined},
+            {frameType: "funccall", slotContent: ["foo()"], body: undefined},
+            {frameType: "comment", slotContent: [""], body: undefined},
+        ]]);
+    });
     test("Tests trailing blank line", async ({page}) => {
         await testSpecific(page, [[], [], [
             {frameType: "blank", slotContent: [], body: undefined},
@@ -362,6 +369,16 @@ test.describe("Enters, saves and loads specific frames", () => {
             {frameType: "if", slotContent: ["foo"], body: []},
         ]]);
     });
+    test("Tests blank inside and after if", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "if", slotContent: ["foo"], body: [
+                {frameType: "comment", slotContent: ["Inside if"], body: undefined},
+                {frameType: "blank", slotContent: [], body: undefined},
+            ]},
+            {frameType: "blank", slotContent: [], body: undefined},
+            {frameType: "raise", slotContent: ["foo"], body: undefined},
+        ]]);
+    });
 
     test("Blanks at the end of funcdef", async ({page}) => {
         await testSpecific(page, [[], [
@@ -381,9 +398,27 @@ test.describe("Enters, saves and loads specific frames", () => {
         ]]);
     });
 
+    test("Blanks at the end of funcdef #2", async ({page}) => {
+        await testSpecific(page, [[], [
+            {frameType: "funcdef", slotContent: ["foo", ""], body: [
+                {frameType: "blank", slotContent: [], body: undefined},
+                {frameType: "blank", slotContent: [], body: undefined},
+                {frameType: "blank", slotContent: [], body: undefined},
+            ]},
+            {frameType: "comment", slotContent: ["A"], body: undefined},
+            {frameType: "comment", slotContent: ["B"], body: undefined},
+            {frameType: "comment", slotContent: ["C"], body: undefined},
+        ], []]);
+    });
+
     test("Test weird number on assignment LHS", async ({page}) => {
         await testSpecific(page, [[], [], [
             {frameType: "varassign", slotContent: ["1_", "#!0"], body: undefined},
+        ]]);
+    });
+    test("Test weird number on assignment LHS #2", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "varassign", slotContent: ["01", "#!0"], body: undefined},
         ]]);
     });
 
