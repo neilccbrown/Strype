@@ -81,10 +81,11 @@ function genRandomString() : string {
     return Array.from({ length: len }, () => pick(candidates.split(""))).join("");
 }
 
-function genRandomFrame(fromFrames: string[]): FrameEntry {
+function genRandomFrame(fromFrames: string[], level : number): FrameEntry {
     const id = pick(fromFrames);
     const def = getFrameDefType(id);
-    return {frameType: id, slotContent: def.labels.filter((l) => l.showSlots ?? true).map((_) => genRandomString()), body: def.allowChildren ? [/*TODO*/] : undefined};
+    const subLen = level == 2 ? 0 : getRandomInt(4 - level * 2);
+    return {frameType: id, slotContent: def.labels.filter((l) => l.showSlots ?? true).map((_) => genRandomString()), body: def.allowChildren ? Array.from({ length: subLen }, () => genRandomFrame(framesBySection[2], level + 1)) : undefined};
 }
 
 async function enterFrame(page: Page, frame : FrameEntry) : Promise<void> {
@@ -168,8 +169,14 @@ async function getAllFrames(container : ElementHandle<HTMLElement>) : Promise<Fr
     const frameDivSelector = "." + scssVars.frameDivClassName;
     // Get all the frame divs
     const outermostFramesArr = await container.evaluateHandle((root, selector) => {
-        const matches = Array.from((root as HTMLElement).querySelectorAll(selector as string)) as HTMLElement[];
-        return matches.filter((el) => !el.closest(`${selector} ${selector}`));
+        const matches = Array.from(root.querySelectorAll(selector)) as HTMLElement[];
+
+        return matches.filter((el) => {
+            const enclosingFrame = el.parentElement?.closest(selector);
+            return (
+                !enclosingFrame || enclosingFrame.contains(root)
+            );
+        });
     }, frameDivSelector);
 
     const outermostFrames = await fetchAll(outermostFramesArr);
@@ -185,7 +192,7 @@ async function getAllFrames(container : ElementHandle<HTMLElement>) : Promise<Fr
                 return getAllFrames(bodyContainers[0] as ElementHandle<HTMLElement>) as Promise<FrameEntry[] | undefined>;
             }
         });
-        const slotEls = await el.$$(".label-slot-structure");
+        const slotEls = await el.$$(":scope > .frame-header .label-slot-structure");
         const slots = await Promise.all(slotEls.map( (el) => visibleTextContent(el as ElementHandle<HTMLElement>)));
         const frameType = await el.getAttribute("data-frameType");
         frameEntries.push({
@@ -298,7 +305,7 @@ test.describe("Enters, saves and loads random frame", () => {
             for (let section = 0; section < 3; section++) {
                 const numFrames = 5;
                 for (let j = 0; j < numFrames; j++) {
-                    const f = genRandomFrame(framesBySection[section]);
+                    const f = genRandomFrame(framesBySection[section], 0);
                     await enterFrame(page, f);
                     frames[section].push(f);
                 }
