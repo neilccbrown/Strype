@@ -6,3 +6,4 @@ try :
     print(msg) 
 except ___strype_dummy:
     pass
+#(=> Section:End

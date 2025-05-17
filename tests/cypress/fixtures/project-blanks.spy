@@ -10,3 +10,4 @@ def ___strype_blank ( ) :
 #(=> Section:Main
 raise  
 ___strype_blank  = 1+___strype_blank*___strype_blank/()-___strype_blank 
+#(=> Section:End
