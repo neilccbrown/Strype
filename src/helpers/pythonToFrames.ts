@@ -228,7 +228,7 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
     const comments : LocatedCommentOrBlankLine[] = [];
     for (let i = 0; i < codeLines.length; i++) {
         // Look for # with only space before them, or a # with no quote after:
-        const match = /^( +)#(.*)$/.exec(codeLines[i]) ?? /()#([^"]+)$/.exec(codeLines[i]);
+        const match = /^( *)#(.*)$/.exec(codeLines[i]) ?? /()#([^"]+)$/.exec(codeLines[i]);
         if (match) {
             const directiveMatch = new RegExp("^ *#" + escapeRegExp(AppSPYPrefix) + "([^:]+):(.*)$").exec(codeLines[i]);
             if (directiveMatch) {
@@ -252,6 +252,7 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
             comments.push({lineNumber: i + 1, indentation: codeLines[i], content: null});
         }
     }
+    
     // We then do a second pass to tag and concatenate any disabled blocks with the same indent.
     // We manipulate the array so we go backwards to minimise index change consideration.
     // And we don't need to process i = 0 because it can't combine with i-1.
@@ -577,14 +578,15 @@ function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, child
     const afterChild = copyFramesFromPython(frameChildren[childIndexForBody], {...s, addToNonJoint: frame.childrenIds, addToJoint: undefined, parent: frame});
     s = {...s, nextId: afterChild.nextId, lastLineProcessed: afterChild.lastLineProcessed};
     if (s.lastLineProcessed != undefined) {
-        updateFrom(s, flushComments(s.lastLineProcessed + 1, {...s, addToNonJoint: frame.childrenIds, addToJoint: undefined, parent: frame}, s.lineNumberToIndentation.get(getRealLineNo(frameChildren[childIndexForBody]) ?? 0) ?? ""));
+        const indent = s.lineNumberToIndentation.get(getRealLineNo(frameChildren[childIndexForBody]) ?? 0) ?? "";
+        updateFrom(s, flushComments(s.lastLineProcessed + 1, {...s, addToNonJoint: frame.childrenIds, addToJoint: undefined, parent: frame}, indent, true));
     }
     return {s: s, frame: frame};
 }
 
 // Check if there any comments/blanks in s.pendingComments that appear at or before the given line number,
 // and insert them as blanks/comment frames at the given point 
-function flushComments(lineno: number, s: CopyState, requiredIndentation: string, ...filterKeywords: string[]) : CopyState {
+function flushComments(lineno: number, s: CopyState, requiredIndentation: string, inclConsecutiveMatchingIndent: boolean, ...filterKeywords: string[]) : CopyState {
     while (s.pendingComments.length > 0 && s.pendingComments[0].lineNumber <= lineno) {
         const content = s.pendingComments[0].content;
         const indentation = s.pendingComments[0].indentation;
@@ -593,11 +595,15 @@ function flushComments(lineno: number, s: CopyState, requiredIndentation: string
         
         if (content === null && indentation == requiredIndentation) {
             s = addFrame(makeFrame(AllFrameTypesIdentifier.blank, {}), lineno, s);
-            lineno += 1;
+            if (inclConsecutiveMatchingIndent) {
+                lineno += 1;
+            }
         }
         else if (typeof content == "string" && indentation == requiredIndentation) {
             s = addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: content}], operators: []}}}), lineno, s);
-            lineno += 1;
+            if (inclConsecutiveMatchingIndent) {
+                lineno += 1;
+            }
         }
         else if (content != null && typeof content != "string" && indentation == requiredIndentation && (filterKeywords.length == 0 || (content.length > 0 && filterKeywords.some((k) => content[0].startsWith(k))))) {
             // Parse and insert disabled frame(s):
@@ -635,7 +641,9 @@ function flushComments(lineno: number, s: CopyState, requiredIndentation: string
                     }
                 }
             }
-            lineno += content.length;
+            if (inclConsecutiveMatchingIndent) {
+                lineno += content.length;
+            }
         }
         else {
             s.pendingComments.unshift(...considering);
@@ -650,7 +658,7 @@ function flushComments(lineno: number, s: CopyState, requiredIndentation: string
 function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState {
     //console.log("Processing type: " + (Sk.ParseTables.number2symbol[p.type] || ("#" + p.type)));
     if (p.lineno) {
-        s = flushComments(p.lineno, s, s.lineNumberToIndentation.get(p.lineno ?? 0) ?? "");
+        s = flushComments(p.lineno, s, s.lineNumberToIndentation.get(p.lineno ?? 0) ?? "", false);
     }
     
     switch (p.type) {
@@ -659,6 +667,8 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         for (const child of children(p)) {
             s = copyFramesFromPython(child, s);
         }
+        // Flush remaining comments:
+        updateFrom(s, flushComments(999999, s, "", false));
         break;
     case Sk.ParseTables.sym.stmt:
     case Sk.ParseTables.sym.simple_stmt:
@@ -732,7 +742,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         // Could be disabled item between if and non-disabled items:
         if (s.lastLineProcessed) {
             const indent = s.lineNumberToIndentation.get(getRealLineNo(p) ?? 0) ?? "";
-            updateFrom(s, flushComments(s.lastLineProcessed + 1, {...s, addToJoint: ifFrame.jointFrameIds, jointParent: ifFrame}, indent,  "else", "elif"));
+            updateFrom(s, flushComments(s.lastLineProcessed + 1, {...s, addToJoint: ifFrame.jointFrameIds, jointParent: ifFrame}, indent, false, "else", "elif"));
         }
         
         // If can have elif, else, so keep going to check for that:
@@ -751,7 +761,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
             }
             if (s.lastLineProcessed) {
                 const indent = s.lineNumberToIndentation.get(getRealLineNo(children(p)[i]) ?? 0) ?? "";
-                updateFrom(s, flushComments(s.lastLineProcessed + 1, {...s, addToJoint: ifFrame.jointFrameIds, jointParent: ifFrame}, indent,  "else", "elif"));
+                updateFrom(s, flushComments(s.lastLineProcessed + 1, {...s, addToJoint: ifFrame.jointFrameIds, jointParent: ifFrame}, indent,  false, "else", "elif"));
             }
         }
         break;
@@ -772,7 +782,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         // Could be a disabled frame between try and non-disabled items:
         if (s.lastLineProcessed) {
             const indent = s.lineNumberToIndentation.get(getRealLineNo(p) ?? 0) ?? "";
-            updateFrom(s, flushComments(s.lastLineProcessed + 1, {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame}, indent, "else", "except", "finally"));
+            updateFrom(s, flushComments(s.lastLineProcessed + 1, {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame}, indent, false, "else", "except", "finally"));
         }
         
         // The except clauses are descendants of the try block, so we must iterate through later children:
@@ -814,7 +824,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
                     // The children of the except actually follow as a sibling of the clause, after the colon (hence i + 2):
                     if (s.lastLineProcessed != undefined) {
                         updateFrom(s, copyFramesFromPython(children(p)[i + 2], {...s, addToNonJoint: exceptFrame.childrenIds, parent: exceptFrame}));
-                        updateFrom(s, flushComments(s.lastLineProcessed + 1, {...s, parent: exceptFrame, addToNonJoint: exceptFrame.childrenIds}, s.lineNumberToIndentation.get(getRealLineNo(children(p)[i + 2]) ?? 0) ?? ""));
+                        updateFrom(s, flushComments(s.lastLineProcessed + 1, {...s, parent: exceptFrame, addToNonJoint: exceptFrame.childrenIds}, s.lineNumberToIndentation.get(getRealLineNo(children(p)[i + 2]) ?? 0) ?? "", true));
                     }
                 }
                 else if (s.lastLineProcessed) {
@@ -834,7 +844,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
             
             if (s.lastLineProcessed) {
                 const indent = s.lineNumberToIndentation.get(getRealLineNo(p) ?? 0) ?? "";
-                updateFrom(s, flushComments(s.lastLineProcessed + 1, {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame}, indent, "else", "except", "finally"));
+                updateFrom(s, flushComments(s.lastLineProcessed + 1, {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame}, indent, false, "else", "except", "finally"));
             }
         }
         break;

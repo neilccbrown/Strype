@@ -55,7 +55,7 @@ function isValidPythonNumber(str: string): boolean {
     const octalInt = /^[+-]?0[oO][0-7_]+$/;
     const hexInt = /^[+-]?0[xX][0-9a-fA-F_]+$/;
 
-    const floatNum = /^[+-]?((\d+(_\d+)*(\.\d*(_\d+)*)?)|(\.\d+(_\d+)*))([eE][+-]?\d+(_\d+)*)?$/;
+    const floatNum = /^[+-]?((\d+(_\d+)*\.\d*(_\d+)*)|(\.\d+(_\d+)*)|(\d+(_\d+)*([eE][+-]?\d+(_\d+)*)))$/;
 
     const complexNum = /^[+-]?((\d+(\.\d*)?)|(\.\d+))?[jJ]$/;
 
