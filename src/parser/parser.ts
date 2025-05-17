@@ -152,8 +152,9 @@ export default class Parser {
         // This method is called when parsing the content of a block frame that only contains simple comments or blank frames,
         // effectively making the block content empty. However, we need to 1) allow "passing" the content for Python to 
         // compile properly, and 2) make sure we keep the slots/lines mapping for proper errors handling.
-        const emptyContent = this.parseFrames(children);
-        return this.saveAsSPY ? emptyContent : (indentation + conditionalIndent +"pass" + "\n").repeat(children.length);
+        const emptyContent = this.parseFrames(children, indentation + conditionalIndent);
+        const passLine = indentation + conditionalIndent + "pass" + "\n";
+        return this.saveAsSPY ? (passLine + emptyContent) : passLine.repeat(children.length);
     }
     
     private parseStatement(statement: FrameObject, indentation = ""): string {
@@ -281,10 +282,10 @@ export default class Parser {
                 // We need to add an extra except to finish the try frame off and make it valid:
                 output += thisIndentation + "except:\n" + thisIndentation + "    pass\n"; 
             }
-        }
-        
-        if (this.saveAsSPY) {
-            output += "#" + AppSPYPrefix + " Section:End\n";
+
+            if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.framesMainContainer) {
+                output += "#" + AppSPYPrefix + " Section:End\n";
+            }            
         }
 
         return output;

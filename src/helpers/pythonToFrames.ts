@@ -253,7 +253,7 @@ export function copyFramesFromParsedPython(code: string, currentStrypeLocation: 
         }
         else if (codeLines[i].trim() === "") {
             // Blank line:
-            comments.push({lineNumber: i + 1, indentation: "", content: null});
+            comments.push({lineNumber: i + 1, indentation: codeLines[i], content: null});
         }
     }
     // We then do a second pass to tag and concatenate any disabled blocks with the same indent.
@@ -595,13 +595,13 @@ function flushComments(lineno: number, s: CopyState, requiredIndentation: string
         // Remove first item:
         const considering = s.pendingComments.splice(0, 1);
         
-        if (content === null) {
+        if (content === null && indentation == requiredIndentation) {
             s = addFrame(makeFrame(AllFrameTypesIdentifier.blank, {}), lineno, s);
         }
         else if (typeof content == "string" && indentation == requiredIndentation) {
             s = addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: content}], operators: []}}}), lineno, s);
         }
-        else if (typeof content != "string" && indentation == requiredIndentation && (filterKeywords.length == 0 || (content.length > 0 && filterKeywords.some((k) => content[0].startsWith(k))))) {
+        else if (content != null && typeof content != "string" && indentation == requiredIndentation && (filterKeywords.length == 0 || (content.length > 0 && filterKeywords.some((k) => content[0].startsWith(k))))) {
             // Parse and insert disabled frame(s):
             const parsed = parseWithSkulpt(content, (n) => n + lineno);
             if (typeof parsed == "string") {
