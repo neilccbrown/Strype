@@ -57,6 +57,8 @@ type FrameEntry = {
     body?: FrameEntry[];
     joint?: FrameEntry[];
 };
+// TODO add disabled attribute
+// TODO add more complex slot content
 
 let rng = () => 0;
 
@@ -350,6 +352,16 @@ test.describe("Enters, saves and loads random frame", () => {
             expect(dom, seed).toEqual(frames);
             const savePath = await save(page);
             await newProject(page);
+            console.log(JSON.stringify(frames, null, 2));
+            // Log for debugging purposes:
+            try {
+                const contents = readFileSync(savePath, "utf8");
+                console.log(contents);
+            }
+            catch (err) {
+                console.error("Error reading file:", err);
+            }
+
             // Must make it have .spy extension:
             await rename(savePath, savePath + ".spy");
             await load(page, savePath + ".spy");
@@ -489,5 +501,67 @@ test.describe("Enters, saves and loads specific frames", () => {
             ]},
             {frameType: "raise", slotContent: ["foo"]},
         ]]);
+    });
+    
+    test("For+if", async ({page}) => {
+        await testSpecific(page, [[], [],
+            [
+                {
+                    "frameType": "for",
+                    "slotContent": [
+                        "01",
+                        "ü_",
+                    ],
+                    "body": [
+                        {
+                            "frameType": "if",
+                            "slotContent": [
+                                "\\",
+                            ],
+                            "body": [
+                                {
+                                    "frameType": "for",
+                                    "slotContent": [
+                                        "B",
+                                        "",
+                                    ],
+                                    "body": [],
+                                    "joint": [],
+                                },
+                            ],
+                            "joint": [
+                                {
+                                    "frameType": "else",
+                                    "slotContent": [],
+                                    "body": [
+                                        {
+                                            "frameType": "if",
+                                            "slotContent": [
+                                                "B#1",
+                                            ],
+                                            "body": [],
+                                            "joint": [],
+                                        },
+                                    ],
+                                },
+                            ],
+                        },
+                        {
+                            "frameType": "funccall",
+                            "slotContent": [
+                                "",
+                            ],
+                        },
+                    ],
+                    "joint": [],
+                },
+                {
+                    "frameType": "raise",
+                    "slotContent": [
+                        "",
+                    ],
+                },
+            ],
+        ]);
     });
 });
