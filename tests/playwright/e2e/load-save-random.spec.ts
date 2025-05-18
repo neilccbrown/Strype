@@ -54,8 +54,8 @@ test.beforeEach(async ({ page }, testInfo) => {
 type FrameEntry = {
     frameType: string;
     slotContent: string[];
-    body: FrameEntry[] | undefined;
-    // TODO joint frames
+    body?: FrameEntry[];
+    joint?: FrameEntry[];
 };
 
 let rng = () => 0;
@@ -85,7 +85,20 @@ function genRandomFrame(fromFrames: string[], level : number): FrameEntry {
     const id = pick(fromFrames);
     const def = getFrameDefType(id);
     const subLen = level == 2 ? 0 : getRandomInt(4 - level * 2);
-    return {frameType: id, slotContent: def.labels.filter((l) => l.showSlots ?? true).map((_) => genRandomString()), body: def.allowChildren ? Array.from({ length: subLen }, () => genRandomFrame(framesBySection[2], level + 1)) : undefined};
+
+    const children = def.allowChildren ? Array.from({ length: subLen }, () => genRandomFrame(framesBySection[2], level + 1)) : undefined;
+    const jointChildren: FrameEntry[] | undefined = def.allowJointChildren ? [] : undefined;
+    if (jointChildren != undefined && getRandomInt(2) == 0) {
+        // Pick one then see what can follow that:
+        let cur : string | undefined = pick(def.jointFrameTypes);
+        while (cur != undefined) {
+            const j = genRandomFrame([cur], level);
+            jointChildren.push(j);
+            const canFollow = getFrameDefType(j.frameType).jointFrameTypes.filter((f) => def.jointFrameTypes.includes(f));
+            cur = canFollow && getRandomInt(3) != 0 ? pick(canFollow) : undefined; 
+        }
+    }
+    return {frameType: id, slotContent: def.labels.filter((l) => l.showSlots ?? true).map((_) => genRandomString()), body: children, joint: jointChildren};
 }
 
 async function enterFrame(page: Page, frame : FrameEntry) : Promise<void> {
@@ -119,8 +132,15 @@ async function enterFrame(page: Page, frame : FrameEntry) : Promise<void> {
             await checkFrameXorTextCursor(page, true, "Body of frame " + frame.frameType);
             await enterFrame(page, s);
         }
-        await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(100);
+        if (frame.joint && frame.joint.length > 0) {
+            // We enter the next joint frame, and make any others a joint part of that:
+            const [head, ...tail] = frame.joint;
+            await enterFrame(page, {...head, joint: tail});
+        }
+        else {
+            await page.keyboard.press("ArrowDown");
+            await page.waitForTimeout(100);
+        }
     }
     await checkFrameXorTextCursor(page, true, "After frame " + frame.frameType);
 }
@@ -192,13 +212,22 @@ async function getAllFrames(container : ElementHandle<HTMLElement>) : Promise<Fr
                 return getAllFrames(bodyContainers[0] as ElementHandle<HTMLElement>) as Promise<FrameEntry[] | undefined>;
             }
         });
+        const joint : undefined | FrameEntry[] = await el.$$(":scope > .joint-frames").then((jointContainers) => {
+            if (jointContainers.length == 0) {
+                return Promise.resolve(undefined as undefined | FrameEntry[]);
+            }
+            else {
+                return getAllFrames(jointContainers[0] as ElementHandle<HTMLElement>) as Promise<FrameEntry[] | undefined>;
+            }
+        });
         const slotEls = await el.$$(":scope > .frame-header .label-slot-structure");
         const slots = await Promise.all(slotEls.map( (el) => visibleTextContent(el as ElementHandle<HTMLElement>)));
         const frameType = await el.getAttribute("data-frameType");
         frameEntries.push({
             frameType: frameType ?? "<unknown>",
             slotContent: slots.map((s) => s.trim().replace(/\u200B/g, "") ?? ""),
-            body: body,
+            ...(body !== undefined ? { body } : {}),
+            ...(joint !== undefined ? { joint } : {}),
         });
     }
     return frameEntries;
@@ -336,116 +365,129 @@ test.describe("Enters, saves and loads random frame", () => {
 test.describe("Enters, saves and loads specific frames", () => {
     test("Tests funccall beginning with #", async ({page}) => {
         await testSpecific(page, [[], [], [
-            {frameType: "funccall", slotContent: ["foo"], body: undefined},
-            {frameType: "funccall", slotContent: ["#foo"], body: undefined},
-            {frameType: "funccall", slotContent: ["foo"], body: undefined},
+            {frameType: "funccall", slotContent: ["foo"]},
+            {frameType: "funccall", slotContent: ["#foo"]},
+            {frameType: "funccall", slotContent: ["foo"]},
         ]]);
     });
     test("Empty comments", async ({page}) => {
         await testSpecific(page, [[], [], [
-            {frameType: "comment", slotContent: [""], body: undefined},
-            {frameType: "funccall", slotContent: ["foo()"], body: undefined},
-            {frameType: "comment", slotContent: [""], body: undefined},
+            {frameType: "comment", slotContent: [""]},
+            {frameType: "funccall", slotContent: ["foo()"]},
+            {frameType: "comment", slotContent: [""]},
         ]]);
     });
     test("Tests trailing blank line", async ({page}) => {
         await testSpecific(page, [[], [], [
-            {frameType: "blank", slotContent: [], body: undefined},
-            {frameType: "funccall", slotContent: ["foo()"], body: undefined},
-            {frameType: "blank", slotContent: [], body: undefined},
+            {frameType: "blank", slotContent: []},
+            {frameType: "funccall", slotContent: ["foo()"]},
+            {frameType: "blank", slotContent: []},
         ]]);
     });
     test("Tests blank between while and if", async ({page}) => {
         await testSpecific(page, [[], [], [
             {frameType: "while", slotContent: ["foo"], body: []},
-            {frameType: "blank", slotContent: [], body: undefined},
-            {frameType: "if", slotContent: ["foo"], body: []},
+            {frameType: "blank", slotContent: []},
+            {frameType: "if", slotContent: ["foo"], body: [], joint: []},
         ]]);
     });
     test("Tests blank inside while", async ({page}) => {
         await testSpecific(page, [[], [], [
             {frameType: "while", slotContent: ["foo"], body: [
-                {frameType: "blank", slotContent: [], body: undefined},
+                {frameType: "blank", slotContent: []},
             ]},
-            {frameType: "if", slotContent: ["foo"], body: []},
+            {frameType: "if", slotContent: ["foo"], body: [], joint: []},
         ]]);
     });
     test("Tests blank inside and after if", async ({page}) => {
         await testSpecific(page, [[], [], [
-            {frameType: "if", slotContent: ["foo"], body: [
-                {frameType: "comment", slotContent: ["Inside if"], body: undefined},
-                {frameType: "blank", slotContent: [], body: undefined},
+            {frameType: "if", slotContent: ["foo"], joint: [], body: [
+                {frameType: "comment", slotContent: ["Inside if"]},
+                {frameType: "blank", slotContent: []},
             ]},
-            {frameType: "blank", slotContent: [], body: undefined},
-            {frameType: "raise", slotContent: ["foo"], body: undefined},
+            {frameType: "blank", slotContent: []},
+            {frameType: "raise", slotContent: ["foo"]},
         ]]);
     });
 
     test("Blanks at the end of funcdef", async ({page}) => {
         await testSpecific(page, [[], [
             {frameType: "funcdef", slotContent: ["foo", ""], body: [
-                {frameType: "blank", slotContent: [], body: undefined},
+                {frameType: "blank", slotContent: []},
                 {frameType: "while", slotContent: ["foo"], body: [
-                    {frameType: "comment", slotContent: ["Inside def"], body: undefined},
+                    {frameType: "comment", slotContent: ["Inside def"]},
                 ]},
-                {frameType: "blank", slotContent: [], body: undefined},
+                {frameType: "blank", slotContent: []},
             ]},
         ], [
-            {frameType: "blank", slotContent: [], body: undefined},
+            {frameType: "blank", slotContent: []},
             {frameType: "while", slotContent: ["foo"], body: [
-                {frameType: "comment", slotContent: ["Inside while"], body: undefined},
+                {frameType: "comment", slotContent: ["Inside while"]},
             ]},
-            {frameType: "comment", slotContent: ["Outside while"], body: undefined},
+            {frameType: "comment", slotContent: ["Outside while"]},
         ]]);
     });
 
     test("Blanks at the end of funcdef #2", async ({page}) => {
         await testSpecific(page, [[], [
             {frameType: "funcdef", slotContent: ["foo", ""], body: [
-                {frameType: "blank", slotContent: [], body: undefined},
-                {frameType: "blank", slotContent: [], body: undefined},
-                {frameType: "blank", slotContent: [], body: undefined},
+                {frameType: "blank", slotContent: []},
+                {frameType: "blank", slotContent: []},
+                {frameType: "blank", slotContent: []},
             ]},
-            {frameType: "comment", slotContent: ["A"], body: undefined},
-            {frameType: "comment", slotContent: ["B"], body: undefined},
-            {frameType: "comment", slotContent: ["C"], body: undefined},
+            {frameType: "comment", slotContent: ["A"]},
+            {frameType: "comment", slotContent: ["B"]},
+            {frameType: "comment", slotContent: ["C"]},
         ], []]);
     });
 
     test("Test weird number on assignment LHS", async ({page}) => {
         await testSpecific(page, [[], [], [
-            {frameType: "varassign", slotContent: ["1_", "#!0"], body: undefined},
+            {frameType: "varassign", slotContent: ["1_", "#!0"]},
         ]]);
     });
     test("Test weird number on assignment LHS #2", async ({page}) => {
         await testSpecific(page, [[], [], [
-            {frameType: "varassign", slotContent: ["01", "#!0"], body: undefined},
+            {frameType: "varassign", slotContent: ["01", "#!0"]},
         ]]);
     });
 
     test("Comments at the end of funcdefs", async ({page}) => {
         await testSpecific(page, [[], [
             {frameType: "funcdef", slotContent: ["foo", ""], body: [
-                {frameType: "varassign", slotContent: ["1_", "#!0"], body: undefined},
+                {frameType: "varassign", slotContent: ["1_", "#!0"]},
                 {frameType: "while", slotContent: ["foo"], body: []},
-                {frameType: "comment", slotContent: ["Inside def"], body: undefined},
+                {frameType: "comment", slotContent: ["Inside def"]},
             ]},
-            {frameType: "comment", slotContent: ["Outside def"], body: undefined},
+            {frameType: "comment", slotContent: ["Outside def"]},
         ], [
-            {frameType: "blank", slotContent: [], body: undefined},
+            {frameType: "blank", slotContent: []},
             {frameType: "while", slotContent: ["foo"], body: [
-                {frameType: "comment", slotContent: ["Inside while"], body: undefined},
+                {frameType: "comment", slotContent: ["Inside while"]},
             ]},
-            {frameType: "comment", slotContent: ["Outside while"], body: undefined},
+            {frameType: "comment", slotContent: ["Outside while"]},
         ]]);
     });
 
     test("Comment-only body", async ({page}) => {
         await testSpecific(page, [[], [], [
             {frameType: "while", slotContent: ["foo"], body: [
-                {frameType: "comment", slotContent: ["Only comment in body"], body: undefined},
+                {frameType: "comment", slotContent: ["Only comment in body"]},
             ]},
-            {frameType: "raise", slotContent: ["foo"], body: undefined},
+            {frameType: "raise", slotContent: ["foo"]},
+        ]]);
+    });
+
+    test("For with else", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "for", slotContent: ["foo", "bar"], body: [
+                {frameType: "raise", slotContent: ["baz"]},
+            ], joint: [
+                {frameType: "else", slotContent: [], body: [
+                    {frameType: "raise", slotContent: ["abc"]},
+                ]},
+            ]},
+            {frameType: "raise", slotContent: ["foo"]},
         ]]);
     });
 });

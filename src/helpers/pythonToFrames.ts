@@ -770,10 +770,28 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         // First child is keyword, second is the condition, third is colon, fourth is body
         s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.while, [1], 3, s).s;
         break;
-    case Sk.ParseTables.sym.for_stmt:
+    case Sk.ParseTables.sym.for_stmt: {
         // First child is keyword, second is the loop var, third is keyword, fourth is collection, fifth is colon, sixth is body
-        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.for, [1, 3], 5, s).s;
+        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.for, [1, 3], 5, s);
+        s = r.s;
+        if (children(p).length >= 7 && children(p)[6].value === "else") {
+            // Skip the else and the colon, which are separate tokens:
+            updateFrom(s, makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.else, [], 8, {
+                ...s,
+                addToJoint: r.frame.jointFrameIds,
+                jointParent: r.frame,
+            }).s);
+        }
+        if (s.lastLineProcessed) {
+            const indent = s.lineNumberToIndentation.get(getRealLineNo(children(p)[8]) ?? 0) ?? "";
+            updateFrom(s, flushComments(s.lastLineProcessed + 1, {
+                ...s,
+                addToJoint: r.frame.jointFrameIds,
+                jointParent: r.frame,
+            }, indent, false, "else"));
+        }
         break;
+    }
     case Sk.ParseTables.sym.try_stmt: {
         // First is keyword, second is colon, third is body
         const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.try, [], 2, s);
