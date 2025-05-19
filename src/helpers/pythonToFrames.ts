@@ -37,6 +37,7 @@ interface CopyState {
     pendingComments: LocatedCommentOrBlankLine[]; // Modified in-place
     disableFrames: boolean; // Whether to set loaded frames to disabled
     lineNumberToIndentation: Map<number, string>; // Maps a line number to a string of indentation
+    isSPY: boolean;
 }
 
 // Declare Skulpt:
@@ -274,7 +275,7 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
     useStore().copiedSelectionFrameIds = [];
     try {
         // Use the next available ID to avoid clashing with any existing IDs:
-        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: useStore().nextAvailableId, addToNonJoint: useStore().copiedSelectionFrameIds, addToJoint: undefined, loadedFrames: useStore().copiedFrames, pendingComments: comments, parent: null, jointParent: null, disableFrames: false, lastLineProcessed: 0, lineNumberToIndentation: indents});
+        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: useStore().nextAvailableId, addToNonJoint: useStore().copiedSelectionFrameIds, addToJoint: undefined, loadedFrames: useStore().copiedFrames, pendingComments: comments, parent: null, jointParent: null, disableFrames: false, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: strypeDirectives.size > 0});
         // At this stage, we can make a sanity check that we can copy the given Python code in the current position in Strype (for example, no "import" in a function definition section)
         if(!canPastePythonAtStrypeLocation(currentStrypeLocation)){
             useStore().copiedFrames = {};
@@ -593,7 +594,7 @@ function flushComments(lineno: number, s: CopyState, requiredIndentation: string
         // Remove first item:
         const considering = s.pendingComments.splice(0, 1);
         
-        if (content === null && (indentation == requiredIndentation || !inclConsecutiveMatchingIndent)) {
+        if (content === null && (indentation == requiredIndentation || (!s.isSPY && !inclConsecutiveMatchingIndent))) {
             s = addFrame(makeFrame(AllFrameTypesIdentifier.blank, {}), lineno, s);
             if (inclConsecutiveMatchingIndent) {
                 lineno += 1;

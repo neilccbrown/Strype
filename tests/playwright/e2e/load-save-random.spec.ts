@@ -57,15 +57,14 @@ type FrameEntry = {
     body?: FrameEntry[];
     joint?: FrameEntry[];
 };
-// TODO add disabled attribute
 // TODO add more complex slot content
+// TODO fix double pass in generated Python
 
 let rng = () => 0;
 
 const framesBySection = [Object.values(ImportFrameTypesIdentifiers),
     [... Object.values(FuncDefIdentifiers), ...Object.values(CommentFrameTypesIdentifier)],
-    // TODO put back try once joint frames are supported
-    Object.values(StandardFrameTypesIdentifiers).filter((id) => id != "try" && id != "global" && id != "return" && id != "continue" && id != "break" && !Object.values(JointFrameIdentifiers).includes(id))];
+    Object.values(StandardFrameTypesIdentifiers).filter((id) => id != "global" && id != "return" && id != "continue" && id != "break" && !Object.values(JointFrameIdentifiers).includes(id))];
 
 function getRandomInt(n: number): number {
     // Get number into range of 0 to (n-1) inclusive:
@@ -90,9 +89,9 @@ function genRandomFrame(fromFrames: string[], level : number): FrameEntry {
 
     const children = def.allowChildren ? Array.from({ length: subLen }, () => genRandomFrame(framesBySection[2], level + 1)) : undefined;
     const jointChildren: FrameEntry[] | undefined = def.allowJointChildren ? [] : undefined;
-    if (jointChildren != undefined && getRandomInt(2) == 0) {
+    if (jointChildren != undefined && (id == "try" || getRandomInt(2) == 0)) {
         // Pick one then see what can follow that:
-        let cur : string | undefined = pick(def.jointFrameTypes);
+        let cur : string | undefined = pick(def.jointFrameTypes.filter((j) => !(j == "else" && id == "try")));
         while (cur != undefined) {
             const j = genRandomFrame([cur], level);
             jointChildren.push(j);
@@ -100,7 +99,12 @@ function genRandomFrame(fromFrames: string[], level : number): FrameEntry {
             cur = canFollow && getRandomInt(3) != 0 ? pick(canFollow) : undefined; 
         }
     }
-    return {frameType: id, slotContent: def.labels.filter((l) => l.showSlots ?? true).map((_) => genRandomString()), body: children, joint: jointChildren};
+    return {
+        frameType: id,
+        slotContent: def.labels.filter((l) => l.showSlots ?? true).map((_) => genRandomString()),
+        ...(children !== undefined ? { body: children } : {}),
+        ...(jointChildren !== undefined ? { joint: jointChildren } : {}),
+    };
 }
 
 async function enterFrame(page: Page, frame : FrameEntry) : Promise<void> {
@@ -113,6 +117,13 @@ async function enterFrame(page: Page, frame : FrameEntry) : Promise<void> {
             await page.keyboard.type(shortcut);
         }
         await page.waitForTimeout(400);
+        if (frame.frameType == "try") {
+            // We delete the except which automatically gets generated, then add our own:
+            await page.keyboard.press("ArrowDown");
+            await page.waitForTimeout(100);
+            await page.keyboard.press("Backspace");
+            await page.waitForTimeout(100);
+        }
     }
     else {
         return;
@@ -559,6 +570,125 @@ test.describe("Enters, saves and loads specific frames", () => {
                     "frameType": "raise",
                     "slotContent": [
                         "",
+                    ],
+                },
+            ],
+        ]);
+    });
+
+    test("Blanks in try", async ({page}) => {
+        test.slow();
+        await testSpecific(page, [[], [],
+            [
+                {
+                    "frameType": "funccall",
+                    "slotContent": [
+                        "ü1",
+                    ],
+                },
+                {
+                    "frameType": "comment",
+                    "slotContent": [
+                        "aa",
+                    ],
+                },
+                {
+                    "frameType": "while",
+                    "slotContent": [
+                        "",
+                    ],
+                    "body": [
+                        {
+                            "frameType": "if",
+                            "slotContent": [
+                                "Bü",
+                            ],
+                            "body": [
+                                {
+                                    "frameType": "try",
+                                    "slotContent": [],
+                                    "body": [],
+                                    "joint": [
+                                        {
+                                            "frameType": "finally",
+                                            "slotContent": [],
+                                            "body": [],
+                                        },
+                                    ],
+                                },
+                            ],
+                            "joint": [],
+                        },
+                    ],
+                },
+                {
+                    "frameType": "blank",
+                    "slotContent": [],
+                },
+                {
+                    "frameType": "if",
+                    "slotContent": [
+                        "$#a",
+                    ],
+                    "body": [
+                        {
+                            "frameType": "funccall",
+                            "slotContent": [
+                                "üB@@1",
+                            ],
+                        },
+                        {
+                            "frameType": "comment",
+                            "slotContent": [
+                                "_üü0",
+                            ],
+                        },
+                    ],
+                    "joint": [
+                        {
+                            "frameType": "else",
+                            "slotContent": [],
+                            "body": [
+                                {
+                                    "frameType": "comment",
+                                    "slotContent": [
+                                        "#0!0@",
+                                    ],
+                                },
+                                {
+                                    "frameType": "try",
+                                    "slotContent": [],
+                                    "body": [],
+                                    "joint": [
+                                        {
+                                            "frameType": "finally",
+                                            "slotContent": [],
+                                            "body": [
+                                                {
+                                                    "frameType": "for",
+                                                    "slotContent": [
+                                                        "0\\üü_",
+                                                        "!$B",
+                                                    ],
+                                                    "body": [],
+                                                    "joint": [
+                                                        {
+                                                            "frameType": "else",
+                                                            "slotContent": [],
+                                                            "body": [],
+                                                        },
+                                                    ],
+                                                },
+                                            ],
+                                        },
+                                    ],
+                                },
+                                {
+                                    "frameType": "blank",
+                                    "slotContent": [],
+                                },
+                            ],
+                        },
                     ],
                 },
             ],
