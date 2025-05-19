@@ -124,7 +124,7 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}) :
     };
 }
 
-function parseWithSkulpt(codeLines: string[], mapLineno : (lineno : number) => number) : string | { parseTree: any, addedFakeJoinParent: number } {
+function parseWithSkulpt(codeLines: string[], mapErrorLineno : (lineno : number) => number) : string | { parseTree: any, addedFakeJoinParent: number } {
     // Special case: things beginning with joint frames (else, elif, except, finally) are
     // not parsed by Skulpt as-is (because they lack the main construct before), but we
     // would like to support parsing them.  So we look for them and try gluing on
@@ -167,7 +167,7 @@ function parseWithSkulpt(codeLines: string[], mapLineno : (lineno : number) => n
         parsed = Sk.parse("pasted_content.py", codeLines.join("\n"));
     }
     catch (e) {
-        return ((e as any).$offset?.v?.[2]?.$mangled ?? (e as any).$msg?.$mangled) + " line: " + mapLineno((e as any).traceback?.[0].lineno);
+        return ((e as any).$offset?.v?.[2]?.$mangled ?? (e as any).$msg?.$mangled) + " line: " + mapErrorLineno((e as any).traceback?.[0].lineno);
     }
     return {parseTree: parsed["cst"], addedFakeJoinParent: addedFakeJoinParent};
 }
