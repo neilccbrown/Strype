@@ -182,6 +182,57 @@ function getIndent(codeLine: string) {
 // has pasted in, copy it to the store's copiedFrames/copiedSelectionFrameIds fields,
 // ready to be pasted immediately afterwards.
 // If successful, returns a map with key-value Strype directives.  If unsuccessful, returns a string with some info about
+function extractComments(codeLines: string[], strypeDirectives: Map<string, string>) {
+    // Skulpt doesn't preserve blanks or comments so we must find them then later reinsert them
+    // ourselves at the right points:
+    // Find all comments.  This isn't quite perfect (with respect to # in strings) but it will do:
+    const comments: LocatedCommentOrBlankLine[] = [];
+    for (let i = 0; i < codeLines.length; i++) {
+        // Look for # with only space before them, or a # with no quote after:
+        const match = /^( *)#(.*)$/.exec(codeLines[i]) ?? /()#([^"]+)$/.exec(codeLines[i]);
+        if (match) {
+            const directiveMatch = new RegExp("^ *#" + escapeRegExp(AppSPYPrefix) + "([^:]+):(.*)$").exec(codeLines[i]);
+            if (directiveMatch) {
+                // By default, directives are just added to the map:
+                // Note we trim() keys but not values; space may well be important in values:
+                const key = directiveMatch[1].trim();
+                const value = directiveMatch[2];
+                if (key == "Disabled") {
+                    comments.push({lineNumber: i + 1, indentation: match[1], content: [value]});
+                }
+                else {
+                    strypeDirectives.set(key, value);
+                }
+            }
+            else {
+                comments.push({lineNumber: i + 1, indentation: match[1], content: match[2]});
+            }
+        }
+        else if (codeLines[i].trim() === "") {
+            // Blank line:
+            comments.push({lineNumber: i + 1, indentation: codeLines[i], content: null});
+        }
+    }
+
+    // We then do a second pass to tag and concatenate any disabled blocks with the same indent.
+    // We manipulate the array so we go backwards to minimise index change consideration.
+    // And we don't need to process i = 0 because it can't combine with i-1.
+    for (let i = comments.length - 1; i > 0; i--) {
+        const prevContent = comments[i - 1].content;
+        const ourContent = comments[i].content;
+        if (comments[i - 1].lineNumber == comments[i].lineNumber - 1
+            && comments[i - 1].indentation == comments[i].indentation
+            && prevContent != null && typeof prevContent != "string"
+            && ourContent != null && typeof ourContent != "string") {
+            // Past line is directly before, and is disabled and we are disabled, so we can combine:
+            prevContent.push(...ourContent);
+            // Then delete us:
+            comments.splice(i, 1);
+        }
+    }
+    return comments;
+}
+
 // where the Python parse failed.
 export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, linenoMapping?: Record<number, number>) : string | null | Map<string, string> {
     const mapLineno = (lineno : number) : number => linenoMapping ? linenoMapping[lineno] : lineno;
@@ -222,55 +273,8 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
         return parsedBySkulpt;
     }
     const addedFakeJoinParent = parsedBySkulpt.addedFakeJoinParent;
-    
-    // Skulpt doesn't preserve blanks or comments so we must find them then later reinsert them
-    // ourselves at the right points:
-    // Find all comments.  This isn't quite perfect (with respect to # in strings) but it will do:
-    const comments : LocatedCommentOrBlankLine[] = [];
-    for (let i = 0; i < codeLines.length; i++) {
-        // Look for # with only space before them, or a # with no quote after:
-        const match = /^( *)#(.*)$/.exec(codeLines[i]) ?? /()#([^"]+)$/.exec(codeLines[i]);
-        if (match) {
-            const directiveMatch = new RegExp("^ *#" + escapeRegExp(AppSPYPrefix) + "([^:]+):(.*)$").exec(codeLines[i]);
-            if (directiveMatch) {
-                // By default, directives are just added to the map:
-                // Note we trim() keys but not values; space may well be important in values:
-                const key = directiveMatch[1].trim();
-                const value = directiveMatch[2];
-                if (key == "Disabled") {
-                    comments.push({lineNumber: i + 1, indentation: match[1], content: [value]});
-                }
-                else {
-                    strypeDirectives.set(key, value);
-                }
-            }
-            else {
-                comments.push({lineNumber: i + 1, indentation: match[1], content: match[2]});
-            }
-        }
-        else if (codeLines[i].trim() === "") {
-            // Blank line:
-            comments.push({lineNumber: i + 1, indentation: codeLines[i], content: null});
-        }
-    }
-    
-    // We then do a second pass to tag and concatenate any disabled blocks with the same indent.
-    // We manipulate the array so we go backwards to minimise index change consideration.
-    // And we don't need to process i = 0 because it can't combine with i-1.
-    for (let i = comments.length - 1; i > 0; i--) {
-        const prevContent = comments[i-1].content;
-        const ourContent = comments[i].content;
-        if (comments[i-1].lineNumber == comments[i].lineNumber - 1 
-            && comments[i-1].indentation == comments[i].indentation
-            && prevContent != null && typeof prevContent != "string"
-            && ourContent != null && typeof ourContent != "string") {
-            // Past line is directly before, and is disabled and we are disabled, so we can combine:
-            prevContent.push(...ourContent);
-            // Then delete us:
-            comments.splice(i, 1);
-        }
-    }
-    
+    const comments = extractComments(codeLines, strypeDirectives);
+
     useStore().copiedFrames = {};
     useStore().copiedSelectionFrameIds = [];
     try {
@@ -608,27 +612,31 @@ function flushComments(lineno: number, s: CopyState, requiredIndentation: string
         }
         else if (content != null && typeof content != "string" && indentation == requiredIndentation && (filterKeywords.length == 0 || (content.length > 0 && filterKeywords.some((k) => content[0].startsWith(k))))) {
             // Parse and insert disabled frame(s):
-            const parsed = parseWithSkulpt(content, (n) => n + lineno);
+            const parsed = parseWithSkulpt([...content, "#" + AppSPYPrefix + " Section:End"], (n) => n + lineno);
             if (typeof parsed == "string") {
                 // Error; add it as comment so it's not lost:
-                s = addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: content.join("\n")}], operators: []}}}), lineno, s);
+                s = addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: "Error: " + parsed + "\n" + content.join("\n")}], operators: []}}}), lineno, s);
             }
             else {
                 // Add CopyState flag for disabling them
                 const beforeAdd = s.addToNonJoint.length;
-                // We don't want to try processing more comments while processing a comment, so hide them:
-                const beforeComments = s.pendingComments;
-                s = copyFramesFromPython(parsed.parseTree, {...s, pendingComments: [], disableFrames: true});
-                s.disableFrames = false;
-                s.pendingComments = beforeComments;
+                // We don't want to try processing more outer comments while processing a comment,
+                // instead we want to process inner comments:
+                const innerComments = extractComments(content, new Map());
+                const contentLineNumbers = new Map();
+                for (let i = 0; i < content.length; i++) {
+                    contentLineNumbers.set(i, getIndent(content[i]));
+                }
+                const r = copyFramesFromPython(parsed.parseTree, {...s, lastLineProcessed: 0, pendingComments: innerComments, disableFrames: true, lineNumberToIndentation: contentLineNumbers});
+                s.nextId = r.nextId;
                 s.lastLineProcessed = lineno + content.length - 1;
                 // Now check if we need to remove some added fake join parents:
                 if (parsed.addedFakeJoinParent > 0) {
                     if (s.addToNonJoint.length > beforeAdd) {
+                        const joints = s.loadedFrames[s.addToNonJoint[beforeAdd]].jointFrameIds.slice(parsed.addedFakeJoinParent - 1);
                         s.loadedFrames[s.addToNonJoint[beforeAdd]].jointFrameIds.slice(0, parsed.addedFakeJoinParent - 1).forEach((id) => {
                             delete s.loadedFrames[id];
                         });
-                        const joints = s.loadedFrames[s.addToNonJoint[beforeAdd]].jointFrameIds.slice(parsed.addedFakeJoinParent - 1);
                         joints.forEach((j) => {
                             if (s.jointParent) {
                                 s.loadedFrames[j].jointParentId = s.jointParent.id;
@@ -761,7 +769,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
                 i += 2;
             }
             if (s.lastLineProcessed) {
-                const indent = s.lineNumberToIndentation.get(getRealLineNo(children(p)[i]) ?? 0) ?? "";
+                const indent = s.lineNumberToIndentation.get(getRealLineNo(p) ?? 0) ?? "";
                 updateFrom(s, flushComments(s.lastLineProcessed + 1, {...s, addToJoint: ifFrame.jointFrameIds, jointParent: ifFrame}, indent,  false, "else", "elif"));
             }
         }
@@ -786,7 +794,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
             }).s);
         }
         if (s.lastLineProcessed) {
-            const indent = s.lineNumberToIndentation.get(getRealLineNo(children(p)[i]) ?? 0) ?? "";
+            const indent = s.lineNumberToIndentation.get(getRealLineNo(p) ?? 0) ?? "";
             updateFrom(s, flushComments(s.lastLineProcessed + 1, {
                 ...s,
                 addToJoint: r.frame.jointFrameIds,

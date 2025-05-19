@@ -54,6 +54,8 @@ test.beforeEach(async ({ page }, testInfo) => {
 type FrameEntry = {
     frameType: string;
     slotContent: string[];
+    disabled?: boolean; // If missing, default is false
+    // Note that if we are disabled, we should make sure all of body and joint and disabled.
     body?: FrameEntry[];
     joint?: FrameEntry[];
 };
@@ -82,6 +84,17 @@ function genRandomString() : string {
     return Array.from({ length: len }, () => pick(candidates.split(""))).join("");
 }
 
+function disableAll(frames: FrameEntry[]) : FrameEntry[] {
+    return frames.map((frame) => {
+        return {
+            ...frame,
+            disabled: true,
+            ...(frame.body != undefined ? {body: disableAll(frame.body)} : {}),
+            ...(frame.joint != undefined ? {joint: disableAll(frame.joint)} : {}),
+        };
+    });  
+}
+
 function genRandomFrame(fromFrames: string[], level : number): FrameEntry {
     const id = pick(fromFrames);
     const def = getFrameDefType(id);
@@ -99,15 +112,46 @@ function genRandomFrame(fromFrames: string[], level : number): FrameEntry {
             cur = canFollow && getRandomInt(3) != 0 ? pick(canFollow) : undefined; 
         }
     }
+    
+    // Disable 1 in 8:
+    const disable = id != "blank" && id != "comment" && getRandomInt(8) == 0;
+    
     return {
         frameType: id,
+        ...(disable ? {disabled: true} : {}),
         slotContent: def.labels.filter((l) => l.showSlots ?? true).map((_) => genRandomString()),
-        ...(children !== undefined ? { body: children } : {}),
-        ...(jointChildren !== undefined ? { joint: jointChildren } : {}),
+        ...(children !== undefined ? { body: disable ? disableAll(children) : children } : {}),
+        ...(jointChildren !== undefined ? { joint: disable ? disableAll(jointChildren) : jointChildren } : {}),
     };
 }
 
-async function enterFrame(page: Page, frame : FrameEntry) : Promise<void> {
+async function disablePrev(page: Page, fromFollowingJoint: boolean) : Promise<void> {
+    // We need to disable the frame just above us and it was joint.  We must do this by clicking
+    // because we don't currently have keyboard support for disabling parts of
+    // joint frames.  So we click just above the frame cursor:
+
+    const elementHandle = await page.$(
+        ".navigationPosition.caret:not(.invisible)"
+    );
+
+    if (!elementHandle) {
+        throw new Error("Element not found");
+    }
+
+    const box = await elementHandle.boundingBox();
+
+    if (!box) {
+        throw new Error("Could not get bounding box");
+    }
+    const targetX = box.x + (fromFollowingJoint ? -10: 10);
+    const targetY = box.y - 30;
+    await page.mouse.click(targetX, targetY, {button: "right"});
+    await page.waitForTimeout(200);
+    await page.getByRole("menuitem", {name: en.contextMenu.disable}).click();
+    await page.waitForTimeout(100);
+}
+
+async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolean, beforeBody?: () => Promise<void>) : Promise<void> {
     const shortcut = Array.prototype.concat.apply([], Object.values(allFrameCommandsDefs)).find((d) => d.type.type === frame.frameType)?.shortcuts?.[0];
     if (shortcut) {
         if (shortcut == "\x13") {
@@ -140,21 +184,43 @@ async function enterFrame(page: Page, frame : FrameEntry) : Promise<void> {
         await page.keyboard.press("ArrowRight");
         await page.waitForTimeout(100);
     }
+    if (beforeBody) {
+        await beforeBody();
+    }
     if (frame.body !== undefined) {
         for (const s of frame.body) {
             await checkFrameXorTextCursor(page, true, "Body of frame " + frame.frameType);
-            await enterFrame(page, s);
+            await enterFrame(page, s, frame.disabled ?? false);
         }
         if (frame.joint && frame.joint.length > 0) {
             // We enter the next joint frame, and make any others a joint part of that:
             const [head, ...tail] = frame.joint;
-            await enterFrame(page, {...head, joint: tail});
+            
+            await enterFrame(page, {...head, joint: tail}, frame.disabled ?? false, frame.disabled && !parentDisabled && getFrameDefType(frame.frameType).isJointFrame ? () => disablePrev(page, true) : undefined);
         }
         else {
             await page.keyboard.press("ArrowDown");
             await page.waitForTimeout(100);
+            if (frame.disabled && getFrameDefType(frame.frameType).isJointFrame) {
+                await disablePrev(page, false);
+            }
         }
     }
+    // This must be last item because otherwise we couldn't enter the frame:
+    if (frame.disabled && !parentDisabled && !getFrameDefType(frame.frameType).isJointFrame) {
+        // With shift, one press should select whole frame, including any joint frames:
+        await page.keyboard.press("Shift+ArrowUp");
+        await page.waitForTimeout(100);
+        await page.keyboard.press(" ");
+        await page.waitForTimeout(500);
+        await page.getByRole("menuitem", { name: en.contextMenu.disable }).click();
+        await page.waitForTimeout(100);
+        // Now it's disabled, a single down press should skip the entire lot:
+        await page.keyboard.press("ArrowDown");
+        await page.waitForTimeout(100);
+    }
+    
+    
     await checkFrameXorTextCursor(page, true, "After frame " + frame.frameType);
 }
 
@@ -236,9 +302,11 @@ async function getAllFrames(container : ElementHandle<HTMLElement>) : Promise<Fr
         const slotEls = await el.$$(":scope > .frame-header .label-slot-structure");
         const slots = await Promise.all(slotEls.map( (el) => visibleTextContent(el as ElementHandle<HTMLElement>)));
         const frameType = await el.getAttribute("data-frameType");
+        const disabled = await el.evaluate((el) => el.classList.contains("disabled"));
         frameEntries.push({
             frameType: frameType ?? "<unknown>",
             slotContent: slots.map((s) => s.trim().replace(/\u200B/g, "") ?? ""),
+            ...(disabled ? {disabled: true} : {}),
             ...(body !== undefined ? { body } : {}),
             ...(joint !== undefined ? { joint } : {}),
         });
@@ -302,7 +370,7 @@ async function testSpecific(page: Page, sections: FrameEntry[][]) : Promise<void
 
     for (let section = 0; section < 3; section++) {
         for (let j = 0; j < sections[section].length; j++) {
-            await enterFrame(page, sections[section][j]);
+            await enterFrame(page, sections[section][j], false);
         }
         await page.keyboard.press("ArrowDown");
         await page.waitForTimeout(100);
@@ -353,17 +421,17 @@ test.describe("Enters, saves and loads random frame", () => {
                 const numFrames = 5;
                 for (let j = 0; j < numFrames; j++) {
                     const f = genRandomFrame(framesBySection[section], 0);
-                    await enterFrame(page, f);
+                    await enterFrame(page, f, false);
                     frames[section].push(f);
                 }
                 await page.keyboard.press("ArrowDown");
                 await page.waitForTimeout(100);
             }
+            console.log(JSON.stringify(frames, null, 2));
             const dom = await getFramesFromDOM(page);
             expect(dom, seed).toEqual(frames);
             const savePath = await save(page);
             await newProject(page);
-            console.log(JSON.stringify(frames, null, 2));
             // Log for debugging purposes:
             try {
                 const contents = readFileSync(savePath, "utf8");
@@ -693,5 +761,205 @@ test.describe("Enters, saves and loads specific frames", () => {
                 },
             ],
         ]);
+    });
+    test("Tests blank and comments inside disabled if", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "if", slotContent: ["foo"], disabled: true, joint: [], body: [
+                {frameType: "comment", disabled: true, slotContent: ["Inside if"]},
+                {frameType: "blank", disabled: true, slotContent: []},
+                {frameType: "raise", disabled: true, slotContent: ["foo"]},
+                {frameType: "comment", disabled: true, slotContent: ["Inside if at end"]},
+            ]},
+            {frameType: "raise", slotContent: ["bar"]},
+        ]]);
+    });
+    test("Tests disabled elif at end of body", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {
+                "frameType": "for",
+                "slotContent": [
+                    "a_B\\@",
+                    "",
+                ],
+                "body": [
+                    {
+                        "frameType": "raise",
+                        "slotContent": [
+                            "@$B_",
+                        ],
+                    },
+                    {
+                        "frameType": "if",
+                        "slotContent": [
+                            "ü\\ü!",
+                        ],
+                        "body": [
+                            {
+                                "frameType": "with",
+                                "slotContent": [
+                                    "#",
+                                    "1_",
+                                ],
+                                "body": [],
+                            },
+                        ],
+                        "joint": [
+                            {
+                                "frameType": "elif",
+                                "slotContent": [
+                                    "\\0aü$",
+                                ],
+                                "body": [],
+                            },
+                            {
+                                "frameType": "elif",
+                                "slotContent": [
+                                    "a_\\@",
+                                ],
+                                "body": [],
+                            },
+                            {
+                                "frameType": "elif",
+                                "disabled": true,
+                                "slotContent": [
+                                    "#$a",
+                                ],
+                                "body": [],
+                            },
+                        ],
+                    },
+                    {
+                        "frameType": "blank",
+                        "slotContent": [],
+                    },
+                ],
+                "joint": [
+                    {
+                        "frameType": "else",
+                        "slotContent": [],
+                        "body": [
+                            {
+                                "frameType": "comment",
+                                "slotContent": [
+                                    "\\#0!",
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            }]]);
+    });
+
+    test("Tests blank and comment at start of disabled try", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {
+                "frameType": "blank",
+                "slotContent": [],
+            },
+            {
+                "frameType": "try",
+                "disabled": true,
+                "slotContent": [],
+                "body": [
+                    {
+                        "frameType": "blank",
+                        "slotContent": [],
+                        "disabled": true,
+                    },
+                    {
+                        "frameType": "comment",
+                        "slotContent": [
+                            "",
+                        ],
+                        "disabled": true,
+                    },
+                    {
+                        "frameType": "with",
+                        "slotContent": [
+                            "$ü_",
+                            "_$B",
+                        ],
+                        "body": [],
+                        "disabled": true,
+                    },
+                ],
+                "joint": [
+                    {
+                        "frameType": "finally",
+                        "disabled": true,
+                        "slotContent": [],
+                        "body": [
+                            {
+                                "frameType": "try",
+                                "slotContent": [],
+                                "body": [],
+                                "joint": [
+                                    {
+                                        "frameType": "except",
+                                        "disabled": true,
+                                        "slotContent": [
+                                            "#",
+                                        ],
+                                        "body": [],
+                                    },
+                                    {
+                                        "frameType": "except",
+                                        "slotContent": [
+                                            "\\ü_",
+                                        ],
+                                        "body": [
+                                            {
+                                                "frameType": "comment",
+                                                "slotContent": [
+                                                    "1",
+                                                ],
+                                                "disabled": true,
+                                            },
+                                        ],
+                                        "disabled": true,
+                                    },
+                                    {
+                                        "frameType": "finally",
+                                        "slotContent": [],
+                                        "body": [],
+                                        "disabled": true,
+                                    },
+                                ],
+                                "disabled": true,
+                            },
+                            {
+                                "frameType": "try",
+                                "slotContent": [],
+                                "body": [
+                                    {
+                                        "frameType": "varassign",
+                                        "slotContent": [
+                                            "_BBü\\",
+                                            "$1#@",
+                                        ],
+                                        "disabled": true,
+                                    },
+                                ],
+                                "joint": [
+                                    {
+                                        "frameType": "finally",
+                                        "slotContent": [],
+                                        "body": [
+                                            {
+                                                "frameType": "blank",
+                                                "slotContent": [],
+                                                "disabled": true,
+                                            },
+                                        ],
+                                        "disabled": true,
+                                    },
+                                ],
+                                "disabled": true,
+                            },
+                        ],
+                    },
+                ],
+            },
+        ]]);
     });
 });

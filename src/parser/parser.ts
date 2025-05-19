@@ -116,7 +116,7 @@ export default class Parser {
 
         output += 
             ((!passBlock)? this.parseStatement(block, indentation) : "") +
-            ((this.saveAsSPY && !block.isDisabled && children.filter((c) => !c.isDisabled).length == 0)
+            ((this.saveAsSPY && children.length > 0 && children.filter((c) => !c.isDisabled && c.frameType.type != AllFrameTypesIdentifier.blank && c.frameType.type != AllFrameTypesIdentifier.comment).length == 0)
                 ? indentation + conditionalIndent +"pass" + "\n" : "") +
             // We replace an empty block frame content by "pass". We also replace the frame's content if
             // the children are ALL blank or simple comment frames, because Python will see it as a problem. 
@@ -154,7 +154,7 @@ export default class Parser {
         // compile properly, and 2) make sure we keep the slots/lines mapping for proper errors handling.
         const emptyContent = this.parseFrames(children, indentation + conditionalIndent);
         const passLine = indentation + conditionalIndent + "pass" + "\n";
-        return this.saveAsSPY ? (passLine + emptyContent) : passLine.repeat(children.length);
+        return this.saveAsSPY ? emptyContent : passLine.repeat(children.length);
     }
     
     private parseStatement(statement: FrameObject, indentation = ""): string {
