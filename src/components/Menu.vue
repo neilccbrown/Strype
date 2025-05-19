@@ -965,6 +965,9 @@ export default Vue.extend({
                         });
                     });                        
                 }
+                else{
+                    (this.$refs.importFileInput as HTMLInputElement).click();
+                }
             }        
             this.currentModalButtonGroupIDInAction = "";
         },
