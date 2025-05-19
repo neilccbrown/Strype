@@ -774,16 +774,18 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         // First child is keyword, second is the loop var, third is keyword, fourth is collection, fifth is colon, sixth is body
         const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.for, [1, 3], 5, s);
         s = r.s;
+        let i = 5;
         if (children(p).length >= 7 && children(p)[6].value === "else") {
             // Skip the else and the colon, which are separate tokens:
-            updateFrom(s, makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.else, [], 8, {
+            i += 3;
+            updateFrom(s, makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.else, [], i, {
                 ...s,
                 addToJoint: r.frame.jointFrameIds,
                 jointParent: r.frame,
             }).s);
         }
         if (s.lastLineProcessed) {
-            const indent = s.lineNumberToIndentation.get(getRealLineNo(children(p)[8]) ?? 0) ?? "";
+            const indent = s.lineNumberToIndentation.get(getRealLineNo(children(p)[i]) ?? 0) ?? "";
             updateFrom(s, flushComments(s.lastLineProcessed + 1, {
                 ...s,
                 addToJoint: r.frame.jointFrameIds,
