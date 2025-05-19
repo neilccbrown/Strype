@@ -55,12 +55,11 @@ type FrameEntry = {
     frameType: string;
     slotContent: string[];
     disabled?: boolean; // If missing, default is false
-    // Note that if we are disabled, we should make sure all of body and joint and disabled.
+    // Note that if we are disabled, we should make sure all of body and joint are disabled.
     body?: FrameEntry[];
     joint?: FrameEntry[];
 };
 // TODO add more complex slot content
-// TODO fix double pass in generated Python
 
 let rng = () => 0;
 
@@ -144,7 +143,7 @@ async function disablePrev(page: Page, fromFollowingJoint: boolean) : Promise<vo
         throw new Error("Could not get bounding box");
     }
     const targetX = box.x + (fromFollowingJoint ? -10: 10);
-    const targetY = box.y - 30;
+    const targetY = box.y - (fromFollowingJoint ? 35 : 10);
     await page.mouse.click(targetX, targetY, {button: "right"});
     await page.waitForTimeout(200);
     await page.getByRole("menuitem", {name: en.contextMenu.disable}).click();
