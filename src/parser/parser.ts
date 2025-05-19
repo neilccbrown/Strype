@@ -69,7 +69,7 @@ function isValidPythonNumber(str: string): boolean {
     ) && !trimmed.endsWith("_");
 }
 
-function toUnicodeEscapes(input: string): string {
+export function toUnicodeEscapes(input: string): string {
     return Array.from(input)
         .map((char) => {
             const code = char.codePointAt(0) ?? 0;
