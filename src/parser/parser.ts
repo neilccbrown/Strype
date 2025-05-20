@@ -116,7 +116,9 @@ export default class Parser {
 
         output += 
             ((!passBlock)? this.parseStatement(block, indentation) : "") +
-            ((this.saveAsSPY && children.length > 0 && children.filter((c) => !c.isDisabled && c.frameType.type != AllFrameTypesIdentifier.blank && c.frameType.type != AllFrameTypesIdentifier.comment).length == 0)
+            ((this.saveAsSPY && children.length > 0 &&
+                ((!block.isDisabled && children.filter((c) => !c.isDisabled && c.frameType.type != AllFrameTypesIdentifier.blank && c.frameType.type != AllFrameTypesIdentifier.comment).length == 0)
+                    || (block.isDisabled && children.filter((c) => c.frameType.type != AllFrameTypesIdentifier.blank && c.frameType.type != AllFrameTypesIdentifier.comment).length == 0)))
                 ? indentation + conditionalIndent +"pass" + "\n" : "") +
             // We replace an empty block frame content by "pass". We also replace the frame's content if
             // the children are ALL blank or simple comment frames, because Python will see it as a problem. 

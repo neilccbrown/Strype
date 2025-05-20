@@ -184,9 +184,10 @@ function transformCommentsAndBlanks(codeLines: string[]) : {disabledLines : numb
     // Skulpt doesn't preserve blanks or comments so we must find them and transform
     // them into something that does parse.
     // Find all comments.  This isn't quite perfect (with respect to # in strings) but it will do:
+    let mostRecentIndent = "";
     for (let i = 0; i < codeLines.length; i++) {
         // Look for # with only space before them, or a # with no quote after:
-        const match = /^( *)#(.*)$/.exec(codeLines[i]) ?? /()#([^"]+)$/.exec(codeLines[i]);
+        const match = /^( *)#(.*)$/.exec(codeLines[i]) ?? /^([^#]*)#([^"]+)$/.exec(codeLines[i]);
         if (match) {
             const directiveMatch = new RegExp("^ *#" + escapeRegExp(AppSPYPrefix) + "([^:]+):(.*)$").exec(codeLines[i]);
             if (directiveMatch) {
@@ -205,18 +206,46 @@ function transformCommentsAndBlanks(codeLines: string[]) : {disabledLines : numb
                     strypeDirectives.set(key, value);
                     // Push a blank to make line numbers match:
                     transformedLines.push("");
+                    mostRecentIndent = "";
                 }
             }
             else {
-                transformedLines.push(match[1] + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(match[2]));
+                if (match[1].trim() == "") {
+                    // Just a comment:
+                    transformedLines.push(match[1] + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(match[2]));
+                    mostRecentIndent = match[1];
+                }
+                else {
+                    // Code followed by comment, put comment on next line:
+                    mostRecentIndent = getIndent(match[1]);
+                    transformedLines.push(match[1]);
+                    transformedLines.push(mostRecentIndent + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(match[2]));
+                }
+                
             }
         }
         else if (codeLines[i].trim() === "") {
             // Blank line:
-            transformedLines.push(codeLines[i] + STRYPE_WHOLE_LINE_BLANK);
+            // We indent this to the largest of its indent,
+            // and the (smallest of the indent before us and the indent after us).
+            let nextIndent = mostRecentIndent;
+            for (let j = i + 1; j < codeLines[i].length; j++) {
+                if (codeLines[j].trim() != "") {
+                    nextIndent = getIndent(codeLines[j]);
+                    break;
+                }
+            }
+            const smallestAdjIndent = mostRecentIndent.length <= nextIndent.length ? mostRecentIndent : nextIndent;
+            if (codeLines[i].length > smallestAdjIndent.length) {
+                transformedLines.push(codeLines[i] + STRYPE_WHOLE_LINE_BLANK);
+            }
+            else {
+                transformedLines.push(smallestAdjIndent + STRYPE_WHOLE_LINE_BLANK);
+            }
         }
         else {
             transformedLines.push(codeLines[i].trimEnd());
+            mostRecentIndent = getIndent(codeLines[i].trimEnd());
         }
     }
     return { disabledLines, transformedLines, strypeDirectives };
