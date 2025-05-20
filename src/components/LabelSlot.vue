@@ -1128,6 +1128,9 @@ export default Vue.extend({
                                 this.appStore.setSlotTextCursors(newSlotCursorInfos, newSlotCursorInfos);
                             }               
                         }
+                        else {
+                            this.removeLastInput(inputString);
+                        }
                     }
                 }
             }
