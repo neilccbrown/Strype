@@ -707,7 +707,7 @@ export default Vue.extend({
                 // and refactor the slots to let our refactoring splitting up operators, brackets etc as normal.
                 let resultingCode = "", newCursorPosition = 0;
                 const neighbourToPushInSlotSpanId = getLabelSlotUID({...slotInfos, slotId: neighbourSlotInfosToCheck.slotId});
-                document.getElementById(this.labelSlotsStructDivId)?.querySelectorAll("span").forEach((span) => {
+                document.getElementById(this.labelSlotsStructDivId)?.querySelectorAll("." + scssVars.labelSlotInputClassName + ",." + scssVars.labelSlotMediaClassName).forEach((span) => {
                     // We concatenate the slots's content of this label slot structure (bar the zero-width spaces),
                     // but when we find the bracket we need to push, we ignore that slot and 
                     // - change the currently-being-built resultCode to reflect a "push to the left "
