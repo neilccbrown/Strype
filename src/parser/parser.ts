@@ -3,11 +3,12 @@ import { hasEditorCodeErrors, trimmedKeywordOperators } from "@/helpers/editor";
 import { generateFlatSlotBases, retrieveSlotByPredicate } from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, ParserElements, SlotsStructure, SlotType} from "@/types/types";
+import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 import {AppSPYPrefix} from "@/main";
 /*IFTRUE_isPython */
 import { actOnTurtleImport } from "@/helpers/editor";
+import {STRYPE_DUMMY_FIELD, STRYPE_EXPRESSION_BLANK, STRYPE_INVALID_OP, STRYPE_INVALID_OPS_WRAPPER, STRYPE_INVALID_SLOT} from "@/helpers/pythonToFrames";
 /*FITRUE_isPython */
 const INDENT = "    ";
 const DISABLEDFRAMES_FLAG =  "\"\"\""; 
@@ -78,6 +79,76 @@ export function toUnicodeEscapes(input: string): string {
         .join("");
 }
 
+function interleave<T>(a: T[], b: T[]): T[] {
+    const result: T[] = [];
+    const maxLength = Math.max(a.length, b.length);
+
+    for (let i = 0; i < maxLength; i++) {
+        if (i < a.length) {
+            result.push(a[i]);
+        }
+        if (i < b.length) {
+            result.push(b[i]);
+        }
+    }
+
+    return result;
+}
+
+// Checks if the level will parse as-is given the arrangement of operators and operands
+// If not, it transforms it into a special call ___strype_invalid_ops([]) where each
+// item in the list is an operand, or a ___strype_operator_uXXXX escaped operator.
+function transformSlotLevel(slots: SlotsStructure) {
+    // Here's what prevents parsing:
+    // - A unary operator (like "not", "~") with something non-blank before it.
+    // - Anything with a blank operator between two adjacent non-blank items, except
+    //     if the right-hand item is a round or square bracket (function call and list index, respectively)
+    let valid = true;
+    for (let i = 0; i < slots.operators.length; i++) {
+        if (slots.operators[i].code.trim() === "not" || slots.operators[i].code.trim() === "~") {
+            const preceding = slots.fields[i];
+            if (!(isFieldBaseSlot(preceding) && preceding.code.trim() === "")) {
+                // Something besides a plain blank before it; not valid unary operator:
+                valid = false;
+                break;
+            }
+        }
+        if (slots.operators[i].code.trim() === "") {
+            if (i + 1 < slots.fields.length) {
+                const after = slots.fields[i+1];
+                if (!(isFieldBaseSlot(after) && after.code == "") && !(isFieldBracketedSlot(after) && (after.openingBracketValue == "(" || after.openingBracketValue == ")"))) {
+                    valid = false;
+                    break;
+                } 
+            }
+        }
+    }
+    if (valid) {
+        return slots;
+    }
+    else {
+        return {operators: [{code: ""}, {code: ""}], fields: [
+            {code: STRYPE_INVALID_OPS_WRAPPER},
+            {openingBracketValue: "(",
+                operators: Array.from({length: slots.operators.length + slots.fields.length -1 }, () => {
+                    return {code: ","};
+                }),
+                fields: interleave<(BaseSlot | SlotsStructure | StringSlot | MediaSlot)>(slots.fields.map((f) => {
+                    if (isFieldBaseSlot(f) && f.code.trim() === "") {
+                        return {code: STRYPE_EXPRESSION_BLANK};
+                    }
+                    else {
+                        return f;
+                    }
+                }), slots.operators.map((op) => {
+                    return {code: STRYPE_INVALID_OP + toUnicodeEscapes(op.code)};
+                })),
+            },
+            {code: ""},
+        ]};
+    }
+}
+
 export default class Parser {
     private startAtFrameId = -100; // default value to indicate there is no start
     private stopAtFrameId = -100; // default value to indicate there is no stop
@@ -141,7 +212,7 @@ export default class Parser {
             ) 
             +
             ((block.frameType.type == AllFrameTypesIdentifier.try && (useStore().getJointFramesForFrameId(block.id)?.filter((f) => !f.isDisabled).length ?? 0) == 0)
-                ? indentation + "except ___strype_dummy:\n" + indentation + "    pass\n" : "") +
+                ? indentation + "except " + STRYPE_DUMMY_FIELD + ":\n" + indentation + "    pass\n" : "") +
             this.parseFrames(
                 useStore().getJointFramesForFrameId(block.id),
                 indentation
@@ -516,7 +587,7 @@ export default class Parser {
                 let flatSlotCode = (isSlotStringLiteralType(flatSlot.type) ? flatSlot.code : flatSlot.code.trim());
                 if (flatSlot.type != SlotType.string) {
                     if (besidesOp && this.saveAsSPY && flatSlotCode === "") {
-                        flatSlotCode = "___strype_blank";
+                        flatSlotCode = STRYPE_EXPRESSION_BLANK;
                     }
                     if (this.saveAsSPY && flatSlotCode != "") {
                         let valid = true;
@@ -541,17 +612,17 @@ export default class Parser {
                             break;
                         }
                         if (!valid) {
-                            flatSlotCode = "___strype_invalid_" + toUnicodeEscapes(flatSlotCode);
+                            flatSlotCode = STRYPE_INVALID_SLOT + toUnicodeEscapes(flatSlotCode);
                         }
                     }
                 }
                 addSlotInPositionLengths(flatSlotCode.length, flatSlot.id, flatSlotCode, flatSlot.type);
             }
-        });
+        }, transformSlotLevel);
 
         // There are a few fields which are permitted to be blank:
         if (this.saveAsSPY && code == "" && !optionalSlot) {
-            code = "___strype_blank";
+            code = STRYPE_EXPRESSION_BLANK;
         }
         
         return {code: code, slotLengths: slotLengths, slotStarts: slotStarts, slotIds: slotIds, slotTypes: slotTypes}; 

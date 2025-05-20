@@ -47,7 +47,7 @@ export const retrieveParentSlotFromSlotInfos = (slotInfos: SlotCoreInfos): Field
 // for example if the root slot has only 3 same level children (field/operator/field), ids will respectively be "0", "0" and "1"
 // if the root slot as 3 level children and the second of them has 3 same level children (again field/operator/field), ids will respectively be:
 // "0", "1,0", "1,0", "1,1", "2"
-export const generateFlatSlotBases = (slotStructure: SlotsStructure, parentId?: string, flatSlotConsumer?: (slot: FlatSlotBase, besidesOp: boolean, opAfter?: string) => void): FlatSlotBase[] => {
+export const generateFlatSlotBases = (slotStructure: SlotsStructure, parentId?: string, flatSlotConsumer?: (slot: FlatSlotBase, besidesOp: boolean, opAfter?: string) => void, transformEachLevel?: (oneLevel: SlotsStructure) => SlotsStructure): FlatSlotBase[] => {
     // The operators always get in between the fields, and we always have one 1 root structure for a label,
     // and bracketed structures can never be found at 1st or last position
     let currIndex = -1;
@@ -59,6 +59,10 @@ export const generateFlatSlotBases = (slotStructure: SlotsStructure, parentId?: 
             flatSlotConsumer(flatSlot, besidesOp, opAfter);
         }
     };
+    
+    if (transformEachLevel) {
+        slotStructure = transformEachLevel(slotStructure);
+    }
 
     slotStructure.operators.forEach((operatorSlot, index) => {
         // Add the precededing field
@@ -70,7 +74,7 @@ export const generateFlatSlotBases = (slotStructure: SlotsStructure, parentId?: 
             // 1) add the opening bracket
             addFlatSlot({id: slotId, code: fieldSlot.openingBracketValue as string, type:SlotType.openingBracket}, false);
             // 2) add what is inside the brackets
-            flatSlotBases.push(...generateFlatSlotBases(fieldSlot as SlotsStructure, slotId, flatSlotConsumer));
+            flatSlotBases.push(...generateFlatSlotBases(fieldSlot as SlotsStructure, slotId, flatSlotConsumer, transformEachLevel));
             // 3) add the closing bracket
             addFlatSlot({id: slotId, code: getMatchingBracket(fieldSlot.openingBracketValue as string, true), type:SlotType.closingBracket}, false);
 

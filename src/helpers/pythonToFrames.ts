@@ -1,4 +1,4 @@
-import {EditorFrameObjects, CaretPosition, AllFrameTypesIdentifier, FrameObject, LabelSlotsContent, getFrameDefType, SlotsStructure, StringSlot, BaseSlot, ContainerTypesIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot} from "@/types/types";
+import {AllFrameTypesIdentifier, BaseSlot, CaretPosition, ContainerTypesIdentifiers, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, StringSlot} from "@/types/types";
 import {useStore} from "@/store/store";
 import {operators, trimmedKeywordOperators} from "@/helpers/editor";
 import i18n from "@/i18n";
@@ -175,6 +175,16 @@ function getIndent(codeLine: string) {
 const STRYPE_COMMENT_PREFIX = "___strype_comment_";
 
 const STRYPE_WHOLE_LINE_BLANK = "___strype_whole_line_blank";
+
+export const STRYPE_DUMMY_FIELD = "___strype_dummy";
+
+// Special things in expressions:
+export const STRYPE_EXPRESSION_BLANK = "___strype_blank";
+// Followed by unicode escapes:
+export const STRYPE_INVALID_SLOT = "___strype_invalid_";
+
+export const STRYPE_INVALID_OPS_WRAPPER = "___strype_opsinvalid";
+export const STRYPE_INVALID_OP = "___strype_operator_";
 
 function transformCommentsAndBlanks(codeLines: string[]) : {disabledLines : number[], transformedLines : string[], strypeDirectives: Map<string, string>} {
     codeLines = [...codeLines];
@@ -408,59 +418,107 @@ function parseNextTerm(ps : ParseState) : SlotsStructure {
     return toSlots(term);
 }
 
-function replaceMediaLiterals(s : SlotsStructure) : SlotsStructure {
+function replaceMediaLiteralsAndInvalidOps(s : SlotsStructure) : SlotsStructure {
     // We descend the tree, looking for the pattern:
     // <ident>(<string>)
     // and then check the ident and string
     
     // Note: we don't bother with last field because it can't be followed by brackets
     for (let i = 0; i < s.fields.length - 1; i++) {
-        if (isFieldBaseSlot(s.fields[i])
-            && ["load_image", "load_sound"].includes((s.fields[i] as BaseSlot).code)
+        const curField = s.fields[i];
+        const sub = s.fields[i + 1];
+        if (isFieldBaseSlot(curField)
             && s.operators[i].code === ""
-            && isFieldBracketedSlot(s.fields[i + 1])) {
-            // Check the bracket is just a string literal, which will have two blanks either side:
-            const sub = s.fields[i+1] as SlotsStructure;
-            const funcCall = (s.fields[i] as BaseSlot).code;
-            if (sub.fields.length == 3
-                && sub.openingBracketValue == "("
-                && isFieldBaseSlot(sub.fields[0]) && !(sub.fields[0] as BaseSlot).code
-                && !sub.operators[0].code
-                && isFieldStringSlot(sub.fields[1])
-                && !sub.operators[1].code
-                && isFieldBaseSlot(sub.fields[2]) && !(sub.fields[2] as BaseSlot).code) {
-                
-                // Need to check ident and content of the bracket:
-                const stringArg = (sub.fields[1] as StringSlot).code;
-                let replaced = false;
-                if (funcCall == "load_image"
-                    && stringArg.startsWith("data:image/")) {
-                    s.fields[i] = {code: "load_image(\"" + stringArg + "\")", mediaType: /data:([^;]+)/.exec(stringArg)?.[1] ?? "image"};
-                    replaced = true;
-                }
-                else if (funcCall == "load_sound"
-                    && stringArg.startsWith("data:audio/")) {
-                    s.fields[i] = {code: "load_sound(\"" + stringArg + "\")", mediaType: /data:([^;]+)/.exec(stringArg)?.[1] ?? "audio"};
-                    replaced = true;
-                }
-                // Otherwise don't substitute
-                // But if we did, tidy up surrounding slots:
-                if (replaced) {
-                    // First delete the bracketed arg that we don't need:
-                    s.fields.splice(i+1, 1);
-                    s.operators.splice(i, 1);
-                    // Then check we have blank operators either side:
-                    if (s.operators[i].code) {
-                        // Check RHS first so we don't need to adjust index:
-                        s.operators.splice(i, 0, {code: ""});
-                        s.fields.splice(i+1,0, {code: ""});
+            && isFieldBracketedSlot(sub)) {
+            const funcCall = curField.code;
+            let replaced = false;
+            if (["load_image", "load_sound"].includes(funcCall)) {
+                // Check the bracket is just a string literal, which will have two blanks either side:
+                if (sub.fields.length == 3
+                    && sub.openingBracketValue == "("
+                    && isFieldBaseSlot(sub.fields[0]) && !(sub.fields[0] as BaseSlot).code
+                    && !sub.operators[0].code
+                    && isFieldStringSlot(sub.fields[1])
+                    && !sub.operators[1].code
+                    && isFieldBaseSlot(sub.fields[2]) && !(sub.fields[2] as BaseSlot).code) {
+
+                    // Need to check ident and content of the bracket:
+                    const stringArg = (sub.fields[1] as StringSlot).code;
+                    
+                    if (funcCall == "load_image"
+                        && stringArg.startsWith("data:image/")) {
+                        s.fields[i] = {
+                            code: "load_image(\"" + stringArg + "\")",
+                            mediaType: /data:([^;]+)/.exec(stringArg)?.[1] ?? "image",
+                        };
+                        replaced = true;
                     }
-                    if (i == 0 || s.operators[i-1].code) {
-                        s.operators.splice(i-1, 0, {code: ""});
-                        s.fields.splice(i,0, {code: ""});
+                    else if (funcCall == "load_sound"
+                        && stringArg.startsWith("data:audio/")) {
+                        s.fields[i] = {
+                            code: "load_sound(\"" + stringArg + "\")",
+                            mediaType: /data:([^;]+)/.exec(stringArg)?.[1] ?? "audio",
+                        };
+                        replaced = true;
                     }
+                    // Otherwise don't substitute
                 }
-                
+            }
+            else if (curField.code === STRYPE_INVALID_OPS_WRAPPER) {
+                if (sub.openingBracketValue == "("
+                    // Check all ops are commas or blank:
+                    && !sub.operators.some((op) => op.code != "," && op.code != "")) {
+                    const fields = [];
+                    const ops = [];
+                    // Process all items as alternate fields and ops:
+                    for (let i = 0; i < sub.fields.length; i+= 2) {
+                        fields.push(sub.fields[i]);
+                        if (i + 1 < sub.fields.length) {
+                            const opField = sub.fields[i + 1];
+                            if (isFieldBaseSlot(opField) && opField.code.startsWith(STRYPE_INVALID_OP)) {
+                                ops.push({code: fromUnicodeEscapes(opField.code.slice(STRYPE_INVALID_OP.length))});
+                            }
+                            else {
+                                ops.push({code: ""});
+                                i -= 1;
+                            }
+                        }
+                    }
+                    // If there are any adjacent blank fields with blank operators
+                    // (which can occur in various arrangements involving bracket-adjacency),
+                    // trim them:
+                    for (let i = 0; i < fields.length - 1; i++) {
+                        const cur = fields[i];
+                        const next = fields[i + 1];
+                        if (isFieldBaseSlot(cur) && cur.code === ""
+                            && isFieldBaseSlot(next) && next.code === ""
+                            && ops[i].code === "") {
+                            fields.splice(i, 1);
+                            ops.splice(i, 1);
+                            // Process this index again:
+                            i -= 1;
+                        }
+                    }
+                    
+                    return {fields: fields, operators: ops, openingBracketValue: s.openingBracketValue};
+                }
+            }
+
+            // But if we did, tidy up surrounding slots:
+            if (replaced) {
+                // First delete the bracketed arg that we don't need:
+                s.fields.splice(i + 1, 1);
+                s.operators.splice(i, 1);
+                // Then check we have blank operators either side:
+                if (s.operators[i].code) {
+                    // Check RHS first so we don't need to adjust index:
+                    s.operators.splice(i, 0, {code: ""});
+                    s.fields.splice(i + 1, 0, {code: ""});
+                }
+                if (i == 0 || s.operators[i - 1].code) {
+                    s.operators.splice(i - 1, 0, {code: ""});
+                    s.fields.splice(i, 0, {code: ""});
+                }
             }
         }
         // We don't descend because toSlots already calls us on any compound slot
@@ -482,11 +540,11 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
             return {fields: [{code: ""}, str, {code: ""}], operators: [{code: ""}, {code: ""}]};
         }
         else {
-            if (val == "___strype_blank") {
+            if (val == STRYPE_EXPRESSION_BLANK) {
                 val = "";
             }
-            else if (val.startsWith("___strype_invalid_")) {
-                val = fromUnicodeEscapes(val.slice("___strype_invalid_".length));
+            else if (val.startsWith(STRYPE_INVALID_SLOT)) {
+                val = fromUnicodeEscapes(val.slice(STRYPE_INVALID_SLOT.length));
             }
             return {fields: [{code: val}], operators: []};
         }
@@ -548,7 +606,7 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
             throw new Sk.builtin.SyntaxError("Unknown operator: " + child.type + " \"" + op + "\"", null, p.lineno);
         }
     }
-    return replaceMediaLiterals(latest);
+    return replaceMediaLiteralsAndInvalidOps(latest);
 }
 
 // Get the children of the node, and throw an error if they are null.  This
@@ -756,7 +814,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
                 else if (grandchildren.length == 2) {
                     // except varName:
                     const asSlots = toSlots(grandchildren[1]);
-                    if (asSlots.fields.length == 1 && (asSlots.fields[0] as BaseSlot)?.code == "___strype_dummy") {
+                    if (asSlots.fields.length == 1 && (asSlots.fields[0] as BaseSlot)?.code == STRYPE_DUMMY_FIELD) {
                         exceptFrame = null;
                     }
                     else {
