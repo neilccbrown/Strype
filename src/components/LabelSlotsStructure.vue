@@ -40,11 +40,12 @@ import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
 import {CustomEventTypes, getFrameLabelSlotsStructureUID, getLabelSlotUID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, getFunctionCallDefaultText, getEditableSelectionText, openBracketCharacters, stringQuoteCharacters, getMatchingBracket, UIDoubleQuotesCharacters, STRING_DOUBLEQUOTE_PLACERHOLDER, UISingleQuotesCharacters, STRING_SINGLEQUOTE_PLACERHOLDER} from "@/helpers/editor";
-import {checkCodeErrors, generateFlatSlotBases, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
+import {checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import {calculateParamPrompt} from "@/autocompletion/acManager";
 import scssVars from "@/assets/style/_export.module.scss";
 import {detectBrowser} from "@/helpers/browser";
+import { isMacOSPlatform } from "@/helpers/common";
 
 export default Vue.extend({
     name: "LabelSlotsStructure",
@@ -518,20 +519,31 @@ export default Vue.extend({
 
                 // If we're trying to go off the bounds of this slot
                 // For comments, if there is a terminating line return, we do not allow the cursor to be past it (cf LabelSlot.vue onEnterOrTabKeyUp() for why)
+                // We can "push" one half a bracket pair only with "Alt" (or Ctrl on macOS) + arrow within the same level.                
                 if((cursorPos == 0 && event.key==="ArrowLeft") 
                         || (((cursorPos >= spanInputContent.replace(/\u200B/, "").length) || (isCommentFrame && spanInputContent.endsWith("\n") && cursorPos == spanInputContent.length - 1)) && event.key==="ArrowRight")) {
                     // DO NOT request a loss of focus here, because we need to be able to know which element of the UI has focus to find the neighbour in this.appStore.leftRightKey()
-                    this.appStore.isSelectingMultiSlots = event.shiftKey;
-                    this.appStore.leftRightKey({key: event.key, isShiftKeyHold: event.shiftKey}).then(() => {
+                    if((event.altKey && !isMacOSPlatform()) || (event.ctrlKey && isMacOSPlatform())){
+                        this.checkAndDoPushBracket(this.appStore.focusSlotCursorInfos, event.key==="ArrowLeft");
+                    }
+                    else{
+                        this.appStore.isSelectingMultiSlots = event.shiftKey;
+                        this.appStore.leftRightKey({key: event.key, isShiftKeyHold: event.shiftKey}).then(() => {
                         // If we are doing a selection, we need to reflect this in the UI
-                        if(event.shiftKey){
-                            setDocumentSelection(this.appStore.anchorSlotCursorInfos as SlotCursorInfos, this.appStore.focusSlotCursorInfos as SlotCursorInfos);                     
-                        }
-                    });       
+                            if(event.shiftKey){
+                                setDocumentSelection(this.appStore.anchorSlotCursorInfos as SlotCursorInfos, this.appStore.focusSlotCursorInfos as SlotCursorInfos);                     
+                            }
+                        });       
+                    }
                     this.appStore.ignoreKeyEvent = false;                 
                 }
-                // If a key modifier (ctrl, shift, alt or meta) is pressed, we don't do anything special (browser handles it),
-                else if(event.ctrlKey || event.shiftKey || event.metaKey || event.altKey){                    
+                // If a key modifier (ctrl, shift or meta) is pressed, we don't do anything special (browser handles it),
+                // note that alt is handled separately and because of Chrome and FF are using alt+arrows for browser's navigation, we blocked it.
+                else if(event.ctrlKey || event.shiftKey || event.metaKey || event.altKey){      
+                    if(event.altKey){
+                        event.preventDefault();
+                        event.stopImmediatePropagation();
+                    }              
                     return;
                 }
                 else {
@@ -544,6 +556,130 @@ export default Vue.extend({
                 event.preventDefault();
                 event.stopImmediatePropagation();  
             }                      
+        },
+
+        checkAndDoPushBracket(focusSlotCursorInfos: SlotCursorInfos, isToPushLeft: boolean): void {
+            // We can "push" only one half a bracket pair with "Alt" (or Ctrl on macOS) + arrow 
+            // so the bracket is moved past or after its neigbouring "token".
+            // A token can be: an operator, a bracketed structure, a string, a slot code.
+            // At this stage, the key modifier is already validated: we need to make sure 
+            // we are actually near a bracket, and that it can be pushed.
+            let pushBracket = false, bracketSlotSpanId = "";
+            const slotInfos = focusSlotCursorInfos.slotInfos;
+  
+            const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(slotInfos.slotId);
+            const parentSlot = retrieveSlotFromSlotInfos({...slotInfos, slotId: parentId, slotType: SlotType.code});                    
+            let isNextToBracket = false, skipFirstNeighbour = false;
+            let neighbourSlotInfosToCheck = {...slotInfos};
+            let bracketToPush = "";
+
+            // The case we are at the beginning [resp. at the end] of a slot and we want to push left [resp. right]:
+            // 1) is the token on our left [resp. right] a bracket, there are 2 cases to distinguish:   
+            // 1.a) are we after a closing bracket [resp. before an opening bracket] ? (i.e. our immediate neighbour is a bracketed structure)
+            // 1.b) are we after an opening bracket [resp. before a closing bracket] ? (i.e. we are in the first [resp. last] slot of a bracketed structure)
+            const immediatePrevNeighbourSlotInfo = getFlatNeighbourFieldSlotInfos(slotInfos, !isToPushLeft, true);
+            const isNextToExternalStructBracket = (immediatePrevNeighbourSlotInfo != null && immediatePrevNeighbourSlotInfo.slotType == SlotType.bracket);
+            const isNextToInternalStructBracket =  !isNextToExternalStructBracket && slotInfos.slotId.includes(",") && evaluateSlotType(parentSlot) == SlotType.bracket && ((isToPushLeft) ? slotIndex == 0 : slotIndex == (parentSlot as SlotsStructure).fields.length - 1);
+            isNextToBracket = isNextToExternalStructBracket || isNextToInternalStructBracket;
+            if(isNextToBracket) {
+                // Set the slot infos of the neighbour slot to check: that is the slot just preceding [resp. following] the bracketed structure we are in now
+                neighbourSlotInfosToCheck = getFlatNeighbourFieldSlotInfos(slotInfos, !isToPushLeft) as SlotCoreInfos;
+                const firstNeighbourSlotLevel = neighbourSlotInfosToCheck.slotId.split(",").length;
+                // If the neighbour is empty and separated from the bracket by an empty operator, we should look beyond 
+                // (because that push wouldn't be effective, it would render the same expression).
+                // Also, we cannot push the bracket inside an inner bracketed/string structure, otherwise pair nesting would be broken: we bypass it
+                skipFirstNeighbour = ((isToPushLeft && getSlotParentIdAndIndexSplit(neighbourSlotInfosToCheck.slotId).slotIndex > 0) 
+                                || (!isToPushLeft && getSlotParentIdAndIndexSplit(neighbourSlotInfosToCheck.slotId).slotIndex < getFrameParentSlotsLength(neighbourSlotInfosToCheck) - 1))
+                            && (retrieveSlotFromSlotInfos(neighbourSlotInfosToCheck) as BaseSlot).code.length == 0
+                            && getFlatNeighbourFieldSlotInfos(neighbourSlotInfosToCheck, !isToPushLeft) != null; // there is more to check beyond
+                            
+                if(skipFirstNeighbour) {
+                    neighbourSlotInfosToCheck = getFlatNeighbourFieldSlotInfos({...slotInfos, slotId: neighbourSlotInfosToCheck.slotId}, !isToPushLeft) as SlotCoreInfos;
+                    // If we now end up inside a structure, we need to go before [resp. after] that structure
+                    if(neighbourSlotInfosToCheck.slotId.split(",").length > firstNeighbourSlotLevel || neighbourSlotInfosToCheck.slotType == SlotType.string){
+                        const {parentId: grandParentId,slotIndex: grandParentIndex} = (isNextToExternalStructBracket) 
+                            ? ((neighbourSlotInfosToCheck.slotType == SlotType.string) 
+                                ? getSlotParentIdAndIndexSplit(neighbourSlotInfosToCheck.slotId) 
+                                : getSlotParentIdAndIndexSplit(getSlotParentIdAndIndexSplit(neighbourSlotInfosToCheck.slotId).parentId))
+                            : getSlotParentIdAndIndexSplit(parentId);
+                        const skipStructreOffset = (isNextToExternalStructBracket) ? 1 : 3;
+                        neighbourSlotInfosToCheck.slotId = getSlotIdFromParentIdAndIndexSplit(grandParentId, grandParentIndex + ((isToPushLeft) ? skipStructreOffset * -1 : skipStructreOffset));
+                    }
+                }
+                bracketSlotSpanId = getLabelSlotUID((isNextToExternalStructBracket)
+                    ? {...(immediatePrevNeighbourSlotInfo as SlotCoreInfos), slotType: (isToPushLeft) ? SlotType.closingBracket : SlotType.openingBracket}
+                    : {...slotInfos, slotId: parentId, slotType: (isToPushLeft) ? SlotType.openingBracket :  SlotType.closingBracket});
+                bracketToPush = document.getElementById(bracketSlotSpanId)?.textContent??"";
+            }
+
+            // 2) if we are after [resp. before] a bracket, now we check if we can push that bracket to the left [resp. right]:
+            // it is possible if the neighbour slot of the bracket is not empty AND not first [resp. last] of its level
+            // OR if we have skipped the first neighbour
+            if(isNextToBracket){
+                if(skipFirstNeighbour){
+                    pushBracket = true;
+                }
+                else {
+                    const neighbourSlot = retrieveSlotFromSlotInfos(neighbourSlotInfosToCheck);
+                    // When we push right, we need to know the neighbour's parent last slot child.
+                    // If the neighbour's slot index isn't showing a bracketed structure, we look directly inside the label slot structure,
+                    // if not, we check with the parent slot (that is then by definition a bracketed structure itself).
+                    const neighbourContainerSlotLastChildIndex  = (neighbourSlotInfosToCheck.slotId.includes(","))
+                        ? (retrieveSlotFromSlotInfos({...neighbourSlotInfosToCheck, slotId: getSlotParentIdAndIndexSplit(neighbourSlotInfosToCheck.slotId).parentId}) as SlotsStructure).fields.length - 1
+                        : this.appStore.frameObjects[neighbourSlotInfosToCheck.frameId].labelSlotsDict[neighbourSlotInfosToCheck.labelSlotsIndex].slotStructures.fields.length - 1; 
+                    const neighbourContainerSlotIndexToCheck = (isToPushLeft) ? 0 : neighbourContainerSlotLastChildIndex;
+                    pushBracket = (neighbourSlot as BaseSlot).code.length > 0 || !new RegExp("^" + neighbourContainerSlotIndexToCheck + "$|," + neighbourContainerSlotIndexToCheck + "$").test(neighbourSlotInfosToCheck.slotId);
+                }
+            }
+            
+            if(pushBracket){
+                // To faciliate the code refactoring, we follow this approach: we clear off the full label slot structure, put the amended content in a new single slot,
+                // and refactor the slots to let our refactoring splitting up operators, brackets etc as normal.
+                let resultingCode = "", newCursorPosition = 0;
+                const neighbourToPushInSlotSpanId = getLabelSlotUID({...slotInfos, slotId: neighbourSlotInfosToCheck.slotId});
+                document.getElementById(this.labelSlotsStructDivId)?.querySelectorAll("span").forEach((span) => {
+                    // We concatenate the slots's content of this label slot structure (bar the zero-width spaces),
+                    // but when we find the bracket we need to push, we ignore that slot and 
+                    // - change the currently-being-built resultCode to reflect a "push to the left "
+                    // - or flag we passed the bracket, then add the bracket in the next slot to reflect a "push to the right".
+                    // NOTE FOR STRING LITERALS: we need to carefully parse the string literal quotes slots.
+                    if(span.id !== bracketSlotSpanId){
+                        if(isToPushLeft && span.id == neighbourToPushInSlotSpanId){
+                            // We are pushing left: if we are now at the neighbour slot we wanted to push the slot in, 
+                            // we need to append the pushed bracket to the span content here (the actual bracket span will be ignored)
+                            const spanText = (span.textContent??"").replace("\u200b","");
+                            //newCursorPosition = resultingCode.length + ((skipFirstNeighbour) ? spanText.length + 1 : spanText.length);
+                            newCursorPosition = resultingCode.length + ((skipFirstNeighbour) ? spanText.length + 1 : 1);
+                            resultingCode += (((skipFirstNeighbour) ? spanText :  "") + bracketToPush + ((skipFirstNeighbour) ? "" : spanText));
+                        }
+                        else if(!isToPushLeft && span.id == neighbourToPushInSlotSpanId){
+                            // We are pushing right: if we are now at the neighbour slot we wanted to push the slot in, 
+                            // we need to prepend the pushed bracket to the span content here (the actual bracket span was ignored)
+                            const spanText = (span.textContent??"").replace("\u200b","");
+                            newCursorPosition = resultingCode.length + ((skipFirstNeighbour) ? 0 : spanText.length);
+                            resultingCode += (((skipFirstNeighbour) ? "" : spanText) + bracketToPush + ((skipFirstNeighbour) ? spanText : ""));
+                        }
+                        else{
+                            let spanText = span.textContent??"";
+                            const spanSlotType = parseLabelSlotUID(span.id).slotType;
+                            if(spanSlotType == SlotType.openingQuote || spanSlotType == SlotType.closingQuote) {
+                                // We take care of the string literal quotes: they need to be in the Python raw format to be showing fine when the code is parsed
+                                const quote = (UIDoubleQuotesCharacters.includes(spanText)) ? "\"" : "'";
+                                spanText = quote;
+                            }
+                            resultingCode += spanText.replace("\u200b","");
+                        }
+                    }
+                
+                });
+                const stateBeforeChanges = cloneDeep(this.appStore.$state);
+                this.appStore.frameObjects[slotInfos.frameId].labelSlotsDict[slotInfos.labelSlotsIndex].slotStructures.fields.splice(1);
+                (this.appStore.frameObjects[slotInfos.frameId].labelSlotsDict[slotInfos.labelSlotsIndex].slotStructures.fields[0] as BaseSlot).code = resultingCode;
+                this.appStore.frameObjects[slotInfos.frameId].labelSlotsDict[slotInfos.labelSlotsIndex].slotStructures.operators.splice(0);
+                this.appStore.focusSlotCursorInfos = {slotInfos: {...slotInfos, slotId: "0", slotType: SlotType.code}, cursorPos: newCursorPosition};
+                this.$nextTick(() => this.checkSlotRefactoring(getLabelSlotUID(this.appStore.focusSlotCursorInfos?.slotInfos as SlotCoreInfos), stateBeforeChanges));
+                
+            }
         },
 
         onFocus(){

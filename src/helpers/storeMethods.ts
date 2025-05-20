@@ -182,6 +182,17 @@ export const getFlatNeighbourFieldSlotInfos = (slotInfos: SlotCoreInfos, findNex
     }
 };
 
+// Helper method to get the number of direct children for a slot's parent based on its ID
+export const getFrameParentSlotsLength = (slotInfos: SlotCoreInfos): number => {
+    if(slotInfos.slotId.includes(",")) {
+        return (retrieveSlotFromSlotInfos({...slotInfos, slotId: getSlotParentIdAndIndexSplit(slotInfos.slotId).parentId}) as SlotsStructure).fields.length;
+    }
+    else {
+        // If the slot is already at the top level of the label slot structure, we look directly inside the store at the labelSlotsDict level.
+        return useStore().frameObjects[slotInfos.frameId].labelSlotsDict[slotInfos.labelSlotsIndex].slotStructures.fields.length;
+    }
+};
+
 export function isFrameLabelSlotStructWithCodeContent(slotsStruct: SlotsStructure): boolean {
     let hasContent = false;
     for(const fieldSlot of slotsStruct.fields){

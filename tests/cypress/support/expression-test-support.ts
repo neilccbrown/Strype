@@ -1,5 +1,6 @@
 // To avoid passing arguments in all the functions defined in this file, we fetch the shared IDs
 // and CSS class names of Strype (we only do it if they are not already saved in this file)
+import { isMacOSPlatform } from "@/helpers/common";
 import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
 let scssVars: {[varName: string]: string};
 let strypeElIds: {[varName: string]: (...args: any[]) => string};
@@ -13,7 +14,7 @@ Cypress.Commands.add("initialiseSupportStrypeGlobals", () => {
 });
 import {cleanFromHTML} from "../support/test-support";
 
-export function assertState(expectedState : string) : void {
+export function assertState(expectedState : string, assertMessage?: string) : void {
     withSelection((info) => {
         cy.get("#" + strypeElIds.getFrameContainerUID(-3) + " ." + scssVars.frameHeaderClassName).first().within((h) => cy.get("." + scssVars.labelSlotInputClassName + ",." + scssVars.frameColouredLabelClassName).then((parts) => {
             let s = "";
@@ -38,7 +39,7 @@ export function assertState(expectedState : string) : void {
                 s += text;
             }
             // There is no correspondence for _ (indicating a null operator) in the Strype interface so just ignore that:
-            expect(s).to.equal(expectedState.replaceAll("_", ""));
+            expect(s).to.equal(expectedState.replaceAll("_", ""), assertMessage);
         }));
     });
 }
@@ -301,4 +302,65 @@ export function testBackspace(originalInclBksp : string, expectedResult : string
             });
         });
     }
+}
+
+export enum PushBracketArrow {
+    MODIF_LEFT,
+    MODIF_RIGHT,
+    LEFT,
+    RIGHT,
+    HOME, //to reach the start of a slot struct in one go
+    END, // to reach the end of a slot struct in one go
+}
+
+export function testPushBracket(original: string, expectedResults: string[], pushSequence: PushBracketArrow[]): void {
+    // The test aims to test the "push" bracket functionality, which allows moving one bracket of a pair.
+    // The test starts with one expression provided by the argument "original", in which $ denotes the current cursor position to start the test at.
+    // Then, the test will perform a sequence of left/right pushes (pushSequence, containing enum values indicating a push or simple move to the left or to the right).
+    // The expected results after each individual push are provided in expectedResults (with $ denoting the expected cursor position).
+    // The test will fail if there is a length inconsitency between the two array arguments, the cursor position is missing in the args,
+    // or if an expected result is not met.
+    it("Tests " + original, () => {
+        // Sanity check of the test
+        expect(expectedResults.length).to.equal(pushSequence.length, "Test args error: the number of 'pushes' and the number of expected results should match !");
+        expect(original.match(/\$/g)?.length).to.equal(1, "Test args error: original should contain one and only one cursor position char ($).");
+        expectedResults.forEach((res, index) => expect(res.match(/\$/g)?.length).to.eq(1, "Test args error: expectedResults["+index+"] should contain one and only one cursor position char ($)."));
+
+        // Actual test
+        focusEditor();
+
+        const cursorIndex = original.indexOf("$");
+        const before = original.substring(0, cursorIndex);
+        const after = original.substring(cursorIndex + 1);
+
+        cy.get("body").type("i");
+        assertState("{$}");
+        if (before.length > 0) {
+            cy.get("body").type(before);
+        }
+        withSelection((posToInsert) => {
+            if (after.length > 0) {
+                cy.get("body").type(after);
+            }
+            // Focus doesn't work, instead let's move the caret until we are in the right slot
+            withSelection((newPosToInsert) => {
+                if(newPosToInsert.id != posToInsert.id){
+                    reachFrameLabelSlot( posToInsert.id, true);
+                }
+            });
+
+            moveToPositionThen(posToInsert.cursorPos, () => {
+                pushSequence.forEach((typedArrow, index) => {
+                    const keytype = `{${(typedArrow == PushBracketArrow.MODIF_LEFT || typedArrow == PushBracketArrow.MODIF_RIGHT ) ? (isMacOSPlatform() ? "ctrl+" : "alt+") : ""}` 
+                        + `${(typedArrow == PushBracketArrow.LEFT || typedArrow == PushBracketArrow.MODIF_LEFT) 
+                            ? "leftArrow" 
+                            : ((typedArrow == PushBracketArrow.RIGHT || typedArrow == PushBracketArrow.MODIF_RIGHT) 
+                                ? "rightArrow"
+                                : ((typedArrow == PushBracketArrow.HOME) ? "home" : "end"))}}`;
+                    cy.get("body").type(keytype).then(() => assertState(expectedResults[index],
+                        `assertion for expectedResults[${index}] (from <${(index > 0) ? expectedResults[index - 1] : original}>, doing ${PushBracketArrow[typedArrow]})`));
+                });
+            });
+        });
+    });
 }
