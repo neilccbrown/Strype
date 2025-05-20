@@ -4,16 +4,6 @@ import path from "path";
 let scssVars: {[varName: string]: string};
 //let strypeElIds: {[varName: string]: (...args: any[]) => string};
 test.beforeEach(async ({ page }) => {
-    // Save time by blocking the google scripts:
-    await page.route("**/*", (route) => {
-        const url = route.request().url();
-        if (url.includes("google.com")) {
-            route.abort(); // prevent loading
-        }
-        else {
-            route.continue(); // allow others
-        }
-    });
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);

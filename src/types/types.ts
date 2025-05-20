@@ -26,7 +26,7 @@ export interface LabelSlotsContent {
     slotStructures: SlotsStructure; // the root slot for that label
 }
 
-export type FieldSlot = (BaseSlot | SlotsStructure | StringSlot);
+export type FieldSlot = (BaseSlot | SlotsStructure | StringSlot | MediaSlot);
 export interface SlotsStructure {
     operators: BaseSlot[];
     fields: FieldSlot[];
@@ -49,6 +49,16 @@ export interface StringSlot extends BaseSlot {
     quote: string;    
 }
 
+// For MediaSlot, code contains: load_image("data:image/png;base64,......")
+// This will be the code generated if converted to Python or copied as text
+// The mediaType is for convenience here e.g. "image/png".
+// and we can infer the function is "load_image" from the media type.
+// None of this can be edited after the image is initially inserted into the code
+// so there are no problems with keeping the different parts in sync
+export interface MediaSlot extends BaseSlot {
+    mediaType: string;
+}
+
 export interface FlatSlotBase extends BaseSlot{    
     id: string;
     type: SlotType;
@@ -62,8 +72,12 @@ export function isFieldBracketedSlot(field: FieldSlot): field is SlotsStructure 
     return (field as SlotsStructure).openingBracketValue !== undefined;
 }
 
+export function isFieldMediaSlot(field: FieldSlot): field is SlotsStructure {
+    return (field as MediaSlot).mediaType !== undefined;
+}
+
 export function isFieldBaseSlot(field: FieldSlot): field is BaseSlot {
-    return (!isFieldBracketedSlot(field) && !isFieldStringSlot(field));
+    return (!isFieldBracketedSlot(field) && !isFieldStringSlot(field) && !isFieldMediaSlot(field));
 }
 
 // Used by the UI and in the code-behind mechanisms
@@ -84,6 +98,8 @@ export enum SlotType{
     // operator type
     operator = 0o7000, // meta category
     // "no type", which can be used for undo/redo difference marking
+    // media type
+    media = 0o70000, // meta category
     none = 0,    
 }
 
@@ -231,6 +247,11 @@ export interface SlotInfos extends SlotCoreInfos {
     isFirstChange: boolean;
     error?: string;
     errorTitle?: string;
+}
+
+// Like SlotInfos but may contain a MediaType (if it's a media slot)
+export interface SlotInfosOptionalMedia extends SlotInfos {
+    mediaType?: string;
 }
 
 export interface SlotCursorInfos{
@@ -1124,3 +1145,15 @@ export const defaultEmptyStrypeLayoutDividerSettings: StrypeLayoutDividerSetting
     "2": undefined,
     "3": undefined,
 };
+
+export interface LoadedMedia {
+    mediaType: string,
+    // Both sounds and images have an imageDataURL which acts as the preview:
+    imageDataURL : string,
+    // But only sounds have this item:
+    audioBuffer?: AudioBuffer,
+}
+
+export type EditImageInDialogFunction = (imageDataURL: string, showPreview: (dataURL : string) => void, callback: (replacement: {code: string, mediaType: string}) => void) => void;
+export type EditSoundInDialogFunction = (sound: AudioBuffer, callback: (replacement: {code: string, mediaType: string}) => void) => void;
+

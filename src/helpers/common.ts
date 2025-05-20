@@ -128,6 +128,35 @@ export function readFileAsync(file: Blob): Promise<BufferSource>  {
     });
 }
 
+export function readFileAsyncAsData(file: File): Promise<string>  {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onloadend = () => {
+            resolve(reader.result as string);
+        };
+
+        reader.onerror = reject;
+
+        reader.readAsDataURL(file);
+    });
+}
+
+export function readImageSizeFromDataURI(dataURI: string): Promise<{ dataURI: string, width: number; height: number }> {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+
+        img.onload = () => {
+            resolve({ dataURI: dataURI, width: img.naturalWidth, height: img.naturalHeight });
+        };
+
+        img.onerror = (error) => {
+            reject(new Error("Failed to load image from data URI"));
+        };
+
+        img.src = dataURI;
+    });
+}
 
 export const readFileContent = async (file: File): Promise<string>  => {
     // from https://stackoverflow.com/questions/17068610/read-a-file-synchronously-in-javascript
@@ -171,4 +200,39 @@ export function getDateTimeFormatted(dt: Date): string {
     const rawMinsVal = dt.getMinutes();
     const rawSecsVal = dt.getSeconds();
     return `${dt.getFullYear()}-${((rawMonthOneIndexedVal) < 10) ? "0" + rawMonthOneIndexedVal : rawMonthOneIndexedVal }-${(rawDayVal < 10) ? "0" + rawDayVal : rawDayVal}_${(rawHoursVal < 10) ? "0" + rawHoursVal : rawHoursVal}-${(rawMinsVal < 10) ? "0" + rawMinsVal : rawMinsVal}-${(rawSecsVal < 10) ? "0" + rawSecsVal : rawSecsVal}`;
+}
+
+// Given a regex, splits the string into:
+//   [part before first match,
+//    full text of first match,
+//    part between first and second/final match,
+//    part after final match]
+// For any number of matches.  If no matches, returns a singleton array with the full string.  Never returns empty array.
+export function splitByRegexMatches(input: string, regex: RegExp): string[] {
+    // Make a global version:
+    regex = new RegExp(regex, "g");
+    const matches = [...input.matchAll(regex)];
+
+    const result: string[] = [];
+    let lastIndex = 0;
+
+    for (const match of matches) {
+        // Not sure this can happen, but keep Typescript happy:
+        if (match.index === undefined) {
+            continue;
+        }
+
+        // Add part before the match
+        result.push(input.slice(lastIndex, match.index));
+
+        // Add the matched part itself
+        result.push(match[0]);
+
+        lastIndex = match.index + match[0].length;
+    }
+
+    // Add the remaining part after the last match
+    result.push(input.slice(lastIndex));
+
+    return result;
 }

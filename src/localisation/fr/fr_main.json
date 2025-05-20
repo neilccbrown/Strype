@@ -175,11 +175,30 @@
     "stopping": "Arrêt...",
     "runtimeErrorConsole": "Erreur d'exécution",
     "console": "Console",
-    "TurtleGraphics": "Turtle Graphics",
+    "Graphics": "Graphics",
     "importTurtle": "Importe le module 'turtle' pour utiliser Turtle Graphics",
     "PEA-layout-tabs-collapsed": "Disposition en onglets reduite",
     "PEA-layout-tabs-expanded":"Disposition en onglets étendue",
     "PEA-layout-split-collapsed": "Disposition fractionnée réduite",
     "PEA-layout-split-expanded": "Disposition fractionnée étendue"
-  }
+  },
+  "media": {
+    "edit": "Éditer",
+    "imageChangedSize": "Taille modifiée (environ) : ",
+    "imageCrop": "Recadrage de l'image",
+    "imageDetails": "Détails de l'image",
+    "imageOriginalSize": "Taille originale : ",
+    "imageScale": "Échelle de l'image",
+    "pixels": "pixels",
+    "preview": "Aperçu",
+    "soundAverageVolume": "Volume moyen:",
+    "soundChangedLength": "Nouvelle durée:",
+    "soundCrop": "Rognage du son",
+    "soundDetails": "Détails du son",
+    "soundNormaliseVolume": "Normaliser le volume",
+    "soundPlay": "Lecture",
+    "soundSeconds": "secondes",
+    "soundStop": "Arrêt",
+    "volumeScale": "Échelle du volume"
+  }    
 }

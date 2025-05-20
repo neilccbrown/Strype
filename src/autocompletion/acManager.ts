@@ -9,6 +9,47 @@ import {getMatchingBracket} from "@/helpers/editor";
 import {getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import {OUR_PUBLIC_LIBRARY_MODULES} from "@/autocompletion/ac-skulpt";
+import {TPyParser} from "tigerpython-parser";
+import graphicsMod from "../../public/public_libraries/strype/graphics.py";
+
+TPyParser.defineModule("strype.graphics", extractTypes(graphicsMod));
+
+function removeDefaultParams(funcSignature: string): string {
+    // Regular expression to match parameters with default values
+    const regex = /(\s*,?\s*\w+\s*=\s*[^,)\s]+)/g;
+    // Replace matches with an empty string and clean up trailing commas or spaces
+    return funcSignature.replace(regex, "").replace(/\(\s*,/, "(").replace(/,\s*\)/, ")");
+}
+
+function extractTypes(original : string) : string {
+    const originalLines = original.split("\n");
+    // We need to find everything starting class or def
+    const r = [];
+    let inClass = false;
+    for (let i = 0; i < originalLines.length; i++) {
+        if (originalLines[i].match(/^class.*:\s*$/)) {
+            r.push(originalLines[i]);
+            inClass = true;
+        }
+        else {
+            const fm = originalLines[i].match(/^(\s*)def\s+(.*)\s*:\s*$/);
+            if (fm && (fm[1] === "" || inClass)) {
+                let signature;
+                if (i > 0 && originalLines[i - 1].startsWith((fm[1] + "#@@"))) {
+                    signature = fm[1] + "[" + originalLines[i - 1].slice(fm[1].length + 3).trim() + "]" + removeDefaultParams(fm[2]);
+                }
+                else {
+                    signature = fm[1] + removeDefaultParams(fm[2]);
+                }
+                r.push(signature);
+                if (fm[1] === "") {
+                    inClass = false;
+                }
+            }
+        }
+    }
+    return r.join("\n");
+}
 
 // Given a FieldSlot, get the program code corresponding to it, to use
 // as the prefix (context) for code completion.
@@ -17,6 +58,10 @@ export function getContentForACPrefix(item : FieldSlot, excludeLast? : boolean) 
         // It's a string literal
         const ss = item as StringSlot;
         return ss.quote + ss.code + ss.quote;
+    }
+    else if ("mediaType" in item) {
+        // It's an image literal; no completion
+        return "";
     }
     else if ("code" in item) {
         const basic = item as BaseSlot;

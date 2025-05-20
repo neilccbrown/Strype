@@ -44,6 +44,7 @@ import {checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbo
 import { cloneDeep } from "lodash";
 import {calculateParamPrompt} from "@/autocompletion/acManager";
 import scssVars from "@/assets/style/_export.module.scss";
+import {readFileAsyncAsData, readImageSizeFromDataURI, splitByRegexMatches} from "@/helpers/common";
 import {detectBrowser} from "@/helpers/browser";
 import { isMacOSPlatform } from "@/helpers/common";
 
@@ -325,8 +326,8 @@ export default Vue.extend({
             if(labelDiv){ // keep TS happy
                 // As we will need to reposition the cursor, we keep a reference to the "absolute" position in this label's slots,
                 // so we find that out while getting through all the slots to get the literal code.
-                let {uiLiteralCode, focusSpanPos: focusCursorAbsPos, hasStringSlots} = getFrameLabelSlotLiteralCodeAndFocus(labelDiv, slotUID);
-                const parsedCodeRes = parseCodeLiteral(uiLiteralCode, {frameType: this.appStore.frameObjects[this.frameId].frameType.type, isInsideString: false, cursorPos: focusCursorAbsPos, skipStringEscape: hasStringSlots});
+                let {uiLiteralCode, focusSpanPos: focusCursorAbsPos, hasStringSlots, mediaLiterals} = getFrameLabelSlotLiteralCodeAndFocus(labelDiv, slotUID);
+                const parsedCodeRes = parseCodeLiteral(uiLiteralCode, {frameType: this.appStore.frameObjects[this.frameId].frameType.type, isInsideString: false, cursorPos: focusCursorAbsPos, skipStringEscape: hasStringSlots, imageLiterals: mediaLiterals});
                 const majorChange = this.majorChange(this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures, parsedCodeRes.slots);
                 Vue.set(this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex], "slotStructures", parsedCodeRes.slots);
                 // The parser can be return a different size "code" of the slots than the code literal
@@ -349,8 +350,14 @@ export default Vue.extend({
                     let foundPos = false;
                     let setInsideNextSlot = false; // The case when the cursor follow a non editable slot (i.e. operator, bracket, quote)
                     // Reposition the cursor now
-                    labelDiv.querySelectorAll("." + scssVars.labelSlotInputClassName).forEach((spanElement) => {
+                    labelDiv.querySelectorAll("." + scssVars.labelSlotInputClassName + ",." + scssVars.labelSlotMediaClassName).forEach((spanElement) => {
                         if(!foundPos){
+                            if (spanElement.classList.contains(scssVars.labelSlotMediaClassName)) {
+                                // Media literals are considered to be one character wide:
+                                newUICodeLiteralLength += 1;
+                                // Go on to the next selector item:
+                                return;
+                            }
                             const spanContentLength = (spanElement.textContent?.replace(/\u200B/g, "")?.length??0);
                             if(setInsideNextSlot || (focusCursorAbsPos <= (newUICodeLiteralLength + spanContentLength) && focusCursorAbsPos >= newUICodeLiteralLength)){
                                 if(!setInsideNextSlot && !isElementEditableLabelSlotInput(spanElement)){
@@ -501,11 +508,74 @@ export default Vue.extend({
             // Paste events need to be handled on the parent contenteditable div because FF will not accept
             // forwarded (untrusted) events to be hooked by the children spans. 
             this.appStore.ignoreKeyEvent = true;
-            if (event.clipboardData && this.appStore.focusSlotCursorInfos) {
-                // We create a new custom event with the clipboard data as payload, to avoid untrusted events issues
-                const content = event.clipboardData.getData("Text");
-                document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
-                    ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: content}));
+            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+            if (event.clipboardData && focusSlotCursorInfos) {
+                // First we need to check if it's a media item on the clipboard, because that needs
+                // to become a media literal rather than plain text:
+                const items = event.clipboardData.items;
+                /* IFTRUE_isPython */
+                for (let item of items) {
+                    let file = item.getAsFile();
+                    let isImage = item.type.startsWith("image");
+                    let isAudio = item.type.startsWith("audio");
+                    if (file && (isImage || isAudio)) {
+                        readFileAsyncAsData(file).then(isImage ? readImageSizeFromDataURI : (s) => Promise.resolve({dataURI: s, width: -1, height: -1})).then((dataAndDim) => {
+                            // The code is the code to load the literal from its base64 string representation:
+                            const code = (isImage ? "load_image" : "load_sound") + "(\"" + dataAndDim.dataURI + "\")";
+                            document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos))
+                                ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: item.type, content: code, width: dataAndDim.width, height: dataAndDim.height}}));
+                        });
+                        return;
+                    }
+                }
+                /* FITRUE_isPython */
+
+                interface PastedItem {
+                    type: string;
+                    content: string;
+                }
+                const pastedItems : PastedItem[] = [];
+
+                const content = event.clipboardData.getData("Text").trim();
+                if (content) {
+                    const ms = splitByRegexMatches(content, /(?:load_image|load_sound)\("data:(?:image|audio)[^;]*;base64,[^"]+"\)/);
+                    for (let i = 0; i < ms.length; i++) {
+                        // We know even values (0, 2) are the plain string parts inbetween regex matches,
+                        // and odd values (1, 3) are the parts which matched the regex:
+                        if ((i % 2) == 0) {
+                            pastedItems.push({type: "text/plain", content: ms[i]});
+                        }
+                        else {
+                            // fish out the details:
+                            const details = /data:([^;]+);base64,[^"']+/.exec(ms[i]);
+                            if (details) {
+                                const dataAndBase64 = details[0];
+                                const code = (details[1].startsWith("image") ? "load_image" : "load_sound") + "(\"" + dataAndBase64 + "\")";
+                                pastedItems.push({type: details[1], content: code});
+                            }
+                        }
+                    }
+                }
+                
+                // This recurses through the list pasting in order, but adds a double
+                // nextTick inbetween each paste event.  The reason we double is that the pasting
+                // sometimes uses one nextTick to take effect, so we need an extra one beyond that
+                // before we are then readyto paste the next part:
+                const pasteIndexThenFollowing = (i : number) => {
+                    if (i < pastedItems.length) {
+                        // We create a new custom event with the clipboard data as payload, to avoid untrusted events issues
+                        if (this.appStore.focusSlotCursorInfos) {
+                            document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
+                                ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, { detail: { type: pastedItems[i].type, content: pastedItems[i].content }}));
+                            this.$nextTick(() => {
+                                this.$nextTick(() => {
+                                    pasteIndexThenFollowing(i + 1);
+                                });
+                            });
+                        }
+                    }
+                };
+                pasteIndexThenFollowing(0);
             }
         },        
 

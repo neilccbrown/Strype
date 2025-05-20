@@ -141,7 +141,7 @@
     "expand": "Expandir",
     "collapse": "Colapsar",
     "console": "Consola",
-    "TurtleGraphics": "Gráficos 'Turtle'",
+    "Graphics": "Gráficos",
     "importTurtle": "Importar el módulo 'turtle'en tu código para usar gráficos 'Turtle'."
   }
 }
