@@ -610,7 +610,7 @@ export default Vue.extend({
                 // If a key modifier (ctrl, shift or meta) is pressed, we don't do anything special (browser handles it),
                 // note that alt is handled separately and because of Chrome and FF are using alt+arrows for browser's navigation, we blocked it.
                 else if(event.ctrlKey || event.shiftKey || event.metaKey || event.altKey){      
-                    if(event.altKey){
+                    if((event.altKey && !isMacOSPlatform()) || (event.ctrlKey && isMacOSPlatform())){
                         event.preventDefault();
                         event.stopImmediatePropagation();
                     }              
