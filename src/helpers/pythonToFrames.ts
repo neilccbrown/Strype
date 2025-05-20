@@ -228,8 +228,8 @@ function transformCommentsAndBlanks(codeLines: string[]) : {disabledLines : numb
             // Blank line:
             // We indent this to the largest of its indent,
             // and the (smallest of the indent before us and the indent after us).
-            let nextIndent = mostRecentIndent;
-            for (let j = i + 1; j < codeLines[i].length; j++) {
+            let nextIndent = "";
+            for (let j = i + 1; j < codeLines.length; j++) {
                 if (codeLines[j].trim() != "") {
                     nextIndent = getIndent(codeLines[j]);
                     break;
