@@ -59,7 +59,6 @@ type FrameEntry = {
     body?: FrameEntry[];
     joint?: FrameEntry[];
 };
-// TODO add more complex slot content
 
 let rng = () => 0;
 
@@ -67,20 +66,44 @@ const framesBySection = [Object.values(ImportFrameTypesIdentifiers),
     [... Object.values(FuncDefIdentifiers), ...Object.values(CommentFrameTypesIdentifier)],
     Object.values(StandardFrameTypesIdentifiers).filter((id) => id != "global" && id != "return" && id != "continue" && id != "break" && !Object.values(JointFrameIdentifiers).includes(id))];
 
-function getRandomInt(n: number): number {
+function genRandomInt(n: number): number {
     // Get number into range of 0 to (n-1) inclusive:
     return ((rng() % n) + n) % n;
 }
 function pick<T>(ts: T[]): T {
-    return ts[getRandomInt(ts.length)];
+    return ts[genRandomInt(ts.length)];
 }
 
-function genRandomString() : string {
+function genRandomString(includeSymbols: boolean) : string {
     // These are some easy valid characters and some awkward invalid ones, but
     // none that are valid Python operators:
-    const candidates = "aB01#$!@_\\ü";
-    const len = getRandomInt(6);
+    const candidates = includeSymbols ? "aB01#$!@_\\ü" : "aB01_ü";
+    const len = genRandomInt(6);
     return Array.from({ length: len }, () => pick(candidates.split(""))).join("");
+}
+
+function genRandomExpression(level = 0) : string {
+    // Keep a reasonable chance of just producing a simple name:
+    if (genRandomInt(3) == 0 || level >= 3) {
+        return genRandomString(true);
+    }
+    // Otherwise we glue together idents and operators and brackets:
+    let expr = "";
+    const len = genRandomInt(8 - level * 2);
+    for (let i = 0; i < len; i++) {
+        // Pick: ident, operator, string or bracket:
+        expr += pick([
+            () => genRandomString(true),
+            // TODO or number
+            () => pick(["+", "-", "*", "/", ">=", ">", " and ", " or ", " not ", " is ", " is not ", " not in "]),
+            // TODO string literal (incl containing genExpression?)
+            () => {
+                const brackets = pick([["(", ")"], ["[", "]"], ["{", "}"]]);
+                return brackets[0] + genRandomExpression(level + 1) + brackets[1];
+            },
+        ] as (() => string)[])();
+    }
+    return expr;
 }
 
 function disableAll(frames: FrameEntry[]) : FrameEntry[] {
@@ -97,28 +120,36 @@ function disableAll(frames: FrameEntry[]) : FrameEntry[] {
 function genRandomFrame(fromFrames: string[], level : number): FrameEntry {
     const id = pick(fromFrames);
     const def = getFrameDefType(id);
-    const subLen = level == 2 ? 0 : getRandomInt(4 - level * 2);
+    const subLen = level == 2 ? 0 : genRandomInt(4 - level * 2);
 
     const children = def.allowChildren ? Array.from({ length: subLen }, () => genRandomFrame(framesBySection[2], level + 1)) : undefined;
     const jointChildren: FrameEntry[] | undefined = def.allowJointChildren ? [] : undefined;
-    if (jointChildren != undefined && (id == "try" || getRandomInt(2) == 0)) {
+    if (jointChildren != undefined && (id == "try" || genRandomInt(2) == 0)) {
         // Pick one then see what can follow that:
         let cur : string | undefined = pick(def.jointFrameTypes.filter((j) => !(j == "else" && id == "try")));
         while (cur != undefined) {
             const j = genRandomFrame([cur], level);
             jointChildren.push(j);
             const canFollow = getFrameDefType(j.frameType).jointFrameTypes.filter((f) => def.jointFrameTypes.includes(f));
-            cur = canFollow && getRandomInt(3) != 0 ? pick(canFollow) : undefined; 
+            cur = canFollow && genRandomInt(3) != 0 ? pick(canFollow) : undefined; 
         }
     }
     
     // Disable 1 in 8:
-    const disable = id != "blank" && id != "comment" && getRandomInt(8) == 0;
+    const disable = id != "blank" && id != "comment" && genRandomInt(8) == 0;
     
     return {
         frameType: id,
         ...(disable ? {disabled: true} : {}),
-        slotContent: def.labels.filter((l) => l.showSlots ?? true).map((_) => genRandomString()),
+        slotContent: def.labels.filter((l) => l.showSlots ?? true).map((_, i) => {
+            if (id == "import" || id == "from-import" || id == "funcdef" || ((id == "for" || id == "varassign") && i == 0) || ((id == "with") && i == 1)) {
+                return genRandomString(false);
+            }
+            else {
+                const expr = genRandomExpression();
+                return id == "comment" ? expr.trim() : expr;
+            }
+        }),
         ...(children !== undefined ? { body: disable ? disableAll(children) : children } : {}),
         ...(jointChildren !== undefined ? { joint: disable ? disableAll(jointChildren) : jointChildren } : {}),
     };
@@ -178,8 +209,9 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
     }
     
     for (const s of frame.slotContent) {
+        console.log("Entering slot:   <<<" + s + ">>> into " + frame.frameType);
         await checkFrameXorTextCursor(page, false, "Slot of frame " + frame.frameType);
-        await typeIndividually(page, s);
+        await typeIndividually(page, s, 125);
         await page.keyboard.press("ArrowRight");
         await page.waitForTimeout(100);
     }
@@ -243,7 +275,7 @@ function visibleTextContent(elementHandle : JSHandle<HTMLElement>) : Promise<str
                 const parent = node.parentElement;
                 const style = parent && window.getComputedStyle(parent);
                 const hidden = !style || style.display === "none" || style.visibility === "hidden";
-                return hidden ? "" : node.textContent || "";
+                return hidden ? "" : (parent?.classList.contains("operator-slot") && node.textContent?.match(/^[a-z ]+$/) ? " " + node.textContent + " " : node.textContent) || "";
             }
 
             if (node.nodeType === Node.ELEMENT_NODE) {
@@ -401,7 +433,7 @@ test.describe("Enters, saves and loads random frame", () => {
     for (let i = 0; i < 10; i++) {
         test("Tests random entry #" + i, async ({page}, testInfo) => {
             // Increase test timeout:
-            test.slow();
+            test.setTimeout(150_000);
             // Don't retry these tests; if they fail, we want to know:
             if (testInfo.retry > 0) {
                 return;
@@ -959,6 +991,23 @@ test.describe("Enters, saves and loads specific frames", () => {
                     },
                 ],
             },
+        ]]);
+    });
+
+    test("Invalid expressions", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "funccall", slotContent: ["/[@01]"]},
+        ]]);
+    });
+
+    test("Valid nots", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "funccall", slotContent: [" not foo( not bar)"]},
+        ]]);
+    });
+    test("Invalid nots", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "funccall", slotContent: ["bar not foo(foo not bar)"]},
         ]]);
     });
 });
