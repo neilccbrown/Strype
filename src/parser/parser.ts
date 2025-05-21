@@ -106,6 +106,12 @@ function transformSlotLevel(slots: SlotsStructure) {
     let valid = true;
     for (let i = 0; i < slots.operators.length; i++) {
         if (slots.operators[i].code.trim() === "not" || slots.operators[i].code.trim() === "~") {
+            // Unary operators only valid at start of bracketed expression:
+            if (i != 0) {
+                valid = false;
+                break;
+            }
+            
             const preceding = slots.fields[i];
             if (!(isFieldBaseSlot(preceding) && preceding.code.trim() === "")) {
                 // Something besides a plain blank before it; not valid unary operator:
@@ -270,7 +276,7 @@ export default class Parser {
                     slotTypes: slotStartsLengthsAndCode.slotTypes,
                 };
                 // add their code to the output
-                output += slotStartsLengthsAndCode.code + " ";
+                output += slotStartsLengthsAndCode.code.trimStart() + " ";
             }            
         });
         

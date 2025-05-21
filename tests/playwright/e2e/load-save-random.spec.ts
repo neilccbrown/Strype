@@ -103,6 +103,13 @@ function genRandomExpression(level = 0) : string {
             },
         ] as (() => string)[])();
     }
+    // If we have generated "is" <blank> "not" (which we encode as "is  not") it's going to get interpreted in the editor
+    // as is not, so we just correct to the latter here:
+    expr = expr.replaceAll(/is {2}not in/g, "is not  in");
+    expr = expr.replaceAll(/is {2}not/g, "is not");
+    // Similarly, > > will not be interpreted correctly so just discard one part:
+    expr = expr.replaceAll(/> > >/g, ">");
+    expr = expr.replaceAll(/> >/g, ">");
     return expr;
 }
 
@@ -1005,9 +1012,24 @@ test.describe("Enters, saves and loads specific frames", () => {
             {frameType: "funccall", slotContent: [" not foo( not bar)"]},
         ]]);
     });
-    test("Invalid nots", async ({page}) => {
+    test("Invalid not #1", async ({page}) => {
         await testSpecific(page, [[], [], [
             {frameType: "funccall", slotContent: ["bar not foo(foo not bar)"]},
+        ]]);
+    });
+    test("Invalid not #2", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "funccall", slotContent: [" not in  is not  not (ü@B\\)"]},
+        ]]);
+    });
+    test("Invalid not #3", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "funccall", slotContent: [" and  not "]},
+        ]]);
+    });
+    test("Invalid not #4", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "funccall", slotContent: ["_0üB!_1_#[(B\\üB0)@{+ not in  not }( is not ) is not ]"]},
         ]]);
     });
 });

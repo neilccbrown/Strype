@@ -94,8 +94,9 @@ export const generateFlatSlotBases = (slotStructure: SlotsStructure, parentId?: 
             
             // We pass true if we're beside an operator and the other side is the end or a non-blank operator
             const adjacentOp =
-                (operatorSlot.code !== "" && (index == 0 || slotStructure.operators[index - 1].code != ""))
-                || (index > 0 && slotStructure.operators[index - 1].code != "" && operatorSlot.code !== "");
+                ((operatorSlot.code !== "" && (index == 0 || slotStructure.operators[index - 1].code != ""))
+                || (index > 0 && slotStructure.operators[index - 1].code != "" && operatorSlot.code !== ""))
+                && !["not", "~"].includes(operatorSlot.code.trim());
             addFlatSlot({...(fieldSlot as BaseSlot), id: slotId, type: evaluateSlotType(fieldSlot)}, adjacentOp, operatorSlot.code);
         }   
 
