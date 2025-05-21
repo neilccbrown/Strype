@@ -981,7 +981,6 @@ export default Vue.extend({
                 const isEscapingString = isFieldStringSlot(currentSlot) && cursorPos > 0 && (getNumPrecedingBackslashes(inputSpanFieldContent, cursorPos) % 2) == 1
                     && ((cursorPos + inputString.length < inputSpanFieldContent.length && inputSpanFieldContent[cursorPos + inputString.length]!= inputString) || isAtEndOfSlot);
                 if(isEscapingString){
-                    console.log("Escaping string");
                     // Just let the input occur:
                     return;
                 }
