@@ -743,6 +743,8 @@ export default Vue.extend({
                 
                 });
                 const stateBeforeChanges = cloneDeep(this.appStore.$state);
+                // Since we redo *all* the slots of the current labelSlots structure, we need to 1) only keep 1 slot in the structure, remove all operators
+                // and insert the resultingCode in the slot we kept. The slot structure will be refactored again in the next tick.
                 this.appStore.frameObjects[slotInfos.frameId].labelSlotsDict[slotInfos.labelSlotsIndex].slotStructures.fields.splice(1);
                 (this.appStore.frameObjects[slotInfos.frameId].labelSlotsDict[slotInfos.labelSlotsIndex].slotStructures.fields[0] as BaseSlot).code = resultingCode;
                 this.appStore.frameObjects[slotInfos.frameId].labelSlotsDict[slotInfos.labelSlotsIndex].slotStructures.operators.splice(0);
