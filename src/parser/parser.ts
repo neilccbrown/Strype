@@ -40,7 +40,8 @@ export default class Parser {
     private excludeLoopsAndCommentsAndCloseTry = false;
     private ignoreCheckErrors = false;
     private stoppedIndentation = ""; // The indentation level when we encountered the stop frame.
-
+    private libraries : string[] = [];
+    
     constructor(ignoreCheckErrors?: boolean){
         if(ignoreCheckErrors != undefined){
             this.ignoreCheckErrors = ignoreCheckErrors;
@@ -50,11 +51,15 @@ export default class Parser {
     public getStoppedIndentation() : string {
         return this.stoppedIndentation;
     }
+    
+    public getLibraries() : string[] {
+        return [...this.libraries];
+    }
 
     private parseBlock(block: FrameObject, indentation: string): string {
         let output = "";
         const children = useStore().getFramesForParentId(block.id);
-
+        
         if(this.checkIfFrameHasError(block)) {
             return "";
         }
@@ -111,9 +116,14 @@ export default class Parser {
 
         // Comments are treated separately for 2 reasons: 1) when we are parsing for a/c we don't want to parse the comments because they mess up with the try block surrounding the lines of code,
         // and 2) we need to check if the comment is multilines for setting the right comment indicator (''' instead of #). A comment is always a single slot so there is no extra logic to consider.
-        if((statement.frameType.type === AllFrameTypesIdentifier.comment) 
+        if((statement.frameType.type === AllFrameTypesIdentifier.comment)
+        || (statement.frameType.type === AllFrameTypesIdentifier.library)    
         || (statement.frameType.type === AllFrameTypesIdentifier.funccall && isFieldBaseSlot(statement.labelSlotsDict[0].slotStructures.fields[0]) && (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.startsWith("#"))){
             const commentContent = (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code;
+
+            if (statement.frameType.type === AllFrameTypesIdentifier.library) {
+                this.libraries.push(commentContent);
+            }
             // Before returning, we update the line counter used for the frame mapping in the parser:
             // +1 except if we are in a multiline comment (and not excluding them) when we then return the number of lines-1 + 2 for the multi quotes
             // (for UI purpose our multiline comments content always terminates with an extra line return so we need to discard it)

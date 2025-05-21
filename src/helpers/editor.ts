@@ -817,11 +817,20 @@ export function generateAllFrameCommandsDefs():void {
                 index:1,
             },
         ],
-        "l": [{
-            type: getFrameDefType(AllFrameTypesIdentifier.elif),
-            description: "elif",
-            shortcuts: ["l"],
-        }],
+        "l": [
+            {
+                type: getFrameDefType(AllFrameTypesIdentifier.elif),
+                description: "elif",
+                shortcuts: ["l"],
+                index:0,
+            },
+            {
+                type: getFrameDefType(AllFrameTypesIdentifier.library),
+                description: "library",
+                shortcuts: ["l"],
+                index:1,
+            },
+        ],
         "e": [{
             type: getFrameDefType(AllFrameTypesIdentifier.else),
             description: "else",
