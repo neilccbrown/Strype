@@ -624,7 +624,7 @@ export default class Parser {
                 }
                 addSlotInPositionLengths(flatSlotCode.length, flatSlot.id, flatSlotCode, flatSlot.type);
             }
-        }, transformSlotLevel);
+        }, this.saveAsSPY ? transformSlotLevel : ((s) => s));
 
         // There are a few fields which are permitted to be blank:
         if (this.saveAsSPY && code == "" && !optionalSlot) {
