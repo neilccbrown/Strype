@@ -94,9 +94,9 @@ function genRandomExpression(level = 0) : string {
         // Pick: ident, operator, string or bracket:
         expr += pick([
             () => genRandomString(true),
-            // TODO or number
+            () => pick(["0", "1", "-1", "+6.7", "0.78"]),
             () => pick(["+", "-", "*", "/", ">=", ">", " and ", " or ", " not ", " is ", " is not ", " not in "]),
-            // TODO string literal (incl containing genExpression?)
+            () => pick(["“”", "‘’", "“#”", "‘a’", "‘ foo bar ’", "‘+’", "“ and ”"]),
             () => {
                 const brackets = pick([["(", ")"], ["[", "]"], ["{", "}"]]);
                 return brackets[0] + genRandomExpression(level + 1) + brackets[1];
@@ -218,7 +218,8 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
     for (const s of frame.slotContent) {
         console.log("Entering slot:   <<<" + s + ">>> into " + frame.frameType);
         await checkFrameXorTextCursor(page, false, "Slot of frame " + frame.frameType);
-        await typeIndividually(page, s, 125);
+        const enterable = frame.frameType === "comment" ? s : s.replaceAll(/[“”]/g, "\"").replaceAll(/[‘’]/g, "'");
+        await typeIndividually(page, enterable, 200);
         await page.keyboard.press("ArrowRight");
         await page.waitForTimeout(100);
     }
