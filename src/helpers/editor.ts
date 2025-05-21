@@ -2072,8 +2072,13 @@ export function getEditableSelectionText() : string {
                 continue;
             }
         }
-        if (isNodeSelectableText(node)) {
-            allNodes.push(node.nodeValue ?? "");
+        const selectableText = isNodeSelectableText(node);
+        if (selectableText == "yes" || selectableText == "yes_quote") {
+            let nodeContent = node.nodeValue ?? "";
+            if (selectableText == "yes_quote") {
+                nodeContent = nodeContent.replaceAll(/[“”]/g, "\"").replaceAll(/[‘’]/g, "'");
+            }
+            allNodes.push(nodeContent);
         }
     }
 
@@ -2081,21 +2086,36 @@ export function getEditableSelectionText() : string {
 }
 
 // Helper function to check if a node is inside a contenteditable element
-function isNodeSelectableText(node: Node | null): boolean {
+function isNodeSelectableText(node: Node | null) : ("no" | "yes_quote" | "yes") {
     if (!node || node.nodeType !== Node.TEXT_NODE) {
-        return false;
+        return "no";
     }
 
     // Check if the nearest element ancestors is contenteditable
     let current: Node | null = node;
+    let editable = false;
+    let quote = false;
     while (current) {
         if (current.nodeType === Node.ELEMENT_NODE) {
             const el = current as HTMLElement;
-            return el.classList.contains(scssVars.labelSlotInputClassName);
+            if (el.classList.contains(scssVars.labelSlotInputClassName)){
+                editable = true;
+            }
+            if (el.classList.contains(scssVars.frameStringSlotQuoteClassName)) {
+                quote = true;
+            }
         }
         current = current.parentNode;
     }
-    return false;
+    if (editable && quote) {
+        return "yes_quote";
+    }
+    else if (editable) {
+        return "yes";
+    }
+    else {
+        return "no";
+    }
 }
 
 // Gets all the HTML elements which are part of the window text selection.

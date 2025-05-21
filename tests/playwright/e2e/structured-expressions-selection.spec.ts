@@ -386,6 +386,11 @@ test.describe("Selecting then deleting in multiple slots", () => {
     // Prevent invalid selections (trying to select from outside brackets to within):
     testSelection("123+(456)*789", 6, 12, (page) => page.keyboard.press("Backspace"), "{123}+{}_({4$})_{}*{789}");
     testSelection("123+(456)*789", 6, 2, (page) => page.keyboard.press("Backspace"), "{123}+{}_({$56})_{}*{789}");
+
+    testSelectionBoth("''", 0,2, (page) => page.keyboard.press("Backspace"), "{$}");
+    testSelectionBoth("''", 0,2, (page) => page.keyboard.press("Delete"), "{$}");
+    testSelectionBoth("\"\"", 2,0, (page) => page.keyboard.press("Backspace"), "{$}");
+    testSelectionBoth("\"\"", 2,0, (page) => page.keyboard.press("Delete"), "{$}");
 });
 
 test.describe("Selecting then cutting/copying", () => {
@@ -398,6 +403,10 @@ test.describe("Selecting then cutting/copying", () => {
     
     // Check we don't see zero-width spaces:
     testCutCopyBothWays("fax()", 2, 5, 2, "x()", "{fa$}", "{fa|x}_({})_{$}");
+    
+    // Check that strings are copied correctly:
+    testCutCopyBothWays("\"\"", 0, 2, 1, "\"\"", "{$}", "{|}_“”_{$}");
+    testCutCopyBothWays("''", 0, 2, 1, "''", "{$}", "{|}_‘’_{$}");
 });
 
 test.describe("Paste over selection", () => {
