@@ -224,9 +224,11 @@ export default Vue.extend({
                 codeTypeCSS = scssVars.frameOperatorSlotClassName + ((this.code==",") ? " slot-right-margin" : "");
                 break;
             case SlotType.string:
+                codeTypeCSS = scssVars.frameStringSlotClassName;
+                break;
             case SlotType.openingQuote:
             case SlotType.closingQuote:
-                codeTypeCSS = scssVars.frameStringSlotClassName;
+                codeTypeCSS = scssVars.frameStringSlotClassName + " " + scssVars.frameStringSlotQuoteClassName;
                 break;
             default:
                 // Check comments here
@@ -979,6 +981,7 @@ export default Vue.extend({
                 const isEscapingString = isFieldStringSlot(currentSlot) && cursorPos > 0 && (getNumPrecedingBackslashes(inputSpanFieldContent, cursorPos) % 2) == 1
                     && ((cursorPos + inputString.length < inputSpanFieldContent.length && inputSpanFieldContent[cursorPos + inputString.length]!= inputString) || isAtEndOfSlot);
                 if(isEscapingString){
+                    console.log("Escaping string");
                     // Just let the input occur:
                     return;
                 }
@@ -1466,10 +1469,13 @@ export default Vue.extend({
             }
             
             // When the backspace key is hit we delete the container frame when:
-            //  1) there is no text in the slots
-            //  2) we are in the first slot of a frame (*first that appears in the UI*) 
+            //  1) there is no text in the slots (or only empty parts)
+            //  2) we are in the first slot of a frame (*first that appears in the UI*)
+            //  3) there is no text selection
             // To avoid unwanted deletion, we "force" a delay before removing the frame.
-            if(this.isFrameEmptyAndAtLabelSlotStart){
+            const anchor = this.appStore.anchorSlotCursorInfos;
+            const focus = this.appStore.focusSlotCursorInfos;
+            if(this.isFrameEmptyAndAtLabelSlotStart && (!anchor || !focus || areSlotCoreInfosEqual(anchor.slotInfos, focus.slotInfos))){
                 event.stopPropagation();
                 event.stopImmediatePropagation();
                 event.preventDefault();
