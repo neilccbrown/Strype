@@ -28,6 +28,10 @@ beforeEach(() => {
 
 
 describe("Stride TestExpressionSlot.testStrings()", () => {
+    // Empty strings:
+    testInsert("\"\"", "{}_“”_{$}");
+    testInsert("''", "{}_‘’_{$}");
+    
     // With trailing quote
     testInsert("\"hello\"", "{}_“hello”_{$}");
     // Without trailing quote (caret stays in string):
