@@ -2057,28 +2057,30 @@ export function getEditableSelectionText() : string {
     const allNodes = [] as string[];
     const treeWalker = document.createTreeWalker(
         range.cloneContents(),
-        NodeFilter.SHOW_TEXT,
+        // Need to show elements to find the media literal images:
+        NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
         null
     );
 
     for (let node = treeWalker.nextNode(); node; node = treeWalker.nextNode()) {
         if (node.nodeType === Node.ELEMENT_NODE) {
             const el = node as HTMLElement;
-            if (el.classList.contains(".labelSlot-Media")) {
+            if (el.classList.contains(scssVars.labelSlotMediaClassName)) {
                 const code = el.getAttribute("data-code");
                 if (code) {
                     allNodes.push(code);
                 }
-                continue;
             }
         }
-        const selectableText = isNodeSelectableText(node);
-        if (selectableText == "yes" || selectableText == "yes_quote") {
-            let nodeContent = node.nodeValue ?? "";
-            if (selectableText == "yes_quote") {
-                nodeContent = nodeContent.replaceAll(/[“”]/g, "\"").replaceAll(/[‘’]/g, "'");
+        else {
+            const selectableText = isNodeSelectableText(node);
+            if (selectableText == "yes" || selectableText == "yes_quote") {
+                let nodeContent = node.nodeValue ?? "";
+                if (selectableText == "yes_quote") {
+                    nodeContent = nodeContent.replaceAll(/[“”]/g, "\"").replaceAll(/[‘’]/g, "'");
+                }
+                allNodes.push(nodeContent);
             }
-            allNodes.push(nodeContent);
         }
     }
 
