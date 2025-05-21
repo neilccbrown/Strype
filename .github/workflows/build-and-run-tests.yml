@@ -6,9 +6,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-          # Test Python and Microbit, on Ubuntu and Mac, should be all in parallel:
-          testtype: ["python", "microbit"] 
-          os: [ ubuntu-latest, macos-latest ]
+          # Test Python and Microbit, on Ubuntu, should be all in parallel:
+          testtype: ["python", "microbit"]
+          # Did have Mac here, but it seems to run out of memory so taken it out:
+          os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository code
