@@ -901,7 +901,7 @@ export default Vue.extend({
             // Our position will no longer have a selection, it's just us at the given cursor pos:
             this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: cursorPos + inputString.length}, {slotInfos: this.coreSlotInfo, cursorPos: cursorPos + inputString.length});
 
-            const isAtEndOfSlot = !hasTextSelection && cursorPos + inputString.length >= inputSpanFieldContent.length;
+            const isAtEndOfSlot = !hasTextSelection && cursorPos + inputString.length >= inputSpanFieldContent.replace(/\u200B/g, "").length;
             const isAtEndOfLastSlot = nextSlotInfos == null && isAtEndOfSlot;
 
 
