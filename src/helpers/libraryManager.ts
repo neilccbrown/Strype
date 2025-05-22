@@ -60,6 +60,11 @@ async function getGithubRepoPaths(
 
 
 async function attemptFetchModule(address: LibraryAddress, fileName: FilePath) : Promise<ModuleResult> {
+    if (!fileName.endsWith(".py")) {
+        // We only fetch third-party Python files, not JS, for security reasons:
+        return Promise.resolve(403);
+    }
+    
     // Convert Github URLs to our Github protocol:
     address = address.replace(/^https?:\/\/(www\.?)github.com\//, "github:");
     // Remove leading ./:
