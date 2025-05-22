@@ -71,7 +71,24 @@ function checkDownloadedFileEquals(fullContent: string, filename: string, firstS
     });
 }
 
+function adjustIfMicrobit(filepath: string) {
+    if (Cypress.env("mode") === "microbit") {
+        const dest = "cypress/downloads/temp.spy";
+        cy.readFile(filepath).then((content) => {
+            const lines = content.split(/\r?\n/);
+            // Replace std with mb on the top line:
+            lines[0] = lines[0].replace(/std/g, "mb");
+            const updated = lines.join("\n");
+            cy.writeFile(dest, updated);
+        });
+        filepath = dest;
+    }
+    return filepath;
+}
+
 function testRoundTripImportAndDownload(filepath: string) {
+    filepath = adjustIfMicrobit(filepath);
+
     // The filename is a path, fixture just needs the filename:
     cy.readFile(filepath).then((spy) => {
         // Delete existing:
@@ -110,6 +127,8 @@ function testRoundTripImportAndDownload(filepath: string) {
 }
 
 function testEntryDisableAndSave(commands: string, disableFrames: string[], filepath: string) {
+    filepath = adjustIfMicrobit(filepath);
+    
     cy.readFile(filepath).then((spy) => {
         // Delete existing:
         focusEditorPasteAndClear();
@@ -126,10 +145,6 @@ function testEntryDisableAndSave(commands: string, disableFrames: string[], file
 } 
 
 describe("Loads and re-saves fixture files", () => {
-    if (Cypress.env("mode") === "microbit") {
-        // TODO instead issue a warning dialog when loading from another platform:
-        return;
-    }
     it("Loads a basic project", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic.spy");
     });
@@ -147,10 +162,6 @@ describe("Loads and re-saves fixture files", () => {
 });
 
 describe("Tests disabling frames", () => {
-    if (Cypress.env("mode") === "microbit") {
-        // TODO instead issue a warning dialog when loading from another platform:
-        return;
-    }
     it("Outputs a dummy for try with disabled except", () => {
         // Make an empty try, which should save with a placeholder:
         testEntryDisableAndSave("tpmsg{enter}{rightarrow}extype{rightarrow}pword", ["extype"], "tests/cypress/fixtures/project-try-disabled-except.spy");
@@ -174,10 +185,6 @@ describe("Tests disabling frames", () => {
 });
 
 describe("Tests blanks", () => {
-    if (Cypress.env("mode") === "microbit") {
-        // TODO instead issue a warning dialog when loading from another platform:
-        return;
-    }
     it("Outputs a file with lots of blanks", () => {
         // import x as ___strype_blank
         // from ___strype_blank import ___strype_blank
@@ -199,10 +206,6 @@ describe("Tests blanks", () => {
 });
 
 describe("Tests invalid characters", () => {
-    if (Cypress.env("mode") === "microbit") {
-        // TODO instead issue a warning dialog when loading from another platform:
-        return;
-    }
     it("Outputs a file with invalid chars", () => {
         testEntryDisableAndSave("{uparrow}{uparrow}" +
             "i100{rightarrow}ffoo{rightarrow}£1000{downarrow}i50{downarrow}ifoo（）{downarrow}{downarrow}" +
