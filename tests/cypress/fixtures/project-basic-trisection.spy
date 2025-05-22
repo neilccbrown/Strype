@@ -1,0 +1,10 @@
+#(=> Strype:1:std
+#(=> Section:Imports
+import os 
+#(=> Section:Definitions
+def foo (msg ) :
+    print(msg) 
+#(=> Section:Main
+msg  = "Hello" 
+foo(msg) 
+#(=> Section:End

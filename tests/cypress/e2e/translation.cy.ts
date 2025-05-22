@@ -221,14 +221,11 @@ describe("Locale persistence", () => {
 
         // 2) the locale is correct (usual test + the function call placeholder text, which is in frame 4 for normal editor, and 5 for microbit because of import)
         checkTranslationsForLocale(localeForTest);
-        cy.get("#" + strypeElIds.getFrameLabelSlotId({frameId: (Cypress.env("mode") === "microbit") ? 5 : 4, slotId: "0", slotType: 7, labelSlotsIndex: 0})).then((slotElement) => {
-            // This slot should be the empty frame call: we check the placeholder text
-            expect(slotElement.attr("placeholder")??"<undefined>", "Loaded project's empty functional call prompt is not matching the expected value for the locale \" "+ localeForTest +"\"")
-                .to.equal(i18n.t("frame.defaultText.funcCall", localeForTest));           
-           
-            // Clean up the downloads folder for the backed up files (not sure we need though)
-            cy.task("deleteFile", path.join(downloadsFolder, englishPyFileName));
-            cy.task("deleteFile", path.join(downloadsFolder, "My project.spy"));
-        });
+        cy.get("span[placeholder='" + i18n.t("frame.defaultText.funcCall", localeForTest) + "']").should("exist");
+            
+        // Clean up the downloads folder for the backed up files (not sure we need though)
+        cy.task("deleteFile", path.join(downloadsFolder, englishPyFileName));
+        cy.task("deleteFile", path.join(downloadsFolder, "My project.spy"));
+        
     }); 
 });

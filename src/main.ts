@@ -9,7 +9,7 @@ import vBlur from "v-blur";
 import { StrypePlatform } from "./types/types";
 import scssVars  from "@/assets/style/_export.module.scss";
 import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "./helpers/sharedIdCssWithTests";
-import { getAppLangSelectId, getEditorID, getEditorMenuUID, getFrameBodyUID, getFrameContainerUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId } from "./helpers/editor";
+import {getAppLangSelectId, getEditorID, getEditorMenuUID, getFrameBodyUID, getFrameContainerUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNewProjectLinkId, getPEATabContentContainerDivId, getSaveProjectLinkId, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId} from "./helpers/editor";
 
 Vue.config.productionTip = false;
 
@@ -17,6 +17,13 @@ Vue.config.productionTip = false;
 // note: that is not an offical software version of Strype, just a way to help us dealing with compatibility issues.
 // it MUST be kept as an integer matching value
 export const AppVersion = "5";
+// The version used in the new .spy file format.  We may increment this in future
+// if we introduce a breaking change to that file format.
+export const AppSPYSaveVersion = "1";
+export const AppName = "Strype";
+// The prefix to use in comments directly after the "#" to indicate a Strype
+// special directive or metadata:
+export const AppSPYPrefix = "(=>";
 let appPlatform = StrypePlatform.standard;
 /* IFTRUE_isMicrobit */
 appPlatform = StrypePlatform.microbit;
@@ -55,12 +62,15 @@ export function getLocaleBuildDate(): string {
     getFrameHeaderUID: getFrameHeaderUID, 
     getFrameBodyUID: getFrameBodyUID,
     getFrameLabelSlotsStructureUID: getFrameLabelSlotsStructureUID,
+    getNewProjectLinkId: getNewProjectLinkId,
     getLoadProjectLinkId: getLoadProjectLinkId,
     getLoadFromFSStrypeButtonId: getLoadFromFSStrypeButtonId,
+    getSaveProjectLinkId: getSaveProjectLinkId,
     getAppLangSelectId: getAppLangSelectId,
     getFrameLabelSlotId: getLabelSlotUID,
     getStrypeSaveProjectNameInputId: getStrypeSaveProjectNameInputId,
     getSaveStrypeProjectToFSButtonId: getSaveStrypeProjectToFSButtonId,
+    getPEATabContentContainerDivId: getPEATabContentContainerDivId,
 };
 
 // Install BootstrapVue

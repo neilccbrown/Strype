@@ -1,0 +1,9 @@
+#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+try :
+    print(msg) 
+except ___strype_dummy:
+    pass
+#(=> Section:End

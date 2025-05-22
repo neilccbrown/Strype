@@ -216,7 +216,7 @@ describe("Python round-trip", () => {
 
     it("Shows an error for invalid code with wrong code", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/python-invalid-hints-extract.py", "");
-        assertVisibleError(/invalid.*import.*if.*line: 20/si);
+        assertVisibleError(/invalid.*import.*if.*line: 22/si);
     });
 
     it("Shows an error for invalid code when mixed with invalid placement", () => {

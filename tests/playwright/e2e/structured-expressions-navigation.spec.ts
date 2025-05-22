@@ -1,5 +1,6 @@
 import {Page, test, expect} from "@playwright/test";
 import path from "path";
+import {checkFrameXorTextCursor} from "../support/editor";
 
 let scssVars: {[varName: string]: string};
 //let strypeElIds: {[varName: string]: (...args: any[]) => string};
@@ -16,29 +17,6 @@ test.beforeEach(async ({ page }) => {
         console.log("Browser log:", msg.text());
     });
 });
-
-// If the last param is given, we check for frame cursor (true) or text (false)
-// If it's not given, no specific check
-async function checkFrameXorTextCursor(page: Page, specificFrameCursor?: boolean) {
-    // Check exactly one caret visible or focused input field:
-    const hasTextCursor = await page.evaluate(() => {
-        return document?.getSelection()?.focusNode != null;
-    });
-    const numFrameCursors = await page.evaluate(() => {
-        const scssVars = (window as any)["StrypeSCSSVarsGlobals"];
-        const visibleFrameCursorElements = document.querySelectorAll("."+ scssVars.caretClassName + ":not(." + scssVars.invisibleClassName +")");
-        return visibleFrameCursorElements.length;
-    });
-    expect(numFrameCursors).toEqual(hasTextCursor ? 0 : 1);
-    if (specificFrameCursor !== undefined) {
-        if (specificFrameCursor == true) {
-            expect(numFrameCursors).toEqual(1);
-        }
-        else {
-            expect(hasTextCursor).toEqual(true);
-        }
-    }
-}
 
 async function clickId(page: Page, getIdClientSide: () => void) {
     const id = await page.evaluate(getIdClientSide);

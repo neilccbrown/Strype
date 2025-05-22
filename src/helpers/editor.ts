@@ -486,8 +486,16 @@ export function getMenuLeftPaneUID(): string {
     return "menu-bar";
 }
 
+export function getNewProjectLinkId(): string {
+    return "newProjectLink";
+}
+
 export function getLoadProjectLinkId(): string {
     return "loadProjectLink";
+}
+
+export function getSaveProjectLinkId(): string {
+    return "saveStrypeProjLink";
 }
 
 export function getGoogleDriveComponentRefId(): string {

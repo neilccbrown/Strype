@@ -1,4 +1,5 @@
-import {expect, Page, test} from "@playwright/test";
+import {Page, test, expect} from "@playwright/test";
+import {typeIndividually} from "../support/editor";
 import fs from "fs";
 
 let scssVars: {[varName: string]: string};
@@ -63,13 +64,6 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         console.log("Browser log:", msg.text());
     });
 });
-
-async function typeIndividually(page: Page, content: string) {
-    for (let i = 0; i < content.length; i++) {
-        await page.keyboard.type(content[i]);
-        await page.waitForTimeout(75);
-    }
-}
 
 async function getSelection(page: Page) : Promise<{ id: string, cursorPos : number }> {
     // We need a delay to make sure last DOM update has occurred:
