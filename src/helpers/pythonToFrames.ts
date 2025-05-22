@@ -167,11 +167,6 @@ function getIndent(codeLine: string) {
     return (codeLine.match(/^\s*/) as RegExpMatchArray)[0];
 }
 
-
-// The main entry point to this module.  Given a string of Python code that the user
-// has pasted in, copy it to the store's copiedFrames/copiedSelectionFrameIds fields,
-// ready to be pasted immediately afterwards.
-// If successful, returns a map with key-value Strype directives.  If unsuccessful, returns a string with some info about
 const STRYPE_COMMENT_PREFIX = "___strype_comment_";
 
 const STRYPE_WHOLE_LINE_BLANK = "___strype_whole_line_blank";
@@ -261,6 +256,10 @@ function transformCommentsAndBlanks(codeLines: string[]) : {disabledLines : numb
     return { disabledLines, transformedLines, strypeDirectives };
 }
 
+// The main entry point to this module.  Given a string of Python code that the user
+// has pasted in, copy it to the store's copiedFrames/copiedSelectionFrameIds fields,
+// ready to be pasted immediately afterwards.
+// If successful, returns a map with key-value Strype directives.  If unsuccessful, returns a string with some info about
 // where the Python parse failed.
 export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, linenoMapping?: Record<number, number>) : string | null | Map<string, string> {
     const mapLineno = (lineno : number) : number => linenoMapping ? linenoMapping[lineno] : lineno;
