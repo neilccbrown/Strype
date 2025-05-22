@@ -16,14 +16,16 @@ import {cleanFromHTML} from "../support/test-support";
 
 export function assertState(expectedState : string, assertMessage?: string) : void {
     withSelection((info) => {
-        cy.get("#" + strypeElIds.getFrameContainerUID(-3) + " ." + scssVars.frameHeaderClassName).first().within((h) => cy.get("." + scssVars.labelSlotInputClassName + ",." + scssVars.frameColouredLabelClassName).then((parts) => {
+        cy.get("#" + strypeElIds.getFrameContainerUID(-3) + " ." + scssVars.frameHeaderClassName).first().within((h) => cy.get("." + scssVars.labelSlotInputClassName + ",." + scssVars.frameColouredLabelClassName + ",." + scssVars.labelSlotMediaClassName).then((parts) => {
             let s = "";
             if (!parts) {
                 // Try to debug an occasional seemingly impossible failure:
                 cy.task("log", "Parts is null which I'm sure shouldn't happen, came from frame: " + h);
             }
-            // Since we're in an if frame, we ignore the first and last part:
-            for (let i = 1; i < parts.length - 1; i++) {
+            // If we're in an if frame, we ignore the first and last part:
+            const isInIf = parts[0].classList.contains(scssVars.framePythonTokenClassName) 
+                && cleanFromHTML((parts[0] as any).value || parts[0].textContent || "").trim() == "if";
+            for (let i = 1; i < (parts.length - (isInIf ? 1 : 0)); i++) {
                 const p : any = parts[i];
 
                 let text = cleanFromHTML(p.value || p.textContent || "");
@@ -32,14 +34,20 @@ export function assertState(expectedState : string, assertMessage?: string) : vo
                 if (info.id === p.getAttribute("id") && info.cursorPos >= 0) {
                     text = text.substring(0, info.cursorPos) + "$" + text.substring(info.cursorPos);
                 }
-                // Don't put curly brackets around strings, operators or brackets:
-                if (!p.classList.contains(scssVars.frameStringSlotClassName) && !p.classList.contains(scssVars.frameOperatorSlotClassName) && !/[([)\]$]/.exec(p.textContent)) {
+                // Don't put curly brackets around strings, operators, media slots or brackets:
+                if (!p.classList.contains(scssVars.frameStringSlotClassName) && !p.classList.contains(scssVars.frameOperatorSlotClassName) 
+                        && !p.classList.contains(scssVars.labelSlotMediaClassName)  && !/[([)\]$]/.exec(p.textContent)) {
                     text = "{" + text + "}";
+                }
+
+                // We use a token, "§", to replace a media slot, as we won't be able to work easily with the actual slot content.
+                if(p.classList.contains(scssVars.labelSlotMediaClassName)){
+                    text = "§";
                 }
                 s += text;
             }
             // There is no correspondence for _ (indicating a null operator) in the Strype interface so just ignore that:
-            expect(s).to.equal(expectedState.replaceAll("_", ""), assertMessage);
+            expect(s).to.equal(expectedState.replace(/(?<=([^\w]))_(?=([^\w]))/g, ""), assertMessage);
         }));
     });
 }
@@ -313,54 +321,76 @@ export enum PushBracketArrow {
     END, // to reach the end of a slot struct in one go
 }
 
-export function testPushBracket(original: string, expectedResults: string[], pushSequence: PushBracketArrow[]): void {
+export function testPushBracket(original: string, expectedResults: string[], pushSequence: PushBracketArrow[], withMediaSlots?: boolean): void {
     // The test aims to test the "push" bracket functionality, which allows moving one bracket of a pair.
     // The test starts with one expression provided by the argument "original", in which $ denotes the current cursor position to start the test at.
     // Then, the test will perform a sequence of left/right pushes (pushSequence, containing enum values indicating a push or simple move to the left or to the right).
     // The expected results after each individual push are provided in expectedResults (with $ denoting the expected cursor position).
     // The test will fail if there is a length inconsitency between the two array arguments, the cursor position is missing in the args,
     // or if an expected result is not met.
+    // IMPORTANT NOTE: the test as described does NOT handle media content in the original. To use media slots, we need another approach: 
+    // original is a full length code text to *paste* in an empty slot. Therefore the $ sign is ignored (the cursor will logically expected to be
+    // at the end of the slots).
     it("Tests " + original, () => {
         // Sanity check of the test
         expect(expectedResults.length).to.equal(pushSequence.length, "Test args error: the number of 'pushes' and the number of expected results should match !");
-        expect(original.match(/\$/g)?.length).to.equal(1, "Test args error: original should contain one and only one cursor position char ($).");
+        if(!withMediaSlots){
+            expect(original.match(/\$/g)?.length).to.equal(1, "Test args error: original should contain one and only one cursor position char ($).");
+        }
         expectedResults.forEach((res, index) => expect(res.match(/\$/g)?.length).to.eq(1, "Test args error: expectedResults["+index+"] should contain one and only one cursor position char ($)."));
 
         // Actual test
         focusEditor();
-
-        const cursorIndex = original.indexOf("$");
-        const before = original.substring(0, cursorIndex);
-        const after = original.substring(cursorIndex + 1);
-
-        cy.get("body").type("i");
-        assertState("{$}");
-        if (before.length > 0) {
-            cy.get("body").type(before);
+      
+        if(withMediaSlots){
+            // With media slots, "writing" direct code in the frame isn't working to generate the media slots: paste works so we use this approach
+            (cy.get("body") as any).paste(original);
+            cy.wait(2000);
+            // Bring the caret to the end of the slots
+            cy.get("body").type("{leftArrow}");
+            cy.wait(200);
+            // And do the tests: 
+            doTestPushBracket(original, expectedResults, pushSequence);
         }
-        withSelection((posToInsert) => {
-            if (after.length > 0) {
-                cy.get("body").type(after);
-            }
-            // Focus doesn't work, instead let's move the caret until we are in the right slot
-            withSelection((newPosToInsert) => {
-                if(newPosToInsert.id != posToInsert.id){
-                    reachFrameLabelSlot( posToInsert.id, true);
-                }
-            });
+        else{ 
+            cy.get("body").type("i");
+            assertState("{$}");
 
-            moveToPositionThen(posToInsert.cursorPos, () => {
-                pushSequence.forEach((typedArrow, index) => {
-                    const keytype = `{${(typedArrow == PushBracketArrow.MODIF_LEFT || typedArrow == PushBracketArrow.MODIF_RIGHT ) ? (isMacOSPlatform() ? "ctrl+" : "alt+") : ""}` 
+            const cursorIndex = original.indexOf("$");
+            const before = (cursorIndex > -1) ? original.substring(0, cursorIndex) : original;
+            const after = (cursorIndex > -1) ? original.substring(cursorIndex + 1) : "";
+
+            if (before.length > 0) {
+                cy.get("body").type(before);
+            }
+            withSelection((posToInsert) => {
+                if (after.length > 0) {
+                    cy.get("body").type(after);
+                }
+                // Focus doesn't work, instead let's move the caret until we are in the right slot
+                withSelection((newPosToInsert) => {
+                    if(newPosToInsert.id != posToInsert.id){
+                        reachFrameLabelSlot( posToInsert.id, true);
+                    }
+                });
+
+                moveToPositionThen(posToInsert.cursorPos, () => {
+                    doTestPushBracket(original, expectedResults, pushSequence);
+                });
+            });
+        }    
+    });
+}
+
+function doTestPushBracket(original: string, expectedResults: string[], pushSequence: PushBracketArrow[]){
+    pushSequence.forEach((typedArrow, index) => {
+        const keytype = `{${(typedArrow == PushBracketArrow.MODIF_LEFT || typedArrow == PushBracketArrow.MODIF_RIGHT ) ? (isMacOSPlatform() ? "ctrl+" : "alt+") : ""}` 
                         + `${(typedArrow == PushBracketArrow.LEFT || typedArrow == PushBracketArrow.MODIF_LEFT) 
                             ? "leftArrow" 
                             : ((typedArrow == PushBracketArrow.RIGHT || typedArrow == PushBracketArrow.MODIF_RIGHT) 
                                 ? "rightArrow"
                                 : ((typedArrow == PushBracketArrow.HOME) ? "home" : "end"))}}`;
-                    cy.get("body").type(keytype).then(() => assertState(expectedResults[index],
-                        `assertion for expectedResults[${index}] (from <${(index > 0) ? expectedResults[index - 1] : original}>, doing ${PushBracketArrow[typedArrow]})`));
-                });
-            });
-        });
+        cy.get("body").type(keytype).then(() => assertState(expectedResults[index],
+            `assertion for expectedResults[${index}] (from <${(index > 0) ? expectedResults[index - 1] : original}>, doing ${PushBracketArrow[typedArrow]})`));
     });
 }

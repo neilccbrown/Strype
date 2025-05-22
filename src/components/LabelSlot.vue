@@ -531,7 +531,7 @@ export default Vue.extend({
                 const hasSameLevelPreviousSlots = (slotIndex > 0);
                 const startSlotUID = getLabelSlotUID({...this.coreSlotInfo, slotId: getSlotIdFromParentIdAndIndexSplit(parentId, 0)});
                 const textBeforeThisSlot = (hasSameLevelPreviousSlots) 
-                    ? getFrameLabelSlotLiteralCodeAndFocus(labelDiv, this.UID, {startSlotUID: startSlotUID , stopSlotUID: this.UID}).uiLiteralCode
+                    ? getFrameLabelSlotLiteralCodeAndFocus(labelDiv, this.UID, {delimiters: {startSlotUID: startSlotUID , stopSlotUID: this.UID}}).uiLiteralCode
                     : "";
                 const textBeforeCaret = textBeforeThisSlot + this.getSlotContent().substring(0,selectionStart??0);
 
@@ -1178,7 +1178,7 @@ export default Vue.extend({
 
             if (focusSlotCursorInfos && anchorSlotCursorInfos && (!areSlotCoreInfosEqual(focusSlotCursorInfos.slotInfos, anchorSlotCursorInfos.slotInfos) || focusSlotCursorInfos.cursorPos != anchorSlotCursorInfos.cursorPos)) {
                 this.deleteSlots(undefined, (resultingSlotUID, stateBeforeChanges) => {
-                    (this.$parent as InstanceType<typeof LabelSlotsStructure>).checkSlotRefactoring(resultingSlotUID, stateBeforeChanges, () => {
+                    (this.$parent as InstanceType<typeof LabelSlotsStructure>).checkSlotRefactoring(resultingSlotUID, stateBeforeChanges,{doAfterCursorSet: () => {
                         // The focused slot might no longer be us after the delete, so we must send the paste again to the new focus.
                         const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
                         const anchorSlotCursorInfos = this.appStore.anchorSlotCursorInfos;
@@ -1190,7 +1190,7 @@ export default Vue.extend({
                             document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos))
                                 ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: event.detail}));
                         }
-                    });
+                    }});
                 });
             }
             else {

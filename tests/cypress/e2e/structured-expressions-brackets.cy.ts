@@ -96,7 +96,7 @@ describe("Stride TestExpressionSlot.testDeleteBracket()", () => {
         "{$}_({MyWorld})_{getWorld}_({})_{}.{getWidth}_({})_{}"); 
 });
 
-describe("Stride TestExpressionSlot.testPushBracket()", () => {
+describe.only("Stride TestExpressionSlot.testPushBracket()", () => {
     // Simple bracketed expressions (outside of)
     testPushBracket("(test)$",
         // Push to left, and again to see it is not doing anything
@@ -291,7 +291,29 @@ describe("Stride TestExpressionSlot.testPushBracket()", () => {
             PushBracketArrow.END, PushBracketArrow.RIGHT, PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT,
             PushBracketArrow.LEFT, PushBracketArrow.MODIF_RIGHT,
         ]);
-   
+
+    // Tests with media slots 
+    // THE EXPECTED RESULTS DO NOT INCLUDE THE MEDIA SLOT: they will be seen as a "§" token in the test
+    testPushBracket("set_background(load_image(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIAQMAAAD+wSzIAAAABlBMVEX///+/v7+jQ3Y5AAAADklEQVQI12P4AIX8EAgALgAD/aNpbtEAAAAASUVORK5CYII\")) + abc + 2",
+        [
+            // Move just after the "set_background()" brackets (x6 left)
+            "{set_background}_({}_§_{})_{}+{abc}+{$2}", "{set_background}_({}_§_{})_{}+{abc$}+{2}", "{set_background}_({}_§_{})_{}+{ab$c}+{2}", "{set_background}_({}_§_{})_{}+{a$bc}+{2}", "{set_background}_({}_§_{})_{}+{$abc}+{2}", "{set_background}_({}_§_{})_{$}+{abc}+{2}",
+            // Push left, and move left to bring cursor between brackets (ends up with "set_background($)§+abc+2")
+            "{set_background}_({})_{$}_§_{}+{abc}+{2}", "{set_background}_({$})_{}_§_{}+{abc}+{2}", 
+            // Push right all the way (ends up with "set_background(§+abc+2$)")
+            "{set_background}_({}_§_{$})_{}+{abc}+{2}", "{set_background}_({}_§_{}+{$})_{abc}+{2}", "{set_background}_({}_§_{}+{abc$})_{}+{2}", "{set_background}_({}_§_{}+{abc}+{$})_{2}", "{set_background}_({}_§_{}+{abc}+{2$})_{}",
+            // Move just before the opening bracket of set_background() (home, left) and push right all the way (ends up with "set_background§+abc+2$()")
+            "{set_background}_({$}_§_{}+{abc}+{2})_{}", "{set_background$}_({}_§_{}+{abc}+{2})_{}",
+            "{set_background}_§_{$}_({}+{abc}+{2})_{}", "{set_background}_§_{}+{$}_({abc}+{2})_{}", "{set_background}_§_{}+{abc$}_({+2})_{}", "{set_background}_§_{}+{abc}+{2$}_({})_{}",
+        ],
+        [
+            PushBracketArrow.LEFT, PushBracketArrow.LEFT, PushBracketArrow.LEFT, PushBracketArrow.LEFT, PushBracketArrow.LEFT, PushBracketArrow.LEFT,
+            PushBracketArrow.MODIF_LEFT, PushBracketArrow.LEFT,
+            PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT,
+            PushBracketArrow.HOME, PushBracketArrow.LEFT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT,
+        ],
+        true);
+    
     // No bracket to push (shouldn't do anything)
     testPushBracket("$(abc+de)",
         [
