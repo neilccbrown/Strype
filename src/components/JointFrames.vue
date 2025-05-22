@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div class="joint-frames">
         <Frame
             v-for="frame in jointFrames"
             :ref="setFrameRef(frame.id)"

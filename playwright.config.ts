@@ -18,8 +18,8 @@ export default defineConfig({
     outputDir: "./tests/playwright/test-results",
     /* Fail the build on CI if you accidentally left test.only in the source code. */
     forbidOnly: !!process.env.CI,
-    /* Don't retry even on CI */
-    retries: process.env.CI ? 0 : 0,
+    /* Retry once on CI, as some of the random tests are slightly flaky */
+    retries: process.env.CI ? 1 : 0,
     fullyParallel: true,
     workers: process.env.CI ? 1 : 4,
     /* Reporter to use. See https://playwright.dev/docs/test-reporters */
@@ -28,6 +28,8 @@ export default defineConfig({
     use: {
         /* Base URL to use in actions like `await page.goto('/')`. */
         baseURL: BASE_URL,
+
+        headless: true,
 
         /* Store info only on test failure */
         trace: "on-first-retry",

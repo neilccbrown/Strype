@@ -2,7 +2,7 @@ import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesFuncDefScope, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameContainer, getFrameSectionIdFromFrameId } from "./storeMethods";
-import { strypeFileExtension } from "./common";
+import { splitByRegexMatches, strypeFileExtension } from "./common";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
 import scssVars  from "@/assets/style/_export.module.scss";
 import html2canvas, { Options } from "html2canvas";
@@ -293,13 +293,13 @@ export function getFrameLabelSlotsStructureUID(frameId: number, labelIndex: numb
 // frameLabelStruct: the HTML element representing the current frame label structure
 // currentSlotUID: the HTML id for the current editable slot we are in
 // delimiters: optional object to indicate from and to which slots parsing the code, requires the slots UID and stop is exclusive
-export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUID: string, delimiters?: {startSlotUID: string, stopSlotUID: string}): {uiLiteralCode: string, focusSpanPos: number, hasStringSlots: boolean, mediaLiterals: {code: string, mediaType: string}[]}{
+export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUID: string,  options?: {delimiters?: {startSlotUID: string, stopSlotUID: string}, useFlatMediaDataCode?: boolean}): {uiLiteralCode: string, focusSpanPos: number, hasStringSlots: boolean, mediaLiterals: {code: string, mediaType: string}[]}{
     let focusSpanPos = 0;
     let uiLiteralCode = "";
     let foundFocusSpan = false;
-    let ignoreSpan = !!delimiters;
+    let ignoreSpan = !!(options?.delimiters);
     let hasStringSlots = false;
-    const imageLiterals : {code: string, mediaType: string}[] = [];
+    const mediaLiterals : {code: string, mediaType: string}[] = [];
     // The container and intermediate divs can have relevant text if Firefox has done a "bad delete"
     // (see comment in LabelSlotsStructure.onInput):
     frameLabelStruct.querySelectorAll("." + scssVars.labelSlotInputClassName + ", ." + scssVars.labelSlotContainerClassName + ", ." + scssVars.labelSlotMediaClassName).forEach((spanElement) => {
@@ -323,12 +323,31 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
             return;
         }
 
+        if(options?.useFlatMediaDataCode){
+            // When this option is set, we are in a "simple" code slot that contains literal code not yet being parsed.
+            // Therefore, we need to retrieve all the media that could be in that literal code so further parsing use them.
+            const ms = splitByRegexMatches(spanElement.textContent??"", /(?:load_image|load_sound)\("data:(?:image|audio)[^;]*;base64,[^"]+"\)/);
+            for (let i = 0; i < ms.length; i++) {
+                // We know even values (0, 2) are the plain string parts inbetween regex matches,
+                // and odd values (1, 3) are the parts which matched the regex:
+                if ((i % 2) != 0) {
+                    // fish out the details:
+                    const details = /data:([^;]+);base64,[^"']+/.exec(ms[i]);
+                    if (details) {
+                        const dataAndBase64 = details[0];
+                        const mediaDataCode = (details[1].startsWith("image") ? "load_image" : "load_sound") + "(\"" + dataAndBase64 + "\")";
+                        mediaLiterals.push({code: mediaDataCode, mediaType: details[1]});
+                    }
+                }
+            }
+        }
+
         if (spanElement.classList.contains(scssVars.labelSlotMediaClassName)) {
             const code = spanElement.getAttribute("data-code");
             // We add the code, but also record the image literal for later manipulation:
             if (code) {
                 uiLiteralCode += code;
-                imageLiterals.push({code: code, mediaType: spanElement.getAttribute("data-mediaType") ?? ""});
+                mediaLiterals.push({code: code, mediaType: spanElement.getAttribute("data-mediaType") ?? ""});
             }
             // Media literals are considered to be one character wide:
             if (!foundFocusSpan) {
@@ -337,7 +356,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
             return;
         }
         
-        if(delimiters && (delimiters.startSlotUID == spanElement.id || delimiters.stopSlotUID == spanElement.id)){
+        if((options?.delimiters) && (options.delimiters.startSlotUID == spanElement.id || options.delimiters.stopSlotUID == spanElement.id)){
             ignoreSpan = !ignoreSpan ;
         } 
         if(!ignoreSpan) {
@@ -397,7 +416,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
             }
         }
     });    
-    return {uiLiteralCode: uiLiteralCode, focusSpanPos: focusSpanPos, hasStringSlots: hasStringSlots, mediaLiterals: imageLiterals};
+    return {uiLiteralCode: uiLiteralCode, focusSpanPos: focusSpanPos, hasStringSlots: hasStringSlots, mediaLiterals: mediaLiterals};
 }
 
 
@@ -467,8 +486,16 @@ export function getMenuLeftPaneUID(): string {
     return "menu-bar";
 }
 
+export function getNewProjectLinkId(): string {
+    return "newProjectLink";
+}
+
 export function getLoadProjectLinkId(): string {
     return "loadProjectLink";
+}
+
+export function getSaveProjectLinkId(): string {
+    return "saveStrypeProjLink";
 }
 
 export function getGoogleDriveComponentRefId(): string {
