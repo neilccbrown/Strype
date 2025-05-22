@@ -1,17 +1,49 @@
-import {Page, test, expect} from "@playwright/test";
+import {expect, Page, test} from "@playwright/test";
+import fs from "fs";
 
 let scssVars: {[varName: string]: string};
 //let strypeElIds: {[varName: string]: (...args: any[]) => string};
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page, browserName }, testInfo) => {
+    if (process.platform === "win32" && browserName === "webkit") {
+        testInfo.skip(true, "Skipping on WebKit + Windows due to clipboard permission issues.");
+    }
+    
     // We must use a fake clipboard object to avoid issues with browser clipboard permissions:
     await page.addInitScript(() => {
-        let mockContent = "<empty>";
+        let mockTextContent = "<empty>";
+        let mockImageContentType = "";
+        let mockImageContent : Blob | null = null;
         const mockClipboard = {
-            content: "<empty>",
-            writeText: async (text: string) => {
-                mockContent = text;
+            write: async (items: ClipboardItem[]) => {
+                for (const item of items) {
+                    for (const type of item.types) {
+                        if (type.startsWith("image/")) {
+                            mockImageContent = await item.getType(type);
+                            mockImageContentType = type;
+                        }
+                    }
+                }
             },
-            readText: async () => mockContent,
+            read: async () => {
+                if (!mockImageContent || !mockImageContentType) {
+                    return [];
+                }
+                return [
+                    {
+                        types: [mockImageContentType],
+                        getType: async (type : string) => {
+                            if (type === mockImageContentType){
+                                return mockImageContent;
+                            }
+                            throw new Error("Unsupported type");
+                        },
+                    },
+                ];
+            },
+            writeText: async (text: string) => {
+                mockTextContent = text;
+            },
+            readText: async () => mockTextContent,
         };
 
         // override the native clipboard API
@@ -146,8 +178,8 @@ function testPasteOverBoth(code: string, startIndex: number, endIndex: number, t
 
 enum CUT_COPY_TEST { CUT_ONLY, COPY_ONLY, CUT_REPASTE }
 
-function doPagePaste(page: Page, clipboardContent: string) {
-    return page.evaluate((pasteContent: string) => {
+function doPagePaste(page: Page, clipboardContent: string, clipboardContentType = "text") {
+    return page.evaluate(({clipboardContent, clipboardContentType}) => {
         const pasteEvent = new ClipboardEvent("paste", {
             bubbles: true,
             cancelable: true,
@@ -155,11 +187,22 @@ function doPagePaste(page: Page, clipboardContent: string) {
         });
 
         // Set custom clipboard data for the paste event
-        pasteEvent.clipboardData?.setData("text", pasteContent);
+        if (clipboardContentType.startsWith("text")) {
+            pasteEvent.clipboardData?.setData(clipboardContentType, clipboardContent);
+        }
+        else {
+            const byteCharacters = atob(clipboardContent);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const file = new File([new Blob([new Uint8Array(byteNumbers)], {type: clipboardContentType})], "anon", { type: clipboardContentType});
+            pasteEvent.clipboardData?.items.add(file);
+        }
 
         // Dispatch the paste event to the whole document
         document.activeElement?.dispatchEvent(pasteEvent);
-    }, clipboardContent);
+    }, {clipboardContent, clipboardContentType});
 }
 
 function testCutCopy(code : string, stepsToBegin: number, stepsWhileSelecting: number, expectedClipboard : string, expectedAfter : string, kind: CUT_COPY_TEST) : void {
@@ -392,6 +435,11 @@ test.describe("Selecting then deleting in multiple slots", () => {
     // Prevent invalid selections (trying to select from outside brackets to within):
     testSelection("123+(456)*789", 6, 12, (page) => page.keyboard.press("Backspace"), "{123}+{}_({4$})_{}*{789}");
     testSelection("123+(456)*789", 6, 2, (page) => page.keyboard.press("Backspace"), "{123}+{}_({$56})_{}*{789}");
+
+    testSelectionBoth("''", 0,2, (page) => page.keyboard.press("Backspace"), "{$}");
+    testSelectionBoth("''", 0,2, (page) => page.keyboard.press("Delete"), "{$}");
+    testSelectionBoth("\"\"", 2,0, (page) => page.keyboard.press("Backspace"), "{$}");
+    testSelectionBoth("\"\"", 2,0, (page) => page.keyboard.press("Delete"), "{$}");
 });
 
 test.describe("Selecting then cutting/copying", () => {
@@ -404,6 +452,10 @@ test.describe("Selecting then cutting/copying", () => {
     
     // Check we don't see zero-width spaces:
     testCutCopyBothWays("fax()", 2, 5, 2, "x()", "{fa$}", "{fa|x}_({})_{$}");
+    
+    // Check that strings are copied correctly:
+    testCutCopyBothWays("\"\"", 0, 2, 1, "\"\"", "{$}", "{|}_“”_{$}");
+    testCutCopyBothWays("''", 0, 2, 1, "''", "{$}", "{|}_‘’_{$}");
 });
 
 test.describe("Paste over selection", () => {
@@ -427,4 +479,35 @@ test.describe("Paste over selection", () => {
     testPasteOverBoth("11+(22*33)/44", 4, 9, "55", "{11}+{}_({55$})_{}/{44}");
     testPasteOverBoth("11+(22*33)/44", 5, 8, "55", "{11}+{}_({255$3})_{}/{44}");
     testPasteOverBoth("11+(22*33)/44", 4, 9, "55*(66-77)", "{11}+{}_({55}*{}_({66}-{77})_{$})_{}/{44}");
+});
+
+test.describe("Media literal copying", () => {
+    test("Test copying text with a media literal", async ({page}) => {
+        await page.keyboard.press("Backspace");
+        await page.keyboard.press("Backspace");
+        await page.keyboard.type("i");
+        await page.waitForTimeout(100);
+        await assertState(page, "{$}");
+        await typeIndividually(page, "set_background(");
+        const image = fs.readFileSync("public/graphics_images/cat-test.jpg").toString("base64");
+        await doPagePaste(page, image, "image/jpeg");
+        await typeIndividually(page, ")");
+        let startIndex = 0;
+        const endIndex = "set_background(X)".length;
+        await page.keyboard.press("Home");
+        for (let i = 0; i < startIndex; i++) {
+            await page.keyboard.press("ArrowRight");
+            await page.waitForTimeout(75);
+        }
+        while (startIndex < endIndex) {
+            await page.keyboard.press("Shift+ArrowRight");
+            await page.waitForTimeout(75);
+            startIndex += 1;
+        }
+        await page.waitForTimeout(100);
+        await page.keyboard.press("ControlOrMeta+c");
+        await page.waitForTimeout(100);
+        const clipboardContent : string = await page.evaluate("navigator.clipboard.readText()");
+        expect(clipboardContent).toEqual("set_background(load_image(\"data:image/jpeg;base64," + image + "\"))");
+    });
 });

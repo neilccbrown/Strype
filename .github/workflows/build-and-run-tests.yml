@@ -2,7 +2,15 @@ name: Build and run tests
 on: [push,pull_request]
 jobs:
   Build-And-Run-Tests:
-    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+          # Test Python and Microbit, on Ubuntu, should be all in parallel:
+          testtype: ["python", "microbit"]
+          # Did have Mac here, but it seems to run out of memory so taken it out:
+          os: [ ubuntu-latest ]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -15,13 +23,13 @@ jobs:
       - name: NPM Linter
         run: npm run lint:check
       - name: NPM Test (Cypress)
-        run: npm run test:cypress
+        run: npm run test:cypress:${{ matrix.testtype }}-only
       - name: Upload test videos (if any)
         uses: actions/upload-artifact@v4
         # Store screenshots and videos only on failure:
         if: ${{ failure() }}
         with:
-            name: cypress-screenshots-and-video
+            name: cypress-screenshots-and-video-${{matrix.os}}-${{matrix.testtype}}
             path: | 
               tests/cypress/screenshots
               tests/cypress/videos

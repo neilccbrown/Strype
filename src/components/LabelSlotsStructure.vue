@@ -516,14 +516,18 @@ export default Vue.extend({
                 /* IFTRUE_isPython */
                 for (let item of items) {
                     let file = item.getAsFile();
-                    let isImage = item.type.startsWith("image");
-                    let isAudio = item.type.startsWith("audio");
+                    // Note: it is incredibly important that we store item.type in a variable here.  Due to browser clipboard
+                    // permissions, if we access item.type inside the .then() below, it will appear blank.  So we must
+                    // fetch it now and store it:
+                    const itemType = item.type;
+                    let isImage = itemType.startsWith("image");
+                    let isAudio = itemType.startsWith("audio");
                     if (file && (isImage || isAudio)) {
                         readFileAsyncAsData(file).then(isImage ? readImageSizeFromDataURI : (s) => Promise.resolve({dataURI: s, width: -1, height: -1})).then((dataAndDim) => {
                             // The code is the code to load the literal from its base64 string representation:
                             const code = (isImage ? "load_image" : "load_sound") + "(\"" + dataAndDim.dataURI + "\")";
                             document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos))
-                                ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: item.type, content: code, width: dataAndDim.width, height: dataAndDim.height}}));
+                                ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: itemType, content: code, width: dataAndDim.width, height: dataAndDim.height}}));
                         });
                         return;
                     }
