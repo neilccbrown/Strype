@@ -119,13 +119,21 @@ function transformSlotLevel(slots: SlotsStructure) {
                 break;
             }
         }
+        // A blank operator is only valid if the right-hand side is:
+        // - blank itself,
+        // - a round bracket (method call)
+        // - a square bracket (list indexing)
+        // OR the left-hand side is blank
         if (slots.operators[i].code.trim() === "") {
-            if (i + 1 < slots.fields.length) {
-                const after = slots.fields[i+1];
-                if (!(isFieldBaseSlot(after) && after.code == "") && !(isFieldBracketedSlot(after) && (after.openingBracketValue == "(" || after.openingBracketValue == ")"))) {
-                    valid = false;
-                    break;
-                } 
+            const before = slots.fields[i];
+            if (!(isFieldBaseSlot(before) && before.code.trim() === "")) {
+                if (i + 1 < slots.fields.length) {
+                    const after = slots.fields[i + 1];
+                    if (!(isFieldBaseSlot(after) && after.code == "") && !(isFieldBracketedSlot(after) && (after.openingBracketValue == "(" || after.openingBracketValue == "["))) {
+                        valid = false;
+                        break;
+                    }
+                }
             }
         }
     }
