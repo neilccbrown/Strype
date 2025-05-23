@@ -546,7 +546,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         labels: [
             { label: "library ", defaultText: i18n.t("frame.defaultText.libraryAddress") as string, acceptAC: false},
         ],
-        colour: scssVars.nonMainCodeContainerBackground,
+        colour: "#B4C8DC",
     };
 
     const CommentDefinition: FramesDefinitions = {
