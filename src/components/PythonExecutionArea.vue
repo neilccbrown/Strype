@@ -68,6 +68,7 @@ import SVGIcon from "@/components/SVGIcon.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { debounce } from "lodash";
 import scssVars from "@/assets/style/_export.module.scss";
+import {getFileFromLibraries, getLibraryName} from "@/helpers/libraryManager";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
@@ -90,6 +91,16 @@ const bufferToSource = new Map<AudioBuffer, AudioBufferSourceNode>(); // Used to
 // expanded the canvas
 const graphicsCanvasLogicalWidth = WORLD_WIDTH;
 const graphicsCanvasLogicalHeight = WORLD_HEIGHT;
+
+async function getAssetFileFromLibrary(fullLibraryAddress: string, fileName: string) {
+    // First, try filename as-is:
+    const asIs = await getFileFromLibraries([fullLibraryAddress], fileName);
+    if (asIs) {
+        return asIs;
+    }
+    // If that doesn't exist, try within the assets directory:
+    return  await getFileFromLibraries([fullLibraryAddress], "assets/" + fileName);
+}
 
 export default Vue.extend({
     name: "PythonExecutionArea",
@@ -118,6 +129,7 @@ export default Vue.extend({
             isTurtleListeningMouseEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for mouse events on Turtle
             isTurtleListeningTimerEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for timer events on Turtle
             isRunningStrypeGraphics : false,
+            libraries: [] as string[],
             stopTurtleUIEventListeners: undefined as ((keepShowingTurtleUI: boolean)=>void) | undefined, // registered callback method to clear the Turtle listeners mentioned above
             PEALayoutsData: [
                 {iconName: "PEA-layout-tabs-collapsed", mode: StrypePEALayoutMode.tabsCollapsed},
@@ -479,6 +491,8 @@ export default Vue.extend({
                 }
                 requestAnimationFrame(redraw);
                 
+                this.libraries = parser.getLibraries();
+                
                 // Trigger the actual Python code execution launch
                 execPythonCode(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),parser.getLibraries(), () => useStore().pythonExecRunningState != PythonExecRunningState.RunningAwaitingStop, (finishedWithError: boolean, isTurtleListeningKeyEvents: boolean, isTurtleListeningMouseEvents: boolean, isTurtleListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => {
                     // After Skulpt has executed the user code, we need to check if a keyboard listener is still pending from that user code.
@@ -692,10 +706,32 @@ export default Vue.extend({
             this.redrawCanvas();
         },
         
+        // Note: this is called from our graphics API in strype_graphics_input_internal.js
         getPersistentImageManager() : PersistentImageManager {
             this.isRunningStrypeGraphics = true;
             this.peaDisplayTabIndex = PEATabIndexes.graphics;
             return persistentImageManager;
+        },
+
+        // Note: this is called from our graphics API in strype_graphics_input_internal.js
+        // Returns a data: base64 URL with the content if found, or undefined if not
+        loadLibraryAsset(libraryShortName: string, fileName: string) : Promise<string | undefined> {
+            const fullLibraryAddress = this.libraries.find((lib) => getLibraryName(lib) === libraryShortName);
+            if (fullLibraryAddress) {
+                // Only search that library for the file:
+                return getAssetFileFromLibrary(fullLibraryAddress, fileName).then((result) => {
+                    if (result) {
+                        const binary = String.fromCharCode(...new Uint8Array(result.buffer));
+                        const base64 = btoa(binary);
+                        const type = result.mimeType ?? "application/octet-stream"; // fallback if MIME is unknown
+                        return `data:${type};base64,${base64}`;
+                    }
+                    else {
+                        return undefined;
+                    }
+                });
+            }
+            return Promise.resolve(undefined);
         },
         
         getAudioContext() : AudioContext {
