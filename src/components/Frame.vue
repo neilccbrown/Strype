@@ -9,6 +9,7 @@
             :style="frameStyle" 
             :class="{[scssVars.frameDivClassName]: true, blockFrameDiv: isBlockFrame && !isJointFrame, statementFrameDiv: !isBlockFrame && !isJointFrame, [scssVars.errorClassName]: hasParsingError, disabled: isDisabled}"
             :id="UID"
+            :data-frameType="frameType.type"
             @click="toggleCaret($event)"
             @contextmenu="handleClick($event)"
             tabindex="-1"

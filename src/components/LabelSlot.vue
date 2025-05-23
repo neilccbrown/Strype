@@ -77,7 +77,7 @@ import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import {getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUID, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUID, getFrameUID, getFrameComponent } from "@/helpers/editor";
-import { CaretPosition, FrameObject, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, EditImageInDialogFunction, FieldSlot, LoadedMedia, MediaSlot, PythonExecRunningState, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
+import { AllowedSlotContent, CaretPosition, FrameObject, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, EditImageInDialogFunction, FieldSlot, LoadedMedia, MediaSlot, PythonExecRunningState, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
 import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
@@ -965,7 +965,7 @@ export default Vue.extend({
                 this.removeLastInput(inputString);
             }
             // On comments, we do not need multislots and parsing any code, we just let any key go through
-            else if(this.frameType == AllFrameTypesIdentifier.comment){
+            else if(this.frameType == AllFrameTypesIdentifier.comment || this.frameType == AllFrameTypesIdentifier.library){
                 // Do nothing
             }
             // Finally, we check the case an operator, bracket or quote has been typed and the slots within this frame need update
@@ -1130,6 +1130,9 @@ export default Vue.extend({
                                 this.appStore.setSlotTextCursors(newSlotCursorInfos, newSlotCursorInfos);
                             }               
                         }
+                        else {
+                            this.removeLastInput(inputString);
+                        }
                     }
                 }
             }
@@ -1268,7 +1271,7 @@ export default Vue.extend({
                         const specifyFromImportFrame = (this.frameType == AllFrameTypesIdentifier.fromimport) ? AllFrameTypesIdentifier.fromimport : undefined;
                         const {slots: tempSlots, cursorOffset: tempcursorOffset} = parseCodeLiteral(content, {frameType: specifyFromImportFrame});
                         const parser = new Parser();
-                        correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0).code;
+                        correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0, false, AllowedSlotContent.TERMINAL_EXPRESSION).code;
                         cursorOffset = tempcursorOffset;
 
                         // We do a small check here to avoid as much as we can invalid pasted code inside imports.

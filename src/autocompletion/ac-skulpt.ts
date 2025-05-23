@@ -1,6 +1,8 @@
 // This file is used by the command-line script process-skulpt-api.ts so it is important
 // that it does not import other parts of the code (e.g. i18n) that can't work outside webpack
 
+import {getFileFromLibraries} from "@/helpers/libraryManager";
+
 declare const Sk: any;
 
 export const OUR_PUBLIC_LIBRARY_FILES : string[] = [
@@ -14,17 +16,31 @@ export const OUR_PUBLIC_LIBRARY_MODULES = OUR_PUBLIC_LIBRARY_FILES.map((f) => f.
 
 // The function used for "input" from Skulpt, to be registered against the Skulpt object
 // (this is the default behaviour that can be overwritten if needed)
-export function skulptReadPythonLib(x : string) : string {
-    if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined) {
-        if (OUR_PUBLIC_LIBRARY_FILES.find((f) => ("./" + f) === x)) {
+export function skulptReadPythonLib(libraryAddresses: string[]) : ((x : string) => string) {
+    return (x) => {
+        // Prefer built-ins, then our libraries, then third-party
+        // (partly for speed; don't want to try fetching if we don't have to):
+        if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined) {
+            if (OUR_PUBLIC_LIBRARY_FILES.find((f) => ("./" + f) === x)) {
+                return Sk.misceval.promiseToSuspension(
+                    fetch("./public_libraries/" + x)
+                        .then((r) => r.text())
+                );
+            }
             return Sk.misceval.promiseToSuspension(
-                fetch("./public_libraries/" + x)
-                    .then((r) => r.text())
+                getFileFromLibraries(libraryAddresses, x)
+                    .then((r) => {
+                        if (typeof r === "string") {
+                            return Promise.resolve(r);
+                        }
+                        else {
+                            throw Error("File not found: '" + x + "'");
+                        }
+                    })
             );
         }
-        throw "File not found: '" + x + "'";
-    }
-    return Sk.builtinFiles["files"][x];
+        return Sk.builtinFiles["files"][x];
+    };
 }
 
 // The ID of a DIV that is used for "backend" operations with Skulpt, like a/c or retrieving
@@ -129,7 +145,7 @@ export function configureSkulptForAutoComplete() : void {
     const dummyInput = (prompt: string) => new Promise(function(resolve,reject){
         resolve("");
     });
-    Sk.configure({read:skulptReadPythonLib, output:(t:string) => {}, inputfun: dummyInput, inputfunTakesPrompt: true, yieldLimit:100,  killableWhile: true, killableFor: true});
+    Sk.configure({read:skulptReadPythonLib([]), output:(t:string) => {}, inputfun: dummyInput, inputfunTakesPrompt: true, yieldLimit:100,  killableWhile: true, killableFor: true});
     // We also need to set some Turtle environment for Skulpt -- note that the output DIV is NOT the one visible by users,
     // because this environment is only used for our backend processes of the code for autocompletion.
     Sk.TurtleGraphics = {};

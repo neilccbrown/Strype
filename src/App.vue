@@ -120,6 +120,7 @@ import EditImageDlg from "@/components/EditImageDlg.vue";
 import EditSoundDlg from "@/components/EditSoundDlg.vue";
 import axios from "axios";
 import scssVars from "@/assets/style/_export.module.scss";
+import {loadDivider} from "@/helpers/load-save";
 
 let autoSaveTimerId = -1;
 let projectSaveFunctionsState : ProjectSaveFunction[] = [];
@@ -1009,8 +1010,12 @@ export default Vue.extend({
                     this.appStore.setSlotTextCursors(anchorSlotCursorInfos, focusCursorInfoToUse);
                     setDocumentSelection(anchorSlotCursorInfos, focusCursorInfoToUse);
                     // Explicitly set the focused property to the focused slot
-                    this.appStore.setFocusEditableSlot({frameSlotInfos: focusCursorInfoToUse.slotInfos, 
-                        caretPosition: (this.appStore.frameObjects[focusCursorInfoToUse.slotInfos.frameId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below});
+                    if (this.appStore.frameObjects[focusCursorInfoToUse.slotInfos.frameId]) {
+                        this.appStore.setFocusEditableSlot({
+                            frameSlotInfos: focusCursorInfoToUse.slotInfos,
+                            caretPosition: (this.appStore.frameObjects[focusCursorInfoToUse.slotInfos.frameId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below,
+                        });
+                    }
                 }
             });     
         },
@@ -1145,12 +1150,16 @@ export default Vue.extend({
                     allLines.pop();
                 }
                 const s = splitLinesToSections(allLines);
-                // Bit awkward but we first copy each to check for errors because
+                // Bit awkward but we first attempt to copy each to check for errors because
                 // if there are any errors we don't want to paste any:
-                const err = copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION, s.importsMapping)
-                            ?? copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION, s.defsMapping)
-                            ?? copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION, s.mainMapping);
-                if (err != null) {
+                let err = copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.importsMapping);
+                if (typeof err != "string") {
+                    err = copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.FUNCDEF_SECTION, s.defsMapping);
+                }
+                if (typeof err != "string") {
+                    err = copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION, s.mainMapping);
+                }
+                if (typeof err == "string") {
                     const msg = cloneDeep(MessageDefinitions.InvalidPythonParseImport);
                     const msgObj = msg.message as FormattedMessage;
                     msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, err);
@@ -1161,16 +1170,16 @@ export default Vue.extend({
                     // Clear the current existing code (i.e. frames) of the editor
                     this.appStore.clearAllFrames();
 
-                    copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION);
+                    copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION);
                     if (useStore().copiedSelectionFrameIds.length > 0) {
                         getCaretContainerComponent(getFrameComponent(this.appStore.getImportsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(true);
                     }
-                    copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION);
+                    copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.FUNCDEF_SECTION);
                     if (useStore().copiedSelectionFrameIds.length > 0) {
                         getCaretContainerComponent(getFrameComponent(this.appStore.getFuncDefsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(true);
                     }
                     if (s.main.length > 0) {
-                        copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION);
+                        copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION);
                         if (useStore().copiedSelectionFrameIds.length > 0) {
                             getCaretContainerComponent(getFrameComponent(this.appStore.getMainCodeFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(true);
                         }
@@ -1186,10 +1195,20 @@ export default Vue.extend({
                     // Clear the Python Execution Area as it could have be run before.
                     ((this.$root.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getPEAComponentRefId()] as any).clear();
                     /* FITRUE_isPython */
-
-                    // Finally, we can trigger the notifcation a file has been loaded.
-                    (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, lastSaveDate, fileLocation);
-                    resolve();
+                    
+                    this.appStore.setDividerStates(
+                        loadDivider(s.headers["editorCommandsSplitterPane2Size"]),
+                        s.headers["peaLayoutMode"] !== undefined ? StrypePEALayoutMode[s.headers["peaLayoutMode"] as keyof typeof StrypePEALayoutMode] : undefined,
+                        loadDivider(s.headers["peaCommandsSplitterPane2Size"]),
+                        loadDivider(s.headers["peaSplitViewSplitterPane1Size"]),
+                        loadDivider(s.headers["peaExpandedSplitterPane2Size"]),
+                        () => {
+                            // Finally, we can trigger the notifcation a file has been loaded.
+                            (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, lastSaveDate, fileLocation);
+                            resolve();
+                        }
+                    );
+                    
                 }
             });
         },
@@ -1197,7 +1216,7 @@ export default Vue.extend({
             return this.$refs.mediaPreviewPopup;
         },
         getPeaComponent() {
-            return (this.$refs[this.strypeCommandsRefId] as any).$refs.strypePEA;
+            return (this.$refs[this.strypeCommandsRefId] as any).$refs[getPEAComponentRefId()];
         },
         editImageInDialog(imageDataURL: string, showPreview: (dataURL: string) => void, callback: (replacement: {code: string, mediaType: string}) => void) {
             const editImageDlg = this.$refs.editImageDlg as InstanceType<typeof EditImageDlg>;

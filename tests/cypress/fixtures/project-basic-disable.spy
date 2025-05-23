@@ -1,0 +1,7 @@
+#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+msg  = "Hello" 
+#(=> Disabled:print(msg) 
+#(=> Section:End
