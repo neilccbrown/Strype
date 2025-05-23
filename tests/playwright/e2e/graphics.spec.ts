@@ -7,8 +7,6 @@ import {PNG} from "pngjs";
 import fs from "fs";
 import {doPagePaste} from "../support/editor";
 
-let scssVars: {[varName: string]: string};
-//let strypeElIds: {[varName: string]: (...args: any[]) => string};
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && process.platform === "win32") {
         // On Windows+Webkit it just can't seem to load the page for some reason:
@@ -17,8 +15,6 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
-    scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
-    //strypeElIds = await page.evaluate(() => (window as any)["StrypeHTMLELementsIDsGlobals"]);
     await page.evaluate(() => {
         (window as any).Playwright = true;
     });
