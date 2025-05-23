@@ -90,6 +90,20 @@ async function checkGraphicsAreaContent(page: Page, expectedImageFileName : stri
     }
 }
 
+// x and y are from 0 to 1
+async function clickProportionalPos(page: Page, x: number, y: number) : Promise<void> {
+    const box = await page.locator("#peaGraphicsContainerDiv").boundingBox();
+    if (box) {
+        const clickX = box.x + box.width * x;
+        const clickY = box.y + box.height * y;
+        console.log("Clicking at ", clickX, clickY);
+        await page.mouse.click(clickX, clickY);
+    }
+    else {
+        throw Error("Could not find graphics container to click on");
+    }
+}
+
 test.describe("Check turtle works when shared with graphics", () => {
     test("Check turtle square shows", async ({page}) => {
         await enterCode(page, ["import turtle\n", "", `
@@ -125,6 +139,30 @@ test.describe("Check turtle works when shared with graphics", () => {
         // Turtle takes a moment to actually animate:
         await page.waitForTimeout(4000);        
         await checkGraphicsAreaContent(page, "turtle-graphics-triangle-up");
+    });
+
+    test("Check turtle mouse input", async ({page}) => {
+        await enterCode(page, ["import turtle\n", `
+            def clicked_at(x, y):
+                # Will draw a line as it goes:
+                t.goto(x, y)
+        `, `
+            t = turtle.Turtle()
+            turtle.listen()
+            turtle.onscreenclick(clicked_at)
+            t.forward(20);
+            turtle.mainloop()
+        `]);
+        await page.click("#graphicsPEATab");
+        await page.click("#runButton");
+        await page.waitForTimeout(2000);
+        await clickProportionalPos(page, 0.2, 0.2);
+        await page.waitForTimeout(2000);
+        await clickProportionalPos(page, 0.8, 0.5);
+        await page.waitForTimeout(2000);
+        await clickProportionalPos(page, 0.4, 0.7);
+        await page.waitForTimeout(2000);
+        await checkGraphicsAreaContent(page, "turtle-graphics-triangle-mouse-follow");
     });
 });
 
