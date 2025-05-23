@@ -168,6 +168,7 @@ function getIndent(codeLine: string) {
 }
 
 const STRYPE_COMMENT_PREFIX = "___strype_comment_";
+const STRYPE_LIBRARY_PREFIX = "___strype_library_";
 
 const STRYPE_WHOLE_LINE_BLANK = "___strype_whole_line_blank";
 
@@ -206,6 +207,14 @@ function transformCommentsAndBlanks(codeLines: string[]) : {disabledLines : numb
                     disabledLines.push(i+1);
                     i -= 1;
                     continue;
+                }
+                else if (key == "Library" || key == "LibraryDisabled") {
+                    transformedLines.push(match[1] + STRYPE_LIBRARY_PREFIX + toUnicodeEscapes(value));
+                    // We know this is only whitespace because directiveMatch also matched:
+                    mostRecentIndent = match[1];
+                    if (key == "LibraryDisabled") {
+                        disabledLines.push(i+1);
+                    }
                 }
                 else {
                     strypeDirectives.set(key, value);
@@ -697,6 +706,10 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
                     const comment = fromUnicodeEscapes((slots.fields[0] as BaseSlot).code.slice(STRYPE_COMMENT_PREFIX.length));
                     s = addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: comment}], operators: []}}}), p.lineno, s);
                 }
+                else if (slots.fields.length == 1 && (slots.fields[0] as BaseSlot)?.code && (slots.fields[0] as BaseSlot).code.startsWith(STRYPE_LIBRARY_PREFIX)) {
+                    const library = fromUnicodeEscapes((slots.fields[0] as BaseSlot).code.slice(STRYPE_LIBRARY_PREFIX.length));
+                    s = addFrame(makeFrame(AllFrameTypesIdentifier.library, {0: {slotStructures: {fields: [{code: library}], operators: []}}}), p.lineno, s);
+                }
                 else if (slots.fields.length == 1 && (slots.fields[0] as BaseSlot)?.code && (slots.fields[0] as BaseSlot).code === STRYPE_WHOLE_LINE_BLANK) {
                     s = addFrame(makeFrame(AllFrameTypesIdentifier.blank, {}), p.lineno, s);
                 }
@@ -927,7 +940,7 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION)
             || copiedPythonToFrames.some((frame) => !topLevelCopiedFrameIds.includes(frame.id) && [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type)));
     case  STRYPE_LOCATION.IMPORTS_SECTION:
         removeTopLevelBlankFrames();
-        return !topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type));
+        return !topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.library, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type));
     default:
         // We shouldn't reach this but for safety we return false
         return false;

@@ -243,3 +243,21 @@ describe("Tests saving layout metadata", () => {
     //    testRoundTripImportAndDownload("tests/cypress/fixtures/project-layout-tabs-expanded-collapsed.spy");
     //});
 });
+
+
+describe.only("Tests loading/saving library frames", () => {
+    it("Saves libraries", () => {
+        // Doesn't really disable, but easy comparison to next item:
+        testEntryDisableAndSave("{uparrow}{uparrow}lfoo{rightarrow}ibar{rightarrow}lhttps://www.google.com/{rightarrow}", [], "tests/cypress/fixtures/project-libraries.spy");
+    });
+    it("Saves disabled libraries", () => {
+        // Disable the foo library:
+        testEntryDisableAndSave("{uparrow}{uparrow}lfoo{rightarrow}ibar{rightarrow}lhttps://www.google.com/{rightarrow}", ["foo"], "tests/cypress/fixtures/project-libraries-disable.spy");
+    });
+    it ("Saves and loads libraries", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-libraries.spy");
+    });
+    it ("Saves and loads disabled libraries", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-libraries-disable.spy");
+    });
+});

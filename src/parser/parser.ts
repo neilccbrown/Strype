@@ -263,16 +263,28 @@ export default class Parser {
         || (statement.frameType.type === AllFrameTypesIdentifier.library)
         || (!this.saveAsSPY && statement.frameType.type === AllFrameTypesIdentifier.funccall && isFieldBaseSlot(statement.labelSlotsDict[0].slotStructures.fields[0]) && (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.startsWith("#"))){
             const commentContent = (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code;
-
-            if (statement.frameType.type === AllFrameTypesIdentifier.library) {
-                this.libraries.push(commentContent);
-            }
+            
             // Before returning, we update the line counter used for the frame mapping in the parser:
             // +1 except if we are in a multiline comment (and not excluding them) when we then return the number of lines-1 + 2 for the multi quotes
             // (for UI purpose our multiline comments content always terminates with an extra line return so we need to discard it)
             this.line += ((this.excludeLoopsAndCommentsAndCloseTry) ? 1 : ((commentContent.includes("\n")) ? 1 + commentContent.split("\n").length : 1));
+
+            const passLine = indentation + "pass" + "\n";
+            
+            if (statement.frameType.type === AllFrameTypesIdentifier.library) {
+                if (!statement.isDisabled) {
+                    this.libraries.push(commentContent);
+                }
+                if (this.saveAsSPY) {
+                    return indentation + "#" + AppSPYPrefix + " " + (statement.isDisabled ? "LibraryDisabled" : "Library") + ":" + commentContent + "\n";
+                }
+                else {
+                    return passLine; // Make sure we don't mess up the line numbers
+                }
+            }
+            
             return (this.excludeLoopsAndCommentsAndCloseTry)
-                ? "pass" // This will just be an empty code placeholder, so it shouldn't be a problem for the code
+                ? passLine // This will just be an empty code placeholder, so it shouldn't be a problem for the code
                 : ((commentContent.includes("\n")) ? (indentation+"'''\n" + indentation + commentContent.replaceAll("\n", ("\n"+indentation)).replaceAll("'''","\\'\\'\\'") + "'''\n") : (indentation + "#" + commentContent + "\n"));
         }
             
@@ -353,7 +365,8 @@ export default class Parser {
                 //it doesn't matter since we will not have errors to show in those anyway)
                 this.line += 1;
             }
-            else if (this.saveAsSPY && frame.isDisabled) {
+            else if (this.saveAsSPY && frame.isDisabled && frame.frameType.type != AllFrameTypesIdentifier.library) {
+                // Disabled libraries are treated differently because they already aren't real code.
                 disabledFrameBlockFlag = "";
                 // Don't add the disabled prefix twice:
                 if (!indentation.match(/^ *#/)) {
