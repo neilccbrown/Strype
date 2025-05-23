@@ -1216,7 +1216,7 @@ export default Vue.extend({
             return this.$refs.mediaPreviewPopup;
         },
         getPeaComponent() {
-            return (this.$refs[this.strypeCommandsRefId] as any).$refs.strypePEA;
+            return (this.$refs[this.strypeCommandsRefId] as any).$refs[getPEAComponentRefId()];
         },
         editImageInDialog(imageDataURL: string, showPreview: (dataURL: string) => void, callback: (replacement: {code: string, mediaType: string}) => void) {
             const editImageDlg = this.$refs.editImageDlg as InstanceType<typeof EditImageDlg>;

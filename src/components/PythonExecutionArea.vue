@@ -20,10 +20,10 @@
             <Splitpanes :class="{'strype-PEA-split-theme': true, 'with-expanded-PEA': isExpandedPEA, 'tabs-PEA': isTabsLayout}" :horizontal="!isExpandedPEA" @resize="onSplitterPane1Resize">
                 <pane :id="graphicsSplitPaneId" key="1" v-show="isGraphicsAreaShowing" :size="(isTabsLayout) ? 100 : currentSplitterPane1Size" min-size="5">
                     <div :id="graphicsContainerDivId" @wheel.stop :class="{'pea-graphics-container': true, hidden: graphicsTemporaryHidden}">
+                        <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @click.stop="graphicsCanvasClick"></canvas>
                         <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
                             <div :id="graphicsDivId" ref="pythonTurtleDiv" class="pea-graphics-div"></div>
-                        </div>
-                        <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @click.stop="graphicsCanvasClick"></canvas> 
+                        </div> 
                     </div>
                 </pane>
                 <pane key="2" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)" min-size="5">
@@ -642,17 +642,16 @@ export default Vue.extend({
             
 
             // Scale to fit: we scale to fit whichever dimension will be scaled-limited by the viewport.
-            // The Turtle div keeps a 5px margin around the Turtle canvases, so we need to take it into account when computing the scaling.
-            const preCheckTurtleCanvasWScaleRatio =  ((tabContentW - 10.0) / canvasW);
-            const preCheckTurtleCanvasHSCaleRatio = ((tabContentH - 10.0) / canvasH);
+            const preCheckTurtleCanvasWScaleRatio =  (tabContentW / canvasW);
+            const preCheckTurtleCanvasHSCaleRatio = (tabContentH / canvasH);
             const turtleCanvasScaleRatio = Math.min(preCheckTurtleCanvasWScaleRatio, preCheckTurtleCanvasHSCaleRatio);
             (turtlePlaceholderDiv as HTMLDivElement).style.scale = ""+turtleCanvasScaleRatio;
    
             // We can now set the dimension of the flex div (containing the Turtle div) to fit to the scaled content new dimensions: 
             // the rule is: check what is each dimension of the scaled canvas and use the max between that scaled dimension and the tab content dimension
             // (to make sure we don't fit to a smaller size than the tab content itself!)
-            (turtlePlaceholderDiv.parentElement as HTMLDivElement).style.width = Math.max((canvasW * turtleCanvasScaleRatio + 10), tabContentW) +"px";
-            (turtlePlaceholderDiv.parentElement as HTMLDivElement).style.height = Math.max((canvasH * turtleCanvasScaleRatio + 10), tabContentH) +"px";
+            (turtlePlaceholderDiv.parentElement as HTMLDivElement).style.width = Math.max((canvasW * turtleCanvasScaleRatio), tabContentW) +"px";
+            (turtlePlaceholderDiv.parentElement as HTMLDivElement).style.height = Math.max((canvasH * turtleCanvasScaleRatio), tabContentH) +"px";
 
             // Restore the Graphics container visibility
             this.graphicsTemporaryHidden = false;
@@ -1004,7 +1003,6 @@ export default Vue.extend({
 
     .pea-graphics-div {
         background-color: white;
-        margin:5px;
         outline: none;
     }
     
