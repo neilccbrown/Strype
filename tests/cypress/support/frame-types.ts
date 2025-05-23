@@ -1,5 +1,4 @@
 // Bit annoying that this must be copied, but it's a pain to try to share the original:
-import scssVars from "@/assets/style/_export.module.scss";
 
 const i18n = { t: ((x : string) => x)};
 
@@ -259,7 +258,6 @@ export function generateAllFrameDefinitionTypes(): void{
         labels: [
             { label: "library ", defaultText: i18n.t("frame.defaultText.libraryAddress") as string, acceptAC: false},
         ],
-        colour: scssVars.nonMainCodeContainerBackground,
     };
 
     const CommentDefinition: FramesDefinitions = {
