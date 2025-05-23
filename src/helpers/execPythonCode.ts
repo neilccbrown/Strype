@@ -135,7 +135,7 @@ function sInput(prompt: string) {
 
 // Entry point function for running Python code with Skulpt - the UI is responsible for calling it,
 // and providing the code (usually, user defined code) and the text area to display the output
-export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv: HTMLDivElement|null, userCode: string, lineFrameMapping: LineAndSlotPositions, keepRunning: () => boolean,
+export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv: HTMLDivElement|null, userCode: string, lineFrameMapping: LineAndSlotPositions, libraryAddresses: string[], keepRunning: () => boolean,
                                executionFinished: (finishedWithError: boolean, isListeningKeyEvents: boolean, isListeningMouseEvents: boolean, isListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => any): void{
     consoleTextArea = aConsoleTextArea;
     codeExecStateRunningCheckFn = keepRunning;
@@ -173,7 +173,7 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         executionFinished(finishedWithError, isTurtleListeningKB, isTurtleListeningMouse, isTurtleListeningTimer, stopTurtleListeners);
     }
     
-    Sk.configure({output:outf, read:skulptReadPythonLib, inputfun:sInput, inputfunTakesPrompt: true, yieldLimit:100,  killableWhile: true, killableFor: false});
+    Sk.configure({output:outf, read:skulptReadPythonLib(libraryAddresses), inputfun:sInput, inputfunTakesPrompt: true, yieldLimit:100,  killableWhile: true, killableFor: false});
     
     const myPromise = Sk.misceval.asyncToPromise(function() {
         return Sk.importMainWithBody("<stdin>", false, userCode, true);

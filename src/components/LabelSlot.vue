@@ -965,7 +965,7 @@ export default Vue.extend({
                 this.removeLastInput(inputString);
             }
             // On comments, we do not need multislots and parsing any code, we just let any key go through
-            else if(this.frameType == AllFrameTypesIdentifier.comment){
+            else if(this.frameType == AllFrameTypesIdentifier.comment || this.frameType == AllFrameTypesIdentifier.library){
                 // Do nothing
             }
             // Finally, we check the case an operator, bracket or quote has been typed and the slots within this frame need update

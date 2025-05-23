@@ -329,6 +329,7 @@ const CommentFrameTypesIdentifier = {
 const ImportFrameTypesIdentifiers = {
     import: "import",
     fromimport: "from-import",
+    library: "library",
 };
 
 const FuncDefIdentifiers = {
@@ -539,6 +540,15 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         isImportFrame: true,
     };
 
+    const LibraryDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: ImportFrameTypesIdentifiers.library,
+        labels: [
+            { label: "library ", defaultText: i18n.t("frame.defaultText.libraryAddress") as string, acceptAC: false},
+        ],
+        colour: "#B4C8DC",
+    };
+
     const CommentDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.comment,
@@ -679,6 +689,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         VarAssignDefinition,
         ImportDefinition,
         FromImportDefinition,
+        LibraryDefinition,
         CommentDefinition,
         GlobalDefinition,
         // also add the frame containers as we might need to retrieve them too
