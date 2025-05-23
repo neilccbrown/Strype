@@ -715,7 +715,7 @@ export default Vue.extend({
 
             const clickedDiv: HTMLDivElement = event.target as HTMLDivElement;
 
-            // This checks the propagated click events, and prevents the parent frame to handle the event as well, EXCEPt in the case of disabled frames:
+            // This checks the propagated click events, and prevents the parent frame to handle the event as well, EXCEPT in the case of disabled frames:
             // if the clicked frame is disabled AND it is inside a disabled ancestor, we want to consider that ancestor instead, as the disabled block works as an unit.
             // Stop and Prevent do not work in this case, as the event needs to be propagated 
             // (for the context menu to close) but it does not need to trigger always a caret change.
@@ -755,7 +755,24 @@ export default Vue.extend({
                 //    --> get the cursor below the frame (if statement or disabled frame) or at the nearest above/below position (if block)
                 //Note: joint frames overlap their root parent, they get the click as a standalone frame
                 if(clickY <= (frameRect.top + ((this.isDisabled) ? frameRect.height : headerRect.height)/2)){
-                    newCaretPosition = getAboveFrameCaretPosition(this.frameId);
+                    // For disabled joint frames: we won't be able to get the caret position above directly using getAboveFrameCaretPosition(), because disabled
+                    // joint frame do not have any available position for the frame cursor, so we need to look for it manually.
+                    const jointParentId = this.appStore.frameObjects[this.frameId].jointParentId;
+                    if(jointParentId > 0 && this.isDisabled){
+                        // We need to find the nearest enabled sibling of this joint frame. 
+                        // If we found one, we place the caret below the last of that sibling's children, or inside its body if it has no child,
+                        // if we didn't find, we place the caret below the last of the root's children, or inside its body if it has no child.
+                        const thisJointChildPos = this.appStore.frameObjects[jointParentId].jointFrameIds.indexOf(this.frameId);
+                        const lastEnabledJointPrecedingSibling = this.appStore.frameObjects[jointParentId].jointFrameIds
+                            .find((jointFrameId, index) => (index < thisJointChildPos && !this.appStore.frameObjects[jointFrameId].isDisabled));
+                        const previousFrameSiblingOrRoot = lastEnabledJointPrecedingSibling ?? jointParentId;         
+                        const prevFrameSiblingLastChildFrameId = this.appStore.frameObjects[previousFrameSiblingOrRoot].childrenIds.at(-1);
+                        newCaretPosition.caretPosition = (prevFrameSiblingLastChildFrameId) ? CaretPosition.below : CaretPosition.body;
+                        newCaretPosition.frameId = prevFrameSiblingLastChildFrameId ?? previousFrameSiblingOrRoot;
+                    }
+                    else{
+                        newCaretPosition = getAboveFrameCaretPosition(this.frameId);
+                    }
                 }
                 else{
                     if(!this.isDisabled && this.isBlockFrame){
@@ -805,7 +822,19 @@ export default Vue.extend({
                         }
                     }
                     else{
-                        newCaretPosition.caretPosition = CaretPosition.below;
+                        // If we have clicked a disabled joint frame, we need to get "below", which does not exist for joint frames.
+                        // Therefore, it will be either in the body of the next enabled joint frame of this structure, or below the root.
+                        const jointParentId = this.appStore.frameObjects[this.frameId].jointParentId;
+                        if(jointParentId > 0) {
+                            const thisJointChildPos = this.appStore.frameObjects[jointParentId].jointFrameIds.indexOf(this.frameId);
+                            const firstEnabledJointFollowingSibling = this.appStore.frameObjects[jointParentId].jointFrameIds
+                                .find((jointFrameId, index) => (index > thisJointChildPos && !this.appStore.frameObjects[jointFrameId].isDisabled));
+                            newCaretPosition.caretPosition = (firstEnabledJointFollowingSibling) ? CaretPosition.body : CaretPosition.below;
+                            newCaretPosition.frameId = firstEnabledJointFollowingSibling ?? jointParentId;
+                        }
+                        else{
+                            newCaretPosition.caretPosition = CaretPosition.below;
+                        }
                     }
                 }
 
