@@ -1589,7 +1589,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         cursorOffset += bracketCursorOffset;
         let actualCodeClosingBracketPos = closingBracketPos;
         const quotesPlaceholdersExp = "(" + STRING_SINGLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + "|" + STRING_DOUBLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + ")";
-        codeLiteral.match(new RegExp(quotesPlaceholdersExp, "g"))?.forEach((placeholder) => {
+        innerBracketCode.match(new RegExp(quotesPlaceholdersExp, "g"))?.forEach((placeholder) => {
             // If the content of the brackets contained any string, the value of the closing bracket position is for a code WITH the string quotes placeholders.
             // Therefore, if we want to use that to check what is the new cursor position in the parsing of the code after the bracket, we need to do so without
             // the string placeholders, if any. When a placeholder is found, we remove its length - 1 to the positin, as it would match 1 quote.
