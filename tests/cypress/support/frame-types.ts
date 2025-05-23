@@ -1,4 +1,6 @@
 // Bit annoying that this must be copied, but it's a pain to try to share the original:
+import scssVars from "@/assets/style/_export.module.scss";
+
 const i18n = { t: ((x : string) => x)};
 
 export enum AllowedSlotContent {
@@ -50,6 +52,7 @@ export const CommentFrameTypesIdentifier = {
 export const ImportFrameTypesIdentifiers = {
     import: "import",
     fromimport: "from-import",
+    library: "library",
 };
 
 export const FuncDefIdentifiers = {
@@ -250,6 +253,15 @@ export function generateAllFrameDefinitionTypes(): void{
         isImportFrame: true,
     };
 
+    const LibraryDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: ImportFrameTypesIdentifiers.library,
+        labels: [
+            { label: "library ", defaultText: i18n.t("frame.defaultText.libraryAddress") as string, acceptAC: false},
+        ],
+        colour: scssVars.nonMainCodeContainerBackground,
+    };
+
     const CommentDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.comment,
@@ -389,6 +401,7 @@ export function generateAllFrameDefinitionTypes(): void{
         VarAssignDefinition,
         ImportDefinition,
         FromImportDefinition,
+        LibraryDefinition,
         CommentDefinition,
         GlobalDefinition,
         // also add the frame containers as we might need to retrieve them too
@@ -441,6 +454,12 @@ export const allFrameCommandsDefs = {
         type: getFrameDefType(AllFrameTypesIdentifier.elif),
         description: "elif",
         shortcuts: ["l"],
+        index: 0,
+    }, {
+        type: getFrameDefType(AllFrameTypesIdentifier.library),
+        description: "library",
+        shortcuts: ["l"],
+        index: 1,
     }],
     "e": [{
         type: getFrameDefType(AllFrameTypesIdentifier.else),
