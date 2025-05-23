@@ -20,10 +20,10 @@
             <Splitpanes :class="{'strype-PEA-split-theme': true, 'with-expanded-PEA': isExpandedPEA, 'tabs-PEA': isTabsLayout}" :horizontal="!isExpandedPEA" @resize="onSplitterPane1Resize">
                 <pane :id="graphicsSplitPaneId" key="1" v-show="isGraphicsAreaShowing" :size="(isTabsLayout) ? 100 : currentSplitterPane1Size" min-size="5">
                     <div :id="graphicsContainerDivId" @wheel.stop :class="{'pea-graphics-container': true, hidden: graphicsTemporaryHidden}">
+                        <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @click.stop="graphicsCanvasClick"></canvas>
                         <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
                             <div :id="graphicsDivId" ref="pythonTurtleDiv" class="pea-graphics-div"></div>
-                        </div>
-                        <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @click.stop="graphicsCanvasClick"></canvas> 
+                        </div> 
                     </div>
                 </pane>
                 <pane key="2" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)" min-size="5">
