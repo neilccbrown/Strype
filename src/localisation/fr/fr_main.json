@@ -17,6 +17,7 @@
       "parameters": "paramètres ",
       "module": "module ",
       "modulePart": "fonction/classe ",
+      "libraryAddress": "emplacement",
       "comment": "ton commentaire "
     },
     "funcdef_desc": "définition de fonction",
