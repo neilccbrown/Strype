@@ -1,14 +1,16 @@
 // Caches Python files which have been fetched from libraries
-type ModuleResult = string | number; // Either the content, or number of HTTP code when we asked
+type FetchResult = { buffer: ArrayBuffer; mimeType: string | null } | number; // Either the content, or number of HTTP code when we asked
 type FilePath = string;
-type ModuleCache = Map<FilePath, ModuleResult>;
+type FetchCache = Map<FilePath, FetchResult>;
 type LibraryAddress = string;
-type LibraryCache = Map<LibraryAddress, ModuleCache>;
+// Maps a library address (https: or github: location) to a FetchCache,
+// which is itself a map from filepath (e.g. src/foo.py, or assets/image.jpeg) to content or HTTP error code.
+type LibraryCache = Map<LibraryAddress, FetchCache>;
 
 // This is (deliberately) only cleared on page reload.  We don't hold it in the store,
 // in order to allow this refreshing:
 const libraryCache: LibraryCache = new Map();
-// Keys are user/repo/branch
+// Keys are user/repo/branch, maps to a list of file paths that are available in that repo:
 const githubCache = new Map<string, string[]>();
 
 async function getGithubRepoPaths(
@@ -59,12 +61,7 @@ async function getGithubRepoPaths(
 }
 
 
-async function attemptFetchModule(address: LibraryAddress, fileName: FilePath) : Promise<ModuleResult> {
-    if (!fileName.endsWith(".py")) {
-        // We only fetch third-party Python files, not JS, for security reasons:
-        return Promise.resolve(403);
-    }
-    
+async function attemptFetchFile(address: LibraryAddress, fileName: FilePath) : Promise<FetchResult> {
     // Convert Github URLs to our Github protocol:
     address = address.replace(/^https?:\/\/(www\.?)github.com\//, "github:");
     // Remove leading ./:
@@ -101,16 +98,42 @@ async function attemptFetchModule(address: LibraryAddress, fileName: FilePath) :
     
     const response = await fetch(url);
     if (response.ok) {
-        return await response.text();
+        return {buffer: await response.arrayBuffer(), mimeType: response.headers.get("Content-Type")};
     }
     else {
         return response.status;
     }
 }
 
+export function getLibraryName(libraryAddress: LibraryAddress) : string | undefined  {
+    // Convert Github URLs to our Github protocol:
+    libraryAddress = libraryAddress.replace(/^https?:\/\/(www\.?)github.com\//, "github:");
+    if (libraryAddress.startsWith("https:") || libraryAddress.startsWith("http:")) {
+        try {
+            const url = new URL(libraryAddress + (libraryAddress.endsWith("/") ? "" : "/"));
+            const segments = url.pathname.split("/").filter(Boolean);
+            if (segments.length > 0) {
+                return segments[segments.length - 1];
+            }
+        }
+        catch (e) {
+            // Just return undefined, below
+        }
+    }
+    else if (libraryAddress.startsWith("github:")) {
+        // Addresses are either user/repo, or user/repo/branch.
+        const components = libraryAddress.slice("github:".length).split("/");
+        // Library name is the second
+        if (components.length >= 2) {
+            return components[1];
+        }
+    }
+    return undefined;
+}
+
 // Uses the cache if at all possible.
 // All parameters are assumed to be already trimmed.
-export async function getFileFromLibraries(libraryAddresses: LibraryAddress[], filePath: FilePath): Promise<string | null> {
+export async function getFileFromLibraries(libraryAddresses: LibraryAddress[], filePath: FilePath): Promise<{ buffer: ArrayBuffer; mimeType: string | null } | null> {
     if (libraryAddresses.length === 0) {
         return null;
     }
@@ -125,22 +148,21 @@ export async function getFileFromLibraries(libraryAddresses: LibraryAddress[], f
     }
 
     // Check if result is already cached
+    let result : FetchResult;
     if (moduleCache.has(filePath)) {
-        const result = moduleCache.get(filePath);
-        if (typeof result == "string") {
-            return result; // Found a non-null cached result
-        }
-        // Else, it's a known failure — skip to next address
+        // Shouldn't ever be undefined anyway, because we just checked if it was in the map:
+        result = moduleCache.get(filePath) ?? 404;
     }
     else {
         // Not cached yet — attempt fetch
-        const result = await attemptFetchModule(currentAddress, filePath);
+        result = await attemptFetchFile(currentAddress, filePath);
         moduleCache.set(filePath, result); // Cache result (even if fails)
-
-        if (typeof result == "string") {
-            return result;
-        }
     }
+
+    if (typeof result != "number") {
+        return result;
+    }
+    // Otherwise it's not found or had an error.
 
     // Recurse into the rest of the addresses
     return getFileFromLibraries(rest, filePath);

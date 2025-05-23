@@ -37,22 +37,51 @@ var $builtinmodule = function(name)  {
             }
             return susp.ret;
         };
-        susp.data = {
-            type: "Sk.promise",
-            promise: (path.startsWith("data:") ?
-                audioContext.decodeAudioData(Uint8Array.from(atob(path.split(",")[1]), (char) => char.charCodeAt(0)).buffer)
-                :
-                fetch("./sounds/" + path)
-                    .then((d) => d.arrayBuffer())
-                    .then((b) => audioContext.decodeAudioData(b)))
+        let promise;
+        if (path.startsWith("data:") || path.startsWith(":")) {
+            const decode = (dataURL) => 
+                audioContext.decodeAudioData(Uint8Array.from(atob(dataURL.split(",")[1]), (char) => char.charCodeAt(0)).buffer)
+                    .then((b) => {
+                        if (!b) {
+                            susp.data["error"] = Error("Cannot load audio file \"" + path + "\"");
+                        }
+                        else {
+                            susp.ret = b;
+                        }
+                    });
+            
+            const match = /^:([^:]+):(.+)$/.exec(path);
+            if (match) {
+                // If it's some prefix between two colons, it's a library asset:
+                const libraryName = match[1];
+                const fileName = match[2];
+                promise = peaComponent.__vue__.loadLibraryAsset(libraryName, fileName).then(async (dataURL) => {
+                    return await decode(dataURL ?? path);
+                }).catch((error) => {
+                    // Propagate the error to the outer promise
+                    susp.data["error"] = error;
+                });
+            }
+            else {
+                promise = decode(path);
+            }
+        }
+        else {
+            promise = fetch("./sounds/" + path)
+                .then((d) => d.arrayBuffer())
+                .then((b) => audioContext.decodeAudioData(b))
                 .then((b) => {
                     if (!b) {
                         susp.data["error"] = Error("Cannot load audio file \"" + path + "\"");
                     }
-                    else  {
+                    else {
                         susp.ret = b;
                     }
-                }),
+                });
+        }
+        susp.data = {
+            type: "Sk.promise",
+            promise: promise,
         };
         return susp;
     }); 

@@ -43,6 +43,7 @@ var $builtinmodule = function(name)  {
     // code has loaded the image synchronously.
     // This code is adapted from Skulpt's src/lib/image.js
     mod.loadAndWaitForImage = new Sk.builtin.func(function(filename) {
+        filename = Sk.ffi.remapToJs(filename);
         let susp = new Sk.misceval.Suspension();
         susp.resume = function () {
             if (susp.data["error"]) {
@@ -67,17 +68,29 @@ var $builtinmodule = function(name)  {
                 // and permissive, so our rule is: if it starts with http: or https: or // we 
                 // treat it as absolute, or something.ext/something then we assume it's a URL.
                 // Otherwise we count it as a relative path:
+                let match;
                 if (/^https?:/.test(filename) || /^\/\//.test(filename)) {
                     // Absolute:
                     newImg.src = filename;
                 }
-                else if (/^https?:/.test(filename) || /^[^./]+\.[^/]+\/.+/.test(filename)) {
+                else if (!/:/.test(filename) && /^[^./]+\.[^/]+\/.+/.test(filename)) {
                     // Absolute partial:
                     newImg.src = "https://" + filename;
                 }
                 else if (/^data:/.test(filename) && !/^data:image\/svg+xml/.test(filename)) {
                     // Base64 data image:
                     newImg.src = filename;
+                }
+                else if ((match = /^:([^:]+):(.+)$/.exec(filename))) {
+                    // If it's some other prefix between two colons, it's a library asset:
+                    const libraryName = match[1];
+                    const fileName = match[2];
+                    peaComponent.__vue__.loadLibraryAsset(libraryName, fileName).then((dataURL) => {
+                        newImg.src = dataURL ?? filename;
+                    }).catch((error) => {
+                        // Propagate the error to the outer promise
+                        reject(error);
+                    });
                 }
                 else {
                     // Relative path:

@@ -9,7 +9,6 @@ export const OUR_PUBLIC_LIBRARY_FILES : string[] = [
     "strype/__init__.py",
     "strype/strype_graphics_internal.js", "strype/graphics.py",
     "strype/strype_sound_internal.js", "strype/sound.py",
-    "strype/mediacomp.py",
     "strype/strype_graphics_input_internal.js",
 ];
 export const OUR_PUBLIC_LIBRARY_MODULES = OUR_PUBLIC_LIBRARY_FILES.map((f) => f.substring(0, f.lastIndexOf(".")).replace("/", ".")).filter((f) => !f.includes("internal") && !f.includes("__init__"));
@@ -27,11 +26,22 @@ export function skulptReadPythonLib(libraryAddresses: string[]) : ((x : string) 
                         .then((r) => r.text())
                 );
             }
+            if (!x.endsWith(".py")) {
+                // We only fetch third-party Python files, not JS, for security reasons:
+                return undefined;
+            }
             return Sk.misceval.promiseToSuspension(
                 getFileFromLibraries(libraryAddresses, x)
                     .then((r) => {
-                        if (typeof r === "string") {
-                            return Promise.resolve(r);
+                        if (r != null) {
+                            if (r.mimeType == null || r.mimeType.startsWith("text")) {
+                                // Convert to UTF8 text:
+                                const text = new TextDecoder("utf-8").decode(r.buffer);
+                                return Promise.resolve(text);
+                            }
+                            else {
+                                throw Error("Found binary .py file in library");
+                            }
                         }
                         else {
                             throw Error("File not found: '" + x + "'");
