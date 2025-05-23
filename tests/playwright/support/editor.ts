@@ -29,3 +29,30 @@ export async function typeIndividually(page: Page, content: string, timeout = 75
         await page.waitForTimeout(timeout);
     }
 }
+
+export async function doPagePaste(page: Page, clipboardContent: string, clipboardContentType = "text") : Promise<void> {
+    return page.evaluate(({clipboardContent, clipboardContentType}) => {
+        const pasteEvent = new ClipboardEvent("paste", {
+            bubbles: true,
+            cancelable: true,
+            clipboardData: new DataTransfer(),
+        });
+
+        // Set custom clipboard data for the paste event
+        if (clipboardContentType.startsWith("text")) {
+            pasteEvent.clipboardData?.setData(clipboardContentType, clipboardContent);
+        }
+        else {
+            const byteCharacters = atob(clipboardContent);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const file = new File([new Blob([new Uint8Array(byteNumbers)], {type: clipboardContentType})], "anon", { type: clipboardContentType});
+            pasteEvent.clipboardData?.items.add(file);
+        }
+
+        // Dispatch the paste event to the whole document
+        document.activeElement?.dispatchEvent(pasteEvent);
+    }, {clipboardContent, clipboardContentType});
+}

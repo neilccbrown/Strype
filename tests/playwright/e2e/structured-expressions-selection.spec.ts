@@ -1,5 +1,5 @@
 import {Page, test, expect} from "@playwright/test";
-import {typeIndividually} from "../support/editor";
+import {typeIndividually, doPagePaste} from "../support/editor";
 import fs from "fs";
 
 let scssVars: {[varName: string]: string};
@@ -171,33 +171,6 @@ function testPasteOverBoth(code: string, startIndex: number, endIndex: number, t
 }
 
 enum CUT_COPY_TEST { CUT_ONLY, COPY_ONLY, CUT_REPASTE }
-
-function doPagePaste(page: Page, clipboardContent: string, clipboardContentType = "text") {
-    return page.evaluate(({clipboardContent, clipboardContentType}) => {
-        const pasteEvent = new ClipboardEvent("paste", {
-            bubbles: true,
-            cancelable: true,
-            clipboardData: new DataTransfer(),
-        });
-
-        // Set custom clipboard data for the paste event
-        if (clipboardContentType.startsWith("text")) {
-            pasteEvent.clipboardData?.setData(clipboardContentType, clipboardContent);
-        }
-        else {
-            const byteCharacters = atob(clipboardContent);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const file = new File([new Blob([new Uint8Array(byteNumbers)], {type: clipboardContentType})], "anon", { type: clipboardContentType});
-            pasteEvent.clipboardData?.items.add(file);
-        }
-
-        // Dispatch the paste event to the whole document
-        document.activeElement?.dispatchEvent(pasteEvent);
-    }, {clipboardContent, clipboardContentType});
-}
 
 function testCutCopy(code : string, stepsToBegin: number, stepsWhileSelecting: number, expectedClipboard : string, expectedAfter : string, kind: CUT_COPY_TEST) : void {
     test(`Tests selecting then ${CUT_COPY_TEST[kind]} in ${code} from ${stepsToBegin} + ${stepsWhileSelecting}`, async ({page, context}) => {        
