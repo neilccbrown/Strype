@@ -200,4 +200,25 @@ test.describe("Check graphics works when shared with turtle", () => {
         // Check the mouse has moved because it registered the keypress:
         await checkGraphicsAreaContent(page, "shared-graphics-background-2");
     });
+
+    test("Check graphics example responds to mouse", async ({page}) => {
+        await enterCode(page, ["from strype.graphics import *\n", "", `
+            set_background("cat-test.jpg")
+            while True:
+                c = get_mouse_click()
+                if c:
+                    mouse = Actor(load_image("mouse-test.jpg").clone(0.25), c.x, c.y)
+                pace(20)        
+        `]);
+        await page.click("#graphicsPEATab");
+        await page.click("#runButton");
+        await page.waitForTimeout(2000);
+        await clickProportionalPos(page, 0.2, 0.2);
+        await page.waitForTimeout(2000);
+        await clickProportionalPos(page, 0.8, 0.5);
+        await page.waitForTimeout(2000);
+        await clickProportionalPos(page, 0.4, 0.7);
+        await page.waitForTimeout(2000);
+        await checkGraphicsAreaContent(page, "shared-graphics-mouse-at-mouse-click");
+    });
 });
