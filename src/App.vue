@@ -604,8 +604,8 @@ export default Vue.extend({
                     .then((resp) => {
                         if(resp.status == 200){
                             // Find the filename from the URL:
-                            const cleaned = shareProjectId.replace(/\/+$/, '');
-                            const lastSlash = cleaned.lastIndexOf('/');
+                            const cleaned = shareProjectId.replace(/\/+$/, "");
+                            const lastSlash = cleaned.lastIndexOf("/");
                             const filename = lastSlash !== -1 ? cleaned.substring(lastSlash + 1) : cleaned;
                             
                             return (resp.data.startsWith("{") ?
