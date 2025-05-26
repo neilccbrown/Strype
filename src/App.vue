@@ -600,14 +600,15 @@ export default Vue.extend({
                 
             }
             else{
-                axios.get(shareProjectId)
+                axios.get<string>(shareProjectId)
                     .then((resp) => {
                         if(resp.status == 200){
-                            return this.appStore.setStateFromJSONStr( 
-                                {
-                                    stateJSONStr: JSON.stringify(resp.data),
+                            return (resp.data.startsWith("{") ?
+                                this.appStore.setStateFromJSONStr({
+                                    stateJSONStr: resp.data,
                                     showMessage: false,
-                                }
+                                }) :
+                                this.setStateFromPythonFile(resp.data, shareProjectId, 0)
                             ).then(() => {
                                 alertMsgKey = "appMessage.retrievedSharedGenericProject";
                                 alertParams = this.appStore.projectName;
