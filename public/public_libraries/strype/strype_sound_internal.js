@@ -116,6 +116,23 @@ var $builtinmodule = function(name)  {
     mod.getSampleRate = new Sk.builtin.func(function(buffer) {
         return Sk.ffi.remapToPy(buffer.sampleRate);
     });
+    mod.copy = new Sk.builtin.func(function(audioBuffer) {
+        const audioContext = peaComponent.__vue__.getAudioContext();
+        const numberOfChannels = audioBuffer.numberOfChannels;
+        const copiedBuffer = audioContext.createBuffer(
+            numberOfChannels,
+            audioBuffer.length,
+            audioBuffer.sampleRate
+        );
+
+        for (let channel = 0; channel < numberOfChannels; channel++) {
+            const sourceData = audioBuffer.getChannelData(channel);
+            const targetData = copiedBuffer.getChannelData(channel);
+            targetData.set(sourceData);
+        }
+
+        return copiedBuffer;
+    });
     mod.copyToMono = new Sk.builtin.func(function(audioBuffer) {
         // From https://gist.github.com/chrisguttandin/e49764f9c29376780f2eb1f7d22b54e4
         const downmixContext = new OfflineAudioContext(

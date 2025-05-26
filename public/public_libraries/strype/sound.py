@@ -74,6 +74,14 @@ class Sound:
         """
         return Sound(_strype_sound_internal.copyToMono(self.__buffer), -4242)
 
+    def clone(self):
+        """
+        Returns a copy of this sound.
+        
+        :return: A copy of this sound (leaving this sound unmodified).
+        """
+        return Sound(_strype_sound_internal.copy(self.__buffer), -4242)
+
     def get_sample_rate(self):
         """
         Gets the number of samples per second in the sound.  This can be different for different sound files.
