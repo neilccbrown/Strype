@@ -600,14 +600,20 @@ export default Vue.extend({
                 
             }
             else{
-                axios.get(shareProjectId)
+                axios.get<string>(shareProjectId)
                     .then((resp) => {
                         if(resp.status == 200){
-                            return this.appStore.setStateFromJSONStr( 
-                                {
-                                    stateJSONStr: JSON.stringify(resp.data),
+                            // Find the filename from the URL:
+                            const cleaned = shareProjectId.replace(/\/+$/, "");
+                            const lastSlash = cleaned.lastIndexOf("/");
+                            const filename = lastSlash !== -1 ? cleaned.substring(lastSlash + 1) : cleaned;
+                            
+                            return (resp.data.startsWith("{") ?
+                                this.appStore.setStateFromJSONStr({
+                                    stateJSONStr: resp.data,
                                     showMessage: false,
-                                }
+                                }) :
+                                this.setStateFromPythonFile(resp.data, filename, 0)
                             ).then(() => {
                                 alertMsgKey = "appMessage.retrievedSharedGenericProject";
                                 alertParams = this.appStore.projectName;
