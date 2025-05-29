@@ -101,7 +101,7 @@ import { isMacOSPlatform } from "@/helpers/common";
 /* IFTRUE_isPython */
 import {Splitpanes, Pane, PaneData} from "splitpanes";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
-import {getPEAConsoleId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getPEAComponentRefId, getPEAControlsDivId} from "@/helpers/editor";
+import {getPEAConsoleId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getPEAComponentRefId, getPEAControlsDivId} from "@/helpers/editor";
 /* FITRUE_isPython */
 /* IFTRUE_isMicrobit */
 import APIDiscovery from "@/components/APIDiscovery.vue";
