@@ -218,20 +218,6 @@ export default Vue.extend({
         },
     },
 
-    /* IFTRUE_isPython */
-    watch: {
-        addFrameCommands(){
-            // When the commands list is regenerated, the height of the frame commands list may change, and so may the Python Exec Area.
-            // So to make sure that the Turtle canvas is still showing in the right scaling, if Turtle is showing then we rescale a bit later.
-            // Keep this in the watch rather directly inside the corresponding computed property as computed property shouldn't contain time functions.
-            if(document.getElementById(getPEAGraphicsContainerDivId())?.style.display != "none"){
-                setTimeout(() => document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged)),
-                    800);
-            }
-        },
-    },
-    /* FITRUE_isPython */
-
     created() {
         if(this.appStore.showKeystroke){
             window.addEventListener(
