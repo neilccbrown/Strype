@@ -1,0 +1,4 @@
+- name: Knock knock
+  description: A simple knock-knock joke example
+  image: graphics-knock-knock.png
+  file: graphics-knock-knock.spy

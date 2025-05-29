@@ -1,0 +1,4 @@
+- name: Number Guessing Game
+  description: A number guessing game
+  image: console-ngg.png
+  file: console-ngg.spy
