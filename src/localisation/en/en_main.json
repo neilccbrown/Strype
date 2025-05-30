@@ -150,7 +150,8 @@
   "appMenu": {
     "downloadHex": "Convert to Hex file",
     "downloadPython": "Convert to Python file",
-    "loadProject": "Open",
+    "loadProject": "Open...",
+    "loadDemoProject": "Examples...",
     "saveProject": "Save",
     "saveAsProject": "Save as...",
     "resetProject": "New project",

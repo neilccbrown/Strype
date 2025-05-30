@@ -1,7 +1,7 @@
 <!-- this acts as a wrapper around the bootstrap modals, to have centralised control and customisation -->
 <template>
     <b-modal no-close-on-backdrop :hide-header-close="!showCloseBtn" :id="dlgId" :title="dlgTitle" :ok-only="okOnly" 
-        :ok-title="okTitle" :ok-disabled="okDisabled" :cancel-title="cancelTitle" :size="size" :auto-focus-button="autoFocusButton">
+        :ok-title="okTitle" :ok-disabled="okDisabled" :cancel-title="cancelTitle" :size="size" :auto-focus-button="autoFocusButton" :modal-class="cssClass">
         <slot/>
         <!-- if we use a loading OK, we assume ONLY the OK button is customised and use the default cancel/hide buttons of the modal -->
         <template v-if="useLoadingOK" #modal-ok>
@@ -49,6 +49,7 @@ export default Vue.extend({
         },
         elementToFocusId: String,
         useYesNo: Boolean, // by default, the values of the buttons are OK and Cancel, this flag allows using Yes/No (in combination with okOnly) if needed
+        cssClass: String,
     },
 
     mounted(){

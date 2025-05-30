@@ -118,6 +118,7 @@
     "downloadHex": "Konvertieren: Hex-Datei",
     "downloadPython": "Konvertieren: Python-Datei",
     "loadProject": "Öffnen",
+    "loadDemoProject": "Beispiele...",      
     "saveProject": "Speichern",
     "saveAsProject": "Speichern als...",
     "resetProject": "Neues Projekt",

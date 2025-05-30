@@ -28,8 +28,11 @@ export interface DemoGroup {
 // Looks for demos in a given library path (see getFileFromLibraries)
 // and returns them; will be an empty list inside if the library has no demos
 export function getThirdPartyLibraryDemos(library: string) : DemoGroup {
+    const cleaned = library.replace(/\/+$/, "");
+    const lastSlash = cleaned.lastIndexOf("/");
+    const libraryShortName = lastSlash !== -1 ? cleaned.substring(lastSlash + 1) : cleaned;
     return {
-        name: "Library " + library,
+        name: "Library " + libraryShortName,
         demos: getFileFromLibraries([library], "demos/index.yaml").then((r) => {
             if (r != null) {
                 if (r.mimeType == null || r.mimeType.startsWith("text")) {
