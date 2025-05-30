@@ -96,12 +96,17 @@ async function attemptFetchFile(address: LibraryAddress, fileName: FilePath) : P
         return 400;
     }
     
-    const response = await fetch(url);
-    if (response.ok) {
-        return {buffer: await response.arrayBuffer(), mimeType: response.headers.get("Content-Type")};
+    try {
+        const response = await fetch(url);
+        if (response.ok) {
+            return {buffer: await response.arrayBuffer(), mimeType: response.headers.get("Content-Type")};
+        }
+        else {
+            return response.status;
+        }
     }
-    else {
-        return response.status;
+    catch (error) {
+        return 520;
     }
 }
 
