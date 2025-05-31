@@ -80,7 +80,7 @@ describe("Graphics library", () => {
         focusEditorAC();
         // Add graphics import:
         cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
-        // Add a function frame and trigger auto-complete:
+        // Add a function call frame and trigger auto-complete:
         cy.get("body").type(" ");
         cy.wait(500);
         cy.get("body").type("load_image('a').{ctrl} ");
@@ -88,6 +88,62 @@ describe("Graphics library", () => {
             cy.get(acIDSel).should("be.visible");
             checkExactlyOneItem(acIDSel, null, "get_width()");
         }, false);
+    });
+
+    it("Shows completions for return of sound load_sound", () => {
+        focusEditorAC();
+        // Add graphics import:
+        cy.get("body").type("{uparrow}{uparrow}fstrype.sound{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        // Add a function call frame and trigger auto-complete:
+        cy.get("body").type(" ");
+        cy.wait(500);
+        cy.get("body").type("load_sound('a').{ctrl} ");
+        withAC((acIDSel, frameId) => {
+            cy.get(acIDSel).should("be.visible");
+            checkExactlyOneItem(acIDSel, null, "get_samples()");
+        }, false);
+    });
+
+    it("Shows completions for image literal", () => {
+        cy.readFile("public/graphics_images/cat-test.jpg", null).then((catJPEG) => {
+            focusEditorAC();
+            // Add graphics import:
+            cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+            // Add a function call frame and trigger auto-complete:
+            cy.get("body").type(" {del}");
+            cy.wait(500);
+            (cy.focused() as any).paste(catJPEG, "image/jpeg");
+            cy.wait(500);
+            cy.get("body").type(".");
+            cy.wait(300);
+            cy.get("body").type("{ctrl} ");
+            cy.wait(1000);
+            withAC((acIDSel, frameId) => {
+                cy.get(acIDSel).should("be.visible");
+                checkExactlyOneItem(acIDSel, null, "get_width()");
+            }, false);
+        });
+    });
+
+    it("Shows completions for audio literal", () => {
+        cy.readFile("public/sounds/cat-test-meow.wav", null).then((catWAV) => {
+            focusEditorAC();
+            // Add graphics import:
+            cy.get("body").type("{uparrow}{uparrow}fstrype.sound{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+            // Add a function call frame and trigger auto-complete:
+            cy.get("body").type(" {del}");
+            cy.wait(500);
+            (cy.focused() as any).paste(catWAV, "audio/wav");
+            cy.wait(500);
+            cy.get("body").type(".");
+            cy.wait(300);
+            cy.get("body").type("{ctrl} ");
+            cy.wait(1000);
+            withAC((acIDSel, frameId) => {
+                cy.get(acIDSel).should("be.visible");
+                checkExactlyOneItem(acIDSel, null, "get_samples()");
+            }, false);
+        });
     });
 
     it("Shows completions for Actor methods", () => {

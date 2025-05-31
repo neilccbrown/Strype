@@ -35,6 +35,34 @@ chai.Assertion.addMethod("beLocaleSorted", function () {
     expect(actual).to.deep.equal(expected);
 });
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+Cypress.Commands.add("paste",
+    {prevSubject : true},
+    ($element, data : string | Buffer, type : string) => {
+        const clipboardData = new DataTransfer();
+        if (typeof data === "string") {
+            clipboardData.setData(type, data);
+        }
+        else {
+            const file = new File([new Blob([new Uint8Array(data)], {type: type})], "anon", { type: type });
+            clipboardData.items.add(file);
+        }
+
+        const pasteEvent = new ClipboardEvent("paste", {
+            bubbles: true,
+            cancelable: true,
+            clipboardData,
+        });
+
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        cy.get($element).then(() => {
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
+            $element[0].dispatchEvent(pasteEvent);
+        });
+    });
 
 export function withAC(inner : (acIDSel : string, frameId: number) => void, isInFuncCallFrame:boolean, skipSortedCheck?: boolean) : void {
     // We need a delay to make sure last DOM update has occurred:
