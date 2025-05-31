@@ -14,9 +14,25 @@
             minWidth="1"
             minHeight="100"
             @change="change"
+            @mousemove.native="handleMouseMove"
         ></cropper>
         <div class="EditSoundDlg-button-wrapper">
             <b-button class="EditSoundDlg-play-button" :variant="playStopVariant" @click="doPlayStopPreview">{{playStopLabel}}</b-button>
+        </div>
+        <div class="d-flex justify-content-center mt" style="margin-top: 10px;">
+            <div class="d-flex position-relative" style="font-size: 80%;">
+                <div class="d-flex flex-column text-right me-4" style="min-width: 250px; padding-right: 5px;">
+                    <div>{{$t(isMacOSPlatform() ? "media.cursorTimeMac" : "media.cursorTimeWin")}}</div>
+                    <div>{{$t(isMacOSPlatform() ? "media.cursorHeightMac" : "media.cursorHeightWin")}}</div>
+                </div>
+                <!-- Divider -->
+                <div class="position-absolute top-0 bottom-0 start-50 translate-middle-x bg-secondary" style="width: 1px;"></div>
+                <div class="d-flex flex-column text-left ms-4" style="min-width: 250px; padding-left: 5px;">
+                    <div>{{cursorTime || "-"}}</div>
+                    <div>{{cursorHeight || "-"}}</div>
+                </div>
+
+            </div>
         </div>
         <span class="EditSoundDlg-header">{{$t("media.volumeScale")}}</span>
         <div class="EditSoundDlg-scale">
@@ -42,6 +58,7 @@ import { mapStores } from "pinia";
 import { BvModalEvent } from "bootstrap-vue";
 import {drawSoundOnCanvas, getRMS, audioBufferToDataURL} from "@/helpers/media";
 import {TranslateResult} from "vue-i18n";
+import {isMacOSPlatform} from "@/helpers/common";
 
 const previewImageWidth = 300;
 const previewImageHeight = 100;
@@ -71,6 +88,8 @@ export default Vue.extend({
             volumeRMS: 0,
             crop: {firstSampleIncl: 0, lastSampleExcl: 0, leftPixel: 0, widthPixels: 0},
             stopPreview: null as (() => void) | null,
+            cursorTime: undefined as string | undefined,
+            cursorHeight: undefined as string | undefined,
         };
     },
 
@@ -82,6 +101,14 @@ export default Vue.extend({
     beforeDestroy(){
         // Remove the event listener for the dialog here, just in case...
         this.$root.$off("bv::modal::hide", this.onHideModalDlg);
+    },
+
+    mounted() {
+        window.addEventListener("keydown", this.onKeyDown);
+    },
+
+    destroyed() {
+        window.removeEventListener("keydown", this.onKeyDown);
     },
 
     computed:{
@@ -99,6 +126,7 @@ export default Vue.extend({
     },
 
     methods:{
+        isMacOSPlatform,
         onHideModalDlg(event: BvModalEvent, id: string){
             if (this.stopPreview != null) {
                 this.stopPreview();
@@ -201,6 +229,51 @@ export default Vue.extend({
                     mediaType: "audio/wav",
                 };
             });
+        },
+        handleMouseMove(event: MouseEvent) {
+            const cropper = this.$refs.cropper as Cropper;
+            const imageElement = cropper?.$el.querySelector("img");
+
+            if (cropper && imageElement && imageElement.complete) {
+                const rect = imageElement.getBoundingClientRect();
+                const offsetX = event.clientX - rect.left;
+                const offsetY = event.clientY - rect.top;
+
+                const scaleX = imageElement.width / imageElement.getBoundingClientRect().width;
+                const scaleY = imageElement.height / imageElement.getBoundingClientRect().height;
+
+                const imageX = offsetX * scaleX;
+                const imageY = offsetY * scaleY;
+
+                if (imageX >= 0 && imageX < imageElement.width && imageY >= 0 && imageY < imageElement.height) {
+                    const t = (imageX / previewImageWidth) * this.soundToEdit?.duration;
+                    this.cursorTime = t != undefined ? t.toPrecision(3) : undefined;
+                    this.cursorHeight = ((imageY / previewImageHeight) * -2 + 1).toFixed(2);
+                }
+                else {
+                    this.cursorTime = undefined;
+                    this.cursorHeight = undefined;
+                }
+            }
+        },
+
+        onKeyDown(event: KeyboardEvent) {
+            if (this.$refs.cropper && event.key === "c" && ((isMacOSPlatform() && event.metaKey) || (!isMacOSPlatform() && event.ctrlKey))) {
+                if (event.shiftKey) {
+                    if (this.cursorHeight !== undefined) {
+                        navigator.clipboard.writeText(this.cursorHeight);
+                    }
+                }
+                else {
+                    if (this.cursorTime !== undefined) {
+                        // We don't copy the outer brackets:
+                        navigator.clipboard.writeText(this.cursorTime);
+                    }
+                }
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                event.preventDefault();
+            }
         },
     },
     watch: {
