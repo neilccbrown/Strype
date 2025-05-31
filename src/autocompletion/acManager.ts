@@ -13,44 +13,83 @@ import {TPyParser} from "tigerpython-parser";
 import graphicsMod from "../../public/public_libraries/strype/graphics.py";
 import soundMod from "../../public/public_libraries/strype/sound.py";
 
-TPyParser.defineModule("strype.graphics", extractTypes(graphicsMod));
-TPyParser.defineModule("strype.sound", extractTypes(soundMod));
+(TPyParser as any).defineModule("strype.graphics", extractPYI(graphicsMod), "pyi");
+(TPyParser as any).defineModule("strype.sound", extractPYI(soundMod), "pyi");
 
-function removeDefaultParams(funcSignature: string): string {
-    // Regular expression to match parameters with default values
-    const regex = /(\s*,?\s*\w+\s*=\s*[^,)\s]+)/g;
-    // Replace matches with an empty string and clean up trailing commas or spaces
-    return funcSignature.replace(regex, "").replace(/\(\s*,/, "(").replace(/,\s*\)/, ")");
-}
+function splitTopLevelArgs(s: string): string[] {
+    const result: string[] = [];
+    let depth = 0;
+    let current = "";
 
-function extractTypes(original : string) : string {
-    const originalLines = original.split("\n");
-    // We need to find everything starting class or def
-    const r = [];
-    let inClass = false;
-    for (let i = 0; i < originalLines.length; i++) {
-        if (originalLines[i].match(/^class.*:\s*$/)) {
-            r.push(originalLines[i]);
-            inClass = true;
+    for (let i = 0; i < s.length; i++) {
+        const c = s[i];
+        if (c === "," && depth === 0) {
+            result.push(current.trim());
+            current = "";
         }
         else {
-            const fm = originalLines[i].match(/^(\s*)def\s+(.*)\s*:\s*$/);
-            if (fm && (fm[1] === "" || inClass)) {
-                let signature;
-                if (i > 0 && originalLines[i - 1].startsWith((fm[1] + "#@@"))) {
-                    signature = fm[1] + "[" + originalLines[i - 1].slice(fm[1].length + 3).trim() + "]" + removeDefaultParams(fm[2]);
-                }
-                else {
-                    signature = fm[1] + removeDefaultParams(fm[2]);
-                }
-                r.push(signature);
-                if (fm[1] === "") {
-                    inClass = false;
-                }
+            if (c === "[" || c === "(") {
+                depth++;
             }
+            if (c === "]" || c === ")") {
+                depth--;
+            }
+            current += c;
         }
     }
-    return r.join("\n");
+
+    if (current) {
+        result.push(current.trim());
+    }
+
+    return result;
+}
+
+
+function extractPYI(original : string) : string {
+    const lines = original.split("\n");
+    const output: string[] = [];
+    let prevLine = "";
+
+    for (const line of lines) {
+        const typeMatch = line.match(/\s*#\s*type\s*:\s*(\S.*)/);
+        if (typeMatch) {
+            const foundType = typeMatch[1].trim();
+            // Look for prev line:
+            const nameMatch = prevLine.match(/^(\s*)def (\w+)\((.*?)\):\s*$/);
+            if (nameMatch) {
+                const [indent, fnName, args] = nameMatch.slice(1);
+                const [argTypes, returnType] = foundType.split("->").map((s) => s.trim());
+                const argNames = args.trim() ? args.split(",").map((s) => s.replace(/=.*/, "").trim()) : [];
+                if (indent != "") {
+                    // If we're indented, we're a class, so remove first argName as it's self:
+                    argNames.shift();
+                }
+                const argTypeList = splitTopLevelArgs(argTypes.slice(1, -1)).map((s) => s.trim());
+
+                const typedArgs = argNames.map((arg, i) => `${arg}: ${argTypeList[i]}`).join(", ");
+                output.push(`${indent}def ${fnName}(${typedArgs}) -> ${returnType}: ...`);
+                continue;
+            }
+            const varMatch = line.match(/^(\s*)(\w+)\s*=.*$/);
+            if (varMatch) {
+                const [indent, name, type] = varMatch.slice(1);
+                output.push(`${indent}${name}: ${type}`);
+                continue;
+            }
+        }
+        // Remember last non-blank line:
+        else if (line.trim() != "") {
+            prevLine = line;
+        }
+
+        const classMatch = line.match(/^class (\w+):\s*$/);
+        if (classMatch) {
+            output.push(line);
+        }
+    }
+
+    return output.join("\n");
 }
 
 // Given a FieldSlot, get the program code corresponding to it, to use
