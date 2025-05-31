@@ -1,40 +1,14 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
-import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
 import "@testing-library/cypress/add-commands";
 import "../support/autocomplete-test-support";
-import {checkExactlyOneItem, checkNoItems, focusEditorAC, withAC} from "../support/autocomplete-test-support";
+import {BUILTIN, checkAutocompleteSorted, checkExactlyOneItem, checkNoItems, focusEditorAC, withAC, scssVars} from "../support/autocomplete-test-support";
 
 // Needed for the "be.sorted" assertion:
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 chai.use(require("chai-sorted"));
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
-
-
-// Must clear all local storage between tests to reset the state,
-// and also retrieve the shared CSS and HTML elements IDs exposed
-// by Strype via the Window object of the app.
-let scssVars: {[varName: string]: string};
-let strypeElIds: {[varName: string]: (...args: any[]) => string};
-beforeEach(() => {
-    cy.clearLocalStorage();
-    cy.visit("/",  {onBeforeLoad: (win) => {
-        win.localStorage.clear();
-        win.sessionStorage.clear();
-    }}).then(() => {       
-        // Only need to get the global variables if we haven't done so
-        if(scssVars == undefined){
-            cy.window().then((win) => {
-                scssVars = (win as any)[WINDOW_STRYPE_SCSSVARS_PROPNAME];
-                strypeElIds = (win as any)[WINDOW_STRYPE_HTMLIDS_PROPNAME];
-            });
-        }
-        
-        // Wait for code initialisation
-        cy.wait(2000);
-    });
-});
 
 
 describe("Graphics library", () => {

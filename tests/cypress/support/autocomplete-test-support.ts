@@ -116,7 +116,7 @@ export function checkNoItems(acIDSel : string, text : string, exact? : boolean) 
     cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).within(() => cy.findAllByText(text, { exact: exact ?? false}).should("not.exist"));
 }
 
-export function checkNoneAvailable(acIDSel : string) {
+export function checkNoneAvailable(acIDSel : string) : void {
     cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).within(() => {
         cy.findAllByText("No completion available", { exact: true}).should("have.length", 1);
     });
