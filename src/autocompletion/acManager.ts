@@ -11,8 +11,10 @@ import i18n from "@/i18n";
 import {OUR_PUBLIC_LIBRARY_MODULES} from "@/autocompletion/ac-skulpt";
 import {TPyParser} from "tigerpython-parser";
 import graphicsMod from "../../public/public_libraries/strype/graphics.py";
+import soundMod from "../../public/public_libraries/strype/sound.py";
 
 TPyParser.defineModule("strype.graphics", extractTypes(graphicsMod));
+TPyParser.defineModule("strype.sound", extractTypes(soundMod));
 
 function removeDefaultParams(funcSignature: string): string {
     // Regular expression to match parameters with default values
@@ -60,8 +62,16 @@ export function getContentForACPrefix(item : FieldSlot, excludeLast? : boolean) 
         return ss.quote + ss.code + ss.quote;
     }
     else if ("mediaType" in item) {
-        // It's an image literal; no completion
-        return "";
+        // It's a media literal
+        if (item.mediaType.startsWith("image/")) {
+            return "load_image('')";
+        }
+        else if (item.mediaType.startsWith("audio/")) {
+            return "load_sound('')";
+        }
+        else {
+            return "";
+        }
     }
     else if ("code" in item) {
         const basic = item as BaseSlot;
