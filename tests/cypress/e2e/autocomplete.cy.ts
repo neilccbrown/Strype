@@ -227,6 +227,7 @@ describe("Modules", () => {
                 checkExactlyOneItem(acIDSel, null, "microbit");
                 checkExactlyOneItem(acIDSel, null, "random");
                 checkExactlyOneItem(acIDSel, null, "time");
+                checkNoItems(acIDSel, "mediacomp");
                 checkNoItems(acIDSel, "signal");
                 // Once we type "m", should show things beginning with M but not the others:
                 cy.get("body").type("m");
@@ -252,6 +253,7 @@ describe("Modules", () => {
                 checkExactlyOneItem(acIDSel, null, "array");
                 checkExactlyOneItem(acIDSel, null, "signal");
                 checkExactlyOneItem(acIDSel, null, "webbrowser");
+                checkNoItems(acIDSel, "mediacomp");
                 checkNoItems(acIDSel, "microbit");
                 // Once we type "a", should show things beginning with A but not the others:
                 cy.get("body").type("a");

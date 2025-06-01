@@ -77,11 +77,12 @@ import _ from "lodash";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 import { getAllEnabledUserDefinedFunctions } from "@/helpers/storeMethods";
-import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, extractCommaSeparatedNames} from "@/autocompletion/acManager";
+import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, extractCommaSeparatedNames, extractPYI} from "@/autocompletion/acManager";
 import Parser from "@/parser/parser";
 import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
 import {TPyParser} from "tigerpython-parser";
 import scssVars from "@/assets/style/_export.module.scss";
+import {getAvailablePyPyiFromLibrary, getFileFromLibraries} from "@/helpers/libraryManager";
 
 //////////////////////
 export default Vue.extend({
@@ -186,8 +187,8 @@ export default Vue.extend({
             return sortedCategories;
         },
       
-        updateACForModuleImport(token: string) : void {
-            this.acResults = getAvailableModulesForImport();
+        async updateACForModuleImport(token: string) : Promise<void> {
+            this.acResults = await getAvailableModulesForImport();
             this.showFunctionBrackets = false;
             // Only show imports if the slot isn't following "as" (so we need to check the operator)
             const {frameId, slotId} = parseLabelSlotUID(this.slotId);
@@ -209,6 +210,26 @@ export default Vue.extend({
             const tokenStartsWithUnderscore = (token ?? "").startsWith("_");
             const parser = new Parser();
             const userCode = parser.getCodeWithoutErrors(frameId);
+            
+            for (const library of parser.getLibraries()) {
+                const pyPYIs = await getAvailablePyPyiFromLibrary(library);
+                if (pyPYIs == null) {
+                    continue;
+                }
+                for (const pyPYI of pyPYIs) {
+                    const r = await getFileFromLibraries([library], pyPYI);
+                    if (r != null) {
+                        if (r.mimeType == null || r.mimeType.startsWith("text")) {
+                            // Convert to UTF8 text:
+                            const text = new TextDecoder("utf-8").decode(r.buffer);
+                            
+                            const pyi = pyPYI.endsWith(".pyi") ? text : extractPYI(text);
+                            
+                            (TPyParser as any).defineModule(pyPYI.replace(/\.pyi?$/, "").replaceAll("/", "."), pyi, "pyi");
+                        }
+                    }
+                }
+            }
             
             // If nothing relevant changed, no need to recalculate, just update based on latest token:
             if (this.lastTokenStartedUnderscore == tokenStartsWithUnderscore &&

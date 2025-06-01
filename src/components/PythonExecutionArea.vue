@@ -262,8 +262,12 @@ export default Vue.extend({
             // width and height to be the on-page width and height to avoid this:
             const realWidth = domCanvas.getBoundingClientRect().width;
             const realHeight = domCanvas.getBoundingClientRect().height;
-            domCanvas.width = realWidth;
-            domCanvas.height = realHeight;
+            // Sometimes it can be zero while adjusting size of cheat sheet;
+            // don't set that on the canvas.  The real value will follow soon after.
+            if (realWidth > 0 && realHeight > 0) {
+                domCanvas.width = realWidth;
+                domCanvas.height = realHeight;
+            }
             // It's possible for the on-screen canvas to be the wrong aspect ratio, which we do not prevent.
             // But we make the off-screen canvas the right aspect ratio:
             const maxHeight = Math.min(realHeight, (3 / 4) * realWidth);

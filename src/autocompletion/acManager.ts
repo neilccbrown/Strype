@@ -12,6 +12,8 @@ import {OUR_PUBLIC_LIBRARY_MODULES} from "@/autocompletion/ac-skulpt";
 import {TPyParser} from "tigerpython-parser";
 import graphicsMod from "../../public/public_libraries/strype/graphics.py";
 import soundMod from "../../public/public_libraries/strype/sound.py";
+import {getAvailablePyPyiFromLibrary, getPossibleImports} from "@/helpers/libraryManager";
+import Parser from "@/parser/parser";
 
 (TPyParser as any).defineModule("strype.graphics", extractPYI(graphicsMod), "pyi");
 (TPyParser as any).defineModule("strype.sound", extractPYI(soundMod), "pyi");
@@ -46,7 +48,7 @@ function splitTopLevelArgs(s: string): string[] {
 }
 
 
-function extractPYI(original : string) : string {
+export function extractPYI(original : string) : string {
     const lines = original.split("\n");
     const output: string[] = [];
     let prevLine = "";
@@ -67,14 +69,8 @@ function extractPYI(original : string) : string {
                 }
                 const argTypeList = splitTopLevelArgs(argTypes.slice(1, -1)).map((s) => s.trim());
 
-                const typedArgs = argNames.map((arg, i) => `${arg}: ${argTypeList[i]}`).join(", ");
+                const typedArgs = (indent != "" ? "self" + (argTypeList.length > 0 ? ", " : "") : "") + argNames.map((arg, i) => `${arg}: ${argTypeList[i]}`).join(", ");
                 output.push(`${indent}def ${fnName}(${typedArgs}) -> ${returnType}: ...`);
-                continue;
-            }
-            const varMatch = line.match(/^(\s*)(\w+)\s*=.*$/);
-            if (varMatch) {
-                const [indent, name, type] = varMatch.slice(1);
-                output.push(`${indent}${name}: ${type}`);
                 continue;
             }
         }
@@ -85,6 +81,18 @@ function extractPYI(original : string) : string {
 
         const classMatch = line.match(/^class (\w+):\s*$/);
         if (classMatch) {
+            output.push(line);
+        }
+        const varMatch = line.match(/^(\s*)(\S+)\s*=(.*)$/);
+        if (varMatch) {
+            //const [indent, name, rhs] = varMatch.slice(1);
+            if (line.includes("namedtuple(")) {
+                output.push(line);
+            }
+            //output.push(`${indent}${name}: ${type}`);
+            continue;
+        }
+        if (line.match(/^import/)) {
             output.push(line);
         }
     }
@@ -394,18 +402,33 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
     }
 }
 
-export function getAvailableModulesForImport() : AcResultsWithCategory {
+export async function getAvailableModulesForImport() : Promise<AcResultsWithCategory> {
     /* IFTRUE_isMicrobit */
     return {[""]: microbitModuleDescription.modules.map((m) => ({acResult: m, documentation: m in microbitPythonAPI ? (microbitPythonAPI[m as keyof typeof microbitPythonAPI].find((ac) => ac.acResult === "__doc__")?.documentation || "") : "", type: ["module"], version: 0}))};
     /* FITRUE_isMicrobit */
     /* IFTRUE_isPython */
+    // To get library imports, we first get the libraries:
+    const p = new Parser();
+    // We only need to parse the imports container:
+    p.parse(-1, -2);
+    // Then we can get the libraries and look for imports:
+    const fromLibraries = [];
+    for (const library of p.getLibraries()) {
+        const paths = await getAvailablePyPyiFromLibrary(library);
+        if (paths != null) {
+            // I don't understand why we need "as string[]" here given the null check above,
+            // but Typescript complains without:
+            fromLibraries.push(...getPossibleImports(paths as string[]));
+        }
+    }
     return {[""] : Object.keys(pythonBuiltins)
         .filter((k) => pythonBuiltins[k]?.type === "module")
         .map((k) => ({acResult: k, documentation: pythonBuiltins[k].documentation||"", type: [pythonBuiltins[k].type], version: 0}))
+        .concat(fromLibraries.map((m) => ({acResult: m, documentation: "", type: ["module"], version: 0})))
         .concat(OUR_PUBLIC_LIBRARY_MODULES.map((m) => ({acResult: m, documentation: "", type: ["module"], version: 0})))};
     /* FITRUE_isPython */
 }
-export function getAvailableItemsForImportFromModule(module: string) : AcResultType[] {
+export async function getAvailableItemsForImportFromModule(module: string) : AcResultType[] {
     const star : AcResultType = {"acResult": "*", "documentation": "All items from module", "version": 0, "type": []};
     /* IFTRUE_isMicrobit */
     const allMicrobitItems: AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
@@ -419,6 +442,7 @@ export function getAvailableItemsForImportFromModule(module: string) : AcResultT
     if (allSkulptItems) {
         return [...allSkulptItems, star];
     }
+    // TODO we need to get AC from the loaded libraries to see available items
     /* FITRUE_isPython */
     return [star];
 }

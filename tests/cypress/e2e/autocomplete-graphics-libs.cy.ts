@@ -31,7 +31,7 @@ describe("Graphics library", () => {
             checkExactlyOneItem(acIDSel, "strype.graphics", "pause()");
             checkNoItems(acIDSel, "__name__");
             // Shouldn't show methods from Actor at top-level:
-            checkNoItems(acIDSel, "is_at_edge()");
+            checkNoItems(acIDSel, "is_at_edge(distance)");
             checkNoItems(acIDSel, "remove()");
         }, false);
     });
@@ -132,9 +132,9 @@ describe("Graphics library", () => {
         cy.get("body").type("a.{ctrl} ");
         withAC((acIDSel, frameId) => {
             cy.get(acIDSel).should("be.visible");
-            checkExactlyOneItem(acIDSel, null, "is_at_edge()");
+            checkExactlyOneItem(acIDSel, null, "is_at_edge(distance)");
             checkExactlyOneItem(acIDSel, null, "move(distance)");
-            checkExactlyOneItem(acIDSel, null, "get_all_touching()");
+            checkExactlyOneItem(acIDSel, null, "get_all_touching(tag)");
             checkExactlyOneItem(acIDSel, null, "set_location(x, y)");
             checkNoItems(acIDSel, "__name__");
             // Shouldn't show methods from top-level:
@@ -208,7 +208,7 @@ describe("Modules from libraries", () => {
     it("Offers auto-complete in import frames based on libraries", () => {
         focusEditorAC();
         // Go up to imports, add library, add import, then trigger auto-complete:
-        cy.get("body").type("{uparrow}{uparrow}lgithub:k-pet-group/mediacomp-strype{rightarrow}i");
+        cy.get("body").type("{uparrow}{uparrow}lhttp://localhost:8089/test-library/{rightarrow}i");
         cy.wait(500);
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
@@ -221,7 +221,7 @@ describe("Modules from libraries", () => {
         focusEditorAC();
 
         // Go up to imports, add library, add import, then trigger auto-complete:
-        cy.get("body").type("{uparrow}{uparrow}lgithub:k-pet-group/mediacomp-strype{rightarrow}f");
+        cy.get("body").type("{uparrow}{uparrow}lhttp://localhost:8089/test-library/{rightarrow}f");
         cy.wait(500);
         // Fill in time in the LHS then go across to the RHS:
         cy.get("body").type("mediacomp{rightarrow}");
@@ -274,7 +274,7 @@ describe("Modules from libraries", () => {
         // This works on microbit without using Skulpt because we have special cases to look up microbit in our precalculated JSON        
         focusEditorAC();
         // Go up to imports, add library, add import, then trigger auto-complete:
-        cy.get("body").type("{uparrow}{uparrow}lgithub:k-pet-group/mediacomp-strype{rightarrow}i");
+        cy.get("body").type("{uparrow}{uparrow}lhttp://localhost:8089/test-library{rightarrow}i");
         cy.wait(500);
         // Trigger autocomplete, type "mediacom" then press enter to complete and right arrow to leave frame:
         cy.get("body").type("{ctrl} ");
