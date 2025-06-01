@@ -37,7 +37,7 @@ def _round_and_clamp_0_255(number):
     return min(max(int(round(number)), 0), 255)
 
 _bk_image = None
-#type: Optional[Image]
+#type: Image | None
 
 def color_from_string(html_string):
     # type: (str) -> Color
@@ -144,7 +144,7 @@ class Image:
         _strype_graphics_internal.canvas_fillRect(self.__image, 0, 0, dim[0], dim[1])
 
     def set_fill(self, color):
-        # type: (Union[str, Color, None]) -> None
+        # type: (str | Color | None) -> None
         """
         Set the current fill color.  The fill color is used in subsequent fill and draw operations.  
         Set the fill color to None to draw shape outlines without filling.
@@ -159,7 +159,7 @@ class Image:
             raise TypeError("Fill must be either a string or a Color but was " + str(type(color)))
 
     def set_stroke(self, color):
-        # type: (Union[str, Color, None]) -> None
+        # type: (str | Color | None) -> None
         """
         Set the current stroke (line) color.  This color is used in subsequent draw operations for the shape's outline.
         Set the stroke color to None to paint shapes without a separately colored border.
@@ -275,7 +275,7 @@ class Image:
         return _strype_graphics_internal.getCanvasDimensions(self.__image)[1]
 
     def draw_text(self, text, x, y, font_size = 32, max_width = 0, max_height = 0, font_family = None):
-        # type: (str, float, float, float, float, float, Optional[str]) -> _Dimension
+        # type: (str, float, float, float, float, float, str | None) -> _Dimension
         """
         Draw text onto the image.  If a maximum width is specified, the text will be wrapped to fit the given width.  
         If a maximum height is specified as well, the font size will be reduced if necessary to fit within the width and height.  
@@ -444,7 +444,7 @@ class Actor:
     # whenever we use it, we should check it's still actually present.
     
     def __init__(self, image_or_filename, x = 0, y = 0, tag = None):
-        # type: (Union[Image, str], float, float, Optional[Any]) -> None
+        # type: (Image | str, float, float, Any | None) -> None
         """
         Create a new Actor.  An actor has an image and a location.  It can optionally have a tag.  A tag (usually a string) 
         can be used to group actors and identify them later for collision detection.
@@ -508,7 +508,7 @@ class Actor:
         return _strype_graphics_internal.getImageRotation(self.__id)
     
     def get_tag(self):
-        # type: () -> Optional[Any]
+        # type: () -> Any | None
         """
         Return the tag of this actor.
         
@@ -620,7 +620,7 @@ class Actor:
         return x < (-399 + distance) or x > (400 - distance) or y < (-299 + distance) or y > (300 - distance)
    
     def is_touching(self, actor_or_tag):
-        # type: (Union[Actor, Any]) -> bool
+        # type: (Actor | Any) -> bool
         """
         Check if this actor is touching the another actor.
         
@@ -641,7 +641,7 @@ class Actor:
             return True if self.get_all_touching(actor_or_tag) else False
 
     def get_touching(self, tag = None):
-        # type: (Union[Any, None]) -> Optional[Actor]
+        # type: (Any | None) -> Actor | None
         """
         Return an actor touching this one.  
 
@@ -657,7 +657,7 @@ class Actor:
         return next(iter(self.get_all_touching(tag)), None)
 
     def get_all_touching(self, tag = None):
-        # type: (Optional[Any]) -> list[Actor]
+        # type: (Any | None) -> list[Actor]
         """
         Return all the actors that this actor is touching.
         
@@ -669,7 +669,7 @@ class Actor:
         return [a for a in _strype_input_internal.getAllTouchingAssociated(self.__id) if tag is None or tag == a.get_tag()]
     
     def remove_touching(self, tag = None):
-        # type: (Optional[Any]) -> None
+        # type: (Any | None) -> None
         """
         Remove a touching actor. 
 
@@ -684,7 +684,7 @@ class Actor:
             a.remove()
 
     def get_in_range(self, distance, tag = None):
-        # type: (float, Optional[Any]) -> list[Actor]
+        # type: (float, Any | None) -> list[Actor]
         """
         Return all actors which are within a given distance of this actor.  The distance is measured as the 
         distance of the logical location (the center point) of each actor.
@@ -716,7 +716,7 @@ class Actor:
         return self.__editable_image
     
     def set_image(self, image_or_filename):
-        # type: (Union[Image, str]) -> None
+        # type: (Image | str) -> None
         """
         Set an actor's image
         
@@ -734,7 +734,7 @@ class Actor:
             raise TypeError("Actor image parameter must be string or Image")
     
     def say(self, text, font_size = 24, max_width = 300, max_height = 200, font_family = None):
-        # type: (str, float, float, float, Optional[str]) -> None
+        # type: (str, float, float, float, str | None) -> None
         """
         Show a speech bubble next to the actor with the given text.  The only required parameter is the
         text, all others are optional.  \\n can be used to start a new line.
@@ -840,7 +840,7 @@ def load_image(name):
     return img
 
 def get_clicked_actor():
-    # type: () -> Optional[Actor]
+    # type: () -> Actor | None
     """
     Return the last actor receiving a mouse click.  If no actor was clicked since this function was last called, None is returned.
     Every click will be reported only once -- a second call to this function in quick succession will return None.
@@ -852,7 +852,7 @@ def get_clicked_actor():
 _ClickDetails = _collections.namedtuple("ClickDetails", ["x", "y", "button", "click_count"])
 
 def get_mouse_click():
-    # type: () -> Optional[_ClickDetails]
+    # type: () -> _ClickDetails | None
     """
     Get the details for the last mouse click.  If the mouse was not clicked since this function was last called, None is returned.
     Every click will be reported only once -- a second call to this function in quick succession will return None.
@@ -882,7 +882,7 @@ def key_pressed(keyname):
     return _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys())[keyname.lower()]
 
 def set_background(image_or_name_or_color, scale_to_fit = False):
-    # type: (Union[Image, str], bool) -> None
+    # type: (Image | str, bool) -> None
     """
     Set the current background image.
     
@@ -951,7 +951,7 @@ def set_background(image_or_name_or_color, scale_to_fit = False):
     _strype_graphics_internal.setBackground(bk_image._Image__image)        
 
 def get_background():
-    # type: () -> Optional[Image]
+    # type: () -> Image | None
     """
     Gets the current background image.
     
@@ -967,7 +967,7 @@ def get_background():
     return _bk_image
 
 def get_actors(tag = None):
-    # type: (Optional[Any]) -> list[Actor]
+    # type: (Any | None) -> list[Actor]
     """
         Gets all actors.
         
