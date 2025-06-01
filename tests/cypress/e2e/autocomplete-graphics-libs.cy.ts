@@ -2,7 +2,7 @@
 require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
 import "../support/autocomplete-test-support";
-import {BUILTIN, checkAutocompleteSorted, checkExactlyOneItem, checkNoItems, focusEditorAC, withAC, scssVars} from "../support/autocomplete-test-support";
+import {checkAutocompleteSorted, checkExactlyOneItem, checkNoItems, focusEditorAC, withAC, scssVars} from "../support/autocomplete-test-support";
 
 // Needed for the "be.sorted" assertion:
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -201,5 +201,96 @@ describe("Graphics library", () => {
             checkNoItems(acIDSel, "stop()");
             checkNoItems(acIDSel, "pause()");
         }, false);
+    });
+});
+
+describe("Modules from libraries", () => {
+    it("Offers auto-complete in import frames based on libraries", () => {
+        focusEditorAC();
+        // Go up to imports, add library, add import, then trigger auto-complete:
+        cy.get("body").type("{uparrow}{uparrow}lgithub:k-pet-group/mediacomp-strype{rightarrow}i");
+        cy.wait(500);
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            checkExactlyOneItem(acIDSel, null, "mediacomp");
+            checkAutocompleteSorted(acIDSel, false);
+        }, false);
+    });
+
+    it("Offers auto-complete in RHS of from...import frames", () => {
+        focusEditorAC();
+
+        // Go up to imports, add library, add import, then trigger auto-complete:
+        cy.get("body").type("{uparrow}{uparrow}lgithub:k-pet-group/mediacomp-strype{rightarrow}f");
+        cy.wait(500);
+        // Fill in time in the LHS then go across to the RHS:
+        cy.get("body").type("mediacomp{rightarrow}");
+        // Trigger auto-complete:
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkExactlyOneItem(acIDSel, null, "*");
+            checkExactlyOneItem(acIDSel, null, "makeSound");
+            checkNoItems(acIDSel, "makeSound(path)"); // Shouldn't show brackets in import, even though it is a function
+            // Once we type first character, should be the same:
+            cy.get("body").type("m");
+            cy.wait(600);
+            checkExactlyOneItem(acIDSel, null, "makeSound");
+            checkNoItems(acIDSel, "*");
+            checkAutocompleteSorted(acIDSel, false);
+            cy.get(acIDSel).contains("Takes a filename as input");
+            // Type rest of target then enter a comma:
+            cy.get("body").type("akeSound" + ",");
+            cy.wait(500);
+            // That should have dismissed the autocomplete and put us in a new slot:
+            cy.get(acIDSel).should("not.be.visible");
+        }, false);
+        // Trigger auto-complete:
+        cy.get("body").type("{ctrl} ");
+        // We can check same item again; we don't deduplicate based on what is already imported:
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkExactlyOneItem(acIDSel, null, "*");
+            checkExactlyOneItem(acIDSel, null, "makeSound");
+            // Remove comma, to make it import just the one valid item:
+            cy.get("body").type("{backspace}");
+        }, false);
+        // Now check in the body for docs on the autocomplete (we should be in a function call frame):
+        cy.get("body").type("{rightarrow}{downarrow}{downarrow}");
+        cy.get("body").type(" {ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkExactlyOneItem(acIDSel, "mediacomp", "makeSound(path)");
+            checkNoItems(acIDSel, "makeEmptySoundBySeconds");
+            // Once we type it, should be the same:
+            cy.get("body").type("makeSound");
+            cy.wait(600);
+            // Check documentation is showing for it:
+            cy.get(acIDSel).contains("Takes a filename as input");
+        }, true);
+    });
+    
+    it("Offers auto-completion for imported modules", () => {
+        // This works on microbit without using Skulpt because we have special cases to look up microbit in our precalculated JSON        
+        focusEditorAC();
+        // Go up to imports, add library, add import, then trigger auto-complete:
+        cy.get("body").type("{uparrow}{uparrow}lgithub:k-pet-group/mediacomp-strype{rightarrow}i");
+        cy.wait(500);
+        // Trigger autocomplete, type "mediacom" then press enter to complete and right arrow to leave frame:
+        cy.get("body").type("{ctrl} ");
+        cy.get("body").type("mediacom");
+        cy.wait(600);
+        cy.get("body").type("{enter}{rightarrow}");
+        // Back down to main body, add a function frame and type "mediacomp." then trigger auto-complete:
+        cy.get("body").type("{downarrow}{downarrow}");
+        cy.get("body").type(" mediacomp.{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            // Should have time related queries, but not the standard completions:
+            checkExactlyOneItem(acIDSel, "mediacomp", "makeEmptySoundBySeconds");
+            checkNoItems(acIDSel, "len");
+            checkNoItems(acIDSel, "abs");
+            checkAutocompleteSorted(acIDSel, true);
+        }, true);
     });
 });
