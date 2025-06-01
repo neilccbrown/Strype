@@ -133,7 +133,7 @@
   "appMenu": {
     "downloadHex": "转换为 Hex 文件",
     "downloadPython": "转换为 Python 文件",
-    "loadProject": "打开",
+    "loadProject": "打开...",
     "saveProject": "保存",
     "saveAsProject": "另存为...",
     "resetProject": "新项目",
