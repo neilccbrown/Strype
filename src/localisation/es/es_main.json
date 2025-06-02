@@ -117,7 +117,7 @@
   },
   "appMenu": {
     "downloadPython": "Convertir a archivo Python",
-    "loadProject": "Abrir",
+    "loadProject": "Abrir...",
     "saveProject": "Guardar",
     "saveAsProject": "Guardar como...",
     "resetProject": "Nuevo proyecto",
