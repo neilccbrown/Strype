@@ -125,10 +125,9 @@ export async function getAvailableFilesFromLibrary(address: LibraryAddress) : Pr
         return Promise.resolve(paths.filter((entry: string) => entry.match(/\.pyi?$/)));
     }
     else if (address.match(/^https?:/)) {
-        const r = await getFileFromLibraries([address], INDEX_FILE_NAME);
-        if (r != null && (r.mimeType == null || r.mimeType.startsWith("text"))) {
+        const text = await getTextFileFromLibraries([address], INDEX_FILE_NAME);
+        if (text != null) {
             // Convert to UTF8 text:
-            const text = new TextDecoder("utf-8").decode(r.buffer);
             return Promise.resolve(text.split("\n").map((entry: string) => entry.replace("\n", "")).filter((entry) => entry));
         }
         else {
@@ -176,7 +175,7 @@ export function getLibraryName(libraryAddress: LibraryAddress) : string | undefi
 
 // Uses the cache if at all possible.
 // All parameters are assumed to be already trimmed.
-export async function getFileFromLibraries(libraryAddresses: LibraryAddress[], filePath: FilePath): Promise<{ buffer: ArrayBuffer; mimeType: string | null } | null> {
+export async function getRawFileFromLibraries(libraryAddresses: LibraryAddress[], filePath: FilePath): Promise<{ buffer: ArrayBuffer; mimeType: string | null } | null> {
     if (libraryAddresses.length === 0) {
         return null;
     }
@@ -208,7 +207,20 @@ export async function getFileFromLibraries(libraryAddresses: LibraryAddress[], f
     // Otherwise it's not found or had an error.
 
     // Recurse into the rest of the addresses
-    return getFileFromLibraries(rest, filePath);
+    return getRawFileFromLibraries(rest, filePath);
+}
+
+export async function getTextFileFromLibraries(libraryAddresses: LibraryAddress[], filePath: FilePath) : Promise<string | undefined> {
+    const r = await getRawFileFromLibraries(libraryAddresses, filePath);
+    if (r != null) {
+        try {
+            return new TextDecoder("utf-8").decode(r.buffer);
+        }
+        catch (e) {
+            return undefined;
+        }
+    }
+    return undefined;
 }
 
 export function getPossibleImports(filePaths: string[]): string[] {

@@ -82,7 +82,7 @@ import Parser from "@/parser/parser";
 import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
 import {TPyParser} from "tigerpython-parser";
 import scssVars from "@/assets/style/_export.module.scss";
-import {getAvailablePyPyiFromLibrary, getFileFromLibraries} from "@/helpers/libraryManager";
+import {getAvailablePyPyiFromLibrary, getTextFileFromLibraries} from "@/helpers/libraryManager";
 import {extractPYI} from "@/helpers/python-pyi";
 
 //////////////////////
@@ -218,16 +218,11 @@ export default Vue.extend({
                     continue;
                 }
                 for (const pyPYI of pyPYIs) {
-                    const r = await getFileFromLibraries([library], pyPYI);
-                    if (r != null) {
-                        if (r.mimeType == null || r.mimeType.startsWith("text")) {
-                            // Convert to UTF8 text:
-                            const text = new TextDecoder("utf-8").decode(r.buffer);
-                            
-                            const pyi = pyPYI.endsWith(".pyi") ? text : extractPYI(text);
-                            
-                            (TPyParser as any).defineModule(pyPYI.replace(/\.pyi?$/, "").replaceAll("/", "."), pyi, "pyi");
-                        }
+                    const text = await getTextFileFromLibraries([library], pyPYI);
+                    if (text != null) {
+                        const pyi = pyPYI.endsWith(".pyi") ? text : extractPYI(text);
+                        
+                        (TPyParser as any).defineModule(pyPYI.replace(/\.pyi?$/, "").replaceAll("/", "."), pyi, "pyi");
                     }
                 }
             }

@@ -2,7 +2,7 @@
 // that it does not import other parts of the code (e.g. i18n) that can't work outside webpack
 
 // Note: important to use .. not @ here, because of the above
-import {getFileFromLibraries} from "../helpers/libraryManager";
+import {getTextFileFromLibraries} from "../helpers/libraryManager";
 
 declare const Sk: any;
 
@@ -32,22 +32,7 @@ export function skulptReadPythonLib(libraryAddresses: string[]) : ((x : string) 
                 return undefined;
             }
             return Sk.misceval.promiseToSuspension(
-                getFileFromLibraries(libraryAddresses, x)
-                    .then((r) => {
-                        if (r != null) {
-                            if (r.mimeType == null || r.mimeType.startsWith("text")) {
-                                // Convert to UTF8 text:
-                                const text = new TextDecoder("utf-8").decode(r.buffer);
-                                return Promise.resolve(text);
-                            }
-                            else {
-                                throw Error("Found binary .py file in library");
-                            }
-                        }
-                        else {
-                            throw Error("File not found: '" + x + "'");
-                        }
-                    })
+                getTextFileFromLibraries(libraryAddresses, x)
             );
         }
         return Sk.builtinFiles["files"][x];

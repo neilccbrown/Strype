@@ -1,6 +1,6 @@
 import * as yaml from "js-yaml";
 import { z } from "zod";
-import {getFileFromLibraries} from "@/helpers/libraryManager";
+import {getRawFileFromLibraries, getTextFileFromLibraries} from "@/helpers/libraryManager";
 
 export interface Demo {
     name: string;
@@ -36,42 +36,30 @@ export function getThirdPartyLibraryDemos(library: string) : DemoGroup {
     const libraryShortName = lastSlash !== -1 ? cleaned.substring(lastSlash + 1) : cleaned;
     return {
         name: "Library " + libraryShortName,
-        demos: getFileFromLibraries([library], "demos/index.yaml").then((r) => {
-            if (r != null) {
-                if (r.mimeType == null || r.mimeType.startsWith("text")) {
-                    // Convert to UTF8 text:
-                    const text = new TextDecoder("utf-8").decode(r.buffer);
-                    const rawData = yaml.load(text);
-                    const demosYAML = DemosSchema.parse(rawData);
-                    // We then need to fetch the images:
-                    const demos = [];
-                    for (const y of demosYAML) {
-                        demos.push({
-                            name: y.name,
-                            description: y.description,
-                            image: {dataURL: y.image ? getFileFromLibraries([library], new URL(y.image, "demos/").toString()).then((imgResp) => {
-                                // Only allow bitmap images; SVG+XML might have Javascript inside, which we wouldn't want to run:
-                                if (!imgResp?.mimeType || !["image/png", "image/jpeg", "image/webp"].includes(imgResp?.mimeType)) {
-                                    return undefined;
-                                }
-                                const binary = String.fromCharCode(...new Uint8Array(imgResp.buffer));
-                                const base64 = btoa(binary);
-                                const type = imgResp.mimeType;
-                                return `data:${type};base64,${base64}`;
-                            }) : Promise.resolve(undefined)},
-                            demoFile: () => getFileFromLibraries([library], new URL(y.file, "demos/").toString()).then((spyResp) => {
-                                if (r.mimeType == null || r.mimeType.startsWith("text")) {
-                                    // Convert to UTF8 text:
-                                    return new TextDecoder("utf-8").decode(r.buffer);
-                                }
-                                else {
-                                    return undefined;
-                                }
-                            }),
-                        });
-                    }
-                    return demos;
+        demos: getTextFileFromLibraries([library], "demos/index.yaml").then((text) => {
+            if (text != null) {
+                const rawData = yaml.load(text);
+                const demosYAML = DemosSchema.parse(rawData);
+                // We then need to fetch the images:
+                const demos = [];
+                for (const y of demosYAML) {
+                    demos.push({
+                        name: y.name,
+                        description: y.description,
+                        image: {dataURL: y.image ? getRawFileFromLibraries([library], new URL(y.image, "demos/").toString()).then((imgResp) => {
+                            // Only allow bitmap images; SVG+XML might have Javascript inside, which we wouldn't want to run:
+                            if (!imgResp?.mimeType || !["image/png", "image/jpeg", "image/webp"].includes(imgResp?.mimeType)) {
+                                return undefined;
+                            }
+                            const binary = String.fromCharCode(...new Uint8Array(imgResp.buffer));
+                            const base64 = btoa(binary);
+                            const type = imgResp.mimeType;
+                            return `data:${type};base64,${base64}`;
+                        }) : Promise.resolve(undefined)},
+                        demoFile: () => getTextFileFromLibraries([library], new URL(y.file, "demos/").toString()),
+                    });
                 }
+                return demos;
             }
             return [];
         }),
