@@ -14,91 +14,10 @@ import graphicsMod from "../../public/public_libraries/strype/graphics.py";
 import soundMod from "../../public/public_libraries/strype/sound.py";
 import {getAvailablePyPyiFromLibrary, getPossibleImports} from "@/helpers/libraryManager";
 import Parser from "@/parser/parser";
+import {extractPYI} from "@/helpers/python-pyi";
 
 (TPyParser as any).defineModule("strype.graphics", extractPYI(graphicsMod), "pyi");
 (TPyParser as any).defineModule("strype.sound", extractPYI(soundMod), "pyi");
-
-function splitTopLevelArgs(s: string): string[] {
-    const result: string[] = [];
-    let depth = 0;
-    let current = "";
-
-    for (let i = 0; i < s.length; i++) {
-        const c = s[i];
-        if (c === "," && depth === 0) {
-            result.push(current.trim());
-            current = "";
-        }
-        else {
-            if (c === "[" || c === "(") {
-                depth++;
-            }
-            if (c === "]" || c === ")") {
-                depth--;
-            }
-            current += c;
-        }
-    }
-
-    if (current) {
-        result.push(current.trim());
-    }
-
-    return result;
-}
-
-
-export function extractPYI(original : string) : string {
-    const lines = original.split("\n");
-    const output: string[] = [];
-    let prevLine = "";
-
-    for (const line of lines) {
-        const typeMatch = line.match(/\s*#\s*type\s*:\s*(\S.*)/);
-        if (typeMatch) {
-            const foundType = typeMatch[1].trim();
-            // Look for prev line:
-            const nameMatch = prevLine.match(/^(\s*)def (\w+)\((.*?)\):\s*$/);
-            if (nameMatch) {
-                const [indent, fnName, args] = nameMatch.slice(1);
-                const [argTypes, returnType] = foundType.split("->").map((s) => s.trim());
-                const argNames = args.trim() ? args.split(",").map((s) => s.replace(/=.*/, "").trim()) : [];
-                if (indent != "") {
-                    // If we're indented, we're a class, so remove first argName as it's self:
-                    argNames.shift();
-                }
-                const argTypeList = splitTopLevelArgs(argTypes.slice(1, -1)).map((s) => s.trim());
-
-                const typedArgs = (indent != "" ? "self" + (argTypeList.length > 0 ? ", " : "") : "") + argNames.map((arg, i) => `${arg}: ${argTypeList[i]}`).join(", ");
-                output.push(`${indent}def ${fnName}(${typedArgs}) -> ${returnType}: ...`);
-                continue;
-            }
-        }
-        // Remember last non-blank line:
-        else if (line.trim() != "") {
-            prevLine = line;
-        }
-
-        const classMatch = line.match(/^class (\w+):\s*$/);
-        if (classMatch) {
-            output.push(line);
-        }
-        const varMatch = line.match(/^(\s*)(\S+)\s*=(.*)$/);
-        if (varMatch) {
-            //const [indent, name, rhs] = varMatch.slice(1);
-            if (line.includes("namedtuple(")) {
-                output.push(line);
-            }
-            //output.push(`${indent}${name}: ${type}`);
-            continue;
-        }
-        if (line.match(/^import/)) {
-            output.push(line);
-        }
-    }
-
-    return output.join("\n");
-}
 
 // Given a FieldSlot, get the program code corresponding to it, to use
 // as the prefix (context) for code completion.
@@ -428,7 +347,7 @@ export async function getAvailableModulesForImport() : Promise<AcResultsWithCate
         .concat(OUR_PUBLIC_LIBRARY_MODULES.map((m) => ({acResult: m, documentation: "", type: ["module"], version: 0})))};
     /* FITRUE_isPython */
 }
-export async function getAvailableItemsForImportFromModule(module: string) : AcResultType[] {
+export function getAvailableItemsForImportFromModule(module: string) : AcResultType[] {
     const star : AcResultType = {"acResult": "*", "documentation": "All items from module", "version": 0, "type": []};
     /* IFTRUE_isMicrobit */
     const allMicrobitItems: AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
