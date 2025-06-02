@@ -71,8 +71,8 @@ export default Vue.extend({
             // Our built-in demos are always available:
             this.availableDemos = [
                 {name: "Graphics", demos: getBuiltinDemos("graphics")},
-                {name: "Console", demos: getBuiltinDemos("console")},
                 {name: "Turtle", demos: getBuiltinDemos("turtle")},
+                {name: "Console", demos: getBuiltinDemos("console")},
             ];
             // To get library demos, we first get the libraries:
             const p = new Parser();
