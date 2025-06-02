@@ -953,7 +953,8 @@ export default Vue.extend({
                     if (selectedDemo) {
                         selectedDemo.demoFile.then((content) => {
                             if (content) {
-                                (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content, selectedDemo.name ?? "Demo", 0);
+                                (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content, selectedDemo.name ?? "Demo", 0)
+                                    .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
                             }
                         });
                     }
