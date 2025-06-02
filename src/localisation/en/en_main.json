@@ -204,6 +204,14 @@
     "soundPlay": "Play",
     "soundSeconds": "seconds",
     "soundStop": "Stop",
-    "volumeScale": "Volume Scaling"
+    "volumeScale": "Volume Scaling",
+    "cursorPosWin": "Position (Ctrl-C to copy):",
+    "cursorPosMac": "Position (⌘ C to copy):",
+    "cursorColorWin": "Color (Ctrl-Shift-C to copy):",
+    "cursorColorMac": "Color (⇧ ⌘ C to copy):",
+    "cursorTimeWin": "Time (Ctrl-C to copy):",
+    "cursorTimeMac": "Time (⌘ C to copy):",
+    "cursorHeightWin": "Height (Ctrl-Shift-C to copy):",
+    "cursorHeightMac": "Height (⇧ ⌘ C to copy):"
   }
 }
