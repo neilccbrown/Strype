@@ -77,6 +77,8 @@
             </ModalDlg>            
             <!-- new section -->
             <div class="menu-separator-div"></div>
+            <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLoadDemoProjectModal">{{$t('appMenu.loadDemoProject')}}</a>
+            <OpenDemoDlg ref="openDemoDlg" :dlg-id="loadDemoProjectModalDlgId"/>
             <!-- category: export -->
             <!-- share project -->
             <a :id="shareProjectLinkId" v-show="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !canShareProject}" :title="$t((isSyncingToGoogleDrive)?'':'appMenu.needSaveShareProj')" @click="onShareProjectClick">{{$t('appMenu.shareProject')}}<span class="strype-menu-kb-shortcut">{{shareProjectKBShortcut}}</span></a>
@@ -205,6 +207,7 @@ import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/help
 import { AppName, AppPlatform, AppSPYPrefix, AppSPYSaveVersion, getLocaleBuildDate } from "@/main";
 import scssVars from "@/assets/style/_export.module.scss";
 import {parseCodeAndGetParseElements} from "@/parser/parser";
+import OpenDemoDlg from "@/components/OpenDemoDlg.vue";
 
 //////////////////////
 //     Component    //
@@ -214,6 +217,7 @@ export default Vue.extend({
     name: "Menu",
 
     components: {
+        OpenDemoDlg,
         Slide,
         GoogleDrive,
         ModalDlg,
@@ -252,6 +256,7 @@ export default Vue.extend({
             // Flags for opening a shared project: the ID (main flag) and the target (for the moment it's only Google Drive...)
             openSharedProjectId: "",
             openSharedProjectTarget: StrypeSyncTarget.none,
+            showDialogAfterSave: "", // The ID of the dialog to show after save-before-load
         };
     },
 
@@ -382,6 +387,10 @@ export default Vue.extend({
         
         loadProjectModalDlgId(): string {
             return "load-strype-project-modal-dlg";
+        },
+
+        loadDemoProjectModalDlgId(): string {
+            return "load-strype-demo-project-modal-dlg";
         },
 
         loadProjectTargetButtonGpId(): string {
@@ -547,6 +556,7 @@ export default Vue.extend({
             if(this.appStore.isEditorContentModified){
                 // Show a modal dialog to let user save/discard their changes. Saving loop is handled with saving methods.
                 // Note that for the File System project we cannot make Strype save the file: that will require the user explicit action.
+                this.showDialogAfterSave = this.loadProjectModalDlgId;
                 this.$root.$emit("bv::show::modal", this.saveOnLoadModalDlgId);
             }
             else if(this.openSharedProjectId.length == 0) {
@@ -556,6 +566,22 @@ export default Vue.extend({
             else {
                 // The case of opening a shared project: we don't need a target selection, we just try to open the project
                 this.loadProject();
+            }
+        },
+
+        openLoadDemoProjectModal(): void {
+            // For a very strange reason, Bootstrap doesn't link the menu link to the dialog any longer 
+            // after changing "v-if" to "v-show" on the link (to be able to have the keyboard shortcut working).
+            // So we open it manually here...
+            // We might need to check, first that a project has been modified and needs to be saved.
+            if(this.appStore.isEditorContentModified){
+                // Show a modal dialog to let user save/discard their changes. Saving loop is handled with saving methods.
+                // Note that for the File System project we cannot make Strype save the file: that will require the user explicit action.
+                this.showDialogAfterSave = this.loadDemoProjectModalDlgId;
+                this.$root.$emit("bv::show::modal", this.saveOnLoadModalDlgId);
+            }
+            else {
+                this.$root.$emit("bv::show::modal", this.loadDemoProjectModalDlgId);
             }
         },
 
@@ -681,6 +707,9 @@ export default Vue.extend({
                     // we should allow some time before getting in their face with a result!
                     this.getSharingLink(defaultSharingProjectMode, true);
                 }, 2000);
+            }
+            else if (dlgId == this.loadDemoProjectModalDlgId) {
+                (this.$refs.openDemoDlg as InstanceType<typeof OpenDemoDlg>).shown();
             }
             else {
                 // When the load or save project dialogs are opened, we focus the Google Drive selector by default when we don't have information about the source target
@@ -816,7 +845,7 @@ export default Vue.extend({
                 if(dlgId == this.saveOnLoadModalDlgId){
                     // Case of request to save/discard the file currently opened, before loading a new file:
                     // user chose to discard the file saving: we can trigger the file opening.
-                    this.$root.$emit("bv::show::modal", this.loadProjectModalDlgId);
+                    this.$root.$emit("bv::show::modal", this.showDialogAfterSave);
                     return;
                 }
 
@@ -914,6 +943,21 @@ export default Vue.extend({
                         (this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>).saveFile(saveReason);
                     }
                     this.currentModalButtonGroupIDInAction = "";
+                }
+                else if (dlgId == this.loadDemoProjectModalDlgId) {
+                    // We do not do anything if the modal is closed by a "hide" event.
+                    if(event.trigger == "event" && event.type == "hide"){
+                        return;
+                    }
+                    const selectedDemo = (this.$refs.openDemoDlg as InstanceType<typeof OpenDemoDlg>).getSelectedDemo();
+                    if (selectedDemo) {
+                        selectedDemo.demoFile.then((content) => {
+                            if (content) {
+                                (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content, selectedDemo.name ?? "Demo", 0)
+                                    .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
+                            }
+                        });
+                    }
                 }
             }
         },
@@ -1052,6 +1096,7 @@ export default Vue.extend({
                 element.setAttribute("tabindex", (index + 1).toString());
                 this.retrievedTabindexesCount++;
             });
+            (this.$refs.openDemoDlg as InstanceType<typeof OpenDemoDlg>).updateAvailableDemos();
         },
 
         toggleMenuOnOff(e: Event | null): void {
