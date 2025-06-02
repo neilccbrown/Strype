@@ -10,7 +10,10 @@ export interface Demo {
     // A function which will asynchronously fetch the SPY file content:
     demoFile: () => Promise<string | undefined>;
 }
-// Repretentation in YAML:
+// Zod Representation in YAML:
+// (Zod is a validation library that automatically validates external data based
+//  on a schema like this one, useful to check that externally-originating data
+//  matches an expected format before dealing with it, to avoid bugs or security issues)
 const DemoSchema = z.object({
     name: z.string().min(1),
     description: z.string().optional(),
