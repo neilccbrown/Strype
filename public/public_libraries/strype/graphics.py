@@ -742,7 +742,7 @@ class Actor:
             # We draw a rounded rect for the background, then draw the text on:
             sayImg.set_fill("white")
             sayImg.set_stroke("#555555FF")
-            sayImg.draw_rounded_rect(0, 0, textDimensions.width + 2 * padding, textDimensions.height + 2 * padding, padding)
+            sayImg.draw_rounded_rect(2, 2, textDimensions.width + 2 * padding - 4, textDimensions.height + 2 * padding - 4, padding)
             sayImg._draw_part_of_image(textOnlyImg, padding, padding, 0, 0, textDimensions.width, textDimensions.height)
             # The None for associated object means it won't be collidable:
             self.__say = _strype_graphics_internal.addImage(sayImg._Image__image, None)
@@ -782,7 +782,7 @@ class Actor:
         else:
             self.__say = None
 
-    def say_for(self, text, seconds, font_size = 16, max_width = 300, max_height = 200):
+    def say_for(self, text, seconds, font_size = 24, max_width = 300, max_height = 200):
         """
         `say_for` acts like the `say` function, but automatically removes the speech bubble after the given number of seconds.  
         For all other parameters, see the `say` function for an explanation.
