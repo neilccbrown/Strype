@@ -205,6 +205,11 @@ describe("Graphics library", () => {
 });
 
 describe("Modules from libraries", () => {
+    if (Cypress.env("mode") == "microbit") {
+        // No library support in microbit mode:
+        return;
+    }
+    
     it("Offers auto-complete in import frames based on libraries", () => {
         focusEditorAC();
         // Go up to imports, add library, add import, then trigger auto-complete:
@@ -271,7 +276,6 @@ describe("Modules from libraries", () => {
     });
     
     it("Offers auto-completion for imported modules", () => {
-        // This works on microbit without using Skulpt because we have special cases to look up microbit in our precalculated JSON        
         focusEditorAC();
         // Go up to imports, add library, add import, then trigger auto-complete:
         cy.get("body").type("{uparrow}{uparrow}lhttp://localhost:8089/test-library{rightarrow}i");
@@ -287,7 +291,7 @@ describe("Modules from libraries", () => {
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             // Should have time related queries, but not the standard completions:
-            checkExactlyOneItem(acIDSel, "mediacomp", "makeEmptySoundBySeconds");
+            checkExactlyOneItem(acIDSel, "mediacomp", "makeEmptySoundBySeconds(duration)");
             checkNoItems(acIDSel, "len");
             checkNoItems(acIDSel, "abs");
             checkAutocompleteSorted(acIDSel, true);
