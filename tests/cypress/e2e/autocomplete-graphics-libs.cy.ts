@@ -26,9 +26,9 @@ describe("Graphics library", () => {
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel, frameId) => {
             cy.get(acIDSel).should("be.visible");
-            checkExactlyOneItem(acIDSel, "strype.graphics", "load_image(filename)");
+            checkExactlyOneItem(acIDSel, "strype.graphics", "load_image(name)");
             checkExactlyOneItem(acIDSel, "strype.graphics", "stop()");
-            checkExactlyOneItem(acIDSel, "strype.graphics", "pause()");
+            checkExactlyOneItem(acIDSel, "strype.graphics", "pause(seconds)");
             checkNoItems(acIDSel, "__name__");
             // Shouldn't show methods from Actor at top-level:
             checkNoItems(acIDSel, "is_at_edge(distance)");
@@ -139,7 +139,7 @@ describe("Graphics library", () => {
             checkNoItems(acIDSel, "__name__");
             // Shouldn't show methods from top-level:
             checkNoItems(acIDSel, "stop()");
-            checkNoItems(acIDSel, "pause()");
+            checkNoItems(acIDSel, "pause(seconds)");
         }, false);
     });
 
@@ -159,7 +159,7 @@ describe("Graphics library", () => {
             checkExactlyOneItem(acIDSel, null, "fill()");
             // Shouldn't show methods from top-level:
             checkNoItems(acIDSel, "stop()");
-            checkNoItems(acIDSel, "pause()");
+            checkNoItems(acIDSel, "pause(seconds)");
         }, false);
     });
 
@@ -179,7 +179,7 @@ describe("Graphics library", () => {
             checkExactlyOneItem(acIDSel, null, "fill()");
             // Shouldn't show methods from top-level:
             checkNoItems(acIDSel, "stop()");
-            checkNoItems(acIDSel, "pause()");
+            checkNoItems(acIDSel, "pause(seconds)");
         }, false);
     });
 
@@ -199,7 +199,7 @@ describe("Graphics library", () => {
             checkExactlyOneItem(acIDSel, null, "fill()");
             // Shouldn't show methods from top-level:
             checkNoItems(acIDSel, "stop()");
-            checkNoItems(acIDSel, "pause()");
+            checkNoItems(acIDSel, "pause(seconds)");
         }, false);
     });
 
