@@ -202,6 +202,59 @@ describe("Graphics library", () => {
             checkNoItems(acIDSel, "pause()");
         }, false);
     });
+
+    it("Offers auto-complete in RHS of from...import frames", () => {
+        focusEditorAC();
+
+        // Go up to imports, add library, add import, then trigger auto-complete:
+        cy.get("body").type("{uparrow}{uparrow}f");
+        cy.wait(500);
+        // Fill in time in the LHS then go across to the RHS:
+        cy.get("body").type("strype.graphics{rightarrow}");
+        // Trigger auto-complete:
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkExactlyOneItem(acIDSel, null, "*");
+            checkExactlyOneItem(acIDSel, null, "load_image");
+            checkNoItems(acIDSel, "load_image(name)"); // Shouldn't show brackets in import, even though it is a function
+            // Once we type first character, should be the same:
+            cy.get("body").type("load");
+            cy.wait(600);
+            checkExactlyOneItem(acIDSel, null, "load_image");
+            checkNoItems(acIDSel, "*");
+            checkAutocompleteSorted(acIDSel, false);
+            cy.get(acIDSel).contains("Load the given image");
+            // Type rest of target then enter a comma:
+            cy.get("body").type("_image" + ",");
+            cy.wait(500);
+            // That should have dismissed the autocomplete and put us in a new slot:
+            cy.get(acIDSel).should("not.be.visible");
+        }, false);
+        // Trigger auto-complete:
+        cy.get("body").type("{ctrl} ");
+        // We can check same item again; we don't deduplicate based on what is already imported:
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkExactlyOneItem(acIDSel, null, "*");
+            checkExactlyOneItem(acIDSel, null, "load_image");
+            // Remove comma, to make it import just the one valid item:
+            cy.get("body").type("{backspace}");
+        }, false);
+        // Now check in the body for docs on the autocomplete (we should be in a function call frame):
+        cy.get("body").type("{rightarrow}{downarrow}{downarrow}");
+        cy.get("body").type(" {ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkExactlyOneItem(acIDSel, "strype.graphics", "load_image(name)");
+            checkNoItems(acIDSel, "pause");
+            // Once we type it, should be the same:
+            cy.get("body").type("load_image");
+            cy.wait(600);
+            // Check documentation is showing for it:
+            cy.get(acIDSel).contains("Load the given image");
+        }, true);
+    });
 });
 
 describe("Modules from libraries", () => {
