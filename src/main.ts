@@ -6,6 +6,7 @@ import { BootstrapVue } from "bootstrap-vue";
 import "bootstrap/dist/css/bootstrap.css";
 import "bootstrap-vue/dist/bootstrap-vue.css";
 import vBlur from "v-blur";
+import AsyncComputed from "vue-async-computed";
 import { StrypePlatform } from "./types/types";
 import scssVars  from "@/assets/style/_export.module.scss";
 import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "./helpers/sharedIdCssWithTests";
@@ -77,6 +78,7 @@ export function getLocaleBuildDate(): string {
     getPEATabContentContainerDivId: getPEATabContentContainerDivId,
     /* FITRUE_isPython */
 };
+Vue.use(AsyncComputed);
 
 // Install BootstrapVue
 Vue.use(BootstrapVue);

@@ -199,9 +199,11 @@ export default Vue.extend({
         },
 
         updateACForImportFrom(token: string, module: string) : void {
-            this.acResults = {"": getAvailableItemsForImportFromModule(module)};
-            this.showFunctionBrackets = false;
-            this.showSuggestionsAC(token);
+            getAvailableItemsForImportFromModule(module).then((items) => {
+                this.acResults = {"": items.filter((ac) => !ac.acResult.startsWith("_"))};
+                this.showFunctionBrackets = false;
+                this.showSuggestionsAC(token);
+            });
         },
       
         // frameId is which frame we're in.
@@ -243,7 +245,7 @@ export default Vue.extend({
             }
             
             this.showFunctionBrackets = true;
-            const imported = getAllExplicitlyImportedItems(context);
+            const imported = await getAllExplicitlyImportedItems(context);
             this.acResults = {};
             if (token === null) {
                 this.showSuggestionsAC("");

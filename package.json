@@ -70,6 +70,7 @@
         "velocity": "^0.7.3",
         "vue": "2.6.14",
         "vue-advanced-cropper": "^1.11.7",
+        "vue-async-computed": "^3.9.0",
         "vue-autosize-input": "^0.1.1",
         "vue-browser-detect-plugin": "^0.1.18",
         "vue-burger-menu": "^2.0.5",

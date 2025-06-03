@@ -12,8 +12,9 @@ import {OUR_PUBLIC_LIBRARY_MODULES} from "@/autocompletion/ac-skulpt";
 import {TPyParser} from "tigerpython-parser";
 import graphicsMod from "../../public/public_libraries/strype/graphics.py";
 import soundMod from "../../public/public_libraries/strype/sound.py";
-import {getAvailablePyPyiFromLibrary, getPossibleImports} from "@/helpers/libraryManager";
+import {getAvailablePyPyiFromLibrary, getPossibleImports, getTextFileFromLibraries} from "@/helpers/libraryManager";
 import Parser from "@/parser/parser";
+import { z } from "zod";
 import {extractPYI} from "@/helpers/python-pyi";
 
 (TPyParser as any).defineModule("strype.graphics", extractPYI(graphicsMod), "pyi");
@@ -185,9 +186,27 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
     }
 }
 
-export function getAllExplicitlyImportedItems(context: string) : AcResultsWithCategory {
+export async function getAllExplicitlyImportedItems(context: string) : Promise<AcResultsWithCategory> {
     // Reset the aliases dictionary
     const importedAliasedModules: {[alias: string]: string} = {};
+
+    // To get library imports, we first get the libraries:
+    const p = new Parser();
+    // We only need to parse the imports container:
+    p.parse(-1, -2);
+    // Then we can get the libraries and look for imports:
+    let fromLibraries : Record<string, AcResultType[]> = {};
+    for (const library of p.getLibraries()) {
+        // Check for autocomplete.json:
+        const acBuffer = await getTextFileFromLibraries([library], "autocomplete.json");
+        if (acBuffer != null) {
+            const ac = AcResultsWithCategorySchema.parse(JSON.parse(acBuffer));
+            if (ac != null) {
+                fromLibraries = {...fromLibraries, ...ac};
+            }
+        }
+    }
+    
 
     const soFar : AcResultsWithCategory = {};
     const imports : FrameObject[] = Object.values(useStore().frameObjects) as FrameObject[];
@@ -216,13 +235,13 @@ export function getAllExplicitlyImportedItems(context: string) : AcResultsWithCa
                             const aliasName = (frame.labelSlotsDict[0].slotStructures.fields[j + 1] as BaseSlot).code;
                             if(aliasName.length > 0){
                                 importedAliasedModules[aliasName] = module;
-                                doGetAllExplicitlyImportedItems(frame, aliasName, true, soFar, context, importedAliasedModules);    
+                                doGetAllExplicitlyImportedItems(frame, aliasName, true, soFar, context, importedAliasedModules, fromLibraries);    
                                 // We already retrieved the alias, so we skip a slot for the next module
                                 j++;
                             }                 
                         }
                         else{
-                            doGetAllExplicitlyImportedItems(frame, module, true, soFar, context, importedAliasedModules);
+                            doGetAllExplicitlyImportedItems(frame, module, true, soFar, context, importedAliasedModules, fromLibraries);
                         }
                         module = "";
                         continue;
@@ -233,14 +252,14 @@ export function getAllExplicitlyImportedItems(context: string) : AcResultsWithCa
 
             // If the module is empty (which happens when user has only added a frame), we skip it
             if(module.length > 0) {
-                doGetAllExplicitlyImportedItems(frame, module, isSimpleImport, soFar, context, importedAliasedModules);
+                doGetAllExplicitlyImportedItems(frame, module, isSimpleImport, soFar, context, importedAliasedModules, fromLibraries);
             }
         }
     }
     return soFar;
 }
 
-function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isSimpleImport: boolean, soFar: AcResultsWithCategory, context: string, importedAliasedModules: {[alias: string]: string}): void {
+function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isSimpleImport: boolean, soFar: AcResultsWithCategory, context: string, importedAliasedModules: {[alias: string]: string}, availableLibraries: AcResultsWithCategory): void {
     const importedModulesCategory = i18n.t("autoCompletion.importedModules") as string;
     if (!isSimpleImport && frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*") {
                 
@@ -279,7 +298,7 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
                     imports.push({acResult: module, documentation: moduleDoc, type: ["module"], version: 0});
                     soFar[importedModulesCategory] = imports;
                 }
-                else if (OUR_PUBLIC_LIBRARY_MODULES.includes(realModule)) {
+                else if (OUR_PUBLIC_LIBRARY_MODULES.includes(realModule) || Object.keys(availableLibraries).includes(realModule)) {
                     const imports = soFar[importedModulesCategory] ?? [];
                     imports.push({acResult: module, documentation: "", type: ["module"], version: 0});
                     soFar[importedModulesCategory] = imports;
@@ -299,7 +318,9 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
             /* FITRUE_isMicrobit */
 
             /* IFTRUE_isPython */
-            const allSkulptItems : AcResultType[] = skulptPythonAPI[realModule as keyof typeof skulptPythonAPI] as AcResultType[];
+            const allSkulptItems : AcResultType[] =
+                (skulptPythonAPI[realModule as keyof typeof skulptPythonAPI] as AcResultType[])
+                    ?? availableLibraries[realModule];
             if (allSkulptItems) {
                 allItems = [...allSkulptItems.filter((x) => !x.acResult.startsWith("_"))];
             }
@@ -347,7 +368,29 @@ export async function getAvailableModulesForImport() : Promise<AcResultsWithCate
         .concat(OUR_PUBLIC_LIBRARY_MODULES.map((m) => ({acResult: m, documentation: "", type: ["module"], version: 0})))};
     /* FITRUE_isPython */
 }
-export function getAvailableItemsForImportFromModule(module: string) : AcResultType[] {
+
+// Define AcResultType
+const AcResultTypeSchema = z.object({
+    acResult: z.string(),
+    documentation: z.string(),
+    type: z.array(z.enum(["function", "module", "variable", "type"])),
+    params: z
+        .array(
+            z.object({
+                name: z.string(),
+                defaultValue: z.string().optional(),
+                hide: z.boolean().optional(),
+            })
+        )
+        .optional(),
+    version: z.number(),
+});
+
+// Define AcResultsWithCategory: a record of category → array of AcResultType
+const AcResultsWithCategorySchema = z.record(z.array(AcResultTypeSchema));
+
+
+export async function getAvailableItemsForImportFromModule(module: string) : Promise<AcResultType[]> {
     const star : AcResultType = {"acResult": "*", "documentation": "All items from module", "version": 0, "type": []};
     /* IFTRUE_isMicrobit */
     const allMicrobitItems: AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
@@ -361,7 +404,27 @@ export function getAvailableItemsForImportFromModule(module: string) : AcResultT
     if (allSkulptItems) {
         return [...allSkulptItems, star];
     }
-    // TODO we need to get AC from the loaded libraries to see available items
+    // To get library imports, we first get the libraries:
+    const p = new Parser();
+    // We only need to parse the imports container:
+    p.parse(-1, -2);
+    // Then we can get the libraries and look for imports:
+    for (const library of p.getLibraries()) {
+        const paths = await getAvailablePyPyiFromLibrary(library);
+        if (paths != null) {
+            if (getPossibleImports(paths).includes(module)) {
+                // Check for autocomplete.json:
+                const acBuffer = await getTextFileFromLibraries([library], "autocomplete.json");
+                if (acBuffer != null) {
+                    const ac = AcResultsWithCategorySchema.parse(JSON.parse(acBuffer));
+                    if (ac != null && module in ac) {
+                        return [...ac[module], star];
+                    }
+                }
+            }
+        }
+    }
+    
     /* FITRUE_isPython */
     return [star];
 }
@@ -394,7 +457,7 @@ function getParamPrompt(params: string[], targetParamIndex: number, lastParam: b
 
 // Gets the parameter name prompt for the given autocomplete details (context+token)
 // for the given parameter. Note that for the UI to display spans properly, empty placeholders are returned as \u200b (0-width space)
-export function calculateParamPrompt(context: string, token: string, paramIndex: number, lastParam: boolean) : string {
+export async function calculateParamPrompt(context: string, token: string, paramIndex: number, lastParam: boolean) : Promise<string> {
     if (!context) {
         // If context is blank, we know that the function must be one of:
         // - A user-defined function
@@ -418,7 +481,7 @@ export function calculateParamPrompt(context: string, token: string, paramIndex:
     }
     else {
         // If the context is non-blank and matches an imported module, we can look it up there.        
-        const fromModule = getAvailableItemsForImportFromModule(context).find((ac) => ac.acResult === token);
+        const fromModule = (await getAvailableItemsForImportFromModule(context)).find((ac) => ac.acResult === token);
         if (fromModule?.params !== undefined) {
             return getParamPrompt(fromModule.params.filter((p) => !p.hide && p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
         }
@@ -426,7 +489,7 @@ export function calculateParamPrompt(context: string, token: string, paramIndex:
     
     // We check this even without a context because we need to check items imported like "from turtle import Turtle" where the user may call "Turtle()" without a context:
     // If there is a context, we see if the full item (context.token) is in the AC:
-    const importedFunc = Object.values(getAllExplicitlyImportedItems(context)).flat().find((f) => f.acResult === token || f.acResult === context + "." + token);
+    const importedFunc = Object.values(await getAllExplicitlyImportedItems(context)).flat().find((f) => f.acResult === token || f.acResult === context + "." + token);
     if (importedFunc !== undefined) {
         if (importedFunc.params) {
             return getParamPrompt(importedFunc.params.filter((p) => !p.hide && p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
