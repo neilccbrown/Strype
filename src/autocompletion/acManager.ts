@@ -284,6 +284,9 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
         if (allSkulptItems) {
             soFar[module] = [...allSkulptItems.filter((x) => !x.acResult.startsWith("_"))];
         }
+        else if (module in availableLibraries) {
+            soFar[module] = [...availableLibraries[module].filter((x) => !x.acResult.startsWith("_"))];
+        }
         /* FITRUE_isPython */
     }
     else {
