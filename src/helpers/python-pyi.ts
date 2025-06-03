@@ -86,3 +86,47 @@ export function extractPYI(original : string) : string {
 
     return output.join("\n");
 }
+
+// Maps function name to list of parameter names
+type FunctionMap = Record<string, string[]>;
+
+export function parsePyi(content: string): FunctionMap {
+    const lines = content.split(/\r?\n/);
+    const result: FunctionMap = {};
+
+    const classRegex = /^\s*class\s+(\w+)\s*[:(]/;
+    const funcRegex = /^\s*def\s+(\w+)\s*\(([^)]*)\)/;
+
+    let currentClass: string | null = null;
+
+    for (const line of lines) {
+        const classMatch = classRegex.exec(line);
+        if (classMatch) {
+            currentClass = classMatch[1];
+            continue;
+        }
+
+        const funcMatch = funcRegex.exec(line);
+        if (funcMatch) {
+            const [, funcName, paramList] = funcMatch;
+            let params = paramList.split(",")
+                .map((p) => p.trim().split(":")[0].trim())
+                .filter((p) => p && !p.startsWith("*"));
+
+            // Remove 'self' or 'cls' from class methods
+            if (currentClass && (params[0] === "self" || params[0] === "cls")) {
+                params = params.slice(1);
+            }
+
+            const fullName = currentClass ? `${currentClass}.${funcName}` : funcName;
+            result[fullName] = params;
+        }
+
+        // Reset class context if we are back to top-level
+        if (line.trim() === "" || /^\S/.test(line)) {
+            currentClass = null;
+        }
+    }
+
+    return result;
+}
