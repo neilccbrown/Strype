@@ -233,14 +233,14 @@ describe("Modules from libraries", () => {
             checkExactlyOneItem(acIDSel, null, "makeSound");
             checkNoItems(acIDSel, "makeSound(path)"); // Shouldn't show brackets in import, even though it is a function
             // Once we type first character, should be the same:
-            cy.get("body").type("m");
+            cy.get("body").type("makeSo");
             cy.wait(600);
             checkExactlyOneItem(acIDSel, null, "makeSound");
             checkNoItems(acIDSel, "*");
             checkAutocompleteSorted(acIDSel, false);
             cy.get(acIDSel).contains("Takes a filename as input");
             // Type rest of target then enter a comma:
-            cy.get("body").type("akeSound" + ",");
+            cy.get("body").type("und" + ",");
             cy.wait(500);
             // That should have dismissed the autocomplete and put us in a new slot:
             cy.get(acIDSel).should("not.be.visible");
