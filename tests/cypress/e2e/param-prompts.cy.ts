@@ -125,6 +125,8 @@ describe("Parameter prompts", () => {
         rawFuncs.push(["urllib.request", "urlopen", ["url"]]);
         rawFuncs.push(["turtle", "Turtle", []]);
         rawFuncs.push(["datetime", "date.fromtimestamp", ["timestamp"]]);
+        rawFuncs.push(["strype.graphics", "load_image", ["name"]]);
+        rawFuncs.push(["strype.graphics", "Actor", ["image_or_filename"]]);
     }
     const funcs: {keyboardTypingToImport? : string, funcName: string, params: string[], displayName : string, acSection: string, acName: string}[] = [];
     for (const rawFunc of rawFuncs) {
