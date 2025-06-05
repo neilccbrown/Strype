@@ -7,7 +7,6 @@
         "serve:microbit": "cross-env npm_config_microbit=true vue-cli-service serve --port 8081",
         "serve:python": "cross-env npm_config_python=true vue-cli-service serve --port 8081",
         "build": "vue-cli-service build",
-        "test:unit": "vue-cli-service test:unit --require test-setup.js --require test-setup-python.js src/__tests__/*.ts && vue-cli-service test:unit --require test-setup.js --require test-setup-microbit.js src/__tests__/*.ts",
         "lint:check": "vue-cli-service lint --no-fix --max-warnings 0",
         "lint:fix": "vue-cli-service lint",
         "i18n:report": "vue-cli-service i18n:report --src './src/**/*.?(js|vue)' --locales './src/localisation/**/*.json'",
