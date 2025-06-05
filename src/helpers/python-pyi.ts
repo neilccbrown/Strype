@@ -46,16 +46,15 @@ export function extractPYI(original : string) : string {
         if (funcDefMatch) {
             const [indent, fnName, args] = funcDefMatch.slice(1);
             const argNames = args.trim() ? args.split(",").map((s) => s.replace(/=.*/, "").trim()) : [];
+            if (indent != "") {
+                // If we're indented, we're a class, so remove first argName as it's self:
+                argNames.shift();
+            }
             let argTypeList : string[];
             let returnType : string;
             if (typeMatch) {
                 let argTypes;
                 [argTypes, returnType] = typeMatch[1].trim().split("->").map((s) => s.trim());
-
-                if (indent != "") {
-                    // If we're indented, we're a class, so remove first argName as it's self:
-                    argNames.shift();
-                }
                 argTypeList = splitTopLevelArgs(argTypes.slice(1, -1)).map((s) => s.trim());
             }
             else {
@@ -79,7 +78,7 @@ export function extractPYI(original : string) : string {
             }
             //output.push(`${indent}${name}: ${type}`);
         }
-        if (lines[i].match(/^import/)) {
+        if (lines[i].match(/^import\s+/) || lines[i].match(/^from\s+.*import/)) {
             output.push(lines[i]);
         }
     }
