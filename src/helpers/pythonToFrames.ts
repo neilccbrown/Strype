@@ -196,7 +196,7 @@ function transformCommentsAndBlanks(codeLines: string[]) : {disabledLines : numb
         // following the Python indentation rule would be seen as an error by Skulpt.
         // The logic is: 
         // - if there is no line before the comments (they are at the start of the code) the indent is 0.
-        // - if there is no line after the comments (they are at then end of the code), we indent the block as before or leave it to 0 if it was.
+        // - if there is no line after the comments (they are at then end of the code), we indent the block as before or leave it to 0 if it was (and all others).
         // - if lines before and after the comments are with the same indentation: we change the comments' indentation for the same
         // - if the line before the comments has a different indent than the line after, we indent the block as after.
         if(aCommentBlockLines.length == 0){
@@ -204,15 +204,17 @@ function transformCommentsAndBlanks(codeLines: string[]) : {disabledLines : numb
             return;
         }
 
-        const commentBlockStartLineIndex = aCommentBlockLines[0], commentBlockEndLineIndex = aCommentBlockLines[aCommentBlockLines.length - 1];       
+        const commentBlockStartLineIndex = aCommentBlockLines[0], commentBlockEndLineIndex = aCommentBlockLines[aCommentBlockLines.length - 1];
+        let hasZeroIndent = false;     
         const subrange = transformedLines.slice(commentBlockStartLineIndex, commentBlockEndLineIndex + 1).map((line) => {
             if(commentBlockStartLineIndex == 0){
                 return line.trimStart();
             }
             else{
                 const indentBefore = /^(\s*).*$/.exec(transformedLines[commentBlockStartLineIndex - 1])?.[1]??"";
-                if(commentBlockEndLineIndex == transformedLines.length - 1){    
-                    return ((/^\s.*$/.exec(line)==null) ? "" : indentBefore) + line.trimStart();
+                if(commentBlockEndLineIndex == transformedLines.length - 1){
+                    hasZeroIndent ||= (/^\s.*$/.exec(line)==null);
+                    return (hasZeroIndent ? "" : indentBefore) + line.trimStart();
                 }
                 else{
                     const indentAfter = /^(\s*).*$/.exec(transformedLines[commentBlockEndLineIndex + 1])?.[1]??"";
