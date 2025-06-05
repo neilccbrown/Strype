@@ -61,7 +61,7 @@
         "sortablejs": "^1.15.0",
         "splitpanes": "^2.4.1",
         "textarea-caret": "^3.1.0",
-        "tigerpython-parser": "git+https://github.com/Tobias-Kohn/TigerPython-Parser.git",
+        "tigerpython-parser": "git+https://github.com/neilccbrown/TigerPython-Parser.git",
         "timed-cache": "^2.0.0",
         "ts-node": "^10.9.1",
         "ts-node-dev": "^2.0.0",
