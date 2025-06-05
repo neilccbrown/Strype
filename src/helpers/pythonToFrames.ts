@@ -187,6 +187,45 @@ function transformCommentsAndBlanks(codeLines: string[]) : {disabledLines : numb
     const disabledLines : number[] = [];
     const transformedLines : string[] = [];
     const strypeDirectives: Map<string, string> = new Map<string, string>();
+
+    // A reference to the lines containing a comment block (that is, consecutive comment lines), see inline-method below for details.
+    const aCommentBlockLines: number[] = [];
+    const checkRearrangeCommentsIdent = () => {
+        // When the parser have reached a line that is past a block of comments, we need to see if the comments of this block
+        // are indented "properly": in Python, comments can be indented anyhow, but since we transform them for Skulpt, any indentation that is not
+        // following the Python indentation rule would be seen as an error by Skulpt.
+        // The logic is: 
+        // - if there is no line before the comments (they are at the start of the code) the indent is 0.
+        // - if there is no line after the comments (they are at then end of the code), we indent the block as before.
+        // - if lines before and after the comments are with the same indentation: we change the comments' indentation for the same
+        // - if the line before the comments has a different indent than the line after, we indent the block as after.
+        if(aCommentBlockLines.length == 0){
+            // There is no comment to check, we can just return
+            return;
+        }
+
+        const commentBlockStartLineIndex = aCommentBlockLines[0], commentBlockEndLineIndex = aCommentBlockLines[aCommentBlockLines.length - 1];       
+        const subrange = transformedLines.slice(commentBlockStartLineIndex, commentBlockEndLineIndex + 1).map((line) => {
+            if(commentBlockStartLineIndex == 0){
+                return line.trimStart();
+            }
+            else{
+                const indentBefore = /^(\s*).*$/.exec(transformedLines[commentBlockStartLineIndex - 1])?.[1]??"";
+                if(commentBlockEndLineIndex == transformedLines.length - 1){    
+                    return indentBefore + line.trimStart();
+                }
+                else{
+                    const indentAfter = /^(\s*).*$/.exec(transformedLines[commentBlockEndLineIndex + 1])?.[1]??"";
+                    return indentAfter + line.trimStart();
+                }
+            }
+        });
+        transformedLines.splice(commentBlockStartLineIndex, subrange.length , ...subrange);
+
+        // Clear the comment block reference
+        aCommentBlockLines.splice(0);
+    };
+
     // Skulpt doesn't preserve blanks or comments so we must find them and transform
     // them into something that does parse.
     // Find all comments.  This isn't quite perfect (with respect to # in strings) but it will do:
@@ -228,14 +267,15 @@ function transformCommentsAndBlanks(codeLines: string[]) : {disabledLines : numb
                     // Just a comment:
                     transformedLines.push(match[1] + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(match[2]));
                     mostRecentIndent = match[1];
+                    aCommentBlockLines.push(transformedLines.length-1);
                 }
                 else {
                     // Code followed by comment, put comment on next line:
                     mostRecentIndent = getIndent(match[1]);
                     transformedLines.push(match[1]);
+                    checkRearrangeCommentsIdent();
                     transformedLines.push(mostRecentIndent + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(match[2]));
                 }
-                
             }
         }
         else if (codeLines[i].trim() === "") {
@@ -256,12 +296,17 @@ function transformCommentsAndBlanks(codeLines: string[]) : {disabledLines : numb
             else {
                 transformedLines.push(smallestAdjIndent + STRYPE_WHOLE_LINE_BLANK);
             }
+            checkRearrangeCommentsIdent();
         }
         else {
             transformedLines.push(codeLines[i].trimEnd());
             mostRecentIndent = getIndent(codeLines[i].trimEnd());
+            checkRearrangeCommentsIdent();
         }
     }
+    // We might have comments at the end of the code, so we need to check their indentation:
+    checkRearrangeCommentsIdent();
+
     return { disabledLines, transformedLines, strypeDirectives };
 }
 
