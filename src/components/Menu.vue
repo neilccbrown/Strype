@@ -143,6 +143,7 @@
         </div>
         <div>
             <input 
+                id="importFileInput"
                 type="file" 
                 :accept="acceptedInputFileFormat"
                 ref="importFileInput" 
@@ -937,6 +938,7 @@ export default Vue.extend({
             else{               
                 // And let the user choose a file
                 if(canBrowserOpenFilePicker()){
+                    console.log("we are opening via the showOpenFilePicker function");
                     openFile([...this.strypeProjMIMEDescArray, ...this.pythonImportMIMEDescArray], this.appStore.strypeProjectLocation, (fileHandles: FileSystemFileHandle[]) => {
                         // We select 1 file so we can get the first element of the returned array
                         // We need to get the file content (hope for the best) and update the store
@@ -981,6 +983,8 @@ export default Vue.extend({
                     emitPayload.message = this.$i18n.t("appMessage.editorFileUpload").toString();
                     this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);
                     // Store the file name in a variable to use it later in the callback, for some reason using files[0].name fails in Pinia, on Safari
+                    console.log("OPENED VIA THE STANDARD API");
+                    console.log(files[0]);
                     const fileName = files[0].name;
                     const lastModified = files[0].lastModified;
                     readFileContent(files[0])

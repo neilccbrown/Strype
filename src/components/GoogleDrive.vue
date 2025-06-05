@@ -705,46 +705,55 @@ export default Vue.extend({
             });
         },
 
+        searchGoogleDriveElement(query: string, options?: {orderBy?: string, fileFields?: string}): gapi.client.HttpRequest<any>{
+            // Make a search query on Google Drive, with the provided query parameter.
+            // Returns the HTTPRequest object obtained with the call to gapi.client.request(). 
+            const orderByParam = (options?.orderBy) ? {orderBy: options.orderBy} : {};
+            const fileFieldsParam = (options?.fileFields) ? {fields: options?.fileFields} : {};
+            return gapi.client.request({
+                path: "https://www.googleapis.com/drive/v3/files",
+                params: {...orderByParam, ...fileFieldsParam, "q": query},
+            });
+        },
+
         lookForAvailableProjectFileName(onSuccessCallback: () => void){
             // We check if the currently suggested file name is not already used in the location we save the file.
             // (note: it seems that searching against regex isn't supported. cf https://developers.google.com/drive/api/guides/ref-search-terms,
             // the matching works in a very strange way, on a prefix and word basis, but yet I get results I didn't expect, so better double check on the results to make sure).
-            gapi.client.request({
-                path: "https://www.googleapis.com/drive/v3/files",
-                params: {"q": "name contains '*.spy' and parents='" + ((this.appStore.strypeProjectLocation) ? this.appStore.strypeProjectLocation : "root") + "' and trashed=false"},
-            }).then((response) => {
-                let hasAlreadyFile = false, existingFileId = "";
-                this.isFileLocked = false;
-                const filesArray: {name: string, id: string}[] = JSON.parse(response.body).files;
-                filesArray.forEach((file) => {
-                    const listingThisFile = (file.name == (this.saveFileName + "." + strypeFileExtension));
-                    hasAlreadyFile ||= listingThisFile;
-                    if(listingThisFile){
-                        existingFileId = file.id;
-                    }
-                });
-
-                if(hasAlreadyFile){
-                    // Check if the file is locked before we propose to overwrite
-                    this.checkIsFileLocked(existingFileId, () => {
-                        // We show a dialog to the user to make their choice about what to do next
-                        this.$root.$emit("bv::show::modal", this.saveExistingGDProjectModalDlgId);                        
-                    }, () => {
-                        // We shouldn't have an issue at this stage, but if it happens, we just attempt to connect again
-                        this.proceedFailedConnectionCheckOnSave();
+            this.searchGoogleDriveElement("name contains '*.spy' and parents='" + ((this.appStore.strypeProjectLocation) ? this.appStore.strypeProjectLocation : "root") + "' and trashed=false")
+                .then((response) => {
+                    let hasAlreadyFile = false, existingFileId = "";
+                    this.isFileLocked = false;
+                    const filesArray: {name: string, id: string}[] = JSON.parse(response.body).files;
+                    filesArray.forEach((file) => {
+                        const listingThisFile = (file.name == (this.saveFileName + "." + strypeFileExtension));
+                        hasAlreadyFile ||= listingThisFile;
+                        if(listingThisFile){
+                            existingFileId = file.id;
+                        }
                     });
 
-                    // We do not continue the saving process at this stage: we wait for the user action,
-                    // but we save the bits we need for continuing the process later (initiate the request to copy file to false at this stage)
-                    this.saveExistingGDProjectInfos = {existingFileId: existingFileId, existingFileName: this.saveFileName, resumeProcessCallback: onSuccessCallback, isCopyFileRequested: false};                
-                    return;                    
-                }
-                // Keep on with the flow of actions if everything went smooth so far
-                onSuccessCallback();
-            },(reason) => {
+                    if(hasAlreadyFile){
+                    // Check if the file is locked before we propose to overwrite
+                        this.checkIsFileLocked(existingFileId, () => {
+                        // We show a dialog to the user to make their choice about what to do next
+                            this.$root.$emit("bv::show::modal", this.saveExistingGDProjectModalDlgId);                        
+                        }, () => {
+                        // We shouldn't have an issue at this stage, but if it happens, we just attempt to connect again
+                            this.proceedFailedConnectionCheckOnSave();
+                        });
+
+                        // We do not continue the saving process at this stage: we wait for the user action,
+                        // but we save the bits we need for continuing the process later (initiate the request to copy file to false at this stage)
+                        this.saveExistingGDProjectInfos = {existingFileId: existingFileId, existingFileName: this.saveFileName, resumeProcessCallback: onSuccessCallback, isCopyFileRequested: false};                
+                        return;                    
+                    }
+                    // Keep on with the flow of actions if everything went smooth so far
+                    onSuccessCallback();
+                },(reason) => {
                 // We shouldn't have an issue at this stage, but if it happens, we just attempt to connect again
-                this.proceedFailedConnectionCheckOnSave();
-            });
+                    this.proceedFailedConnectionCheckOnSave();
+                });
         },
 
         checkIsFileLocked(fileId: string, onSuccessCallback: () => void, onFailureCallBack: VoidFunction): void {
@@ -815,6 +824,65 @@ export default Vue.extend({
             this.appStore.strypeProjectLocationAlias = "";
             this.appStore.projectLastSaveDate = -1;
             this.saveFileId = undefined;
+        },
+
+        readFileContentForIO(fileId: string, filePath: string, onSuccess: (fileContent: string) => void, onFailure: (reason: string) => void) {
+            // This method is used by FileIO to get a file string content.
+            // It relies on the Google File Id passed as argument, and the callback method for handling succes or failure is also passed as arguments.
+            // The argument "filePath" is only used for error message.
+            gapi.client.request({
+                path: "https://www.googleapis.com/drive/v3/files/" + fileId,
+                method: "GET",
+                params: {alt: "media"},
+            }).then((resp) => {
+                onSuccess(resp.body);               
+            },
+            // Case of errors
+            (resp) => {
+                onFailure(resp.status?.toString()??this.$i18n.t("errorMessage.fileIO.fetchFileError", {filename: filePath, error: resp.body}) as string); 
+            });
+        },
+
+        writeFileContentForIO(fileContent: string, fileInfos: {filePath: string, fileName?: string, fileId?: string, folderId?: string}): Promise<string> {
+            // Write file supports 2 modes: normal writing that only relies on the content and fileId,
+            // and file creation which relies on the folderId, fileName and returns the generated fileId.
+            // The fileName is always set because it may be used inside the error message.
+            // The method returns a string promise: the file ID on success, the error message on failure.
+            const isCreatingFile = !!(fileInfos.folderId);
+
+            // Using this example: https://stackoverflow.com/a/38475303/412908
+            // Arbitrary long string:
+            const boundary = "2db8c22f75474a58cd13fa2d3425017015d392ce0";
+            const body : string[] = [];
+            const bodyReqParams: {name?: string, parents?: [string]} = {};
+            if(isCreatingFile){
+                bodyReqParams.name = fileInfos.fileName??""; // the file name must be set by the caller!
+                bodyReqParams.parents = [fileInfos.folderId??""]; // the containing folder id must be set by the caller!
+            }
+            body.push("Content-Type: application/json; charset=UTF-8\n\n" + JSON.stringify(bodyReqParams) + "\n");
+            body.push("Content-Type: text/plain; charset=UTF-8\n\n" + fileContent + "\n");
+            const fullBody = body.map((s) => "--" + boundary + "\n" + s).join("") + "--" + boundary + "--\n";
+            return new Promise<string>((resolve, reject) => {
+                gapi.client.request({
+                // When saving content without creating (the default usage), the caller must have set the file id!
+                    path: "https://www.googleapis.com/upload/drive/v3/files" + (isCreatingFile ? "" : "/" + (fileInfos.fileId??"")),
+                    method: isCreatingFile ?  "POST" : "PATCH",
+                    params: {"uploadType": "multipart"},
+                    headers: {
+                        "Content-Type" : "multipart/related; boundary=\"" + boundary + "\"",
+                    },
+                    body: fullBody,
+                }).then(
+                    // Success of the request
+                    (resp) => {
+                        resolve(JSON.parse(resp.body)["id"]);                    
+                    },
+                    // Failure of the request
+                    (reason) => {
+                        reject(i18n.t("errorMessage.fileIO.writingFileFailed", {filename: fileInfos.filePath, error: reason}));                       
+                    }
+                );
+            });         
         },
     },
 });

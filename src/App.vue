@@ -81,6 +81,7 @@
         <EditSoundDlg dlgId="editSoundDlg" ref="editSoundDlg" :soundToEdit="soundToEditInDialog" />
         <div :id="getSkulptBackendTurtleDivId" class="hidden"></div>
         <canvas v-show="appStore.isDraggingFrame" :id="getCompanionDndCanvasId" class="companion-canvas-dnd"/>
+        <input type="file" id="pyIOFileInput" style="display: none" @change="notifyPyIOFileInputChanged" />
     </div>
 </template>
 
@@ -1256,6 +1257,10 @@ export default Vue.extend({
             this.$root.$on("bv::modal::hide", editedSound);
 
             this.$root.$emit("bv::show::modal", "editSoundDlg");
+        },
+
+        notifyPyIOFileInputChanged(){
+            document.dispatchEvent(new CustomEvent("PyFileIOChanged"));
         },
     },
 

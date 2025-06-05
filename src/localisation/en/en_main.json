@@ -83,7 +83,14 @@
     "gdriveNoFile": "The project does not exist in Google Drive.",
     "gdriveError": "An error occured when attempting to load your Google Drive project (error: {error}).",
     "gdPublicShareFailed":"The project could not be shared publicly.<br>(Error: {error})",
-    "unexpectedCharsPython": "unexpected character(s)"
+    "unexpectedCharsPython": "unexpected character(s)",
+    "fileIO": {
+      "fileNotFound":"The file {filename} could not be found.",
+      "fileFetchError":"The file {filename} could not be retrieved. (error: {error})",
+      "accessToGDError":"The file {filename} could not be accessed on Google Drive. (error: {error})",
+      "readonlyFile":"The file {filename} is read-only.",
+      "writingFileFailed":"The file {filename} could not be written. (error: {error})"
+    }
   },
   "appMessage": {
     "editorFileUpload": "Uploading your file to the editor...",

@@ -6,6 +6,7 @@ import { skulptReadPythonLib } from "@/autocompletion/ac-skulpt";
 import i18n from "@/i18n";
 import Vue from "vue";
 import { CustomEventTypes, setPythonExecAreaLayoutButtonPos } from "./editor";
+import { clearGDFileIOMap, FileObject, makeFileWrapper, skulptCloseFileIO, skulptOpenFileIO, skulptWriteFileIO } from "./skulptFileIO";
 
 const STRYPE_RUN_ACTION_MSG = "StrypeRunActionCalled";
 const STRYPE_INPUT_INTERRUPT_ERR_MSG = "ExternalError: " + STRYPE_RUN_ACTION_MSG;
@@ -133,6 +134,16 @@ function sInput(prompt: string) {
     });
 }
 
+// The function used for "transpiling" the open function of Python to some JS handled by Skulpt
+// The function is to be registered against the Skulpt object, and depends on a File object emulation
+// which is described and implemented in skulptFileIO.ts.
+/*function sOpen(pyFile: any){
+    return new Promise((resolve, reject) => {
+        const fileObj = new FileObject("fileNameTEMP.csv", "r", Sk);
+        resolve(makeFileWrapper(fileObj, Sk));
+    });
+}*/
+
 // Entry point function for running Python code with Skulpt - the UI is responsible for calling it,
 // and providing the code (usually, user defined code) and the text area to display the output
 export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv: HTMLDivElement|null, userCode: string, lineFrameMapping: LineAndSlotPositions, libraryAddresses: string[], keepRunning: () => boolean,
@@ -173,7 +184,34 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         executionFinished(finishedWithError, isTurtleListeningKB, isTurtleListeningMouse, isTurtleListeningTimer, stopTurtleListeners);
     }
     
-    Sk.configure({output:outf, read:skulptReadPythonLib(libraryAddresses), inputfun:sInput, inputfunTakesPrompt: true, yieldLimit:100,  killableWhile: true, killableFor: false});
+    // Clear the FileIO map before running anything
+    clearGDFileIOMap();
+
+    Sk.configure({
+        output:outf, 
+        read:skulptReadPythonLib(libraryAddresses),
+        fileopen: skulptOpenFileIO,
+        fileclose: skulptCloseFileIO, // This is a added property in Skulpt
+        nonreadopen: true,
+        filewrite: skulptWriteFileIO,
+        inputfun:sInput,
+        inputfunTakesPrompt: true,
+        yieldLimit:100, 
+        killableWhile: true,
+        killableFor: false});
+    Sk.inBrowser=false;
+
+    console.log(Sk);
+
+    if(Sk.dummy){
+        Sk.builtins = Sk.builtins || {};
+        Sk.builtins.open.$meth = new Sk.builtin.func(function (filename: any, mode: any) {
+            const fname = filename.v;
+            const fmode = mode ? mode.v : "r";
+            const fileObj = new FileObject(fname, fmode, Sk);
+            return makeFileWrapper(fileObj, Sk);
+        });
+    }
     
     const myPromise = Sk.misceval.asyncToPromise(function() {
         return Sk.importMainWithBody("<stdin>", false, userCode, true);

@@ -2,6 +2,7 @@
 // that it does not import other parts of the code (e.g. i18n) that can't work outside webpack
 
 import {getFileFromLibraries} from "@/helpers/libraryManager";
+import { skupltReadFileIO } from "@/helpers/skulptFileIO";
 
 declare const Sk: any;
 
@@ -16,6 +17,7 @@ export const OUR_PUBLIC_LIBRARY_MODULES = OUR_PUBLIC_LIBRARY_FILES.map((f) => f.
 // The function used for "input" from Skulpt, to be registered against the Skulpt object
 // (this is the default behaviour that can be overwritten if needed)
 export function skulptReadPythonLib(libraryAddresses: string[]) : ((x : string) => string) {
+    console.log("In skulptReadPythonLib");
     return (x) => {
         // Prefer built-ins, then our libraries, then third-party
         // (partly for speed; don't want to try fetching if we don't have to):
@@ -26,9 +28,50 @@ export function skulptReadPythonLib(libraryAddresses: string[]) : ((x : string) 
                         .then((r) => r.text())
                 );
             }
-            if (!x.endsWith(".py")) {
-                // We only fetch third-party Python files, not JS, for security reasons:
-                return undefined;
+            if (!x.endsWith(".py") && !x.endsWith(".js")) {
+                /* TODO COMMENT : test for DS file IO (csv, txt, tsv, xml?)*/
+                if([".csv", ".txt", ".tsv", ".xml"].includes(x.substring(x.lastIndexOf(".")))) {
+                    // We need to open a file from Google Drive.
+                    // Two situations can happen: either we are in a Strype project saved in Google Drive or not.
+                    // If we are: we work with the current project's location on Drive to read/write the file,
+                    // TODO if we are not: error or ask to login and choose a folder?
+                    return Sk.misceval.promiseToSuspension(
+                        // We need to look up the file (Google Drive doesn't use file names in the API for read/write)
+                        // with root location on the current project's folder, then retrieve its id and read.
+                        skupltReadFileIO(x).then((fileContent) => {
+                            return fileContent;
+                        }
+                        //return Promise.resolve(fileContent);
+                        , (error) =>{
+                            return {isError: true, errorMsg: error};
+                            //throw Error(error);
+                        })                            
+                        /*
+                            const handler = (event: Event) => {
+                                // Clean up listener after firing
+                                document.removeEventListener("pyIOFileInput", handler);
+                                const files = (document.getElementById("pyIOFileInput") as HTMLInputElement)?.files;
+                                if(files){
+                                    readFileContent(files[0])
+                                        .then(
+                                            (content) => {
+                                                resolve(content);                                
+                                            }, 
+                                            (reason) => reject(reason)
+                                        );  
+                                }
+                                reject("No File found in input");
+                            };
+                            document.addEventListener("pyIOFileInput", handler);  
+                            // click to get the file and file content
+                            document.getElementById("pyIOFileInput")?.click();                 
+                            */
+                    );
+                }
+                else{
+                    // We only fetch third-party Python files, not JS, for security reasons:
+                    return undefined;
+                }
             }
             return Sk.misceval.promiseToSuspension(
                 getFileFromLibraries(libraryAddresses, x)
