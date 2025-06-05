@@ -1,7 +1,8 @@
 // This file is used by the command-line script process-skulpt-api.ts so it is important
 // that it does not import other parts of the code (e.g. i18n) that can't work outside webpack
 
-import {getFileFromLibraries} from "@/helpers/libraryManager";
+// Note: important to use .. not @ here, because of the above
+import {getTextFileFromLibraries} from "../helpers/libraryManager";
 
 declare const Sk: any;
 
@@ -31,22 +32,7 @@ export function skulptReadPythonLib(libraryAddresses: string[]) : ((x : string) 
                 return undefined;
             }
             return Sk.misceval.promiseToSuspension(
-                getFileFromLibraries(libraryAddresses, x)
-                    .then((r) => {
-                        if (r != null) {
-                            if (r.mimeType == null || r.mimeType.startsWith("text")) {
-                                // Convert to UTF8 text:
-                                const text = new TextDecoder("utf-8").decode(r.buffer);
-                                return Promise.resolve(text);
-                            }
-                            else {
-                                throw Error("Found binary .py file in library");
-                            }
-                        }
-                        else {
-                            throw Error("File not found: '" + x + "'");
-                        }
-                    })
+                getTextFileFromLibraries(libraryAddresses, x)
             );
         }
         return Sk.builtinFiles["files"][x];
@@ -151,11 +137,11 @@ if not isinstance(itemDocumentation, str):
     return userCode + inspectionCode;
 }
 
-export function configureSkulptForAutoComplete() : void {
+export function configureSkulptForAutoComplete(libraryAddresses: string[] = []) : void {
     const dummyInput = (prompt: string) => new Promise(function(resolve,reject){
         resolve("");
     });
-    Sk.configure({read:skulptReadPythonLib([]), output:(t:string) => {}, inputfun: dummyInput, inputfunTakesPrompt: true, yieldLimit:100,  killableWhile: true, killableFor: true});
+    Sk.configure({read:skulptReadPythonLib(libraryAddresses), output:(t:string) => {}, inputfun: dummyInput, inputfunTakesPrompt: true, yieldLimit:100,  killableWhile: true, killableFor: true});
     // We also need to set some Turtle environment for Skulpt -- note that the output DIV is NOT the one visible by users,
     // because this environment is only used for our backend processes of the code for autocompletion.
     Sk.TurtleGraphics = {};

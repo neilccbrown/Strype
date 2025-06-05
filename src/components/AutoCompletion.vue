@@ -82,6 +82,8 @@ import Parser from "@/parser/parser";
 import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
 import {TPyParser} from "tigerpython-parser";
 import scssVars from "@/assets/style/_export.module.scss";
+import {getAvailablePyPyiFromLibrary, getTextFileFromLibraries} from "@/helpers/libraryManager";
+import {extractPYI} from "@/helpers/python-pyi";
 
 //////////////////////
 export default Vue.extend({
@@ -186,8 +188,8 @@ export default Vue.extend({
             return sortedCategories;
         },
       
-        updateACForModuleImport(token: string) : void {
-            this.acResults = getAvailableModulesForImport();
+        async updateACForModuleImport(token: string) : Promise<void> {
+            this.acResults = await getAvailableModulesForImport();
             this.showFunctionBrackets = false;
             // Only show imports if the slot isn't following "as" (so we need to check the operator)
             const {frameId, slotId} = parseLabelSlotUID(this.slotId);
@@ -197,9 +199,11 @@ export default Vue.extend({
         },
 
         updateACForImportFrom(token: string, module: string) : void {
-            this.acResults = {"": getAvailableItemsForImportFromModule(module)};
-            this.showFunctionBrackets = false;
-            this.showSuggestionsAC(token);
+            getAvailableItemsForImportFromModule(module).then((items) => {
+                this.acResults = {"": items.filter((ac) => !ac.acResult.startsWith("_"))};
+                this.showFunctionBrackets = false;
+                this.showSuggestionsAC(token);
+            });
         },
       
         // frameId is which frame we're in.
@@ -209,6 +213,21 @@ export default Vue.extend({
             const tokenStartsWithUnderscore = (token ?? "").startsWith("_");
             const parser = new Parser();
             const userCode = parser.getCodeWithoutErrors(frameId);
+            
+            for (const library of parser.getLibraries()) {
+                const pyPYIs = await getAvailablePyPyiFromLibrary(library);
+                if (pyPYIs == null) {
+                    continue;
+                }
+                for (const pyPYI of pyPYIs) {
+                    const text = await getTextFileFromLibraries([library], pyPYI);
+                    if (text != null) {
+                        const pyi = pyPYI.endsWith(".pyi") ? text : extractPYI(text);
+                        
+                        (TPyParser as any).defineModule(pyPYI.replace(/\.pyi?$/, "").replaceAll("/", "."), pyi, "pyi");
+                    }
+                }
+            }
             
             // If nothing relevant changed, no need to recalculate, just update based on latest token:
             if (this.lastTokenStartedUnderscore == tokenStartsWithUnderscore &&
@@ -226,7 +245,7 @@ export default Vue.extend({
             }
             
             this.showFunctionBrackets = true;
-            const imported = getAllExplicitlyImportedItems(context);
+            const imported = await getAllExplicitlyImportedItems(context);
             this.acResults = {};
             if (token === null) {
                 this.showSuggestionsAC("");

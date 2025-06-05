@@ -2168,3 +2168,18 @@ export function getElementsInSelection() : Element[] {
 
     return elements;
 }
+
+// Joins fields and operators, but ignores brackets, quotes, media:
+export function simpleSlotStructureToString(ss: SlotsStructure) : string {
+    const r : string[] = [];
+    for (let i = 0; i < ss.fields.length; i++) {
+        const field = ss.fields[i];
+        if (isFieldBaseSlot(field)) {
+            r.push(field.code);
+        }
+        if (i < ss.operators.length) {
+            r.push(ss.operators[i].code);
+        }
+    }
+    return r.join("");
+}

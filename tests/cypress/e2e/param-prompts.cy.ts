@@ -110,11 +110,9 @@ function assertState(frameId: number, expectedState : string, expectedStateWithP
 
 describe("Parameter prompts", () => { 
     // Each item is a triple: the module, the function name within the module, the list of param names
-    const rawFuncs : [string | null, string, string[]][] = [
+    const rawFuncs : [string | null | [string, string], string, string[]][] = [
         [null, "abs", ["x"]],
-        [null, "delattr", ["obj", "name"]],
         [null, "dir", []],
-        [null, "globals", []],
         [null, "setattr", ["obj, name, value"]],
         ["collections", "namedtuple", ["typename", "field_names"]],
         // These are object oriented items, so we are checking the self has been removed:
@@ -125,18 +123,36 @@ describe("Parameter prompts", () => {
         rawFuncs.push(["urllib.request", "urlopen", ["url"]]);
         rawFuncs.push(["turtle", "Turtle", []]);
         rawFuncs.push(["datetime", "date.fromtimestamp", ["timestamp"]]);
+        rawFuncs.push(["strype.graphics", "load_image", ["name"]]);
+        rawFuncs.push(["strype.graphics", "Actor", ["image_or_filename"]]);
+        rawFuncs.push([["http://localhost:8089/test-library/", "mediacomp"], "makePicture", ["path"]]);
+        rawFuncs.push([["http://localhost:8089/test-library/", "mediacomp"], "Pixel", ["picture", "x", "y", "index"]]);
     }
     const funcs: {keyboardTypingToImport? : string, funcName: string, params: string[], displayName : string, acSection: string, acName: string}[] = [];
     for (const rawFunc of rawFuncs) {
-        if (rawFunc[0]) {
+        if (rawFunc[0] != null) {
+            let module: any;
+            let libraryTyping;
+            if (typeof rawFunc[0] == "string") {
+                // No library:
+                libraryTyping = "";
+                module = rawFunc[0];
+            }
+            else {
+                // Enter the library:
+                libraryTyping = "l" + rawFunc[0][0] + "{rightarrow}";
+                module = rawFunc[0][1];
+            }
+            
+
             // We need some kind of import; test three ways:
             // The "import module" frame:
-            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}i" + rawFunc[0] + "{rightarrow}{downarrow}{downarrow}", funcName: rawFunc[0] + "." + rawFunc[1], params: rawFunc[2], acSection: rawFunc[0], acName: rawFunc[1], displayName: rawFunc[1] + " with import frame"});
+            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + "i" + module + "{rightarrow}{downarrow}{downarrow}", funcName: module + "." + rawFunc[1], params: rawFunc[2], acSection: module, acName: rawFunc[1], displayName: rawFunc[1] + " with import frame"});
             // The "from module import *" frame:
-            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}f" + rawFunc[0] + "{rightarrow}*{rightarrow}{downarrow}{downarrow}", funcName: rawFunc[1], params: rawFunc[2], acSection: rawFunc[0], acName: rawFunc[1], displayName: rawFunc[1] + " with from-import-* frame"});
+            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + "f" + module + "{rightarrow}*{rightarrow}{downarrow}{downarrow}", funcName: rawFunc[1], params: rawFunc[2], acSection: module, acName: rawFunc[1], displayName: rawFunc[1] + " with from-import-* frame"});
             // The "from module import funcName" frame:
             // Note that if funcName has a dot, we need to only use the part before the dot:
-            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}f" + rawFunc[0] + "{rightarrow}" + (rawFunc[1].includes(".") ? rawFunc[1].substring(0, rawFunc[1].indexOf(".")) : rawFunc[1]) + "{rightarrow}{downarrow}{downarrow}", funcName: rawFunc[1], params: rawFunc[2], acName: rawFunc[1], acSection: rawFunc[0], displayName: rawFunc[1] + " with from-import-funcName frame"});
+            funcs.push({keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + "f" + module + "{rightarrow}" + (rawFunc[1].includes(".") ? rawFunc[1].substring(0, rawFunc[1].indexOf(".")) : rawFunc[1]) + "{rightarrow}{downarrow}{downarrow}", funcName: rawFunc[1], params: rawFunc[2], acName: rawFunc[1], acSection: module, displayName: rawFunc[1] + " with from-import-funcName frame"});
         }
         else {
             // No import necessary

@@ -23,7 +23,7 @@
                 :slotId="slotItem.id"
                 :slotType="slotItem.type"
                 :isDisabled="isDisabled"
-                :default-text="placeholderText[slotIndex]"
+                :default-text="placeholderText == null ? '' : placeholderText[slotIndex]"
                 :code="getSlotCode(slotItem)"
                 :frameId="frameId"
                 :isEditableSlot="isEditableSlot(slotItem.type)"
@@ -94,8 +94,9 @@ export default Vue.extend({
         focusSlotCursorInfos(): SlotCursorInfos | undefined {
             return this.appStore.focusSlotCursorInfos;
         },
-
-        placeholderText() : string[] {
+    },
+    asyncComputed: {
+        placeholderText() : Promise<string[]> {
             // Look for the placeholder (default) text to put in slots.
             // Special rules apply for the "function name" part of a function call frame cf getFunctionCallDefaultText() in editor.ts.
             const isFuncCallFrame = this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall;
@@ -103,16 +104,16 @@ export default Vue.extend({
                 // If we are on an optional label slots structure that doesn't contain anything yet, we only show the placeholder if we're focused
                 const isOptionalEmpty = (this.appStore.frameObjects[this.frameId].frameType.labels[this.labelIndex].optionalSlot??false) && this.subSlots.length == 1 && this.subSlots[0].code.length == 0;
                 if(isOptionalEmpty && !this.isFocused){
-                    return [" "];
+                    return Promise.resolve([" "]);
                 }
-                return [(isFuncCallFrame) ? getFunctionCallDefaultText(this.frameId) : this.defaultText];
+                return Promise.resolve([(isFuncCallFrame) ? getFunctionCallDefaultText(this.frameId) : this.defaultText]);
             }
             else {
-                return this.subSlots.map((slotItem, index) => slotItem.placeholderSource !== undefined 
+                return Promise.all(this.subSlots.map((slotItem, index) => slotItem.placeholderSource !== undefined 
                     ? calculateParamPrompt(slotItem.placeholderSource.context, slotItem.placeholderSource.token, slotItem.placeholderSource.paramIndex, slotItem.placeholderSource.lastParam) 
-                    : ((this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && index == 0) 
+                    : Promise.resolve((this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && index == 0) 
                         ? getFunctionCallDefaultText(this.frameId)
-                        : "\u200b"));
+                        : "\u200b")));
             }
         },
     },

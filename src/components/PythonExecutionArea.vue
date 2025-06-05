@@ -68,7 +68,7 @@ import SVGIcon from "@/components/SVGIcon.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { debounce } from "lodash";
 import scssVars from "@/assets/style/_export.module.scss";
-import {getFileFromLibraries, getLibraryName} from "@/helpers/libraryManager";
+import {getLibraryName, getRawFileFromLibraries} from "@/helpers/libraryManager";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
@@ -94,12 +94,12 @@ const graphicsCanvasLogicalHeight = WORLD_HEIGHT;
 
 async function getAssetFileFromLibrary(fullLibraryAddress: string, fileName: string) {
     // First, try filename as-is:
-    const asIs = await getFileFromLibraries([fullLibraryAddress], fileName);
+    const asIs = await getRawFileFromLibraries([fullLibraryAddress], fileName);
     if (asIs) {
         return asIs;
     }
     // If that doesn't exist, try within the assets directory:
-    return  await getFileFromLibraries([fullLibraryAddress], "assets/" + fileName);
+    return  await getRawFileFromLibraries([fullLibraryAddress], "assets/" + fileName);
 }
 
 export default Vue.extend({
@@ -262,8 +262,12 @@ export default Vue.extend({
             // width and height to be the on-page width and height to avoid this:
             const realWidth = domCanvas.getBoundingClientRect().width;
             const realHeight = domCanvas.getBoundingClientRect().height;
-            domCanvas.width = realWidth;
-            domCanvas.height = realHeight;
+            // Sometimes it can be zero while adjusting size of cheat sheet;
+            // don't set that on the canvas.  The real value will follow soon after.
+            if (realWidth > 0 && realHeight > 0) {
+                domCanvas.width = realWidth;
+                domCanvas.height = realHeight;
+            }
             // It's possible for the on-screen canvas to be the wrong aspect ratio, which we do not prevent.
             // But we make the off-screen canvas the right aspect ratio:
             const maxHeight = Math.min(realHeight, (3 / 4) * realWidth);

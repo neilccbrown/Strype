@@ -1,8 +1,9 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
-import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
 import {cleanFromHTML} from "../support/test-support";
 import "@testing-library/cypress/add-commands";
+import "../support/autocomplete-test-support";
+import {BUILTIN, MYFUNCS, MYVARS, checkAutocompleteSorted, checkExactlyOneItem, checkNoItems, checkNoneAvailable, focusEditorAC, withAC, withSelection, scssVars, strypeElIds} from "../support/autocomplete-test-support";
 
 // Needed for the "be.sorted" assertion:
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -10,132 +11,6 @@ chai.use(require("chai-sorted"));
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 
-chai.Assertion.addMethod("beLocaleSorted", function () {
-    const $element = this._obj;
-
-    new chai.Assertion($element).to.be.exist;
-    
-    const actual = [...$element] as string[];
-    // Important to spread again to make a copy, as sort sorts in-place:
-    const expected = [...actual].sort((a, b) => a.localeCompare(b));
-    expect(actual).to.deep.equal(expected);
-});
-
-// Must clear all local storage between tests to reset the state,
-// and also retrieve the shared CSS and HTML elements IDs exposed
-// by Strype via the Window object of the app.
-let scssVars: {[varName: string]: string};
-let strypeElIds: {[varName: string]: (...args: any[]) => string};
-beforeEach(() => {
-    cy.clearLocalStorage();
-    cy.visit("/",  {onBeforeLoad: (win) => {
-        win.localStorage.clear();
-        win.sessionStorage.clear();
-    }}).then(() => {       
-        // Only need to get the global variables if we haven't done so
-        if(scssVars == undefined){
-            cy.window().then((win) => {
-                scssVars = (win as any)[WINDOW_STRYPE_SCSSVARS_PROPNAME];
-                strypeElIds = (win as any)[WINDOW_STRYPE_HTMLIDS_PROPNAME];
-            });
-        }
-        
-        // Wait for code initialisation
-        cy.wait(2000);
-    });
-});
-
-function withAC(inner : (acIDSel : string, frameId: number) => void, isInFuncCallFrame:boolean, skipSortedCheck?: boolean) : void {
-    // We need a delay to make sure last DOM update has occurred:
-    cy.wait(600);
-    cy.get("#" + strypeElIds.getEditorID()).then((eds) => {
-        const ed = eds.get()[0];
-        // Find the auto-complete corresponding to the currently focused slot:
-        // Must escape any commas in the ID because they can confuse CSS selectors:
-        const acIDSel = "#" + ed.getAttribute("data-slot-focus-id")?.replace(",", "\\,") + "_AutoCompletion";
-        // Should always be sorted:
-        if (!skipSortedCheck) {
-            checkAutocompleteSorted(acIDSel, isInFuncCallFrame);
-        }
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        const frameId = parseInt(new RegExp("input_frame_(\\d+)").exec(acIDSel)[1]);
-        // Call the inner function:
-        inner(acIDSel, frameId);
-    });
-}
-
-function focusEditorAC(): void {
-    // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
-    // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
-    cy.get("#" + strypeElIds.getFrameUID(-3)).focus();
-}
-
-function withSelection(inner : (arg0: { id: string, cursorPos : number }) => void) : void {
-    // We need a delay to make sure last DOM update has occurred:
-    cy.wait(200);
-    cy.get("#" + strypeElIds.getEditorID()).then((eds) => {
-        const ed = eds.get()[0];
-        inner({id : ed.getAttribute("data-slot-focus-id") || "", cursorPos : parseInt(ed.getAttribute("data-slot-cursor") || "-2")});
-    });
-}
-
-
-// Given a selector for the auto-complete and text for an item, checks that exactly one item with that text
-// exists in the autocomplete
-function checkExactlyOneItem(acIDSel : string, category: string | null, text : string) : void {
-    cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName + (category == null ? "" : " div[data-title='" + category + "']")).within(() => {
-        // Logging; useful in case of failure but we don't want it on by default:
-        // cy.findAllByText(text, { exact: true}).each(x => cy.log(x.get()[0].id));
-        cy.findAllByText(text, { exact: true}).should("have.length", 1);
-    });
-}
-
-// Given a selector for the auto-complete and text for an item, checks that no items with that text
-// exists in the autocomplete
-function checkNoItems(acIDSel : string, text : string, exact? : boolean) : void {
-    cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).within(() => cy.findAllByText(text, { exact: exact ?? false}).should("not.exist"));
-}
-
-function checkNoneAvailable(acIDSel : string) {
-    cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).within(() => {
-        cy.findAllByText("No completion available", { exact: true}).should("have.length", 1);
-    });
-}
-
-const MYVARS = "My variables";
-const MYFUNCS = "My functions";
-const BUILTIN = "Python";
-
-
-// Checks all sections in the autocomplete are internally sorted (i.e. that the items
-// within that section are in alphabetical order).  Also checks that the sections
-// themselves are in the correct order.
-function checkAutocompleteSorted(acIDSel: string, isInFuncCallFrame: boolean) : void {
-    // The autocomplete only updates after 500ms:
-    cy.wait(1000);
-    // Other items (like the names of variables when you do var.) will come out as -1,
-    // which works nicely because they should be first 
-    // (if we are in a function call definition (isInFuncCallFrame true) "My Functions"
-    // comes before "My Variables", and the other way around if not):
-    const intendedOrder = [
-        ...(isInFuncCallFrame ? [MYFUNCS, MYVARS] : [MYVARS, MYFUNCS]),
-        "microbit",
-        "microbit.accelerometer",
-        "time",
-        BUILTIN,
-    ];
-    cy.get(acIDSel + " div.module:not(." + scssVars.acEmptyResultsContainerClassName + ") > em")
-        .then((items) => [...items].map((item) => intendedOrder.indexOf(item.innerText.trim())))
-        .should("be.sorted");
-
-    cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName + " ul > div").each((section) => {
-        cy.wrap(section).find("li.ac-popup-item")
-            // Replace opening bracket onwards as we want to check it's sorted by function name, ignoring params:
-            .then((items) => [...items].map((item) => item.innerText.toLowerCase().replace(new RegExp("\\(.*"), "")))
-            .should("beLocaleSorted");
-    });
-}
 
 // Checks that the first labelslot in the given frame has content equivalent to expectedState (with a dollar indicating cursor position),
 // and equivalent to expectedStateWithPlaceholders if you count placeholders as the text for blank spans
@@ -352,6 +227,7 @@ describe("Modules", () => {
                 checkExactlyOneItem(acIDSel, null, "microbit");
                 checkExactlyOneItem(acIDSel, null, "random");
                 checkExactlyOneItem(acIDSel, null, "time");
+                checkNoItems(acIDSel, "mediacomp");
                 checkNoItems(acIDSel, "signal");
                 // Once we type "m", should show things beginning with M but not the others:
                 cy.get("body").type("m");
@@ -377,6 +253,7 @@ describe("Modules", () => {
                 checkExactlyOneItem(acIDSel, null, "array");
                 checkExactlyOneItem(acIDSel, null, "signal");
                 checkExactlyOneItem(acIDSel, null, "webbrowser");
+                checkNoItems(acIDSel, "mediacomp");
                 checkNoItems(acIDSel, "microbit");
                 // Once we type "a", should show things beginning with A but not the others:
                 cy.get("body").type("a");
@@ -1027,142 +904,5 @@ describe("Control flow", () => {
             checkExactlyOneItem(acIDSel, null, "capitalize()");
             checkExactlyOneItem(acIDSel, null, "lower()");
         }, true);
-    });
-});
-
-describe("Graphics library", () => {
-    if (Cypress.env("mode") == "microbit") {
-        // No graphics support in microbit mode:
-        return;
-    }
-    it("Shows completions for graphics standalone functions", () => {
-        focusEditorAC();
-        // Add graphics import:
-        cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
-        // Add a function frame and trigger auto-complete:
-        cy.get("body").type(" ");
-        cy.wait(500);
-        cy.get("body").type("{ctrl} ");
-        withAC((acIDSel, frameId) => {
-            cy.get(acIDSel).should("be.visible");
-            checkExactlyOneItem(acIDSel, "strype.graphics", "load_image(filename)");
-            checkExactlyOneItem(acIDSel, "strype.graphics", "stop()");
-            checkExactlyOneItem(acIDSel, "strype.graphics", "pause()");
-            checkNoItems(acIDSel, "__name__");
-            // Shouldn't show methods from Actor at top-level:
-            checkNoItems(acIDSel, "is_at_edge()");
-            checkNoItems(acIDSel, "remove()");
-        }, false);
-    });
-
-    it("Shows completions for object constructor", () => {
-        focusEditorAC();
-        // Add graphics import:
-        cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
-        // Add a function frame and trigger auto-complete:
-        cy.get("body").type(" ");
-        cy.wait(500);
-        cy.get("body").type("{ctrl} ");
-        withAC((acIDSel, frameId) => {
-            cy.get(acIDSel).should("be.visible");
-            checkExactlyOneItem(acIDSel, "strype.graphics", "Actor(image_or_filename)");
-        }, false);
-    });
-
-    it("Shows completions for return of graphics load_image", () => {
-        focusEditorAC();
-        // Add graphics import:
-        cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
-        // Add a function frame and trigger auto-complete:
-        cy.get("body").type(" ");
-        cy.wait(500);
-        cy.get("body").type("load_image('a').{ctrl} ");
-        withAC((acIDSel, frameId) => {
-            cy.get(acIDSel).should("be.visible");
-            checkExactlyOneItem(acIDSel, null, "get_width()");
-        }, false);
-    });
-
-    it("Shows completions for Actor methods", () => {
-        focusEditorAC();
-        // Add graphics import:
-        cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
-        // Make an actor:
-        cy.get("body").type("=a=Actor('cat-test.jpg'){rightarrow}");
-        // Add a function frame and trigger auto-complete:
-        cy.get("body").type(" ");
-        cy.wait(500);
-        cy.get("body").type("a.{ctrl} ");
-        withAC((acIDSel, frameId) => {
-            cy.get(acIDSel).should("be.visible");
-            checkExactlyOneItem(acIDSel, null, "is_at_edge()");
-            checkExactlyOneItem(acIDSel, null, "move(distance)");
-            checkExactlyOneItem(acIDSel, null, "get_all_touching()");
-            checkExactlyOneItem(acIDSel, null, "set_location(x, y)");
-            checkNoItems(acIDSel, "__name__");
-            // Shouldn't show methods from top-level:
-            checkNoItems(acIDSel, "stop()");
-            checkNoItems(acIDSel, "pause()");
-        }, false);
-    });
-
-    it("Shows completions for Image methods", () => {
-        focusEditorAC();
-        // Add graphics import:
-        cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
-        // Make an image:
-        cy.get("body").type("=e=Image(100, 100){rightarrow}");
-        // Add a function frame and trigger auto-complete:
-        cy.get("body").type(" ");
-        cy.wait(500);
-        cy.get("body").type("e.{ctrl} ");
-        withAC((acIDSel, frameId) => {
-            cy.get(acIDSel).should("be.visible");
-            checkExactlyOneItem(acIDSel, null, "get_width()");
-            checkExactlyOneItem(acIDSel, null, "fill()");
-            // Shouldn't show methods from top-level:
-            checkNoItems(acIDSel, "stop()");
-            checkNoItems(acIDSel, "pause()");
-        }, false);
-    });
-
-    it("Shows completions for Image methods on clone()", () => {
-        focusEditorAC();
-        // Add graphics import:
-        cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
-        // Make an image:
-        cy.get("body").type("=e=Image(100, 100){rightarrow}");
-        // Add a function frame and trigger auto-complete:
-        cy.get("body").type(" ");
-        cy.wait(500);
-        cy.get("body").type("e.clone().{ctrl} ");
-        withAC((acIDSel, frameId) => {
-            cy.get(acIDSel).should("be.visible");
-            checkExactlyOneItem(acIDSel, null, "get_width()");
-            checkExactlyOneItem(acIDSel, null, "fill()");
-            // Shouldn't show methods from top-level:
-            checkNoItems(acIDSel, "stop()");
-            checkNoItems(acIDSel, "pause()");
-        }, false);
-    });
-
-    it("Shows completions for Image methods on Actor.get_image()", () => {
-        focusEditorAC();
-        // Add graphics import:
-        cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
-        // Make an image:
-        cy.get("body").type("=a=Actor('blah'){rightarrow}");
-        // Add a function frame and trigger auto-complete:
-        cy.get("body").type(" ");
-        cy.wait(500);
-        cy.get("body").type("a.get_image().{ctrl} ");
-        withAC((acIDSel, frameId) => {
-            cy.get(acIDSel).should("be.visible");
-            checkExactlyOneItem(acIDSel, null, "get_width()");
-            checkExactlyOneItem(acIDSel, null, "fill()");
-            // Shouldn't show methods from top-level:
-            checkNoItems(acIDSel, "stop()");
-            checkNoItems(acIDSel, "pause()");
-        }, false);
     });
 });

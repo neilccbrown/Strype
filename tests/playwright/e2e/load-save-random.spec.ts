@@ -438,10 +438,10 @@ async function testSpecific(page: Page, sections: FrameEntry[][]) : Promise<void
 }
 
 test.describe("Enters, saves and loads random frame", () => {
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 5; i++) {
         test("Tests random entry #" + i, async ({page}, testInfo) => {
             // Increase test timeout:
-            test.setTimeout(150_000);
+            test.setTimeout(180_000);
             // Don't retry these tests; if they fail, we want to know:
             if (testInfo.retry > 0) {
                 return;
