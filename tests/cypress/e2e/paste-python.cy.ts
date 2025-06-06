@@ -86,7 +86,7 @@ function checkDownloadedCodeEquals(fullCode: string) : void {
         // Get rid of any multiple spaces between words:
         p = p.replace(/([^ \n])  +([^ ])/g, "$1 $2");
         // Print out full version in message (without escaped \n), to make it easier to diff:
-        expect(p, "Actual unescaped:\n" + p).to.equal(fullCode);
+        expect(p, "Actual unescaped:\n" + p).to.equal(fullCode.replaceAll("\r\n", "\n"));
     });
 }
 
