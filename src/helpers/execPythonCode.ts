@@ -201,8 +201,6 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         killableFor: false});
     Sk.inBrowser=false;
 
-    console.log(Sk);
-
     if(Sk.dummy){
         Sk.builtins = Sk.builtins || {};
         Sk.builtins.open.$meth = new Sk.builtin.func(function (filename: any, mode: any) {

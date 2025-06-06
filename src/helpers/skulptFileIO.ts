@@ -26,7 +26,7 @@ export interface GoogleDriveFileIOMap {
 }
 export const gdFilesMap: GoogleDriveFileIOMap[] = [];
 export function clearGDFileIOMap(): void {
-    gdFilesMap.slice(0);
+    gdFilesMap.splice(0);
 }
 
 // The TS typing to describe the file object implemented by Skulpt
@@ -110,7 +110,6 @@ export const fetchGoogleDriveFile = (filePath: string): Promise<string> => {
 // "errorMsg" for passing the error message.
 // On success, the file is mapped in gdFilesMap for future references.
 export const skulptOpenFileIO = (fileObj: SkulptFile): {succeeded: boolean, errorMsg: string} => {
-    console.log("now in skulptOpenFileIO");
     // Initialistor for the variable
     if(googleDriveComponent == undefined){
         googleDriveComponent = ((vm.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDriveComponent>);
@@ -147,33 +146,34 @@ export const skulptOpenFileIO = (fileObj: SkulptFile): {succeeded: boolean, erro
                         gdReadOnly: !(gdFile.capabilities.canEdit??true) || !(gdFile.capabilities.canModifyContent??true) || !!(gdFile.contentRestrictions?.readOnly)};
                     gdFilesMap.push(fileMapEntry);                   
 
-                    // We can return already with success if we are in reading mode.
-                    // If we are in writing mode, we first need to "clear" the file as in Python, a call to open(xxx,"w") truncates the file.
+                    // We can return already with success if we are in read mode.
                     if(fileObj.mode.v == "r"){
-                        console.log("going to return success for skulptOpenFileIO");
                         return {succeeded: true, errorMsg: ""};       
                     }
-                    else if(fileObj.mode.v == "w") {
-                        // If the file is readonly, no point trying to truncate it, we are already in error.
+                    // If we are in write mode, we first need to "clear" the file as in Python, a call to open(xxx,"w") truncates the file.
+                    // In write or append the file is readonly, we are already in error.            
+                    else if(fileObj.mode.v == "w" || fileObj.mode.v == "a") {
                         if(fileMapEntry.gdReadOnly){
                             return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.readonlyFile", {filename: filePath}) as string};
                         }
-                        else{
+                        else if(fileObj.mode.v == "w") {
                             return skulptWriteFileIO(fileObj, "");
+                        }
+                        else {
+                            return {succeeded: true, errorMsg: ""};                               
                         }
                     }
                 }
                 else{
-                    // The file may have not be found, which is a stopper in reading mode.
-                    // However, in writing mode, we can create a file. So we try that first.
+                    // The file may have not be found, which is a stopper in read mode.
+                    // However, in write and append mode, we can create a file. So we try that first.
                     if(fileObj.mode.v == "r"){
                         return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.fileNotFound", {filename: filePath}) as string};
                     }
-                    else if(fileObj.mode.v == "w"){
+                    else if(fileObj.mode.v == "w" || fileObj.mode.v == "a"){
                         return createEmptyFile(filePath, fileName, useStore().strypeProjectLocation as string).then((fileId) => {
                             // Since the file has been created we can now keep it's fileId in the map:
                             gdFilesMap.push({filePath: filePath, gdFileId: fileId, gdLocationId: useStore().strypeProjectLocation as string, gdReadOnly: false});
-                            console.log("in fileIO open, and just created empty file for W mode....");
                             return {succeeded: true, errorMsg: ""};
                         }, (error) => {
                             return {succeeded: false, errorMsg: error};
@@ -222,20 +222,27 @@ export const skupltReadFileIO = (filePath: string): Promise<string> => {
 // Write method, which doesn't do much actually, it only updates the Skulpt file object's content.
 // The *actual* file writing is only perform when a file is closed.
 export const skulptWriteFileIO = (fileObj: SkulptFile, toWrite: string): Promise<{succeeded: boolean, errorMsg: string}> => {
-    console.log("in own writing method for this file: " + fileObj.name);
-    console.log("to write:");
-    console.log(toWrite);
     // We retrieve the Google Drive file ID - it should be valid as no call to this when a file is closed in Skulpt should happen.
     const fileId = gdFilesMap.find((mapEntry) => mapEntry.filePath == fileObj.name)?.gdFileId??"";
-    // The wris
     return new Promise<{succeeded: boolean, errorMsg: string}>((resolve, reject) => {
-        googleDriveComponent.writeFileContentForIO(toWrite, {filePath: fileObj.name, fileId: fileId})
-            .then((fileId) => {
-                resolve({succeeded: true, errorMsg: ""});
-            },
-            (error) => {
-                reject({succedeed: false, errorMsg: error});
-            });
+        const callWrite = (toWrite: string) => {
+            googleDriveComponent.writeFileContentForIO(toWrite, {filePath: fileObj.name, fileId: fileId})
+                .then((_) => {
+                    resolve({succeeded: true, errorMsg: ""});
+                },
+                (error) => {
+                    reject({succedeed: false, errorMsg: error});
+                });
+        };
+
+        // Because of having issues doing that from Skulpt, one particular case that does a bit more is for files opened with append mode:
+        // since the content is to be appened to the end of the file, we read the file.
+        if(fileObj.mode.v == "a"){
+            return skupltReadFileIO(fileObj.name).then((fileContent) => callWrite(fileContent+toWrite), (error)=>reject({succedeed: false, errorMsg: error}));
+        }
+        else{
+            callWrite(toWrite);
+        }
     });
 };
 
