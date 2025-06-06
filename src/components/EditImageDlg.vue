@@ -34,7 +34,7 @@
         </div>
         <span class="EditImageDlg-header">{{$t("media.imageScale")}}</span>
         <div class="EditImageDlg-scale">
-            <input v-model="imageScale" type="range" id="EditImageDlg-imageScale" min="1" max="100" />
+            <input v-model="imageScale" type="range" id="EditImageDlg-imageScale" min="1" max="200" />
             <span class="EditImageDlg-scale-label">{{imageScale}}%</span>
         </div>
         <span class="EditImageDlg-header">{{$t("media.imageDetails")}}</span>
@@ -48,12 +48,14 @@ import Vue from "vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { Cropper } from "vue-advanced-cropper";
 import "vue-advanced-cropper/dist/style.css";
-import downscale from "downscale";
+import pica from "pica";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import { BvModalEvent } from "bootstrap-vue";
 import {debounce} from "lodash";
 import {isMacOSPlatform} from "@/helpers/common";
+
+const picaInstance = pica();
 
 export default Vue.extend({
     name: "EditImageDlg",
@@ -162,15 +164,17 @@ export default Vue.extend({
             const scale = this.imageScale / 100.0;
             let width = this.cropSize.width * scale;
             let height = this.cropSize.height * scale;
-            // We set the smaller dimension to 0 to ask downscale to preserve aspect ratio:
-            if (width < height) {
-                width = 0;
-            }
-            else {
-                height = 0;
-            }
+
+            const targetCanvas = document.createElement("canvas");
+            targetCanvas.width = width;
+            targetCanvas.height = height;
             // Skip resize if not needed:
-            return (this.imageScale == 100 ? Promise.resolve(canvas.toDataURL()) : downscale(canvas.toDataURL(), width, 0, {imageType: "png"})).then((resized) => {
+            return (this.imageScale == 100 ? Promise.resolve(canvas.toDataURL()) :
+                picaInstance.resize(canvas, targetCanvas, {
+                    unsharpAmount: 80,
+                    unsharpRadius: 0.6,
+                    unsharpThreshold: 2,
+                }).then((c) => c.toDataURL("png"))).then((resized) => {
                 return Promise.resolve({code: "load_image(\"" + resized + "\")", mediaType: "image/png"});
             });
         },
