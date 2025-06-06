@@ -52,7 +52,7 @@ Cypress.Commands.add("paste",
         });
     });
 
-export function focusEditorPasteAndClear(): void {
+export function focusEditorAndClear(): void {
     // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
     // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
     cy.get("#" + strypeElIds.getFrameUID(-3), {timeout: 15 * 1000}).focus();
@@ -90,7 +90,7 @@ export function testRoundTripPasteAndDownload(code: string, extraPositioning?: s
     }
     else {
         // Delete existing:
-        focusEditorPasteAndClear();
+        focusEditorAndClear();
     }
     if (extraPositioning) {
         cy.get("body").type(extraPositioning);
@@ -109,7 +109,7 @@ export function testRoundTripImportAndDownload(filepath: string, expected?: stri
     // The filename is a path, fixture just needs the filename:
     cy.readFile(filepath).then((py) => {
         // Delete existing:
-        focusEditorPasteAndClear();
+        focusEditorAndClear();
 
         cy.get("#" + strypeElIds.getEditorMenuUID()).click();
         cy.get("#" + strypeElIds.getLoadProjectLinkId()).click();

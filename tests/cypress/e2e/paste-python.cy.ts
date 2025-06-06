@@ -7,7 +7,7 @@ failOnConsoleError();
 import path from "path";
 import * as os from "os";
 import "../support/paste-test-support";
-import { focusEditorPasteAndClear, checkDownloadedCodeEquals, testRoundTripPasteAndDownload, testRoundTripImportAndDownload, scssVars } from "../support/paste-test-support";
+import { focusEditorAndClear, checkDownloadedCodeEquals, testRoundTripPasteAndDownload, testRoundTripImportAndDownload, scssVars } from "../support/paste-test-support";
 
 
 describe("Python round-trip", () => {
@@ -403,7 +403,7 @@ function assertVisibleError(error: RegExp | null) {
 
 // If error is null, there shouldn't be an error banner
 function assertPasteError(codeToPaste: string, error: RegExp | null) {
-    focusEditorPasteAndClear();
+    focusEditorAndClear();
     (cy.get("body") as any).paste(codeToPaste);
     assertVisibleError(error);
 }
