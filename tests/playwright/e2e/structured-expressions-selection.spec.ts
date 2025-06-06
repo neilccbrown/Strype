@@ -12,37 +12,28 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     // We must use a fake clipboard object to avoid issues with browser clipboard permissions:
     await page.addInitScript(() => {
         let mockTextContent = "<empty>";
-        let mockImageContentType = "";
-        let mockImageContent : Blob | null = null;
+        let mockItems : ClipboardItem[] = [];
         const mockClipboard = {
             write: async (items: ClipboardItem[]) => {
+                mockItems = items;
                 for (const item of items) {
-                    for (const type of item.types) {
-                        if (type.startsWith("image/")) {
-                            mockImageContent = await item.getType(type);
-                            mockImageContentType = type;
-                        }
+                    try {
+                        const b = await item.getType("text/plain");
+                        mockTextContent = await b.text();
+                    }
+                    catch (e) {
                     }
                 }
             },
             read: async () => {
-                if (!mockImageContent || !mockImageContentType) {
-                    return [];
-                }
-                return [
-                    {
-                        types: [mockImageContentType],
-                        getType: async (type : string) => {
-                            if (type === mockImageContentType){
-                                return mockImageContent;
-                            }
-                            throw new Error("Unsupported type");
-                        },
-                    },
-                ];
+                return mockItems;
             },
             writeText: async (text: string) => {
                 mockTextContent = text;
+                mockItems = [{types: ["text/plain"], getType: (type) => {
+                    // We use readText so we don't need to return the real content:
+                    return Promise.reject("");
+                }}];
             },
             readText: async () => mockTextContent,
         };
@@ -476,5 +467,7 @@ test.describe("Media literal copying", () => {
         await page.waitForTimeout(100);
         const clipboardContent : string = await page.evaluate("navigator.clipboard.readText()");
         expect(clipboardContent).toEqual("set_background(load_image(\"data:image/jpeg;base64," + image + "\"))");
+        const clipboardItemCount : string = await page.evaluate("navigator.clipboard.read().then((items) => items.length)");
+        expect(clipboardItemCount).toEqual(1);
     });
 });
