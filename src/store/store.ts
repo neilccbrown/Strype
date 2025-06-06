@@ -1963,10 +1963,22 @@ export const useStore = defineStore("app", {
                 // Find the frame before, if any:
                 const index = this.getIndexInParent(newFrame.id);
                 if (index == 0) {
-                    this.setCurrentFrame({id: newFrame.parentId, caretPosition: CaretPosition.body});
+                    // If we have added a joint frame (like "else"), the new caret's position is the last child of the root joint element (or it's body if empty).
+                    const newPos= (newFrame.frameType.isJointFrame)
+                        ? ((this.frameObjects[newFrame.jointParentId].childrenIds.length > 0) 
+                            ? {id: this.frameObjects[newFrame.jointParentId].childrenIds.at(-1) as number, caretPosition: CaretPosition.below}
+                            : {id: newFrame.jointParentId, caretPosition: CaretPosition.body})
+                        : {id: newFrame.parentId, caretPosition: CaretPosition.body};               
+                    this.setCurrentFrame(newPos);
                 }                
                 else {
-                    this.setCurrentFrame({id: this.frameObjects[newFrame.parentId].childrenIds[index - 1], caretPosition: CaretPosition.below});
+                    // If we have added a joint frame (like "else"), the new caret's position is the last child of the previous joint element (or it's body if empty).
+                    const newPos= (newFrame.frameType.isJointFrame)
+                        ? ((this.frameObjects[this.frameObjects[newFrame.jointParentId].jointFrameIds[index-1]].childrenIds.length > 0) 
+                            ? {id: this.frameObjects[this.frameObjects[newFrame.jointParentId].jointFrameIds[index-1]].childrenIds.at(-1) as number, caretPosition: CaretPosition.below}
+                            : {id: this.frameObjects[newFrame.jointParentId].jointFrameIds[index-1], caretPosition: CaretPosition.body})
+                        : {id: this.frameObjects[newFrame.parentId].childrenIds[index - 1], caretPosition: CaretPosition.below};       
+                    this.setCurrentFrame(newPos);
                 }
                 await Vue.nextTick();
                 availablePositions = getAvailableNavigationPositions();
