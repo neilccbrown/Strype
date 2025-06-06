@@ -252,6 +252,7 @@ export default Vue.extend({
 <style lang="scss">
 .edit-image-cropper {
     min-height: 200px;
+    max-height: 300px;
 }
 .edit-image-cropper, .edit-image-cropper-background, .edit-image-cropper-foreground {
     background: white;
