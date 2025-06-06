@@ -253,10 +253,10 @@ export default Vue.extend({
     background: white;
 }
 .edit-image-cropper .vue-simple-handler {
-    background: blue;
+    background: red;
 }
 .edit-image-cropper .vue-simple-line {
-    border-color: blue;
+    border-color: red;
 }
 .edit-image-cropper-image {
     /* Checkerboard background to reveal transparency in image: */
