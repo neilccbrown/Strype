@@ -1,15 +1,11 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-import {
-    focusEditorAndClear,
-    testRoundTripImportAndDownload,
-    testRoundTripPasteAndDownload
-} from "../support/paste-test-support";
-
 require("cypress-terminal-report/src/installLogsCollector")();
 import failOnConsoleError from "cypress-fail-on-console-error";
 import path from "path";
 import os from "os";
 failOnConsoleError();
+import "../support/paste-test-support";
+import {testRoundTripImportAndDownload,testRoundTripPasteAndDownload} from "../support/paste-test-support";
 
 // If the user pastes "mixed" code (i.e. imports, functions and body code)
 // then we split it into those three categories and obey the following rules:
