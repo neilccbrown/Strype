@@ -1,10 +1,11 @@
-import {AllFrameTypesIdentifier, BaseSlot, CaretPosition, ContainerTypesIdentifiers, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, StringSlot} from "@/types/types";
+import {AllFrameTypesIdentifier, BaseSlot, CaretPosition, ContainerTypesIdentifiers, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, StringSlot, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders} from "@/types/types";
 import {useStore} from "@/store/store";
-import {operators, trimmedKeywordOperators} from "@/helpers/editor";
+import {getCaretContainerComponent, getFrameComponent, operators, trimmedKeywordOperators} from "@/helpers/editor";
 import i18n from "@/i18n";
-import {escapeRegExp} from "lodash";
+import {cloneDeep, escapeRegExp} from "lodash";
 import {AppName, AppSPYPrefix} from "@/main";
 import {toUnicodeEscapes} from "@/parser/parser";
+import FrameContainer from "@/components/FrameContainer.vue";
 
 const TOP_LEVEL_TEMP_ID = -999;
 
@@ -1076,4 +1077,56 @@ export function splitLinesToSections(allLines : string[]) : {imports: string[]; 
         mainMapping : makeMapping(main),
         headers: {} as Record<string, string>,
     };
+}
+
+// Returns headers if successful, or null if there was an error (which will already have been shown in the UI)
+export function pasteMixedPython(completeSource: string, clearExisting: boolean) : { headers: Record<string, string> } | null {
+    const allLines = completeSource.split(/\r?\n/);
+    // Split can make an extra blank line at the end which we don't want:
+    if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
+        allLines.pop();
+    }
+    const s = splitLinesToSections(allLines);
+    
+    // Bit awkward but we first attempt to copy each to check for errors because
+    // if there are any errors we don't want to paste any:
+    let err = copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.importsMapping);
+    if (typeof err != "string") {
+        err = copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.FUNCDEF_SECTION, s.defsMapping);
+    }
+    if (typeof err != "string") {
+        err = copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION, s.mainMapping);
+    }
+    if (typeof err == "string") {
+        const msg = cloneDeep(MessageDefinitions.InvalidPythonParseImport);
+        const msgObj = msg.message as FormattedMessage;
+        msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, err);
+
+        useStore().showMessage(msg, 10000);
+        return null;
+    }
+    else {
+        if (clearExisting) {
+            // Clear the current existing code (i.e. frames) of the editor
+            useStore().clearAllFrames();
+        }
+        
+        const curLocation = findCurrentStrypeLocation();
+
+        copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION);
+        if (useStore().copiedSelectionFrameIds.length > 0) {
+            getCaretContainerComponent(getFrameComponent(useStore().getImportsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(true, curLocation == STRYPE_LOCATION.IMPORTS_SECTION ? "caret" : "end");
+        }
+        copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.FUNCDEF_SECTION);
+        if (useStore().copiedSelectionFrameIds.length > 0) {
+            getCaretContainerComponent(getFrameComponent(useStore().getFuncDefsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(true, curLocation == STRYPE_LOCATION.FUNCDEF_SECTION ? "caret" : "end");
+        }
+        if (s.main.length > 0) {
+            copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION);
+            if (useStore().copiedSelectionFrameIds.length > 0) {
+                getCaretContainerComponent(getFrameComponent(curLocation == STRYPE_LOCATION.IN_FUNCDEF ? useStore().getFuncDefsFrameContainerId : useStore().getMainCodeFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(true, (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) ? "caret" : "start");
+            }
+        }
+        return s;
+    }
 }

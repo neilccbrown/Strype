@@ -60,15 +60,28 @@ export function focusEditorAndClear(): void {
     cy.get("body").type("{uparrow}{uparrow}{uparrow}{del}{downarrow}{downarrow}{downarrow}{downarrow}{backspace}{backspace}");
 }
 
-export function checkDownloadedCodeEquals(fullCode: string) : void {
+export function checkDownloadedCodeEquals(fullCode: string, format: "py" | "spy" = "py") : void {
     const downloadsFolder = Cypress.config("downloadsFolder");
     cy.task("deleteFile", path.join(downloadsFolder, "main.py"));
     // Conversion to Python is located in the menu, so we need to open it first, then find the link and click on it
     // Force these because sometimes cypress gives false alarm about webpack overlay being on top:
     cy.get("button#" + strypeElIds.getEditorMenuUID()).click({force: true});
-    cy.contains(i18n.t("appMenu.downloadPython") as string).click({force: true});
+    if (format == "py") {
+        cy.contains(i18n.t("appMenu.downloadPython") as string).click({force: true});
+    }
+    else {
+        cy.contains(i18n.t("appMenu.saveProject") as string).click({force: true});
+        cy.wait(500);
+        // For testing, we always want to save to this device:
+        cy.get("#saveStrypeFileNameInput").clear();
+        cy.get("#saveStrypeFileNameInput").type("main");
+        cy.contains(i18n.t("appMessage.targetFS") as string).click({force: true});
+        cy.contains(i18n.t("OK") as string).click({force: true});
+    }
+    
+    cy.wait(1000);
 
-    cy.readFile(path.join(downloadsFolder, "main.py")).then((p : string) => {
+    cy.readFile(path.join(downloadsFolder, "main." + format)).then((p : string) => {
         // Before comparing, we fix up a few oddities of our generated code:
         // Get rid of any spaces at end of lines:
         p = p.replaceAll(/ +\n/g, "\n");
@@ -84,7 +97,7 @@ export function checkDownloadedCodeEquals(fullCode: string) : void {
 }
 
 // if expected is missing, use the original code
-export function testRoundTripPasteAndDownload(code: string, extraPositioning?: string, expected?: string, retainExisting?: boolean) : void {
+export function testRoundTripPasteAndDownload(code: string, extraSetup?: string | (() => void), expected?: string, retainExisting?: boolean, format? : "py" | "spy") : void {
     if (retainExisting) {
         focusEditor();
     }
@@ -92,14 +105,19 @@ export function testRoundTripPasteAndDownload(code: string, extraPositioning?: s
         // Delete existing:
         focusEditorAndClear();
     }
-    if (extraPositioning) {
-        cy.get("body").type(extraPositioning);
+    if (extraSetup) {
+        if (typeof extraSetup == "string") {
+            cy.get("body").type(extraSetup);
+        }
+        else {
+            extraSetup();
+        }
     }
     // Get rid of any Windows file endings:
     code = code.replaceAll(/\r\n/g, "\n");
-
+    
     (cy.get("body") as any).paste(code);
-    checkDownloadedCodeEquals(expected ?? code);
+    checkDownloadedCodeEquals(expected ?? code, format ?? "py");
     // Refocus the editor and go to the bottom:
     cy.get("#" + strypeElIds.getFrameUID(-3)).focus();
     cy.get("body").type("{end}");
