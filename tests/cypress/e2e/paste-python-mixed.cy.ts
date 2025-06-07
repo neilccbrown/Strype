@@ -259,4 +259,114 @@ ${STARTING_MAIN}
 #(=> Section:End
 `.trimStart(), true, "spy");
     });
+
+    it("Pastes full set in funcdef body then adds frame", () => {
+        testRoundTripPasteAndDownload(STARTING_POINT);
+        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{home}{uparrow}{uparrow}", `
+#(=> Strype:1:std
+#(=> Section:Imports
+${STARTING_IMPORT}
+${IMPORT0}
+${IMPORT1}
+${IMPORT2}
+#(=> Section:Definitions
+${STARTING_DEF}
+    ${MAIN0}
+    ${MAIN1}
+    ${MAIN2.replaceAll("\n", "\n    ")}
+    afterwards()
+${DEF0}
+${DEF1}
+#(=> Section:Main
+${STARTING_MAIN}
+#(=> Section:End
+`.trimStart(), true, "spy", () => {
+            cy.get("body").type(" afterwards");
+        });
+    });
+
+    it("Pastes imports-only in main then adds frame", () => {
+        testRoundTripPasteAndDownload(STARTING_POINT);
+        testRoundTripPasteAndDownload(IMPORT0 + "\n" + IMPORT1 + "\n" + IMPORT2, "", `
+#(=> Strype:1:std
+#(=> Section:Imports
+${STARTING_IMPORT}
+${IMPORT0}
+${IMPORT1}
+${IMPORT2}
+#(=> Section:Definitions
+${STARTING_DEF}
+#(=> Section:Main
+${STARTING_MAIN}
+afterwards()
+#(=> Section:End
+`.trimStart(), true, "spy", () => {
+            cy.get("body").type(" afterwards");
+        });
+    });
+
+    it("Pastes full set in imports then adds frame", () => {
+        testRoundTripPasteAndDownload(STARTING_POINT);
+        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{home}{uparrow}{home}{uparrow}{home}", `
+#(=> Strype:1:std
+#(=> Section:Imports
+${IMPORT0}
+${IMPORT1}
+${IMPORT2}
+import afterwards
+${STARTING_IMPORT}
+#(=> Section:Definitions
+${STARTING_DEF}
+${DEF0}
+${DEF1}
+#(=> Section:Main
+${MAIN0}
+${MAIN1}
+${MAIN2}
+${STARTING_MAIN}
+#(=> Section:End
+`.trimStart(), true, "spy", () => {
+            cy.get("body").type("iafterwards");
+        });
+    });
+
+    it("Pastes full set in main to replace a selection", () => {
+        testRoundTripPasteAndDownload(STARTING_POINT);
+        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{shift}{uparrow}", `
+#(=> Strype:1:std
+#(=> Section:Imports
+${STARTING_IMPORT}
+${IMPORT0}
+${IMPORT1}
+${IMPORT2}
+#(=> Section:Definitions
+${STARTING_DEF}
+${DEF0}
+${DEF1}
+#(=> Section:Main
+${MAIN0}
+${MAIN1}
+${MAIN2}
+#(=> Section:End
+`.trimStart(), true, "spy");
+    });
+
+    it("Pastes imports-only in main to replace a selection then adds frame", () => {
+        testRoundTripPasteAndDownload(STARTING_POINT);
+        testRoundTripPasteAndDownload(IMPORT0 + "\n" + IMPORT1 + "\n" + IMPORT2, "{shift}{uparrow}", `
+#(=> Strype:1:std
+#(=> Section:Imports
+${STARTING_IMPORT}
+${IMPORT0}
+${IMPORT1}
+${IMPORT2}
+#(=> Section:Definitions
+${STARTING_DEF}
+#(=> Section:Main
+afterwards()
+#(=> Section:End
+`.trimStart(), true, "spy", () => {
+            cy.get("body").type(" afterwards");
+        });
+    });
 });

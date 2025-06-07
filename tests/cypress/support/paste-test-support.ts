@@ -97,7 +97,7 @@ export function checkDownloadedCodeEquals(fullCode: string, format: "py" | "spy"
 }
 
 // if expected is missing, use the original code
-export function testRoundTripPasteAndDownload(code: string, extraSetup?: string | (() => void), expected?: string, retainExisting?: boolean, format? : "py" | "spy") : void {
+export function testRoundTripPasteAndDownload(code: string, extraSetup?: string | (() => void), expected?: string, retainExisting?: boolean, format? : "py" | "spy", afterPaste?: () => void) : void {
     if (retainExisting) {
         focusEditor();
     }
@@ -117,6 +117,11 @@ export function testRoundTripPasteAndDownload(code: string, extraSetup?: string 
     code = code.replaceAll(/\r\n/g, "\n");
     
     (cy.get("body") as any).paste(code);
+    
+    if (afterPaste) {
+        afterPaste();
+    }
+    
     checkDownloadedCodeEquals(expected ?? code, format ?? "py");
     // Refocus the editor and go to the bottom:
     cy.get("#" + strypeElIds.getFrameUID(-3)).focus();
