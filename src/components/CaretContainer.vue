@@ -190,7 +190,7 @@ export default Vue.extend({
                     // Note we don't permanently trim the code because we need to preserve leading indent.
                     // But we trim for the purposes of checking if there's any content at all:
                     if (pythonCode != undefined && pythonCode?.trim()) {
-                        pasteMixedPython(pythonCode, false);
+                        pasteMixedPython(pythonCode.trimEnd(), false);
                     }
                     // Must take ourselves off the clipboard after:
                     useStore().copiedFrames = {};
