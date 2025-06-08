@@ -178,14 +178,14 @@ from a.b.c import *
                     else:
                         x = -1
                     x = x * x
-`, "", `
+`.slice(1), "", `
 if x>0:
     x = 0
     x = 1
 else:
     x = -1
 x = x*x
-`);
+`.slice(1));
     });
     it("Handles multiple functions that are all indented the same amount", () => {
         testRoundTripPasteAndDownload(`
@@ -221,7 +221,7 @@ elif False:
     y = 1
 else:
     z = 2
-        `.trimEnd() + "\n";
+        `.trim() + "\n";
         testRoundTripPasteAndDownload(bareIfElifElseCode);
         // Now we should be after the whole thing:
         testRoundTripPasteAndDownload("alpha = 6", "{uparrow}", `
@@ -232,7 +232,7 @@ elif False:
 else:
     z = 2
     alpha = 6
-             `.trimEnd() + "\n", true);
+             `.trim() + "\n", true);
         testRoundTripPasteAndDownload("beta = 7", "{uparrow}{uparrow}{uparrow}{uparrow}", `
 if True:
     x = 0
@@ -242,7 +242,7 @@ elif False:
 else:
     z = 2
     alpha = 6
-        `.trimEnd() + "\n", true);
+        `.trim() + "\n", true);
     });
 
     it("Allows pasting inside elif/else, nested", () => {
@@ -258,7 +258,7 @@ else:
             pass
         else:
             z = 2
-        `.trimEnd() + "\n";
+        `.trim() + "\n";
         testRoundTripPasteAndDownload(bareIfElifElseCode);
         // Now we should be after the whole thing:
         testRoundTripPasteAndDownload("alpha = 6", "{uparrow}{uparrow}{uparrow}", `
@@ -273,7 +273,7 @@ else:
         else:
             z = 2
             alpha = 6
-             `.trimEnd() + "\n", true);
+             `.trim() + "\n", true);
     });
 
     it("Allows pasting inside except/finally", () => {
@@ -285,7 +285,7 @@ except e:
     y = 1
 finally:
     z = 2
-        `.trimEnd() + "\n";
+        `.trim() + "\n";
         testRoundTripPasteAndDownload(bareTryExceptFinallyCode);
         // Now we should be after the whole thing:
         testRoundTripPasteAndDownload("alpha = 6", "{uparrow}", `
@@ -296,7 +296,7 @@ except e:
 finally:
     z = 2
     alpha = 6
-             `.trimEnd() + "\n", true);
+             `.trim() + "\n", true);
         testRoundTripPasteAndDownload("beta = 7", "{uparrow}{uparrow}{uparrow}{uparrow}", `
 try:
     x = 0
@@ -306,7 +306,7 @@ except e:
 finally:
     z = 2
     alpha = 6
-        `.trimEnd() + "\n", true);
+        `.trim() + "\n", true);
     });
     
     it("Allows pasting else/elif at only the right places", () => {
@@ -416,9 +416,9 @@ describe("Python paste errors", () => {
         assertPasteError("    x", null);
     });
     it("Shows an error on invalid paste", () => {
-        assertPasteError("!", /Invalid Python code pasted.*!/);
-        assertPasteError("ifg True:\n    pass", /Invalid Python code pasted.*True/);
-        assertPasteError("if True:\n    invalid%%%", /Invalid Python code pasted.*%%%/);
+        assertPasteError("!", /Invalid Python code.*!/);
+        assertPasteError("ifg True:\n    pass", /Invalid Python code.*True/);
+        assertPasteError("if True:\n    invalid%%%", /Invalid Python code.*%%%/);
         // We have a different message for when we paste an else with more content after (which we can't handle)
         assertPasteError("else:\n    pass\nprint(\"Hi\")", /else/);
     });
@@ -429,20 +429,29 @@ def outer():
     def inner():
         pass
     pass
-`, /Invalid Python code pasted.*section/);
+`, /Invalid Python code .*/);
     });
-    it("Forbids nested imports or functions in main code", () => {
-        assertPasteError(`
+    it("Moves nested functions in main code", () => {
+        testRoundTripPasteAndDownload(`
 if True:
     def inner():
-        pass
+        return 7
     pass
-`,/Invalid Python code pasted.*section/);
-        assertPasteError(`
+`, "", `def inner ():
+    return 7
+if True:
+    pass
+`);
+    });
+    it("Moves nested imports in main code", () => {
+        testRoundTripPasteAndDownload(`
 if True:
     import random
     random.random()
-`,/Invalid Python code pasted.*section/);
+`,"", `import random
+if True:
+    random.random()
+`);
     });
 });
 

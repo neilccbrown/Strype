@@ -5,7 +5,6 @@
 import csv
 import os
 import sys
-
 # Iterate over all CSV files in the current directory
 for filename in os.listdir("."):
     if filename.endswith(".csv"):
