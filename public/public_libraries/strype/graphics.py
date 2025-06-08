@@ -367,7 +367,7 @@ class Image:
         
         :param centre_x: The x coordinate of the centre of the circle.
         :param centre_y: The y coordinate of the centre of the circle.
-        :param width: The radius of the circle.
+        :param radius: The radius of the circle.
         """
         self.draw_oval(centre_x, centre_y, radius, radius)
 
@@ -610,8 +610,8 @@ class Actor:
         Check whether the actor is at the edge of the world.  An actor is considered to be at the edge 
         if its location (its center point) is within `distance` pixels of the world bounds.
         
-        :param: distance The amount of pixels to use as edge of world.  Must be greater than zero.
-        :return: True if the actor is within `distance pixels of the edge of the world, False otherwise. 
+        :param distance: The amount of pixels to use as edge of world.  Must be greater than zero.
+        :return: True if the actor is within `distance` pixels of the edge of the world, False otherwise. 
         """
         x = self.get_exact_x()
         y = self.get_exact_y()
