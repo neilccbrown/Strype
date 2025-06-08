@@ -1035,35 +1035,41 @@ export function splitLinesToSections(allLines : string[]) : {imports: string[]; 
     const defs: NumberedLine[] = [];
     const main: NumberedLine[] = [];
     let addingToDef = false;
+    let defIndent = 0;
     allLines.forEach((line : string, zeroBasedLine : number) => {
         const lineWithNum : NumberedLine = {text: line, lineno: zeroBasedLine + 1};
-        if (line.match(/^(import|from)\s+/)) {
+        if (line.match(/^\s*(import|from)\s+/)) {
             // Import:
             imports.push(...latestComments);
             latestComments = [];
             imports.push(lineWithNum);
             addingToDef = false;
         }
-        else if (line.match(/^def\s+/)) {
-            defs.push(...latestComments);
-            latestComments = [];
-            defs.push(lineWithNum);
+        else if (line.match(/^\s*def\s+/)) {
             addingToDef = true;
+            defIndent = line.length - line.trimStart().length;
+            defs.push(...latestComments.map((l) => ({...l, text: l.text.trimStart() + " ".repeat(defIndent)})));
+            latestComments = [];
+            defs.push({...lineWithNum, text: line.trimStart()});
+            
         }
         else if (line.match(/^\s*#/)) {
             latestComments.push(lineWithNum);
         }
-        else if (addingToDef && !line.match(/^\S/)) {
-            // Keep adding to defs until we see a non-comment line with zero indent:
+        else if (addingToDef && (line.trim() == "" || (line.length - line.trimStart().length) > defIndent)) {
+            // Keep adding to defs until we see a non-comment non-blank line with less or equal indent:
             defs.push(...latestComments);
             latestComments = [];
-            defs.push(lineWithNum);
+            defs.push({...lineWithNum, text: line.slice(defIndent)});
         }
         else {
             addingToDef = false;
             main.push(...latestComments);
             latestComments = [];
-            main.push(lineWithNum);
+            // We don't push leading blanks to main (i.e. blank lines while main is empty), otherwise all the blanks before/between imports and defs end up there:
+            if (line.trim() != "" || main.length > 0) {
+                main.push(lineWithNum);
+            }
         }
     });
     // Add any trailing comments:
