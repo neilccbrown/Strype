@@ -2613,13 +2613,34 @@ export const useStore = defineStore("app", {
                 topFrame.id
             );
 
-            //Make the top new frame the current frame
-            this.setCurrentFrame(
-                { 
-                    id: topFrame.id,
-                    caretPosition: (topFrame.frameType.allowChildren) ? CaretPosition.body : CaretPosition.below,
+            // Move the cursor at the end of the pasted elements.
+            // If we have pasted/duplicated a joint frame (like "elif"), the caret moves inside that joint frame, at the end of the last child, or in its body if no child exist,
+            //  UNLESS that frame is disabled: then we need to find out which next sibling is enabled.
+            // In other cases, we go past the last top level frame.
+            const newCaretPos = cloneDeep(this.currentFrame); // starting point, just to get TS typing fine.
+            if(copiedFrames[nextAvailableId].frameType.isJointFrame){
+                // We cannot copy more than 1 joint frame, so there is only 1 frame to check
+                const thisJointFrame = copiedFrames[nextAvailableId];
+                if(thisJointFrame.isDisabled){
+                    const thisJointFrameIndex = this.frameObjects[thisJointFrame.jointParentId].jointFrameIds.indexOf(thisJointFrame.id);
+                    const nextJointEnabledSiblingId = (this.frameObjects[thisJointFrame.jointParentId].jointFrameIds.find((jointFrameId, index) => (index > thisJointFrameIndex && !this.frameObjects[jointFrameId].isDisabled)))??-1;
+                    newCaretPos.id = (nextJointEnabledSiblingId > -1) ? nextJointEnabledSiblingId : thisJointFrame.jointParentId;
+                    newCaretPos.caretPosition = (nextJointEnabledSiblingId > -1) ? CaretPosition.body : CaretPosition.below;
                 }
-            );
+                else{
+                    const thisJointFrameLastChildId = this.frameObjects[thisJointFrame.id].childrenIds.at(-1)??-1;
+                    newCaretPos.id = (thisJointFrameLastChildId > -1) ? thisJointFrameLastChildId : thisJointFrame.id;
+                    newCaretPos.caretPosition = (thisJointFrameLastChildId > -1) ? CaretPosition.below : CaretPosition.body;
+                }
+            }
+            else{
+                // We need to retrieve the last top level frame that was copied.
+                // We get it by screening all the copied frames: if one has a parent ID equals to the parent location of where we duplicate/paste the frames
+                // it means it's a top level frame. We filter the copied frames and keep the last one of the list.
+                newCaretPos.id = (Object.values(copiedFrames).filter((frameObj: FrameObject) => frameObj.parentId == payload.newParentId).map((frameObj: FrameObject) =>  frameObj.id).at(-1) as number);
+                newCaretPos.caretPosition = CaretPosition.below;
+            }            
+            this.setCurrentFrame(newCaretPos);
 
             this.updateNextAvailableId();
 
