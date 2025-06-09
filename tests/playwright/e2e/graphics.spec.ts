@@ -50,12 +50,13 @@ enum ImageComparison {
     WRITE_NEW_EXPECTED_DO_NOT_COMMIT_USE_OF_THIS
 }
 
-async function checkImageMatch(expectedImageFileName: string, actual : PNG, comparison: ImageComparison) {
+async function checkImageMatch(expectedImageFileName: string, fetchActual : (width: number, height: number) => Promise<PNG>, comparison: ImageComparison) {
     if (comparison == ImageComparison.COMPARE_TO_EXISTING) {
         const pixelmatch = (await import("pixelmatch")).default;
         const expectedData = fs.readFileSync(`tests/cypress/expected-screenshots/baseline/${expectedImageFileName}.png`, "base64");
         // load both pictures
         const expected = PNG.sync.read(Buffer.from(expectedData, "base64"));
+        const actual = await fetchActual(expected.width, expected.height);
         // The recursive option stops it failing if the dir exists:
         fs.mkdirSync("tests/cypress/expected-screenshots/comparison/", { recursive: true });
         fs.writeFileSync(`tests/cypress/expected-screenshots/comparison/${expectedImageFileName}.png`, PNG.sync.write(actual));
@@ -77,15 +78,19 @@ async function checkImageMatch(expectedImageFileName: string, actual : PNG, comp
     }
     else {
         // Just save to expected:
-        fs.writeFileSync(`tests/cypress/expected-screenshots/baseline/${expectedImageFileName}.png`, PNG.sync.write(actual));
+        fs.writeFileSync(`tests/cypress/expected-screenshots/baseline/${expectedImageFileName}.png`, PNG.sync.write(await fetchActual(0, 0)));
     }
 }
 
 
 async function checkGraphicsAreaContent(page: Page, expectedImageFileName : string, comparison = ImageComparison.COMPARE_TO_EXISTING) {
-    const screenshotBuffer = await page.locator("#peaGraphicsContainerDiv").screenshot();
-    const screenshot = PNG.sync.read(screenshotBuffer);
-    await checkImageMatch(expectedImageFileName, screenshot, comparison);
+    const takeScreenshot = async (width: number, height: number) => {
+        const box = await page.locator("#peaGraphicsContainerDiv").boundingBox();
+        const screenshotBuffer = await page.screenshot({clip: {x: box?.x ?? 0, y: box?.y ?? 0, width: width || box?.width || 1, height: height || box?.height || 1}});
+        return PNG.sync.read(screenshotBuffer);
+    };
+    
+    await checkImageMatch(expectedImageFileName, takeScreenshot, comparison);
     // Make sure we don't leave in the screenshot creation by making the tests fail:
     if (comparison == ImageComparison.WRITE_NEW_EXPECTED_DO_NOT_COMMIT_USE_OF_THIS) {
         throw new Error("Tests writing new screenshot; did you leave in WRITE_NEW_EXPECTED_DO_NOT_COMMIT_USE_OF_THIS ?");
