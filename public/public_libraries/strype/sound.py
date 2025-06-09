@@ -117,5 +117,8 @@ def load_sound(source):
     :param source: The filename or URL to a sound file 
     :return: The loaded sound
     """
+    # If they mistakenly try to load a sound (e.g. a literal) just let it through:
+    if isinstance(source, Sound):
+        return Sound
     buffer = _strype_sound_internal.loadAndWaitForAudioBuffer(source)
     return Sound(buffer, -4242)

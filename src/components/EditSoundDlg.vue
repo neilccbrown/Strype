@@ -316,14 +316,28 @@ export default Vue.extend({
     background: white;
 }
 .edit-sound-cropper .vue-simple-handler {
-    background: blue;
+    background: red;
 }
 .edit-sound-cropper .vue-simple-line {
-    border-color: blue;
+    border-color: red;
+    border-width: 1px;
 }
 // Slightly hacky way to turn off top/bottom resize handlers and cursor:
-.edit-sound-cropper .vue-handler-wrapper--north, .edit-sound-cropper .vue-handler-wrapper--south {
+.edit-sound-cropper .vue-handler-wrapper--north,
+.edit-sound-cropper .vue-handler-wrapper--west-north,
+.edit-sound-cropper .vue-handler-wrapper--east-north,
+.edit-sound-cropper .vue-handler-wrapper--south,
+.edit-sound-cropper .vue-handler-wrapper--west-south,
+.edit-sound-cropper .vue-handler-wrapper--east-south {
     visibility: hidden;
+}
+.edit-sound-cropper .vue-handler-wrapper--west,
+.edit-sound-cropper .vue-handler-wrapper--east {
+    height: 70px;
+}
+.edit-sound-cropper .vue-handler-wrapper--west .vue-simple-handler--west,
+.edit-sound-cropper .vue-handler-wrapper--east .vue-simple-handler--east{
+    height: 50px;
 }
 .edit-sound-cropper .vue-line-wrapper--north, .edit-sound-cropper .vue-line-wrapper--south {
     cursor: move;
