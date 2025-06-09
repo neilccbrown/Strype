@@ -56,6 +56,8 @@ async function checkImageMatch(expectedImageFileName: string, actual : PNG, comp
         const expectedData = fs.readFileSync(`tests/cypress/expected-screenshots/baseline/${expectedImageFileName}.png`, "base64");
         // load both pictures
         const expected = PNG.sync.read(Buffer.from(expectedData, "base64"));
+        // The recursive option stops it failing if the dir exists:
+        fs.mkdirSync("tests/cypress/expected-screenshots/comparison/", { recursive: true });
         fs.writeFileSync(`tests/cypress/expected-screenshots/comparison/${expectedImageFileName}.png`, PNG.sync.write(actual));
 
         const {width, height} = expected;
@@ -64,6 +66,8 @@ async function checkImageMatch(expectedImageFileName: string, actual : PNG, comp
         // calling pixelmatch return how many pixels are different
         const numDiffPixels = pixelmatch(expected.data, actual.data, diff.data, width, height, {threshold: 0.05});
 
+        // The recursive option stops it failing if the dir exists:
+        fs.mkdirSync("tests/cypress/expected-screenshots/diff/", { recursive: true });
         fs.writeFileSync(`tests/cypress/expected-screenshots/diff/${expectedImageFileName}.png`, PNG.sync.write(diff));
 
         // calculating a percent diff
