@@ -13,6 +13,8 @@ import {testRoundTripImportAndDownload,testRoundTripPasteAndDownload} from "../s
 // - Definitions go at current cursor position if at top-level in definitions section, otherwise at the end of the definitions
 // - Body code goes at the current cursor position, unless it is top-level imports or top-level definitions, in which case it goes at the start of the main code
 
+const MODE = (Cypress.env("mode") == "microbit") ? "mb" : "std";
+
 const IMPORT0 = "import foo";
 const IMPORT1 = "import strype.graphics";
 const IMPORT2 = "from strype.graphics import *";
@@ -55,7 +57,7 @@ describe("Tests pasting mixed content", () => {
     });
     it("Imports initial content and saves .spy", () => {
         testRoundTripPasteAndDownload(STARTING_POINT, "", `
-#(=> Strype:1:std
+#(=> Strype:1:${MODE}
 #(=> Section:Imports
 ${STARTING_IMPORT}
 #(=> Section:Definitions
@@ -71,7 +73,7 @@ ${STARTING_MAIN}
     it("Pastes imports-only in main", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload(IMPORT0 + "\n" + IMPORT1 + "\n" + IMPORT2, "", `
-#(=> Strype:1:std
+#(=> Strype:1:${MODE}
 #(=> Section:Imports
 ${STARTING_IMPORT}
 ${IMPORT0}
@@ -88,7 +90,7 @@ ${STARTING_MAIN}
     it("Pastes defs-only in main", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload(DEF0 + "\n" + DEF1, "", `
-#(=> Strype:1:std
+#(=> Strype:1:${MODE}
 #(=> Section:Imports
 ${STARTING_IMPORT}
 #(=> Section:Definitions
@@ -104,7 +106,7 @@ ${STARTING_MAIN}
     it("Pastes main-only at top of main", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload(MAIN0 + "\n" + MAIN1, "{home}", `
-#(=> Strype:1:std
+#(=> Strype:1:${MODE}
 #(=> Section:Imports
 ${STARTING_IMPORT}
 #(=> Section:Definitions
@@ -120,7 +122,7 @@ ${STARTING_MAIN}
     it("Pastes imports-only at top of imports", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload(IMPORT0 + "\n" + IMPORT1 + "\n" + IMPORT2, "{home}{uparrow}{home}{uparrow}{home}", `
-#(=> Strype:1:std
+#(=> Strype:1:${MODE}
 #(=> Section:Imports
 ${IMPORT0}
 ${IMPORT1}
@@ -137,7 +139,7 @@ ${STARTING_MAIN}
     it("Pastes defs-only at top of defs", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload(DEF0 + "\n" + DEF1, "{home}{uparrow}{home}", `
-#(=> Strype:1:std
+#(=> Strype:1:${MODE}
 #(=> Section:Imports
 ${STARTING_IMPORT}
 #(=> Section:Definitions
@@ -153,7 +155,7 @@ ${STARTING_MAIN}
     it("Pastes full set in imports", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{home}{uparrow}{home}{uparrow}{home}", `
-#(=> Strype:1:std
+#(=> Strype:1:${MODE}
 #(=> Section:Imports
 ${IMPORT0}
 ${IMPORT1}
@@ -175,7 +177,7 @@ ${STARTING_MAIN}
     it("Pastes full set in defs", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{home}{uparrow}{home}", `
-#(=> Strype:1:std
+#(=> Strype:1:${MODE}
 #(=> Section:Imports
 ${STARTING_IMPORT}
 ${IMPORT0}
@@ -197,7 +199,7 @@ ${STARTING_MAIN}
     it("Pastes full set in main", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "", `
-#(=> Strype:1:std
+#(=> Strype:1:${MODE}
 #(=> Section:Imports
 ${STARTING_IMPORT}
 ${IMPORT0}
@@ -219,7 +221,7 @@ ${MAIN2}
     it("Pastes unordered in main", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload([IMPORT0, MAIN0, DEF0, IMPORT1, DEF1, MAIN1, MAIN2, IMPORT2].join("\n"), "", `
-#(=> Strype:1:std
+#(=> Strype:1:${MODE}
 #(=> Section:Imports
 ${STARTING_IMPORT}
 ${IMPORT0}
@@ -241,7 +243,7 @@ ${MAIN2}
     it("Pastes full set in funcdef body", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{home}{uparrow}{uparrow}", `
-#(=> Strype:1:std
+#(=> Strype:1:${MODE}
 #(=> Section:Imports
 ${STARTING_IMPORT}
 ${IMPORT0}
@@ -263,7 +265,7 @@ ${STARTING_MAIN}
     it("Pastes full set in funcdef body then adds frame", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{home}{uparrow}{uparrow}", `
-#(=> Strype:1:std
+#(=> Strype:1:${MODE}
 #(=> Section:Imports
 ${STARTING_IMPORT}
 ${IMPORT0}
@@ -288,7 +290,7 @@ ${STARTING_MAIN}
     it("Pastes imports-only in main then adds frame", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload(IMPORT0 + "\n" + IMPORT1 + "\n" + IMPORT2, "", `
-#(=> Strype:1:std
+#(=> Strype:1:${MODE}
 #(=> Section:Imports
 ${STARTING_IMPORT}
 ${IMPORT0}
@@ -308,7 +310,7 @@ afterwards()
     it("Pastes full set in imports then adds frame", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{home}{uparrow}{home}{uparrow}{home}", `
-#(=> Strype:1:std
+#(=> Strype:1:${MODE}
 #(=> Section:Imports
 ${IMPORT0}
 ${IMPORT1}
@@ -333,7 +335,7 @@ ${STARTING_MAIN}
     it("Pastes full set in main to replace a selection", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{shift}{uparrow}", `
-#(=> Strype:1:std
+#(=> Strype:1:${MODE}
 #(=> Section:Imports
 ${STARTING_IMPORT}
 ${IMPORT0}
@@ -354,7 +356,7 @@ ${MAIN2}
     it("Pastes imports-only in main to replace a selection then adds frame", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload(IMPORT0 + "\n" + IMPORT1 + "\n" + IMPORT2, "{shift}{uparrow}", `
-#(=> Strype:1:std
+#(=> Strype:1:${MODE}
 #(=> Section:Imports
 ${STARTING_IMPORT}
 ${IMPORT0}
