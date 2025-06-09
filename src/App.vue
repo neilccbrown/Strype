@@ -1245,16 +1245,16 @@ export default Vue.extend({
 
                     copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION);
                     if (useStore().copiedSelectionFrameIds.length > 0) {
-                        getCaretContainerComponent(getFrameComponent(this.appStore.getImportsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(true);
+                        getCaretContainerComponent(getFrameComponent(this.appStore.getImportsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste();
                     }
                     copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.FUNCDEF_SECTION);
                     if (useStore().copiedSelectionFrameIds.length > 0) {
-                        getCaretContainerComponent(getFrameComponent(this.appStore.getFuncDefsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(true);
+                        getCaretContainerComponent(getFrameComponent(this.appStore.getFuncDefsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste();
                     }
                     if (s.main.length > 0) {
                         copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION);
                         if (useStore().copiedSelectionFrameIds.length > 0) {
-                            getCaretContainerComponent(getFrameComponent(this.appStore.getMainCodeFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(true);
+                            getCaretContainerComponent(getFrameComponent(this.appStore.getMainCodeFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste();
                         }
                     }
 

@@ -272,7 +272,7 @@ export default Vue.extend({
             }
         },
 
-        doPaste(skipDisableCheck?: boolean) : void {
+        doPaste() : void {
             let pasteDestination: CurrentFrame = {id: this.frameId, caretPosition: this.caretAssignedPosition};            
             const stateBeforeChanges = cloneDeep(this.appStore.$state);
 
@@ -297,8 +297,7 @@ export default Vue.extend({
                         clickedFrameId: pasteDestination.id,
                         caretPosition: pasteDestination.caretPosition,
                         ignoreStateBackup: true,
-                    },
-                    skipDisableCheck
+                    }
                 );
             }
             else {
@@ -307,8 +306,7 @@ export default Vue.extend({
                         clickedFrameId: pasteDestination.id,
                         caretPosition: pasteDestination.caretPosition,
                         ignoreStateBackup: true,
-                    },
-                    skipDisableCheck
+                    }                
                 );
             }
 
