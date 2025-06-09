@@ -41,12 +41,12 @@ import Vue, { PropType } from "vue";
 import VueContext, { VueContextConstructor } from "vue-context";
 import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
-import {AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, PythonExecRunningState, FrameContextMenuActionName, CurrentFrame} from "@/types/types";
+import {AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, PythonExecRunningState, FrameContextMenuActionName, CurrentFrame} from "@/types/types";
 import { getCaretUID, adjustContextMenuPosition, setContextMenuEventClientXY, getAddFrameCmdElementUID, CustomEventTypes, getCaretContainerUID } from "@/helpers/editor";
 import { mapStores } from "pinia";
-import {copyFramesFromParsedPython, findCurrentStrypeLocation} from "@/helpers/pythonToFrames";
 import { cloneDeep } from "lodash";
-import { getAboveFrameCaretPosition } from "@/helpers/storeMethods";
+import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
+import { pasteMixedPython } from "@/helpers/pythonToFrames";
 import scssVars  from "@/assets/style/_export.module.scss";
 
 //////////////////////
@@ -190,18 +190,7 @@ export default Vue.extend({
                     // Note we don't permanently trim the code because we need to preserve leading indent.
                     // But we trim for the purposes of checking if there's any content at all:
                     if (pythonCode != undefined && pythonCode?.trim()) {
-                        const error = copyFramesFromParsedPython(pythonCode.trimEnd().split(/\r?\n/), findCurrentStrypeLocation());
-                        if (typeof error == "string") {
-                            const msg = cloneDeep(MessageDefinitions.InvalidPythonParsePaste);
-                            const msgObj = msg.message as FormattedMessage;
-                            msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, error);
-
-                            //don't leave the message for ever
-                            useStore().showMessage(msg, 5000);
-                        }
-                        else {
-                            this.doPaste();
-                        }
+                        pasteMixedPython(pythonCode.trimEnd(), false);
                     }
                     // Must take ourselves off the clipboard after:
                     useStore().copiedFrames = {};
@@ -272,9 +261,26 @@ export default Vue.extend({
             }
         },
 
-        doPaste(skipDisableCheck?: boolean) : void {
-            let pasteDestination: CurrentFrame = {id: this.frameId, caretPosition: this.caretAssignedPosition};            
+        doPaste(skipDisableCheck?: boolean, pasteAt: "start" | "end" | "caret" = "start") : void {
+            let pasteDestination: CurrentFrame;
+            let restoreCaretTo: CurrentFrame | null = {... useStore().currentFrame};
             const stateBeforeChanges = cloneDeep(this.appStore.$state);
+            
+            const sectionId = getFrameSectionIdFromFrameId(this.frameId);
+            const isSectionEmpty = (this.appStore.frameObjects[sectionId].childrenIds.length == 0);
+            
+            if (pasteAt == "end" && !isSectionEmpty) {
+                const newCaretId = this.appStore.frameObjects[sectionId].childrenIds.at(-1) as number;
+                pasteDestination = {id: newCaretId, caretPosition: CaretPosition.below};
+            }
+            else if (pasteAt == "caret") {
+                pasteDestination = {... useStore().currentFrame};
+                // Don't restore caret:
+                restoreCaretTo = null;
+            }
+            else {
+                pasteDestination = {id: this.frameId, caretPosition: this.caretAssignedPosition};
+            }
 
             // If we currently have a selection of frames, the pasted frame should replace the selection, so we delete that selection.
             // (it should be fine regarding the grammar check because the caret will be at the same level whether it's before or after the selection)
@@ -310,6 +316,10 @@ export default Vue.extend({
                     },
                     skipDisableCheck
                 );
+            }
+
+            if (restoreCaretTo != null && (this.appStore.currentFrame?.id != restoreCaretTo.id || this.appStore.currentFrame?.caretPosition != restoreCaretTo.caretPosition)) {
+                this.appStore.setCurrentFrame(restoreCaretTo);
             }
 
             this.appStore.saveStateChanges(stateBeforeChanges);
