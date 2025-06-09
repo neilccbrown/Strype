@@ -764,8 +764,11 @@ export const useStore = defineStore("app", {
                             .forEach((jointFrameId) => listOfChildrenToMove.push(...this.frameObjects[jointFrameId].childrenIds));
                     }
 
-                    //update the new parent Id of all the children to their new parent
-                    listOfChildrenToMove.forEach((childId) => this.frameObjects[childId].parentId = parentIdOfFrameToDelete);
+                    //update the new parent Id of all the children to their new parent and the disabled status (can be disabled when moving in disabled joint frame)
+                    listOfChildrenToMove.forEach((childId) => {
+                        this.frameObjects[childId].parentId = parentIdOfFrameToDelete;
+                        this.frameObjects[childId].isDisabled = this.frameObjects[parentIdOfFrameToDelete].isDisabled;
+                    });
                     //replace the frame to delete by the children in the parent frame or append them at the end (for joint frames)
                     const parentChildrenIds = this.frameObjects[parentIdOfFrameToDelete].childrenIds;
                     const indexOfFrameToReplace = (isFrameToDeleteJointFrame) ? parentChildrenIds.length : parentChildrenIds.lastIndexOf(payload.frameToDeleteId);
@@ -2071,8 +2074,10 @@ export const useStore = defineStore("app", {
             
             framesIdToDelete.forEach((currentFrameId) => {
                 //if delete is pressed
-                //  case cursor is body: cursor stay here, the first child (if exits) is deleted (*)
-                //  case cursor is below: cursor stay here, the next sibling (if exits) is deleted (*)
+                //  case cursor is body: cursor stay here, the first child (if exists) is deleted (*)
+                //  case cursor is below: cursor stay here, the next sibling (if exists) is deleted (*)
+                // In both cases, if we are in the situation of no sibling/chidren and in a joint structure, 
+                // we need to delete the next joint frame that is visually below us.
                 //if backspace is pressed
                 //  case current frame is Container --> do nothing, a container cannot be deleted
                 //  case cursor is body: cursor needs to move one level up, and the current frame's children + all siblings replace its parent (except for function definitions frames)
@@ -2084,16 +2089,42 @@ export const useStore = defineStore("app", {
                 let frameToDelete: NavigationPosition = {frameId:-100, isSlotNavigationPosition: false};
                 let deleteChildren = false;
 
-                if(key === "Delete"){
+                if(key === "Delete"){                    
+                    // Where the current sits in the available positions?
+                    // For disabled joint frames, since disabled frames are seen as "units", there won't have a position listed in the available positions for the next position.
+                    // So in this case, we look for the frame to delete ourselves: that is the next joint sibling if any, or nothing.
+                    let foundDisabledJointFrameToDelete = false;
+                    if(framesIdToDelete.length == 1  
+                        && ((this.currentFrame.caretPosition == CaretPosition.body && (currentFrame.frameType.isJointFrame || currentFrame.frameType.allowJointChildren) && this.frameObjects[currentFrame.id].childrenIds.length == 0) 
+                            || (this.currentFrame.caretPosition == CaretPosition.below && (this.frameObjects[currentFrame.parentId].frameType.isJointFrame || this.frameObjects[currentFrame.parentId].frameType.allowJointChildren)
+                                && this.frameObjects[currentFrame.parentId].childrenIds.at(-1) == currentFrame.id))){
+                        // Check if visually, after the current caret, there is disabled joint that we would delete.
+                        const frameToLookJointIn = (this.currentFrame.caretPosition == CaretPosition.body) ? currentFrame : this.frameObjects[currentFrame.parentId];
+                        if(frameToLookJointIn.frameType.allowJointChildren && frameToLookJointIn.jointFrameIds.length > 0 && this.frameObjects[frameToLookJointIn.jointFrameIds[0]].isDisabled){
+                            foundDisabledJointFrameToDelete = true;
+                            frameToDelete = {frameId: frameToLookJointIn.jointFrameIds[0], isSlotNavigationPosition: false};
+                        }
+                        else if(frameToLookJointIn.frameType.isJointFrame){
+                            const indexOfThisJoint = this.frameObjects[frameToLookJointIn.jointParentId].jointFrameIds.indexOf(frameToLookJointIn.id);
+                            if(indexOfThisJoint < this.frameObjects[frameToLookJointIn.jointParentId].jointFrameIds.length - 1 && this.frameObjects[this.frameObjects[frameToLookJointIn.jointParentId].jointFrameIds[indexOfThisJoint + 1]].isDisabled){
+                                foundDisabledJointFrameToDelete = true;
+                                frameToDelete = {frameId: this.frameObjects[frameToLookJointIn.jointParentId].jointFrameIds[indexOfThisJoint + 1], isSlotNavigationPosition: false};
+                            }
+                        }                                        
+                    }
                     
-                    // Where the current sits in the available positions
-                    const indexOfCurrentInAvailables = availablePositions.findIndex((e)=> e.frameId === currentFrame.id && e.caretPosition === this.currentFrame.caretPosition);
-                    // the "next" position of the current
-                    frameToDelete = availablePositions[indexOfCurrentInAvailables+1]??{id:-100, isSlotNavigationPosition: false};
+                    if(!foundDisabledJointFrameToDelete) {
+                        const indexOfCurrentInAvailables = availablePositions.findIndex((e)=> e.frameId === currentFrame.id && e.caretPosition === this.currentFrame.caretPosition);
+                        // the "next" position of the current
+                        frameToDelete = availablePositions[indexOfCurrentInAvailables+1]??{id:-100, isSlotNavigationPosition: false};
+                    }
                     
-                    // The only time to prevent deletion with 'delete' is when next position is a joint root's below OR a method declaration below
-                    if((this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren  || this.frameObjects[frameToDelete.frameId]?.frameType.type === AllFrameTypesIdentifier.funcdef)
-                         && (frameToDelete.caretPosition??"") === CaretPosition.below){
+                    // The only times to prevent deletion with 'delete' is when we are inside a body that has no children (except in Joint frames)
+                    // or when the next position is a joint root's below OR a method declaration below
+                    if((framesIdToDelete.length==1 && this.frameObjects[frameToDelete.frameId]?.frameType.allowChildren && !this.frameObjects[frameToDelete.frameId]?.frameType.isJointFrame 
+                            && this.currentFrame.caretPosition == CaretPosition.body && this.frameObjects[frameToDelete.frameId]?.childrenIds.length == 0)
+                        || ((this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren  || this.frameObjects[frameToDelete.frameId]?.frameType.type === AllFrameTypesIdentifier.funcdef)
+                            && (frameToDelete.caretPosition??"") === CaretPosition.below)){
                         frameToDelete.frameId = -100;
                     }
                 }
