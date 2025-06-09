@@ -182,7 +182,7 @@ export const STRYPE_INVALID_SLOT = "___strype_invalid_";
 export const STRYPE_INVALID_OPS_WRAPPER = "___strype_opsinvalid";
 export const STRYPE_INVALID_OP = "___strype_operator_";
 
-function transformCommentsAndBlanks(codeLines: string[]) : {disabledLines : number[], transformedLines : string[], strypeDirectives: Map<string, string>} {
+function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") : {disabledLines : number[], transformedLines : string[], strypeDirectives: Map<string, string>} {
     codeLines = [...codeLines];
     const disabledLines : number[] = [];
     const transformedLines : string[] = [];
@@ -201,6 +201,10 @@ function transformCommentsAndBlanks(codeLines: string[]) : {disabledLines : numb
         // - if the line before the comments has a different indent than the line after, we indent the block as after.
         if(aCommentBlockLines.length == 0){
             // There is no comment to check, we can just return
+            return;
+        }
+        if (format == "spy") {
+            // SPYs are assumed to have the comments exactly where they should be, so we don't rearrange:
             return;
         }
 
@@ -317,7 +321,7 @@ function transformCommentsAndBlanks(codeLines: string[]) : {disabledLines : numb
 // ready to be pasted immediately afterwards.
 // If successful, returns a map with key-value Strype directives.  If unsuccessful, returns a string with some info about
 // where the Python parse failed.
-export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, linenoMapping?: Record<number, number>) : string | null | Map<string, string> {
+export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, format: "py" | "spy", linenoMapping?: Record<number, number>) : string | null | Map<string, string> {
     const mapLineno = (lineno : number) : number => linenoMapping ? linenoMapping[lineno] : lineno;
     const indents = new Map<number, string>();
     
@@ -350,7 +354,7 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
         indents.set(i + 1, getIndent(codeLines[i]));
     }
 
-    const transformed = transformCommentsAndBlanks(codeLines);
+    const transformed = transformCommentsAndBlanks(codeLines, format);
     const parsedBySkulpt = parseWithSkulpt(transformed.transformedLines, mapLineno);
     if (typeof parsedBySkulpt === "string") {
         return parsedBySkulpt;
@@ -1024,7 +1028,7 @@ function makeMapping(section: NumberedLine[]) : Record<number, number> {
 // Each line of the original will end up in exactly one of the three parts of the return.
 // With Python's indentation rules, this operation is actually easier at line level than it is post-parse.
 // The mappings map line numbers in the returned sections to line numbers in the original
-export function splitLinesToSections(allLines : string[]) : {imports: string[]; defs: string[]; main: string[], importsMapping: Record<number, number>, defsMapping: Record<number, number>, mainMapping: Record<number, number>, headers: Record<string, string>} {
+export function splitLinesToSections(allLines : string[]) : {imports: string[]; defs: string[]; main: string[], importsMapping: Record<number, number>, defsMapping: Record<number, number>, mainMapping: Record<number, number>, headers: Record<string, string>, format: "py" | "spy"} {
     // There's two possibilities:
     //  - we're loading a .spy with section headings, or
     //  - we're loading a .py where we must infer it.
@@ -1040,6 +1044,7 @@ export function splitLinesToSections(allLines : string[]) : {imports: string[]; 
             defsMapping: {} as Record<number, number>,
             mainMapping: {} as Record<number, number>,
             headers: {} as Record<string, string>,
+            format: "spy" as "py" | "spy",
         };
         while (line < allLines.length && !allLines[line].match(new RegExp("^#" + escapeRegExp(AppSPYPrefix) + " *Section *:Imports"))) {
             // Everything here should be metadata, add it to headers:
@@ -1122,5 +1127,6 @@ export function splitLinesToSections(allLines : string[]) : {imports: string[]; 
         defsMapping : makeMapping(defs),
         mainMapping : makeMapping(main),
         headers: {} as Record<string, string>,
+        format: "py",
     };
 }

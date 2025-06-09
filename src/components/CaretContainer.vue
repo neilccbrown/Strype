@@ -190,7 +190,7 @@ export default Vue.extend({
                     // Note we don't permanently trim the code because we need to preserve leading indent.
                     // But we trim for the purposes of checking if there's any content at all:
                     if (pythonCode != undefined && pythonCode?.trim()) {
-                        const error = copyFramesFromParsedPython(pythonCode.trimEnd().split(/\r?\n/), findCurrentStrypeLocation());
+                        const error = copyFramesFromParsedPython(pythonCode.trimEnd().split(/\r?\n/), findCurrentStrypeLocation(), "py");
                         if (typeof error == "string") {
                             const msg = cloneDeep(MessageDefinitions.InvalidPythonParsePaste);
                             const msgObj = msg.message as FormattedMessage;
