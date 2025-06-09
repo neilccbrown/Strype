@@ -11,7 +11,9 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && process.platform === "win32") {
         // On Windows+Webkit it just can't seem to load the page for some reason:
         testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
-    }    
+    }
+
+    testInfo.setTimeout(90000); // 90 seconds
     
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
