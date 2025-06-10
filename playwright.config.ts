@@ -21,7 +21,7 @@ export default defineConfig({
     /* Retry once on CI, as some of the random tests are slightly flaky */
     retries: process.env.CI ? 1 : 0,
     fullyParallel: true,
-    workers: process.env.CI ? 1 : 4,
+    workers: process.env.CI ? 1 : 1,
     /* Reporter to use. See https://playwright.dev/docs/test-reporters */
     reporter: [["list"], ["html", {"open": "never", "outputFolder": "./tests/playwright/html-report"}]],
     /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
@@ -61,7 +61,7 @@ export default defineConfig({
 
         {
             name: "webkit",
-            use: { ...devices["Desktop Safari"] },
+            use: { ...devices["Desktop Safari"], deviceScaleFactor: 1 },
         },
     ],
 });
