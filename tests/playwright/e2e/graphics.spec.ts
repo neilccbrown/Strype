@@ -99,7 +99,7 @@ async function checkGraphicsAreaContent(page: Page, expectedImageFileName : stri
 }
 
 // x and y are from 0 to 1
-async function clickProportionalPos(page: Page, x: number, y: number) : Promise<void> {
+async function clickProportionalPos(page: Page, x: number, y: number, button: "left" | "right" | "middle" = "left") : Promise<void> {
     const canvas = page.locator("#pythonGraphicsCanvas");
     const box = await canvas.boundingBox();
     const scale = Number.parseFloat(await canvas.getAttribute("data-scale") ?? "0");
@@ -116,7 +116,7 @@ async function clickProportionalPos(page: Page, x: number, y: number) : Promise<
         const clickY = centerY + (y - 0.5) * scaled_height;
         
         console.log("Clicking at ", clickX, clickY);
-        await page.mouse.click(clickX, clickY);
+        await page.mouse.click(clickX, clickY, {button});
     }
     else {
         throw new Error("Could not find graphics container to click on");
@@ -273,5 +273,50 @@ test.describe("Check graphics works when shared with turtle", () => {
         await clickProportionalPos(page, 700/800, 500/600);
         await page.waitForTimeout(2000);
         await checkGraphicsAreaContent(page, "shared-graphics-circle-at-mouse-click-large");
+    });
+
+    test("Check graphics example responds to both mouse buttons in large view", async ({page}) => {
+        await enterCode(page, ["from strype.graphics import *\n", "", `
+            set_background("blue")
+            yellow_circle = Image(200,200)
+            yellow_circle.set_fill("yellow")
+            yellow_circle.draw_circle(100, 100, 100)
+            red_circle = Image(200,200)
+            red_circle.set_fill("red")
+            red_circle.draw_circle(100, 100, 100)
+            green_circle = Image(200,200)
+            green_circle.set_fill("green")
+            green_circle.draw_circle(100, 100, 100)
+            while True:
+                c = get_mouse_click()
+                if c:
+                    if c.button == 0:
+                        Actor(yellow_circle, c.x, c.y)
+                    elif c.button == 1:
+                        Actor(red_circle, c.x, c.y)
+                    elif c.button == 2:
+                        Actor(green_circle, c.x, c.y)
+                pace(20)        
+        `]);
+        await page.click("#graphicsPEATab");
+        await page.locator("#peaGraphicsContainerDiv").hover();
+        await page.waitForTimeout(1000);
+        await page.click(".pea-toggle-layout-buttons-container > div:nth-child(2)");
+        await page.waitForTimeout(1000);
+        await page.locator(".expanded-PEA-splitter-overlay.strype-split-theme.splitpanes.splitpanes--horizontal > .splitpanes__splitter").hover();
+        await page.mouse.down();
+        await page.mouse.move(500, 200);
+        await page.mouse.up();
+        await page.click("#runButton");
+        await page.waitForTimeout(2000);
+        await clickProportionalPos(page, 100/800, 100/600, "left");
+        await page.waitForTimeout(2000);
+        await clickProportionalPos(page, 700/800, 100/600, "right");
+        await page.waitForTimeout(2000);
+        await clickProportionalPos(page, 100/800, 500/600, "right");
+        await page.waitForTimeout(2000);
+        await clickProportionalPos(page, 700/800, 500/600, "middle");
+        await page.waitForTimeout(2000);
+        await checkGraphicsAreaContent(page, "shared-graphics-circle-at-mouse-click-multi-button-large");
     });
 });
