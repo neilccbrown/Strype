@@ -86,6 +86,10 @@
     "unexpectedCharsPython": "unexpected character(s)",
     "fileIO": {
       "notConnectedToCloud":"Access to files for IO operations is only possible from a Strype project saved in the Cloud.",
+      "fileNotWritableErr":"File not open for writing.",
+      "fileNotReadableErr":"File not open for reading.",
+      "fileClosedErr":"I/O operation on closed file.",
+      "fileModeErr":"Invalid file opening mode: {mode}.",
       "fileNotFound":"The file {filename} could not be found.",
       "fileFetchError":"The file {filename} could not be retrieved. (error: {error})",
       "accessToGDError":"The file {filename} could not be accessed on Google Drive. (error: {error})",

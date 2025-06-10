@@ -191,7 +191,11 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         output:outf, 
         read:skulptReadPythonLib(libraryAddresses),
         fileopen: skulptOpenFileIO,
-        fileclose: skulptCloseFileIO, // This is a added property in Skulpt
+        fileclose: skulptCloseFileIO, // This is a added property in Skulpt for fileIO
+        fileNotWritableErr: i18n.t("errorMessage.fileIO.fileNotWritableErr"), // This is a added property in Skulpt for fileIO
+        fileNotReadableErr: i18n.t("errorMessage.fileIO.fileNotReadableErr"), // This is a added property in Skulpt for fileIO
+        fileClosedErr: i18n.t("errorMessage.fileIO.fileClosedErr"), // This is a added property in Skulpt for fileIO
+        fileModeErr: i18n.t("errorMessage.fileIO.fileModeErr"), // This is a added property in Skulpt for fileIO
         nonreadopen: true,
         filewrite: skulptWriteFileIO,
         inputfun:sInput,
