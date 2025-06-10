@@ -1636,7 +1636,7 @@ export default Vue.extend({
             return slot.mediaType;
         },
         showMediaPreviewPopup(event : MouseEvent) {
-            if (!this.isPythonExecuting) {
+            if (!this.isPythonExecuting && !this.isDisabled) {
                 this.mediaPreviewPopupRef?.showPopup(event, this.mediaPreview, (repl : { code: string, mediaType : string }) => {
                     this.appStore.setFrameEditableSlotContent(
                         {

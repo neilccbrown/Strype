@@ -1168,16 +1168,16 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
 
         copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION);
         if (useStore().copiedSelectionFrameIds.length > 0) {
-            getCaretContainerComponent(getFrameComponent(useStore().getImportsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(true, curLocation == STRYPE_LOCATION.IMPORTS_SECTION ? "caret" : "end");
+            getCaretContainerComponent(getFrameComponent(useStore().getImportsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(curLocation == STRYPE_LOCATION.IMPORTS_SECTION ? "caret" : "end");
         }
         copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.FUNCDEF_SECTION);
         if (useStore().copiedSelectionFrameIds.length > 0) {
-            getCaretContainerComponent(getFrameComponent(useStore().getFuncDefsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(true, curLocation == STRYPE_LOCATION.FUNCDEF_SECTION ? "caret" : "end");
+            getCaretContainerComponent(getFrameComponent(useStore().getFuncDefsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(curLocation == STRYPE_LOCATION.FUNCDEF_SECTION ? "caret" : "end");
         }
         if (s.main.length > 0) {
             copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION);
             if (useStore().copiedSelectionFrameIds.length > 0) {
-                getCaretContainerComponent(getFrameComponent(curLocation == STRYPE_LOCATION.IN_FUNCDEF ? useStore().getFuncDefsFrameContainerId : useStore().getMainCodeFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(true, (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) ? "caret" : "start");
+                getCaretContainerComponent(getFrameComponent(curLocation == STRYPE_LOCATION.IN_FUNCDEF ? useStore().getFuncDefsFrameContainerId : useStore().getMainCodeFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste((curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) ? "caret" : "start");
             }
         }
         return s;
