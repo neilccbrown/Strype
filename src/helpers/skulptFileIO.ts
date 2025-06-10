@@ -110,6 +110,11 @@ export const fetchGoogleDriveFile = (filePath: string): Promise<string> => {
 // "errorMsg" for passing the error message.
 // On success, the file is mapped in gdFilesMap for future references.
 export const skulptOpenFileIO = (fileObj: SkulptFile): {succeeded: boolean, errorMsg: string} => {
+    // If we are not connected to a cloud file system, then we raise an error.
+    if(useStore().syncTarget != StrypeSyncTarget.gd){
+        return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.notConnectedToCloud") as string};
+    }
+
     // Initialistor for the variable
     if(googleDriveComponent == undefined){
         googleDriveComponent = ((vm.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDriveComponent>);
@@ -141,36 +146,42 @@ export const skulptOpenFileIO = (fileObj: SkulptFile): {succeeded: boolean, erro
                 });
 
                 if(gdFile){
-                    // Found a file to match, we can add it to the mapping object
-                    const fileMapEntry: GoogleDriveFileIOMap = {filePath: filePath, gdFileId: gdFile.id, gdLocationId: useStore().strypeProjectLocation as string, 
-                        gdReadOnly: !(gdFile.capabilities.canEdit??true) || !(gdFile.capabilities.canModifyContent??true) || !!(gdFile.contentRestrictions?.readOnly)};
-                    gdFilesMap.push(fileMapEntry);                   
+                    // Found a file to match, we can add it to the mapping object unless we are in "x" mode which requires the file not to exist.
+                    if(fileObj.mode.v != "x"){
+                        const fileMapEntry: GoogleDriveFileIOMap = {filePath: filePath, gdFileId: gdFile.id, gdLocationId: useStore().strypeProjectLocation as string, 
+                            gdReadOnly: !(gdFile.capabilities.canEdit??true) || !(gdFile.capabilities.canModifyContent??true) || !!(gdFile.contentRestrictions?.readOnly)};
+                        gdFilesMap.push(fileMapEntry);                   
 
-                    // We can return already with success if we are in read mode.
-                    if(fileObj.mode.v == "r"){
-                        return {succeeded: true, errorMsg: ""};       
+                        // We can return already with success if we are in read mode.
+                        if(fileObj.mode.v == "r"){
+                            return {succeeded: true, errorMsg: ""};       
+                        }
+                        // If we are in write mode, we first need to "clear" the file as in Python, a call to open(xxx,"w") truncates the file.
+                        // In write or append the file is readonly, we are already in error.            
+                        else if(fileObj.mode.v == "w" || fileObj.mode.v == "a") {
+                            if(fileMapEntry.gdReadOnly){
+                                return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.readonlyFile", {filename: filePath}) as string};
+                            }
+                            else if(fileObj.mode.v == "w") {
+                                return skulptWriteFileIO(fileObj, "");
+                            }
+                            else {
+                                return {succeeded: true, errorMsg: ""};                               
+                            }
+                        }
                     }
-                    // If we are in write mode, we first need to "clear" the file as in Python, a call to open(xxx,"w") truncates the file.
-                    // In write or append the file is readonly, we are already in error.            
-                    else if(fileObj.mode.v == "w" || fileObj.mode.v == "a") {
-                        if(fileMapEntry.gdReadOnly){
-                            return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.readonlyFile", {filename: filePath}) as string};
-                        }
-                        else if(fileObj.mode.v == "w") {
-                            return skulptWriteFileIO(fileObj, "");
-                        }
-                        else {
-                            return {succeeded: true, errorMsg: ""};                               
-                        }
+                    else{
+                        // If the file exists, then, we are in error state for "x" mode
+                        return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.fileAlreadyExists", {filename: filePath}) as string}; 
                     }
                 }
                 else{
                     // The file may have not be found, which is a stopper in read mode.
-                    // However, in write and append mode, we can create a file. So we try that first.
+                    // However, in write, append and exclusive creation mode, we can create a file. So we try that first.
                     if(fileObj.mode.v == "r"){
                         return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.fileNotFound", {filename: filePath}) as string};
                     }
-                    else if(fileObj.mode.v == "w" || fileObj.mode.v == "a"){
+                    else if(fileObj.mode.v == "w" || fileObj.mode.v == "a" || fileObj.mode.v == "x"){
                         return createEmptyFile(filePath, fileName, useStore().strypeProjectLocation as string).then((fileId) => {
                             // Since the file has been created we can now keep it's fileId in the map:
                             gdFilesMap.push({filePath: filePath, gdFileId: fileId, gdLocationId: useStore().strypeProjectLocation as string, gdReadOnly: false});
@@ -250,6 +261,7 @@ export const skulptWriteFileIO = (fileObj: SkulptFile, toWrite: string): Promise
 
 import { readFileContent } from "./common";
 import i18n from "@/i18n";
+import { StrypeSyncTarget } from "@/types/types";
 
 // Helper containing the methods to be fed to Skulpt to simulate Python's file IO.
 // Depending on the location of the Strype project, the file IO works on the clound 
