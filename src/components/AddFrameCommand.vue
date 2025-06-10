@@ -1,7 +1,7 @@
 <template>
     <div :class="{'frame-cmd-container': true, disabled: isPythonExecuting || appStore.isDraggingFrame}" @click="onClick">
         <button :class="{'frame-cmd-btn': true, 'frame-cmd-btn-large': isLargerShorcutSymbol}" :disabled="isPythonExecuting || appStore.isDraggingFrame">{{ (!isSVGIconSymbol) ? symbol : '' }}
-            <SVGIcon v-if="isSVGIconSymbol" :name="symbol" customClass="add-frame-command-symbol-svg-icon" />
+            <SVGIcon v-if="isSVGIconSymbol" :name="symbol" :customClass="{'add-frame-command-symbol-svg-icon': true, disabled: isPythonExecuting || appStore.isDraggingFrame}" />
         </button>
         <span>{{ description }}</span>
     </div>
@@ -98,5 +98,9 @@ export default Vue.extend({
     color: black;
     width: 10px;
     height: 12px;
+}
+
+.add-frame-command-symbol-svg-icon.disabled {
+    color: rgb(180, 180, 180);
 }
 </style>

@@ -499,7 +499,7 @@ export default Vue.extend({
 
             // Similarly to duplication, not all frames can be pasted at a specifc location.
             // We show the paste entries depending on the possiblity to paste the clipboard. 
-            let canPasteAboveFrame: boolean, canPasteBelowFrame: boolean;
+            let canPasteAboveFrame = false, canPasteBelowFrame = false;
             if(!this.appStore.isCopiedAvailable || this.isPartOfSelection){
                 // If there are no frame to copy, or the click is part of a selection of frames
                 // we just remove all paste menu entries (and the divider following them)
@@ -523,10 +523,35 @@ export default Vue.extend({
                 const isAllowedForJointBelow = !this.isJointFrame
                         || (this.isJointFrame && isCopyJointFrame && !isLastInParent(this.frameId))
                         || (this.isJointFrame && isLastInParent(this.frameId));
-                const caretNavigationPositionAbove = getAboveFrameCaretPosition(this.frameId);
+                // We look for the position above. The reference however depends whether the currently clicked frame is disabled: inside a disabled structure, a frame won't
+                // be always be listed in available positions because the disabled structure is like an unit. In that case, we need to find what is the next available frame.
+                // We first find the outmost disabled frame of the disabled structure (call it MO). If that frame MO is joint frame, the next available frame is inside the next enabled sibling
+                // (that is, its body) OR the joint root frame when there is no next enabled sibling.
+                // If the frame MO is not a joint frame, the next available frame is MO itself.
+                let frameIdToLookAbove = this.frameId;
+                if(this.isDisabled){
+                    const outmostDisabledFrameId = getOutmostDisabledAncestorFrameId(this.frameId);
+                    if(this.appStore.frameObjects[outmostDisabledFrameId].frameType.isJointFrame){
+                        const rootFrameId = this.appStore.frameObjects[outmostDisabledFrameId].jointParentId;
+                        const jointFrameIndex = this.appStore.frameObjects[rootFrameId].jointFrameIds.indexOf(outmostDisabledFrameId);
+                        const nextEnabledSiblingId = this.appStore.frameObjects[rootFrameId].jointFrameIds.find((aJointFrameId, index) => index > jointFrameIndex && !this.appStore.frameObjects[aJointFrameId].isDisabled)??-1;
+                        if(nextEnabledSiblingId > -1){
+                            frameIdToLookAbove = nextEnabledSiblingId; 
+                        }
+                        else{
+                            frameIdToLookAbove = rootFrameId;                            
+                        }
+                    }
+                    else{
+                        frameIdToLookAbove = outmostDisabledFrameId;
+                    }
+                }
+                const caretNavigationPositionAbove = getAboveFrameCaretPosition(frameIdToLookAbove);
                 const targetPasteBelow = this.getTargetPasteBelow();
-                canPasteAboveFrame = isAllowedForJointAbove && (this.appStore.isPasteAllowedAtFrame(caretNavigationPositionAbove.frameId, caretNavigationPositionAbove.caretPosition as CaretPosition));
-                canPasteBelowFrame = isAllowedForJointBelow && (this.appStore.isPasteAllowedAtFrame(targetPasteBelow.id, targetPasteBelow.caretPosition));
+                if(caretNavigationPositionAbove != undefined && targetPasteBelow){
+                    canPasteAboveFrame = isAllowedForJointAbove && (this.appStore.isPasteAllowedAtFrame(caretNavigationPositionAbove.frameId, caretNavigationPositionAbove.caretPosition as CaretPosition));
+                    canPasteBelowFrame = isAllowedForJointBelow && (this.appStore.isPasteAllowedAtFrame(targetPasteBelow.id, targetPasteBelow.caretPosition));
+                }                
                 const sliceNumber = (!canPasteAboveFrame && !canPasteBelowFrame)
                     ? 3 // both paste menu entries and divider
                     : 1; // one of the paste menu entries
@@ -1029,7 +1054,30 @@ export default Vue.extend({
 
         pasteAbove(): void {
             // Perform a paste above this frame
-            const caretNavigationPositionAbove = getAboveFrameCaretPosition(this.frameId);
+            // We look for the position above. The reference however depends whether the currently clicked frame is disabled: inside a disabled structure, a frame won't
+            // be always be listed in available positions because the disabled structure is like an unit. In that case, we need to find what is the next available frame.
+            // We first find the outmost disabled frame of the disabled structure (call it MO). If that frame MO is joint frame, the next available frame is inside the next enabled sibling
+            // (that is, its body) OR the joint root frame when there is no next enabled sibling.
+            // If the frame MO is not a joint frame, the next available frame is MO itself.
+            let frameIdToLookAbove = this.frameId;
+            if(this.isDisabled){
+                const outmostDisabledFrameId = getOutmostDisabledAncestorFrameId(this.frameId);
+                if(this.appStore.frameObjects[outmostDisabledFrameId].frameType.isJointFrame){
+                    const rootFrameId = this.appStore.frameObjects[outmostDisabledFrameId].jointParentId;
+                    const jointFrameIndex = this.appStore.frameObjects[rootFrameId].jointFrameIds.indexOf(outmostDisabledFrameId);
+                    const nextEnabledSiblingId = this.appStore.frameObjects[rootFrameId].jointFrameIds.find((aJointFrameId, index) => index > jointFrameIndex && !this.appStore.frameObjects[aJointFrameId].isDisabled)??-1;
+                    if(nextEnabledSiblingId > -1){
+                        frameIdToLookAbove = nextEnabledSiblingId; 
+                    }
+                    else{
+                        frameIdToLookAbove = rootFrameId;                            
+                    }
+                }
+                else{
+                    frameIdToLookAbove = outmostDisabledFrameId;
+                }
+            }
+            const caretNavigationPositionAbove = getAboveFrameCaretPosition(frameIdToLookAbove);
             if(this.appStore.isSelectionCopied){
                 this.appStore.pasteSelection(
                     {
