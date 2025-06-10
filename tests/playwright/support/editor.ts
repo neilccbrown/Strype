@@ -31,7 +31,7 @@ export async function typeIndividually(page: Page, content: string, timeout = 75
 }
 
 export async function doPagePaste(page: Page, clipboardContent: string, clipboardContentType = "text") : Promise<void> {
-    return page.evaluate(({clipboardContent, clipboardContentType}) => {
+    await page.evaluate(({clipboardContent, clipboardContentType}) => {
         const pasteEvent = new ClipboardEvent("paste", {
             bubbles: true,
             cancelable: true,

@@ -107,7 +107,7 @@ async function clickProportionalPos(page: Page, x: number, y: number) : Promise<
         await page.mouse.click(clickX, clickY);
     }
     else {
-        throw Error("Could not find graphics container to click on");
+        throw new Error("Could not find graphics container to click on");
     }
 }
 
