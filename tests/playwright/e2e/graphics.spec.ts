@@ -100,10 +100,21 @@ async function checkGraphicsAreaContent(page: Page, expectedImageFileName : stri
 
 // x and y are from 0 to 1
 async function clickProportionalPos(page: Page, x: number, y: number) : Promise<void> {
-    const box = await page.locator("#peaGraphicsContainerDiv").boundingBox();
-    if (box) {
-        const clickX = box.x + box.width * x;
-        const clickY = box.y + box.height * y;
+    const canvas = page.locator("#pythonGraphicsCanvas");
+    const box = await canvas.boundingBox();
+    const scale = Number.parseFloat(await canvas.getAttribute("data-scale") ?? "0");
+    
+    if (box && scale > 0) {
+        // The canvas is scaled to fit inside the bounding box:
+        const scaled_width = 800 * scale;
+        const scaled_height = 600 * scale;
+
+        const centerX = box.x + box.width / 2;
+        const centerY = box.y + box.height / 2;
+
+        const clickX = centerX + (x - 0.5) * scaled_width;
+        const clickY = centerY + (y - 0.5) * scaled_height;
+        
         console.log("Clicking at ", clickX, clickY);
         await page.mouse.click(clickX, clickY);
     }
@@ -228,5 +239,39 @@ test.describe("Check graphics works when shared with turtle", () => {
         await clickProportionalPos(page, 0.4, 0.7);
         await page.waitForTimeout(2000);
         await checkGraphicsAreaContent(page, "shared-graphics-mouse-at-mouse-click");
+    });
+
+    test("Check graphics example responds to mouse in large view", async ({page}) => {
+        await enterCode(page, ["from strype.graphics import *\n", "", `
+            set_background("blue")
+            yellow_circle = Image(200,200)
+            yellow_circle.set_fill("yellow")
+            yellow_circle.draw_circle(100, 100, 100)
+            while True:
+                c = get_mouse_click()
+                if c:
+                    Actor(yellow_circle, c.x, c.y)
+                pace(20)        
+        `]);
+        await page.click("#graphicsPEATab");
+        await page.locator("#peaGraphicsContainerDiv").hover();
+        await page.waitForTimeout(1000);
+        await page.click(".pea-toggle-layout-buttons-container > div:nth-child(2)");
+        await page.waitForTimeout(1000);
+        await page.locator(".expanded-PEA-splitter-overlay.strype-split-theme.splitpanes.splitpanes--horizontal > .splitpanes__splitter").hover();
+        await page.mouse.down();
+        await page.mouse.move(500, 200);
+        await page.mouse.up();
+        await page.click("#runButton");
+        await page.waitForTimeout(2000);
+        await clickProportionalPos(page, 100/800, 100/600);
+        await page.waitForTimeout(2000);
+        await clickProportionalPos(page, 700/800, 100/600);
+        await page.waitForTimeout(2000);
+        await clickProportionalPos(page, 100/800, 500/600);
+        await page.waitForTimeout(2000);
+        await clickProportionalPos(page, 700/800, 500/600);
+        await page.waitForTimeout(2000);
+        await checkGraphicsAreaContent(page, "shared-graphics-circle-at-mouse-click-large");
     });
 });

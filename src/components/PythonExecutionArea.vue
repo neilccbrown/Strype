@@ -129,6 +129,7 @@ export default Vue.extend({
             isTurtleListeningMouseEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for mouse events on Turtle
             isTurtleListeningTimerEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for timer events on Turtle
             isRunningStrypeGraphics : false,
+            scaleToFit: 1,
             libraries: [] as string[],
             stopTurtleUIEventListeners: undefined as ((keepShowingTurtleUI: boolean)=>void) | undefined, // registered callback method to clear the Turtle listeners mentioned above
             PEALayoutsData: [
@@ -782,9 +783,10 @@ export default Vue.extend({
             // then use that for both scale dimensions so we preserve the aspect ratio:
             const scaleToFitX = c.width / graphicsCanvasLogicalWidth;
             const scaleToFitY = c.height / graphicsCanvasLogicalHeight;
-            const scaleToFit = Math.min(scaleToFitX, scaleToFitY);
+            this.scaleToFit = Math.min(scaleToFitX, scaleToFitY);
             targetContext?.save();
-            targetContext?.scale(scaleToFit, scaleToFit);
+            targetContext?.scale(this.scaleToFit, this.scaleToFit);
+            domCanvas.setAttribute("data-scale", this.scaleToFit.toString());
             
             for (let obj of persistentImageManager.getPersistentImages()) {
                 if (obj.rotation != 0) {
@@ -848,16 +850,24 @@ export default Vue.extend({
         },
         graphicsCanvasClick(event: PointerEvent) {
             const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
-            // The canvas might be e.g. 200 x 160 (with positive Y down) and we need to translate to the 800x600
-            // logical canvas (with 0, 0 centre) and positive U upwards.
-            // So we first divide by the width or height to get to a 0->1 value (where 0, 0 is top-left), then
-            // we subtract 0.5 to get to -0.5->0.5.  We multiply by 800 or 600 to get us to -399 to 400 (or -299 to 300),
-            // and for Y we also multiply by -1 to flip it:
-            const adjustedX = ((event.offsetX / domCanvas.getBoundingClientRect().width) - 0.5) * graphicsCanvasLogicalWidth + 1;
+            // We use the centres to align real bounding box and scaled:
+            const scaledWidth = graphicsCanvasLogicalWidth * this.scaleToFit;
+            const scaledHeight = graphicsCanvasLogicalHeight * this.scaleToFit;
+            let b = domCanvas.getBoundingClientRect();
+
+            // Offsets relative to centre of item, from -0.5 to +0.5
+            const offsetX = event.offsetX - b.width / 2;
             // We have to invert the Y axis because positive is up there, hence * -1 on the end:
-            const adjustedY = ((event.offsetY / domCanvas.getBoundingClientRect().height) - 0.5) * graphicsCanvasLogicalHeight * -1;
-            mostRecentClickedItems = this.getPersistentImageManager().calculateAllOverlappingAtPos(adjustedX, adjustedY);
-            mostRecentClickDetails = [adjustedX, adjustedY, event.button, event.detail];
+            const offsetY = (event.offsetY - b.height / 2) * -1;
+
+            const adjustedX = (offsetX / scaledWidth) * graphicsCanvasLogicalWidth;
+            const adjustedY = (offsetY / scaledHeight) * graphicsCanvasLogicalHeight;
+
+            if (adjustedX >= -graphicsCanvasLogicalWidth / 2 && adjustedX <= graphicsCanvasLogicalWidth / 2 - 1 &&
+                adjustedY >= -graphicsCanvasLogicalHeight / 2 && adjustedY <= graphicsCanvasLogicalHeight / 2 - 1) {
+                mostRecentClickedItems = this.getPersistentImageManager().calculateAllOverlappingAtPos(adjustedX, adjustedY);
+                mostRecentClickDetails = [adjustedX, adjustedY, event.button, event.detail];
+            }
         },
         consumeLastClickedItems() : PersistentImage[] {
             const r = mostRecentClickedItems;
