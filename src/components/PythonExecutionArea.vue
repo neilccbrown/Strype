@@ -253,7 +253,7 @@ export default Vue.extend({
         
         // Setup Canvas:
         const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
-        domContext = domCanvas.getContext("2d", {alpha: false}) as CanvasRenderingContext2D | null;
+        domContext = domCanvas.getContext("2d", {alpha: true}) as CanvasRenderingContext2D | null;
         // Need to resize off-screen canvas to match, if the on-screen canvas changes size: 
         let adjustCanvasSize = function() {
             // This confused me at first: the <canvas> has a width and height property.  These are initially set
@@ -274,7 +274,7 @@ export default Vue.extend({
             const maxHeight = Math.min(realHeight, (3 / 4) * realWidth);
             const maxWidth = (4 / 3) * maxHeight;
             targetCanvas = new OffscreenCanvas(maxWidth, maxHeight);
-            targetContext = targetCanvas?.getContext("2d", {alpha: false}) as OffscreenCanvasRenderingContext2D;
+            targetContext = targetCanvas?.getContext("2d", {alpha: true}) as OffscreenCanvasRenderingContext2D;
         };
         // Listen to size changes, and call now:
         new ResizeObserver(adjustCanvasSize).observe(domCanvas);
