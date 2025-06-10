@@ -6,6 +6,7 @@
         "serve": "vue-cli-service serve --port 8081",
         "serve:microbit": "cross-env npm_config_microbit=true vue-cli-service serve --port 8081",
         "serve:python": "cross-env npm_config_python=true vue-cli-service serve --port 8081",
+        "serve:python:dist:playwright": "rm -rf temp-scripts/playwright-server && npm run build --python && mkdir -p temp-scripts/playwright-server/editor/ && mv dist/* temp-scripts/playwright-server/editor/ && npx serve -l 8081 temp-scripts/playwright-server",
         "build": "vue-cli-service build",
         "lint:check": "vue-cli-service lint --no-fix --max-warnings 0",
         "lint:fix": "vue-cli-service lint",
@@ -23,7 +24,7 @@
         "test:cypress:python-only": "cross-env WAIT_ON_TIMEOUT=90000 start-server-and-test test:cypress:serve-both http-get://127.0.0.1:8081/editor/ cy:run:python",
         "test:cypress": "cross-env WAIT_ON_TIMEOUT=90000 start-server-and-test test:cypress:serve-both http-get://127.0.0.1:8081/editor/ cy:run:python && cross-env WAIT_ON_TIMEOUT=90000 start-server-and-test serve:microbit http-get://127.0.0.1:8081/microbit/ cy:run:microbit",
         "playwright:run": "npx playwright test",
-        "test:playwright": "cross-env BASE_URL=http://127.0.0.1:8081/editor/ start-server-and-test serve:python http-get://127.0.0.1:8081/editor/ playwright:run"
+        "test:playwright": "cross-env BASE_URL=http://127.0.0.1:8081/editor/ start-server-and-test serve:python:dist:playwright http-get://127.0.0.1:8081/editor/ playwright:run"
     },
     "dependencies": {
         "@fortawesome/free-solid-svg-icons": "^5.15.4",
