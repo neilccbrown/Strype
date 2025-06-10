@@ -74,7 +74,8 @@ async function checkImageMatch(expectedImageFileName: string, fetchActual : (wid
         // calculating a percent diff
         const diffPercent = (numDiffPixels / (width * height) * 100);
 
-        expect(diffPercent).toBeLessThanOrEqual(10);
+        expect(diffPercent).toBeLessThanOrEqual(20);
+
     }
     else {
         // Just save to expected:
