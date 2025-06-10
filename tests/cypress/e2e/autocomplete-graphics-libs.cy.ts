@@ -350,4 +350,18 @@ describe("Modules from libraries", () => {
             checkAutocompleteSorted(acIDSel, true);
         }, true);
     });
+
+    it("Shows completions for return of makeSound", () => {
+        focusEditorAC();
+        // Add graphics import:
+        cy.get("body").type("{uparrow}{uparrow}lhttp://localhost:8089/test-library{rightarrow}fmediacomp{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        // Add a function call frame and trigger auto-complete:
+        cy.get("body").type(" ");
+        cy.wait(500);
+        cy.get("body").type("makeSound('a').{ctrl} ");
+        withAC((acIDSel, frameId) => {
+            cy.get(acIDSel).should("be.visible");
+            checkExactlyOneItem(acIDSel, null, "get_samples()");
+        }, false);
+    });
 });

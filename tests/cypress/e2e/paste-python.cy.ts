@@ -5,137 +5,9 @@ import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 
 import path from "path";
-import i18n from "@/i18n";
 import * as os from "os";
-import {focusEditor} from "../support/expression-test-support";
-import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
-
-// Must clear all local storage between tests to reset the state,
-// and also retrieve the shared CSS and HTML elements IDs exposed
-// by Strype via the Window object of the app.
-let scssVars: {[varName: string]: string};
-let strypeElIds: {[varName: string]: (...args: any[]) => string};
-beforeEach(() => {
-    cy.clearLocalStorage();
-    cy.visit("/",  {onBeforeLoad: (win) => {
-        win.localStorage.clear();
-        win.sessionStorage.clear();
-    }}).then(() => {       
-        // Only need to get the global variables if we haven't done so
-        if(scssVars == undefined){
-            cy.window().then((win) => {
-                scssVars = (win as any)[WINDOW_STRYPE_SCSSVARS_PROPNAME];
-                strypeElIds = (win as any)[WINDOW_STRYPE_HTMLIDS_PROPNAME];
-            });
-        }
-        // The Strype IDs and CSS class names aren't directly used in the test
-        // but they are used in the support file, so we make them available.
-        cy.initialiseSupportStrypeGlobals();
-
-        // Wait for code initialisation
-        cy.wait(2000);
-    });
-});
-
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-Cypress.Commands.add("paste",
-    {prevSubject : true},
-    ($element, data) => {
-        const clipboardData = new DataTransfer();
-        clipboardData.setData("text", data);
-        const pasteEvent = new ClipboardEvent("paste", {
-            bubbles: true,
-            cancelable: true,
-            clipboardData,
-        });
-
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        cy.get($element).then(() => {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            $element[0].dispatchEvent(pasteEvent);
-        });
-    });
-
-function focusEditorPasteAndClear(): void {
-    // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
-    // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
-    cy.get("#" + strypeElIds.getFrameUID(-3), {timeout: 15 * 1000}).focus();
-    // Delete existing content (bit of a hack):
-    cy.get("body").type("{uparrow}{uparrow}{uparrow}{del}{downarrow}{downarrow}{downarrow}{downarrow}{backspace}{backspace}");
-}
-
-function checkDownloadedCodeEquals(fullCode: string) : void {
-    const downloadsFolder = Cypress.config("downloadsFolder");
-    cy.task("deleteFile", path.join(downloadsFolder, "main.py"));
-    // Conversion to Python is located in the menu, so we need to open it first, then find the link and click on it
-    // Force these because sometimes cypress gives false alarm about webpack overlay being on top:
-    cy.get("button#" + strypeElIds.getEditorMenuUID()).click({force: true});
-    cy.contains(i18n.t("appMenu.downloadPython") as string).click({force: true});
-
-    cy.readFile(path.join(downloadsFolder, "main.py")).then((p : string) => {
-        // Before comparing, we fix up a few oddities of our generated code:
-        // Get rid of any spaces at end of lines:
-        p = p.replaceAll(/ +\n/g, "\n");
-        // Get rid of spaces before colons at end of line:
-        p = p.replaceAll(/ +:\n/g, ":\n");
-        // Get rid of spaces before closing brackets:
-        p = p.replace(/ +([)\]}])/g, "$1");
-        // Get rid of any multiple spaces between words:
-        p = p.replace(/([^ \n])  +([^ ])/g, "$1 $2");
-        // Print out full version in message (without escaped \n), to make it easier to diff:
-        expect(p, "Actual unescaped:\n" + p).to.equal(fullCode);
-    });
-}
-
-// if expected is missing, use the original code
-function testRoundTripPasteAndDownload(code: string, extraPositioning?: string, expected?: string, retainExisting?: boolean) {
-    if (retainExisting) {
-        focusEditor();
-    }
-    else {
-        // Delete existing:
-        focusEditorPasteAndClear();
-    }
-    if (extraPositioning) {
-        cy.get("body").type(extraPositioning);
-    }
-    // Get rid of any Windows file endings:
-    code = code.replaceAll(/\r\n/g, "\n");
-        
-    (cy.get("body") as any).paste(code);
-    checkDownloadedCodeEquals(expected ?? code);
-    // Refocus the editor and go to the bottom:
-    cy.get("#" + strypeElIds.getFrameUID(-3)).focus();
-    cy.get("body").type("{end}");
-}
-
-function testRoundTripImportAndDownload(filepath: string, expected?: string) {
-    // The filename is a path, fixture just needs the filename:
-    cy.readFile(filepath).then((py) => {
-        // Delete existing:
-        focusEditorPasteAndClear();
-
-        cy.get("#" + strypeElIds.getEditorMenuUID()).click();
-        cy.get("#" + strypeElIds.getLoadProjectLinkId()).click();
-        // If the current state of the project is modified,
-        // we first need to discard the changes (we check the button is available)
-        cy.get("button").contains(i18n.t("buttonLabel.discardChanges") as string).should("exist").click();
-        cy.wait(2000);
-        // The "button" for the target selection is now a div element.
-        cy.get("#" + strypeElIds.getLoadFromFSStrypeButtonId()).click();
-        // Must force because the <input> is hidden:
-        cy.get("." + scssVars.editorFileInputClassName).selectFile(filepath, {force : true});
-        cy.wait(2000);
-        
-        checkDownloadedCodeEquals(expected ?? py);
-        // Refocus the editor and go to the bottom:
-        cy.get("#" + strypeElIds.getFrameUID(-3)).focus();
-        cy.get("body").type("{end}");
-    });
-}
+import "../support/paste-test-support";
+import { focusEditorAndClear, checkDownloadedCodeEquals, testRoundTripPasteAndDownload, testRoundTripImportAndDownload, scssVars } from "../support/paste-test-support";
 
 
 describe("Python round-trip", () => {
@@ -306,14 +178,14 @@ from a.b.c import *
                     else:
                         x = -1
                     x = x * x
-`, "", `
+`.slice(1), "", `
 if x>0:
     x = 0
     x = 1
 else:
     x = -1
 x = x*x
-`);
+`.slice(1));
     });
     it("Handles multiple functions that are all indented the same amount", () => {
         testRoundTripPasteAndDownload(`
@@ -349,7 +221,7 @@ elif False:
     y = 1
 else:
     z = 2
-        `.trimEnd() + "\n";
+        `.trim() + "\n";
         testRoundTripPasteAndDownload(bareIfElifElseCode);
         // Now we should be after the whole thing:
         testRoundTripPasteAndDownload("alpha = 6", "{uparrow}", `
@@ -360,7 +232,7 @@ elif False:
 else:
     z = 2
     alpha = 6
-             `.trimEnd() + "\n", true);
+             `.trim() + "\n", true);
         testRoundTripPasteAndDownload("beta = 7", "{uparrow}{uparrow}{uparrow}{uparrow}", `
 if True:
     x = 0
@@ -370,7 +242,7 @@ elif False:
 else:
     z = 2
     alpha = 6
-        `.trimEnd() + "\n", true);
+        `.trim() + "\n", true);
     });
 
     it("Allows pasting inside elif/else, nested", () => {
@@ -386,7 +258,7 @@ else:
             pass
         else:
             z = 2
-        `.trimEnd() + "\n";
+        `.trim() + "\n";
         testRoundTripPasteAndDownload(bareIfElifElseCode);
         // Now we should be after the whole thing:
         testRoundTripPasteAndDownload("alpha = 6", "{uparrow}{uparrow}{uparrow}", `
@@ -401,7 +273,7 @@ else:
         else:
             z = 2
             alpha = 6
-             `.trimEnd() + "\n", true);
+             `.trim() + "\n", true);
     });
 
     it("Allows pasting inside except/finally", () => {
@@ -413,7 +285,7 @@ except e:
     y = 1
 finally:
     z = 2
-        `.trimEnd() + "\n";
+        `.trim() + "\n";
         testRoundTripPasteAndDownload(bareTryExceptFinallyCode);
         // Now we should be after the whole thing:
         testRoundTripPasteAndDownload("alpha = 6", "{uparrow}", `
@@ -424,7 +296,7 @@ except e:
 finally:
     z = 2
     alpha = 6
-             `.trimEnd() + "\n", true);
+             `.trim() + "\n", true);
         testRoundTripPasteAndDownload("beta = 7", "{uparrow}{uparrow}{uparrow}{uparrow}", `
 try:
     x = 0
@@ -434,7 +306,7 @@ except e:
 finally:
     z = 2
     alpha = 6
-        `.trimEnd() + "\n", true);
+        `.trim() + "\n", true);
     });
     
     it("Allows pasting else/elif at only the right places", () => {
@@ -531,7 +403,7 @@ function assertVisibleError(error: RegExp | null) {
 
 // If error is null, there shouldn't be an error banner
 function assertPasteError(codeToPaste: string, error: RegExp | null) {
-    focusEditorPasteAndClear();
+    focusEditorAndClear();
     (cy.get("body") as any).paste(codeToPaste);
     assertVisibleError(error);
 }
@@ -544,9 +416,9 @@ describe("Python paste errors", () => {
         assertPasteError("    x", null);
     });
     it("Shows an error on invalid paste", () => {
-        assertPasteError("!", /Invalid Python code pasted.*!/);
-        assertPasteError("ifg True:\n    pass", /Invalid Python code pasted.*True/);
-        assertPasteError("if True:\n    invalid%%%", /Invalid Python code pasted.*%%%/);
+        assertPasteError("!", /Invalid Python code.*!/);
+        assertPasteError("ifg True:\n    pass", /Invalid Python code.*True/);
+        assertPasteError("if True:\n    invalid%%%", /Invalid Python code.*%%%/);
         // We have a different message for when we paste an else with more content after (which we can't handle)
         assertPasteError("else:\n    pass\nprint(\"Hi\")", /else/);
     });
@@ -557,20 +429,29 @@ def outer():
     def inner():
         pass
     pass
-`, /Invalid Python code pasted.*section/);
+`, /Invalid Python code .*/);
     });
-    it("Forbids nested imports or functions in main code", () => {
-        assertPasteError(`
+    it("Moves nested functions in main code", () => {
+        testRoundTripPasteAndDownload(`
 if True:
     def inner():
-        pass
+        return 7
     pass
-`,/Invalid Python code pasted.*section/);
-        assertPasteError(`
+`, "", `def inner ():
+    return 7
+if True:
+    pass
+`);
+    });
+    it("Moves nested imports in main code", () => {
+        testRoundTripPasteAndDownload(`
 if True:
     import random
     random.random()
-`,/Invalid Python code pasted.*section/);
+`,"", `import random
+if True:
+    random.random()
+`);
     });
 });
 

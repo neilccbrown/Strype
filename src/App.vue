@@ -104,7 +104,7 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane, PaneData} from "splitpanes";
 import { useStore, settingsStore } from "@/store/store";
-import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, GAPIState, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction } from "@/types/types";
+import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, GAPIState, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction } from "@/types/types";
 import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames } from "./helpers/editor";
 /* IFTRUE_isPython */
 import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getPEAComponentRefId } from "@/helpers/editor";
@@ -118,7 +118,7 @@ import { getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retri
 import { cloneDeep } from "lodash";
 import { VueContextConstructor } from "vue-context";
 import { BACKEND_SKULPT_DIV_ID } from "@/autocompletion/ac-skulpt";
-import {copyFramesFromParsedPython, splitLinesToSections, STRYPE_LOCATION} from "@/helpers/pythonToFrames";
+import {pasteMixedPython} from "@/helpers/pythonToFrames";
 import GoogleDrive from "@/components/GoogleDrive.vue";
 import { BvEvent, BvModalEvent } from "bootstrap-vue";
 import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
@@ -1217,46 +1217,9 @@ export default Vue.extend({
         
         setStateFromPythonFile(completeSource: string, fileName: string, lastSaveDate: number, fileLocation?: FileSystemFileHandle) : Promise<void> {
             return new Promise((resolve) => {
-                const allLines = completeSource.split(/\r?\n/);
-                // Split can make an extra blank line at the end which we don't want:
-                if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
-                    allLines.pop();
-                }
-                const s = splitLinesToSections(allLines);
-                // Bit awkward but we first attempt to copy each to check for errors because
-                // if there are any errors we don't want to paste any:
-                let err = copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.importsMapping);
-                if (typeof err != "string") {
-                    err = copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.FUNCDEF_SECTION, s.defsMapping);
-                }
-                if (typeof err != "string") {
-                    err = copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION, s.mainMapping);
-                }
-                if (typeof err == "string") {
-                    const msg = cloneDeep(MessageDefinitions.InvalidPythonParseImport);
-                    const msgObj = msg.message as FormattedMessage;
-                    msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, err);
-                    
-                    useStore().showMessage(msg, 10000);
-                }
-                else {
-                    // Clear the current existing code (i.e. frames) of the editor
-                    this.appStore.clearAllFrames();
+                const s = pasteMixedPython(completeSource, true);
 
-                    copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION);
-                    if (useStore().copiedSelectionFrameIds.length > 0) {
-                        getCaretContainerComponent(getFrameComponent(this.appStore.getImportsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste();
-                    }
-                    copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.FUNCDEF_SECTION);
-                    if (useStore().copiedSelectionFrameIds.length > 0) {
-                        getCaretContainerComponent(getFrameComponent(this.appStore.getFuncDefsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste();
-                    }
-                    if (s.main.length > 0) {
-                        copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION);
-                        if (useStore().copiedSelectionFrameIds.length > 0) {
-                            getCaretContainerComponent(getFrameComponent(this.appStore.getMainCodeFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste();
-                        }
-                    }
+                if (s != null) {
 
                     // Now we can clear other non-frame related elements
                     this.appStore.clearNoneFrameRelatedState();

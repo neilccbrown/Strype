@@ -835,6 +835,9 @@ def load_image(name):
     :param name: The nameof the image to load, as shown in the Strype image library.
     :return: An :class:`Image` object with the library image.
     """
+    # If they mistakenly try to load an image (e.g. a literal) just let it through:
+    if isinstance(name, Image):
+        return name
     img = Image(-1, -1)
     img._Image__image = _strype_graphics_internal.htmlImageToCanvas(_strype_graphics_internal.loadAndWaitForImage(name))
     return img

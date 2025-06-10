@@ -465,7 +465,26 @@ export default Vue.extend({
                 // There is a selection already, we can directly set the text in the browser's clipboard here
                 const selectionText = getEditableSelectionText();
                 if (selectionText) {
-                    navigator.clipboard.writeText(selectionText);
+                    // If it's a media literal, we copy the literal content and text to the clipboard:
+                    const litMatch = selectionText.match(/^load_(image|sound)\("data:([^;]+);base64,([^"]+)"\)$/);
+                    if (litMatch) {
+                        const mimeType = litMatch[2];
+
+                        // Convert base64 to binary data:
+                        const binary = atob(litMatch[3]);
+                        const bytes = new Uint8Array(binary.length);
+                        for (let i = 0; i < binary.length; i++) {
+                            bytes[i] = binary.charCodeAt(i);
+                        }
+                        const blob = new Blob([bytes], { type: mimeType });
+                        const mediaItem = new ClipboardItem({ [mimeType]: blob });
+                        const textItem = new ClipboardItem({ "text/plain": new Blob([selectionText], { type: "text/plain" }) });
+                        navigator.clipboard.write([textItem, mediaItem]);
+                    }
+                    else {
+                        // Otherwise we just copy the text:
+                        navigator.clipboard.writeText(selectionText);
+                    }
                     if (event.key.toLowerCase() == "x" && this.appStore.focusSlotCursorInfos) {
                         // Send fake delete key to delete the content:
                         document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
