@@ -20,7 +20,7 @@
             <Splitpanes :class="{'strype-PEA-split-theme': true, 'with-expanded-PEA': isExpandedPEA, 'tabs-PEA': isTabsLayout}" :horizontal="!isExpandedPEA" @resize="onSplitterPane1Resize">
                 <pane :id="graphicsSplitPaneId" key="1" v-show="isGraphicsAreaShowing" :size="(isTabsLayout) ? 100 : currentSplitterPane1Size" min-size="5">
                     <div :id="graphicsContainerDivId" @wheel.stop :class="{'pea-graphics-container': true, hidden: graphicsTemporaryHidden}">
-                        <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @click.stop="graphicsCanvasClick"></canvas>
+                        <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @mousedown.stop="graphicsCanvasMouseDown" @mouseup.stop="graphicsCanvasMouseUp" @mousemove="graphicsCanvasMouseMove"></canvas>
                         <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
                             <div :id="graphicsDivId" ref="pythonTurtleDiv" class="pea-graphics-div"></div>
                         </div> 
@@ -80,6 +80,7 @@ let targetCanvas : OffscreenCanvas | null = null;
 let audioContext : AudioContext | null = null; // Important we don't initialise here, for permission reasons
 let mostRecentClickedItems : PersistentImage[] = []; // All the items under the mouse cursor at last click
 let mostRecentClickDetails : number[] | null = null; // Array of four numbers: x, y, button, click_count
+let mostRecentMouseDetails : [number, number, [boolean, boolean, boolean]] = [0, 0, [false, false, false]]; // X, Y, three button states
 const pressedKeys = new Map<string, boolean>();
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
 const bufferToSource = new Map<AudioBuffer, AudioBufferSourceNode>(); // Used to stop playing sounds
@@ -129,6 +130,7 @@ export default Vue.extend({
             isTurtleListeningMouseEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for mouse events on Turtle
             isTurtleListeningTimerEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for timer events on Turtle
             isRunningStrypeGraphics : false,
+            scaleToFit: 1,
             libraries: [] as string[],
             stopTurtleUIEventListeners: undefined as ((keepShowingTurtleUI: boolean)=>void) | undefined, // registered callback method to clear the Turtle listeners mentioned above
             PEALayoutsData: [
@@ -252,7 +254,7 @@ export default Vue.extend({
         
         // Setup Canvas:
         const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
-        domContext = domCanvas.getContext("2d", {alpha: false}) as CanvasRenderingContext2D | null;
+        domContext = domCanvas.getContext("2d", {alpha: true}) as CanvasRenderingContext2D | null;
         // Need to resize off-screen canvas to match, if the on-screen canvas changes size: 
         let adjustCanvasSize = function() {
             // This confused me at first: the <canvas> has a width and height property.  These are initially set
@@ -273,7 +275,7 @@ export default Vue.extend({
             const maxHeight = Math.min(realHeight, (3 / 4) * realWidth);
             const maxWidth = (4 / 3) * maxHeight;
             targetCanvas = new OffscreenCanvas(maxWidth, maxHeight);
-            targetContext = targetCanvas?.getContext("2d", {alpha: false}) as OffscreenCanvasRenderingContext2D;
+            targetContext = targetCanvas?.getContext("2d", {alpha: true}) as OffscreenCanvasRenderingContext2D;
         };
         // Listen to size changes, and call now:
         new ResizeObserver(adjustCanvasSize).observe(domCanvas);
@@ -481,6 +483,7 @@ export default Vue.extend({
                 // Clear input:
                 mostRecentClickedItems = [];
                 mostRecentClickDetails = null;
+                mostRecentMouseDetails = [0, 0, [false, false, false]];
                 pressedKeys.clear();
                 window.addEventListener("keydown", this.graphicsCanvasKeyDown);
                 window.addEventListener("keyup", this.graphicsCanvasKeyUp);
@@ -782,9 +785,10 @@ export default Vue.extend({
             // then use that for both scale dimensions so we preserve the aspect ratio:
             const scaleToFitX = c.width / graphicsCanvasLogicalWidth;
             const scaleToFitY = c.height / graphicsCanvasLogicalHeight;
-            const scaleToFit = Math.min(scaleToFitX, scaleToFitY);
+            this.scaleToFit = Math.min(scaleToFitX, scaleToFitY);
             targetContext?.save();
-            targetContext?.scale(scaleToFit, scaleToFit);
+            targetContext?.scale(this.scaleToFit, this.scaleToFit);
+            domCanvas.setAttribute("data-scale", this.scaleToFit.toString());
             
             for (let obj of persistentImageManager.getPersistentImages()) {
                 if (obj.rotation != 0) {
@@ -846,18 +850,42 @@ export default Vue.extend({
             }
             // It's not an error if source is null, it either means the sound hasn't been playing, or it already finished
         },
-        graphicsCanvasClick(event: PointerEvent) {
+        getLogicalMouseCoords(event: PointerEvent) {
             const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
-            // The canvas might be e.g. 200 x 160 (with positive Y down) and we need to translate to the 800x600
-            // logical canvas (with 0, 0 centre) and positive U upwards.
-            // So we first divide by the width or height to get to a 0->1 value (where 0, 0 is top-left), then
-            // we subtract 0.5 to get to -0.5->0.5.  We multiply by 800 or 600 to get us to -399 to 400 (or -299 to 300),
-            // and for Y we also multiply by -1 to flip it:
-            const adjustedX = ((event.offsetX / domCanvas.getBoundingClientRect().width) - 0.5) * graphicsCanvasLogicalWidth + 1;
+            // We use the centres to align real bounding box and scaled:
+            const scaledWidth = graphicsCanvasLogicalWidth * this.scaleToFit;
+            const scaledHeight = graphicsCanvasLogicalHeight * this.scaleToFit;
+            let b = domCanvas.getBoundingClientRect();
+
+            // Offsets relative to centre of item, from -0.5 to +0.5
+            const offsetX = event.offsetX - b.width / 2;
             // We have to invert the Y axis because positive is up there, hence * -1 on the end:
-            const adjustedY = ((event.offsetY / domCanvas.getBoundingClientRect().height) - 0.5) * graphicsCanvasLogicalHeight * -1;
-            mostRecentClickedItems = this.getPersistentImageManager().calculateAllOverlappingAtPos(adjustedX, adjustedY);
-            mostRecentClickDetails = [adjustedX, adjustedY, event.button, event.detail];
+            const offsetY = (event.offsetY - b.height / 2) * -1;
+
+            const adjustedX = (offsetX / scaledWidth) * graphicsCanvasLogicalWidth;
+            const adjustedY = (offsetY / scaledHeight) * graphicsCanvasLogicalHeight;
+            return {adjustedX, adjustedY};
+        },
+        graphicsCanvasMouseDown(event: PointerEvent) {
+            const {adjustedX, adjustedY} = this.getLogicalMouseCoords(event);
+
+            if (adjustedX >= -graphicsCanvasLogicalWidth / 2 && adjustedX <= graphicsCanvasLogicalWidth / 2 - 1 &&
+                adjustedY >= -graphicsCanvasLogicalHeight / 2 && adjustedY <= graphicsCanvasLogicalHeight / 2 - 1) {
+                mostRecentClickedItems = this.getPersistentImageManager().calculateAllOverlappingAtPos(adjustedX, adjustedY);
+                mostRecentClickDetails = [adjustedX, adjustedY, event.button, event.detail];
+                mostRecentMouseDetails[2][event.button] = true;
+            }
+        },
+        graphicsCanvasMouseMove(event: PointerEvent) {
+            const {adjustedX, adjustedY} = this.getLogicalMouseCoords(event);
+            if (adjustedX >= -graphicsCanvasLogicalWidth / 2 && adjustedX <= graphicsCanvasLogicalWidth / 2 - 1 &&
+                adjustedY >= -graphicsCanvasLogicalHeight / 2 && adjustedY <= graphicsCanvasLogicalHeight / 2 - 1) {
+                mostRecentMouseDetails[0] = adjustedX;
+                mostRecentMouseDetails[1] = adjustedY;
+            }
+        },
+        graphicsCanvasMouseUp(event: PointerEvent) {
+            mostRecentMouseDetails[2][event.button] = false;
         },
         consumeLastClickedItems() : PersistentImage[] {
             const r = mostRecentClickedItems;
@@ -868,6 +896,9 @@ export default Vue.extend({
             const d = mostRecentClickDetails;
             mostRecentClickDetails = null;
             return d;
+        },
+        getMouseDetails(): [number, number, [boolean, boolean, boolean]] {
+            return mostRecentMouseDetails;
         },
         graphicsCanvasKeyDown(event: KeyboardEvent) {
             pressedKeys.set(keyMapping.get(event.key) ?? event.key.toLowerCase(), true);

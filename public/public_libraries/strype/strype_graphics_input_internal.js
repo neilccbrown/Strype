@@ -23,6 +23,12 @@ var $builtinmodule = function(name)  {
         return Sk.ffi.remapToPy(d);
     });
 
+    mod.getMouseDetails = new Sk.builtin.func(function() {
+        const d = peaComponent.__vue__.getMouseDetails();
+        // Should be an array of two numbers and a boolean array so need special mapping consideration:
+        return new Sk.builtin.list([Sk.ffi.remapToPy(d[0]), Sk.ffi.remapToPy(d[1]), Sk.ffi.remapToPy(d[2])]);
+    });
+
     mod.getPressedKeys = new Sk.builtin.func(function() {
         return Sk.ffi.remapToPy(peaComponent.__vue__.getPressedKeys());
     });

@@ -398,6 +398,8 @@ describe("Collision detection", () => {
         // Then we find all the colliding ones in a radius and colour them red
         runCodeAndCheckImage("", `
             circle_guide = Image(800, 600)
+            circle_guide.set_fill("black")
+            circle_guide.fill()
             circle_guide.set_stroke(None)
             circle_guide.set_fill("#555555")
             circle_guide.draw_circle(400, 300, 200)
@@ -423,6 +425,8 @@ describe("Collision detection", () => {
         // Then we find all the colliding ones in a radius and colour them red
         runCodeAndCheckImage("", `
             circle_guide = Image(800, 600)
+            circle_guide.set_fill("black")
+            circle_guide.fill()
             circle_guide.set_stroke(None)
             circle_guide.set_fill("#555555")
             circle_guide.draw_circle(400, 300, 200)
