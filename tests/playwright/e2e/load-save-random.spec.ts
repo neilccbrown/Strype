@@ -39,7 +39,8 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         // On Windows+Webkit it just can't seem to load the page for some reason:
         testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
     }
-    
+
+    // These tests can take longer than the default 30 seconds:
     testInfo.setTimeout(90000); // 90 seconds
     
     strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);

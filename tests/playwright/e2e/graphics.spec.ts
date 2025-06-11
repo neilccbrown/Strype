@@ -7,12 +7,17 @@ import {PNG} from "pngjs";
 import fs from "fs";
 import {doPagePaste} from "../support/editor";
 
+// The tests in this file can't run in parallel because they download
+// to the same filenames, so need to run one at a time.
+test.describe.configure({ mode: "serial" });
+
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && process.platform === "win32") {
         // On Windows+Webkit it just can't seem to load the page for some reason:
         testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
     }
 
+    // These tests can take longer than the default 30 seconds:
     testInfo.setTimeout(90000); // 90 seconds
     
     await page.goto("./", {waitUntil: "load"});
