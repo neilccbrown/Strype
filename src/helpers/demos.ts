@@ -25,6 +25,7 @@ const DemosSchema = z.array(DemoSchema);
 
 export interface DemoGroup {
     name: string;
+    type?: string;
     demos: Promise<Demo[]>;
 }
 
@@ -35,7 +36,8 @@ export function getThirdPartyLibraryDemos(library: string) : DemoGroup {
     const lastSlash = cleaned.lastIndexOf("/");
     const libraryShortName = lastSlash !== -1 ? cleaned.substring(lastSlash + 1) : cleaned;
     return {
-        name: "Library " + libraryShortName,
+        name: libraryShortName,
+        type: "Library",
         demos: getTextFileFromLibraries([library], "demos/index.yaml").then((text) => {
             if (text != null) {
                 const rawData = yaml.load(text);
@@ -46,7 +48,7 @@ export function getThirdPartyLibraryDemos(library: string) : DemoGroup {
                     demos.push({
                         name: y.name,
                         description: y.description,
-                        image: {dataURL: y.image ? getRawFileFromLibraries([library], new URL(y.image, "demos/").toString()).then((imgResp) => {
+                        image: {dataURL: y.image ? getRawFileFromLibraries([library], "demos/" + y.image).then((imgResp) => {
                             // Only allow bitmap images; SVG+XML might have Javascript inside, which we wouldn't want to run:
                             if (!imgResp?.mimeType || !["image/png", "image/jpeg", "image/webp"].includes(imgResp?.mimeType)) {
                                 return undefined;
@@ -56,7 +58,7 @@ export function getThirdPartyLibraryDemos(library: string) : DemoGroup {
                             const type = imgResp.mimeType;
                             return `data:${type};base64,${base64}`;
                         }) : Promise.resolve(undefined)},
-                        demoFile: () => getTextFileFromLibraries([library], new URL(y.file, "demos/").toString()),
+                        demoFile: () => getTextFileFromLibraries([library], "demos/" + y.file),
                     });
                 }
                 return demos;

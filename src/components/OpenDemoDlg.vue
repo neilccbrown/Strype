@@ -16,6 +16,7 @@
                     @click="changeDemoDialogCategory(index, item.demos)"
                     button
                 >
+                    <span class="open-demo-dlg-demo-group-type" v-if="item.type">{{item.type}}</span>
                     {{ item.name }}
                 </b-list-group-item>
             </b-list-group>
@@ -79,7 +80,7 @@ export default Vue.extend({
             // We only need to parse the imports container:
             p.parse(-1, -2);
             // Then we can get the libraries and look for demos:
-            for (const library of p.getLibraries()) {
+            for (const library of [...new Set(["github:k-pet-group/mediacomp-strype", ...p.getLibraries()])]) {
                 this.availableDemos.push(getThirdPartyLibraryDemos(library));
             }
         },
@@ -175,5 +176,10 @@ span.open-demo-dlg-description {
 }
 .open-demo-dlg-selected-demo-item span.open-demo-dlg-description {
   color: #eee;
+}
+.open-demo-dlg-demo-group-type {
+    display: block;
+    color: #999;
+    font-size: 80%;
 }
 </style>
