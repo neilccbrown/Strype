@@ -148,7 +148,8 @@
     "redo": "Redo",
     "delete": "Delete",
     "deleteOuter": "Delete Outer",
-    "insert": "Insert"
+    "insert": "Insert",
+    "screenshotGraphics": "Download screenshot"
   },
   "appMenu": {
     "downloadHex": "Convert to Hex file",
