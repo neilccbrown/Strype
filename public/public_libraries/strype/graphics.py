@@ -862,13 +862,26 @@ def get_mouse_click():
     
     This function is independent of `get_clicked_actor()`; they will potentially report details of the same mouse click it was on an actor.
     
-    :return: A named tuple with details of the last click: `(x, y, button, click_count)` where button is 0 for primary (left), 1 for secondary (right); or None if the mouse was not clicked since the last call.
+    :return: A named tuple with details of the last click: `(x, y, button, click_count)` where button is 0 for primary (left), 1 for secondary (right) or 2 for middle; or None if the mouse was not clicked since the last call.
     """
     c = _strype_input_internal.getAndResetClickDetails()
     if c is None:
         return None
     else:
         return _ClickDetails(c[0], c[1], c[2], c[3])
+
+_MouseDetails = _collections.namedtuple("MouseDetails", ["x", "y", "buttons_held"])
+
+def get_mouse():
+    # type: () -> _MouseDetails
+    """
+    Get the details for current mouse state.
+    
+    :return: A named tuple with details of the last click: `(x, y, buttons_held)` where buttons_held is a three-item array of booleans: 0 for primary (left), 1 for secondary (right), 2 for middle.
+    """
+    c = _strype_input_internal.getMouseDetails()
+    return _MouseDetails(c[0], c[1], c[2])
+
 
 def key_pressed(keyname):
     # type: (str) -> bool
