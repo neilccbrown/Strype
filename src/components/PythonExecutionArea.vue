@@ -2,7 +2,7 @@
 <template>
     <div :id="peaComponentId" :class="{'pea-component': true, [scssVars.expandedPEAClassName]: isExpandedPEA, 'no-43-ratio-collapsed-PEA': !hasDefault43Ratio && !isExpandedPEA}" ref="peaComponent" @mousedown="handlePEAMouseDown">
         <vue-context ref="menu" @open="handleContextMenuOpened" @close="handleContextMenuClosed" id="PEAcontextmenu">
-            <li :action-name="screenshotMenuActionName"><a @click.stop="screenshotGraphicsArea(); closeContextMenu()" @mouseover="handleContextMenuHover">{{$i18n.t("contextMenu.screenshotGraphics")}}</a></li>
+            <li><a @click.stop="screenshotGraphicsArea(); closeContextMenu()" @mouseover="handleContextMenuHover">{{$i18n.t("contextMenu.screenshotGraphics")}}</a></li>
         </vue-context>
         <div :id="controlsDivId" :class="{'pea-controls-div': true, 'expanded-PEA-controls': isExpandedPEA}">           
             <b-tabs v-show="isTabsLayout" v-model="peaDisplayTabIndex" no-key-nav>
