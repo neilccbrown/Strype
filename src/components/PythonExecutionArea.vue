@@ -74,6 +74,8 @@ import scssVars from "@/assets/style/_export.module.scss";
 import {getLibraryName, getRawFileFromLibraries} from "@/helpers/libraryManager";
 import VueContext, { VueContextConstructor } from "vue-context";
 import {getDateTimeFormatted} from "@/helpers/common";
+import audioBufferToWav from "audiobuffer-to-wav";
+import { saveAs } from "file-saver";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
@@ -752,6 +754,12 @@ export default Vue.extend({
                 throw new Error("Problem initialising audio");
             }
             return audioContext;
+        },
+        
+        downloadWAV(src: AudioBuffer, filenameStem: string) : void {
+            const wavArrayBuffer = audioBufferToWav(src);
+            const blob = new Blob([wavArrayBuffer], { type: "audio/wav" });
+            saveAs(blob, `${filenameStem}_${getDateTimeFormatted(new Date(Date.now()))}.png`);
         },
         
         redrawCanvasIfNeeded() : void {

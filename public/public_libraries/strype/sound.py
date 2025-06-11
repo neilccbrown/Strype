@@ -1,6 +1,11 @@
 import strype_sound_internal as _strype_sound_internal
+import time as _time
 
 class Sound:
+    # Tracks the rate limiting for downloads:
+    __last_download = _time.time()
+    # type: float
+    
     def __init__(self, seconds, samples_per_second = 44100):
         # type: (float, float) -> None
         """
@@ -99,6 +104,33 @@ class Sound:
         :return: The number of samples per second in the sound.
         """
         return _strype_sound_internal.getSampleRate(self.__buffer)
+
+    def download(self, filename="strype-sound"):
+        # type: (str) -> None
+        """
+        Triggers a download of this sound as a WAV sound file.  You can optionally
+        pass a file name (you do not need to include the file extension, Strype
+        will add that automatically).  To help you distinguish downloads
+        from repeated runs, Strype will automatically add a timestamp to the file.
+        
+        To avoid problems with accidentally calling this method too often, Strype
+        will limit the rate of downloads to at most one every 2 seconds.
+        
+        :param filename: The main part of the filename to use for the downloaded file.
+        """
+        # We add a kind of rate limiter for downloads.  This is not necessary from a technical perspective,
+        # but imagine the user accidentally puts their download inside a tight loop; they may trigger the
+        # download of 100 files before they realised what has happened.  I'm not sure if browsers will
+        # protect against this.  So we protect against this by limiting downloads to only happening every
+        # 2 seconds.  It's easier to do this on the Python side than on the Javascript side (where we'd have
+        # to mess with promises and Skulpt suspensions.  This is already wrapped up into the Python time
+        # module anyway:        
+        now = _time.time()
+        # If it's less than 2 seconds since last download, wait:
+        if now < Sound.__last_download + 2:
+            _time.sleep(Sound.__last_download + 2 - now)
+        _strype_sound_internal.downloadWAV(self.__buffer, filename)
+        Sound.__last_download = _time.time()
 
 def load_sound(source):
     # type: (str) -> Sound
