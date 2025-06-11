@@ -2,7 +2,9 @@
 // that it does not import other parts of the code (e.g. i18n) that can't work outside webpack
 
 import {getFileFromLibraries} from "@/helpers/libraryManager";
+//TODO : these 2 imports might create issues (see above). Use some conditional directives to skip parts?
 import { skupltReadFileIO } from "@/helpers/skulptFileIO";
+import i18n from "@/i18n";
 
 declare const Sk: any;
 
@@ -16,9 +18,9 @@ export const OUR_PUBLIC_LIBRARY_MODULES = OUR_PUBLIC_LIBRARY_FILES.map((f) => f.
 
 // The function used for "input" from Skulpt, to be registered against the Skulpt object
 // (this is the default behaviour that can be overwritten if needed)
-export function skulptReadPythonLib(libraryAddresses: string[]) : ((x : string) => string) {
+export function skulptReadPythonLib(libraryAddresses: string[]) : ((x : string, fileMode?: string) => string) {
     console.log("In skulptReadPythonLib");
-    return (x) => {
+    return (x, fileMode) => {
         // Prefer built-ins, then our libraries, then third-party
         // (partly for speed; don't want to try fetching if we don't have to):
         if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined) {
@@ -28,9 +30,8 @@ export function skulptReadPythonLib(libraryAddresses: string[]) : ((x : string) 
                         .then((r) => r.text())
                 );
             }
-            if (!x.endsWith(".py") && !x.endsWith(".js")) {
-                /* TODO COMMENT : test for DS file IO (csv, txt, tsv, xml?)*/
-                if([".csv", ".txt", ".tsv", ".xml"].includes(x.substring(x.lastIndexOf(".")))) {
+            if (!x.endsWith(".py")) {
+                if(!x.endsWith(".js")) {
                     // We need to open a file from Google Drive.
                     // Two situations can happen: either we are in a Strype project saved in Google Drive or not.
                     // If we are: we work with the current project's location on Drive to read/write the file,
@@ -38,7 +39,7 @@ export function skulptReadPythonLib(libraryAddresses: string[]) : ((x : string) 
                     return Sk.misceval.promiseToSuspension(
                         // We need to look up the file (Google Drive doesn't use file names in the API for read/write)
                         // with root location on the current project's folder, then retrieve its id and read.
-                        skupltReadFileIO(x).then((fileContent) => {
+                        skupltReadFileIO(x, fileMode).then((fileContent) => {
                             return fileContent;
                         }
                         //return Promise.resolve(fileContent);
@@ -70,7 +71,7 @@ export function skulptReadPythonLib(libraryAddresses: string[]) : ((x : string) 
                 }
                 else{
                     // We only fetch third-party Python files, not JS, for security reasons:
-                    return undefined;
+                    return {isError: true, errorMsg: i18n.t("errorMessage.fileIO.unsupportedFileToRead", {filename: x}) as string};
                 }
             }
             return Sk.misceval.promiseToSuspension(

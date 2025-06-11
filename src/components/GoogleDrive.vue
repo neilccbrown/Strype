@@ -826,16 +826,18 @@ export default Vue.extend({
             this.saveFileId = undefined;
         },
 
-        readFileContentForIO(fileId: string, filePath: string, onSuccess: (fileContent: string) => void, onFailure: (reason: string) => void) {
+        readFileContentForIO(fileId: string, isBinaryMode: boolean, filePath: string, onSuccess: (fileContent: string|Uint8Array) => void, onFailure: (reason: string) => void) {
             // This method is used by FileIO to get a file string content.
             // It relies on the Google File Id passed as argument, and the callback method for handling succes or failure is also passed as arguments.
             // The argument "filePath" is only used for error message.
-            gapi.client.request({
-                path: "https://www.googleapis.com/drive/v3/files/" + fileId,
-                method: "GET",
-                params: {alt: "media"},
+            // The nature of the answer depends on the reading mode: a string in normal text case, an array of bytes in binary mode.
+            // Because we want to be able to read raw data, we use the fetch API to query Google Drive.
+            fetch("https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media", {
+                headers: { Authorization: "Bearer "+ this.oauthToken },
             }).then((resp) => {
-                onSuccess(resp.body);               
+                return (isBinaryMode) 
+                    ? resp.arrayBuffer().then((buffer) => onSuccess(new Uint8Array(buffer))) 
+                    : resp.text().then((text) => onSuccess(text));
             },
             // Case of errors
             (resp) => {
@@ -843,46 +845,41 @@ export default Vue.extend({
             });
         },
 
-        writeFileContentForIO(fileContent: string, fileInfos: {filePath: string, fileName?: string, fileId?: string, folderId?: string}): Promise<string> {
+        writeFileContentForIO(fileContent: string|Uint8Array, fileInfos: {filePath: string, fileName?: string, fileId?: string, folderId?: string}): Promise<string> {
             // Write file supports 2 modes: normal writing that only relies on the content and fileId,
             // and file creation which relies on the folderId, fileName and returns the generated fileId.
             // The fileName is always set because it may be used inside the error message.
             // The method returns a string promise: the file ID on success, the error message on failure.
             const isCreatingFile = !!(fileInfos.folderId);
-
-            // Using this example: https://stackoverflow.com/a/38475303/412908
-            // Arbitrary long string:
+            const isBinaryMode = !(typeof fileContent == "string");
+            
+            // The gapi.client.request() we have used for writing Strype projects in Drive isn't working for binary data.
+            // So we use fetch() for binary files to be supported.
             const boundary = "2db8c22f75474a58cd13fa2d3425017015d392ce0";
-            const body : string[] = [];
             const bodyReqParams: {name?: string, parents?: [string]} = {};
             if(isCreatingFile){
                 bodyReqParams.name = fileInfos.fileName??""; // the file name must be set by the caller!
                 bodyReqParams.parents = [fileInfos.folderId??""]; // the containing folder id must be set by the caller!
             }
-            body.push("Content-Type: application/json; charset=UTF-8\n\n" + JSON.stringify(bodyReqParams) + "\n");
-            body.push("Content-Type: text/plain; charset=UTF-8\n\n" + fileContent + "\n");
-            const fullBody = body.map((s) => "--" + boundary + "\n" + s).join("") + "--" + boundary + "--\n";
+
+            // Construct multipart body
+            const body = `--${boundary}\nContent-Type: application/json; charset=UTF-8\n\n${JSON.stringify(bodyReqParams)}\n--${boundary}\n${((isBinaryMode) ? "Content-Type: application/octet-stream\n\n" : "Content-Type: text/plain; charset=UTF-8\n\n")}`;
+            // Convert binary data to Blob
+            const blob = new Blob([body, fileContent, `\n--${boundary}--`], { type: "multipart/related; boundary=" + boundary });
             return new Promise<string>((resolve, reject) => {
-                gapi.client.request({
-                // When saving content without creating (the default usage), the caller must have set the file id!
-                    path: "https://www.googleapis.com/upload/drive/v3/files" + (isCreatingFile ? "" : "/" + (fileInfos.fileId??"")),
+                console.log("fetch URL: "+`https://www.googleapis.com/upload/drive/v3/files${(isCreatingFile) ? "" : "/"+(fileInfos.fileId??"")}?uploadType=multipart`);
+                fetch(`https://www.googleapis.com/upload/drive/v3/files${(isCreatingFile) ? "" : "/" + (fileInfos.fileId??"")}?uploadType=multipart`, {
                     method: isCreatingFile ?  "POST" : "PATCH",
-                    params: {"uploadType": "multipart"},
                     headers: {
-                        "Content-Type" : "multipart/related; boundary=\"" + boundary + "\"",
+                        "Authorization": "Bearer " + this.oauthToken,
+                        "Content-Type": "multipart/related; boundary=" + boundary,
                     },
-                    body: fullBody,
-                }).then(
-                    // Success of the request
-                    (resp) => {
-                        resolve(JSON.parse(resp.body)["id"]);                    
-                    },
-                    // Failure of the request
-                    (reason) => {
-                        reject(i18n.t("errorMessage.fileIO.writingFileFailed", {filename: fileInfos.filePath, error: reason}));                       
-                    }
-                );
-            });         
+                    body: blob,
+                })
+                    .then((response) => response.json())
+                    .then((respJson) => resolve(respJson.id))
+                    .catch((error) => reject(i18n.t("errorMessage.fileIO.writingFileFailed", {filename: fileInfos.filePath, error: error})));          
+            });     
         },
     },
 });

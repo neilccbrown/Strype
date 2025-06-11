@@ -86,16 +86,17 @@
     "unexpectedCharsPython": "unexpected character(s)",
     "fileIO": {
       "notConnectedToCloud":"Access to files for IO operations is only possible from a Strype project saved in the Cloud.",
+      "unsupportedFile":"Strype forbids reading operations to this file \"{filename}\", because of its type.",
       "fileNotWritableErr":"File not open for writing.",
       "fileNotReadableErr":"File not open for reading.",
       "fileClosedErr":"I/O operation on closed file.",
       "fileModeErr":"Invalid file opening mode: {mode}.",
-      "fileNotFound":"The file {filename} could not be found.",
-      "fileFetchError":"The file {filename} could not be retrieved. (error: {error})",
-      "accessToGDError":"The file {filename} could not be accessed on Google Drive. (error: {error})",
-      "readonlyFile":"The file {filename} is read-only.",
-      "writingFileFailed":"The file {filename} could not be written. (error: {error})",
-      "fileAlreadyExists":"The file {filename} already exists (a file opened with the 'exclusive creation' mode cannot exist)."
+      "fileNotFound":"The file \"{filename}\" could not be found.",
+      "fileFetchError":"The file \"{filename}\" could not be retrieved. (error: {error})",
+      "accessToGDError":"The file \"{filename}\" could not be accessed on Google Drive. (error: {error})",
+      "readonlyFile":"The file \"{filename}\" is read-only.",
+      "writingFileFailed":"The file \"{filename}\" could not be written. (error: {error})",
+      "fileAlreadyExists":"The file \"{filename}\" already exists (a file opened with the 'exclusive creation' mode cannot exist)."
     }
   },
   "appMessage": {

@@ -147,23 +147,23 @@ export const skulptOpenFileIO = (fileObj: SkulptFile): {succeeded: boolean, erro
 
                 if(gdFile){
                     // Found a file to match, we can add it to the mapping object unless we are in "x" mode which requires the file not to exist.
-                    if(fileObj.mode.v != "x"){
+                    if(!fileObj.mode.v.startsWith("x")){
                         const fileMapEntry: GoogleDriveFileIOMap = {filePath: filePath, gdFileId: gdFile.id, gdLocationId: useStore().strypeProjectLocation as string, 
                             gdReadOnly: !(gdFile.capabilities.canEdit??true) || !(gdFile.capabilities.canModifyContent??true) || !!(gdFile.contentRestrictions?.readOnly)};
                         gdFilesMap.push(fileMapEntry);                   
 
                         // We can return already with success if we are in read mode.
-                        if(fileObj.mode.v == "r"){
+                        if(fileObj.mode.v.startsWith("r")){
                             return {succeeded: true, errorMsg: ""};       
                         }
                         // If we are in write mode, we first need to "clear" the file as in Python, a call to open(xxx,"w") truncates the file.
                         // In write or append the file is readonly, we are already in error.            
-                        else if(fileObj.mode.v == "w" || fileObj.mode.v == "a") {
+                        else if(fileObj.mode.v.startsWith("w") || fileObj.mode.v.startsWith("a")) {
                             if(fileMapEntry.gdReadOnly){
                                 return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.readonlyFile", {filename: filePath}) as string};
                             }
-                            else if(fileObj.mode.v == "w") {
-                                return skulptWriteFileIO(fileObj, "");
+                            else if(fileObj.mode.v.startsWith("w")) {
+                                return skulptWriteFileIO(fileObj, (fileObj.mode.v.includes("b")) ? new Uint8Array(0) : "");
                             }
                             else {
                                 return {succeeded: true, errorMsg: ""};                               
@@ -178,11 +178,11 @@ export const skulptOpenFileIO = (fileObj: SkulptFile): {succeeded: boolean, erro
                 else{
                     // The file may have not be found, which is a stopper in read mode.
                     // However, in write, append and exclusive creation mode, we can create a file. So we try that first.
-                    if(fileObj.mode.v == "r"){
+                    if(fileObj.mode.v.startsWith("r")){
                         return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.fileNotFound", {filename: filePath}) as string};
                     }
-                    else if(fileObj.mode.v == "w" || fileObj.mode.v == "a" || fileObj.mode.v == "x"){
-                        return createEmptyFile(filePath, fileName, useStore().strypeProjectLocation as string).then((fileId) => {
+                    else if(fileObj.mode.v.startsWith("w") || fileObj.mode.v.startsWith("a") || fileObj.mode.v.startsWith("x")){
+                        return createEmptyFile(filePath, fileObj.mode.v.includes("b"), fileName, useStore().strypeProjectLocation as string).then((fileId) => {
                             // Since the file has been created we can now keep it's fileId in the map:
                             gdFilesMap.push({filePath: filePath, gdFileId: fileId, gdLocationId: useStore().strypeProjectLocation as string, gdReadOnly: false});
                             return {succeeded: true, errorMsg: ""};
@@ -211,18 +211,19 @@ export const skulptCloseFileIO = (file: SkulptFile): void => {
 
 // This method is only called by the file opening mechanism when a file needs to be created, for example, when opening in write mode.
 // The returned promise contains the fileId, or empty in case of error.
-const createEmptyFile = (filePath: string, fileName: string, folderId: string): Promise<string> => {
-    return googleDriveComponent.writeFileContentForIO("", {filePath: filePath, fileName: fileName, folderId: folderId});
+const createEmptyFile = (filePath: string, isBinaryMode: boolean, fileName: string, folderId: string): Promise<string> => {
+    return googleDriveComponent.writeFileContentForIO((isBinaryMode) ? new Uint8Array(0) : "", {filePath: filePath, fileName: fileName, folderId: folderId});
 }; 
 
 // Read method, with retrieves the content of a file on Google Drive.
+// The content is either a string content for text modes, bytes for binary modes.
 // On failure, the content contains the error message.
 // (This method isn't called directly, but it is called by skulptReadPythonLib() in ac-skulpt.ts)
-export const skupltReadFileIO = (filePath: string): Promise<string> => {
+export const skupltReadFileIO = (filePath: string, fileMode?: string): Promise<string|Uint8Array> => {
     // We retrieve the Google Drive file ID - it should be valid as no call to this when a file is closed in Skulpt should happen.
     const fileId = gdFilesMap.find((mapEntry) => mapEntry.filePath == filePath)?.gdFileId??"";
-    return new Promise<string>((resolve, reject) => {
-        googleDriveComponent.readFileContentForIO(fileId, filePath, (fileContent) => {
+    return new Promise<string|Uint8Array>((resolve, reject) => {
+        googleDriveComponent.readFileContentForIO(fileId, (fileMode?.includes("b")??false), filePath, (fileContent) => {
             resolve(fileContent);
         }, (error) => {
             reject(error);
@@ -232,11 +233,11 @@ export const skupltReadFileIO = (filePath: string): Promise<string> => {
 
 // Write method, which doesn't do much actually, it only updates the Skulpt file object's content.
 // The *actual* file writing is only perform when a file is closed.
-export const skulptWriteFileIO = (fileObj: SkulptFile, toWrite: string): Promise<{succeeded: boolean, errorMsg: string}> => {
+export const skulptWriteFileIO = (fileObj: SkulptFile, toWrite: string|Uint8Array): Promise<{succeeded: boolean, errorMsg: string}> => {
     // We retrieve the Google Drive file ID - it should be valid as no call to this when a file is closed in Skulpt should happen.
     const fileId = gdFilesMap.find((mapEntry) => mapEntry.filePath == fileObj.name)?.gdFileId??"";
     return new Promise<{succeeded: boolean, errorMsg: string}>((resolve, reject) => {
-        const callWrite = (toWrite: string) => {
+        const callWrite = (toWrite: string|Uint8Array) => {
             googleDriveComponent.writeFileContentForIO(toWrite, {filePath: fileObj.name, fileId: fileId})
                 .then((_) => {
                     resolve({succeeded: true, errorMsg: ""});
@@ -248,8 +249,19 @@ export const skulptWriteFileIO = (fileObj: SkulptFile, toWrite: string): Promise
 
         // Because of having issues doing that from Skulpt, one particular case that does a bit more is for files opened with append mode:
         // since the content is to be appened to the end of the file, we read the file.
-        if(fileObj.mode.v == "a"){
-            return skupltReadFileIO(fileObj.name).then((fileContent) => callWrite(fileContent+toWrite), (error)=>reject({succedeed: false, errorMsg: error}));
+        if(fileObj.mode.v.startsWith("a")){
+            return skupltReadFileIO(fileObj.name, fileObj.mode.v).then((fileContent) => {
+                if(fileObj.mode.v.includes("b")){
+                    // If we are dealing with a binary mode append, we have to concatenate the 2 bytes arrays (read one and to write one).
+                    const combined = new Uint8Array((fileContent as Uint8Array).length + toWrite.length);
+                    combined.set(fileContent as Uint8Array, 0);
+                    combined.set(toWrite as Uint8Array, fileContent.length);
+                    return callWrite(combined);
+                }
+                else{
+                    return callWrite(fileContent as string + toWrite);
+                }                
+            }, (error)=>reject({succedeed: false, errorMsg: error}));
         }
         else{
             callWrite(toWrite);
