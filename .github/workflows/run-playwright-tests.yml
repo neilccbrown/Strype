@@ -26,13 +26,13 @@ jobs:
       if: ${{ matrix.os == 'ubuntu-latest' }}
       shell: bash
       run: |
-        timeout 3600s npm run test:playwright || echo "Test command exited or timed out"
+        timeout 5400s npm run test:playwright || { echo "Test command exited or timed out"; exit 1; }
     - name: Run Playwright tests (MacOS)
       if: ${{ matrix.os == 'macos-latest' }}
       shell: bash
       run: |
         brew install coreutils
-        gtimeout 5400s npm run test:playwright || echo "Test command exited or timed out"
+        gtimeout 5400s npm run test:playwright || { echo "Test command exited or timed out"; exit 1; }
     - name: Run Playwright tests (Windows)
       if: ${{ matrix.os == 'windows-latest' }}
       shell: powershell

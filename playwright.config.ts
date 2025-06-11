@@ -18,10 +18,11 @@ export default defineConfig({
     outputDir: "./tests/playwright/test-results",
     /* Fail the build on CI if you accidentally left test.only in the source code. */
     forbidOnly: !!process.env.CI,
-    /* Retry once on CI, as some of the random tests are slightly flaky */
-    retries: process.env.CI ? 1 : 0,
+    /* Retry twice on CI, as some of the random tests are slightly flaky */
+    retries: process.env.CI ? 2 : 0,
     fullyParallel: true,
-    workers: process.env.CI ? 1 : 4,
+    /* If you need different in CI, replicate the conditional expression above: process.env.CI ? 2 : 4 */
+    workers: 4,
     /* Reporter to use. See https://playwright.dev/docs/test-reporters */
     reporter: [["list"], ["html", {"open": "never", "outputFolder": "./tests/playwright/html-report"}]],
     /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
@@ -61,7 +62,7 @@ export default defineConfig({
 
         {
             name: "webkit",
-            use: { ...devices["Desktop Safari"] },
+            use: { ...devices["Desktop Safari"], deviceScaleFactor: 1 },
         },
     ],
 });

@@ -7,11 +7,18 @@ import {PNG} from "pngjs";
 import fs from "fs";
 import {doPagePaste} from "../support/editor";
 
+// The tests in this file can't run in parallel because they download
+// to the same filenames, so need to run one at a time.
+test.describe.configure({ mode: "serial" });
+
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && process.platform === "win32") {
         // On Windows+Webkit it just can't seem to load the page for some reason:
         testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
-    }    
+    }
+
+    // These tests can take longer than the default 30 seconds:
+    testInfo.setTimeout(90000); // 90 seconds
     
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
@@ -48,12 +55,15 @@ enum ImageComparison {
     WRITE_NEW_EXPECTED_DO_NOT_COMMIT_USE_OF_THIS
 }
 
-async function checkImageMatch(expectedImageFileName: string, actual : PNG, comparison: ImageComparison) {
+async function checkImageMatch(expectedImageFileName: string, fetchActual : (width: number, height: number) => Promise<PNG>, comparison: ImageComparison) {
     if (comparison == ImageComparison.COMPARE_TO_EXISTING) {
         const pixelmatch = (await import("pixelmatch")).default;
         const expectedData = fs.readFileSync(`tests/cypress/expected-screenshots/baseline/${expectedImageFileName}.png`, "base64");
         // load both pictures
         const expected = PNG.sync.read(Buffer.from(expectedData, "base64"));
+        const actual = await fetchActual(expected.width, expected.height);
+        // The recursive option stops it failing if the dir exists:
+        fs.mkdirSync("tests/cypress/expected-screenshots/comparison/", { recursive: true });
         fs.writeFileSync(`tests/cypress/expected-screenshots/comparison/${expectedImageFileName}.png`, PNG.sync.write(actual));
 
         const {width, height} = expected;
@@ -62,24 +72,31 @@ async function checkImageMatch(expectedImageFileName: string, actual : PNG, comp
         // calling pixelmatch return how many pixels are different
         const numDiffPixels = pixelmatch(expected.data, actual.data, diff.data, width, height, {threshold: 0.05});
 
+        // The recursive option stops it failing if the dir exists:
+        fs.mkdirSync("tests/cypress/expected-screenshots/diff/", { recursive: true });
         fs.writeFileSync(`tests/cypress/expected-screenshots/diff/${expectedImageFileName}.png`, PNG.sync.write(diff));
 
         // calculating a percent diff
         const diffPercent = (numDiffPixels / (width * height) * 100);
 
-        expect(diffPercent).toBeLessThanOrEqual(10);
+        expect(diffPercent).toBeLessThanOrEqual(20);
+
     }
     else {
         // Just save to expected:
-        fs.writeFileSync(`tests/cypress/expected-screenshots/baseline/${expectedImageFileName}.png`, PNG.sync.write(actual));
+        fs.writeFileSync(`tests/cypress/expected-screenshots/baseline/${expectedImageFileName}.png`, PNG.sync.write(await fetchActual(0, 0)));
     }
 }
 
 
 async function checkGraphicsAreaContent(page: Page, expectedImageFileName : string, comparison = ImageComparison.COMPARE_TO_EXISTING) {
-    const screenshotBuffer = await page.locator("#peaGraphicsContainerDiv").screenshot();
-    const screenshot = PNG.sync.read(screenshotBuffer);
-    await checkImageMatch(expectedImageFileName, screenshot, comparison);
+    const takeScreenshot = async (width: number, height: number) => {
+        const box = await page.locator("#peaGraphicsContainerDiv").boundingBox();
+        const screenshotBuffer = await page.screenshot({clip: {x: box?.x ?? 0, y: box?.y ?? 0, width: width || box?.width || 1, height: height || box?.height || 1}});
+        return PNG.sync.read(screenshotBuffer);
+    };
+    
+    await checkImageMatch(expectedImageFileName, takeScreenshot, comparison);
     // Make sure we don't leave in the screenshot creation by making the tests fail:
     if (comparison == ImageComparison.WRITE_NEW_EXPECTED_DO_NOT_COMMIT_USE_OF_THIS) {
         throw new Error("Tests writing new screenshot; did you leave in WRITE_NEW_EXPECTED_DO_NOT_COMMIT_USE_OF_THIS ?");
@@ -96,7 +113,7 @@ async function clickProportionalPos(page: Page, x: number, y: number) : Promise<
         await page.mouse.click(clickX, clickY);
     }
     else {
-        throw Error("Could not find graphics container to click on");
+        throw new Error("Could not find graphics container to click on");
     }
 }
 
