@@ -164,7 +164,7 @@
     "needSaveShareProj":"Save your project in Google Drive before sharing it",
     "lang": "Language: ",
     "homepage": "Strype Homepage", 
-    "apiDocumentation": "API Documentation...",
+    "apiDocumentation": "Library Documentation...",
     "version": "Version"
   },
   "autoCompletion": {
