@@ -570,6 +570,7 @@ export default Vue.extend({
         },
 
         openLoadDemoProjectModal(): void {
+            (this.$refs.openDemoDlg as InstanceType<typeof OpenDemoDlg>).updateAvailableDemos();
             // For a very strange reason, Bootstrap doesn't link the menu link to the dialog any longer 
             // after changing "v-if" to "v-show" on the link (to be able to have the keyboard shortcut working).
             // So we open it manually here...
@@ -1096,7 +1097,6 @@ export default Vue.extend({
                 element.setAttribute("tabindex", (index + 1).toString());
                 this.retrievedTabindexesCount++;
             });
-            (this.$refs.openDemoDlg as InstanceType<typeof OpenDemoDlg>).updateAvailableDemos();
         },
 
         toggleMenuOnOff(e: Event | null): void {
