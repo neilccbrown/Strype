@@ -215,5 +215,14 @@
     "cursorTimeMac": "Time (⌘ C to copy):",
     "cursorHeightWin": "Height (Ctrl-Shift-C to copy):",
     "cursorHeightMac": "Height (⇧ ⌘ C to copy):"
+  },
+  "demos": {
+    "dialogTitle": "Choose an example to load",
+    "addLibrary": "Add library:",
+    "libraryAddrPlaceholder": "Library address",
+    "add": "Add",
+    "builtinGraphics": "Graphics",
+    "builtinConsole": "Console",
+    "builtinTurtle": "Turtle"
   }
 }

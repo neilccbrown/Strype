@@ -1,7 +1,7 @@
 <template>
     <ModalDlg
             :dlgId="dlgId"
-            dlg-title="Choose an example to load"
+            :dlg-title="$t('demos.dialogTitle')"
             showCloseBtn
             :autoFocusButton="'ok'"
             css-class="open-demo-dlg"
@@ -19,6 +19,12 @@
                     <span class="open-demo-dlg-demo-group-type" v-if="item.type">{{item.type}}</span>
                     {{ item.name }}
                 </b-list-group-item>
+                
+                <div class="open-demo-dlg-add-library-panel">
+                    <span>{{$t('demos.addLibrary')}}</span>
+                    <input ref="newLibraryAddress" :placeholder="$t('demos.libraryAddrPlaceholder')" type="text" autocomplete="off" class="cell" />
+                    <b-button @click="addSpecifiedLibrary">{{ $t('demos.add') }}</b-button>
+                </div>
             </b-list-group>
 
             <!-- Right Pane: Dynamic Grid -->
@@ -32,7 +38,8 @@
                         @click="selectedDemoItemIndex = i"
                         @keydown.space.self="selectedDemoItemIndex = i"
                     >
-                        <img :src="item.imgURL" alt="Preview" class="open-demo-dlg-preview flex-shrink-0"/>
+                        <!-- 1x1 transparent image if image is missing: -->
+                        <img :src="item.imgURL || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII='" alt="Preview" class="open-demo-dlg-preview flex-shrink-0"/>
                         <div class="d-flex flex-column flex-fill">
                             <span class="open-demo-dlg-name">{{item.name}}</span>
                             <span class="open-demo-dlg-description">{{item.description}}</span>
@@ -49,6 +56,8 @@ import Vue from "vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import {Demo, DemoGroup, getBuiltinDemos, getThirdPartyLibraryDemos} from "@/helpers/demos";
 import Parser from "@/parser/parser";
+import {AppSPYPrefix} from "@/main";
+import {escapeRegExp} from "lodash";
 
 export default Vue.extend({
     components: {ModalDlg},
@@ -71,9 +80,9 @@ export default Vue.extend({
             // We must update the available demos based on the code.
             // Our built-in demos are always available:
             this.availableDemos = [
-                {name: "Graphics", demos: getBuiltinDemos("graphics")},
-                {name: "Turtle", demos: getBuiltinDemos("turtle")},
-                {name: "Console", demos: getBuiltinDemos("console")},
+                {name: this.$i18n.t("demos.builtinGraphics") as string, demos: getBuiltinDemos("graphics")},
+                {name: this.$i18n.t("demos.builtinTurtle") as string, demos: getBuiltinDemos("turtle")},
+                {name: this.$i18n.t("demos.builtinConsole") as string, demos: getBuiltinDemos("console")},
             ];
             // To get library demos, we first get the libraries:
             const p = new Parser();
@@ -129,6 +138,44 @@ export default Vue.extend({
             }
             return undefined;
         },
+
+        addSpecifiedLibrary() {
+            let address = (this.$refs.newLibraryAddress as HTMLInputElement).value;
+            address = address.trim();
+            if (address) {
+                // We want to be quite permissive here.  We accept the following syntaxes:
+                // #(=> Library:protocol:addr
+                // protocol:addr
+                // addr <-- Guess protocol
+                const mLib = address.match(new RegExp("^#\\s*" + escapeRegExp(AppSPYPrefix) + "\\s*Library:(.*)$"));
+                if (mLib) {
+                    address = mLib[1];
+                    // We do the rest of the code anyway, in case some bits are incomplete:
+                }
+                if (!(address.startsWith("http:") || address.startsWith("https:") || address.startsWith("github:"))) {
+                    // Need to guess the protocol.  Github usernames can't have dots, so a simple rule is this:
+                    // If the first part before the first slash has a dot, it's a web URL.
+                    // Special case: if it's "localhost" we also assume web URL.
+                    // If it has two or three slashes we guess Github
+                    // But otherwise we fall back to web URL again
+                    // So let's assume web and just see if matches Github:
+                    let protocol = "https://";
+                    
+                    // Does it have content before the first slash?
+                    const mSlash = address.match(/^([^/]+)\//);
+                    if (mSlash) {
+                        if (!mSlash[1].includes(".") && !mSlash[1].toLowerCase().startsWith("localhost")) {
+                            const components = address.split("/").length;
+                            if (components == 2 || components == 3) {
+                                protocol = "github:";
+                            }
+                        }
+                    }
+                    address = protocol + address;
+                }
+                this.availableDemos.push(getThirdPartyLibraryDemos(address));
+            }
+        },
     },
 });
 </script>
@@ -181,5 +228,12 @@ span.open-demo-dlg-description {
     display: block;
     color: #999;
     font-size: 80%;
+}
+.open-demo-dlg-add-library-panel {
+    margin-top: 50px;
+}
+.open-demo-dlg-add-library-panel input {
+    margin-top: 10px;
+    margin-bottom: 10px;
 }
 </style>
