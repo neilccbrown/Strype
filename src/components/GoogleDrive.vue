@@ -877,7 +877,10 @@ export default Vue.extend({
                     body: blob,
                 })
                     .then((response) => response.json())
-                    .then((respJson) => resolve(respJson.id))
+                    .then((respJson) => {
+                        console.log("Google Write can return the id now. (writing <"+fileContent+">");
+                        resolve(respJson.id);
+                    })
                     .catch((error) => reject(i18n.t("errorMessage.fileIO.writingFileFailed", {filename: fileInfos.filePath, error: error})));          
             });     
         },
