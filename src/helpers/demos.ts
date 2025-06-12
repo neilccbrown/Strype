@@ -1,6 +1,7 @@
 import * as yaml from "js-yaml";
 import { z } from "zod";
 import {getRawFileFromLibraries, getTextFileFromLibraries} from "@/helpers/libraryManager";
+import {bufferToBase64} from "@/helpers/media";
 
 export interface Demo {
     name: string;
@@ -48,13 +49,12 @@ export function getThirdPartyLibraryDemos(library: string) : DemoGroup {
                     demos.push({
                         name: y.name,
                         description: y.description,
-                        image: {dataURL: y.image ? getRawFileFromLibraries([library], "demos/" + y.image).then((imgResp) => {
+                        image: {dataURL: y.image ? getRawFileFromLibraries([library], "demos/" + y.image).then(async (imgResp) => {
                             // Only allow bitmap images; SVG+XML might have Javascript inside, which we wouldn't want to run:
                             if (!imgResp?.mimeType || !["image/png", "image/jpeg", "image/webp"].includes(imgResp?.mimeType)) {
                                 return undefined;
                             }
-                            const binary = String.fromCharCode(...new Uint8Array(imgResp.buffer));
-                            const base64 = btoa(binary);
+                            const base64 = await bufferToBase64(imgResp.buffer);
                             const type = imgResp.mimeType;
                             return `data:${type};base64,${base64}`;
                         }) : Promise.resolve(undefined)},

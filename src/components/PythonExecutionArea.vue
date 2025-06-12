@@ -76,6 +76,7 @@ import VueContext, { VueContextConstructor } from "vue-context";
 import {getDateTimeFormatted} from "@/helpers/common";
 import audioBufferToWav from "audiobuffer-to-wav";
 import { saveAs } from "file-saver";
+import {bufferToBase64} from "@/helpers/media";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
@@ -734,10 +735,9 @@ export default Vue.extend({
             const fullLibraryAddress = this.libraries.find((lib) => getLibraryName(lib) === libraryShortName);
             if (fullLibraryAddress) {
                 // Only search that library for the file:
-                return getAssetFileFromLibrary(fullLibraryAddress, fileName).then((result) => {
+                return getAssetFileFromLibrary(fullLibraryAddress, fileName).then(async (result) => {
                     if (result) {
-                        const binary = String.fromCharCode(...new Uint8Array(result.buffer));
-                        const base64 = btoa(binary);
+                        const base64 = await bufferToBase64(result.buffer);
                         const type = result.mimeType ?? "application/octet-stream"; // fallback if MIME is unknown
                         return `data:${type};base64,${base64}`;
                     }
