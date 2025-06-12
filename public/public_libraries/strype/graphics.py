@@ -870,17 +870,17 @@ def get_mouse_click():
     else:
         return _ClickDetails(c[0], c[1], c[2], c[3])
 
-_MouseDetails = _collections.namedtuple("MouseDetails", ["x", "y", "buttons_held"])
+_MouseDetails = _collections.namedtuple("MouseDetails", ["x", "y", "button0", "button1", "button2"])
 
 def get_mouse():
     # type: () -> _MouseDetails
     """
     Get the details for current mouse state.
     
-    :return: A named tuple with details of the last click: `(x, y, buttons_held)` where buttons_held is a three-item array of booleans: 0 for primary (left), 1 for secondary (right), 2 for middle.
+    :return: A named tuple with details of the mouse state: `(x, y, button0, button1, button2)` where the last three items are booleans where True indicates the button is held: button0 for primary (left), button1 for secondary (right), button2 for middle.
     """
     c = _strype_input_internal.getMouseDetails()
-    return _MouseDetails(c[0], c[1], c[2])
+    return _MouseDetails(c[0], c[1], c[2][0], c[2][1], c[2][2])
 
 
 def key_pressed(keyname):
