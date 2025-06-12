@@ -163,7 +163,8 @@
     "shareProject": "Share...",
     "needSaveShareProj":"Save your project in Google Drive before sharing it",
     "lang": "Language: ",
-    "homepage": "Strype Homepage",
+    "homepage": "Strype Homepage", 
+    "apiDocumentation": "API Documentation...",
     "version": "Version"
   },
   "autoCompletion": {

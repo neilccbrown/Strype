@@ -77,8 +77,11 @@
             </ModalDlg>            
             <!-- new section -->
             <div class="menu-separator-div"></div>
+            /* IFTRUE_isPython
             <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLoadDemoProjectModal">{{$t('appMenu.loadDemoProject')}}</a>
             <OpenDemoDlg ref="openDemoDlg" :dlg-id="loadDemoProjectModalDlgId"/>
+            <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" href="https://strype.org/doc/library/"  target="_blank">{{$t('appMenu.apiDocumentation')}}</a>
+               FITRUE_isPython */
             <!-- category: export -->
             <!-- share project -->
             <a :id="shareProjectLinkId" v-show="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !canShareProject}" :title="$t((isSyncingToGoogleDrive)?'':'appMenu.needSaveShareProj')" @click="onShareProjectClick">{{$t('appMenu.shareProject')}}<span class="strype-menu-kb-shortcut">{{shareProjectKBShortcut}}</span></a>

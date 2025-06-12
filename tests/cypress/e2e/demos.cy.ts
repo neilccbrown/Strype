@@ -9,6 +9,11 @@ describe("Demo dialog", () => {
     // hits Github and we get easily blocked if we do that from one IP enough.
     // So we test the prescence of things in one long test rather than many small tests:
     it("Adds another library to the demos dialog", () => {
+        if (Cypress.env("mode") == "microbit") {
+            // Demos don't show in microbit
+            return;
+        }
+        
         cy.get("button#" + strypeElIds.getEditorMenuUID()).click({force: true});
         cy.contains(i18n.t("appMenu.loadDemoProject") as string).click({force: true});
         // Check the main three categories are there:
