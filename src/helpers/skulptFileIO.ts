@@ -152,10 +152,13 @@ export const skulptOpenFileIO = (fileObj: SkulptFile): {succeeded: boolean, erro
                             gdReadOnly: !(gdFile.capabilities.canEdit??true) || !(gdFile.capabilities.canModifyContent??true) || !!(gdFile.contentRestrictions?.readOnly)};
                         gdFilesMap.push(fileMapEntry);                   
 
-                        // We can return already with success if we are in read mode.
-                        if(fileObj.mode.v.startsWith("r")){
-                            return {succeeded: true, errorMsg: ""};       
-                        }
+                                // We can return already with success if we are in read mode strict (r+ only succeeds if not read-only)
+                                if(fileObj.mode.v.startsWith("r")){
+                                    if(fileObj.mode.v.includes("+") && fileMapEntry.gdReadOnly){
+                                        return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.readonlyFile", {filename: filePath}) as string};
+                                    }
+                                    return {succeeded: true, errorMsg: ""};       
+                                }
                         // If we are in write mode, we first need to "clear" the file as in Python, a call to open(xxx,"w") truncates the file.
                         // In write or append the file is readonly, we are already in error.            
                         else if(fileObj.mode.v.startsWith("w") || fileObj.mode.v.startsWith("a")) {
@@ -231,8 +234,7 @@ export const skupltReadFileIO = (filePath: string, fileMode?: string): Promise<s
     });
 };
 
-// Write method, which doesn't do much actually, it only updates the Skulpt file object's content.
-// The *actual* file writing is only perform when a file is closed.
+// Write method which is only executed when a file is closed (intermediate buffer writing is done by Skulpt).
 export const skulptWriteFileIO = (fileObj: SkulptFile, toWrite: string|Uint8Array): Promise<{succeeded: boolean, errorMsg: string}> => {
     // We retrieve the Google Drive file ID - it should be valid as no call to this when a file is closed in Skulpt should happen.
     const fileId = gdFilesMap.find((mapEntry) => mapEntry.filePath == fileObj.name)?.gdFileId??"";
@@ -247,19 +249,26 @@ export const skulptWriteFileIO = (fileObj: SkulptFile, toWrite: string|Uint8Arra
                 });
         };
 
-        // Because of having issues doing that from Skulpt, one particular case that does a bit more is for files opened with append mode:
-        // since the content is to be appened to the end of the file, we read the file.
-        if(fileObj.mode.v.startsWith("a")){
+        // Because of having issues doing that from Skulpt, one particular case that does a bit more is for files opened with append mode or r+ mode:
+        // since the content is to be appened to the end [resp beginning] of the file, we read the file.
+        if(fileObj.mode.v.startsWith("a") || /^rb?\+/.test(fileObj.mode.v)){
             return skupltReadFileIO(fileObj.name, fileObj.mode.v).then((fileContent) => {
+                const appendWrite = fileObj.mode.v.startsWith("a");
                 if(fileObj.mode.v.includes("b")){
-                    // If we are dealing with a binary mode append, we have to concatenate the 2 bytes arrays (read one and to write one).
-                    const combined = new Uint8Array((fileContent as Uint8Array).length + toWrite.length);
-                    combined.set(fileContent as Uint8Array, 0);
-                    combined.set(toWrite as Uint8Array, fileContent.length);
+                    const bFileContent = fileContent as Uint8Array;
+                    const bToWrite = toWrite as Uint8Array;
+                    // If we are dealing with a binary mode append, we have to concatenate the 2 bytes arrays (read one + to write one),
+                    // if we are dealing with r+ mode, we concatenate the bytes to write and the leftover read one
+                    const combined = new Uint8Array((appendWrite) ? bFileContent.length + bToWrite.length : Math.max(bFileContent.length, bToWrite.length));
+                    combined.set((appendWrite) ? bFileContent : bToWrite, 0);
+                    combined.set((appendWrite) ? bToWrite : bFileContent.slice(bToWrite.length), (appendWrite) ? bFileContent.length : bToWrite.length);
                     return callWrite(combined);
                 }
                 else{
-                    return callWrite(fileContent as string + toWrite);
+                    const strFileContent = fileContent as string;
+                    return callWrite((appendWrite) 
+                        ? strFileContent + toWrite
+                        : toWrite + ((strFileContent.length > toWrite.length) ? strFileContent.substring(toWrite.length) : ""));
                 }                
             }, (error)=>reject({succedeed: false, errorMsg: error}));
         }
