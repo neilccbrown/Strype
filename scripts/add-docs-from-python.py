@@ -93,7 +93,7 @@ for mod in targetAPI:
                     doubleNL = doc.find("\n\n")
                     if doubleNL > 0:
                         doc = doc[doubleNL:]
-                item['documentation'] = doc.strip()
+                item['documentation'] = doc.strip().replace('\r\n', '\n')
             except:
                 # If we get an AttributeError or any other error, we just can't provide the doc:
                 pass
