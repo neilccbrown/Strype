@@ -64,11 +64,6 @@ async function getGithubRepoPaths(
 const INDEX_FILE_NAME = "index.txt";
 
 async function attemptFetchFile(address: LibraryAddress, fileName: FilePath) : Promise<FetchResult> {
-    // Convert Github URLs to our Github protocol:
-    address = address.replace(/^https?:\/\/(www\.?)github.com\//, "github:");
-    // Remove leading ./:
-    fileName = fileName.replace(/^\.\//, "");
-    
     let url;
     if (address.startsWith("https:") || address.startsWith("http:")) {
         // We can't look for index.txt by fetching index.txt or we'll recurse forever:
@@ -84,6 +79,9 @@ async function attemptFetchFile(address: LibraryAddress, fileName: FilePath) : P
         const paths = await getAvailableFilesFromLibrary(address);
         // Addresses are either user/repo, or user/repo/branch.
         const components = address.slice("github:".length).split("/");
+        if (components.length == 2) {
+            components.push("main");
+        }
         if (components.length != 3 || (paths != null && !paths.includes(fileName))) {
             return 404;
         }
@@ -119,19 +117,19 @@ export async function getAvailableFilesFromLibrary(address: LibraryAddress) : Pr
             components.push("main");
         }
         if (components.length != 3) {
-            return Promise.resolve([]);
+            return [];
         }
         const paths = await getGithubRepoPaths(components[0], components[1], components[2]);
-        return Promise.resolve(paths.filter((entry: string) => entry.match(/\.pyi?$/)));
+        return paths;
     }
     else if (address.match(/^https?:/)) {
         const text = await getTextFileFromLibraries([address], INDEX_FILE_NAME);
         if (text != null) {
             // Convert to UTF8 text:
-            return Promise.resolve(text.split("\n").map((entry: string) => entry.replace("\n", "")).filter((entry) => entry));
+            return text.split("\n").map((entry: string) => entry.replace("\n", "")).filter((entry) => entry);
         }
         else {
-            return Promise.resolve(null);
+            return null;
         }
     }
     
@@ -180,7 +178,13 @@ export async function getRawFileFromLibraries(libraryAddresses: LibraryAddress[]
         return null;
     }
 
-    const [currentAddress, ...rest] = libraryAddresses;
+    // eslint-disable-next-line prefer-const
+    let [currentAddress, ...rest] = libraryAddresses;
+
+    // Convert Github URLs to our Github protocol:
+    currentAddress = currentAddress.replace(/^https?:\/\/(www\.?)github.com\//, "github:");
+    // Remove leading ./:
+    filePath = filePath.replace(/^\.\//, "");
 
     // Get or create the module cache for the current address
     let moduleCache = libraryCache.get(currentAddress);

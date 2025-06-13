@@ -19,7 +19,7 @@
             <!-- the SplitPanes is used in all layout configurations: for tabs, we only show 1 of the panes and disable moving the divider, and for stacked window it acts as normal -->
             <Splitpanes :class="{'strype-PEA-split-theme': true, 'with-expanded-PEA': isExpandedPEA, 'tabs-PEA': isTabsLayout}" :horizontal="!isExpandedPEA" @resize="onSplitterPane1Resize">
                 <pane :id="graphicsSplitPaneId" key="1" v-show="isGraphicsAreaShowing" :size="(isTabsLayout) ? 100 : currentSplitterPane1Size" min-size="5">
-                    <div :id="graphicsContainerDivId" @wheel.stop :class="{'pea-graphics-container': true, hidden: graphicsTemporaryHidden}">
+                    <div :id="graphicsContainerDivId" @wheel.stop :class="{'pea-graphics-container': true, hidden: graphicsTemporaryHidden}" @contextmenu="showContextMenu($event)">
                         <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @mousedown.stop="graphicsCanvasMouseDown" @mouseup.stop="graphicsCanvasMouseUp" @mousemove="graphicsCanvasMouseMove"></canvas>
                         <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
                             <div :id="graphicsDivId" ref="pythonTurtleDiv" class="pea-graphics-div"></div>
@@ -49,6 +49,9 @@
                 </div>
             </div>
         </div>
+        <vue-context ref="menu" @open="handleContextMenuOpened" @close="handleContextMenuClosed" id="PEAcontextmenu">
+            <li><a @click.stop="screenshotGraphicsArea(); closeContextMenu()" @mouseover="handleContextMenuHover">{{$i18n.t("contextMenu.screenshotGraphics")}}</a></li>
+        </vue-context>
     </div>
 </template>
 
@@ -58,9 +61,9 @@ import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
 import { execPythonCode } from "@/helpers/execPythonCode";
 import { mapStores } from "pinia";
-import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId,  getPEATabContentContainerDivId, getStrypeCommandComponentRefId, hasPrecompiledCodeError, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
+import {adjustContextMenuPosition, checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getStrypeCommandComponentRefId, hasPrecompiledCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight} from "@/helpers/editor";
 import i18n from "@/i18n";
-import { defaultEmptyStrypeLayoutDividerSettings, PythonExecRunningState, StrypePEALayoutData, StrypePEALayoutMode } from "@/types/types";
+import {defaultEmptyStrypeLayoutDividerSettings, Position, PythonExecRunningState, StrypePEALayoutData, StrypePEALayoutMode} from "@/types/types";
 import { PersistentImage, PersistentImageManager, WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
 import Menu from "@/components/Menu.vue";
 import CommandsComponent from "@/components/Commands.vue";
@@ -69,6 +72,11 @@ import {Splitpanes, Pane} from "splitpanes";
 import { debounce } from "lodash";
 import scssVars from "@/assets/style/_export.module.scss";
 import {getLibraryName, getRawFileFromLibraries} from "@/helpers/libraryManager";
+import VueContext, { VueContextConstructor } from "vue-context";
+import {getDateTimeFormatted} from "@/helpers/common";
+import audioBufferToWav from "audiobuffer-to-wav";
+import { saveAs } from "file-saver";
+import {bufferToBase64} from "@/helpers/media";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
@@ -110,6 +118,7 @@ export default Vue.extend({
         Splitpanes,
         Pane,
         SVGIcon,
+        VueContext,
     },
 
     props:{
@@ -726,10 +735,9 @@ export default Vue.extend({
             const fullLibraryAddress = this.libraries.find((lib) => getLibraryName(lib) === libraryShortName);
             if (fullLibraryAddress) {
                 // Only search that library for the file:
-                return getAssetFileFromLibrary(fullLibraryAddress, fileName).then((result) => {
+                return getAssetFileFromLibrary(fullLibraryAddress, fileName).then(async (result) => {
                     if (result) {
-                        const binary = String.fromCharCode(...new Uint8Array(result.buffer));
-                        const base64 = btoa(binary);
+                        const base64 = await bufferToBase64(result.buffer);
                         const type = result.mimeType ?? "application/octet-stream"; // fallback if MIME is unknown
                         return `data:${type};base64,${base64}`;
                     }
@@ -746,6 +754,12 @@ export default Vue.extend({
                 throw new Error("Problem initialising audio");
             }
             return audioContext;
+        },
+        
+        downloadWAV(src: AudioBuffer, filenameStem: string) : void {
+            const wavArrayBuffer = audioBufferToWav(src);
+            const blob = new Blob([wavArrayBuffer], { type: "audio/wav" });
+            saveAs(blob, `${filenameStem}_${getDateTimeFormatted(new Date(Date.now()))}.png`);
         },
         
         redrawCanvasIfNeeded() : void {
@@ -875,6 +889,13 @@ export default Vue.extend({
                 mostRecentClickDetails = [adjustedX, adjustedY, event.button, event.detail];
                 mostRecentMouseDetails[2][event.button] = true;
             }
+            
+            // If we're running, don't propagate it into a right-click menu, for example:
+            if (this.isPythonExecuting) {
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+            }
         },
         graphicsCanvasMouseMove(event: PointerEvent) {
             const {adjustedX, adjustedY} = this.getLogicalMouseCoords(event);
@@ -908,6 +929,67 @@ export default Vue.extend({
         },
         getPressedKeys() {
             return pressedKeys;
+        },
+
+        handleContextMenuOpened() {
+            document.dispatchEvent(new CustomEvent(CustomEventTypes.requestAppNotOnTop, {detail: true}));
+        },
+
+        handleContextMenuClosed(){
+            this.appStore.isContextMenuKeyboardShortcutUsed=false;
+            document.dispatchEvent(new CustomEvent(CustomEventTypes.requestAppNotOnTop, {detail: false}));
+        },
+
+        closeContextMenu() {
+            // The context menu doesn't close because we need to stop the click event propagation (cf. template), we do it here
+            ((this.$refs.menu as unknown) as VueContextConstructor).close();
+        },
+
+        showContextMenu (event: MouseEvent, positionForMenu?: Position): void {
+            // Do not show any menu if the user's code is being executed
+            if(this.isPythonExecuting){
+                return;
+            }
+            
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            event.preventDefault();            
+
+            this.appStore.contextMenuShownId = "PEAcontextmenu";
+            
+            // Overwrite readonly properties clientX and clientY (to position the menu if needed)
+            setContextMenuEventClientXY(event, positionForMenu);
+            ((this.$refs.menu as unknown) as VueContextConstructor).open(event);
+
+            this.$nextTick(() => {
+                const contextMenu = document.getElementById("PEAcontextmenu");
+                if(contextMenu){
+                    // We make sure the menu can be shown completely. 
+                    adjustContextMenuPosition(event, contextMenu, positionForMenu);
+                }
+            });
+        },
+
+        handleContextMenuHover(event: MouseEvent) {
+            this.$root.$emit(CustomEventTypes.contextMenuHovered, event.target as HTMLElement);
+        },
+
+        async screenshotGraphicsArea() {
+            if (!targetCanvas) {
+                return;
+            }
+
+            const blob : Blob = await (targetCanvas as any).convertToBlob({ type: "image/png" });
+
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `strype-${getDateTimeFormatted(new Date(Date.now()))}.png`;
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url); // Clean up
         },
     },
     

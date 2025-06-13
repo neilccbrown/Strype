@@ -77,8 +77,11 @@
             </ModalDlg>            
             <!-- new section -->
             <div class="menu-separator-div"></div>
+            /* IFTRUE_isPython
             <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLoadDemoProjectModal">{{$t('appMenu.loadDemoProject')}}</a>
             <OpenDemoDlg ref="openDemoDlg" :dlg-id="loadDemoProjectModalDlgId"/>
+            <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" href="https://strype.org/doc/library/"  target="_blank">{{$t('appMenu.apiDocumentation')}}</a>
+               FITRUE_isPython */
             <!-- category: export -->
             <!-- share project -->
             <a :id="shareProjectLinkId" v-show="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !canShareProject}" :title="$t((isSyncingToGoogleDrive)?'':'appMenu.needSaveShareProj')" @click="onShareProjectClick">{{$t('appMenu.shareProject')}}<span class="strype-menu-kb-shortcut">{{shareProjectKBShortcut}}</span></a>
@@ -570,6 +573,7 @@ export default Vue.extend({
         },
 
         openLoadDemoProjectModal(): void {
+            (this.$refs.openDemoDlg as InstanceType<typeof OpenDemoDlg>).updateAvailableDemos();
             // For a very strange reason, Bootstrap doesn't link the menu link to the dialog any longer 
             // after changing "v-if" to "v-show" on the link (to be able to have the keyboard shortcut working).
             // So we open it manually here...
@@ -1096,7 +1100,6 @@ export default Vue.extend({
                 element.setAttribute("tabindex", (index + 1).toString());
                 this.retrievedTabindexesCount++;
             });
-            (this.$refs.openDemoDlg as InstanceType<typeof OpenDemoDlg>).updateAvailableDemos();
         },
 
         toggleMenuOnOff(e: Event | null): void {

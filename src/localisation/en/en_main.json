@@ -148,7 +148,8 @@
     "redo": "Redo",
     "delete": "Delete",
     "deleteOuter": "Delete Outer",
-    "insert": "Insert"
+    "insert": "Insert",
+    "screenshotGraphics": "Download screenshot"
   },
   "appMenu": {
     "downloadHex": "Convert to Hex file",
@@ -162,7 +163,8 @@
     "shareProject": "Share...",
     "needSaveShareProj":"Save your project in Google Drive before sharing it",
     "lang": "Language: ",
-    "homepage": "Strype Homepage",
+    "homepage": "Strype Homepage", 
+    "apiDocumentation": "Library Documentation...",
     "version": "Version"
   },
   "autoCompletion": {
@@ -214,5 +216,14 @@
     "cursorTimeMac": "Time (⌘ C to copy):",
     "cursorHeightWin": "Height (Ctrl-Shift-C to copy):",
     "cursorHeightMac": "Height (⇧ ⌘ C to copy):"
+  },
+  "demos": {
+    "dialogTitle": "Choose an example to load",
+    "addLibrary": "Add library:",
+    "libraryAddrPlaceholder": "Library address",
+    "add": "Add",
+    "builtinGraphics": "Graphics",
+    "builtinConsole": "Console",
+    "builtinTurtle": "Turtle"
   }
 }

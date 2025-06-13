@@ -224,7 +224,12 @@ export default Vue.extend({
                     if (text != null) {
                         const pyi = pyPYI.endsWith(".pyi") ? text : extractPYI(text);
                         
-                        (TPyParser as any).defineModule(pyPYI.replace(/\.pyi?$/, "").replaceAll("/", "."), pyi, "pyi");
+                        try {
+                            (TPyParser as any).defineModule(pyPYI.replace(/\.pyi?$/, "").replaceAll("/", "."), pyi, "pyi");
+                        }
+                        catch (e) {
+                            console.error(e);
+                        }
                     }
                 }
             }

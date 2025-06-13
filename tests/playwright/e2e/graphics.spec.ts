@@ -342,11 +342,11 @@ test.describe("Check graphics works when shared with turtle", () => {
             green_circle.draw_circle(100, 100, 100)
             while True:
                 c = get_mouse()
-                if c.buttons_held[0]:
+                if c.button0:
                     Actor(yellow_circle, c.x, c.y)
-                elif c.buttons_held[1]:
+                elif c.button1:
                     Actor(red_circle, c.x, c.y)
-                elif c.buttons_held[2]:
+                elif c.button2:
                     Actor(green_circle, c.x, c.y)
                 pace(20)
         `]);
