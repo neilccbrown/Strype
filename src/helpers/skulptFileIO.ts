@@ -11,6 +11,8 @@ import GoogleDriveComponent from "@/components/GoogleDrive.vue";
 import MenuComponent from "@/components/Menu.vue";
 import { useStore } from "@/store/store";
 import {arrayToTree, TreeItem}  from "performant-array-to-tree";
+import { StrypeSyncTarget } from "@/types/types";
+import i18n from "@/i18n";
 
 declare const Sk: any;
 // Will be set later as we need to make sure Vue application has started...
@@ -19,13 +21,19 @@ let googleDriveComponent: InstanceType<typeof GoogleDriveComponent>;
 // We maintain a list of files for operability between Skulpt and Google Drive
 // so we can easily work with file ID in Google Drive.
 // This is per-project object, therefore the file paths in this object are unique.
-export interface GoogleDriveFileIOMap {
-    filePath: string, // The file path as specified in the user code, and "visually" represented in Google Drive
-    gdLocationId: string, // The file location's Google Drive folder ID
-    gdFileId: string, // The file's id in Google Drive
-    gdReadOnly: boolean, // Readonly status of the file in Google Drive
+interface GDFile  {
+    name: string, // The file name (not including path)
+    id: string, // The file ID on Google Drive
+    content: string | Uint8Array, // The file content when opened
+    // Capabilities used to evaluate readonly status
+    capabilities: {canEdit: boolean, canModifyContent: boolean}, contentRestrictions?: {readOnly?: boolean}
 }
-export const gdFilesMap: GoogleDriveFileIOMap[] = [];
+interface GDFileWithMetaData extends GDFile{
+    filePath: string, // The file path as specified in the user code, and "visually" represented in Google Drive
+    locationId: string, // The file location's Google Drive folder ID
+    readOnly: boolean, // Readonly status of the file in Google Drive
+}
+export const gdFilesMap: GDFileWithMetaData[] = [];
 export function clearGDFileIOMap(): void {
     gdFilesMap.splice(0);
 }
@@ -38,85 +46,148 @@ interface SkulptFile {
         v: string,
         // we don't need the other values
     }, 
-    data$: string,
+    data$: string|Uint8Array,
     lineList: string[],
     currentLine: number,
     closed: boolean,
     fileno: number, // internal file number used by Skulpt, external files are number 11
 }
 
-// The TS typing to describe a Google Drive file
-interface GDFile {name: string, id: string, capabilities: {canEdit: boolean, canModifyContent: boolean}, contentRestrictions?: {readOnly?: boolean}}
+/** NOT TO COMMIT IN FINAL VERSIONS-USED FOR DEV TEST */
+// tests 1 and 2 (OLD PATTERN THAT WORKS BUT IS SILLY)
 /*
-// Entry point for matching a file in the user code to Google Drive.
-// This is a promise that returns the file content on fulfillment (and add the mapping in gdFilesMap),
-// and returns the error on failure (on failure no entry is added in gdFilesMap).
-export const fetchGoogleDriveFile = (filePath: string): Promise<string> => {
-    // We cannot make any assumption on what the file name path separator is.
-    // Because the path is written in the user code, and because the project can be open on any platform,
-    // the separator can be anything (even if knowing the project looks up file in the Cloud, "/" is more likely).
-    // We take the risk of splitting the path using either "/" or "\" and assuming these are not used in folder or file names.
-    const posixPath = filePath.replaceAll("\\", "/"); 
-    const posixPathObj = path.parse(posixPath);
-    //TODO: resolve location path
-    const fileName = posixPathObj.name + posixPathObj.ext;
-
+const anAsyncMethod = (file: SkulptFile): Promise<string> => {
     return new Promise<string>((resolve, reject) => {
-        // Look up the file on Google Drive in the location:
-        const googleDriveComponent =  ((vm.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDriveComponent>);
-       
-        //TODO: most likely we need to URL-encode the file/folder name
-        googleDriveComponent.searchGoogleDriveElement(`name='${fileName}' and parents='${useStore().strypeProjectLocation}' and trashed=false`, {orderBy: "modifiedTime desc", fileFields: "files(id,name,capabilities,contentRestrictions)"})
-            .then((response) => {         
-                const filesArray: {name: string, id: string, capabilities: {canEdit: boolean, canModifyContent: boolean}, contentRestrictions?: {readOnly?: boolean}}[] = JSON.parse(response.body).files;
-                // See GoogleDrive.vue: the results are not always what expected, so double check is required
-                let fileId = "";
-                filesArray.forEach((file) => {
-                    if(file.name == fileName){
-                        fileId = file.id;
-                        const fileMapEntry: GoogleDriveFileIOMap = {filePath: filePath, gdFileId: fileId, gdLocationId: useStore().strypeProjectLocation as string, 
-                            gdReadOnly: !(file.capabilities.canEdit??true) || !(file.capabilities.canModifyContent??true) || !!(file.contentRestrictions?.readOnly)};
-                        const fileMapIndex = gdFilesMap.findIndex((mapObj) =>  mapObj.filePath == filePath);
-                        if(fileMapIndex > -1){
-                            gdFilesMap[fileMapIndex] = fileMapEntry;
-                        }
-                        else{
-                            gdFilesMap.push(fileMapEntry);
-                        }
-                    }
-                });
-
-                if(fileId.length > 0){
-                    // Now we need to get the file content...
-                    googleDriveComponent.getFileContentForIO(fileId, filePath, (fileContent) => {
-                        resolve(fileContent);
-                    }, (error) => {
-                        reject(error);
-                    });                    
-                }
-                else{
-                    reject(i18n.t("errorMessage.fileIO.fileNotFound", {filename: filePath}) as string);
-                }
-            },
-            (reason) => {
-                const errorMsg = i18n.t("errorMessage.fileIO.accessToGDError", {fileName: filePath, error: (typeof reason == "string") ? reason : (reason.status??"unknown")});
-                reject(errorMsg);
-            });        
+        //test1
+        /*setTimeout(() => {
+            console.log("now executing the timeout callback");
+            file.data$ = "testDevAsyncCalls";
+            resolve("some returned msg from async call");
+        },10000);
+        */
+//test2
+/*
+        googleDriveComponent = ((vm.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDriveComponent>);
+        googleDriveComponent.searchGoogleDriveElement("parents='ro8ot' and trashed=false", {orderBy: "modifiedTime", fileFields: "files(id,name)"})
+            .then((response) => {      
+                console.log("after querying Drive we got: <"+response.body+">");
+                file.data$ = "testDevAsyncCalls2";
+                resolve("some returned msg2 from async call");
+            },(reason) => {
+                console.log("after querying Drive we got some error =>");
+                console.log(reason);
+                reject("some returned error msg from async call");
+            });
+        * /
     });
 };
 */
+// test 2bis
+const anAsyncMethod = (file: SkulptFile): Promise<string> => {
+    googleDriveComponent = ((vm.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDriveComponent>);
+    return googleDriveComponent.searchGoogleDriveElement("parents='root' and trashed=false", {orderBy: "modifiedTime", fileFields: "files(id,name)"})
+        .then((response) => {      
+            console.log("after querying Drive we got: <"+response.body+">");
+            file.data$ = "testDevAsyncCalls2";
+            return "some returned msg2bis from async call";
+        },(reason) => {
+            console.log("after querying Drive we got some error =>");
+            console.log(reason);
+            return Promise.reject("some returned error msg from async call"); // need return Promise.reject() here
+        });    
+};
+/*
+
+// test 3 (double call to GAPI)
+const anAsyncMethod = (file: SkulptFile): Promise<string> => {
+    googleDriveComponent = ((vm.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDriveComponent>);
+    return googleDriveComponent.searchGoogleDriveElement("name='testingFile.txt' and trashed=false", {orderBy: "modifiedTime", fileFields: "files(id,name)"})
+        .then((response) => {      
+            console.log("after querying Drive we got: <"+response.body+">");
+            console.log("updating file 1");
+            file.data$ = "testDevAsyncCalls3";
+            // Before returning we do another call to GAPI:
+            return googleDriveComponent.readFileContentForIO("1OQLUosC0BKCfAcZix6PthZDejKYFXEsI", false, "testingFile.txt")
+                .then((fileContent) => {
+                    console.log("updating file 2");
+                    file.data$ += ("\n"+fileContent);
+                    return "some returned msg3 from async call";
+                }, (err) => {
+                    console.log("after querying Drive at second call we got some error.");
+                    console.log(err);
+                    return Promise.reject("some returned error msg from async call part 2");
+                });
+        },(reason) => {
+            console.log("after querying Drive at first call we got some error =>");
+            console.log(reason);
+            return Promise.reject("some returned error msg from async call part 1"); // need return Promise.reject() here
+        });    
+};
+*/
+export const testAsyncIO = (file: SkulptFile): {succeeded: boolean, errorMsg: string} => {
+    return Sk.misceval.promiseToSuspension(anAsyncMethod(file).then(() => {
+        return {succeeded: true, errorMsg: "devTestAsyncNoErr"};
+    }, (errM) => {
+        return {succeeded: false, errorMsg: errM};
+    }));
+};/*
+
+// test 4 promise OR direct return
+const anAsyncMethod = (file: SkulptFile): Promise<string> => {
+    googleDriveComponent = ((vm.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDriveComponent>);
+    return googleDriveComponent.searchGoogleDriveElement("name='testingFile.txt' and trashed=false", {orderBy: "modifiedTime", fileFields: "files(id,name)"})
+        .then((response) => {      
+            console.log("after querying Drive we got: <"+response.body+">");
+            file.data$ = "testDevAsyncCalls4";
+            return "some returned msg4 from async call";
+        },(reason) => {
+            console.log("after querying Drive we got some error =>");
+            console.log(reason);
+            return Promise.reject("some returned error msg from async call"); // need return Promise.reject() here
+        });    
+};
+export const testAsyncIO = (file: SkulptFile): {succeeded: boolean, errorMsg: string} => {
+    const randomValue = Math.round(Math.random());
+    console.log("radomise decision is " + randomValue);
+    if(randomValue == 0){
+        return {succeeded: false, errorMsg: "Randomly decided there is a problem from start"};
+    }
+    else{
+        return Sk.misceval.promiseToSuspension(anAsyncMethod(file).then(() => {
+            return {succeeded: true, errorMsg: "devTestAsyncNoErr"};
+        }, (errM) => {
+            return {succeeded: false, errorMsg: errM};
+        }));
+    }
+};
+/** end test part */
+
+
+// This small helper method is used during writing operations (either for Skulpt internally or for us in the cloud)
+// Since we can either write strings or bytes arrays depending on the file mode, we just check the type of the first argument.
+const concatFileContentParts = (part1: string | Uint8Array, part2: string | Uint8Array): string | Uint8Array => {
+    console.log("concateniating sthe data bites: we have data of type: "+ (typeof part1));
+    if(typeof part1 == "string"){
+        return part1 + part2;
+    }
+    else{
+        const newConcatArray = new Uint8Array(part1.length + part2.length);
+        newConcatArray.set(part1, 0);
+        newConcatArray.set(part2 as Uint8Array, part1.length);
+        return newConcatArray;
+    }
+};
 
 // Entry point for matching a file in the user code to Google Drive.
-// This is a promise that returns an object with a property "succeeded", boolean value, and
-// "errorMsg" for passing the error message.
+// This is a promise that returns an object with a property "succeeded", boolean value, and "errorMsg" for passing the error message.
 // On success, the file is mapped in gdFilesMap for future references.
-export const skulptOpenFileIO = (fileObj: SkulptFile): {succeeded: boolean, errorMsg: string} => {
+export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, errorMsg: string} => {
     // If we are not connected to a cloud file system, then we raise an error.
     if(useStore().syncTarget != StrypeSyncTarget.gd){
         return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.notConnectedToCloud") as string};
     }
 
-    // Initialistor for the variable
+    // Initialisator of the variable
     if(googleDriveComponent == undefined){
         googleDriveComponent = ((vm.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDriveComponent>);
     }
@@ -125,7 +196,7 @@ export const skulptOpenFileIO = (fileObj: SkulptFile): {succeeded: boolean, erro
     // Because the path is written in the user code, and because the project can be open on any platform,
     // the separator can be anything (even if knowing the project looks up file in the Cloud, "/" is more likely).
     // We take the risk of splitting the path using either "/" or "\" and assuming these are not used in folder or file names.
-    const filePath = fileObj.name;
+    const filePath = skFile.name;
     const posixPath = filePath.replaceAll("\\", "/"); 
     const posixPathObj = path.parse(posixPath);
     const fileName = posixPathObj.name + posixPathObj.ext;
@@ -136,6 +207,7 @@ export const skulptOpenFileIO = (fileObj: SkulptFile): {succeeded: boolean, erro
         // First we need to check/retrieve the file's containing folder.
         getgdFileFolderIdFromPath(posixPathObj)
             .then((fileFolderId) => {
+                console.log("resolved the path and got the folder id ("+fileFolderId+")");
                 // We have a fileFolder Id so we can now get the file itself within that location
                 return googleDriveComponent.searchGoogleDriveElement(`name='${fileName}' and parents='${fileFolderId}' and trashed=false`, {orderBy: "modifiedTime", fileFields: "files(id,name,capabilities,contentRestrictions)"})
                     .then((response) => {      
@@ -149,52 +221,62 @@ export const skulptOpenFileIO = (fileObj: SkulptFile): {succeeded: boolean, erro
                         });
 
                         if(gdFile){
-                            // Found a file to match, we can add it to the mapping object unless we are in "x" mode which requires the file not to exist.
-                            if(!fileObj.mode.v.startsWith("x")){
-                                const fileMapEntry: GoogleDriveFileIOMap = {filePath: filePath, gdFileId: gdFile.id, gdLocationId: fileFolderId, 
-                                    gdReadOnly: !(gdFile.capabilities.canEdit??true) || !(gdFile.capabilities.canModifyContent??true) || !!(gdFile.contentRestrictions?.readOnly)};
-                                gdFilesMap.push(fileMapEntry);                   
+                            // Before adding the file in the map, we do some basic checks.
+                            // Check 1: if the file is in x mode, it can't exist
+                            if(skFile.mode.v.startsWith("x")){
+                                return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.fileAlreadyExists", {filename: filePath}) as string};
 
-                                // We can return already with success if we are in read mode strict (r+ only succeeds if not read-only)
-                                if(fileObj.mode.v.startsWith("r")){
-                                    if(fileObj.mode.v.includes("+") && fileMapEntry.gdReadOnly){
-                                        return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.readonlyFile", {filename: filePath}) as string};
+                            }
+                            // Check 2: if the file is in write, append, or r+ mode, it can't be readonly. 
+                            const isReadonly = !(gdFile.capabilities.canEdit??true) || !(gdFile.capabilities.canModifyContent??true) || !!(gdFile.contentRestrictions?.readOnly);
+                            if(isReadonly && /^([wa])|(rb?\+)/.test(skFile.mode.v)) {
+                                return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.readonlyFile", {filename: filePath}) as string};
+                            }
+                            // Can add the matched file to the mapping object unless we are in "x" mode which requires the file not to exist.
+                            const fileMapEntry: GDFileWithMetaData = {...gdFile, filePath: filePath, locationId: fileFolderId, readOnly: isReadonly};
+                            gdFilesMap.push(fileMapEntry);     
+                                
+                            // If we are in reading mode or append mode, we need to retrieve the file's content.
+                            // This is for internal mechanisms, but if we fail to read the file at this stage, we'll raise an error.
+                            // For writing mode, we just set the file content to empty as it will be truncated anyway.
+                            if(!skFile.mode.v.startsWith("w")){
+                                return skupltReadFileIO(filePath).then((fileContent) => {            
+                                    console.log("when opening file with FileIO, we read the file and got:");
+                                    console.log(fileContent);
+                                    gdFile.content = fileContent;
+                                    // Very importantly, the Skulpt internal data buffer is updated here for reading mode:
+                                    if(skFile.mode.v.startsWith("r")){
+                                        skFile.data$ = Sk.ffi.remapToPy(fileContent);
                                     }
-                                    return {succeeded: true, errorMsg: ""};       
-                                }
-                                // If we are in write mode, we first need to "clear" the file as in Python, a call to open(xxx,"w") truncates the file.
-                                // In write or append the file is readonly, we are already in error.            
-                                else if(fileObj.mode.v.startsWith("w") || fileObj.mode.v.startsWith("a")) {
-                                    if(fileMapEntry.gdReadOnly){
-                                        return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.readonlyFile", {filename: filePath}) as string};
-                                    }
-                                    else if(fileObj.mode.v.startsWith("w")) {
-                                        return skulptWriteFileIO(fileObj, (fileObj.mode.v.includes("b")) ? new Uint8Array(0) : "");
-                                    }
-                                    else {
-                                        return {succeeded: true, errorMsg: ""};                               
-                                    }
-                                }
+                                    return {succeeded: true, errorMsg: ""};
+                                },
+                                () => {
+                                    return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.openReadingError", {filename: filePath}) as string};
+                                });
                             }
                             else{
-                                // If the file exists, then, we are in error state for "x" mode
-                                return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.fileAlreadyExists", {filename: filePath}) as string}; 
+                                // At this stage everythig is fine, we can return success
+                                return {succeeded: true, errorMsg: ""};
                             }
                         }
                         else{
                             // The file may have not be found, which is a stopper in read mode.
-                            // However, in write, append and exclusive creation mode, we can create a file. So we try that first.
-                            if(fileObj.mode.v.startsWith("r")){
+                            // However, in write, append and exclusive creation mode, we can create a file. 
+                            // Python creates the file right at the call to open().
+                            // So we try that first.
+                            if(skFile.mode.v.startsWith("r")){
                                 return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.fileNotFound", {filename: filePath}) as string};
                             }
-                            else if(fileObj.mode.v.startsWith("w") || fileObj.mode.v.startsWith("a") || fileObj.mode.v.startsWith("x")){
-                                return createEmptyFile(filePath, fileObj.mode.v.includes("b"), fileName, fileFolderId).then((fileId) => {
-                                    // Since the file has been created we can now keep it's fileId in the map:
-                                    gdFilesMap.push({filePath: filePath, gdFileId: fileId, gdLocationId: fileFolderId, gdReadOnly: false});
-                                    return {succeeded: true, errorMsg: ""};
-                                }, (error) => {
-                                    return {succeeded: false, errorMsg: error};
-                                });
+                            else if(skFile.mode.v.startsWith("w") || skFile.mode.v.startsWith("a") || skFile.mode.v.startsWith("x")){
+                                return googleDriveComponent.writeFileContentForIO((skFile.mode.v.includes("b") ? new Uint8Array(0) : ""), {filePath: filePath, fileName: fileName, folderId: fileFolderId})
+                                    .then((newFileId) => {
+                                        // Since the file has been created we can now keep it's fileId in the map:
+                                        gdFilesMap.push({name: fileName, content: "", filePath: filePath, id: newFileId, locationId: fileFolderId, readOnly: false, capabilities: {canEdit: true, canModifyContent: true}});
+                                        return {succeeded: true, errorMsg: ""};
+                                    },
+                                    (errorMsg) =>  {
+                                        return {succeeded: false, errorMsg: errorMsg};
+                                    });                               
                             }
                         }
                     },
@@ -214,6 +296,7 @@ const getgdFileFolderIdFromPath = (fileFolderPath: path.PathObject): Promise<str
     // The base location of the Google Drive search is the project's current directory.
     // (Note: the root of the Google Drive folders, the drive itself is identified in Google Drive by "root".)
     return new Promise<string>((resolve, reject) => {
+        console.log("looking at path");
         const baseFolderLocationId = useStore().strypeProjectLocation as string;
         if(fileFolderPath.dir && fileFolderPath.dir != "./"){
             // We need to look up the directory/directories from top to bottom.
@@ -321,208 +404,92 @@ const getgdFileFolderIdFromPath = (fileFolderPath: path.PathObject): Promise<str
     });
 };
 
-// Handling the closing request of a file from Skulpt. In our Google Drive context, there is nothing special to do
-// except cleaning up the file map. (Actual potential writing to the file is handled in Skulpt.)
-export const skulptCloseFileIO = (file: SkulptFile): void => {
-    const fileEntryIndex = gdFilesMap.findIndex((entry) => entry.filePath == file.name);
-    if(fileEntryIndex > -1){
+// Handling the closing request of a file from Skulpt. In our Google Drive context.
+// We make sure to make the actual writing of the file on the Drive, and clean up the file map. 
+export const skulptCloseFileIO = (skFile: SkulptFile): {succeeded: boolean, errorMsg: string} => {
+    const fileEntryIndex = gdFilesMap.findIndex((entry) => entry.filePath == skFile.name);
+    if(fileEntryIndex == -1){
+        return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.closeInternalError") as string};
+    }
+    // If we are in strict reading mode, we don't need to do any asyn part.
+    // Otherise, we need to make the actual writing to the file.
+    // In all cases we need to write something, we just write the buffer content.
+    // One exception to this: append mode will write at the end of the file.
+    // Prepare what to write. 
+    const finaliseClose = (): {succeeded: boolean, errorMsg: string} => {
         console.log("Removed #"+fileEntryIndex+" from the file map....");
         gdFilesMap.splice(fileEntryIndex, 1);
+        return {succeeded: true, errorMsg: ""};
+    };
+    const needWriting = !/^rb?$/.test(skFile.mode.v);
+    const toWrite = (skFile.mode.v.startsWith("a")) ? concatFileContentParts(gdFilesMap[fileEntryIndex].content, Sk.ffi.remapToJs(skFile.data$)) : Sk.ffi.remapToJs(skFile.data$);
+    console.log("in IO Closing, need writing? " + needWriting);
+    console.log("IN WRITE IO BEFORE CLOSE, GOT to write: <"+toWrite+">");
+    if(needWriting){
+        return new Sk.misceval.promiseToSuspension( 
+            anAsyncMethod(skFile).then(() => {
+                return {succeeded: true, errorMsg: "devTestAsyncNoErr"};
+            }, (errM) => {
+                return {succeeded: false, errorMsg: errM};
+            })
+            /*
+            skulptWriteFileIO(skFile, toWrite)
+                .then((successData: {succeeded: boolean, errorMsg: string}) => {
+                    if(successData.succeeded){
+                        return finaliseClose();
+                    }
+                    else {
+                        return successData;
+                    }
+                })*/
+        );
+    }
+    else{
+        return finaliseClose();
     }
 };
-
-// This method is only called by the file opening mechanism when a file needs to be created, for example, when opening in write mode.
-// The returned promise contains the fileId, or empty in case of error.
-const createEmptyFile = (filePath: string, isBinaryMode: boolean, fileName: string, folderId: string): Promise<string> => {
-    return googleDriveComponent.writeFileContentForIO((isBinaryMode) ? new Uint8Array(0) : "", {filePath: filePath, fileName: fileName, folderId: folderId});
-}; 
 
 // Read method, with retrieves the content of a file on Google Drive.
 // The content is either a string content for text modes, bytes for binary modes.
 // On failure, the content contains the error message.
 // (This method isn't called directly, but it is called by skulptReadPythonLib() in ac-skulpt.ts)
-export const skupltReadFileIO = (filePath: string, fileMode?: string): Promise<string|Uint8Array> => {
+const skupltReadFileIO = (filePath: string, fileMode?: string): Promise<string|Uint8Array> => {
     // We retrieve the Google Drive file ID - it should be valid as no call to this when a file is closed in Skulpt should happen.
-    const fileId = gdFilesMap.find((mapEntry) => mapEntry.filePath == filePath)?.gdFileId??"";
+    const fileId = gdFilesMap.find((mapEntry) => mapEntry.filePath == filePath)?.id??"";
     return new Promise<string|Uint8Array>((resolve, reject) => {
-        googleDriveComponent.readFileContentForIO(fileId, (fileMode?.includes("b")??false), filePath, (fileContent) => {
-            resolve(fileContent);
-        }, (error) => {
-            reject(error);
-        });       
+        googleDriveComponent.readFileContentForIO(fileId, (fileMode?.includes("b")??false), filePath)
+            .then((fileContent) => {
+                resolve(fileContent as string|Uint8Array);
+            }, (error) => {
+                reject(error);
+            });       
     });
 };
 
-// Write method which is only executed when a file is closed (intermediate buffer writing is done by Skulpt).
-export const skulptWriteFileIO = (fileObj: SkulptFile, toWrite: string|Uint8Array): Promise<{succeeded: boolean, errorMsg: string}> => {
-    // We retrieve the Google Drive file ID - it should be valid as no call to this when a file is closed in Skulpt should happen.
-    const fileId = gdFilesMap.find((mapEntry) => mapEntry.filePath == fileObj.name)?.gdFileId??"";
-    return new Promise<{succeeded: boolean, errorMsg: string}>((resolve, reject) => {
-        const callWrite = (toWrite: string|Uint8Array) => {
-            googleDriveComponent.writeFileContentForIO(toWrite, {filePath: fileObj.name, fileId: fileId})
-                .then((_) => {
-                    console.log("SEE RESOLVE FROM WRITING AFTER GOOGLE RETURNED (writing <"+toWrite+">");
-                    resolve({succeeded: true, errorMsg: ""});
-                },
-                (error) => {
-                    reject({succedeed: false, errorMsg: error});
-                });
-        };
-
-        // Because of having issues doing that from Skulpt, one particular case that does a bit more is for files opened with append mode or r+ mode:
-        // since the content is to be appened to the end [resp beginning] of the file, we read the file.
-        if(fileObj.mode.v.startsWith("a") || /^rb?\+/.test(fileObj.mode.v)){
-            return skupltReadFileIO(fileObj.name, fileObj.mode.v).then((fileContent) => {
-                const appendWrite = fileObj.mode.v.startsWith("a");
-                if(fileObj.mode.v.includes("b")){
-                    const bFileContent = fileContent as Uint8Array;
-                    const bToWrite = toWrite as Uint8Array;
-                    // If we are dealing with a binary mode append, we have to concatenate the 2 bytes arrays (read one + to write one),
-                    // if we are dealing with r+ mode, we concatenate the bytes to write and the leftover read one
-                    const combined = new Uint8Array((appendWrite) ? bFileContent.length + bToWrite.length : Math.max(bFileContent.length, bToWrite.length));
-                    combined.set((appendWrite) ? bFileContent : bToWrite, 0);
-                    combined.set((appendWrite) ? bToWrite : bFileContent.slice(bToWrite.length), (appendWrite) ? bFileContent.length : bToWrite.length);
-                    return callWrite(combined);
-                }
-                else{
-                    const strFileContent = fileContent as string;
-                    return callWrite((appendWrite) 
-                        ? strFileContent + toWrite
-                        : toWrite + ((strFileContent.length > toWrite.length) ? strFileContent.substring(toWrite.length) : ""));
-                }                
-            }, (error)=>reject({succedeed: false, errorMsg: error}));
-        }
-        else{
-            callWrite(toWrite);
-        }
-    });
+// This method is a handler for the internal Skulpt write (to external file).
+// It doens't actually write in the external file, but update the Skulpt's internal buffer of the Skulpt file object.
+export const skulptInteralFileWrite = (skFile: SkulptFile, toWrite: string | Uint8Array): void => {
+    console.log("going to write <"+toWrite+"> in the interal Skulpt buffer");
+    skFile.data$ = Sk.ffi.remapToPy(concatFileContentParts(Sk.ffi.remapToJs(skFile.data$), toWrite));
 };
 
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types, no-shadow */
-
-import { readFileContent } from "./common";
-import i18n from "@/i18n";
-import { StrypeSyncTarget } from "@/types/types";
-
-// Helper containing the methods to be fed to Skulpt to simulate Python's file IO.
-// Depending on the location of the Strype project, the file IO works on the clound 
-// or on the file system.
-// On the cloud, authentication is assumed to be already done, and we work at the project's location.
-// On the file system, we need to "interrupt" the workflow with basic file IO from Javascript.
-// Since the File System API isn't implemented by all browsers, we go to the most basic approach.
-
-// FileObject wrapper
-export class FileObject{
-    fileName: string;
-    private mode: string;
-  private pointer: number;
-  private closed: boolean;
-  private buffer: string;
-  // extra
-  private sk: any;
-
-  constructor(filename: string, mode: string, sk: any) {   
-      this.fileName = filename;
-      this.mode = mode;
-      this.pointer = 0;
-      this.closed = false;
-      this.sk = sk;
-      // Buffer is set asynchronously, we just make it empty for now
-      this.buffer = "";
-
-      //Retrieve file content:
-      document.getElementById("pyIOFileInput")?.click();
-  }
-
-  static async create(fileName: string, mode: string, sk: any): Promise<FileObject> {
-      const instance = new FileObject(fileName, mode, sk);
-      await instance.waitForDocumentEvent("PyFileIOChanged").then((fileContent) => instance.buffer = fileContent,
-          (reason) => {
-              throw new sk.builtin.IOError("COULD NOT READ FILE, " + reason);
-          });
-      return instance;
-  }
-
-  private waitForDocumentEvent(eventName: string): Promise<string> {
-
-      return  new Promise((resolve, reject) => {
-          const handler = (event: Event) => {
-              // Clean up listener after firing
-              document.removeEventListener(eventName, handler);
-              const files = (document.getElementById("pyIOFileInput") as HTMLInputElement)?.files;
-              if(files){
-                  readFileContent(files[0])
-                      .then(
-                          (content) => {
-                              resolve(content);                                
-                          }, 
-                          (reason) => reject(reason)
-                      );  
-              }
-              reject("No File found in input");
-          };
-          document.addEventListener(eventName, handler);
-      });
-  }
-
-  read(): any {
-      if (this.closed) {
-          throw new this.sk.builtin.ValueError("I/O operation on closed file.");
-      }
-      const result = this.buffer.slice(this.pointer);
-      this.pointer = this.buffer.length;
-      return new this.sk.builtin.str(result);
-  }
-
-  close(): any {
-      this.closed = true;
-      return this.sk.builtin.none.none$;
-  }
-}
-
-
+// This write method is internally called by the the closing method (see skulptCloseFileIO) when the latter is called by Skulpt.
+// All intermediate buffer writing is done by Skulpt which calls skulptInteralFileWrite above.
+// Note: we write a full file content every time. That means that sometimes we need to write more than the internal buffer content,
+// for example in append mode. It is the job of skulptCloseFileIO to check all that - this methods just writes.
 /*
-FileObject.prototype.read = function () {
-    if (this.closed) {
-        throw new this.sk.builtin.ValueError("I/O operation on closed file.");
-    }
-    const result = this.buffer.slice(this.pointer);
-    this.pointer = this.buffer.length;
-    return new this.sk.builtin.str(result);
+const skulptWriteFileIO = (skFile: SkulptFile, toWrite: string|Uint8Array): Promise<{succeeded: boolean, errorMsg: string}> => {
+    // We retrieve the Google Drive file ID - it should be valid as no call to this when a file is closed in Skulpt should happen.
+    const fileId = gdFilesMap.find((mapEntry) => mapEntry.filePath == skFile.name)?.id??"";
+    return googleDriveComponent.writeFileContentForIO(toWrite, {filePath: skFile.name, fileId: fileId})
+        .then((_) => {
+            console.log("SEE RESOLVE FROM WRITING AFTER GOOGLE RETURNED (writing <"+toWrite+">");
+            return {succeeded: true, errorMsg: ""};
+        },
+        (errorMsg) => {
+            // We do not reject here, everything is treated as resolved (for Skulpt to handle the error messages)
+            return {succeeded: false, errorMsg: errorMsg};
+        });
+   
 };
-
-// NOTES : write or append; and all actions close the stream (???? it looks like it doesn't within the with... block)
-// 2 writes within a with block will be concatenated (because the pointer start at 0 then follow)
-
-FileObject.prototype.write = function (text: any) {
-    if (this.closed) {
-        throw new this.sk.builtin.ValueError("I/O operation on closed file.");
-    }
-    const str = text.v || text;  // support Python str or JS string
-    this.buffer += str;
-    fileSystem[this.filename] = this.buffer;
-    return this.sk.builtin.none.none$;
-};
-
-
-FileObject.prototype.write = function (text: any) {
-    if (this.closed) {
-        throw new this.sk.builtin.ValueError("File already closed."); // check that's useful at all?
-    }
-    this.closed = true;
-    // If we had opened the file as write/append, we need to update it
-
-};
-
 */
-
-// Wrap it as a Python object
-export function makeFileWrapper(fileObj: FileObject, sk: any) {
-    return sk.misceval.buildClass({}, function (mod: any) {
-        mod.read = new sk.builtin.func(() => fileObj.read());
-        //mod.readline = new fileObj.sk.builtin.func(() => fileObj.readline());
-        //mod.write = new fileObj.sk.builtin.func((text) => fileObj.write(text));
-        //mod.seek = new fileObj.sk.builtin.func((pos) => fileObj.seek(pos));
-        mod.close = new sk.builtin.func(() => fileObj.close());
-    }, fileObj.fileName, []);
-}

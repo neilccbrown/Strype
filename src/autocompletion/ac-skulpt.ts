@@ -2,10 +2,6 @@
 // that it does not import other parts of the code (e.g. i18n) that can't work outside webpack
 
 import {getFileFromLibraries} from "@/helpers/libraryManager";
-//TODO : these 2 imports might create issues (see above). Use some conditional directives to skip parts?
-import { skupltReadFileIO } from "@/helpers/skulptFileIO";
-import i18n from "@/i18n";
-
 declare const Sk: any;
 
 export const OUR_PUBLIC_LIBRARY_FILES : string[] = [
@@ -31,48 +27,8 @@ export function skulptReadPythonLib(libraryAddresses: string[]) : ((x : string, 
                 );
             }
             if (!x.endsWith(".py")) {
-                if(!x.endsWith(".js")) {
-                    // We need to open a file from Google Drive.
-                    // Two situations can happen: either we are in a Strype project saved in Google Drive or not.
-                    // If we are: we work with the current project's location on Drive to read/write the file,
-                    // TODO if we are not: error or ask to login and choose a folder?
-                    return Sk.misceval.promiseToSuspension(
-                        // We need to look up the file (Google Drive doesn't use file names in the API for read/write)
-                        // with root location on the current project's folder, then retrieve its id and read.
-                        skupltReadFileIO(x, fileMode).then((fileContent) => {
-                            return fileContent;
-                        }
-                        //return Promise.resolve(fileContent);
-                        , (error) =>{
-                            return {isError: true, errorMsg: error};
-                            //throw Error(error);
-                        })                            
-                        /*
-                            const handler = (event: Event) => {
-                                // Clean up listener after firing
-                                document.removeEventListener("pyIOFileInput", handler);
-                                const files = (document.getElementById("pyIOFileInput") as HTMLInputElement)?.files;
-                                if(files){
-                                    readFileContent(files[0])
-                                        .then(
-                                            (content) => {
-                                                resolve(content);                                
-                                            }, 
-                                            (reason) => reject(reason)
-                                        );  
-                                }
-                                reject("No File found in input");
-                            };
-                            document.addEventListener("pyIOFileInput", handler);  
-                            // click to get the file and file content
-                            document.getElementById("pyIOFileInput")?.click();                 
-                            */
-                    );
-                }
-                else{
-                    // We only fetch third-party Python files, not JS, for security reasons:
-                    return {isError: true, errorMsg: i18n.t("errorMessage.fileIO.unsupportedFileToRead", {filename: x}) as string};
-                }
+                // We only fetch third-party Python files, not JS, for security reasons:
+                return undefined;
             }
             return Sk.misceval.promiseToSuspension(
                 getFileFromLibraries(libraryAddresses, x)

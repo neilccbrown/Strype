@@ -826,22 +826,32 @@ export default Vue.extend({
             this.saveFileId = undefined;
         },
 
-        readFileContentForIO(fileId: string, isBinaryMode: boolean, filePath: string, onSuccess: (fileContent: string|Uint8Array) => void, onFailure: (reason: string) => void) {
+        readFileContentForIO(fileId: string, isBinaryMode: boolean, filePath: string): Promise<string | Uint8Array | {success: boolean, errorMsg: string}> {
             // This method is used by FileIO to get a file string content.
             // It relies on the Google File Id passed as argument, and the callback method for handling succes or failure is also passed as arguments.
             // The argument "filePath" is only used for error message.
             // The nature of the answer depends on the reading mode: a string in normal text case, an array of bytes in binary mode.
             // Because we want to be able to read raw data, we use the fetch API to query Google Drive.
-            fetch("https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media", {
+            return fetch("https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media", {
                 headers: { Authorization: "Bearer "+ this.oauthToken },
             }).then((resp) => {
+                console.log("\n>>>>>>>> IN THE READING FROM GOOGLE NOW");
+                // Fetch returns a fulfilled promise even if the response is not 200.
+                if(resp.status != 200){
+                    return Promise.reject({success: false, errorMsg: this.$i18n.t("errorMessage.fileIO.fetchFileError", {filename: filePath, error: resp.status}) as string}); 
+                }
                 return (isBinaryMode) 
-                    ? resp.arrayBuffer().then((buffer) => onSuccess(new Uint8Array(buffer))) 
-                    : resp.text().then((text) => onSuccess(text));
+                    ? resp.arrayBuffer().then((buffer) => {
+                        return new Uint8Array(buffer);
+                    }) 
+                    : resp.text().then((text) => {
+                        console.log(">>>>>>>> converting <"+text+"> to str");
+                        return text;
+                    });
             },
             // Case of errors
             (resp) => {
-                onFailure(resp.status?.toString()??this.$i18n.t("errorMessage.fileIO.fetchFileError", {filename: filePath, error: resp.body}) as string); 
+                return {success: false, errorMsg: this.$i18n.t("errorMessage.fileIO.fetchFileError", {filename: filePath, error: (resp?.status?.toString()??"unknown")}) as string}; 
             });
         },
 

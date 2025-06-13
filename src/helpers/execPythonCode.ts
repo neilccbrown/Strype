@@ -6,7 +6,7 @@ import { skulptReadPythonLib } from "@/autocompletion/ac-skulpt";
 import i18n from "@/i18n";
 import Vue from "vue";
 import { CustomEventTypes, setPythonExecAreaLayoutButtonPos } from "./editor";
-import { clearGDFileIOMap, FileObject, makeFileWrapper, skulptCloseFileIO, skulptOpenFileIO, skulptWriteFileIO } from "./skulptFileIO";
+import { clearGDFileIOMap, skulptCloseFileIO, skulptInteralFileWrite, skulptOpenFileIO, testAsyncIO } from "./skulptFileIO";
 
 const STRYPE_RUN_ACTION_MSG = "StrypeRunActionCalled";
 const STRYPE_INPUT_INTERRUPT_ERR_MSG = "ExternalError: " + STRYPE_RUN_ACTION_MSG;
@@ -191,29 +191,19 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         output:outf, 
         read:skulptReadPythonLib(libraryAddresses),
         fileopen: skulptOpenFileIO,
-        fileclose: skulptCloseFileIO, // This is a added property in Skulpt for fileIO
-        fileNotWritableErr: i18n.t("errorMessage.fileIO.fileNotWritableErr"), // This is a added property in Skulpt for fileIO
-        fileNotReadableErr: i18n.t("errorMessage.fileIO.fileNotReadableErr"), // This is a added property in Skulpt for fileIO
-        fileClosedErr: i18n.t("errorMessage.fileIO.fileClosedErr"), // This is a added property in Skulpt for fileIO
-        fileModeErr: i18n.t("errorMessage.fileIO.fileModeErr"), // This is a added property in Skulpt for fileIO
+        fileclose: testAsyncIO, // This is an added property in Skulpt for fileIO
+        fileNotWritableErr: i18n.t("errorMessage.fileIO.fileNotWritableErr"), // This is an added property in Skulpt for fileIO
+        fileNotReadableErr: i18n.t("errorMessage.fileIO.fileNotReadableErr"), // This is an added property in Skulpt for fileIO
+        fileClosedErr: i18n.t("errorMessage.fileIO.fileClosedErr"), // This is an added property in Skulpt for fileIO
+        fileModeErr: i18n.t("errorMessage.fileIO.fileModeErr"), // This is an added property in Skulpt for fileIO
         nonreadopen: true,
-        filewrite: skulptWriteFileIO,
+        filewrite: skulptInteralFileWrite, // see skulptFileIO.ts
         inputfun:sInput,
         inputfunTakesPrompt: true,
         yieldLimit:100, 
         killableWhile: true,
         killableFor: false});
     Sk.inBrowser=false;
-
-    if(Sk.dummy){
-        Sk.builtins = Sk.builtins || {};
-        Sk.builtins.open.$meth = new Sk.builtin.func(function (filename: any, mode: any) {
-            const fname = filename.v;
-            const fmode = mode ? mode.v : "r";
-            const fileObj = new FileObject(fname, fmode, Sk);
-            return makeFileWrapper(fileObj, Sk);
-        });
-    }
     
     const myPromise = Sk.misceval.asyncToPromise(function() {
         return Sk.importMainWithBody("<stdin>", false, userCode, true);
