@@ -1545,7 +1545,8 @@
                     "defaultValue": "True"
                 },
                 {
-                    "name": "verbosity"
+                    "name": "verbosity",
+                    "defaultValue": "<unittest.loader.TestLoader object>"
                 },
                 {
                     "name": "failfast",
@@ -1670,7 +1671,8 @@
                     "name": "url"
                 },
                 {
-                    "name": "data"
+                    "name": "data",
+                    "defaultValue": "<object object>"
                 },
                 {
                     "name": "timeout",
@@ -2340,7 +2342,8 @@
                     "name": "memo"
                 },
                 {
-                    "name": "deepcopy"
+                    "name": "deepcopy",
+                    "defaultValue": "<function deepcopy>"
                 }
             ]
         },
@@ -2381,7 +2384,8 @@
                     "name": "memo"
                 },
                 {
-                    "name": "deepcopy"
+                    "name": "deepcopy",
+                    "defaultValue": "<function deepcopy>"
                 }
             ]
         },
@@ -2408,7 +2412,8 @@
                     "name": "memo"
                 },
                 {
-                    "name": "deepcopy"
+                    "name": "deepcopy",
+                    "defaultValue": "<function deepcopy>"
                 }
             ]
         },
@@ -2449,7 +2454,8 @@
                     "name": "args"
                 },
                 {
-                    "name": "state"
+                    "name": "state",
+                    "defaultValue": "<function deepcopy>"
                 },
                 {
                     "name": "listiter",

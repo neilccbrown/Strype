@@ -123,9 +123,10 @@ for mod in targetAPI:
                         if argspec.defaults and ((numArgs - i) <= len(argspec.defaults)):
                             try:
                                 defVal = str(argspec.defaults[numArgs - i - 1])
-                                # Don't record things like "<unittest.loader.TestLoader object at 0x10391f8e0>" as a defaultValue:
-                                if not re.fullmatch(r"<.* at 0x[0-9a-fA-F]+>", defVal):
-                                    details['defaultValue'] = defVal 
+                                # Don't record things like "<unittest.loader.TestLoader object at 0x10391f8e0>" as a defaultValue,
+                                # as it changes each run:
+                                defVal = re.sub(r' at 0x[0-9a-fA-F]+', "", defVal)
+                                details['defaultValue'] = defVal 
                             except:
                                 pass
                         item['params'].append(details)
