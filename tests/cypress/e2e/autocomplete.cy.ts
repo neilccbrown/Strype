@@ -1,53 +1,14 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
-import {cleanFromHTML} from "../support/test-support";
 import "@testing-library/cypress/add-commands";
 import "../support/autocomplete-test-support";
-import {BUILTIN, MYFUNCS, MYVARS, checkAutocompleteSorted, checkExactlyOneItem, checkNoItems, checkNoneAvailable, focusEditorAC, withAC, withSelection, scssVars, strypeElIds} from "../support/autocomplete-test-support";
+import {BUILTIN, MYFUNCS, MYVARS, checkAutocompleteSorted, checkExactlyOneItem, checkNoItems, checkNoneAvailable, focusEditorAC, withAC, assertState, scssVars} from "../support/autocomplete-test-support";
 
 // Needed for the "be.sorted" assertion:
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 chai.use(require("chai-sorted"));
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
-
-
-// Checks that the first labelslot in the given frame has content equivalent to expectedState (with a dollar indicating cursor position),
-// and equivalent to expectedStateWithPlaceholders if you count placeholders as the text for blank spans
-// If the last parameter is missing, it's assumed that expectedStateWithPlaceholders is the same as expectedState
-// (but without the dollar)
-function assertState(frameId: number, expectedState : string, expectedStateWithPlaceholders?: string) : void {
-    expectedStateWithPlaceholders = expectedStateWithPlaceholders ?? expectedState.replaceAll("$", "");
-    withSelection((info) => {    
-        cy.get("#" + strypeElIds.getFrameHeaderUID(frameId) + " #" + strypeElIds.getFrameLabelSlotsStructureUID(frameId, 0) + " ." + scssVars.labelSlotInputClassName).then((parts) => {
-            let content = "";
-            let contentWithPlaceholders = "";
-            for (let i = 0; i < parts.length; i++) {
-                const p : any = parts[i];
-                let text = cleanFromHTML(p.value || p.textContent || "");
-
-                // If the text for a span is blank, use the placeholder since that's what the user will be seeing:
-                if (!text) {
-                    // Get rid of zero-width spaces (trim() doesn't seem to do this):
-                    contentWithPlaceholders += p.getAttribute("placeholder")?.replace(/\u200B/g,"") ?? "";
-                }
-                else {
-                    contentWithPlaceholders += text;
-                }
-                
-                // If we're the focused slot, put a dollar sign in to indicate the current cursor position:
-                if (info.id === p.getAttribute("id") && info.cursorPos >= 0) {
-                    text = text.substring(0, info.cursorPos) + "$" + text.substring(info.cursorPos);
-                }
-                
-                content += text;
-            }
-            expect(content).to.equal(expectedState);
-            expect(contentWithPlaceholders).to.equal(expectedStateWithPlaceholders);
-        });
-    });
-}
-
 
 
 describe("Built-ins", () => {
