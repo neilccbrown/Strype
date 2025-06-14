@@ -48,6 +48,47 @@ describe("User-defined items", () => {
         }, true);
     });
 
+    it("Offers auto-complete for user-defined variables but inside functions", () => {
+        focusEditorAC();
+        // Make an assignment frame that says "myVar=<string>", then make a function definition:
+        cy.get("body").type("=myVar=\"hello\"{enter}");
+        cy.get("body").type("{uparrow}{uparrow}ffoo{rightarrow}{rightarrow} ");
+        cy.wait(500);
+        // Trigger auto-completion:
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkExactlyOneItem(acIDSel, MYVARS, "myVar");
+            // Not a function, so shouldn't show brackets:
+            checkNoItems(acIDSel, "myVar()");
+            // Fill it in:
+            cy.get("body").type("myV");
+            cy.wait(1000);
+            cy.get("body").type("{enter}");
+        }, true);
+
+        // Now check members complete on it:
+        cy.get("body").type(".");
+        cy.wait(500);
+        // Trigger auto-complete:
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkExactlyOneItem(acIDSel, "myVar", "lower()");
+            checkExactlyOneItem(acIDSel, "myVar", "upper()");
+            checkNoItems(acIDSel, "divmod");
+            cy.get("body").type("u");
+            cy.wait(600);
+            checkNoItems(acIDSel, "lower");
+            checkExactlyOneItem(acIDSel, "myVar", "upper()");
+            checkNoItems(acIDSel, "divmod");
+            checkAutocompleteSorted(acIDSel, true);
+            // Check docs show:
+            cy.get("body").type("pper");
+            cy.get(acIDSel).contains(UPPER_DOC);
+        }, true);
+    });
+
     it("Offers auto-complete for user-defined function parameters", () => {
         focusEditorAC();
         // Make a function frame with "foo(myParam)" 
