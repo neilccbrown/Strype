@@ -499,6 +499,10 @@ export function getSaveProjectLinkId(): string {
     return "saveStrypeProjLink";
 }
 
+export function getImportFileInputId(): string {
+    return "importFileInput";
+}
+
 export function getGoogleDriveComponentRefId(): string {
     return "googleDriveComponent";
 }

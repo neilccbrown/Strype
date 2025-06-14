@@ -359,7 +359,7 @@ async function load(page: Page, filepath: string) : Promise<void> {
     // The "button" for the target selection is now a div element.
     await page.click("#" + await strypeElIds.getLoadFromFSStrypeButtonId());
     // Must force because the <input> is hidden:
-    await page.setInputFiles("." + scssVars.editorFileInputClassName, filepath);
+    await page.setInputFiles("#" + await strypeElIds.getImportFileInputId(), filepath);
     await page.waitForTimeout(2000);
 }
 

@@ -57,7 +57,7 @@ async function loadPY(page: Page, filepath: string) {
     await clickId(page, () => (window as any)["StrypeHTMLELementsIDsGlobals"].getEditorMenuUID());
     await clickId(page, () => (window as any)["StrypeHTMLELementsIDsGlobals"].getLoadProjectLinkId());
     // The "button" for the target selection is now a div element.
-    await page.locator("." + scssVars.editorFileInputClassName).setInputFiles(path.join(__dirname, filepath));
+    await page.locator("#" + await strypeElIds.getImportFileInputId()).setInputFiles(path.join(__dirname, filepath));
     await clickId(page, () => (window as any)["StrypeHTMLELementsIDsGlobals"].getLoadFromFSStrypeButtonId());
     // Wait for everything to settle:
     await page.waitForTimeout(2000);

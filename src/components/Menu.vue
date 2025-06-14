@@ -152,7 +152,8 @@
                 :accept="acceptedInputFileFormat"
                 ref="importFileInput" 
                 @change="selectedFile" 
-                :class="scssVars.editorFileInputClassName"
+                :id="importFileInputId"
+                style="display: none;"
             /> 
         </div>
         <div class="menu-icons-div">
@@ -193,7 +194,7 @@ import Vue from "vue";
 import { useStore, settingsStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
 import { AppEvent, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, ShareProjectMode, SlotCoreInfos, SlotCursorInfos, SlotType, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
-import {countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppLangSelectId, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getGoogleDriveComponentRefId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNearestErrorIndex, getSaveAsProjectModalDlg, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey, getSaveProjectLinkId, getNewProjectLinkId} from "@/helpers/editor";
+import {countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppLangSelectId, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getGoogleDriveComponentRefId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNearestErrorIndex, getSaveAsProjectModalDlg, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey, getSaveProjectLinkId, getNewProjectLinkId, getImportFileInputId} from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
 import GoogleDrive from "@/components/GoogleDrive.vue";
@@ -406,6 +407,10 @@ export default Vue.extend({
         
         saveProjectLinkId(): string {
             return getSaveProjectLinkId();
+        },
+        
+        importFileInputId(): string {
+            return getImportFileInputId();
         },
 
         saveProjectKBShortcut(): string {
@@ -1288,10 +1293,6 @@ export default Vue.extend({
     margin-top: 10px !important;
     margin-bottom: 10px !important;
 }
-
-.#{$strype-classname-editor-file-input} {
-    display: none;
-} 
 
 .show-menu-btn {
     border: none;
