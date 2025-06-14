@@ -47,126 +47,16 @@ interface SkulptFile {
         // we don't need the other values
     }, 
     data$: string|Uint8Array,
+    pos$: number,
     lineList: string[],
     currentLine: number,
     closed: boolean,
     fileno: number, // internal file number used by Skulpt, external files are number 11
 }
 
-/** NOT TO COMMIT IN FINAL VERSIONS-USED FOR DEV TEST */
-// tests 1 and 2 (OLD PATTERN THAT WORKS BUT IS SILLY)
-/*
-const anAsyncMethod = (file: SkulptFile): Promise<string> => {
-    return new Promise<string>((resolve, reject) => {
-        //test1
-        /*setTimeout(() => {
-            console.log("now executing the timeout callback");
-            file.data$ = "testDevAsyncCalls";
-            resolve("some returned msg from async call");
-        },10000);
-        */
-//test2
-/*
-        googleDriveComponent = ((vm.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDriveComponent>);
-        googleDriveComponent.searchGoogleDriveElement("parents='ro8ot' and trashed=false", {orderBy: "modifiedTime", fileFields: "files(id,name)"})
-            .then((response) => {      
-                console.log("after querying Drive we got: <"+response.body+">");
-                file.data$ = "testDevAsyncCalls2";
-                resolve("some returned msg2 from async call");
-            },(reason) => {
-                console.log("after querying Drive we got some error =>");
-                console.log(reason);
-                reject("some returned error msg from async call");
-            });
-        * /
-    });
-};
-*/
-// test 2bis
-const anAsyncMethod = (file: SkulptFile): Promise<string> => {
-    googleDriveComponent = ((vm.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDriveComponent>);
-    return googleDriveComponent.searchGoogleDriveElement("parents='root' and trashed=false", {orderBy: "modifiedTime", fileFields: "files(id,name)"})
-        .then((response) => {      
-            console.log("after querying Drive we got: <"+response.body+">");
-            file.data$ = "testDevAsyncCalls2";
-            return "some returned msg2bis from async call";
-        },(reason) => {
-            console.log("after querying Drive we got some error =>");
-            console.log(reason);
-            return Promise.reject("some returned error msg from async call"); // need return Promise.reject() here
-        });    
-};
-/*
-
-// test 3 (double call to GAPI)
-const anAsyncMethod = (file: SkulptFile): Promise<string> => {
-    googleDriveComponent = ((vm.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDriveComponent>);
-    return googleDriveComponent.searchGoogleDriveElement("name='testingFile.txt' and trashed=false", {orderBy: "modifiedTime", fileFields: "files(id,name)"})
-        .then((response) => {      
-            console.log("after querying Drive we got: <"+response.body+">");
-            console.log("updating file 1");
-            file.data$ = "testDevAsyncCalls3";
-            // Before returning we do another call to GAPI:
-            return googleDriveComponent.readFileContentForIO("1OQLUosC0BKCfAcZix6PthZDejKYFXEsI", false, "testingFile.txt")
-                .then((fileContent) => {
-                    console.log("updating file 2");
-                    file.data$ += ("\n"+fileContent);
-                    return "some returned msg3 from async call";
-                }, (err) => {
-                    console.log("after querying Drive at second call we got some error.");
-                    console.log(err);
-                    return Promise.reject("some returned error msg from async call part 2");
-                });
-        },(reason) => {
-            console.log("after querying Drive at first call we got some error =>");
-            console.log(reason);
-            return Promise.reject("some returned error msg from async call part 1"); // need return Promise.reject() here
-        });    
-};
-*/
-export const testAsyncIO = (file: SkulptFile): {succeeded: boolean, errorMsg: string} => {
-    return Sk.misceval.promiseToSuspension(anAsyncMethod(file).then(() => {
-        return {succeeded: true, errorMsg: "devTestAsyncNoErr"};
-    }, (errM) => {
-        return {succeeded: false, errorMsg: errM};
-    }));
-};/*
-
-// test 4 promise OR direct return
-const anAsyncMethod = (file: SkulptFile): Promise<string> => {
-    googleDriveComponent = ((vm.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDriveComponent>);
-    return googleDriveComponent.searchGoogleDriveElement("name='testingFile.txt' and trashed=false", {orderBy: "modifiedTime", fileFields: "files(id,name)"})
-        .then((response) => {      
-            console.log("after querying Drive we got: <"+response.body+">");
-            file.data$ = "testDevAsyncCalls4";
-            return "some returned msg4 from async call";
-        },(reason) => {
-            console.log("after querying Drive we got some error =>");
-            console.log(reason);
-            return Promise.reject("some returned error msg from async call"); // need return Promise.reject() here
-        });    
-};
-export const testAsyncIO = (file: SkulptFile): {succeeded: boolean, errorMsg: string} => {
-    const randomValue = Math.round(Math.random());
-    console.log("radomise decision is " + randomValue);
-    if(randomValue == 0){
-        return {succeeded: false, errorMsg: "Randomly decided there is a problem from start"};
-    }
-    else{
-        return Sk.misceval.promiseToSuspension(anAsyncMethod(file).then(() => {
-            return {succeeded: true, errorMsg: "devTestAsyncNoErr"};
-        }, (errM) => {
-            return {succeeded: false, errorMsg: errM};
-        }));
-    }
-};
-/** end test part */
-
-
 // This small helper method is used during writing operations (either for Skulpt internally or for us in the cloud)
 // Since we can either write strings or bytes arrays depending on the file mode, we just check the type of the first argument.
 const concatFileContentParts = (part1: string | Uint8Array, part2: string | Uint8Array): string | Uint8Array => {
-    console.log("concateniating sthe data bites: we have data of type: "+ (typeof part1));
     if(typeof part1 == "string"){
         return part1 + part2;
     }
@@ -207,7 +97,6 @@ export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, error
         // First we need to check/retrieve the file's containing folder.
         getgdFileFolderIdFromPath(posixPathObj)
             .then((fileFolderId) => {
-                console.log("resolved the path and got the folder id ("+fileFolderId+")");
                 // We have a fileFolder Id so we can now get the file itself within that location
                 return googleDriveComponent.searchGoogleDriveElement(`name='${fileName}' and parents='${fileFolderId}' and trashed=false`, {orderBy: "modifiedTime", fileFields: "files(id,name,capabilities,contentRestrictions)"})
                     .then((response) => {      
@@ -240,9 +129,7 @@ export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, error
                             // This is for internal mechanisms, but if we fail to read the file at this stage, we'll raise an error.
                             // For writing mode, we just set the file content to empty as it will be truncated anyway.
                             if(!skFile.mode.v.startsWith("w")){
-                                return skupltReadFileIO(filePath).then((fileContent) => {            
-                                    console.log("when opening file with FileIO, we read the file and got:");
-                                    console.log(fileContent);
+                                return skupltReadFileIO(filePath, skFile.mode.v.includes("b")).then((fileContent) => {                                           
                                     gdFile.content = fileContent;
                                     // Very importantly, the Skulpt internal data buffer is updated here for reading mode:
                                     if(skFile.mode.v.startsWith("r")){
@@ -296,7 +183,6 @@ const getgdFileFolderIdFromPath = (fileFolderPath: path.PathObject): Promise<str
     // The base location of the Google Drive search is the project's current directory.
     // (Note: the root of the Google Drive folders, the drive itself is identified in Google Drive by "root".)
     return new Promise<string>((resolve, reject) => {
-        console.log("looking at path");
         const baseFolderLocationId = useStore().strypeProjectLocation as string;
         if(fileFolderPath.dir && fileFolderPath.dir != "./"){
             // We need to look up the directory/directories from top to bottom.
@@ -411,28 +297,20 @@ export const skulptCloseFileIO = (skFile: SkulptFile): {succeeded: boolean, erro
     if(fileEntryIndex == -1){
         return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.closeInternalError") as string};
     }
-    // If we are in strict reading mode, we don't need to do any asyn part.
+    // If we are in strict reading mode, we don't need to do any async part.
     // Otherise, we need to make the actual writing to the file.
-    // In all cases we need to write something, we just write the buffer content.
+    // In all cases when we need to write something, we just write the buffer content.
     // One exception to this: append mode will write at the end of the file.
-    // Prepare what to write. 
     const finaliseClose = (): {succeeded: boolean, errorMsg: string} => {
-        console.log("Removed #"+fileEntryIndex+" from the file map....");
         gdFilesMap.splice(fileEntryIndex, 1);
         return {succeeded: true, errorMsg: ""};
     };
+
     const needWriting = !/^rb?$/.test(skFile.mode.v);
+    // Prepare what to write. 
     const toWrite = (skFile.mode.v.startsWith("a")) ? concatFileContentParts(gdFilesMap[fileEntryIndex].content, Sk.ffi.remapToJs(skFile.data$)) : Sk.ffi.remapToJs(skFile.data$);
-    console.log("in IO Closing, need writing? " + needWriting);
-    console.log("IN WRITE IO BEFORE CLOSE, GOT to write: <"+toWrite+">");
     if(needWriting){
-        return new Sk.misceval.promiseToSuspension( 
-            anAsyncMethod(skFile).then(() => {
-                return {succeeded: true, errorMsg: "devTestAsyncNoErr"};
-            }, (errM) => {
-                return {succeeded: false, errorMsg: errM};
-            })
-            /*
+        return new Sk.misceval.promiseToSuspension(
             skulptWriteFileIO(skFile, toWrite)
                 .then((successData: {succeeded: boolean, errorMsg: string}) => {
                     if(successData.succeeded){
@@ -441,7 +319,7 @@ export const skulptCloseFileIO = (skFile: SkulptFile): {succeeded: boolean, erro
                     else {
                         return successData;
                     }
-                })*/
+                })
         );
     }
     else{
@@ -452,12 +330,11 @@ export const skulptCloseFileIO = (skFile: SkulptFile): {succeeded: boolean, erro
 // Read method, with retrieves the content of a file on Google Drive.
 // The content is either a string content for text modes, bytes for binary modes.
 // On failure, the content contains the error message.
-// (This method isn't called directly, but it is called by skulptReadPythonLib() in ac-skulpt.ts)
-const skupltReadFileIO = (filePath: string, fileMode?: string): Promise<string|Uint8Array> => {
+const skupltReadFileIO = (filePath: string, isBinary: boolean): Promise<string|Uint8Array> => {
     // We retrieve the Google Drive file ID - it should be valid as no call to this when a file is closed in Skulpt should happen.
     const fileId = gdFilesMap.find((mapEntry) => mapEntry.filePath == filePath)?.id??"";
     return new Promise<string|Uint8Array>((resolve, reject) => {
-        googleDriveComponent.readFileContentForIO(fileId, (fileMode?.includes("b")??false), filePath)
+        googleDriveComponent.readFileContentForIO(fileId, isBinary, filePath)
             .then((fileContent) => {
                 resolve(fileContent as string|Uint8Array);
             }, (error) => {
@@ -468,22 +345,45 @@ const skupltReadFileIO = (filePath: string, fileMode?: string): Promise<string|U
 
 // This method is a handler for the internal Skulpt write (to external file).
 // It doens't actually write in the external file, but update the Skulpt's internal buffer of the Skulpt file object.
+// It concatenates toWrite to the current buffer, excpet for "r+" (see details)
 export const skulptInteralFileWrite = (skFile: SkulptFile, toWrite: string | Uint8Array): void => {
-    console.log("going to write <"+toWrite+"> in the interal Skulpt buffer");
-    skFile.data$ = Sk.ffi.remapToPy(concatFileContentParts(Sk.ffi.remapToJs(skFile.data$), toWrite));
+    if(/^rb?\+$/.test(skFile.mode.v)){
+        // This weird mode is handled by us. 
+        // We replace every part of the buffer for the given towrite content, at the current pointer position.
+        const bufferPos = Sk.ffi.remapToJs(skFile.pos$);
+        let newData;
+        if(skFile.mode.v.includes("b")){
+            newData = Sk.ffi.remapToJs(skFile.data$) as Uint8Array;
+            // First write what we can in the existing array
+            const writeUpToInclWritePos = Math.min(newData.length - bufferPos, toWrite.length);
+            newData.set(toWrite.slice(0, writeUpToInclWritePos + 1) as Uint8Array, bufferPos);
+            if(writeUpToInclWritePos < toWrite.length - 1){
+                // The reminder to write, we need to create a new buffer.
+                newData = concatFileContentParts(newData, toWrite.slice(writeUpToInclWritePos + 1)) as Uint8Array;
+            }
+        }
+        else{
+            const strData = Sk.ffi.remapToJs(skFile.data$) as string;
+            newData = strData.substring(0, bufferPos) + toWrite + ((strData.length - bufferPos > toWrite.length) ? strData.substring(bufferPos + toWrite.length) : "");
+        }
+        // Set the new buffer and position to the file. We take the rule to move the position on write.
+        skFile.data$ = Sk.ffi.remapToPy(newData);
+        skFile.pos$ = Sk.ffi.remapToPy(bufferPos + toWrite.length);
+    }
+    else{
+        skFile.data$ = Sk.ffi.remapToPy(concatFileContentParts(Sk.ffi.remapToJs(skFile.data$), toWrite));
+    }
 };
 
 // This write method is internally called by the the closing method (see skulptCloseFileIO) when the latter is called by Skulpt.
 // All intermediate buffer writing is done by Skulpt which calls skulptInteralFileWrite above.
 // Note: we write a full file content every time. That means that sometimes we need to write more than the internal buffer content,
 // for example in append mode. It is the job of skulptCloseFileIO to check all that - this methods just writes.
-/*
 const skulptWriteFileIO = (skFile: SkulptFile, toWrite: string|Uint8Array): Promise<{succeeded: boolean, errorMsg: string}> => {
     // We retrieve the Google Drive file ID - it should be valid as no call to this when a file is closed in Skulpt should happen.
     const fileId = gdFilesMap.find((mapEntry) => mapEntry.filePath == skFile.name)?.id??"";
     return googleDriveComponent.writeFileContentForIO(toWrite, {filePath: skFile.name, fileId: fileId})
         .then((_) => {
-            console.log("SEE RESOLVE FROM WRITING AFTER GOOGLE RETURNED (writing <"+toWrite+">");
             return {succeeded: true, errorMsg: ""};
         },
         (errorMsg) => {
@@ -492,4 +392,3 @@ const skulptWriteFileIO = (skFile: SkulptFile, toWrite: string|Uint8Array): Prom
         });
    
 };
-*/

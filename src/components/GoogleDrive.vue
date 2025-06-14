@@ -835,7 +835,6 @@ export default Vue.extend({
             return fetch("https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media", {
                 headers: { Authorization: "Bearer "+ this.oauthToken },
             }).then((resp) => {
-                console.log("\n>>>>>>>> IN THE READING FROM GOOGLE NOW");
                 // Fetch returns a fulfilled promise even if the response is not 200.
                 if(resp.status != 200){
                     return Promise.reject({success: false, errorMsg: this.$i18n.t("errorMessage.fileIO.fetchFileError", {filename: filePath, error: resp.status}) as string}); 
@@ -845,7 +844,6 @@ export default Vue.extend({
                         return new Uint8Array(buffer);
                     }) 
                     : resp.text().then((text) => {
-                        console.log(">>>>>>>> converting <"+text+"> to str");
                         return text;
                     });
             },
@@ -877,7 +875,6 @@ export default Vue.extend({
             // Convert binary data to Blob
             const blob = new Blob([body, fileContent, `\n--${boundary}--`], { type: "multipart/related; boundary=" + boundary });
             return new Promise<string>((resolve, reject) => {
-                console.log("fetch URL: "+`https://www.googleapis.com/upload/drive/v3/files${(isCreatingFile) ? "" : "/"+(fileInfos.fileId??"")}?uploadType=multipart`);
                 fetch(`https://www.googleapis.com/upload/drive/v3/files${(isCreatingFile) ? "" : "/" + (fileInfos.fileId??"")}?uploadType=multipart`, {
                     method: isCreatingFile ?  "POST" : "PATCH",
                     headers: {
@@ -888,8 +885,12 @@ export default Vue.extend({
                 })
                     .then((response) => response.json())
                     .then((respJson) => {
-                        console.log("Google Write can return the id now. (writing <"+fileContent+">");
-                        resolve(respJson.id);
+                        if(respJson.id){                        
+                            resolve(respJson.id);
+                        }
+                        else{
+                            reject(i18n.t("errorMessage.fileIO.writingFileFailed", {filename: fileInfos.filePath, error: respJson.error.message??respJson.error.code}));            
+                        }
                     })
                     .catch((error) => reject(i18n.t("errorMessage.fileIO.writingFileFailed", {filename: fileInfos.filePath, error: error})));          
             });     

@@ -6,7 +6,7 @@ import { skulptReadPythonLib } from "@/autocompletion/ac-skulpt";
 import i18n from "@/i18n";
 import Vue from "vue";
 import { CustomEventTypes, setPythonExecAreaLayoutButtonPos } from "./editor";
-import { clearGDFileIOMap, skulptCloseFileIO, skulptInteralFileWrite, skulptOpenFileIO, testAsyncIO } from "./skulptFileIO";
+import { clearGDFileIOMap, skulptCloseFileIO, skulptInteralFileWrite, skulptOpenFileIO } from "./skulptFileIO";
 
 const STRYPE_RUN_ACTION_MSG = "StrypeRunActionCalled";
 const STRYPE_INPUT_INTERRUPT_ERR_MSG = "ExternalError: " + STRYPE_RUN_ACTION_MSG;
@@ -191,7 +191,7 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         output:outf, 
         read:skulptReadPythonLib(libraryAddresses),
         fileopen: skulptOpenFileIO,
-        fileclose: testAsyncIO, // This is an added property in Skulpt for fileIO
+        fileclose: skulptCloseFileIO, // This is an added property in Skulpt for fileIO
         fileNotWritableErr: i18n.t("errorMessage.fileIO.fileNotWritableErr"), // This is an added property in Skulpt for fileIO
         fileNotReadableErr: i18n.t("errorMessage.fileIO.fileNotReadableErr"), // This is an added property in Skulpt for fileIO
         fileClosedErr: i18n.t("errorMessage.fileIO.fileClosedErr"), // This is an added property in Skulpt for fileIO
