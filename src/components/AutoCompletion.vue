@@ -76,7 +76,7 @@ import {IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWit
 import _ from "lodash";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
-import { getAllEnabledUserDefinedFunctions } from "@/helpers/storeMethods";
+import {getAllEnabledUserDefinedFunctions, getFrameContainer} from "@/helpers/storeMethods";
 import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, extractCommaSeparatedNames} from "@/autocompletion/acManager";
 import Parser from "@/parser/parser";
 import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
@@ -212,7 +212,8 @@ export default Vue.extend({
         async updateAC(frameId: number, token : string | null, context: string): Promise<void> {
             const tokenStartsWithUnderscore = (token ?? "").startsWith("_");
             const parser = new Parser();
-            const userCode = parser.getCodeWithoutErrors(frameId);
+            const inFuncDef = getFrameContainer(frameId) == useStore().getFuncDefsFrameContainerId;
+            const userCode = parser.getCodeWithoutErrors(frameId, inFuncDef);
             
             for (const library of parser.getLibraries()) {
                 const pyPYIs = await getAvailablePyPyiFromLibrary(library);

@@ -129,10 +129,10 @@ export function extractCommaSeparatedNames(slot: SlotsStructure) : string[] {
     return found;
 }
 
-function getAllUserDefinedVariablesWithinUpTo(framesForParentId: FrameObject[], frameId: number) : { found : Set<string>, complete: boolean} {
+function getAllUserDefinedVariablesWithinUpTo(framesForParentId: FrameObject[], frameId?: number) : { found : Set<string>, complete: boolean} {
     const soFar = new Set<string>();
     for (const frame of framesForParentId) {
-        if (frameId == frame.id) {
+        if (frameId !== undefined && frameId == frame.id) {
             return {found: soFar, complete: true};
         }
         // Get LHS from assignments:
@@ -171,6 +171,9 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
         if (parentId == useStore().getFuncDefsFrameContainerId) {
             // It's a user-defined function, process accordingly
             const available = getAllUserDefinedVariablesWithinUpTo(useStore().getFramesForParentId(curFrameId), frameId).found;
+            // Also add all variables from the body:
+            getAllUserDefinedVariablesWithinUpTo(useStore().getFramesForParentId(useStore().getMainCodeFrameContainerId)).found
+                .forEach((v) => available.add(v));
             // Also add any parameters from the function:
             // Sanity check the frame type:
             if (frame.frameType.type === AllFrameTypesIdentifier.funcdef) {
