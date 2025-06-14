@@ -909,7 +909,7 @@ export default Vue.extend({
                         headers.set("peaLayoutMode", this.appStore.peaLayoutMode === undefined ? undefined : StrypePEALayoutMode[this.appStore.peaLayoutMode]);
                         headers.set("peaCommandsSplitterPane2Size", saveDivider(this.appStore.peaCommandsSplitterPane2Size));
                         headers.set("peaSplitViewSplitterPane1Size", saveDivider(this.appStore.peaSplitViewSplitterPane1Size));
-                        headers.set("editorCommandsSplitterPane2Size", saveDivider(this.appStore.peaExpandedSplitterPane2Size));
+                        headers.set("peaExpandedSplitterPane2Size", saveDivider(this.appStore.peaExpandedSplitterPane2Size));
                         /* FITRUE_isPython */
                         saveContent = Array.from(headers.entries()).filter(([k, v]) => v !== undefined).map((e) => "#" + AppSPYPrefix + " " + e[0] + ":" + e[1] + "\n").join("") + saveContent;
                         if(canBrowserSaveFilePicker()){
