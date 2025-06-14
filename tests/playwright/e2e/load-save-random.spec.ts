@@ -11,20 +11,7 @@ import {Page, test, expect, ElementHandle, JSHandle} from "@playwright/test";
 import { rename } from "fs/promises";
 import {checkFrameXorTextCursor, typeIndividually} from "../support/editor";
 import {readFileSync} from "node:fs";
-
-function createBrowserProxy(page: Page, objectName: string) : any {
-    return new Proxy({}, {
-        get(_, prop: string) {
-            return async (...args: any[]) => {
-                return await page.evaluate(
-                    ([objectName, method, args]) =>
-                        (window as any)[objectName as string][method as string](...args),
-                    [objectName, prop, args]
-                );
-            };
-        },
-    });
-}
+import {createBrowserProxy} from "../support/proxy";
 
 let scssVars: {[varName: string]: string};
 let strypeElIds: {[varName: string]: (...args: any[]) => Promise<string>};
