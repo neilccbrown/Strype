@@ -12,6 +12,7 @@ import { rename } from "fs/promises";
 import {checkFrameXorTextCursor, typeIndividually} from "../support/editor";
 import {readFileSync} from "node:fs";
 import {createBrowserProxy} from "../support/proxy";
+import {load, save} from "../support/loading-saving";
 
 let scssVars: {[varName: string]: string};
 let strypeElIds: {[varName: string]: (...args: any[]) => Promise<string>};
@@ -350,41 +351,6 @@ async function getAllFrames(container : ElementHandle<HTMLElement>) : Promise<Fr
 async function getFramesFromDOM(page: Page) : Promise<FrameEntry[][]> {
     const containers = await page.$$(".container-frames");
     return Promise.all(containers.map((container) => getAllFrames(container as ElementHandle<HTMLElement>)));
-}
-
-async function load(page: Page, filepath: string) : Promise<void> {
-    
-    await page.click("#" + await strypeElIds.getEditorMenuUID());
-    await page.click("#" + await strypeElIds.getLoadProjectLinkId());
-    // The "button" for the target selection is now a div element.
-    await page.click("#" + await strypeElIds.getLoadFromFSStrypeButtonId());
-    // Must force because the <input> is hidden:
-    await page.setInputFiles("#" + await strypeElIds.getImportFileInputId(), filepath);
-    await page.waitForTimeout(2000);
-}
-
-async function save(page: Page, firstSave = true) : Promise<string> {
-    // Save is located in the menu, so we need to open it first, then find the link and click on it:
-    await page.click("#" + await strypeElIds.getEditorMenuUID());
-    
-    let download;
-    if (firstSave) {
-        await page.click("#" + await strypeElIds.getSaveProjectLinkId());
-        // For testing, we always want to save to this device:
-        await page.getByText(en.appMessage.targetFS).click();
-        [download] = await Promise.all([
-            page.waitForEvent("download"),
-            page.click("button.btn:has-text('OK')"),
-        ]);
-    }
-    else {
-        [download] = await Promise.all([
-            page.waitForEvent("download"),
-            page.click("#" + await strypeElIds.getSaveProjectLinkId()),
-        ]);
-    }
-    const filePath = await download.path();
-    return filePath;
 }
 
 async function newProject(page: Page) : Promise<void> {
