@@ -859,7 +859,6 @@ export default Vue.extend({
             // The fileName is always set because it may be used inside the error message.
             // The method returns a string promise: the file ID on success, the error message on failure.
             const isCreatingFile = !!(fileInfos.folderId);
-            const isBinaryMode = !(typeof fileContent == "string");
             
             // The gapi.client.request() we have used for writing Strype projects in Drive isn't working for binary data.
             // So we use fetch() for binary files to be supported.
@@ -870,8 +869,8 @@ export default Vue.extend({
                 bodyReqParams.parents = [fileInfos.folderId??""]; // the containing folder id must be set by the caller!
             }
 
-            // Construct multipart body
-            const body = `--${boundary}\nContent-Type: application/json; charset=UTF-8\n\n${JSON.stringify(bodyReqParams)}\n--${boundary}\n${((isBinaryMode) ? "Content-Type: application/octet-stream\n\n" : "Content-Type: text/plain; charset=UTF-8\n\n")}`;
+            // Construct the multipart body
+            const body = `--${boundary}\nContent-Type: application/json; charset=UTF-8\n\n${JSON.stringify(bodyReqParams)}\n--${boundary}\n\n`;
             // Convert binary data to Blob
             const blob = new Blob([body, fileContent, `\n--${boundary}--`], { type: "multipart/related; boundary=" + boundary });
             return new Promise<string>((resolve, reject) => {

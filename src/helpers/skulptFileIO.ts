@@ -33,7 +33,7 @@ interface GDFileWithMetaData extends GDFile{
     locationId: string, // The file location's Google Drive folder ID
     readOnly: boolean, // Readonly status of the file in Google Drive
 }
-export const gdFilesMap: GDFileWithMetaData[] = [];
+const gdFilesMap: GDFileWithMetaData[] = [];
 export function clearGDFileIOMap(): void {
     gdFilesMap.splice(0);
 }
@@ -159,7 +159,8 @@ export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, error
                                 return googleDriveComponent.writeFileContentForIO((skFile.mode.v.includes("b") ? new Uint8Array(0) : ""), {filePath: filePath, fileName: fileName, folderId: fileFolderId})
                                     .then((newFileId) => {
                                         // Since the file has been created we can now keep it's fileId in the map:
-                                        gdFilesMap.push({name: fileName, content: "", filePath: filePath, id: newFileId, locationId: fileFolderId, readOnly: false, capabilities: {canEdit: true, canModifyContent: true}});
+                                        gdFilesMap.push({name: fileName, content: "", filePath: filePath, id: newFileId, locationId: fileFolderId,
+                                            readOnly: false, capabilities: {canEdit: true, canModifyContent: true}});
                                         return {succeeded: true, errorMsg: ""};
                                     },
                                     (errorMsg) =>  {
@@ -383,7 +384,7 @@ export const skulptInteralFileWrite = (skFile: SkulptFile, toWrite: string | Uin
 // Note: we write a full file content every time. That means that sometimes we need to write more than the internal buffer content,
 // for example in append mode. It is the job of skulptCloseFileIO to check all that - this methods just writes.
 const skulptWriteFileIO = (skFile: SkulptFile, toWrite: string|Uint8Array): Promise<{succeeded: boolean, errorMsg: string}> => {
-    // We retrieve the Google Drive file ID - it should be valid as no call to this when a file is closed in Skulpt should happen.
+    // We retrieve the Google Drive file ID - it should be valid as no call to this after a file is closed in Skulpt should happen.
     const fileId = gdFilesMap.find((mapEntry) => mapEntry.filePath == skFile.name)?.id??"";
     return googleDriveComponent.writeFileContentForIO(toWrite, {filePath: skFile.name, fileId: fileId})
         .then((_) => {
