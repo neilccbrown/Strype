@@ -14,9 +14,8 @@ export const OUR_PUBLIC_LIBRARY_MODULES = OUR_PUBLIC_LIBRARY_FILES.map((f) => f.
 
 // The function used for "input" from Skulpt, to be registered against the Skulpt object
 // (this is the default behaviour that can be overwritten if needed)
-export function skulptReadPythonLib(libraryAddresses: string[]) : ((x : string, fileMode?: string) => string) {
-    console.log("In skulptReadPythonLib");
-    return (x, fileMode) => {
+export function skulptReadPythonLib(libraryAddresses: string[]) : ((x : string) => string) {
+    return (x) => {
         // Prefer built-ins, then our libraries, then third-party
         // (partly for speed; don't want to try fetching if we don't have to):
         if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined) {

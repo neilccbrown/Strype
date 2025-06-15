@@ -91,6 +91,8 @@
       "fileLocationCheckingError":"Strype ran into an internation when checking the file's path (path tree preparation issue).",
       "unsupportedFile":"Strype forbids reading operations to this file \"{filename}\", because of its type.",
       "fileNotWritableErr":"File not open for writing.",
+      "fileWriteNotBytesErr": "a bytes-like array object is required, not '{type}'",
+      "fileWriteNotStrErr": "write() argument must be str, not {type}",
       "fileNotReadableErr":"File not open for reading.",
       "fileClosedErr":"I/O operation on closed file.",
       "fileModeErr":"Invalid file opening mode: {mode}.",

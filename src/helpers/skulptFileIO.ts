@@ -52,6 +52,7 @@ interface SkulptFile {
     currentLine: number,
     closed: boolean,
     fileno: number, // internal file number used by Skulpt, external files are number 11
+    isInError?: boolean, // custom flag to indicate an error state, we need to know that when closing files.
 }
 
 // This small helper method is used during writing operations (either for Skulpt internally or for us in the cloud)
@@ -130,7 +131,7 @@ export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, error
                             // For writing mode, we just set the file content to empty as it will be truncated anyway.
                             if(!skFile.mode.v.startsWith("w")){
                                 return skupltReadFileIO(filePath, skFile.mode.v.includes("b")).then((fileContent) => {                                           
-                                    gdFile.content = fileContent;
+                                    (gdFilesMap.at(-1)as GDFile).content = fileContent;
                                     // Very importantly, the Skulpt internal data buffer is updated here for reading mode:
                                     if(skFile.mode.v.startsWith("r")){
                                         skFile.data$ = Sk.ffi.remapToPy(fileContent);
@@ -297,8 +298,10 @@ export const skulptCloseFileIO = (skFile: SkulptFile): {succeeded: boolean, erro
     if(fileEntryIndex == -1){
         return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.closeInternalError") as string};
     }
-    // If we are in strict reading mode, we don't need to do any async part.
-    // Otherise, we need to make the actual writing to the file.
+    // If we are in strict reading mode OR in error*, we don't need to do any async part.
+    // Otherise, we need to make the actual writing to the file. (* an error may be raised 
+    // in Skulpt on something from the user code, but close() is called to clean things.
+    // When this situation happens, we set a flag on the file object from Skulpt.)
     // In all cases when we need to write something, we just write the buffer content.
     // One exception to this: append mode will write at the end of the file.
     const finaliseClose = (): {succeeded: boolean, errorMsg: string} => {
@@ -306,10 +309,10 @@ export const skulptCloseFileIO = (skFile: SkulptFile): {succeeded: boolean, erro
         return {succeeded: true, errorMsg: ""};
     };
 
-    const needWriting = !/^rb?$/.test(skFile.mode.v);
+    const needWriting = (!skFile.isInError ) && (!/^rb?$/.test(skFile.mode.v));
     // Prepare what to write. 
-    const toWrite = (skFile.mode.v.startsWith("a")) ? concatFileContentParts(gdFilesMap[fileEntryIndex].content, Sk.ffi.remapToJs(skFile.data$)) : Sk.ffi.remapToJs(skFile.data$);
     if(needWriting){
+        const toWrite = (skFile.mode.v.startsWith("a")) ? concatFileContentParts(gdFilesMap[fileEntryIndex].content, Sk.ffi.remapToJs(skFile.data$)) : Sk.ffi.remapToJs(skFile.data$);
         return new Sk.misceval.promiseToSuspension(
             skulptWriteFileIO(skFile, toWrite)
                 .then((successData: {succeeded: boolean, errorMsg: string}) => {
