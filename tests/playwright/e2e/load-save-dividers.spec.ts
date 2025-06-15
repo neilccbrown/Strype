@@ -2,6 +2,10 @@ import {Page, test, expect} from "@playwright/test";
 import {load, save} from "../support/loading-saving";
 import fs from "fs";
 
+// The tests in this file can't run in parallel because they download
+// to the same filenames, so need to run one at a time.
+test.describe.configure({ mode: "serial" });
+
 test.beforeEach(async ({ page, browserName }, testInfo) => {
 
     await page.goto("./", {waitUntil: "load"});
@@ -71,8 +75,9 @@ print(myString)
 
 const CODE_VS_SIDEBAR = ".strype-split-theme.splitpanes.splitpanes--vertical > .splitpanes__splitter";
 const COMMANDS_VS_PEA = ".splitpanes.splitpanes--horizontal.strype-commands-pea-splitter-theme > .splitpanes__splitter";
+const TOP_VS_EXPANDED_BOTTOM = ".expanded-PEA-splitter-overlay.strype-split-theme.splitpanes.splitpanes--horizontal > .splitpanes__splitter"
 
-test.describe("Divider states", () => {
+test.describe("Saves divider states", () => {
     test("Saves main divider state", async ({page}) => {
         await page.waitForTimeout(10 * 1000);
         await dragDividerTo(page, CODE_VS_SIDEBAR, 10, 300);
@@ -88,10 +93,42 @@ test.describe("Divider states", () => {
         await dragDividerTo(page, COMMANDS_VS_PEA, 1000, 10);
         await page.waitForTimeout(5 * 1000);
         await dragDividerTo(page, CODE_VS_SIDEBAR, 10, 300);
-        
+
         await saveAndCheck(page, [/editorCommandsSplitterPane2Size:\{"tabsCollapsed":67\}/, /peaCommandsSplitterPane2Size:\{"tabsCollapsed":9[0-9].?[0-9]*\}/]);
     });
+
+    test("Saves main and secondary divider state in second mode", async ({page}) => {
+        test.setTimeout(90 * 1000);
+        // Set them in first state:
+        await page.waitForTimeout(10 * 1000);
+        await dragDividerTo(page, COMMANDS_VS_PEA, 1200, 700);
+        await page.waitForTimeout(5 * 1000);
+        await dragDividerTo(page, CODE_VS_SIDEBAR, 1000, 300);
+
+        // Then in second:
+        await page.click("#graphicsPEATab");
+        await page.locator("#peaGraphicsContainerDiv").hover();
+        await page.waitForTimeout(1000);
+        await page.click(".pea-toggle-layout-buttons-container > div:nth-child(2)");
+        
+        await page.waitForTimeout(10 * 1000);
+        // Need to leave enough room that we can still click menu:
+        await dragDividerTo(page, TOP_VS_EXPANDED_BOTTOM, 1000, 100);
+        await page.waitForTimeout(5 * 1000);
+        await dragDividerTo(page, CODE_VS_SIDEBAR, 10, 300);
+
+        await saveAndCheck(page, [
+            /editorCommandsSplitterPane2Size:\{"tabsCollapsed":21.88\}/,
+            /peaLayoutMode:tabsExpanded/,
+            /peaCommandsSplitterPane2Size:\{"tabsCollapsed":1[45].?[0-9]*\}/,
+            /peaExpandedSplitterPane2Size:\{"tabsExpanded":86.11\}/,
+        ]);
+    });
+
     
+});
+
+test.describe("Loads divider states", () => {
     test("Loads main divider state", async ({page}) => {
         loadHeader(page, `
 #(=> Strype:1:std
