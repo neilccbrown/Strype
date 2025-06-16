@@ -17,9 +17,10 @@ import JointFrames from "@/components/JointFrames.vue";
 import CommandsComponent from "@/components/Commands.vue";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import { debounce } from "lodash";
+/* FITRUE_isPython */
 import {toUnicodeEscapes} from "@/parser/parser";
 import {fromUnicodeEscapes} from "@/helpers/pythonToFrames";
-/* FITRUE_isPython */
+
 
 export const undoMaxSteps = 200;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
