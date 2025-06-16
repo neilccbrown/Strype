@@ -87,7 +87,7 @@ export default Vue.extend({
             // To get library demos, we first get the libraries:
             const p = new Parser();
             // We only need to parse the imports container:
-            p.parse(-1, -2);
+            p.parseJustImports();
             // Then we can get the libraries and look for demos:
             for (const library of [...new Set(["github:k-pet-group/mediacomp-strype", ...p.getLibraries()])]) {
                 this.availableDemos.push(getThirdPartyLibraryDemos(library));

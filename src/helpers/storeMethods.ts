@@ -860,7 +860,7 @@ export function checkCodeErrors(frameIdForPrecompiled?: number): void {
     // So in case of an error, we catch it to allow the rest of the code to execute...
     try{
         const parser = new Parser(true);
-        parser.getErrorsFormatted(parser.parse());
+        parser.getErrorsFormatted(parser.parse({}));
     }
     catch(error){
         console.log(error);

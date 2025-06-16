@@ -1,14 +1,19 @@
 import {Page, test, expect} from "@playwright/test";
 import path from "path";
-import {checkFrameXorTextCursor} from "../support/editor";
+import {checkFrameXorTextCursor, doPagePaste} from "../support/editor";
+import fs from "fs";
+import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "@/helpers/sharedIdCssWithTests";
+import {createBrowserProxy} from "../support/proxy";
+import en from "@/localisation/en/en_main.json";
+import {readFileSync} from "node:fs";
 
 let scssVars: {[varName: string]: string};
-//let strypeElIds: {[varName: string]: (...args: any[]) => string};
+let strypeElIds: {[varName: string]: (...args: any[]) => string};
 test.beforeEach(async ({ page }) => {
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
-    //strypeElIds = await page.evaluate(() => (window as any)["StrypeHTMLELementsIDsGlobals"]);
+    strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
     await page.evaluate(() => {
         (window as any).Playwright = true;
     });
@@ -17,6 +22,31 @@ test.beforeEach(async ({ page }) => {
         console.log("Browser log:", msg.text());
     });
 });
+
+async function save(page: Page, firstSave = true) : Promise<string> {
+    // Save is located in the menu, so we need to open it first, then find the link and click on it:
+    await page.click("#" + await strypeElIds.getEditorMenuUID());
+
+    let download;
+    if (firstSave) {
+        await page.click("#" + await strypeElIds.getSaveProjectLinkId());
+        // For testing, we always want to save to this device:
+        await page.getByText(en.appMessage.targetFS).click();
+        [download] = await Promise.all([
+            page.waitForEvent("download"),
+            page.click("button.btn:has-text('OK')"),
+        ]);
+    }
+    else {
+        [download] = await Promise.all([
+            page.waitForEvent("download"),
+            page.click("#" + await strypeElIds.getSaveProjectLinkId()),
+        ]);
+    }
+    const filePath = await download.path();
+    return filePath;
+}
+
 
 async function clickId(page: Page, getIdClientSide: () => void) {
     const id = await page.evaluate(getIdClientSide);
@@ -27,7 +57,7 @@ async function loadPY(page: Page, filepath: string) {
     await clickId(page, () => (window as any)["StrypeHTMLELementsIDsGlobals"].getEditorMenuUID());
     await clickId(page, () => (window as any)["StrypeHTMLELementsIDsGlobals"].getLoadProjectLinkId());
     // The "button" for the target selection is now a div element.
-    await page.locator("." + scssVars.editorFileInputClassName).setInputFiles(path.join(__dirname, filepath));
+    await page.locator("#" + await strypeElIds.getImportFileInputId()).setInputFiles(path.join(__dirname, filepath));
     await clickId(page, () => (window as any)["StrypeHTMLELementsIDsGlobals"].getLoadFromFSStrypeButtonId());
     // Wait for everything to settle:
     await page.waitForTimeout(2000);
@@ -48,7 +78,7 @@ async function loadPY(page: Page, filepath: string) {
 // machine and it works fine, but I see in the video that the test fails in Playwright
 // (pressing right out of a comment frame puts the cursor at the beginning and makes a frame cursor).
 // Since it works in the real browsers, and on Webkit and Firefox, we just skip the tests in Chromium
-test.describe("Check navigation", async () => {
+test.describe("Check navigation", () => {
     test("Starts valid", async ({page}) => {
         await checkFrameXorTextCursor(page);
     });
@@ -125,5 +155,41 @@ test.describe("Check navigation", async () => {
             await page.keyboard.press("Tab");
             await page.waitForTimeout(75);
         }
+    });
+});
+
+test.describe("Check clicking near image literal", () => {
+    // Bug https://github.com/k-pet-group/Strype/issues/473:
+    test("Click near image literal", async ({page}) => {
+        await page.keyboard.press("Delete");
+        await page.keyboard.press("Delete");
+        await page.keyboard.type(" ");
+        await page.keyboard.type("Actor(");
+        const image = fs.readFileSync("public/graphics_images/cat-test.jpg").toString("base64");
+        await doPagePaste(page, image, "image/jpeg");
+        await page.waitForTimeout(500);
+        const element = await page.$("." + scssVars.labelSlotMediaClassName);
+        if (!element) {
+            throw new Error("Element not found");
+        }
+        const box = await element.boundingBox();
+        if (!box) {
+            throw new Error("Bounding box not available");
+        }
+        const clickX = box.x + box.width + 5; // 5px to the right
+        const clickY = box.y + box.height / 2; // vertically centered
+        await page.mouse.click(clickX, clickY);
+        await page.keyboard.type(".foo", {delay: 100});
+
+        const savePath = await save(page);
+        const contents = readFileSync(savePath, "utf8");
+        expect(contents).toEqual(`
+#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+Actor(load_image("data:image/jpeg;base64,${image}").foo) 
+#(=> Section:End
+`.trimStart());
     });
 });

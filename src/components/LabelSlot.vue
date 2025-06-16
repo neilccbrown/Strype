@@ -446,7 +446,7 @@ export default Vue.extend({
                     let cursorPos = 0;
                     if(clickXValue < (slotXPos + (slotWidth / 2))) {
                         neighbourSlotInfos = previousNeighbourSlotInfos; 
-                        cursorPos = (document.getElementById(getLabelSlotUID(previousNeighbourSlotInfos))?.textContent??"").length;                       
+                        cursorPos = (document.getElementById(getLabelSlotUID(previousNeighbourSlotInfos))?.textContent?.replace(/\u200B/g, "")??"").length;                       
                     }
                   
                     // Focus on the nearest neighbour to the click

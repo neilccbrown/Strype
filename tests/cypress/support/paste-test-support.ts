@@ -143,7 +143,7 @@ export function testRoundTripImportAndDownload(filepath: string, expected?: stri
         // The "button" for the target selection is now a div element.
         cy.get("#" + strypeElIds.getLoadFromFSStrypeButtonId()).click();
         // Must force because the <input> is hidden:
-        cy.get("." + scssVars.editorFileInputClassName).selectFile(filepath, {force : true});
+        cy.get("#" + strypeElIds.getImportFileInputId()).selectFile(filepath, {force : true});
         cy.wait(2000);
 
         checkDownloadedCodeEquals(expected ?? py);
