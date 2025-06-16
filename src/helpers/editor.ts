@@ -1467,7 +1467,7 @@ const FIELD_PLACEHOLDER_END = "_strype_field_placeholder$";
 function removePossibleFieldPlaceholderFromStart(s: string) : string {
     if (s.startsWith(FIELD_PLACEHOLDER_START)) {
         const end = s.indexOf(FIELD_PLACEHOLDER_END);
-        return s.slice(end + FIELD_PLACEHOLDER_END.length, end);
+        return s.slice(end + FIELD_PLACEHOLDER_END.length);
     }
     else {
         return s;
