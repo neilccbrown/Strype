@@ -23,6 +23,8 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
 
 
 async function loadHeader(page: Page, spyToLoad: string) : Promise<void> {
+    // The recursive option stops it failing if the dir exists:
+    fs.mkdirSync("tests/cypress/downloads/", { recursive: true });
     const path = "tests/cypress/downloads/toload.spy";
     fs.writeFileSync(path, spyToLoad + `
 #(=> Section:Imports
