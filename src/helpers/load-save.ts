@@ -6,9 +6,8 @@ export function saveDivider(divider: StrypeLayoutDividerSettings | undefined) : 
     }
     const obj: Record<string, number> = {};
     Object.entries(divider).forEach(([key, value]) => {
-        const name = StrypePEALayoutMode[key as unknown as number]; // Get name instead of number; makes it easier to accommodate future code changes
         if (value !== undefined) {
-            obj[name] = Math.round(value * 100) / 100; // round to 2 decimals
+            obj[key] = Math.round(value * 100) / 100; // round to 2 decimals
         }
     });
     return JSON.stringify(obj);    

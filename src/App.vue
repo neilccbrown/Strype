@@ -1201,7 +1201,7 @@ export default Vue.extend({
         onStrypeCommandsSplitPaneResize(event: any, useSpecificPEALayout?: StrypePEALayoutMode){
             // Save the new size of the RHS pane of the editor/commands splitter
             if(this.appStore.editorCommandsSplitterPane2Size != undefined) {
-                this.appStore.editorCommandsSplitterPane2Size[useSpecificPEALayout??(this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed)] = event[1].size;                
+                Vue.set(this.appStore.editorCommandsSplitterPane2Size, useSpecificPEALayout??(this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed), event[1].size);
             }
             else {
                 // The tricky case of when the state property has never been set

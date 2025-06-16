@@ -1140,10 +1140,10 @@ export interface Locale {
 }
 
 export enum StrypePEALayoutMode {
-    tabsCollapsed, // the default layout mode where PEA is collapsed and using tabs for console/graphics (and selected mode for the micro:bit version)
-    tabsExpanded, // the layout mode where PEA is expanded and using tabs for console/graphics
-    splitCollapsed, // the layout mode where PEA is collapsed and console/graphics windows are (horizontally) split
-    splitExpanded, // the layout mode where PEA is expanded and console/graphics windows are (vertically) split
+    tabsCollapsed = "tabsCollapsed", // the default layout mode where PEA is collapsed and using tabs for console/graphics (and selected mode for the micro:bit version)
+    tabsExpanded = "tabsExpanded", // the layout mode where PEA is expanded and using tabs for console/graphics
+    splitCollapsed = "splitCollapsed", // the layout mode where PEA is collapsed and console/graphics windows are (horizontally) split
+    splitExpanded = "splitExpanded", // the layout mode where PEA is expanded and console/graphics windows are (vertically) split
 }
 export interface StrypePEALayoutData {
     mode: StrypePEALayoutMode, // The layout view for the PEA in Strype, see related enum
@@ -1158,10 +1158,10 @@ export type StrypeLayoutDividerSettings = {
 };
 
 export const defaultEmptyStrypeLayoutDividerSettings: StrypeLayoutDividerSettings = {
-    "0": undefined,
-    "1": undefined,
-    "2": undefined,
-    "3": undefined,
+    [StrypePEALayoutMode.tabsCollapsed]: undefined,
+    [StrypePEALayoutMode.tabsExpanded]: undefined,
+    [StrypePEALayoutMode.splitCollapsed]: undefined,
+    [StrypePEALayoutMode.splitExpanded]: undefined,
 };
 
 export interface LoadedMedia {
