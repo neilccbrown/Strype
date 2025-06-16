@@ -25,12 +25,15 @@ def makeEmptySoundBySeconds(duration):
 
 class Pixel:
     def __init__(self, picture, x, y, index):
+        # type: (str, int, int, int) -> None
         self.picture = picture
         self.x = x
         self.y = y
         self.__index = index
         self.__color = None
     def get_color(self):
+        # type: () -> str
         return self.__color
     def set_color(self, color):
+        # type: (str) -> None
         pass

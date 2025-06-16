@@ -96,7 +96,7 @@ function focusEditorAC(): void {
 //  - First item is null (no module), string (module name) or [string, string] (library + module name)
 //  - Second item is func name, possibly including dots
 //  - Third item is param list which should be shown (i.e. excluding those with a default value)
-export function testRawFuncs(rawFuncs: [string | [string, string] | null, string, string[]][]) : void {
+export function testRawFuncs(rawFuncs: [string | [string, string] | null, string, string[]][], skipFullyQualifiedVersion?: boolean) : void {
     const funcs: {
         keyboardTypingToImport?: string,
         funcName: string,
@@ -123,14 +123,16 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | null, string
 
             // We need some kind of import; test three ways:
             // The "import module" frame:
-            funcs.push({
-                keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + "i" + module + "{rightarrow}{downarrow}{downarrow}",
-                funcName: module + "." + rawFunc[1],
-                params: rawFunc[2],
-                acSection: module,
-                acName: rawFunc[1],
-                displayName: rawFunc[1] + " with import frame",
-            });
+            if (!skipFullyQualifiedVersion) {
+                funcs.push({
+                    keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + "i" + module + "{rightarrow}{downarrow}{downarrow}",
+                    funcName: module + "." + rawFunc[1],
+                    params: rawFunc[2],
+                    acSection: module,
+                    acName: rawFunc[1],
+                    displayName: rawFunc[1] + " with import frame",
+                });
+            }
             // The "from module import *" frame:
             funcs.push({
                 keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + "f" + module + "{rightarrow}*{rightarrow}{downarrow}{downarrow}",
@@ -141,9 +143,9 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | null, string
                 displayName: rawFunc[1] + " with from-import-* frame",
             });
             // The "from module import funcName" frame:
-            // Note that if funcName has a dot, we need to only use the part before the dot:
+            // Note that if funcName has a dot, we need to only use the part before the dot or opening bracket:
             funcs.push({
-                keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + "f" + module + "{rightarrow}" + (rawFunc[1].includes(".") ? rawFunc[1].substring(0, rawFunc[1].indexOf(".")) : rawFunc[1]) + "{rightarrow}{downarrow}{downarrow}",
+                keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + "f" + module + "{rightarrow}" + (rawFunc[1].match(/^[A-Za-z0-9_]+/)?.[0] ?? rawFunc[1]) + "{rightarrow}{downarrow}{downarrow}",
                 funcName: rawFunc[1],
                 params: rawFunc[2],
                 acName: rawFunc[1],
@@ -169,7 +171,7 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | null, string
             if (func.keyboardTypingToImport) {
                 cy.get("body").type(func.keyboardTypingToImport);
             }
-            cy.get("body").type(" " + func.funcName + "(");
+            cy.get("body").type(" " + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
             withFrameId((frameId) => assertState(frameId, func.funcName + "($)", func.funcName + "(" + func.params.join(", ") + ")"));
         });
         it("Shows prompts after manually writing function name and brackets AND commas for " + func.displayName, () => {
@@ -177,7 +179,7 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | null, string
             if (func.keyboardTypingToImport) {
                 cy.get("body").type(func.keyboardTypingToImport);
             }
-            cy.get("body").type(" " + func.funcName + "(");
+            cy.get("body").type(" " + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
             // Type commas for num params minus 1:
             for (let i = 0; i < func.params.length; i++) {
                 if (i > 0) {
@@ -195,7 +197,7 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | null, string
             if (func.keyboardTypingToImport) {
                 cy.get("body").type(func.keyboardTypingToImport);
             }
-            cy.get("body").type(" abs(" + func.funcName + "(");
+            cy.get("body").type(" abs(" + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
             withFrameId((frameId) => assertState(frameId, "abs(" + func.funcName + "($))", "abs(" + func.funcName + "(" + func.params.join(", ") + "))"));
         });
 
@@ -204,7 +206,7 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | null, string
             if (func.keyboardTypingToImport) {
                 cy.get("body").type(func.keyboardTypingToImport);
             }
-            cy.get("body").type(" max(0," + func.funcName + "(");
+            cy.get("body").type(" max(0," + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
             withFrameId((frameId) => assertState(frameId, "max(0," + func.funcName + "($))", "max(0," + func.funcName + "(" + func.params.join(", ") + "))"));
         });
     }
