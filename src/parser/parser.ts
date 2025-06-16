@@ -20,7 +20,7 @@ export function parseCodeAndGetParseElements(requireCompilation: boolean, saveAs
     // Therefore, we expect the errors to already be found out when this method is called, and we don't need
     // to retrieve them again.
     const parser = new Parser(false, saveAsSPY);
-    const out = parser.parse(undefined, undefined, undefined);
+    const out = parser.parse({});
 
     const hasErrors = hasEditorCodeErrors();
     const compiler = new Compiler();
@@ -400,8 +400,12 @@ export default class Parser {
 
         return output;
     }
+    
+    public parseJustImports() : string {
+        return this.parse({startAtFrameId: useStore().getImportsFrameContainerId, stopAtFrameId: useStore().getFuncDefsFrameContainerId});
+    }
 
-    public parse(startAtFrameId?: number, stopAtFrameId?: number, excludeLoopsAndCommentsAndCloseTry?: boolean, defsLast?: boolean): string {
+    public parse({startAtFrameId, stopAtFrameId, excludeLoopsAndCommentsAndCloseTry, defsLast}: {startAtFrameId?: number, stopAtFrameId?: number, excludeLoopsAndCommentsAndCloseTry?: boolean, defsLast?: boolean}): string {
         let output = "";
         if(startAtFrameId){
             this.startAtFrameId = startAtFrameId;
@@ -453,7 +457,7 @@ export default class Parser {
         TPyParser.warningAsErrors = false;
         let code: string = inputCode;
         if (!inputCode) {
-            code = this.parse();
+            code = this.parse({});
         }
 
         try {
@@ -533,7 +537,7 @@ export default class Parser {
     }
 
     public getCodeWithoutErrors(endFrameId: number, defsLast: boolean): string {
-        const code = this.parse(undefined, endFrameId, true, defsLast);
+        const code = this.parse({stopAtFrameId: endFrameId, excludeLoopsAndCommentsAndCloseTry: true, defsLast});
 
         const errors = this.getErrors(code);
 
@@ -587,7 +591,7 @@ export default class Parser {
     }
 
     public getFullCode(): string {
-        return this.parse(undefined, undefined, false);
+        return this.parse({excludeLoopsAndCommentsAndCloseTry: false});
     }
 
     private checkIfFrameHasError(frame: FrameObject): boolean {

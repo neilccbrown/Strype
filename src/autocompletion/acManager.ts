@@ -196,7 +196,7 @@ export async function getAllExplicitlyImportedItems(context: string) : Promise<A
     // To get library imports, we first get the libraries:
     const p = new Parser();
     // We only need to parse the imports container:
-    p.parse(-1, -2);
+    p.parseJustImports();
     // Then we can get the libraries and look for imports:
     let fromLibraries : Record<string, AcResultType[]> = {};
     for (const library of p.getLibraries()) {
@@ -356,7 +356,7 @@ export async function getAvailableModulesForImport() : Promise<AcResultsWithCate
     // To get library imports, we first get the libraries:
     const p = new Parser();
     // We only need to parse the imports container:
-    p.parse(-1, -2);
+    p.parseJustImports();
     // Then we can get the libraries and look for imports:
     const fromLibraries = [];
     for (const library of p.getLibraries()) {
@@ -413,7 +413,7 @@ export async function getAvailableItemsForImportFromModule(module: string) : Pro
     // To get library imports, we first get the libraries:
     const p = new Parser();
     // We only need to parse the imports container:
-    p.parse(-1, -2);
+    p.parseJustImports();
     // Then we can get the libraries and look for imports:
     for (const library of p.getLibraries()) {
         const paths = await getAvailablePyPyiFromLibrary(library);
