@@ -77,13 +77,11 @@ import _ from "lodash";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 import { getAllEnabledUserDefinedFunctions } from "@/helpers/storeMethods";
-import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, extractCommaSeparatedNames} from "@/autocompletion/acManager";
+import { getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, extractCommaSeparatedNames, tpyDefineLibraries } from "@/autocompletion/acManager";
 import Parser from "@/parser/parser";
 import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
 import {TPyParser} from "tigerpython-parser";
 import scssVars from "@/assets/style/_export.module.scss";
-import {getAvailablePyPyiFromLibrary, getTextFileFromLibraries} from "@/helpers/libraryManager";
-import {extractPYI} from "@/helpers/python-pyi";
 
 //////////////////////
 export default Vue.extend({
@@ -214,25 +212,7 @@ export default Vue.extend({
             const parser = new Parser();
             const userCode = parser.getCodeWithoutErrors(frameId);
             
-            for (const library of parser.getLibraries()) {
-                const pyPYIs = await getAvailablePyPyiFromLibrary(library);
-                if (pyPYIs == null) {
-                    continue;
-                }
-                for (const pyPYI of pyPYIs) {
-                    const text = await getTextFileFromLibraries([library], pyPYI);
-                    if (text != null) {
-                        const pyi = pyPYI.endsWith(".pyi") ? text : extractPYI(text);
-                        
-                        try {
-                            (TPyParser as any).defineModule(pyPYI.replace(/\.pyi?$/, "").replaceAll("/", "."), pyi, "pyi");
-                        }
-                        catch (e) {
-                            console.error(e);
-                        }
-                    }
-                }
-            }
+            await tpyDefineLibraries(parser);
             
             // If nothing relevant changed, no need to recalculate, just update based on latest token:
             if (this.lastTokenStartedUnderscore == tokenStartsWithUnderscore &&

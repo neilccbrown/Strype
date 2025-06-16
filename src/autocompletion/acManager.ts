@@ -458,6 +458,28 @@ function getParamPrompt(params: string[], targetParamIndex: number, lastParam: b
     }
 }
 
+export async function tpyDefineLibraries(parser: Parser) : Promise<void> {
+    for (const library of parser.getLibraries()) {
+        const pyPYIs = await getAvailablePyPyiFromLibrary(library);
+        if (pyPYIs == null) {
+            continue;
+        }
+        for (const pyPYI of pyPYIs) {
+            const text = await getTextFileFromLibraries([library], pyPYI);
+            if (text != null) {
+                const pyi = pyPYI.endsWith(".pyi") ? text : extractPYI(text);
+                
+                try {
+                    (TPyParser as any).defineModule(pyPYI.replace(/\.pyi?$/, "").replaceAll("/", "."), pyi, "pyi");
+                }
+                catch (e) {
+                    console.error(e);
+                }
+            }
+        }
+    }
+}
+
 // Gets the parameter name prompt for the given autocomplete details (context+token)
 // for the given parameter. Note that for the UI to display spans properly, empty placeholders are returned as \u200b (0-width space)
 export async function calculateParamPrompt(frameId: number, context: string, token: string, paramIndex: number, lastParam: boolean) : Promise<string> {
