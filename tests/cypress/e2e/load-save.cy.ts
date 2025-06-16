@@ -67,7 +67,7 @@ function checkDownloadedFileEquals(fullContent: string, filename: string, firstS
 
     cy.readFile(destFile).then((p : string) => {
         // Print out full version in message (without escaped \n), to make it easier to diff:
-        expect(p, "Actual unescaped:\n" + p).to.equal(fullContent);
+        expect(p, "Actual unescaped:\n" + p).to.equal(fullContent.replaceAll("\r\n", "\n"));
     });
 }
 
