@@ -126,7 +126,7 @@ export async function getAvailableFilesFromLibrary(address: LibraryAddress) : Pr
         const text = await getTextFileFromLibraries([address], INDEX_FILE_NAME);
         if (text != null) {
             // Convert to UTF8 text:
-            return text.split("\n").map((entry: string) => entry.replace("\n", "")).filter((entry) => entry);
+            return text.split(/\r?\n/).map((entry: string) => entry.replace("\n", "")).filter((entry) => entry);
         }
         else {
             return null;
