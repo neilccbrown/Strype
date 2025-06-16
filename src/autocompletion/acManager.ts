@@ -5,7 +5,7 @@ import microbitPythonAPI from "@/autocompletion/microbit-api.json";
 import { pythonBuiltins } from "@/autocompletion/pythonBuiltins";
 import skulptPythonAPI from "@/autocompletion/skulpt-api.json";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
-import {getMatchingBracket} from "@/helpers/editor";
+import {getMatchingBracket, transformFieldPlaceholders} from "@/helpers/editor";
 import {getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import {OUR_PUBLIC_LIBRARY_MODULES} from "@/autocompletion/ac-skulpt";
@@ -523,24 +523,30 @@ export async function calculateParamPrompt(frameId: number, context: string, tok
             return "\u200b";
         }
     }
+
+    if (context) {
+        // See if TigerPython can infer the type of the content before the .
+        const parser = new Parser();
+        const userCode = parser.getCodeWithoutErrors(frameId);
+        await tpyDefineLibraries(parser);
+        // So we get code out which is a partial expression and may not be valid at top-level.  Thus we wrap it in:
+        // f(<code>.x)
+        // To make it a valid statement, then autocomplete after the dot (two characters before the end)
+        const totalCode = userCode + "\n" + parser.getStoppedIndentation() + "f(" + transformFieldPlaceholders(context) + "." + "x)";
+        const tppCompletions = TPyParser.autoCompleteExt(totalCode, totalCode.length - 2);
+        const match = tppCompletions?.filter((c) => c.acResult === token);
+        if (match && match.length > 0 && match[0].params) {
+            return getParamPrompt(match[0].params, paramIndex, lastParam);
+        }
+    }
     
     // If the context includes a dot, like datetime.date, we try moving the bit after
     // the last dot into the token, since otherwise we're going to fail anyway:
     if (context.includes(".")) {
         const lastDotIndex = context.lastIndexOf(".");
-        const parser = new Parser();
-        const userCode = parser.getCodeWithoutErrors(frameId);
-        const totalCode = userCode + "\n" + parser.getStoppedIndentation() + context.substring(0, lastDotIndex) + ".";
-        const tppCompletions = TPyParser.autoCompleteExt(totalCode, totalCode.length);
-        const match = tppCompletions?.filter((c) => c.acResult === context.substring(lastDotIndex + 1));
-        if (match && match[0].params) {
-            return getParamPrompt(match[0].params, paramIndex, lastParam);
-        }
-        else {
-            token = context.substring(lastDotIndex + 1) + "." + token;
-            context = context.substring(0, lastDotIndex);
-            return calculateParamPrompt(frameId, context, token, paramIndex, lastParam);
-        }
+        token = context.substring(lastDotIndex + 1) + "." + token;
+        context = context.substring(0, lastDotIndex);
+        return calculateParamPrompt(frameId, context, token, paramIndex, lastParam);
     }
     
     // Otherwise, if there's context, we would have to use Skulpt, but the problem is that Skulpt

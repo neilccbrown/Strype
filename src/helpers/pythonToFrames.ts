@@ -586,7 +586,7 @@ function replaceMediaLiteralsAndInvalidOps(s : SlotsStructure) : SlotsStructure 
     return s;
 }
 
-function fromUnicodeEscapes(input: string): string {
+export function fromUnicodeEscapes(input: string): string {
     const regex = /u([0-9a-fA-F]{4})/g;
     return input.replace(regex, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
 }
