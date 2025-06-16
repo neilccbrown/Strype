@@ -205,7 +205,7 @@ describe("Locale persistence", () => {
         // Part 2 : open the project saved in Preparation 1 and check that content is compliant, locale isn't changed.
         // Due to the Cypress environment, we need to by-pass Strype's mechanism that opens the file selector via the UI.
         // Instead, we directly use Strype's input-file HTML element that would be used in a normal workflow.
-        cy.get("input." + scssVars.editorFileInputClassName).selectFile(path.join(downloadsFolder, "My project.spy"), {force: true});
+        cy.get("#" + strypeElIds.getImportFileInputId()).selectFile(path.join(downloadsFolder, "My project.spy"), {force: true});
         // Wait a bit for the download, and compare that ... 
         cy.wait(1000);
         // 1) the file content is the same as expected (and they aren't empty!)

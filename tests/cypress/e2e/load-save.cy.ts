@@ -67,7 +67,7 @@ function checkDownloadedFileEquals(fullContent: string, filename: string, firstS
 
     cy.readFile(destFile).then((p : string) => {
         // Print out full version in message (without escaped \n), to make it easier to diff:
-        expect(p, "Actual unescaped:\n" + p).to.equal(fullContent);
+        expect(p, "Actual unescaped:\n" + p).to.equal(fullContent.replaceAll("\r\n", "\n"));
     });
 }
 
@@ -103,7 +103,7 @@ function testRoundTripImportAndDownload(filepath: string) {
         // The "button" for the target selection is now a div element.
         cy.get("#" + strypeElIds.getLoadFromFSStrypeButtonId()).click();
         // Must force because the <input> is hidden:
-        cy.get("." + scssVars.editorFileInputClassName).selectFile(filepath, {force : true});
+        cy.get("#" + strypeElIds.getImportFileInputId()).selectFile(filepath, {force : true});
         cy.wait(2000);
         
         // We must make sure there are no comment frames starting "(=>" because that would indicate
