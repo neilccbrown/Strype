@@ -64,6 +64,20 @@ describe("Graphics library", () => {
         }, false);
     });
 
+    it("Shows completions for return of graphics get_background", () => {
+        focusEditorAC();
+        // Add graphics import:
+        cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        // Add a function call frame and trigger auto-complete:
+        cy.get("body").type(" ");
+        cy.wait(500);
+        cy.get("body").type("get_background().{ctrl} ");
+        withAC((acIDSel, frameId) => {
+            cy.get(acIDSel).should("be.visible");
+            checkExactlyOneItem(acIDSel, null, "get_width()");
+        }, false);
+    });
+
     it("Shows completions for return of sound load_sound", () => {
         focusEditorAC();
         // Add graphics import:
