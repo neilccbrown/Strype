@@ -460,7 +460,7 @@ function getParamPrompt(params: string[], targetParamIndex: number, lastParam: b
 
 // Gets the parameter name prompt for the given autocomplete details (context+token)
 // for the given parameter. Note that for the UI to display spans properly, empty placeholders are returned as \u200b (0-width space)
-export async function calculateParamPrompt(context: string, token: string, paramIndex: number, lastParam: boolean) : Promise<string> {
+export async function calculateParamPrompt(frameId: number, context: string, token: string, paramIndex: number, lastParam: boolean) : Promise<string> {
     if (!context) {
         // If context is blank, we know that the function must be one of:
         // - A user-defined function
@@ -506,9 +506,19 @@ export async function calculateParamPrompt(context: string, token: string, param
     // the last dot into the token, since otherwise we're going to fail anyway:
     if (context.includes(".")) {
         const lastDotIndex = context.lastIndexOf(".");
-        token = context.substring(lastDotIndex + 1) + "." + token;
-        context = context.substring(0, lastDotIndex);
-        return calculateParamPrompt(context, token, paramIndex, lastParam);
+        const parser = new Parser();
+        const userCode = parser.getCodeWithoutErrors(frameId);
+        const totalCode = userCode + "\n" + parser.getStoppedIndentation() + context.substring(0, lastDotIndex) + ".";
+        const tppCompletions = TPyParser.autoCompleteExt(totalCode, totalCode.length);
+        const match = tppCompletions?.filter((c) => c.acResult === context.substring(lastDotIndex + 1));
+        if (match && match[0].params) {
+            return getParamPrompt(match[0].params, paramIndex, lastParam);
+        }
+        else {
+            token = context.substring(lastDotIndex + 1) + "." + token;
+            context = context.substring(0, lastDotIndex);
+            return calculateParamPrompt(frameId, context, token, paramIndex, lastParam);
+        }
     }
     
     // Otherwise, if there's context, we would have to use Skulpt, but the problem is that Skulpt
