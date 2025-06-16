@@ -129,10 +129,10 @@ export function extractCommaSeparatedNames(slot: SlotsStructure) : string[] {
     return found;
 }
 
-function getAllUserDefinedVariablesWithinUpTo(framesForParentId: FrameObject[], frameId: number) : { found : Set<string>, complete: boolean} {
+function getAllUserDefinedVariablesWithinUpTo(framesForParentId: FrameObject[], frameId?: number) : { found : Set<string>, complete: boolean} {
     const soFar = new Set<string>();
     for (const frame of framesForParentId) {
-        if (frameId == frame.id) {
+        if (frameId !== undefined && frameId == frame.id) {
             return {found: soFar, complete: true};
         }
         // Get LHS from assignments:
@@ -171,6 +171,9 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
         if (parentId == useStore().getFuncDefsFrameContainerId) {
             // It's a user-defined function, process accordingly
             const available = getAllUserDefinedVariablesWithinUpTo(useStore().getFramesForParentId(curFrameId), frameId).found;
+            // Also add all variables from the body:
+            getAllUserDefinedVariablesWithinUpTo(useStore().getFramesForParentId(useStore().getMainCodeFrameContainerId)).found
+                .forEach((v) => available.add(v));
             // Also add any parameters from the function:
             // Sanity check the frame type:
             if (frame.frameType.type === AllFrameTypesIdentifier.funcdef) {
@@ -193,7 +196,7 @@ export async function getAllExplicitlyImportedItems(context: string) : Promise<A
     // To get library imports, we first get the libraries:
     const p = new Parser();
     // We only need to parse the imports container:
-    p.parse(-1, -2);
+    p.parseJustImports();
     // Then we can get the libraries and look for imports:
     let fromLibraries : Record<string, AcResultType[]> = {};
     for (const library of p.getLibraries()) {
@@ -353,7 +356,7 @@ export async function getAvailableModulesForImport() : Promise<AcResultsWithCate
     // To get library imports, we first get the libraries:
     const p = new Parser();
     // We only need to parse the imports container:
-    p.parse(-1, -2);
+    p.parseJustImports();
     // Then we can get the libraries and look for imports:
     const fromLibraries = [];
     for (const library of p.getLibraries()) {
@@ -410,7 +413,7 @@ export async function getAvailableItemsForImportFromModule(module: string) : Pro
     // To get library imports, we first get the libraries:
     const p = new Parser();
     // We only need to parse the imports container:
-    p.parse(-1, -2);
+    p.parseJustImports();
     // Then we can get the libraries and look for imports:
     for (const library of p.getLibraries()) {
         const paths = await getAvailablePyPyiFromLibrary(library);
