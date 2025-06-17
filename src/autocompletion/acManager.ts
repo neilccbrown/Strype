@@ -539,7 +539,7 @@ export async function calculateParamPrompt(frameId: number, context: string, tok
         const tppCompletions = TPyParser.autoCompleteExt(totalCode, totalCode.length - 2);
         const match = tppCompletions?.filter((c) => c.acResult === token);
         if (match && match.length > 0 && match[0].params) {
-            return getParamPrompt(match[0].params, match[0].paramDefaultValues, paramIndex, lastParam);
+            return getParamPrompt(match[0].params, match[0].params.map((p) => false), paramIndex, lastParam);
         }
     }
     
