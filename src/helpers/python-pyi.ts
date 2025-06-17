@@ -46,7 +46,14 @@ export function extractPYI(original : string) : string {
         const funcDefMatch = lines[i].match(/^(\s*)def (\w+)\((.*?)\)\s*:\s*$/);
         if (funcDefMatch) {
             const [indent, fnName, args] = funcDefMatch.slice(1);
-            const argNames = args.trim() ? args.split(",").map((s) => s.replace(/=.*/, "").trim()) : [];
+            const argNames : [string, string | null][] = args.trim() ? args.split(",").map((s) => {
+                if (s.includes("=")) {
+                    return [s.replace(/=.*/, "").trim(), "..."];
+                }
+                else {
+                    return [s.trim(), null];
+                }
+            }) : [];
             if (indent != "") {
                 if (lastTopLevelLine === "class") {
                     // If we're indented, and we're a class, remove first argName as it's self:
@@ -72,7 +79,7 @@ export function extractPYI(original : string) : string {
                 argTypeList = Array.from(argNames, () => "any");
             }
 
-            const typedArgs = (indent != "" ? "self" + (argTypeList.length > 0 ? ", " : "") : "") + argNames.map((arg, i) => `${arg}: ${argTypeList[i]}`).join(", ");
+            const typedArgs = (indent != "" ? "self" + (argTypeList.length > 0 ? ", " : "") : "") + argNames.map(([arg, defVal], i) => `${arg}: ${argTypeList[i]} ${defVal == null ? "" : " = " + defVal}`).join(", ");
             output.push(`${indent}def ${fnName}(${typedArgs}) -> ${returnType}: ...`);
         }
         

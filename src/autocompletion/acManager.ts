@@ -449,7 +449,7 @@ export function getBuiltins() : AcResultType[] {
 
 // Get the placeholder text for the given function parameter index
 // If it's the last parameter, glue the rest together with commas
-function getParamPrompt(params: string[], targetParamIndex: number, lastParam: boolean) : string {
+function getParamPrompt(params: string[], hasDefaultValues: boolean[] | null, targetParamIndex: number, lastParam: boolean) : string {
     if (targetParamIndex >= params.length) {
         return "";
     }
@@ -457,7 +457,7 @@ function getParamPrompt(params: string[], targetParamIndex: number, lastParam: b
         return params[targetParamIndex];
     }
     else {
-        return params.slice(targetParamIndex).join(", ");
+        return params.filter((_, i) => hasDefaultValues == null || i >= hasDefaultValues.length || !hasDefaultValues[i]).slice(targetParamIndex).join(", ");
     }
 }
 
@@ -495,12 +495,12 @@ export async function calculateParamPrompt(frameId: number, context: string, tok
         const userFunc = getAllEnabledUserDefinedFunctions().find((f) => (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot)?.code === token);
         if (userFunc !== undefined) {
             const params : string[] = extractCommaSeparatedNames(userFunc.labelSlotsDict[1].slotStructures);
-            return getParamPrompt(params, paramIndex, lastParam);
+            return getParamPrompt(params, null, paramIndex, lastParam);
         }
         const builtinFunc = getBuiltins().find((f) => f.acResult === token);
         if (builtinFunc !== undefined) {
             if (builtinFunc.params) {
-                return getParamPrompt(builtinFunc.params.filter((p) => !p.hide && p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
+                return getParamPrompt(builtinFunc.params.filter((p) => !p.hide).map((p) => p.name), builtinFunc.params.filter((p) => !p.hide).map((p) => p.defaultValue !== undefined), paramIndex, lastParam);
             }
             else {
                 return "\u200b";
@@ -511,7 +511,7 @@ export async function calculateParamPrompt(frameId: number, context: string, tok
         // If the context is non-blank and matches an imported module, we can look it up there.        
         const fromModule = (await getAvailableItemsForImportFromModule(context)).find((ac) => ac.acResult === token);
         if (fromModule?.params !== undefined) {
-            return getParamPrompt(fromModule.params.filter((p) => !p.hide && p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
+            return getParamPrompt(fromModule.params.filter((p) => !p.hide).map((p) => p.name), fromModule.params.filter((p) => !p.hide).map((p) => p.defaultValue !== undefined), paramIndex, lastParam);
         }
     }
     
@@ -520,7 +520,7 @@ export async function calculateParamPrompt(frameId: number, context: string, tok
     const importedFunc = Object.values(await getAllExplicitlyImportedItems(context)).flat().find((f) => f.acResult === token || f.acResult === context + "." + token);
     if (importedFunc !== undefined) {
         if (importedFunc.params) {
-            return getParamPrompt(importedFunc.params.filter((p) => !p.hide && p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
+            return getParamPrompt(importedFunc.params.filter((p) => !p.hide).map((p) => p.name), importedFunc.params.filter((p) => !p.hide).map((p) => p.defaultValue !== undefined), paramIndex, lastParam);
         }
         else {
             return "\u200b";
@@ -539,7 +539,7 @@ export async function calculateParamPrompt(frameId: number, context: string, tok
         const tppCompletions = TPyParser.autoCompleteExt(totalCode, totalCode.length - 2);
         const match = tppCompletions?.filter((c) => c.acResult === token);
         if (match && match.length > 0 && match[0].params) {
-            return getParamPrompt(match[0].params, paramIndex, lastParam);
+            return getParamPrompt(match[0].params, match[0].paramDefaultValues, paramIndex, lastParam);
         }
     }
     
