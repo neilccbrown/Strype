@@ -237,7 +237,7 @@ const getgdFileFolderIdFromPath = (fileFolderPath: path.PathObject): Promise<str
                             };
                             // Now we walk the user's given path to check it is valid, and retrieve the file's location.
                             //for (const [index, pathBit] of userGivenFolderParts.entries()){
-                            let currentBaseTreeItem = findNodeInGDRootFolderTree(baseFolderLocationId);                            
+                            let currentBaseTreeItem = (baseFolderLocationId == rootId || baseFolderLocationId == "root") ? gdRootFoldersTree[0] :  findNodeInGDRootFolderTree(baseFolderLocationId);                            
                             const erroneousPathPart = userGivenFolderParts.some((pathPart, index) => {
                                 if(pathPart == "."){
                                     // Stay where we are
