@@ -3,12 +3,10 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Strype documentation
-====================
+Strype API documentation
+========================
 
-Strype has two in-built modules you can use:
- * strype.graphics for graphics output
- * strype.sound for sound output
+You can see more documentation for Strype on the `main documentation page <https://strype.org/doc/>`
 
 strype.graphics module
 ----------------------

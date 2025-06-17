@@ -117,11 +117,13 @@
   "appMenu": {
     "downloadHex": "Konvertieren: Hex-Datei",
     "downloadPython": "Konvertieren: Python-Datei",
-    "loadProject": "Öffnen",
+    "loadProject": "Öffnen...",
+    "loadDemoProject": "Beispiele...",      
     "saveProject": "Speichern",
     "saveAsProject": "Speichern als...",
     "resetProject": "Neues Projekt",
     "resetProjectTooltip": "Neues Projekt mit Standardvorlage",
+    "shareProject": "Teilen...",
     "lang": "Sprache: ",
     "homepage": "Strype Homepage",
     "version": "Version"

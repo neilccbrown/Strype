@@ -13,6 +13,7 @@ const libraryCache: LibraryCache = new Map();
 // Keys are user/repo/branch, maps to a list of file paths that are available in that repo:
 const githubCache = new Map<string, string[]>();
 
+// Caches the result and re-uses cache if available
 async function getGithubRepoPaths(
     user: string,
     repo: string,
@@ -60,32 +61,28 @@ async function getGithubRepoPaths(
     return result;
 }
 
+const INDEX_FILE_NAME = "index.txt";
 
 async function attemptFetchFile(address: LibraryAddress, fileName: FilePath) : Promise<FetchResult> {
-    // Convert Github URLs to our Github protocol:
-    address = address.replace(/^https?:\/\/(www\.?)github.com\//, "github:");
-    // Remove leading ./:
-    fileName = fileName.replace(/^\.\//, "");
-    
     let url;
     if (address.startsWith("https:") || address.startsWith("http:")) {
+        // We can't look for index.txt by fetching index.txt or we'll recurse forever:
+        if (fileName != INDEX_FILE_NAME) {
+            const paths = await getAvailableFilesFromLibrary(address);
+            if (paths != null && !paths.includes(fileName)) {
+                return 404;
+            }
+        }
         url = new URL(fileName, address + (address.endsWith("/") ? "" : "/"));
     }
     else if (address.startsWith("github:")) {
+        const paths = await getAvailableFilesFromLibrary(address);
         // Addresses are either user/repo, or user/repo/branch.
         const components = address.slice("github:".length).split("/");
         if (components.length == 2) {
-            // We assume branch name is main:
             components.push("main");
         }
-        if (components.length != 3) {
-            return 404;
-        }
-        // Check if file is in Github tree (involves less requests than trying each file manually,
-        // since Skulpt looks for about 15 files per module import:
-        const paths = await getGithubRepoPaths(components[0], components[1], components[2]);
-        
-        if (!paths.includes(fileName)) {
+        if (components.length != 3 || (paths != null && !paths.includes(fileName))) {
             return 404;
         }
         
@@ -96,13 +93,56 @@ async function attemptFetchFile(address: LibraryAddress, fileName: FilePath) : P
         return 400;
     }
     
-    const response = await fetch(url);
-    if (response.ok) {
-        return {buffer: await response.arrayBuffer(), mimeType: response.headers.get("Content-Type")};
+    try {
+        const response = await fetch(url);
+        if (response.ok) {
+            return {buffer: await response.arrayBuffer(), mimeType: response.headers.get("Content-Type")};
+        }
+        else {
+            return response.status;
+        }
     }
-    else {
-        return response.status;
+    catch (error) {
+        return 520;
     }
+}
+
+// Returns [] if there is a problem
+export async function getAvailableFilesFromLibrary(address: LibraryAddress) : Promise<string[] | null> {
+    if (address.startsWith("github:")) {
+        // Addresses are either user/repo, or user/repo/branch.
+        const components = address.slice("github:".length).split("/");
+        if (components.length == 2) {
+            // We assume branch name is main:
+            components.push("main");
+        }
+        if (components.length != 3) {
+            return [];
+        }
+        const paths = await getGithubRepoPaths(components[0], components[1], components[2]);
+        return paths;
+    }
+    else if (address.match(/^https?:/)) {
+        const text = await getTextFileFromLibraries([address], INDEX_FILE_NAME);
+        if (text != null) {
+            // Convert to UTF8 text:
+            return text.split(/\r?\n/).map((entry: string) => entry.replace("\n", "")).filter((entry) => entry);
+        }
+        else {
+            return null;
+        }
+    }
+    
+    return Promise.resolve([]);
+}
+
+export async function getAvailablePyPyiFromLibrary(address: LibraryAddress) : Promise<string[] | null> {
+    return getAvailableFilesFromLibrary(address).then((fs) => {
+        if (fs == null) {
+            return null;
+        }
+        return fs.filter((entry: string) => entry.match(/\.pyi?$/));
+    });
 }
 
 export function getLibraryName(libraryAddress: LibraryAddress) : string | undefined  {
@@ -133,12 +173,18 @@ export function getLibraryName(libraryAddress: LibraryAddress) : string | undefi
 
 // Uses the cache if at all possible.
 // All parameters are assumed to be already trimmed.
-export async function getFileFromLibraries(libraryAddresses: LibraryAddress[], filePath: FilePath): Promise<{ buffer: ArrayBuffer; mimeType: string | null } | null> {
+export async function getRawFileFromLibraries(libraryAddresses: LibraryAddress[], filePath: FilePath): Promise<{ buffer: ArrayBuffer; mimeType: string | null } | null> {
     if (libraryAddresses.length === 0) {
         return null;
     }
 
-    const [currentAddress, ...rest] = libraryAddresses;
+    // eslint-disable-next-line prefer-const
+    let [currentAddress, ...rest] = libraryAddresses;
+
+    // Convert Github URLs to our Github protocol:
+    currentAddress = currentAddress.replace(/^https?:\/\/(www\.?)github.com\//, "github:");
+    // Remove leading ./:
+    filePath = filePath.replace(/^\.\//, "");
 
     // Get or create the module cache for the current address
     let moduleCache = libraryCache.get(currentAddress);
@@ -165,5 +211,40 @@ export async function getFileFromLibraries(libraryAddresses: LibraryAddress[], f
     // Otherwise it's not found or had an error.
 
     // Recurse into the rest of the addresses
-    return getFileFromLibraries(rest, filePath);
+    return getRawFileFromLibraries(rest, filePath);
+}
+
+export async function getTextFileFromLibraries(libraryAddresses: LibraryAddress[], filePath: FilePath) : Promise<string | undefined> {
+    const r = await getRawFileFromLibraries(libraryAddresses, filePath);
+    if (r != null) {
+        try {
+            return new TextDecoder("utf-8").decode(r.buffer);
+        }
+        catch (e) {
+            return undefined;
+        }
+    }
+    return undefined;
+}
+
+export function getPossibleImports(filePaths: string[]): string[] {
+    const imports: string[] = [];
+
+    for (const path of filePaths) {
+        if (!path.endsWith(".py")) {
+            continue;
+        }
+
+        const segments = path.split("/");
+        const fileName = segments.pop();
+
+        if (!fileName || fileName === "__init__.py") {
+            continue;
+        }
+
+        const moduleName = fileName.replace(/\.py$/, "");
+        imports.push([...segments, moduleName].join("."));
+    }
+
+    return imports;
 }

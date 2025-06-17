@@ -76,7 +76,7 @@ import Vue, { PropType } from "vue";
 import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import {getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUID, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUID, getFrameUID, getFrameComponent } from "@/helpers/editor";
+import {getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUID, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUID, getFrameUID, getFrameComponent, simpleSlotStructureToString} from "@/helpers/editor";
 import { AllowedSlotContent, CaretPosition, FrameObject, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, EditImageInDialogFunction, FieldSlot, LoadedMedia, MediaSlot, PythonExecRunningState, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
@@ -446,7 +446,7 @@ export default Vue.extend({
                     let cursorPos = 0;
                     if(clickXValue < (slotXPos + (slotWidth / 2))) {
                         neighbourSlotInfos = previousNeighbourSlotInfos; 
-                        cursorPos = (document.getElementById(getLabelSlotUID(previousNeighbourSlotInfos))?.textContent??"").length;                       
+                        cursorPos = (document.getElementById(getLabelSlotUID(previousNeighbourSlotInfos))?.textContent?.replace(/\u200B/g, "")??"").length;                       
                     }
                   
                     // Focus on the nearest neighbour to the click
@@ -556,7 +556,7 @@ export default Vue.extend({
                             else {
                                 // If we're in the second slot (of from...import...), look for items
                                 // in the module that was specified in the first slot:
-                                ac.updateACForImportFrom(this.tokenAC, (frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code);
+                                ac.updateACForImportFrom(this.tokenAC, simpleSlotStructureToString(frame.labelSlotsDict[0].slotStructures));
                             }
                         }
                     });
@@ -1636,7 +1636,7 @@ export default Vue.extend({
             return slot.mediaType;
         },
         showMediaPreviewPopup(event : MouseEvent) {
-            if (!this.isPythonExecuting) {
+            if (!this.isPythonExecuting && !this.isDisabled) {
                 this.mediaPreviewPopupRef?.showPopup(event, this.mediaPreview, (repl : { code: string, mediaType : string }) => {
                     this.appStore.setFrameEditableSlotContent(
                         {

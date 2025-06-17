@@ -23,7 +23,7 @@
                 :slotId="slotItem.id"
                 :slotType="slotItem.type"
                 :isDisabled="isDisabled"
-                :default-text="placeholderText[slotIndex]"
+                :default-text="placeholderText == null ? '' : placeholderText[slotIndex]"
                 :code="getSlotCode(slotItem)"
                 :frameId="frameId"
                 :isEditableSlot="isEditableSlot(slotItem.type)"
@@ -94,8 +94,9 @@ export default Vue.extend({
         focusSlotCursorInfos(): SlotCursorInfos | undefined {
             return this.appStore.focusSlotCursorInfos;
         },
-
-        placeholderText() : string[] {
+    },
+    asyncComputed: {
+        placeholderText() : Promise<string[]> {
             // Look for the placeholder (default) text to put in slots.
             // Special rules apply for the "function name" part of a function call frame cf getFunctionCallDefaultText() in editor.ts.
             const isFuncCallFrame = this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall;
@@ -103,16 +104,16 @@ export default Vue.extend({
                 // If we are on an optional label slots structure that doesn't contain anything yet, we only show the placeholder if we're focused
                 const isOptionalEmpty = (this.appStore.frameObjects[this.frameId].frameType.labels[this.labelIndex].optionalSlot??false) && this.subSlots.length == 1 && this.subSlots[0].code.length == 0;
                 if(isOptionalEmpty && !this.isFocused){
-                    return [" "];
+                    return Promise.resolve([" "]);
                 }
-                return [(isFuncCallFrame) ? getFunctionCallDefaultText(this.frameId) : this.defaultText];
+                return Promise.resolve([(isFuncCallFrame) ? getFunctionCallDefaultText(this.frameId) : this.defaultText]);
             }
             else {
-                return this.subSlots.map((slotItem, index) => slotItem.placeholderSource !== undefined 
-                    ? calculateParamPrompt(slotItem.placeholderSource.context, slotItem.placeholderSource.token, slotItem.placeholderSource.paramIndex, slotItem.placeholderSource.lastParam) 
-                    : ((this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && index == 0) 
+                return Promise.all(this.subSlots.map((slotItem, index) => slotItem.placeholderSource !== undefined 
+                    ? calculateParamPrompt(this.frameId, slotItem.placeholderSource.context, slotItem.placeholderSource.token, slotItem.placeholderSource.paramIndex, slotItem.placeholderSource.lastParam) 
+                    : Promise.resolve((this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && index == 0) 
                         ? getFunctionCallDefaultText(this.frameId)
-                        : "\u200b"));
+                        : "\u200b")));
             }
         },
     },
@@ -374,7 +375,7 @@ export default Vue.extend({
                                     // We do not allow a conversion if the focus isn't inside a slot of level 1.
                                     const isVarAssignSlotStructure = (parsedCodeRes.slots.operators.length > 0 && parsedCodeRes.slots.operators
                                         .find((opSlot, index) => (opSlot.code == "=" && parsedCodeRes.slots.operators.slice(0,index).every((opSlot) => ["", ".", ","].includes(opSlot.code)))));
-                                    if(isVarAssignSlotStructure && this.labelIndex == 0 && !((this.appStore.focusSlotCursorInfos?.slotInfos.slotId??",").includes(",")) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && uiLiteralCode.match(/(?<!=)=(?!=)/) != null){
+                                    if(isVarAssignSlotStructure && this.labelIndex == 0 && !((currentFocusSlotCursorInfos?.slotInfos.slotId??",").includes(",")) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && uiLiteralCode.match(/(?<!=)=(?!=)/) != null){
                                         // We need to break at the slot preceding the first "=" operator.
                                         const breakAtSlotIndex = parsedCodeRes.slots.operators.findIndex((opSlot) => opSlot.code == "=");
                                         this.appStore.setSlotTextCursors(undefined, undefined);
@@ -460,11 +461,30 @@ export default Vue.extend({
             // When some text is cut through *a selection*, we need to handle it fully: we want to handle the slot changes in the store to reflect the
             // text change, but also we need to handle the clipboard, as doing events here on keydown results the browser not being able to get the text
             // cut (since the slots have already disappear, and the action for cut seems to be done on the keyup event)
-            if ((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() ==  "x" || event.key.toLowerCase() ==  "c")){
+            if (this.appStore.focusSlotCursorInfos && (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() ==  "x" || event.key.toLowerCase() ==  "c")){
                 // There is a selection already, we can directly set the text in the browser's clipboard here
                 const selectionText = getEditableSelectionText();
                 if (selectionText) {
-                    navigator.clipboard.writeText(selectionText);
+                    // If it's a media literal, we copy the literal content and text to the clipboard:
+                    const litMatch = selectionText.match(/^load_(image|sound)\("data:([^;]+);base64,([^"]+)"\)$/);
+                    if (litMatch) {
+                        const mimeType = litMatch[2];
+
+                        // Convert base64 to binary data:
+                        const binary = atob(litMatch[3]);
+                        const bytes = new Uint8Array(binary.length);
+                        for (let i = 0; i < binary.length; i++) {
+                            bytes[i] = binary.charCodeAt(i);
+                        }
+                        const blob = new Blob([bytes], { type: mimeType });
+                        const mediaItem = new ClipboardItem({ [mimeType]: blob });
+                        const textItem = new ClipboardItem({ "text/plain": new Blob([selectionText], { type: "text/plain" }) });
+                        navigator.clipboard.write([textItem, mediaItem]);
+                    }
+                    else {
+                        // Otherwise we just copy the text:
+                        navigator.clipboard.writeText(selectionText);
+                    }
                     if (event.key.toLowerCase() == "x" && this.appStore.focusSlotCursorInfos) {
                         // Send fake delete key to delete the content:
                         document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))

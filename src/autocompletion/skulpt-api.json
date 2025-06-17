@@ -1546,7 +1546,7 @@
                 },
                 {
                     "name": "verbosity",
-                    "defaultValue": "<unittest.loader.TestLoader object at 0x102c655b0>"
+                    "defaultValue": "<unittest.loader.TestLoader object>"
                 },
                 {
                     "name": "failfast",
@@ -1672,7 +1672,7 @@
                 },
                 {
                     "name": "data",
-                    "defaultValue": "<object object at 0x10218dc50>"
+                    "defaultValue": "<object object>"
                 },
                 {
                     "name": "timeout",
@@ -2343,7 +2343,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x104b869d0>"
+                    "defaultValue": "<function deepcopy>"
                 }
             ]
         },
@@ -2385,7 +2385,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x104b869d0>"
+                    "defaultValue": "<function deepcopy>"
                 }
             ]
         },
@@ -2413,7 +2413,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x104b869d0>"
+                    "defaultValue": "<function deepcopy>"
                 }
             ]
         },
@@ -2455,7 +2455,7 @@
                 },
                 {
                     "name": "state",
-                    "defaultValue": "<function deepcopy at 0x104b869d0>"
+                    "defaultValue": "<function deepcopy>"
                 },
                 {
                     "name": "listiter",
@@ -14119,7 +14119,7 @@
     "strype.graphics": [
         {
             "acResult": "Actor",
-            "documentation": "\n    An Actor is an item in the world with a specific image, position, rotation and scale.  Everything you want to show up\n    in your graphics must be an Actor.  \n    ",
+            "documentation": "\n    An Actor is an item in the world with a specific image, position, rotation and scale.  If an actor is created,\n    it becomes visible in the graphics world. \n    ",
             "type": [
                 "function",
                 "type"
@@ -14149,7 +14149,7 @@
         },
         {
             "acResult": "Color",
-            "documentation": "\n    A Color class with members red, green, blue, alpha, in the range 0--255.\n    ",
+            "documentation": "\n    A Color class with red, green, blue components, and an optional alpha value. \n    ",
             "type": [
                 "function",
                 "type"
@@ -14176,48 +14176,6 @@
             ]
         },
         {
-            "acResult": "Dimension",
-            "documentation": "\n    A dimension value indicating a width and a height, for example the size of an image.\n    ",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0,
-            "params": [
-                {
-                    "name": "self",
-                    "hide": true
-                },
-                {
-                    "name": "width"
-                },
-                {
-                    "name": "height"
-                }
-            ]
-        },
-        {
-            "acResult": "FontFamily",
-            "documentation": "\n    A font family is a particular font type, e.g. Arial or Courier.\n    ",
-            "type": [
-                "function",
-                "type"
-            ],
-            "version": 0,
-            "params": [
-                {
-                    "name": "self",
-                    "hide": true
-                },
-                {
-                    "name": "font_provider"
-                },
-                {
-                    "name": "font_name"
-                }
-            ]
-        },
-        {
             "acResult": "Image",
             "documentation": "\n    An editable image of fixed width and height.\n    ",
             "type": [
@@ -14235,6 +14193,84 @@
                 },
                 {
                     "name": "height"
+                }
+            ]
+        },
+        {
+            "acResult": "_ClickDetails",
+            "documentation": "ClickDetails(x, y, button, click_count)",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "_cls",
+                    "hide": true
+                },
+                {
+                    "name": "x"
+                },
+                {
+                    "name": "y"
+                },
+                {
+                    "name": "button"
+                },
+                {
+                    "name": "click_count"
+                }
+            ]
+        },
+        {
+            "acResult": "_Dimension",
+            "documentation": "Dimension(width, height)",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "_cls",
+                    "hide": true
+                },
+                {
+                    "name": "width"
+                },
+                {
+                    "name": "height"
+                }
+            ]
+        },
+        {
+            "acResult": "_MouseDetails",
+            "documentation": "MouseDetails(x, y, button0, button1, button2)",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "_cls",
+                    "hide": true
+                },
+                {
+                    "name": "x"
+                },
+                {
+                    "name": "y"
+                },
+                {
+                    "name": "button0"
+                },
+                {
+                    "name": "button1"
+                },
+                {
+                    "name": "button2"
                 }
             ]
         },
@@ -14271,6 +14307,12 @@
         {
             "acResult": "__spec__",
             "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "_bk_image",
+            "documentation": "",
             "type": [],
             "version": 0
         },
@@ -14349,7 +14391,7 @@
         },
         {
             "acResult": "color_from_string",
-            "documentation": "\n    Converts a string that is either a color name (e.g. \"red\") or a hex string (e.g. \"#ff0000\") to\n    a Color object.  The hex string can either be 6 hex digits (in which case alpha is assumed to be 255)\n    or 8 hex digits (which includes the alpha)\n    \n    :param html_string: A string as described above.\n    :raises ValueError: If the string is not recognised as a color name or valid 6 or 8 digit hex string.\n    :return: A Color object.\n    ",
+            "documentation": "\n    Convert a string to a :class:`Color` object.  The string can be either a color name (e.g. \"red\") or a \n    hex string (e.g. \"#ff0000\").  A hex string can either be 6 hex digits (in which case alpha is assumed to be 255)\n    or 8 hex digits (which includes the alpha).\n    \n    :param html_string: A string as described above.\n    :raises ValueError: If the string is not recognised as a color name or valid 6 or 8 digit hex string.\n    :return: A :class:`Color` object.\n    ",
             "type": [
                 "function"
             ],
@@ -14361,32 +14403,54 @@
             ]
         },
         {
-            "acResult": "get_clicked_actor",
-            "documentation": "\n    Gets the last clicked Actor (or None if nothing was clicked since the last call to this function).  Be careful that if you call this twice\n    in quick succession, the second call will almost certainly be None.  If you need to compare the result of this function\n    to several other things, assign it to a variable first.\n    \n    :return: The most recently clicked Actor, or None if nothing was clicked since you last called this function.\n    ",
-            "type": [
-                "function"
-            ],
-            "version": 0
-        },
-        {
-            "acResult": "in_bounds",
-            "documentation": "\n    Checks if the given X, Y position is in the visible bounds of (-399,-299) inclusive to (400, 300) exclusive.\n    \n    :param x: The x position to check\n    :param y: The y position to check\n    :return: A boolean indicating whether it is in the visible bounds: True if it is in bounds, False if it is not.\n    ",
+            "acResult": "get_actors",
+            "documentation": "\n        Gets all actors.\n        \n        If the tag is specified, only actors with the given tag will be included.\n        \n        :param tag: The tag to use to filter the returned actors (or None to return all actors)\n        :return: A list of all actors (that have not been removed via the `remove()` call).\n        ",
             "type": [
                 "function"
             ],
             "version": 0,
             "params": [
                 {
-                    "name": "x"
-                },
-                {
-                    "name": "y"
+                    "name": "tag",
+                    "defaultValue": "None"
                 }
             ]
         },
         {
+            "acResult": "get_background",
+            "documentation": "\n    Gets the current background image.\n    \n    Any changes to the image (such as drawing on it) will be shown on the live display.\n    \n    Note that the image returned by get_background() will not be the same as that passed\n    to set_background().  The image may have been tiled or stretched.  It may also not be exactly\n    800 x 600; the image may be slightly oversized (e.g. 808 x 606) to make sure it covers\n    the edges fully.  But its centre will be at (0, 0).\n    \n    :return: The live background image, or None if one has not been set.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "get_clicked_actor",
+            "documentation": "\n    Return the last actor receiving a mouse click.  If no actor was clicked since this function was last called, None is returned.\n    Every click will be reported only once -- a second call to this function in quick succession will return None.\n    \n    :return: The most recently clicked :class:`Actor`, or None if no actor was clicked since the last call.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "get_mouse",
+            "documentation": "\n    Get the details for current mouse state.\n    \n    :return: A named tuple with details of the mouse state: `(x, y, button0, button1, button2)` where the last three items are booleans where True indicates the button is held: button0 for primary (left), button1 for secondary (right), button2 for middle.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "get_mouse_click",
+            "documentation": "\n    Get the details for the last mouse click.  If the mouse was not clicked since this function was last called, None is returned.\n    Every click will be reported only once -- a second call to this function in quick succession will return None.\n    \n    This function is independent of `get_clicked_actor()`; they will potentially report details of the same mouse click it was on an actor.\n    \n    :return: A named tuple with details of the last click: `(x, y, button, click_count)` where button is 0 for primary (left), 1 for secondary (right) or 2 for middle; or None if the mouse was not clicked since the last call.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
             "acResult": "key_pressed",
-            "documentation": "\n    Checks if the given key is currently pressed.  Note that because the user may be pressing and releasing keys all the time,\n    consecutive calls to this function with the same key name may not give the same result.\n    \n    :param keyname: The name of the key.  This can be a single letter like \"a\" or a key name like \"up\", \"down\". \n    :return: Either True or False depending on whether the key is currently pressed.\n    ",
+            "documentation": "\n    Check if a given key is currently pressed down.\n\n    The names of printable keys are the character they print (e.g. \"a\" for the a-key). Other keys have names \n    describing their function. These include \"left\", \"right\", \"up, \"down\", \"enter\", \"tab\", \"escape\", \"shift\", \n    \"control\", \"alt\", \"backspace\", delete\".\n    \n    :param keyname: The name of the key to check.\n    :return: True if the key is currently pressed down, False otherwise.\n    ",
             "type": [
                 "function"
             ],
@@ -14399,20 +14463,20 @@
         },
         {
             "acResult": "load_image",
-            "documentation": "\n    Loads the given image file as an Image object.\n    \n    Note: you can pass a filename for the image, which is an image name from Strype's image library,\n        or a URL to an image.  Using a URL requires the server to allow remote image loading from Javascript via a feature\n        called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and\n        you can load the image in a browser yourself.\n    \n    :param filename: The built-in Strype filename, or URL, of the image to load.\n    :return: An Image object with the same image and dimensions as the given file\n    ",
+            "documentation": "\n    Load the given image and return it as an :class:`Image` object.  The image name must be the name of one of the images\n    in the Strype image library.\n    \n    :param name: The nameof the image to load, as shown in the Strype image library.\n    :return: An :class:`Image` object with the library image.\n    ",
             "type": [
                 "function"
             ],
             "version": 0,
             "params": [
                 {
-                    "name": "filename"
+                    "name": "name"
                 }
             ]
         },
         {
-            "acResult": "pause",
-            "documentation": "\n    Waits for a suitable amount of time since the last call to pause().  This is almost always used as follows:\n    \n    ```\n    while True:\n        # Do all the actions you want to do in one go\n        pause(30)\n    ```\n    \n    Where 30 is the number of times you want to do those actions per second.  It is like sleeping\n    for 1/30th of a second, but it accounts for the fact that your actions may have taken some time,\n    so it aims to keep you executing the actions 30 times per second (or whatever value you pass\n    for actions_per_second).\n    \n    :param actions_per_second: The amount of times you want to call pause() per second, 25 by default.\n    ",
+            "acResult": "pace",
+            "documentation": "\n    Wait for a suitable amount of time since the last call to pace().  This is almost always used as follows:\n    \n    .. code-block:: python\n    \n        while True:\n            # Do all the actions you want to do in one iteration\n            pace(25)\n    \n    \n    Where 25 is the number of times you want to do those actions per second.  It is like sleeping\n    for 1/25th of a second, but it accounts for the fact that your actions may have taken some time,\n    so it aims to keep you executing the actions 25 times per second (or whatever value you pass\n    for actions_per_second).\n    \n    :param actions_per_second: The amount of times you want to call pace() per second, 25 by default.\n    ",
             "type": [
                 "function"
             ],
@@ -14425,25 +14489,38 @@
             ]
         },
         {
-            "acResult": "set_background",
-            "documentation": "\n    Sets the current background image.\n    \n    The parameter can be an Image, a color, a filename of an image in Strype's image library, or a URL.\n    Using a URL requires the server to allow remote image loading from Javascript via a feature\n        called CORS.   Many servers do not allow this, so you may get an error even if the URL is valid and\n        you can load the image in a browser yourself.\n    \n    If tile_to_fit is True and the background image is smaller than 800x600, it will be tiled (repeated) to fill the area of 800x600.\n    If tile_to_fit is True and background image is larger than 800x600, it will be centered, and the extra regions will be cut off.\n    If tile_to_fit is False, the background image will be scaled (preserving its aspect ratio) to fit into 800x600, and centered.    \n    \n    The background image is always copied, so later changes to an Image will not be shown in the background;\n    you should call set_background() again to update it.\n    \n    :param image_or_filename_or_color: An Image, an image filename or URL, or a color name or hex string.\n    :param tile_to_fit: Whether to tile the background image to fit (True), or to stretch the image to Fit (False) \n    ",
+            "acResult": "pause",
+            "documentation": "\n    Pause for the given amount of seconds.\n    \n    This can be a fractional amount, such as 0.5, or 1.2.  The entire code\n    will pause for that length of time before beginning to execute.\n    \n    :param seconds: The amount of seconds to wait for.\n    ",
             "type": [
                 "function"
             ],
             "version": 0,
             "params": [
                 {
-                    "name": "image_or_filename_or_color"
+                    "name": "seconds"
+                }
+            ]
+        },
+        {
+            "acResult": "set_background",
+            "documentation": "\n    Set the current background image.\n    \n    The parameter can be an :class:`Image`, a :class:`Color`, or an image name from Strype's image library.\n    \n    If scale_to_fit is True, the image will be scaled (up or down) so that it fills the world area (800x600 pixels).  \n    Otherwise the image will be drawn in the center of the world in its original size, and tiled outwards\n    if it is smaller than the world.\n    \n    The background image is always copied when it is created, so later changes to the original image will not be \n    shown in the world.  You can call `get_background()` to receive the actual background image object to change it.\n    \n    :param image_or_name_or_color: An Image, an image name, a :class:`Color` object, or a color name or hex string.\n    :param scale_to_fit: If True, scale the image to the world size. If False, tile the image on the world. \n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "image_or_name_or_color"
                 },
                 {
-                    "name": "tile_to_fit",
-                    "defaultValue": "True"
+                    "name": "scale_to_fit",
+                    "defaultValue": "False"
                 }
             ]
         },
         {
             "acResult": "stop",
-            "documentation": "\n    Stops the whole execution immediately.  Will not return.\n    ",
+            "documentation": "\n    Stop the execution of the program.  This function will not return.\n    ",
             "type": [
                 "function"
             ],
@@ -14512,6 +14589,14 @@
         {
             "acResult": "_strype_sound_internal",
             "documentation": "",
+            "type": [
+                "module"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "_time",
+            "documentation": "This module provides various functions to manipulate time values.\n\nThere are two standard representations of time.  One is the number\nof seconds since the Epoch, in UTC (a.k.a. GMT).  It may be an integer\nor a floating point number (to represent fractions of seconds).\nThe Epoch is system-defined; on Unix, it is generally January 1st, 1970.\nThe actual value can be retrieved by calling gmtime(0).\n\nThe other representation is a tuple of 9 integers giving local time.\nThe tuple items are:\n  year (including century, e.g. 1998)\n  month (1-12)\n  day (1-31)\n  hours (0-23)\n  minutes (0-59)\n  seconds (0-59)\n  weekday (0-6, Monday is 0)\n  Julian day (day in the year, 1-366)\n  DST (Daylight Savings Time) flag (-1, 0 or 1)\nIf the DST flag is 0, the time is given in the regular time zone;\nif it is 1, the time is given in the DST time zone;\nif it is -1, mktime() should guess based on the date and time.",
             "type": [
                 "module"
             ],

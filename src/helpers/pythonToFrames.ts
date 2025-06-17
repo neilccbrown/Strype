@@ -1,10 +1,11 @@
-import {AllFrameTypesIdentifier, BaseSlot, CaretPosition, ContainerTypesIdentifiers, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, StringSlot} from "@/types/types";
+import {AllFrameTypesIdentifier, BaseSlot, CaretPosition, ContainerTypesIdentifiers, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, StringSlot, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders} from "@/types/types";
 import {useStore} from "@/store/store";
-import {operators, trimmedKeywordOperators} from "@/helpers/editor";
+import {getCaretContainerComponent, getFrameComponent, operators, trimmedKeywordOperators} from "@/helpers/editor";
 import i18n from "@/i18n";
-import {escapeRegExp} from "lodash";
+import {cloneDeep, escapeRegExp} from "lodash";
 import {AppName, AppSPYPrefix} from "@/main";
 import {toUnicodeEscapes} from "@/parser/parser";
+import FrameContainer from "@/components/FrameContainer.vue";
 
 const TOP_LEVEL_TEMP_ID = -999;
 
@@ -182,11 +183,56 @@ export const STRYPE_INVALID_SLOT = "___strype_invalid_";
 export const STRYPE_INVALID_OPS_WRAPPER = "___strype_opsinvalid";
 export const STRYPE_INVALID_OP = "___strype_operator_";
 
-function transformCommentsAndBlanks(codeLines: string[]) : {disabledLines : number[], transformedLines : string[], strypeDirectives: Map<string, string>} {
+function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") : {disabledLines : number[], transformedLines : string[], strypeDirectives: Map<string, string>} {
     codeLines = [...codeLines];
     const disabledLines : number[] = [];
     const transformedLines : string[] = [];
     const strypeDirectives: Map<string, string> = new Map<string, string>();
+
+    // A reference to the lines containing a comment block (that is, consecutive comment lines), see inline-method below for details.
+    const aCommentBlockLines: number[] = [];
+    const checkRearrangeCommentsIdent = () => {
+        // When the parser have reached a line that is past a block of comments, we need to see if the comments of this block
+        // are indented "properly": in Python, comments can be indented anyhow, but since we transform them for Skulpt, any indentation that is not
+        // following the Python indentation rule would be seen as an error by Skulpt.
+        // The logic is: 
+        // - if there is no line before the comments (they are at the start of the code) the indent is 0.
+        // - if there is no line after the comments (they are at then end of the code), we indent the block as before or leave it to 0 if it was (and all others).
+        // - if lines before and after the comments are with the same indentation: we change the comments' indentation for the same
+        // - if the line before the comments has a different indent than the line after, we indent the block as after.
+        if(aCommentBlockLines.length == 0){
+            // There is no comment to check, we can just return
+            return;
+        }
+        if (format == "spy") {
+            // SPYs are assumed to have the comments exactly where they should be, so we don't rearrange:
+            return;
+        }
+
+        const commentBlockStartLineIndex = aCommentBlockLines[0], commentBlockEndLineIndex = aCommentBlockLines[aCommentBlockLines.length - 1];
+        let hasZeroIndent = false;     
+        const subrange = transformedLines.slice(commentBlockStartLineIndex, commentBlockEndLineIndex + 1).map((line) => {
+            if(commentBlockStartLineIndex == 0){
+                return line.trimStart();
+            }
+            else{
+                const indentBefore = /^(\s*).*$/.exec(transformedLines[commentBlockStartLineIndex - 1])?.[1]??"";
+                if(commentBlockEndLineIndex == transformedLines.length - 1){
+                    hasZeroIndent ||= (/^\s.*$/.exec(line)==null);
+                    return (hasZeroIndent ? "" : indentBefore) + line.trimStart();
+                }
+                else{
+                    const indentAfter = /^(\s*).*$/.exec(transformedLines[commentBlockEndLineIndex + 1])?.[1]??"";
+                    return indentAfter + line.trimStart();
+                }
+            }
+        });
+        transformedLines.splice(commentBlockStartLineIndex, subrange.length , ...subrange);
+
+        // Clear the comment block reference
+        aCommentBlockLines.splice(0);
+    };
+
     // Skulpt doesn't preserve blanks or comments so we must find them and transform
     // them into something that does parse.
     // Find all comments.  This isn't quite perfect (with respect to # in strings) but it will do:
@@ -228,14 +274,15 @@ function transformCommentsAndBlanks(codeLines: string[]) : {disabledLines : numb
                     // Just a comment:
                     transformedLines.push(match[1] + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(match[2]));
                     mostRecentIndent = match[1];
+                    aCommentBlockLines.push(transformedLines.length-1);
                 }
                 else {
                     // Code followed by comment, put comment on next line:
                     mostRecentIndent = getIndent(match[1]);
                     transformedLines.push(match[1]);
+                    checkRearrangeCommentsIdent();
                     transformedLines.push(mostRecentIndent + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(match[2]));
                 }
-                
             }
         }
         else if (codeLines[i].trim() === "") {
@@ -256,12 +303,17 @@ function transformCommentsAndBlanks(codeLines: string[]) : {disabledLines : numb
             else {
                 transformedLines.push(smallestAdjIndent + STRYPE_WHOLE_LINE_BLANK);
             }
+            checkRearrangeCommentsIdent();
         }
         else {
             transformedLines.push(codeLines[i].trimEnd());
             mostRecentIndent = getIndent(codeLines[i].trimEnd());
+            checkRearrangeCommentsIdent();
         }
     }
+    // We might have comments at the end of the code, so we need to check their indentation:
+    checkRearrangeCommentsIdent();
+
     return { disabledLines, transformedLines, strypeDirectives };
 }
 
@@ -270,7 +322,7 @@ function transformCommentsAndBlanks(codeLines: string[]) : {disabledLines : numb
 // ready to be pasted immediately afterwards.
 // If successful, returns a map with key-value Strype directives.  If unsuccessful, returns a string with some info about
 // where the Python parse failed.
-export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, linenoMapping?: Record<number, number>) : string | null | Map<string, string> {
+export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, format: "py" | "spy", linenoMapping?: Record<number, number>) : string | null | Map<string, string> {
     const mapLineno = (lineno : number) : number => linenoMapping ? linenoMapping[lineno] : lineno;
     const indents = new Map<number, string>();
     
@@ -303,7 +355,7 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
         indents.set(i + 1, getIndent(codeLines[i]));
     }
 
-    const transformed = transformCommentsAndBlanks(codeLines);
+    const transformed = transformCommentsAndBlanks(codeLines, format);
     const parsedBySkulpt = parseWithSkulpt(transformed.transformedLines, mapLineno);
     if (typeof parsedBySkulpt === "string") {
         return parsedBySkulpt;
@@ -534,7 +586,7 @@ function replaceMediaLiteralsAndInvalidOps(s : SlotsStructure) : SlotsStructure 
     return s;
 }
 
-function fromUnicodeEscapes(input: string): string {
+export function fromUnicodeEscapes(input: string): string {
     const regex = /u([0-9a-fA-F]{4})/g;
     return input.replace(regex, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
 }
@@ -977,7 +1029,7 @@ function makeMapping(section: NumberedLine[]) : Record<number, number> {
 // Each line of the original will end up in exactly one of the three parts of the return.
 // With Python's indentation rules, this operation is actually easier at line level than it is post-parse.
 // The mappings map line numbers in the returned sections to line numbers in the original
-export function splitLinesToSections(allLines : string[]) : {imports: string[]; defs: string[]; main: string[], importsMapping: Record<number, number>, defsMapping: Record<number, number>, mainMapping: Record<number, number>, headers: Record<string, string>} {
+export function splitLinesToSections(allLines : string[]) : {imports: string[]; defs: string[]; main: string[], importsMapping: Record<number, number>, defsMapping: Record<number, number>, mainMapping: Record<number, number>, headers: Record<string, string>, format: "py" | "spy"} {
     // There's two possibilities:
     //  - we're loading a .spy with section headings, or
     //  - we're loading a .py where we must infer it.
@@ -993,6 +1045,7 @@ export function splitLinesToSections(allLines : string[]) : {imports: string[]; 
             defsMapping: {} as Record<number, number>,
             mainMapping: {} as Record<number, number>,
             headers: {} as Record<string, string>,
+            format: "spy" as "py" | "spy",
         };
         while (line < allLines.length && !allLines[line].match(new RegExp("^#" + escapeRegExp(AppSPYPrefix) + " *Section *:Imports"))) {
             // Everything here should be metadata, add it to headers:
@@ -1034,35 +1087,41 @@ export function splitLinesToSections(allLines : string[]) : {imports: string[]; 
     const defs: NumberedLine[] = [];
     const main: NumberedLine[] = [];
     let addingToDef = false;
+    let defIndent = 0;
     allLines.forEach((line : string, zeroBasedLine : number) => {
         const lineWithNum : NumberedLine = {text: line, lineno: zeroBasedLine + 1};
-        if (line.match(/^(import|from)\s+/)) {
+        if (line.match(/^\s*(import|from)\s+/)) {
             // Import:
             imports.push(...latestComments);
             latestComments = [];
             imports.push(lineWithNum);
             addingToDef = false;
         }
-        else if (line.match(/^def\s+/)) {
-            defs.push(...latestComments);
-            latestComments = [];
-            defs.push(lineWithNum);
+        else if (line.match(/^\s*def\s+/)) {
             addingToDef = true;
+            defIndent = line.length - line.trimStart().length;
+            defs.push(...latestComments.map((l) => ({...l, text: l.text.trimStart() + " ".repeat(defIndent)})));
+            latestComments = [];
+            defs.push({...lineWithNum, text: line.trimStart()});
+            
         }
         else if (line.match(/^\s*#/)) {
             latestComments.push(lineWithNum);
         }
-        else if (addingToDef && !line.match(/^\S/)) {
-            // Keep adding to defs until we see a non-comment line with zero indent:
+        else if (addingToDef && (line.trim() == "" || (line.length - line.trimStart().length) > defIndent)) {
+            // Keep adding to defs until we see a non-comment non-blank line with less or equal indent:
             defs.push(...latestComments);
             latestComments = [];
-            defs.push(lineWithNum);
+            defs.push({...lineWithNum, text: line.slice(defIndent)});
         }
         else {
             addingToDef = false;
             main.push(...latestComments);
             latestComments = [];
-            main.push(lineWithNum);
+            // We don't push leading blanks to main (i.e. blank lines while main is empty), otherwise all the blanks before/between imports and defs end up there:
+            if (line.trim() != "" || main.length > 0) {
+                main.push(lineWithNum);
+            }
         }
     });
     // Add any trailing comments:
@@ -1075,5 +1134,58 @@ export function splitLinesToSections(allLines : string[]) : {imports: string[]; 
         defsMapping : makeMapping(defs),
         mainMapping : makeMapping(main),
         headers: {} as Record<string, string>,
+        format: "py",
     };
+}
+
+// Returns headers if successful, or null if there was an error (which will already have been shown in the UI)
+export function pasteMixedPython(completeSource: string, clearExisting: boolean) : { headers: Record<string, string> } | null {
+    const allLines = completeSource.split(/\r?\n/);
+    // Split can make an extra blank line at the end which we don't want:
+    if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
+        allLines.pop();
+    }
+    const s = splitLinesToSections(allLines);
+    
+    // Bit awkward but we first attempt to copy each to check for errors because
+    // if there are any errors we don't want to paste any:
+    let err = copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.format, s.importsMapping);
+    if (typeof err != "string") {
+        err = copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.FUNCDEF_SECTION, s.format, s.defsMapping);
+    }
+    if (typeof err != "string") {
+        err = copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION, s.format, s.mainMapping);
+    }
+    if (typeof err == "string") {
+        const msg = cloneDeep(MessageDefinitions.InvalidPythonParseImport);
+        const msgObj = msg.message as FormattedMessage;
+        msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, err);
+
+        useStore().showMessage(msg, 10000);
+        return null;
+    }
+    else {
+        if (clearExisting) {
+            // Clear the current existing code (i.e. frames) of the editor
+            useStore().clearAllFrames();
+        }
+        
+        const curLocation = findCurrentStrypeLocation();
+
+        copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.format);
+        if (useStore().copiedSelectionFrameIds.length > 0) {
+            getCaretContainerComponent(getFrameComponent(useStore().getImportsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(curLocation == STRYPE_LOCATION.IMPORTS_SECTION ? "caret" : "end");
+        }
+        copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.FUNCDEF_SECTION, s.format);
+        if (useStore().copiedSelectionFrameIds.length > 0) {
+            getCaretContainerComponent(getFrameComponent(useStore().getFuncDefsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(curLocation == STRYPE_LOCATION.FUNCDEF_SECTION ? "caret" : "end");
+        }
+        if (s.main.length > 0) {
+            copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION, s.format);
+            if (useStore().copiedSelectionFrameIds.length > 0) {
+                getCaretContainerComponent(getFrameComponent(curLocation == STRYPE_LOCATION.IN_FUNCDEF ? useStore().getFuncDefsFrameContainerId : useStore().getMainCodeFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste((curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) ? "caret" : "start");
+            }
+        }
+        return s;
+    }
 }

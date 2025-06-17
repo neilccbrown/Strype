@@ -76,9 +76,9 @@ import {IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWit
 import _ from "lodash";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
-import { getAllEnabledUserDefinedFunctions } from "@/helpers/storeMethods";
-import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, extractCommaSeparatedNames} from "@/autocompletion/acManager";
-import Parser from "@/parser/parser";
+import {getAllEnabledUserDefinedFunctions, getFrameContainer} from "@/helpers/storeMethods";
+import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, extractCommaSeparatedNames, tpyDefineLibraries} from "@/autocompletion/acManager";
+import Parser from "@/parser/parser"; 
 import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
 import {TPyParser} from "tigerpython-parser";
 import scssVars from "@/assets/style/_export.module.scss";
@@ -186,8 +186,8 @@ export default Vue.extend({
             return sortedCategories;
         },
       
-        updateACForModuleImport(token: string) : void {
-            this.acResults = getAvailableModulesForImport();
+        async updateACForModuleImport(token: string) : Promise<void> {
+            this.acResults = await getAvailableModulesForImport();
             this.showFunctionBrackets = false;
             // Only show imports if the slot isn't following "as" (so we need to check the operator)
             const {frameId, slotId} = parseLabelSlotUID(this.slotId);
@@ -197,9 +197,11 @@ export default Vue.extend({
         },
 
         updateACForImportFrom(token: string, module: string) : void {
-            this.acResults = {"": getAvailableItemsForImportFromModule(module)};
-            this.showFunctionBrackets = false;
-            this.showSuggestionsAC(token);
+            getAvailableItemsForImportFromModule(module).then((items) => {
+                this.acResults = {"": items.filter((ac) => !ac.acResult.startsWith("_"))};
+                this.showFunctionBrackets = false;
+                this.showSuggestionsAC(token);
+            });
         },
       
         // frameId is which frame we're in.
@@ -208,7 +210,10 @@ export default Vue.extend({
         async updateAC(frameId: number, token : string | null, context: string): Promise<void> {
             const tokenStartsWithUnderscore = (token ?? "").startsWith("_");
             const parser = new Parser();
-            const userCode = parser.getCodeWithoutErrors(frameId);
+            const inFuncDef = getFrameContainer(frameId) == useStore().getFuncDefsFrameContainerId;
+            const userCode = parser.getCodeWithoutErrors(frameId, inFuncDef);
+            
+            await tpyDefineLibraries(parser);
             
             // If nothing relevant changed, no need to recalculate, just update based on latest token:
             if (this.lastTokenStartedUnderscore == tokenStartsWithUnderscore &&
@@ -226,7 +231,7 @@ export default Vue.extend({
             }
             
             this.showFunctionBrackets = true;
-            const imported = getAllExplicitlyImportedItems(context);
+            const imported = await getAllExplicitlyImportedItems(context);
             this.acResults = {};
             if (token === null) {
                 this.showSuggestionsAC("");

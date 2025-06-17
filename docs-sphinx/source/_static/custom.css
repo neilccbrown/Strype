@@ -1,11 +1,20 @@
 div.sphinxsidebar {
-    width: 24em !important;
+    width: 20em !important;
     background-color: seashell;
+    top: 0px;
 }
 div.sphinxsidebar a, div.sphinxsidebar h3, div.sphinxsidebar h3 a, div.sphinxsidebar ul {
     color: #20435c;
 }
-div.related, div.footer {
+/* Hide things we don't want: */
+div.related, div[role="note"] {
+    visibility: hidden !important;
+}
+body {
+    background-color: #fff !important;
+}
+
+div.footer {
     position: sticky;
     top: 0;
     z-index: 999;
@@ -15,7 +24,7 @@ div.footer {
 }
 
 div.bodywrapper {
-    margin: 0 0 0 calc(24em + 30px) !important;
+    margin: 0 0 0 calc(20em + 30px) !important;
 }
 div.document {
     background-color: white;
@@ -29,6 +38,10 @@ dl.class > dt.sig {
 }
 dl.function > dt.sig {
     background: darkseagreen;
+}
+dt.sig {
+    margin-top: 30px;
+    scroll-margin-top: 20px;
 }
 
 h2 {

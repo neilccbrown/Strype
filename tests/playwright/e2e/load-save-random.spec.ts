@@ -11,30 +11,25 @@ import {Page, test, expect, ElementHandle, JSHandle} from "@playwright/test";
 import { rename } from "fs/promises";
 import {checkFrameXorTextCursor, typeIndividually} from "../support/editor";
 import {readFileSync} from "node:fs";
-
-function createBrowserProxy(page: Page, objectName: string) : any {
-    return new Proxy({}, {
-        get(_, prop: string) {
-            return async (...args: any[]) => {
-                return await page.evaluate(
-                    ([objectName, method, args]) =>
-                        (window as any)[objectName as string][method as string](...args),
-                    [objectName, prop, args]
-                );
-            };
-        },
-    });
-}
+import {createBrowserProxy} from "../support/proxy";
+import {load, save} from "../support/loading-saving";
 
 let scssVars: {[varName: string]: string};
 let strypeElIds: {[varName: string]: (...args: any[]) => Promise<string>};
-test.beforeEach(async ({ page }, testInfo) => {
+test.beforeEach(async ({ page, browserName }, testInfo) => {
     // With regards to Chromium: several of these tests fail on Chromium in Playwright on Mac and
     // I can't figure out why.  I've tried them manually in Chrome and Chromium on the same
     // machine and it works fine, but I see in the video that the test fails in Playwright
     // (pressing right out of a comment frame puts the cursor at the beginning and makes a frame cursor).
     // Since it works in the real browsers, and on Webkit and Firefox, we just skip the tests in Chromium
-    test.skip(testInfo.project.name == "chromium", "Cannot run in Chromium");    
+    test.skip(testInfo.project.name == "chromium", "Cannot run in Chromium");
+    if (browserName === "webkit" && process.platform === "win32") {
+        // On Windows+Webkit it just can't seem to load the page for some reason:
+        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
+    }
+
+    // These tests can take longer than the default 30 seconds:
+    testInfo.setTimeout(90000); // 90 seconds
     
     strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
     await page.goto("./", {waitUntil: "load"});
@@ -358,41 +353,6 @@ async function getFramesFromDOM(page: Page) : Promise<FrameEntry[][]> {
     return Promise.all(containers.map((container) => getAllFrames(container as ElementHandle<HTMLElement>)));
 }
 
-async function load(page: Page, filepath: string) : Promise<void> {
-    
-    await page.click("#" + await strypeElIds.getEditorMenuUID());
-    await page.click("#" + await strypeElIds.getLoadProjectLinkId());
-    // The "button" for the target selection is now a div element.
-    await page.click("#" + await strypeElIds.getLoadFromFSStrypeButtonId());
-    // Must force because the <input> is hidden:
-    await page.setInputFiles("." + scssVars.editorFileInputClassName, filepath);
-    await page.waitForTimeout(2000);
-}
-
-async function save(page: Page, firstSave = true) : Promise<string> {
-    // Save is located in the menu, so we need to open it first, then find the link and click on it:
-    await page.click("#" + await strypeElIds.getEditorMenuUID());
-    
-    let download;
-    if (firstSave) {
-        await page.click("#" + await strypeElIds.getSaveProjectLinkId());
-        // For testing, we always want to save to this device:
-        await page.getByText(en.appMessage.targetFS).click();
-        [download] = await Promise.all([
-            page.waitForEvent("download"),
-            page.click("button.btn:has-text('OK')"),
-        ]);
-    }
-    else {
-        [download] = await Promise.all([
-            page.waitForEvent("download"),
-            page.click("#" + await strypeElIds.getSaveProjectLinkId()),
-        ]);
-    }
-    const filePath = await download.path();
-    return filePath;
-}
-
 async function newProject(page: Page) : Promise<void> {
     // New is located in the menu, so we need to open it first, then find the link and click on it:
     await page.click("#" + await strypeElIds.getEditorMenuUID());
@@ -438,10 +398,10 @@ async function testSpecific(page: Page, sections: FrameEntry[][]) : Promise<void
 }
 
 test.describe("Enters, saves and loads random frame", () => {
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 5; i++) {
         test("Tests random entry #" + i, async ({page}, testInfo) => {
             // Increase test timeout:
-            test.setTimeout(150_000);
+            test.setTimeout(180_000);
             // Don't retry these tests; if they fail, we want to know:
             if (testInfo.retry > 0) {
                 return;

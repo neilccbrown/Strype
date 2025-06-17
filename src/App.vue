@@ -81,7 +81,12 @@
         <EditSoundDlg dlgId="editSoundDlg" ref="editSoundDlg" :soundToEdit="soundToEditInDialog" />
         <div :id="getSkulptBackendTurtleDivId" class="hidden"></div>
         <canvas v-show="appStore.isDraggingFrame" :id="getCompanionDndCanvasId" class="companion-canvas-dnd"/>
-        <input type="file" id="pyIOFileInput" style="display: none" @change="notifyPyIOFileInputChanged" />
+        <ModalDlg :dlgId="confirmResetLSOnShareProjectLoadDlgId" :autoFocusButton="'ok'" :okCustomTitle="$t('buttonLabel.continue')" :cancelCustomTitle="$t('buttonLabel.cancelLoadSharedProject')" >
+            <div>
+                <span v-html="$t('appMessage.LSOnShareProjectLoad')"/>
+                <br/>
+            </div>
+        </ModalDlg>
     </div>
 </template>
 
@@ -99,10 +104,10 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane, PaneData} from "splitpanes";
 import { useStore, settingsStore } from "@/store/store";
-import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, GAPIState, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction } from "@/types/types";
-import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getPEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames } from "./helpers/editor";
+import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, GAPIState, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction } from "@/types/types";
+import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames } from "./helpers/editor";
 /* IFTRUE_isPython */
-import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId } from "@/helpers/editor";
+import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getPEAComponentRefId } from "@/helpers/editor";
 /* FITRUE_isPython */
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
@@ -113,9 +118,9 @@ import { getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retri
 import { cloneDeep } from "lodash";
 import { VueContextConstructor } from "vue-context";
 import { BACKEND_SKULPT_DIV_ID } from "@/autocompletion/ac-skulpt";
-import {copyFramesFromParsedPython, splitLinesToSections, STRYPE_LOCATION} from "@/helpers/pythonToFrames";
+import {pasteMixedPython} from "@/helpers/pythonToFrames";
 import GoogleDrive from "@/components/GoogleDrive.vue";
-import { BvModalEvent } from "bootstrap-vue";
+import { BvEvent, BvModalEvent } from "bootstrap-vue";
 import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
 import EditImageDlg from "@/components/EditImageDlg.vue";
 import EditSoundDlg from "@/components/EditSoundDlg.vue";
@@ -224,6 +229,10 @@ export default Vue.extend({
 
         commandsContainerId(): string {
             return getCommandsRightPaneContainerId();
+        },
+
+        confirmResetLSOnShareProjectLoadDlgId(): string {
+            return "confirmResetLSOnShareProjectLoadDlg";
         },
 
         localStorageAutosaveEditorKey(): string {
@@ -544,7 +553,10 @@ export default Vue.extend({
         // Add an event listener to put the app not on top (for an element to be modal) or reset it to normal
         document.addEventListener(CustomEventTypes.requestAppNotOnTop, (event) => {
             this.setAppNotOnTop = (event as CustomEvent).detail;
-        });       
+        });
+
+        // The events from Bootstrap modal are registered to the root app element.
+        this.$root.$on("bv::modal::hide", this.onHideModalDlg);  
     },
 
     destroyed() {
@@ -552,7 +564,7 @@ export default Vue.extend({
         document.removeEventListener("selectionchange", this.handleDocumentSelectionChange);
         document.removeEventListener("mouseup", this.checkMouseSelection);
         document.removeEventListener("wheel", this.blockScrollOnContextMenu);
-
+        this.$root.$off("bv::modal::hide", this.onHideModalDlg);  
     },
 
     mounted() {
@@ -569,74 +581,91 @@ export default Vue.extend({
             // When there is a shared project, we do like if we were opening a Google Drive project BUT we use a special
             // mode that does not ask for the target selection (which shows with "open" in the menu) and breaks links to Google Drive
             // (it's only a retrieval of the code)
-            (this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).openSharedProjectTarget = StrypeSyncTarget.gd;
-            (this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).openSharedProjectId = shareProjectId;
-            // Wait a bit, Google API must have been loaded first.
-            ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>)
-                ?.getGAPIStatusWhenLoadedOrFailed()
-                .then((gapiState) =>{
-                    // Only open the project is the GAPI is loaded, and show a message of error if it hasn't.
-                    if(gapiState == GAPIState.loaded){
-                        document.getElementById(getLoadProjectLinkId())?.click();
-                    }
-                    else{
-                        this.finaliseOpenShareProject("errorMessage.retrievedSharedGenericProject", this.$i18n.t("errorMessage.GAPIFailed") as string);
-                    }
-                });
+            const loadGDSharedProject = () => {
+                (this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).openSharedProjectTarget = StrypeSyncTarget.gd;
+                (this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).openSharedProjectId = shareProjectId;
+                // Wait a bit, Google API must have been loaded first.
+                ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>)
+                    ?.getGAPIStatusWhenLoadedOrFailed()
+                    .then((gapiState) =>{
+                        // Only open the project is the GAPI is loaded, and show a message of error if it hasn't.
+                        if(gapiState == GAPIState.loaded){
+                            document.getElementById(getLoadProjectLinkId())?.click();
+                        }
+                        else{
+                            this.finaliseOpenShareProject("errorMessage.retrievedSharedGenericProject", this.$i18n.t("errorMessage.GAPIFailed") as string);
+                        }
+                    });
+            };
+
+            this.checkLocalStorageHasProject().then(() => {
+                // A project exists in the local storage, we ask the user if they want to keep it (and cancel the load of the shared project)
+                this.confirmResetLSOnShareProjectLoad().then((continueLoadingSharedProject) => (continueLoadingSharedProject) ? loadGDSharedProject() : this.loadLocalStorageProjectOnStart());
+            },
+            // No project in the local storage, we can continue loading the shared project
+            () => loadGDSharedProject());            
         }
         else if(shareProjectId && shareProjectId.match(/^https?:\/\/.*$/g) != null){
             // The "fall out" case of a generic share: we don't care about the source target, it is only a URL to get to and retrive the Strype file.
             // We just do a small sanity check that it is a HTTP(S) link.
             // IMPORTANT: it is custom to the source to expose the file as such or not. So the generic share does NOT guarantee we can get the Strype file.
             // Google Drive will not expose the file directly, so we can *try* to extract the file ID and then get the data with the API (without authentication).
-            const googleDrivePublicURLPreamble = "https://drive.google.com/file/d/";
-            const isPublicShareFromGD = shareProjectId.startsWith(googleDrivePublicURLPreamble);
-            let alertMsgKey = "";
-            let alertParams = "";
-            if(isPublicShareFromGD){
-                // Extract the file ID and attempt a retrieving of the file with the Google Drive API (it waits a bit for the API to be loaded)
-                const sharedFileID = shareProjectId.substring(googleDrivePublicURLPreamble.length).match(/^([^/]+)\/.*$/)?.[1];
-                ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>)
-                    ?.getPublicSharedProjectContent(sharedFileID??"");
+            const loadPublicSharedProject = () => {
+                const googleDrivePublicURLPreamble = "https://drive.google.com/file/d/";
+                const isPublicShareFromGD = shareProjectId.startsWith(googleDrivePublicURLPreamble);
+                let alertMsgKey = "";
+                let alertParams = "";
+                if(isPublicShareFromGD){
+                    // Extract the file ID and attempt a retrieving of the file with the Google Drive API (it waits a bit for the API to be loaded)
+                    const sharedFileID = shareProjectId.substring(googleDrivePublicURLPreamble.length).match(/^([^/]+)\/.*$/)?.[1];
+                    ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>)
+                        ?.getPublicSharedProjectContent(sharedFileID??"");
                 
-            }
-            else{
-                axios.get<string>(shareProjectId)
-                    .then((resp) => {
-                        if(resp.status == 200){
-                            // Find the filename from the URL:
-                            const cleaned = shareProjectId.replace(/\/+$/, "");
-                            const lastSlash = cleaned.lastIndexOf("/");
-                            const filename = lastSlash !== -1 ? cleaned.substring(lastSlash + 1) : cleaned;
+                }
+                else{
+                    axios.get<string>(shareProjectId)
+                        .then((resp) => {
+                            if(resp.status == 200){
+                                // Find the filename from the URL:
+                                const cleaned = shareProjectId.replace(/\/+$/, "");
+                                const lastSlash = cleaned.lastIndexOf("/");
+                                const filename = lastSlash !== -1 ? cleaned.substring(lastSlash + 1) : cleaned;
                             
-                            return (resp.data.startsWith("{") ?
-                                this.appStore.setStateFromJSONStr({
-                                    stateJSONStr: resp.data,
-                                    showMessage: false,
-                                }) :
-                                this.setStateFromPythonFile(resp.data, filename, 0)
-                            ).then(() => {
-                                alertMsgKey = "appMessage.retrievedSharedGenericProject";
-                                alertParams = this.appStore.projectName;
-                            },
-                            (reason) => {
+                                return (resp.data.startsWith("{") ?
+                                    this.appStore.setStateFromJSONStr({
+                                        stateJSONStr: resp.data,
+                                        showMessage: false,
+                                    }) :
+                                    this.setStateFromPythonFile(resp.data, filename, 0)
+                                ).then(() => {
+                                    alertMsgKey = "appMessage.retrievedSharedGenericProject";
+                                    alertParams = this.appStore.projectName;
+                                },
+                                (reason) => {
+                                    alertMsgKey = "errorMessage.retrievedSharedGenericProject";
+                                    alertParams = reason;
+                                });
+                            }
+                            else{
                                 alertMsgKey = "errorMessage.retrievedSharedGenericProject";
-                                alertParams = reason;
-                            });
-                        }
-                        else{
+                                alertParams = resp.status.toString();
+                            }
+                        })
+                        .catch((error) => {
                             alertMsgKey = "errorMessage.retrievedSharedGenericProject";
-                            alertParams = resp.status.toString();
-                        }
-                    })
-                    .catch((error) => {
-                        alertMsgKey = "errorMessage.retrievedSharedGenericProject";
-                        alertParams = error;
-                    })
-                    .finally(() => {
-                        this.finaliseOpenShareProject(alertMsgKey, alertParams);
-                    });
-            }
+                            alertParams = error;
+                        })
+                        .finally(() => {
+                            this.finaliseOpenShareProject(alertMsgKey, alertParams);
+                        });
+                }
+            };
+            this.checkLocalStorageHasProject().then(() => {
+                // A project exists in the local storage, we ask the user if they want to keep it (and cancel the load of the shared project)
+                this.confirmResetLSOnShareProjectLoad().then((continueLoadingSharedProject) => (continueLoadingSharedProject) ? loadPublicSharedProject() : this.loadLocalStorageProjectOnStart());
+            },
+            // No project in the local storage, we can continue loading the shared project
+            () => loadPublicSharedProject());
         }
         else{
             // The default opening of Strype (either brand new project or retrieving from local storage -- not opening a shared project)
@@ -768,38 +797,75 @@ export default Vue.extend({
             this.settingsStore.setAppLang(strypeSessionLocale);
         },
 
+        checkLocalStorageHasProject(): Promise<string> {
+            // Check if a local storage project exists.
+            // The promise returns the local storage content on fulfillment.
+            return new Promise<string>((resolve, reject) => {
+                if (typeof(Storage) !== "undefined") {
+                    const savedState = localStorage.getItem(this.localStorageAutosaveEditorKey);
+                    if(savedState != null) {
+                        resolve(savedState);
+                    }  
+                    else{
+                        reject("No saved Strype project in local storage.");
+                    }
+                }
+                else{
+                    reject("Browser's local storage not available.");
+                }
+            });
+        },
+
+        confirmResetLSOnShareProjectLoad(): Promise<boolean> {
+            // A method to handle a confirmation from the user when a local storage project exists in the browser and a shared project is requested
+            return new Promise<boolean>((resolve) => {
+                const handleConfirmationFromDlg = (event: Event) => {
+                    document.removeEventListener(CustomEventTypes.resetLSOnShareProjectLoadConfirmed, handleConfirmationFromDlg);
+                    resolve((event as CustomEvent).detail as boolean);
+                };
+                document.addEventListener(CustomEventTypes.resetLSOnShareProjectLoadConfirmed, handleConfirmationFromDlg);
+                this.$root.$emit("bv::show::modal", this.confirmResetLSOnShareProjectLoadDlgId);
+            });
+        },
+
+        onHideModalDlg(event: BvEvent, dlgId: string) {
+            if(dlgId == this.confirmResetLSOnShareProjectLoadDlgId) {
+                document.dispatchEvent(new CustomEvent(CustomEventTypes.resetLSOnShareProjectLoadConfirmed, {detail: (event.trigger == "ok")}));
+            }
+        },
+
         loadLocalStorageProjectOnStart() {
             // Check the local storage (WebStorage) to see if there is a saved project from the previous time the user entered the system
             // if browser supports localstorage
-            if (typeof(Storage) !== "undefined") {
-                const savedState = localStorage.getItem(this.localStorageAutosaveEditorKey);
-                if(savedState) {
-                    this.appStore.setStateFromJSONStr( 
-                        {
-                            stateJSONStr: savedState,
-                            showMessage: false,
-                            readCompressed: true,
-                        }
-                    ).then(() => {
-                        // When a file had been reloaded and it was previously synced with Google Drive, we want to ask the user
-                        // about reloading the project from Google Drive again (only if we were not attempting to open a shared project via the URL)
-                        if(this.appStore.currentGoogleDriveSaveFileId) {
-                            const execGetGDFileFunction = (event: BvModalEvent, dlgId: string) => {
-                                if((event.trigger == "ok" || event.trigger=="event") && dlgId == this.resyncGDAtStartupModalDlgId){
-                                    // Fetch the Google Drive component
-                                    const gdVueComponent = ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>);
-                                    // Initiate a connection to Google Drive via saving mechanisms (for updating Google Drive with local changes)
-                                    gdVueComponent.saveFile(SaveRequestReason.reloadBrowser);
+            this.checkLocalStorageHasProject().then((savedState) => {
+                // Just to make sure when reaching this path from a cancelled shared project load,
+                // we remove the query parameters in the URL (it won't change if we came in normal case so no problem)
+                window.history.replaceState({}, document.title, window.location.pathname);
+                this.appStore.setStateFromJSONStr( 
+                    {
+                        stateJSONStr: savedState,
+                        showMessage: false,
+                        readCompressed: true,
+                    }
+                ).then(() => {
+                    // When a file had been reloaded and it was previously synced with Google Drive, we want to ask the user
+                    // about reloading the project from Google Drive again (only if we were not attempting to open a shared project via the URL)
+                    if(this.appStore.currentGoogleDriveSaveFileId) {
+                        const execGetGDFileFunction = (event: BvModalEvent, dlgId: string) => {
+                            if((event.trigger == "ok" || event.trigger=="event") && dlgId == this.resyncGDAtStartupModalDlgId){
+                                // Fetch the Google Drive component
+                                const gdVueComponent = ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>);
+                                // Initiate a connection to Google Drive via saving mechanisms (for updating Google Drive with local changes)
+                                gdVueComponent.saveFile(SaveRequestReason.reloadBrowser);
 
-                                    this.$root.$off("bv::modal::hide", execGetGDFileFunction); 
-                                }
-                            };
-                            this.$root.$on("bv::modal::hide", execGetGDFileFunction); 
-                            this.$root.$emit("bv::show::modal", this.resyncGDAtStartupModalDlgId);
-                        }
-                    }, () => {});
-                }
-            }
+                                this.$root.$off("bv::modal::hide", execGetGDFileFunction); 
+                            }
+                        };
+                        this.$root.$on("bv::modal::hide", execGetGDFileFunction); 
+                        this.$root.$emit("bv::show::modal", this.resyncGDAtStartupModalDlgId);
+                    }
+                }, () => {});
+            }, () => {});
         },
 
         applyShowAppProgress(event: AppEvent) {
@@ -1135,7 +1201,7 @@ export default Vue.extend({
         onStrypeCommandsSplitPaneResize(event: any, useSpecificPEALayout?: StrypePEALayoutMode){
             // Save the new size of the RHS pane of the editor/commands splitter
             if(this.appStore.editorCommandsSplitterPane2Size != undefined) {
-                this.appStore.editorCommandsSplitterPane2Size[useSpecificPEALayout??(this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed)] = event[1].size;                
+                Vue.set(this.appStore.editorCommandsSplitterPane2Size, useSpecificPEALayout??(this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed), event[1].size);
             }
             else {
                 // The tricky case of when the state property has never been set
@@ -1151,46 +1217,9 @@ export default Vue.extend({
         
         setStateFromPythonFile(completeSource: string, fileName: string, lastSaveDate: number, fileLocation?: FileSystemFileHandle) : Promise<void> {
             return new Promise((resolve) => {
-                const allLines = completeSource.split(/\r?\n/);
-                // Split can make an extra blank line at the end which we don't want:
-                if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
-                    allLines.pop();
-                }
-                const s = splitLinesToSections(allLines);
-                // Bit awkward but we first attempt to copy each to check for errors because
-                // if there are any errors we don't want to paste any:
-                let err = copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.importsMapping);
-                if (typeof err != "string") {
-                    err = copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.FUNCDEF_SECTION, s.defsMapping);
-                }
-                if (typeof err != "string") {
-                    err = copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION, s.mainMapping);
-                }
-                if (typeof err == "string") {
-                    const msg = cloneDeep(MessageDefinitions.InvalidPythonParseImport);
-                    const msgObj = msg.message as FormattedMessage;
-                    msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, err);
-                    
-                    useStore().showMessage(msg, 10000);
-                }
-                else {
-                    // Clear the current existing code (i.e. frames) of the editor
-                    this.appStore.clearAllFrames();
+                const s = pasteMixedPython(completeSource, true);
 
-                    copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION);
-                    if (useStore().copiedSelectionFrameIds.length > 0) {
-                        getCaretContainerComponent(getFrameComponent(this.appStore.getImportsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(true);
-                    }
-                    copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.FUNCDEF_SECTION);
-                    if (useStore().copiedSelectionFrameIds.length > 0) {
-                        getCaretContainerComponent(getFrameComponent(this.appStore.getFuncDefsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(true);
-                    }
-                    if (s.main.length > 0) {
-                        copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION);
-                        if (useStore().copiedSelectionFrameIds.length > 0) {
-                            getCaretContainerComponent(getFrameComponent(this.appStore.getMainCodeFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(true);
-                        }
-                    }
+                if (s != null) {
 
                     // Now we can clear other non-frame related elements
                     this.appStore.clearNoneFrameRelatedState();
@@ -1257,10 +1286,6 @@ export default Vue.extend({
             this.$root.$on("bv::modal::hide", editedSound);
 
             this.$root.$emit("bv::show::modal", "editSoundDlg");
-        },
-
-        notifyPyIOFileInputChanged(){
-            document.dispatchEvent(new CustomEvent("PyFileIOChanged"));
         },
     },
 

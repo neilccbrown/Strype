@@ -20,7 +20,7 @@ export function parseCodeAndGetParseElements(requireCompilation: boolean, saveAs
     // Therefore, we expect the errors to already be found out when this method is called, and we don't need
     // to retrieve them again.
     const parser = new Parser(false, saveAsSPY);
-    const out = parser.parse(undefined, undefined, undefined);
+    const out = parser.parse({});
 
     const hasErrors = hasEditorCodeErrors();
     const compiler = new Compiler();
@@ -400,8 +400,12 @@ export default class Parser {
 
         return output;
     }
+    
+    public parseJustImports() : string {
+        return this.parse({startAtFrameId: useStore().getImportsFrameContainerId, stopAtFrameId: useStore().getFuncDefsFrameContainerId});
+    }
 
-    public parse(startAtFrameId?: number, stopAtFrameId?: number, excludeLoopsAndCommentsAndCloseTry?: boolean): string {
+    public parse({startAtFrameId, stopAtFrameId, excludeLoopsAndCommentsAndCloseTry, defsLast}: {startAtFrameId?: number, stopAtFrameId?: number, excludeLoopsAndCommentsAndCloseTry?: boolean, defsLast?: boolean}): string {
         let output = "";
         if(startAtFrameId){
             this.startAtFrameId = startAtFrameId;
@@ -420,7 +424,19 @@ export default class Parser {
         /* FITRUE_isPython */
 
         //console.time();
-        output += this.parseFrames((this.startAtFrameId > -100) ? [useStore().frameObjects[this.startAtFrameId]] : useStore().getFramesForParentId(0), "");
+        let codeUnits: FrameObject[];
+        if (this.startAtFrameId > -100) {
+            codeUnits = [useStore().frameObjects[this.startAtFrameId]];
+        }
+        else {            
+            codeUnits = useStore().getFramesForParentId(0);
+            if (defsLast) {
+                codeUnits = codeUnits
+                    .filter((item) => item.frameType.type !== ContainerTypesIdentifiers.funcDefsContainer)
+                    .concat(codeUnits.filter((item) => item.frameType.type === ContainerTypesIdentifiers.funcDefsContainer));
+            }
+        }
+        output += this.parseFrames(codeUnits, "");
         // We could have disabled frame(s) just at the end of the code. 
         // Since no further frame would be used in the parse to close the ongoing comment block we need to check
         // if there are disabled frames being rendered when reaching the end of the editor's code.
@@ -441,7 +457,7 @@ export default class Parser {
         TPyParser.warningAsErrors = false;
         let code: string = inputCode;
         if (!inputCode) {
-            code = this.parse();
+            code = this.parse({});
         }
 
         try {
@@ -520,8 +536,8 @@ export default class Parser {
         return errorString;
     }
 
-    public getCodeWithoutErrors(endFrameId: number): string {
-        const code = this.parse(undefined, endFrameId, true);
+    public getCodeWithoutErrors(endFrameId: number, defsLast: boolean): string {
+        const code = this.parse({stopAtFrameId: endFrameId, excludeLoopsAndCommentsAndCloseTry: true, defsLast});
 
         const errors = this.getErrors(code);
 
@@ -575,7 +591,7 @@ export default class Parser {
     }
 
     public getFullCode(): string {
-        return this.parse(undefined, undefined, false);
+        return this.parse({excludeLoopsAndCommentsAndCloseTry: false});
     }
 
     private checkIfFrameHasError(frame: FrameObject): boolean {

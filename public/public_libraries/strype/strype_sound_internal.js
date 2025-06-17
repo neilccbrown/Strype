@@ -116,6 +116,10 @@ var $builtinmodule = function(name)  {
     mod.getSampleRate = new Sk.builtin.func(function(buffer) {
         return Sk.ffi.remapToPy(buffer.sampleRate);
     });
+    mod.downloadWAV = new Sk.builtin.func(function(src, filenameStem) {
+        filenameStem = Sk.ffi.remapToJs(filenameStem);
+        peaComponent.__vue__.downloadWAV(src, filenameStem);
+    });
     mod.copy = new Sk.builtin.func(function(audioBuffer) {
         const audioContext = peaComponent.__vue__.getAudioContext();
         const numberOfChannels = audioBuffer.numberOfChannels;

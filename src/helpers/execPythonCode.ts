@@ -134,16 +134,6 @@ function sInput(prompt: string) {
     });
 }
 
-// The function used for "transpiling" the open function of Python to some JS handled by Skulpt
-// The function is to be registered against the Skulpt object, and depends on a File object emulation
-// which is described and implemented in skulptFileIO.ts.
-/*function sOpen(pyFile: any){
-    return new Promise((resolve, reject) => {
-        const fileObj = new FileObject("fileNameTEMP.csv", "r", Sk);
-        resolve(makeFileWrapper(fileObj, Sk));
-    });
-}*/
-
 // Entry point function for running Python code with Skulpt - the UI is responsible for calling it,
 // and providing the code (usually, user defined code) and the text area to display the output
 export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv: HTMLDivElement|null, userCode: string, lineFrameMapping: LineAndSlotPositions, libraryAddresses: string[], keepRunning: () => boolean,

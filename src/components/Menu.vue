@@ -69,7 +69,7 @@
                     </div>
                 </div>
             </ModalDlg>
-                <ModalDlg :dlgId="saveOnLoadModalDlgId" :autoFocusButton="'ok'" :okCustomTitle="$t('buttonLabel.saveChanges')" :cancelCustomTitle="$t('buttonLabel.discardChanges')">
+            <ModalDlg :dlgId="saveOnLoadModalDlgId" :autoFocusButton="'ok'" :okCustomTitle="$t('buttonLabel.saveChanges')" :cancelCustomTitle="$t('buttonLabel.discardChanges')">
                 <div>
                     <span  v-t="'appMessage.editorAskSaveChangedCode'" class="load-project-lost-span"/>
                     <br/>
@@ -77,6 +77,11 @@
             </ModalDlg>            
             <!-- new section -->
             <div class="menu-separator-div"></div>
+            /* IFTRUE_isPython
+            <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLoadDemoProjectModal">{{$t('appMenu.loadDemoProject')}}</a>
+            <OpenDemoDlg ref="openDemoDlg" :dlg-id="loadDemoProjectModalDlgId"/>
+            <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" href="https://strype.org/doc/library/"  target="_blank">{{$t('appMenu.apiDocumentation')}}</a>
+               FITRUE_isPython */
             <!-- category: export -->
             <!-- share project -->
             <a :id="shareProjectLinkId" v-show="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !canShareProject}" :title="$t((isSyncingToGoogleDrive)?'':'appMenu.needSaveShareProj')" @click="onShareProjectClick">{{$t('appMenu.shareProject')}}<span class="strype-menu-kb-shortcut">{{shareProjectKBShortcut}}</span></a>
@@ -143,12 +148,12 @@
         </div>
         <div>
             <input 
-                id="importFileInput"
                 type="file" 
                 :accept="acceptedInputFileFormat"
                 ref="importFileInput" 
                 @change="selectedFile" 
-                :class="scssVars.editorFileInputClassName"
+                :id="importFileInputId"
+                style="display: none;"
             /> 
         </div>
         <div class="menu-icons-div">
@@ -189,7 +194,7 @@ import Vue from "vue";
 import { useStore, settingsStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
 import { AppEvent, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, ShareProjectMode, SlotCoreInfos, SlotCursorInfos, SlotType, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
-import {countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppLangSelectId, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getGoogleDriveComponentRefId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNearestErrorIndex, getSaveAsProjectModalDlg, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey, getSaveProjectLinkId, getNewProjectLinkId} from "@/helpers/editor";
+import {countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppLangSelectId, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getGoogleDriveComponentRefId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNearestErrorIndex, getSaveAsProjectModalDlg, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey, getSaveProjectLinkId, getNewProjectLinkId, getImportFileInputId} from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
 import GoogleDrive from "@/components/GoogleDrive.vue";
@@ -206,6 +211,7 @@ import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/help
 import { AppName, AppPlatform, AppSPYPrefix, AppSPYSaveVersion, getLocaleBuildDate } from "@/main";
 import scssVars from "@/assets/style/_export.module.scss";
 import {parseCodeAndGetParseElements} from "@/parser/parser";
+import OpenDemoDlg from "@/components/OpenDemoDlg.vue";
 
 //////////////////////
 //     Component    //
@@ -215,6 +221,7 @@ export default Vue.extend({
     name: "Menu",
 
     components: {
+        OpenDemoDlg,
         Slide,
         GoogleDrive,
         ModalDlg,
@@ -253,6 +260,7 @@ export default Vue.extend({
             // Flags for opening a shared project: the ID (main flag) and the target (for the moment it's only Google Drive...)
             openSharedProjectId: "",
             openSharedProjectTarget: StrypeSyncTarget.none,
+            showDialogAfterSave: "", // The ID of the dialog to show after save-before-load
         };
     },
 
@@ -385,6 +393,10 @@ export default Vue.extend({
             return "load-strype-project-modal-dlg";
         },
 
+        loadDemoProjectModalDlgId(): string {
+            return "load-strype-demo-project-modal-dlg";
+        },
+
         loadProjectTargetButtonGpId(): string {
             return "loadProjectProjectSelect";
         },
@@ -395,6 +407,10 @@ export default Vue.extend({
         
         saveProjectLinkId(): string {
             return getSaveProjectLinkId();
+        },
+        
+        importFileInputId(): string {
+            return getImportFileInputId();
         },
 
         saveProjectKBShortcut(): string {
@@ -548,6 +564,7 @@ export default Vue.extend({
             if(this.appStore.isEditorContentModified){
                 // Show a modal dialog to let user save/discard their changes. Saving loop is handled with saving methods.
                 // Note that for the File System project we cannot make Strype save the file: that will require the user explicit action.
+                this.showDialogAfterSave = this.loadProjectModalDlgId;
                 this.$root.$emit("bv::show::modal", this.saveOnLoadModalDlgId);
             }
             else if(this.openSharedProjectId.length == 0) {
@@ -557,6 +574,23 @@ export default Vue.extend({
             else {
                 // The case of opening a shared project: we don't need a target selection, we just try to open the project
                 this.loadProject();
+            }
+        },
+
+        openLoadDemoProjectModal(): void {
+            (this.$refs.openDemoDlg as InstanceType<typeof OpenDemoDlg>).updateAvailableDemos();
+            // For a very strange reason, Bootstrap doesn't link the menu link to the dialog any longer 
+            // after changing "v-if" to "v-show" on the link (to be able to have the keyboard shortcut working).
+            // So we open it manually here...
+            // We might need to check, first that a project has been modified and needs to be saved.
+            if(this.appStore.isEditorContentModified){
+                // Show a modal dialog to let user save/discard their changes. Saving loop is handled with saving methods.
+                // Note that for the File System project we cannot make Strype save the file: that will require the user explicit action.
+                this.showDialogAfterSave = this.loadDemoProjectModalDlgId;
+                this.$root.$emit("bv::show::modal", this.saveOnLoadModalDlgId);
+            }
+            else {
+                this.$root.$emit("bv::show::modal", this.loadDemoProjectModalDlgId);
             }
         },
 
@@ -682,6 +716,9 @@ export default Vue.extend({
                     // we should allow some time before getting in their face with a result!
                     this.getSharingLink(defaultSharingProjectMode, true);
                 }, 2000);
+            }
+            else if (dlgId == this.loadDemoProjectModalDlgId) {
+                (this.$refs.openDemoDlg as InstanceType<typeof OpenDemoDlg>).shown();
             }
             else {
                 // When the load or save project dialogs are opened, we focus the Google Drive selector by default when we don't have information about the source target
@@ -817,7 +854,7 @@ export default Vue.extend({
                 if(dlgId == this.saveOnLoadModalDlgId){
                     // Case of request to save/discard the file currently opened, before loading a new file:
                     // user chose to discard the file saving: we can trigger the file opening.
-                    this.$root.$emit("bv::show::modal", this.loadProjectModalDlgId);
+                    this.$root.$emit("bv::show::modal", this.showDialogAfterSave);
                     return;
                 }
 
@@ -872,7 +909,7 @@ export default Vue.extend({
                         headers.set("peaLayoutMode", this.appStore.peaLayoutMode === undefined ? undefined : StrypePEALayoutMode[this.appStore.peaLayoutMode]);
                         headers.set("peaCommandsSplitterPane2Size", saveDivider(this.appStore.peaCommandsSplitterPane2Size));
                         headers.set("peaSplitViewSplitterPane1Size", saveDivider(this.appStore.peaSplitViewSplitterPane1Size));
-                        headers.set("editorCommandsSplitterPane2Size", saveDivider(this.appStore.peaExpandedSplitterPane2Size));
+                        headers.set("peaExpandedSplitterPane2Size", saveDivider(this.appStore.peaExpandedSplitterPane2Size));
                         /* FITRUE_isPython */
                         saveContent = Array.from(headers.entries()).filter(([k, v]) => v !== undefined).map((e) => "#" + AppSPYPrefix + " " + e[0] + ":" + e[1] + "\n").join("") + saveContent;
                         if(canBrowserSaveFilePicker()){
@@ -915,6 +952,21 @@ export default Vue.extend({
                         (this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>).saveFile(saveReason);
                     }
                     this.currentModalButtonGroupIDInAction = "";
+                }
+                else if (dlgId == this.loadDemoProjectModalDlgId) {
+                    // We do not do anything if the modal is closed by a "hide" event.
+                    if(event.trigger == "event" && event.type == "hide"){
+                        return;
+                    }
+                    const selectedDemo = (this.$refs.openDemoDlg as InstanceType<typeof OpenDemoDlg>).getSelectedDemo();
+                    if (selectedDemo) {
+                        selectedDemo.demoFile.then((content) => {
+                            if (content) {
+                                (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content, selectedDemo.name ?? "Demo", 0)
+                                    .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
+                            }
+                        });
+                    }
                 }
             }
         },
@@ -1241,10 +1293,6 @@ export default Vue.extend({
     margin-top: 10px !important;
     margin-bottom: 10px !important;
 }
-
-.#{$strype-classname-editor-file-input} {
-    display: none;
-} 
 
 .show-menu-btn {
     border: none;
