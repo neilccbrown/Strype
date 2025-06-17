@@ -36,6 +36,7 @@ export function extractPYI(original : string) : string {
     const lines = original.split("\n");
     const output: string[] = [];
 
+    let lastTopLevelLine: "class" | "other" = "other";
     for (let i = 0; i < lines.length; i++) {
         // Type lines are optional so we want to find the def/class lines, then look following those.
         // But we actually look for type line first:
@@ -45,10 +46,26 @@ export function extractPYI(original : string) : string {
         const funcDefMatch = lines[i].match(/^(\s*)def (\w+)\((.*?)\)\s*:\s*$/);
         if (funcDefMatch) {
             const [indent, fnName, args] = funcDefMatch.slice(1);
-            const argNames = args.trim() ? args.split(",").map((s) => s.replace(/=.*/, "").trim()) : [];
+            const argNames : [string, string | null][] = args.trim() ? args.split(",").map((s) => {
+                if (s.includes("=")) {
+                    return [s.replace(/=.*/, "").trim(), "..."];
+                }
+                else {
+                    return [s.trim(), null];
+                }
+            }) : [];
             if (indent != "") {
-                // If we're indented, we're a class, so remove first argName as it's self:
-                argNames.shift();
+                if (lastTopLevelLine === "class") {
+                    // If we're indented, and we're a class, remove first argName as it's self:
+                    argNames.shift();
+                }
+                else {
+                    // We are a function nested inside e.g. another function.  Skip this line:
+                    continue;
+                }
+            }
+            else {
+                lastTopLevelLine = "other";
             }
             let argTypeList : string[];
             let returnType : string;
@@ -62,13 +79,14 @@ export function extractPYI(original : string) : string {
                 argTypeList = Array.from(argNames, () => "any");
             }
 
-            const typedArgs = (indent != "" ? "self" + (argTypeList.length > 0 ? ", " : "") : "") + argNames.map((arg, i) => `${arg}: ${argTypeList[i]}`).join(", ");
+            const typedArgs = (indent != "" ? "self" + (argTypeList.length > 0 ? ", " : "") : "") + argNames.map(([arg, defVal], i) => `${arg}: ${argTypeList[i]} ${defVal == null ? "" : " = " + defVal}`).join(", ");
             output.push(`${indent}def ${fnName}(${typedArgs}) -> ${returnType}: ...`);
         }
         
         const classMatch = lines[i].match(/^class (\w+).*:\s*$/);
         if (classMatch) {
             output.push(lines[i]);
+            lastTopLevelLine = "class";
         }
         const varMatch = lines[i].match(/^(\s*)(\S+)\s*=(.*)$/);
         if (varMatch) {
@@ -80,6 +98,7 @@ export function extractPYI(original : string) : string {
         }
         if (lines[i].match(/^import\s+/) || lines[i].match(/^from\s+.*import/)) {
             output.push(lines[i]);
+            lastTopLevelLine = "other";
         }
     }
 

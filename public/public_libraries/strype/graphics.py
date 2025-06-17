@@ -967,7 +967,8 @@ def set_background(image_or_name_or_color, scale_to_fit = False):
     _strype_graphics_internal.setBackground(bk_image._Image__image)        
 
 def get_background():
-    # type: () -> Image | None
+    # type: () -> Image
+    # Real type is Image | None but that confuses TigerPython and doesn't gain us anything...
     """
     Gets the current background image.
     

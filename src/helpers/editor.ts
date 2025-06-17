@@ -18,6 +18,9 @@ import CommandsComponent from "@/components/Commands.vue";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import { debounce } from "lodash";
 /* FITRUE_isPython */
+import {toUnicodeEscapes} from "@/parser/parser";
+import {fromUnicodeEscapes} from "@/helpers/pythonToFrames";
+
 
 export const undoMaxSteps = 200;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
@@ -1460,7 +1463,40 @@ export const getSameLevelAncestorIndex = (slotId: string, sameLevelThanSlotParen
     return parseInt(slotId.split(",")[ancestorLevels -1]);
 };
 
-const FIELD_PLACERHOLDER = "$strype_field_placeholder$";
+// We need to replace fields with placeholders to make parsing of brackets easier:
+const FIELD_PLACEHOLDER_START = "$strype_field_placeholder";
+const FIELD_PLACEHOLDER_END = "_strype_field_placeholder$";
+function removePossibleFieldPlaceholderFromStart(s: string) : string {
+    if (s.startsWith(FIELD_PLACEHOLDER_START)) {
+        const end = s.indexOf(FIELD_PLACEHOLDER_END);
+        return s.slice(end + FIELD_PLACEHOLDER_END.length);
+    }
+    else {
+        return s;
+    }
+}
+export function transformFieldPlaceholders(input: string) : string {
+    input = input.replaceAll(STRING_SINGLEQUOTE_PLACERHOLDER, "'");
+    input = input.replaceAll(STRING_DOUBLEQUOTE_PLACERHOLDER, "\"");
+    
+    const startIndex = input.indexOf(FIELD_PLACEHOLDER_START);
+    if (startIndex === -1) {
+        return input; // No more placeholders
+    }
+    const endIndex = input.indexOf(FIELD_PLACEHOLDER_END, startIndex + FIELD_PLACEHOLDER_START.length);
+    if (endIndex === -1) {
+        return input; // No matching end marker; treat as finished
+    }
+    const decoded = fromUnicodeEscapes(input.substring(startIndex + FIELD_PLACEHOLDER_START.length, endIndex));
+    const newInput =
+        input.substring(0, startIndex) +
+        decoded +
+        input.substring(endIndex + FIELD_PLACEHOLDER_END.length);
+
+    // Recurse to handle more placeholders:
+    return transformFieldPlaceholders(newInput);
+}
+
 export const IMAGE_PLACERHOLDER = "$strype_image_placeholder$";
 // The placeholders for the string quotes when strings are extracted FROM THE EDITOR SLOTS,
 // both placeholders need to have THE SAME LENGHT so sustitution operations are done with more ease
@@ -1576,8 +1612,9 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         // so if we fed the parser only "-3", it would see it as an unitary sign and not an operator.
         // So for the parser to "see" the bracket part we will use a placeholder token that will be removed when aggrating the slots. 
         let afterBracketCode = (closingBracketPos > -1) ? codeLiteral.substring(closingBracketPos + 1) : "";
+        const bracketPlaceholder = FIELD_PLACEHOLDER_START + toUnicodeEscapes(beforeBracketCode + openingBracketValue + innerBracketCode + closingBracketValue) + FIELD_PLACEHOLDER_END;
         if(afterBracketCode.length > 0){
-            afterBracketCode = FIELD_PLACERHOLDER + afterBracketCode;
+            afterBracketCode = bracketPlaceholder + afterBracketCode;
         }
         // Note: we need to pass (all) imageLiterals to the recursive calls because they might reverse our replacement:
         const {slots: structBeforeBracket, cursorOffset: beforeBracketCursorOffset} = parseCodeLiteral(beforeBracketCode, {isInsideString:false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
@@ -1618,13 +1655,11 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             actualCodeClosingBracketPos -= (placeholder.length - 1);
         });
 
-        const {slots: structAfterBracket, cursorOffset: afterBracketCursorOffset} = parseCodeLiteral(afterBracketCode, {isInsideString: false, cursorPos: (flags && flags.cursorPos && afterBracketCode.startsWith(FIELD_PLACERHOLDER)) ? flags.cursorPos - (actualCodeClosingBracketPos + 1) + FIELD_PLACERHOLDER.length : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
+        const {slots: structAfterBracket, cursorOffset: afterBracketCursorOffset} = parseCodeLiteral(afterBracketCode, {isInsideString: false, cursorPos: (flags && flags.cursorPos && afterBracketCode.startsWith(bracketPlaceholder)) ? flags.cursorPos - (actualCodeClosingBracketPos + 1) + bracketPlaceholder.length : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         cursorOffset += afterBracketCursorOffset;
         // Remove the bracket field placeholder from structAfterBracket: we trim the placeholder value from the start of the first field of the structure.
         // (the conditional test may be overdoing it, but at least we are sure we won't get fooled by the user code...)
-        if((structAfterBracket.fields[0] as BaseSlot).code.startsWith(FIELD_PLACERHOLDER)){
-            (structAfterBracket.fields[0] as BaseSlot).code = (structAfterBracket.fields[0] as BaseSlot).code.substring(FIELD_PLACERHOLDER.length);
-        }
+        (structAfterBracket.fields[0] as BaseSlot).code = removePossibleFieldPlaceholderFromStart((structAfterBracket.fields[0] as BaseSlot).code);
         resStructSlot.fields.push(...structBeforeBracket.fields, structOfBracketField, ...structAfterBracket.fields);
         resStructSlot.operators.push(...structBeforeBracket.operators, {code: ""}, {code: ""}, ...structAfterBracket.operators);
     } 
@@ -1645,18 +1680,17 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             cursorOffset += parsingStringContentRes.cursorOffset;
             // same logic as brackets for subsequent code: cf. above
             let afterStringCode = codeLiteral.substring(closingQuoteIndex + 1);
+            const stringPlaceholder = FIELD_PLACEHOLDER_START + toUnicodeEscapes("\"\"") + FIELD_PLACEHOLDER_END;
             if(afterStringCode.length > 0){
-                afterStringCode = FIELD_PLACERHOLDER + afterStringCode;
+                afterStringCode = stringPlaceholder + afterStringCode;
             }
             // When we construct the parts before and after the string, we need to internally set the cursor "fake" position, that is, the cursor offset by the bits we are evaluating
             const {slots: structBeforeString, cursorOffset: beforeStringCursortOffset} = parseCodeLiteral(beforeStringCode, {isInsideString: false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
             cursorOffset += beforeStringCursortOffset;
             const structOfString: StringSlot = {code: stringContentCode, quote: openingQuoteValue};
-            const {slots: structAfterString, cursorOffset: afterStringCursorOffset} = parseCodeLiteral(afterStringCode, {isInsideString: false, cursorPos: (flags?.cursorPos??0) - closingQuoteIndex + (2*(quoteTokenLength -1)) + FIELD_PLACERHOLDER.length, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
+            const {slots: structAfterString, cursorOffset: afterStringCursorOffset} = parseCodeLiteral(afterStringCode, {isInsideString: false, cursorPos: (flags?.cursorPos??0) - closingQuoteIndex + (2*(quoteTokenLength -1)) + stringPlaceholder.length, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
             cursorOffset += afterStringCursorOffset;
-            if((structAfterString.fields[0] as BaseSlot).code.startsWith(FIELD_PLACERHOLDER)){
-                (structAfterString.fields[0] as BaseSlot).code = (structAfterString.fields[0] as BaseSlot).code.substring(FIELD_PLACERHOLDER.length);
-            }
+            (structAfterString.fields[0] as BaseSlot).code = removePossibleFieldPlaceholderFromStart((structAfterString.fields[0] as BaseSlot).code);
             resStructSlot.fields.push(...structBeforeString.fields, structOfString, ...structAfterString.fields );
             resStructSlot.operators.push(...structBeforeString.operators, {code: ""}, {code: ""}, ...structAfterString.operators);
         }

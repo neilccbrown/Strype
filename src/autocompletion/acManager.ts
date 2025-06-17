@@ -5,7 +5,7 @@ import microbitPythonAPI from "@/autocompletion/microbit-api.json";
 import { pythonBuiltins } from "@/autocompletion/pythonBuiltins";
 import skulptPythonAPI from "@/autocompletion/skulpt-api.json";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
-import {getMatchingBracket} from "@/helpers/editor";
+import {getMatchingBracket, transformFieldPlaceholders} from "@/helpers/editor";
 import {getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import {OUR_PUBLIC_LIBRARY_MODULES} from "@/autocompletion/ac-skulpt";
@@ -449,7 +449,7 @@ export function getBuiltins() : AcResultType[] {
 
 // Get the placeholder text for the given function parameter index
 // If it's the last parameter, glue the rest together with commas
-function getParamPrompt(params: string[], targetParamIndex: number, lastParam: boolean) : string {
+function getParamPrompt(params: string[], hasDefaultValues: boolean[] | null, targetParamIndex: number, lastParam: boolean) : string {
     if (targetParamIndex >= params.length) {
         return "";
     }
@@ -457,13 +457,35 @@ function getParamPrompt(params: string[], targetParamIndex: number, lastParam: b
         return params[targetParamIndex];
     }
     else {
-        return params.slice(targetParamIndex).join(", ");
+        return params.filter((_, i) => hasDefaultValues == null || i >= hasDefaultValues.length || !hasDefaultValues[i]).slice(targetParamIndex).join(", ");
+    }
+}
+
+export async function tpyDefineLibraries(parser: Parser) : Promise<void> {
+    for (const library of parser.getLibraries()) {
+        const pyPYIs = await getAvailablePyPyiFromLibrary(library);
+        if (pyPYIs == null) {
+            continue;
+        }
+        for (const pyPYI of pyPYIs) {
+            const text = await getTextFileFromLibraries([library], pyPYI);
+            if (text != null) {
+                const pyi = pyPYI.endsWith(".pyi") ? text : extractPYI(text);
+                
+                try {
+                    (TPyParser as any).defineModule(pyPYI.replace(/\.pyi?$/, "").replaceAll("/", "."), pyi, "pyi");
+                }
+                catch (e) {
+                    console.error(e);
+                }
+            }
+        }
     }
 }
 
 // Gets the parameter name prompt for the given autocomplete details (context+token)
 // for the given parameter. Note that for the UI to display spans properly, empty placeholders are returned as \u200b (0-width space)
-export async function calculateParamPrompt(context: string, token: string, paramIndex: number, lastParam: boolean) : Promise<string> {
+export async function calculateParamPrompt(frameId: number, context: string, token: string, paramIndex: number, lastParam: boolean) : Promise<string> {
     if (!context) {
         // If context is blank, we know that the function must be one of:
         // - A user-defined function
@@ -473,12 +495,12 @@ export async function calculateParamPrompt(context: string, token: string, param
         const userFunc = getAllEnabledUserDefinedFunctions().find((f) => (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot)?.code === token);
         if (userFunc !== undefined) {
             const params : string[] = extractCommaSeparatedNames(userFunc.labelSlotsDict[1].slotStructures);
-            return getParamPrompt(params, paramIndex, lastParam);
+            return getParamPrompt(params, null, paramIndex, lastParam);
         }
         const builtinFunc = getBuiltins().find((f) => f.acResult === token);
         if (builtinFunc !== undefined) {
             if (builtinFunc.params) {
-                return getParamPrompt(builtinFunc.params.filter((p) => !p.hide && p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
+                return getParamPrompt(builtinFunc.params.filter((p) => !p.hide).map((p) => p.name), builtinFunc.params.filter((p) => !p.hide).map((p) => p.defaultValue !== undefined), paramIndex, lastParam);
             }
             else {
                 return "\u200b";
@@ -489,7 +511,7 @@ export async function calculateParamPrompt(context: string, token: string, param
         // If the context is non-blank and matches an imported module, we can look it up there.        
         const fromModule = (await getAvailableItemsForImportFromModule(context)).find((ac) => ac.acResult === token);
         if (fromModule?.params !== undefined) {
-            return getParamPrompt(fromModule.params.filter((p) => !p.hide && p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
+            return getParamPrompt(fromModule.params.filter((p) => !p.hide).map((p) => p.name), fromModule.params.filter((p) => !p.hide).map((p) => p.defaultValue !== undefined), paramIndex, lastParam);
         }
     }
     
@@ -498,10 +520,26 @@ export async function calculateParamPrompt(context: string, token: string, param
     const importedFunc = Object.values(await getAllExplicitlyImportedItems(context)).flat().find((f) => f.acResult === token || f.acResult === context + "." + token);
     if (importedFunc !== undefined) {
         if (importedFunc.params) {
-            return getParamPrompt(importedFunc.params.filter((p) => !p.hide && p.defaultValue === undefined).map((p) => p.name), paramIndex, lastParam);
+            return getParamPrompt(importedFunc.params.filter((p) => !p.hide).map((p) => p.name), importedFunc.params.filter((p) => !p.hide).map((p) => p.defaultValue !== undefined), paramIndex, lastParam);
         }
         else {
             return "\u200b";
+        }
+    }
+
+    if (context) {
+        // See if TigerPython can infer the type of the content before the .
+        const parser = new Parser();
+        const userCode = parser.getCodeWithoutErrors(frameId, true);
+        await tpyDefineLibraries(parser);
+        // So we get context code out which is a partial expression and may not be valid at top-level.  Thus we wrap it in:
+        // f(<code>.x)
+        // To make it a valid statement, then autocomplete after the dot (two characters before the end)
+        const totalCode = userCode + "\n" + parser.getStoppedIndentation() + "f(" + transformFieldPlaceholders(context) + "." + "x)";
+        const tppCompletions = TPyParser.autoCompleteExt(totalCode, totalCode.length - 2);
+        const match = tppCompletions?.filter((c) => c.acResult === token);
+        if (match && match.length > 0 && match[0].params) {
+            return getParamPrompt(match[0].params, match[0].paramDefaultValues, paramIndex, lastParam);
         }
     }
     
@@ -511,7 +549,7 @@ export async function calculateParamPrompt(context: string, token: string, param
         const lastDotIndex = context.lastIndexOf(".");
         token = context.substring(lastDotIndex + 1) + "." + token;
         context = context.substring(0, lastDotIndex);
-        return calculateParamPrompt(context, token, paramIndex, lastParam);
+        return calculateParamPrompt(frameId, context, token, paramIndex, lastParam);
     }
     
     // Otherwise, if there's context, we would have to use Skulpt, but the problem is that Skulpt
