@@ -22,6 +22,6 @@ describe("Parameter prompts objects", () => {
         rawFuncs.push([["http://localhost:8089/test-library/", "mediacomp"], "Pixel(‘’,1,2,3).set_color", ["color"]]);
     }
     // TODO remove the true param once we've investigated fully qualified imports
-    // (I think TigerPython doesn't support it, but need to check further.)
+    // (I think TigerPython 1.1.2 doesn't support it, but need to check further.)
     testRawFuncs(rawFuncs, true);
 });

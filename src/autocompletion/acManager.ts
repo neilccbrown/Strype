@@ -532,7 +532,7 @@ export async function calculateParamPrompt(frameId: number, context: string, tok
         const parser = new Parser();
         const userCode = parser.getCodeWithoutErrors(frameId, true);
         await tpyDefineLibraries(parser);
-        // So we get code out which is a partial expression and may not be valid at top-level.  Thus we wrap it in:
+        // So we get context code out which is a partial expression and may not be valid at top-level.  Thus we wrap it in:
         // f(<code>.x)
         // To make it a valid statement, then autocomplete after the dot (two characters before the end)
         const totalCode = userCode + "\n" + parser.getStoppedIndentation() + "f(" + transformFieldPlaceholders(context) + "." + "x)";

@@ -1463,6 +1463,7 @@ export const getSameLevelAncestorIndex = (slotId: string, sameLevelThanSlotParen
     return parseInt(slotId.split(",")[ancestorLevels -1]);
 };
 
+// We need to replace fields with placeholders to make parsing of brackets easier:
 const FIELD_PLACEHOLDER_START = "$strype_field_placeholder";
 const FIELD_PLACEHOLDER_END = "_strype_field_placeholder$";
 function removePossibleFieldPlaceholderFromStart(s: string) : string {
