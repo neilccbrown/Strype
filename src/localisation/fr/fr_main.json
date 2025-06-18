@@ -18,7 +18,7 @@
       "module": "module ",
       "modulePart": "fonction/classe ",
       "libraryAddress": "emplacement",
-      "comment": "ton commentaire "
+      "comment": "commentaire "
     },
     "funcdef_desc": "définition de fonction",
     "varassign_desc": "affectation",
@@ -148,7 +148,8 @@
     "redo": "Refaire",
     "delete": "Supprimer",
     "deleteOuter": "Supprimer externe(s)",
-    "insert": "Insérer"
+    "insert": "Insérer",
+    "screenshotGraphics": "Télécharger une capture d'écran"
   },
   "appMenu": {
     "downloadHex": "Convertir vers Hex",
@@ -163,6 +164,7 @@
     "needSaveShareProj":"Sauvegardez votre projet Strype dans Google Drive avant de le partager",
     "lang": "Langue: ",
     "homepage": "Page d'accueil de Strype",
+    "apiDocumentation": "Documentation...",
     "version": "Version"
   },
   "autoCompletion": {
@@ -181,7 +183,7 @@
     "runtimeErrorConsole": "Erreur d'exécution",
     "console": "Console",
     "Graphics": "Graphics",
-    "importTurtle": "Importe le module 'turtle' pour utiliser Turtle Graphics",
+    "importTurtle": "Importez le module 'turtle' pour utiliser Turtle Graphics",
     "PEA-layout-tabs-collapsed": "Disposition en onglets reduite",
     "PEA-layout-tabs-expanded":"Disposition en onglets étendue",
     "PEA-layout-split-collapsed": "Disposition fractionnée réduite",
@@ -204,6 +206,23 @@
     "soundPlay": "Lecture",
     "soundSeconds": "secondes",
     "soundStop": "Arrêt",
-    "volumeScale": "Échelle du volume"
-  }    
+    "volumeScale": "Échelle du volume",
+    "cursorPosWin": "Position (Ctrl-C pour copier) :",
+    "cursorPosMac": "Position (⌘ C pour copier) :",
+    "cursorColorWin": "Couleur (Ctrl-Maj-C pour copier) :",
+    "cursorColorMac": "Couleur (⇧ ⌘ C pour copier) :",
+    "cursorTimeWin": "Temps (Ctrl-C pour copier) :",
+    "cursorTimeMac": "Temps (⌘ C pour copier) :",
+    "cursorHeightWin": "Hauteur (Ctrl-Maj-C pour copier) :",
+    "cursorHeightMac": "Hauteur (⇧ ⌘ C pour copier) :"
+  },
+  "demos": {
+    "dialogTitle": "Choisissez un exemple à charger",
+    "addLibrary": "Ajouter une bibliothèque :",
+    "libraryAddrPlaceholder": "Adresse de la bibliothèque",
+    "add": "Ajouter",
+    "builtinGraphics": "Graphics",
+    "builtinConsole": "Console",
+    "builtinTurtle": "Turtle"
+  }
 }

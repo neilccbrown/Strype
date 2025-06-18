@@ -80,7 +80,7 @@
             /* IFTRUE_isPython
             <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLoadDemoProjectModal">{{$t('appMenu.loadDemoProject')}}</a>
             <OpenDemoDlg ref="openDemoDlg" :dlg-id="loadDemoProjectModalDlgId"/>
-            <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" href="https://strype.org/doc/library/"  target="_blank">{{$t('appMenu.apiDocumentation')}}</a>
+            <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLibraryDoc">{{$t('appMenu.apiDocumentation')}}</a>
                FITRUE_isPython */
             <!-- category: export -->
             <!-- share project -->
@@ -548,6 +548,15 @@ export default Vue.extend({
     },
 
     methods: {
+        openLibraryDoc() {
+            // Open library doc in new tab:
+            window.open("https://strype.org/doc/library/", "_blank")?.focus();
+            // Note: we use a click handler for this rather than a plain link because
+            // we had an issue (seen on Firefox on Windows and Mac) where clicking the Save As
+            // could also trigger the Library Docs.  It seemed like the click event might be
+            // carrying over as the menu got re-rendered and hidden.  But changing the link
+            // to a click handler fixed it, so we'll keep it like that.
+        },
         downloadHex() {
             downloadHex();
         },

@@ -18,7 +18,7 @@
       "parameters": "Parameter ",
       "module": "Modul ",
       "modulePart": "Funktion/Klasse ",
-      "comment": "Dein Kommentar "
+      "comment": "Kommentar "
     },
     "funcdef_desc": "Funktionsdefinition",
     "varassign_desc": "Zuweisung",
