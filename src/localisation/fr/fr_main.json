@@ -217,7 +217,7 @@
     "cursorHeightMac": "Hauteur (⇧ ⌘ C pour copier) :"
   },
   "demos": {
-    "dialogTitle": "Choisis un exemple à charger",
+    "dialogTitle": "Choisissez un exemple à charger",
     "addLibrary": "Ajouter une bibliothèque :",
     "libraryAddrPlaceholder": "Adresse de la bibliothèque",
     "add": "Ajouter",
