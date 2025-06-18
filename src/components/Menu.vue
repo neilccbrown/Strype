@@ -553,7 +553,7 @@ export default Vue.extend({
             window.open("https://strype.org/doc/library/", "_blank")?.focus();
             // Note: we use a click handler for this rather than a plain link because
             // we had an issue (seen on Firefox on Windows and Mac) where clicking the Save As
-            // could also trigger the Save As.  It seemed like the click event might be
+            // could also trigger the Library Docs.  It seemed like the click event might be
             // carrying over as the menu got re-rendered and hidden.  But changing the link
             // to a click handler fixed it, so we'll keep it like that.
         },
