@@ -146,9 +146,9 @@ describe("Graphics library", () => {
         cy.get("body").type("a.{ctrl} ");
         withAC((acIDSel, frameId) => {
             cy.get(acIDSel).should("be.visible");
-            checkExactlyOneItem(acIDSel, null, "is_at_edge(distance)");
+            checkExactlyOneItem(acIDSel, null, "is_at_edge()");
             checkExactlyOneItem(acIDSel, null, "move(distance)");
-            checkExactlyOneItem(acIDSel, null, "get_all_touching(tag)");
+            checkExactlyOneItem(acIDSel, null, "get_all_touching()");
             checkExactlyOneItem(acIDSel, null, "set_location(x, y)");
             checkNoItems(acIDSel, "__name__");
             // Shouldn't show methods from top-level:
