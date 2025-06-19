@@ -28,8 +28,10 @@
                 :frameId="frameId"
                 :isEditableSlot="isEditableSlot(slotItem.type)"
                 :isEmphasised="isSlotEmphasised(slotItem)"
-                v-on:[CustomEventTypes.requestSlotsRefactoring]="checkSlotRefactoring"
-            /> 
+                @requestSlotsRefactoring="checkSlotRefactoring"
+                @slotLostCaret="updatePrependText"
+            />
+        </div> 
     </div>
 </template>
 
