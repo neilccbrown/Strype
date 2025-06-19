@@ -1140,9 +1140,6 @@ export function splitLinesToSections(allLines : string[]) : {imports: string[]; 
             addingToDef = false;
         }
         else if (line.match(/^\s*(def|class)\s+/)) {
-            defs.push(...latestComments);
-            latestComments = [];
-            defs.push(lineWithNum);
             addingToDef = true;
             defIndent = line.length - line.trimStart().length;
             defs.push(...latestComments.map((l) => ({...l, text: l.text.trimStart() + " ".repeat(defIndent)})));
