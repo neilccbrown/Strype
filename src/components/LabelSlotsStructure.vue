@@ -31,7 +31,6 @@
                 @requestSlotsRefactoring="checkSlotRefactoring"
                 @slotLostCaret="updatePrependText"
             />
-        </div> 
     </div>
 </template>
 
