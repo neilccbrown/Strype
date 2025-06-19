@@ -1,8 +1,8 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesFuncDefScope, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesFuncDefScope, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameContainer, getFrameSectionIdFromFrameId } from "./storeMethods";
-import { strypeFileExtension } from "./common";
+import { splitByRegexMatches, strypeFileExtension } from "./common";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
 import scssVars  from "@/assets/style/_export.module.scss";
 import html2canvas, { Options } from "html2canvas";
@@ -13,16 +13,41 @@ import Frame from "@/components/Frame.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import FrameBody from "@/components/FrameBody.vue";
 import JointFrames from "@/components/JointFrames.vue";
+/* IFTRUE_isPython */
+import CommandsComponent from "@/components/Commands.vue";
+import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
+import { debounce } from "lodash";
+/* FITRUE_isPython */
+import {toUnicodeEscapes} from "@/parser/parser";
+import {fromUnicodeEscapes} from "@/helpers/pythonToFrames";
+
 
 export const undoMaxSteps = 200;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
 
+// Constants used for query parameters parsing
+// The target to fetch the project (for now, we only support Google Drive. We use the enum StrypeSyncTarget for values)
+export const sharedStrypeProjectTargetKey = "shared_proj_targ"; 
+// The URL of the project, with the URL pattern (template) for each possible target
+export const sharedStrypeProjectIdKey = "shared_proj_id";
+
+// LocalStorage keys used by Strype 
+export enum AutoSaveKeyNames {
+    settingsState = "StrypeSettingsState",
+    pythonEditorState = "PythonStrypeSavedState",
+    mbEditor = "MicrobitStrypeSavedState",
+}
+
+// Custom JS events in Strype
 export enum CustomEventTypes {
+    appResetProject = "appResetProject",
+    appShowProgressOverlay = "appShowProgressOverlay",
     contextMenuHovered = "contextMenuHovered",
     requestCaretContextMenuClose="requestCaretContextMenuClose",
     requestAppNotOnTop="requestAppNotOnTop",
     editorAddFrameCommandsUpdated = "frameCommandsUpdated",
     frameContentEdited = "frameContentEdited",
+    requestSlotsRefactoring ="requestSlotsRefactoring",
     editableSlotGotCaret= "slotGotCaret",
     editableSlotLostCaret = "slotLostCaret",
     editorContentPastedInSlot = "contentPastedInSlot",
@@ -30,9 +55,13 @@ export enum CustomEventTypes {
     removeFunctionToEditorProjectSave = "rmToProjectSaveFunction",
     requestEditorProjectSaveNow = "requestProjectSaveNow",
     saveStrypeProjectDoneForLoad = "saveProjDoneForLoad",
-    noneStrypeFilePicked = "nonStrypeFilePicked",
-    acItemHovered="acItemHovered",
+    unsupportedByStrypeFilePicked = "unsupportedByStrypeFilePicked",
+    acItemHovered = "acItemHovered",
+    openSharedFileDone = "openSharedFileDone",
+    dropFramePositionsUpdated = "dropFramePositionsUpdated",
+    resetLSOnShareProjectLoadConfirmed = "resetLSOnShareProjectLoadConfirmed",
     /* IFTRUE_isPython */
+    pythonExecAreaMounted = "peaMounted",
     pythonExecAreaExpandCollapseChanged = "peaExpandCollapsChanged",
     pythonConsoleRequestFocus = "pythonConsoleReqFocus",
     pythonConsoleAfterInput = "pythonConsoleAfterInput",
@@ -51,7 +80,7 @@ export const frameContextMenuShortcuts: FrameContextMenuShortcut[] = [
 ];
 
 export function getFrameContainerUID(frameId: number): string {
-    return "FrameContainer_" + frameId;
+    return "frameContainer_" + frameId;
 }
 
 export function getFrameBodyUID(frameId: number): string {
@@ -157,6 +186,38 @@ export function getAddFrameCmdElementUID(commandType: string): string {
     return "addFrameCmd_" + commandType;
 }
 
+export function getAppLangSelectId(): string {
+    return "strypeLangSelect";
+}
+
+/* IFTRUE_isPython */
+/** This section contains accessors for the PEA components' ID, used within the application */
+export function getPEAComponentRefId(): string {
+    return "peaComponent";
+}
+
+export function getPEAControlsDivId(): string {
+    return "peaControlsDiv";
+}
+
+export function getPEATabContentContainerDivId(): string {
+    return "peaTabContentContainerDiv";
+}
+
+export function getPEAGraphicsContainerDivId(): string {
+    return "peaGraphicsContainerDiv";
+}
+
+export function getPEAGraphicsDivId(): string {
+    return "peaGraphicsDiv";
+}
+
+export function getPEAConsoleId(): string {
+    return "peaConsole";
+}
+/** end of section */
+/*FITRUE_isPython */
+
 export function getTextStartCursorPositionOfHTMLElement(htmlElement: HTMLSpanElement): number {
     // For (editable) spans, it is not straight forward to retrieve the text cursor position, we do it via the selection API
     // if the text in the element is selected, we show the start of the selection.
@@ -164,7 +225,8 @@ export function getTextStartCursorPositionOfHTMLElement(htmlElement: HTMLSpanEle
     const sel = document.getSelection();
     if (sel && sel.rangeCount) {
         const range = sel.getRangeAt(0);
-        if (range.commonAncestorContainer.parentNode == htmlElement) {
+        if (range.commonAncestorContainer.parentNode == htmlElement
+            || range.commonAncestorContainer.parentNode?.parentNode == htmlElement) {
             caretPos = range.startOffset;
         }
     }
@@ -172,7 +234,7 @@ export function getTextStartCursorPositionOfHTMLElement(htmlElement: HTMLSpanEle
 }
 
 export function getFocusedEditableSlotTextSelectionStartEnd(labelSlotUID: string): {selectionStart: number, selectionEnd: number} {
-    // A helper function to get the selection relative to a *focused* slot: if the selection spans across several slots, we get the right boudary values for the given slot
+    // A helper function to get the selection relative to a *focused* slot: if the selection spans across several slots, we get the right boundary values for the given slot
     const focusCursorInfos = useStore().focusSlotCursorInfos;
     const anchorCursorInfos = useStore().anchorSlotCursorInfos;
     if(anchorCursorInfos != null && focusCursorInfos != null ){
@@ -190,7 +252,7 @@ export function getFocusedEditableSlotTextSelectionStartEnd(labelSlotUID: string
             }
             else{
                 // the anchor is somewhere after the focus cursor: the selection end is at the end of the slot
-                return {selectionStart: focusCursorInfos.cursorPos, selectionEnd: (document.getElementById(labelSlotUID) as HTMLSpanElement).textContent?.length??0};
+                return {selectionStart: focusCursorInfos.cursorPos, selectionEnd: (document.getElementById(labelSlotUID) as HTMLSpanElement).textContent?.replace(/\u200B/g, "")?.length??0};
             }
         }
     }
@@ -235,14 +297,70 @@ export function getFrameLabelSlotsStructureUID(frameId: number, labelIndex: numb
 // frameLabelStruct: the HTML element representing the current frame label structure
 // currentSlotUID: the HTML id for the current editable slot we are in
 // delimiters: optional object to indicate from and to which slots parsing the code, requires the slots UID and stop is exclusive
-export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUID: string, delimiters?: {startSlotUID: string, stopSlotUID: string}): {uiLiteralCode: string, focusSpanPos: number, hasStringSlots: boolean}{
+export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLElement, currentSlotUID: string,  options?: {delimiters?: {startSlotUID: string, stopSlotUID: string}, useFlatMediaDataCode?: boolean}): {uiLiteralCode: string, focusSpanPos: number, hasStringSlots: boolean, mediaLiterals: {code: string, mediaType: string}[]}{
     let focusSpanPos = 0;
     let uiLiteralCode = "";
     let foundFocusSpan = false;
-    let ignoreSpan = !!delimiters;
+    let ignoreSpan = !!(options?.delimiters);
     let hasStringSlots = false;
-    frameLabelStruct.querySelectorAll(".labelSlot-input").forEach((spanElement) => {
-        if(delimiters && (delimiters.startSlotUID == spanElement.id || delimiters.stopSlotUID == spanElement.id)){
+    const mediaLiterals : {code: string, mediaType: string}[] = [];
+    // The container and intermediate divs can have relevant text if Firefox has done a "bad delete"
+    // (see comment in LabelSlotsStructure.onInput):
+    frameLabelStruct.querySelectorAll("." + scssVars.labelSlotInputClassName + ", ." + scssVars.labelSlotContainerClassName + ", ." + scssVars.labelSlotMediaClassName).forEach((spanElement) => {
+        // Sometimes div can end up with text content after a selection and overtype (a "bad delete") that seems to happen on Firefox.
+        // We only care about these divs if there is text content
+        // directly inside the div (which shouldn't happen except in this situation)
+        if (spanElement.classList.contains(scssVars.labelSlotContainerClassName)) {
+            // Find all the text node direct children:
+            const directTextNodes = Array.from(spanElement.childNodes).filter(
+                (child) => child.nodeType === Node.TEXT_NODE
+            );
+            // Combine the text content from all direct text nodes (should only be one, but no harm doing all):
+            const content = directTextNodes.map((textNode) => textNode.textContent).join("");
+            if (content.length > 0) {
+                // Found this bad input:
+                uiLiteralCode += content;
+                // Also, we know the cursor should be directly after this bad input:
+                foundFocusSpan = true;
+                focusSpanPos += content.length;
+            }
+            return;
+        }
+
+        if(options?.useFlatMediaDataCode){
+            // When this option is set, we are in a "simple" code slot that contains literal code not yet being parsed.
+            // Therefore, we need to retrieve all the media that could be in that literal code so further parsing use them.
+            const ms = splitByRegexMatches(spanElement.textContent??"", /(?:load_image|load_sound)\("data:(?:image|audio)[^;]*;base64,[^"]+"\)/);
+            for (let i = 0; i < ms.length; i++) {
+                // We know even values (0, 2) are the plain string parts inbetween regex matches,
+                // and odd values (1, 3) are the parts which matched the regex:
+                if ((i % 2) != 0) {
+                    // fish out the details:
+                    const details = /data:([^;]+);base64,[^"']+/.exec(ms[i]);
+                    if (details) {
+                        const dataAndBase64 = details[0];
+                        const mediaDataCode = (details[1].startsWith("image") ? "load_image" : "load_sound") + "(\"" + dataAndBase64 + "\")";
+                        mediaLiterals.push({code: mediaDataCode, mediaType: details[1]});
+                    }
+                }
+            }
+        }
+
+        if (spanElement.classList.contains(scssVars.labelSlotMediaClassName)) {
+            const code = spanElement.getAttribute("data-code");
+            // We add the code, but also record the image literal for later manipulation:
+            if (code) {
+                uiLiteralCode += code;
+                mediaLiterals.push({code: code, mediaType: spanElement.getAttribute("data-mediaType") ?? ""});
+            }
+            // Media literals are considered to be one character wide:
+            if (!foundFocusSpan) {
+                focusSpanPos += 1;
+            }
+            return;
+        }
+        
+        if((options?.delimiters) && (options.delimiters.startSlotUID == spanElement.id || options.delimiters.stopSlotUID == spanElement.id)){
             ignoreSpan = !ignoreSpan ;
         } 
         if(!ignoreSpan) {
@@ -267,10 +385,10 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                 if((spanElement.textContent?.includes(STRING_DOUBLEQUOTE_PLACERHOLDER) || spanElement.textContent?.includes(STRING_SINGLEQUOTE_PLACERHOLDER)) as boolean){
                     hasStringSlots = true;
                 }
-                uiLiteralCode += (spanElement.textContent);
+                uiLiteralCode += (spanElement.textContent??"").replace(/\u200B/g, "");
             }
         
-            if(spanElement.id === currentSlotUID){
+            if(spanElement.id === currentSlotUID && !foundFocusSpan){
                 focusSpanPos += (useStore().focusSlotCursorInfos?.cursorPos??0);     
                 foundFocusSpan = true;
             }
@@ -280,7 +398,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                 // therefore we need to account for them when dealing with such operators;
                 // and if we parse the string quotes, we need to set the position value as if the quotes were still here (because they are in the UI)
                 let spacesOffset = 0;
-                const spanElementContentLength = (spanElement.textContent?.length??0);
+                const spanElementContentLength = (spanElement.textContent?.replace(/\u200B/g, "")?.length??0);
                 const ignoreAsKW = (spanElement.textContent == "as" && useStore().frameObjects[parseLabelSlotUID(spanElement.id).frameId].frameType.type != AllFrameTypesIdentifier.import);
                 if(!ignoreAsKW && !isSlotStringLiteralType(labelSlotCoreInfos.slotType) && (trimmedKeywordOperators.includes(spanElement.textContent??""))){
                     spacesOffset = 2;
@@ -302,7 +420,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
             }
         }
     });    
-    return {uiLiteralCode: uiLiteralCode, focusSpanPos: focusSpanPos, hasStringSlots: hasStringSlots};
+    return {uiLiteralCode: uiLiteralCode, focusSpanPos: focusSpanPos, hasStringSlots: hasStringSlots, mediaLiterals: mediaLiterals};
 }
 
 
@@ -342,12 +460,26 @@ export function getCaretUID(caretAssignedPosition: string, frameId: number): str
     return "caret_"+caretAssignedPosition+"_"+frameId;
 }
 
+const caretContainerUIDRegex = /caret_(.+)_of_frame_(-?\d*)/;
+export function getCaretContainerUID(caretPos: CaretPosition, frameId: number): string {
+    // If a change is made in this method, reflect it on the regex above.
+    return "caret_" + caretPos + "_of_frame_" + frameId;
+}
+
+export function isCaretContainerElement(id: string): boolean {
+    return caretContainerUIDRegex.test(id);
+}
+
 export function getCaretContainerRef(): string {
     return "caretContainer";
 }
 
 export function getCommandsContainerUID(): string {
     return "editorCommands";
+}
+
+export function getEditorID(): string {
+    return "editor";
 }
 
 export function getEditorMenuUID(): string {
@@ -358,16 +490,32 @@ export function getMenuLeftPaneUID(): string {
     return "menu-bar";
 }
 
+export function getNewProjectLinkId(): string {
+    return "newProjectLink";
+}
+
+export function getLoadProjectLinkId(): string {
+    return "loadProjectLink";
+}
+
+export function getSaveProjectLinkId(): string {
+    return "saveStrypeProjLink";
+}
+
+export function getImportFileInputId(): string {
+    return "importFileInput";
+}
+
 export function getGoogleDriveComponentRefId(): string {
     return "googleDriveComponent";
 }
 
-export function getStrypeCommandComponentRefId(): string {
-    return "strypeCommands";
+export function getLoadFromFSStrypeButtonId(): string {
+    return "loadFromFSStrypeButton";
 }
 
-export function getStrypePEAComponentRefId(): string {
-    return "strypePEA";
+export function getStrypeCommandComponentRefId(): string {
+    return "strypeCommands";
 }
 
 // The following helpers traverse the component refs to retrieve the desired component
@@ -429,8 +577,16 @@ export function getCaretContainerComponent(frameComponent: InstanceType<typeof F
 }
 // End for component retriever
 
-export function getSaveAsProjectModalDlg():string {
+export function getSaveAsProjectModalDlg(): string {
     return "save-strype-project-modal-dlg";
+}
+
+export function getStrypeSaveProjectNameInputId(): string {
+    return "saveStrypeFileNameInput";
+}
+
+export function getSaveStrypeProjectToFSButtonId() : string {
+    return "saveStrypeProjectToFSStrypeButton";
 }
 
 export function getEditorMiddleUID(): string {
@@ -536,10 +692,10 @@ export function checkEditorCodeErrors(): void{
     }
 
     // Then look up errors based on CSS
-    const erroneousHTMLElements = [...document.getElementsByClassName("error"), ...document.getElementsByClassName("errorSlot")];
+    const erroneousHTMLElements = [...document.getElementsByClassName(scssVars.errorClassName), ...document.getElementsByClassName(scssVars.errorSlotClassName)];
     if(erroneousHTMLElements.length > 0){
         for(const erroneousHTMLElement of erroneousHTMLElements) {
-            if(erroneousHTMLElement.classList.contains("labelSlot-input") || erroneousHTMLElement.classList.contains("frame-header") || erroneousHTMLElement.classList.contains("frameDiv")){
+            if(erroneousHTMLElement.classList.contains(scssVars.labelSlotInputClassName) || erroneousHTMLElement.classList.contains(scssVars.frameHeaderClassName) || erroneousHTMLElement.classList.contains(scssVars.frameDivClassName)){
                 errorHTMLElements.push(erroneousHTMLElement as HTMLElement);
             }
         }
@@ -696,11 +852,20 @@ export function generateAllFrameCommandsDefs():void {
                 index:1,
             },
         ],
-        "l": [{
-            type: getFrameDefType(AllFrameTypesIdentifier.elif),
-            description: "elif",
-            shortcuts: ["l"],
-        }],
+        "l": [
+            {
+                type: getFrameDefType(AllFrameTypesIdentifier.elif),
+                description: "elif",
+                shortcuts: ["l"],
+                index:0,
+            },
+            {
+                type: getFrameDefType(AllFrameTypesIdentifier.library),
+                description: "library",
+                shortcuts: ["l"],
+                index:1,
+            },
+        ],
         "e": [{
             type: getFrameDefType(AllFrameTypesIdentifier.else),
             description: "else",
@@ -760,7 +925,8 @@ export function generateAllFrameCommandsDefs():void {
             type: getFrameDefType(AllFrameTypesIdentifier.blank),
             description: i18n.t("frame.blank_desc") as string,
             shortcuts: ["\x13"],
-            symbol: "↵",
+            symbol: "enter",
+            isSVGIconSymbol: true,
         }],
         "t": [{
             type: getFrameDefType(AllFrameTypesIdentifier.try),
@@ -921,12 +1087,17 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
         // (which can be allowed or not) on the vertical axis only.
         let closestCaretPositionIndex = -1, minVerticalDist = Number.MAX_VALUE;
         currentCaretPositionsForDnD.every((navigationPos, index) => {
+            if(navigationPos.isInCollapsedFrameContainer){
+                // A collapsed frame position is ignored until a prolonged hover triggered it to expand
+                return true;
+            }
+
             const caretEl = document.getElementById(getCaretUID(navigationPos.caretPosition as string, navigationPos.frameId));
             const caretBox = caretEl?.getBoundingClientRect() as DOMRect;
             const caretYTopPos = (caretBox.height > 0) ? caretBox.y : caretBox.y - Number.parseInt(scssVars.caretHeightValue) / 2;
             const caretYBottompPos = (caretBox.height > 0) ? caretBox.y + caretBox.height : caretBox.y + Number.parseInt(scssVars.caretHeightValue) / 2;
             const verticalDist = (mouseEvent.y <= caretYTopPos)
-                ?   caretYTopPos - mouseEvent.y
+                ? caretYTopPos - mouseEvent.y
                 : mouseEvent.y - caretYBottompPos;
             if(verticalDist < minVerticalDist){
                 minVerticalDist = verticalDist;
@@ -956,6 +1127,14 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
             (vm.$refs[getCaretUID(newCaretDropPosCaretPos, newCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = true;
             (vm.$refs[getCaretUID(newCaretDropPosCaretPos, newCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = 
                 isFrameDropAllowed(newCaretDropPosFrameId, newCaretDropPosCaretPos);
+        }
+
+        // Update the duplicate status based on whether they are holding ctrl/alt:
+        if (mouseEvent.ctrlKey || mouseEvent.altKey) {
+            addDuplicateActionOnFramesDnD();
+        }
+        else {
+            removeDuplicateActionOnFramesDnD();
         }
     }
 };
@@ -1027,6 +1206,18 @@ function isFrameDropAllowed(destCaretFrameId: number, destCaretPos: CaretPositio
     return !topLevelDraggedFrameIds.some((topLevelDraggedFrameId) => destinationFrameContainer.frameType.forbiddenChildrenTypes.includes(useStore().frameObjects[topLevelDraggedFrameId].frameType.type));
 }
 
+const noCaretDropFrameIds: number[] = [];
+function prepareDropPositionsForDnd() {
+    currentCaretPositionsForDnD = getAvailableNavigationPositions(true)
+        .filter((navigationPosition) => !navigationPosition.isSlotNavigationPosition 
+            && !noCaretDropFrameIds.includes(navigationPosition.frameId));
+}
+
+// Register for an update of the drop positions (needed when a collapsed frame is expanded on hover, see onFrameContainerHover() in FrameContainer.vue)
+document.addEventListener(CustomEventTypes.dropFramePositionsUpdated, () => {
+    prepareDropPositionsForDnd();
+});
+
 export function notifyDragStarted(frameId?: number):void {
     const renderingCanvas = document.getElementById(companionCanvasId) as HTMLCanvasElement;
     let html2canvasOptions: Partial<Options> = {backgroundColor: null, canvas: renderingCanvas, scale: companionImgScalingRatio};
@@ -1069,8 +1260,9 @@ export function notifyDragStarted(frameId?: number):void {
 
     // Get the list of current available caret positions: all caret positions, 
     // except the positions within a selection or within inside the children of a frame that is dragged.
-    // (The position below the dragged frame (or last selected frame) won't a suggested drop position, which is not needed anyway.)
-    const noCaretDropFrameIds: number[] = [];
+    // (The position below the dragged frame (or last selected frame) won't be a suggested drop position, which is not needed anyway.)
+    // The positions are only updated if the custom event dropFramePositionsUpdated is received.
+    noCaretDropFrameIds.splice(0);
     if(frameId){
         noCaretDropFrameIds.push(...getAllChildrenAndJointFramesIds(frameId), frameId);
     }
@@ -1078,11 +1270,12 @@ export function notifyDragStarted(frameId?: number):void {
         useStore().selectedFrames.forEach((selectedFrameId) => noCaretDropFrameIds.push(...getAllChildrenAndJointFramesIds(selectedFrameId)));
         noCaretDropFrameIds.push(...useStore().selectedFrames);
     }
-    currentCaretPositionsForDnD = getAvailableNavigationPositions()
-        .filter((navigationPosition) => !navigationPosition.isSlotNavigationPosition 
-            && !noCaretDropFrameIds.includes(navigationPosition.frameId));
+    
+    // Set the drop positions
+    prepareDropPositionsForDnd();
+
     // Change the mouse cursor for the whole app
-    document.getElementsByTagName("body")[0]?.classList.add("dragging-frame");
+    document.getElementsByTagName("body")[0]?.classList.add(scssVars.draggingFrameClassName);
     // And assign a mouse event event listen to allow companion "image" to follow cursor and detect when the drop is performed
     (document.getElementsByTagName("body")[0] as HTMLBodyElement).addEventListener("mousemove", bodyMouseMoveEventHandlerForFrameDnD);
     (document.getElementsByTagName("body")[0] as HTMLBodyElement).addEventListener("mouseup", bodyMouseUpEventHandlerForFrameDnD);
@@ -1116,7 +1309,7 @@ export function notifyDragEnded():void {
     (canvas.getContext("2d") as any).reset();
     (document.getElementsByTagName("body")[0] as HTMLBodyElement).removeEventListener("mousemove", bodyMouseMoveEventHandlerForFrameDnD);
     (document.getElementsByTagName("body")[0] as HTMLBodyElement).removeEventListener("mouseup", bodyMouseUpEventHandlerForFrameDnD);
-    document.getElementsByTagName("body")[0]?.classList.remove("dragging-frame");
+    document.getElementsByTagName("body")[0]?.classList.remove(scssVars.draggingFrameClassName);
     if(currentCaretDropPosId.length > 0){
         (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = false;
         // Not really required but just better to reset things properly
@@ -1275,12 +1468,48 @@ export const getSameLevelAncestorIndex = (slotId: string, sameLevelThanSlotParen
     return parseInt(slotId.split(",")[ancestorLevels -1]);
 };
 
-const FIELD_PLACERHOLDER = "$strype_field_placeholder$";
+// We need to replace fields with placeholders to make parsing of brackets easier:
+const FIELD_PLACEHOLDER_START = "$strype_field_placeholder";
+const FIELD_PLACEHOLDER_END = "_strype_field_placeholder$";
+function removePossibleFieldPlaceholderFromStart(s: string) : string {
+    if (s.startsWith(FIELD_PLACEHOLDER_START)) {
+        const end = s.indexOf(FIELD_PLACEHOLDER_END);
+        return s.slice(end + FIELD_PLACEHOLDER_END.length);
+    }
+    else {
+        return s;
+    }
+}
+export function transformFieldPlaceholders(input: string) : string {
+    input = input.replaceAll(STRING_SINGLEQUOTE_PLACERHOLDER, "'");
+    input = input.replaceAll(STRING_DOUBLEQUOTE_PLACERHOLDER, "\"");
+    
+    const startIndex = input.indexOf(FIELD_PLACEHOLDER_START);
+    if (startIndex === -1) {
+        return input; // No more placeholders
+    }
+    const endIndex = input.indexOf(FIELD_PLACEHOLDER_END, startIndex + FIELD_PLACEHOLDER_START.length);
+    if (endIndex === -1) {
+        return input; // No matching end marker; treat as finished
+    }
+    const decoded = fromUnicodeEscapes(input.substring(startIndex + FIELD_PLACEHOLDER_START.length, endIndex));
+    const newInput =
+        input.substring(0, startIndex) +
+        decoded +
+        input.substring(endIndex + FIELD_PLACEHOLDER_END.length);
+
+    // Recurse to handle more placeholders:
+    return transformFieldPlaceholders(newInput);
+}
+
+export const IMAGE_PLACERHOLDER = "$strype_image_placeholder$";
 // The placeholders for the string quotes when strings are extracted FROM THE EDITOR SLOTS,
 // both placeholders need to have THE SAME LENGHT so sustitution operations are done with more ease
 export const STRING_SINGLEQUOTE_PLACERHOLDER = "$strype_StrSgQuote_placeholder$";
 export const STRING_DOUBLEQUOTE_PLACERHOLDER = "$strype_StrDbQuote_placeholder$";
-export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: boolean, cursorPos?: number, skipStringEscape?: boolean, frameType?: string,}): {slots: SlotsStructure, cursorOffset: number} => {
+
+export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: boolean, cursorPos?: number, skipStringEscape?: boolean, frameType?: string, imageLiterals?: {code: string, mediaType: string}[]}): {slots: SlotsStructure, cursorOffset: number} => {
+    const imageLiterals : { code: string, mediaType: string }[] = flags?.imageLiterals ?? [];
     // This method parse a code literal to generate the equivalent slot structure.
     // For example, if the code is <"hi" + "hello"> it will generate the following slot (simmplified)
     //  {fields: {"", s1, "", "", s2, ""}, operators: ["", "", "+", "", ""] }}
@@ -1297,6 +1526,11 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         const escapedQuote = "\\" + codeLiteral.charAt(0);
         codeLiteral = codeLiteral.substring(1, codeLiteral.length - 1).replaceAll(escapedQuote, (match) => match.charAt(1));
     }
+    
+    // Start by replacing image literals with placeholders to avoid them getting processed like normal code:
+    imageLiterals.forEach((imageLiteral, i) => {
+        codeLiteral = codeLiteral.replace(imageLiteral.code, IMAGE_PLACERHOLDER + i + "$");
+    });
 
     // First we look for string literals, as their content should not generate "subslot":
     // We simply use an equivalent size placeholder so it wont interfere the parsing later.
@@ -1318,7 +1552,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             return codeStrQuotes + " ".repeat(match.length - 2) + codeStrQuotes;
         }
         else {
-            if(!match.endsWith(match[0]) || (match.endsWith("\\" + match[0]) && getNumPrecedingBackslashes(match, match.length - 1) % 2 == 1)){
+            if(!match.endsWith(match[0]) || match.length == 1 || (match.endsWith("\\" + match[0]) && getNumPrecedingBackslashes(match, match.length - 1) % 2 == 1)){
                 missingClosingQuote = match[0];
             }
             return match[0] + " ".repeat(match.length - ((missingClosingQuote.length == 1) ? 1 : 2)) + match[0];
@@ -1329,6 +1563,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         // The blanking above would have already terminate the string quote in blankedStringCodeLiteral if needed,
         // we need to update the original codeLiteral too
         codeLiteral += missingClosingQuote;
+        cursorOffset -= 1;
     }     
 
     // 1- Look for a bracket structure
@@ -1363,7 +1598,10 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
                     innerOpeningBracketCount--;
                     startLookingOtherOpeningBracketsPos = closingBracketPos + 1;
                 }
-            }            
+            }
+            else {
+                cursorOffset -= 1;
+            }
         }
         while (innerOpeningBracketCount != 0 && closingBracketPos != -1);
        
@@ -1379,12 +1617,14 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         // so if we fed the parser only "-3", it would see it as an unitary sign and not an operator.
         // So for the parser to "see" the bracket part we will use a placeholder token that will be removed when aggrating the slots. 
         let afterBracketCode = (closingBracketPos > -1) ? codeLiteral.substring(closingBracketPos + 1) : "";
+        const bracketPlaceholder = FIELD_PLACEHOLDER_START + toUnicodeEscapes(beforeBracketCode + openingBracketValue + innerBracketCode + closingBracketValue) + FIELD_PLACEHOLDER_END;
         if(afterBracketCode.length > 0){
-            afterBracketCode = FIELD_PLACERHOLDER + afterBracketCode;
+            afterBracketCode = bracketPlaceholder + afterBracketCode;
         }
-        const {slots: structBeforeBracket, cursorOffset: beforeBracketCursorOffset} = parseCodeLiteral(beforeBracketCode, {isInsideString:false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape});
+        // Note: we need to pass (all) imageLiterals to the recursive calls because they might reverse our replacement:
+        const {slots: structBeforeBracket, cursorOffset: beforeBracketCursorOffset} = parseCodeLiteral(beforeBracketCode, {isInsideString:false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         cursorOffset += beforeBracketCursorOffset;
-        const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, {isInsideString: false, cursorPos: (flags?.cursorPos) ? flags.cursorPos - (firstOpenedBracketPos + 1) : undefined, skipStringEscape: flags?.skipStringEscape});
+        const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, {isInsideString: false, cursorPos: (flags?.cursorPos) ? flags.cursorPos - (firstOpenedBracketPos + 1) : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         if (openingBracketValue === "(") {
             // First scan and find all the comma-separated parameters that are a single field:
             let lastParamStart = -1;
@@ -1413,20 +1653,18 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         cursorOffset += bracketCursorOffset;
         let actualCodeClosingBracketPos = closingBracketPos;
         const quotesPlaceholdersExp = "(" + STRING_SINGLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + "|" + STRING_DOUBLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + ")";
-        codeLiteral.match(new RegExp(quotesPlaceholdersExp, "g"))?.forEach((placeholder) => {
+        innerBracketCode.match(new RegExp(quotesPlaceholdersExp, "g"))?.forEach((placeholder) => {
             // If the content of the brackets contained any string, the value of the closing bracket position is for a code WITH the string quotes placeholders.
             // Therefore, if we want to use that to check what is the new cursor position in the parsing of the code after the bracket, we need to do so without
             // the string placeholders, if any. When a placeholder is found, we remove its length - 1 to the positin, as it would match 1 quote.
             actualCodeClosingBracketPos -= (placeholder.length - 1);
         });
 
-        const {slots: structAfterBracket, cursorOffset: afterBracketCursorOffset} = parseCodeLiteral(afterBracketCode, {isInsideString: false, cursorPos: (flags && flags.cursorPos && afterBracketCode.startsWith(FIELD_PLACERHOLDER)) ? flags.cursorPos - (actualCodeClosingBracketPos + 1) + FIELD_PLACERHOLDER.length : undefined, skipStringEscape: flags?.skipStringEscape});
+        const {slots: structAfterBracket, cursorOffset: afterBracketCursorOffset} = parseCodeLiteral(afterBracketCode, {isInsideString: false, cursorPos: (flags && flags.cursorPos && afterBracketCode.startsWith(bracketPlaceholder)) ? flags.cursorPos - (actualCodeClosingBracketPos + 1) + bracketPlaceholder.length : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         cursorOffset += afterBracketCursorOffset;
         // Remove the bracket field placeholder from structAfterBracket: we trim the placeholder value from the start of the first field of the structure.
         // (the conditional test may be overdoing it, but at least we are sure we won't get fooled by the user code...)
-        if((structAfterBracket.fields[0] as BaseSlot).code.startsWith(FIELD_PLACERHOLDER)){
-            (structAfterBracket.fields[0] as BaseSlot).code = (structAfterBracket.fields[0] as BaseSlot).code.substring(FIELD_PLACERHOLDER.length);
-        }
+        (structAfterBracket.fields[0] as BaseSlot).code = removePossibleFieldPlaceholderFromStart((structAfterBracket.fields[0] as BaseSlot).code);
         resStructSlot.fields.push(...structBeforeBracket.fields, structOfBracketField, ...structAfterBracket.fields);
         resStructSlot.operators.push(...structBeforeBracket.operators, {code: ""}, {code: ""}, ...structAfterBracket.operators);
     } 
@@ -1447,18 +1685,17 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             cursorOffset += parsingStringContentRes.cursorOffset;
             // same logic as brackets for subsequent code: cf. above
             let afterStringCode = codeLiteral.substring(closingQuoteIndex + 1);
+            const stringPlaceholder = FIELD_PLACEHOLDER_START + toUnicodeEscapes("\"\"") + FIELD_PLACEHOLDER_END;
             if(afterStringCode.length > 0){
-                afterStringCode = FIELD_PLACERHOLDER + afterStringCode;
+                afterStringCode = stringPlaceholder + afterStringCode;
             }
             // When we construct the parts before and after the string, we need to internally set the cursor "fake" position, that is, the cursor offset by the bits we are evaluating
-            const {slots: structBeforeString, cursorOffset: beforeStringCursortOffset} = parseCodeLiteral(beforeStringCode, {isInsideString: false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape});
+            const {slots: structBeforeString, cursorOffset: beforeStringCursortOffset} = parseCodeLiteral(beforeStringCode, {isInsideString: false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
             cursorOffset += beforeStringCursortOffset;
             const structOfString: StringSlot = {code: stringContentCode, quote: openingQuoteValue};
-            const {slots: structAfterString, cursorOffset: afterStringCursorOffset} = parseCodeLiteral(afterStringCode, {isInsideString: false, cursorPos: (flags?.cursorPos??0) - closingQuoteIndex + (2*(quoteTokenLength -1)) + FIELD_PLACERHOLDER.length, skipStringEscape: flags?.skipStringEscape});
+            const {slots: structAfterString, cursorOffset: afterStringCursorOffset} = parseCodeLiteral(afterStringCode, {isInsideString: false, cursorPos: (flags?.cursorPos??0) - closingQuoteIndex + (2*(quoteTokenLength -1)) + stringPlaceholder.length, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
             cursorOffset += afterStringCursorOffset;
-            if((structAfterString.fields[0] as BaseSlot).code.startsWith(FIELD_PLACERHOLDER)){
-                (structAfterString.fields[0] as BaseSlot).code = (structAfterString.fields[0] as BaseSlot).code.substring(FIELD_PLACERHOLDER.length);
-            }
+            (structAfterString.fields[0] as BaseSlot).code = removePossibleFieldPlaceholderFromStart((structAfterString.fields[0] as BaseSlot).code);
             resStructSlot.fields.push(...structBeforeString.fields, structOfString, ...structAfterString.fields );
             resStructSlot.operators.push(...structBeforeString.operators, {code: ""}, {code: ""}, ...structAfterString.operators);
         }
@@ -1470,6 +1707,43 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             resStructSlot.operators = operatorSplitsStruct.operators;
         }
     }
+    
+    // Reverse replacement of image literals:
+    imageLiterals.forEach((imageLiteral, i) => {
+        const target = IMAGE_PLACERHOLDER + i + "$";
+        for (let j = 0; j < resStructSlot.fields.length; j++) {
+            if (isFieldBaseSlot(resStructSlot.fields[j])) {
+                const code = (resStructSlot.fields[j] as BaseSlot).code;
+                const pos = code.indexOf(target);
+                if (pos != -1) {
+                    const before = code.substring(0, pos).trim();
+                    const after = code.substring(pos + target.length).trim();
+                    
+                    // Replace field with image literal:
+                    resStructSlot.fields[j] = {...resStructSlot.fields[j], code: imageLiteral.code, mediaType: imageLiteral.mediaType } as MediaSlot;
+                    // Image literals must be surrounded by a plain field before and after, with blank operator, so that you can position
+                    // the cursor next to them to edit (either adding content next to them, or deleting the literal itself)
+                    // Without this, for example, if you put a media literal in a bracket, you can't put the cursor anywhere inside the
+                    // bracket because there will be a single field (for the media literal) and no actual possible cursor positions.
+                    if (before.length > 0 || j == 0 || !isFieldBaseSlot(resStructSlot.fields[j-1]) || resStructSlot.operators[j-1].code != "") {
+                        // If there's no plain slot before or the operator isn't blank, we need to add a blank operator and blank field:
+                        resStructSlot.operators.splice(j, 0, {code: ""});
+                        resStructSlot.fields.splice(j, 0, {code: before} as BaseSlot);
+                        // Need to compensate for what we just added:
+                        j += 1;
+                    }
+                    if (after.length > 0 || j >= resStructSlot.fields.length - 1 || !isFieldBaseSlot(resStructSlot.fields[j+1]) || resStructSlot.operators[j].code != "") {
+                        // If there's no plain slot after or the operator isn't blank, we need to add a blank operator and blank field:
+                        resStructSlot.operators.splice(j, 0, {code: ""});
+                        resStructSlot.fields.splice(j+1, 0, {code: after} as BaseSlot);
+                        // No need to compensate because we're about to return from this whole code segment:
+                    }
+                    // Note: this returns the forEach part and looks for the next media literal
+                    return;
+                }
+            }
+        }
+    });
 
     return {slots: resStructSlot, cursorOffset: cursorOffset};
 };
@@ -1581,10 +1855,7 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
     // (and we also need to remove "dead" closing brackets)
     let code = codeLiteral.substring(lookOffset).trimStart();
     closeBracketCharacters.forEach((closingBracket) => {
-        code = code.replaceAll(closingBracket, () => {
-            cursorOffset += -1;
-            return "";
-        });
+        code = code.replaceAll(closingBracket, "");
     });
     resStructSlot.fields.push({code: code});
     return {slots: resStructSlot, cursorOffset: cursorOffset};
@@ -1639,7 +1910,7 @@ export function getNumPrecedingBackslashes(content: string, cursorPos : number) 
 /**
  * Turtle  related bits for the editor
  */
-
+/* IFTRUE_isPython */
 // This method acts the turtle module being imported or not in the editor's frame
 export function actOnTurtleImport(): void {
     let hasTurtleImported = false;
@@ -1660,14 +1931,14 @@ export function actOnTurtleImport(): void {
     });
 
     // We notify the Python exec area about the presence or absence of the turtle module
-    document.getElementById("peaComponent")?.dispatchEvent(new CustomEvent(CustomEventTypes.notifyTurtleUsage, {detail: hasTurtleImported}));
+    document.getElementById(getPEAComponentRefId())?.dispatchEvent(new CustomEvent(CustomEventTypes.notifyTurtleUsage, {detail: hasTurtleImported}));
 }
 
 // UI-related method to calculate and set the max height of the Python Execution Area tabs content.
 // We need to "fix" the size of the tabs container so the elements of the Exec Area, when it's enlarged, are correctly flowing in the page
 // and stay within the splitters (which are overlayed in App.vue).
 let manuallyResizedEditorHeight: number | undefined; // Flag used below and by App.vue - do not store this in store, it's session-lived only.
-export function setManuallyResizedEditorHeightFlag(value: number): void {
+export function setManuallyResizedEditorHeightFlag(value: number | undefined): void {
     manuallyResizedEditorHeight = value;
 }
 export function getManuallyResizedEditorHeightFlag(): number | undefined {
@@ -1679,38 +1950,42 @@ export function setPythonExecutionAreaTabsContentMaxHeight(): void {
     // (defined above) with the correct value. If not, we use the default 50vh (50% of body) value directly.
     const editorNewMaxHeight = manuallyResizedEditorHeight ?? (fullAppHeight / 2);
     // For the tabs' height, we can't rely on the container as the tabs may stack on top of each other (small browser window)
-    const pythonExecAreaTabsAreaHeight = (document.querySelector("#peaControlsDiv li") as HTMLLIElement).getBoundingClientRect().height;
-    (document.querySelector("#tabContentContainerDiv") as HTMLDivElement).style.maxHeight = ((fullAppHeight - editorNewMaxHeight - pythonExecAreaTabsAreaHeight) + "px");
+    // so we get the first element of the tab section that is not having a 0 height (because tabs are hidden when we are in split layout)
+    const pythonExecAreaTabsAreaHeight = [...document.querySelectorAll("#" + getPEAControlsDivId() + " li, ." + scssVars.peaNoTabsPlaceholderSpanClassName)]
+        .find((element) => element.getBoundingClientRect().height != 0)
+        ?.getBoundingClientRect().height;    
+    (document.querySelector("#"+getPEATabContentContainerDivId()) as HTMLDivElement).style.maxHeight = ((fullAppHeight - editorNewMaxHeight - (pythonExecAreaTabsAreaHeight??0)) + "px");
 }
 
-// This method set the Python Execution Area expand/collapse button position based on the presence of scrollbars
+// This method set the Python Execution Area layout buttons position based on the presence of scrollbars
 // (It is put here as we need to call at different points in the code.)
-export function setPythonExecAreaExpandButtonPos(): void{
+export function setPythonExecAreaLayoutButtonPos(): void{
     // We need to know in which context we are : Python console, or Turtle.
     // The general idea is to override the CSS styling by directly applying style when needed (the case a scrollbar is present).
     // We find out the size of the scroll bar, add a margin of 2px, to displace the button by that size.
     // (To be sure the UI layout is correctly updated before computing, we wait a bit.)
     setTimeout(() => {
-        const pythonConsoleTextArea = document.getElementById("pythonConsole");
-        const pythonTurtleContainerDiv = document.getElementById("pythonTurtleContainerDiv");
-        const peaExpandButton = document.getElementsByClassName("pea-toggle-size-button")[0] as HTMLDivElement;
-        if(pythonConsoleTextArea && pythonTurtleContainerDiv){
+        const pythonConsoleTextArea = document.getElementById(getPEAConsoleId());
+        const pythonTurtleContainerDiv = document.getElementById(getPEAGraphicsContainerDivId());
+        const peaLayoutButtonsContainer = document.getElementsByClassName(scssVars.peaToggleLayoutButtonsContainerClassName)?.[0];
+        const peaComponent = ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as any).$refs[getPEAComponentRefId()]);
+        if(pythonConsoleTextArea && pythonTurtleContainerDiv && peaLayoutButtonsContainer && peaComponent){
             // First get the natural position offset of the button, so can compute the new position:
-            const peaExpandButtonNaturalPosOffset = parseInt((scssVars.pythonExecutionAreaExpandButtonPosOffset as string).replace("px",""));
-    
+            const peaExpandButtonNaturalPosOffset = parseInt((scssVars.pythonExecutionAreaLayoutButtonsPosOffset as string).replace("px",""));
             // Then, look for the scrollbars
-            if(pythonConsoleTextArea.style.display != "none"){
+            if((peaComponent as InstanceType<typeof PythonExecutionArea>).isConsoleAreaShowing && !(peaComponent as InstanceType<typeof PythonExecutionArea>).isGraphicsAreaShowing){
                 // In the Python console, we wrap the text, only the vertical scrollbar can appear.
                 const scrollDiff = pythonConsoleTextArea.getBoundingClientRect().width - pythonConsoleTextArea.clientWidth;
-                peaExpandButton.style.right = (pythonConsoleTextArea.scrollHeight > pythonConsoleTextArea.clientHeight) ? (peaExpandButtonNaturalPosOffset + scrollDiff + 2) + "px" : "";
-                peaExpandButton.style.bottom = "";
+                (peaLayoutButtonsContainer as HTMLDivElement).style.right = (pythonConsoleTextArea.scrollHeight > pythonConsoleTextArea.clientHeight) ? (peaExpandButtonNaturalPosOffset + scrollDiff + 2) + "px" : "";
+                (peaLayoutButtonsContainer as HTMLDivElement).style.bottom = "";                
             }
             else{
                 // In the Turtle container, any of the scrollbars can appear.
                 const scrollDiffW = pythonTurtleContainerDiv.getBoundingClientRect().width - pythonTurtleContainerDiv.clientWidth,
                     scrollDiffH = pythonTurtleContainerDiv.getBoundingClientRect().height - pythonTurtleContainerDiv.clientHeight;
-                peaExpandButton.style.right = (pythonTurtleContainerDiv.scrollHeight > pythonTurtleContainerDiv.clientHeight) ? (peaExpandButtonNaturalPosOffset + scrollDiffW + 2) + "px" : "";
-                peaExpandButton.style.bottom = (pythonTurtleContainerDiv.scrollWidth > pythonTurtleContainerDiv.clientWidth) ? (peaExpandButtonNaturalPosOffset + scrollDiffH + 2) + "px" : "";
+                (peaLayoutButtonsContainer as HTMLDivElement).style.right = (pythonTurtleContainerDiv.scrollHeight > pythonTurtleContainerDiv.clientHeight) ? (peaExpandButtonNaturalPosOffset + scrollDiffW + 2) + "px" : "";
+                (peaLayoutButtonsContainer as HTMLDivElement).style.bottom = (pythonTurtleContainerDiv.scrollWidth > pythonTurtleContainerDiv.clientWidth) ? (peaExpandButtonNaturalPosOffset + scrollDiffH + 2) + "px" : "";
+    
             }
         }
     }, 100);
@@ -1721,20 +1996,56 @@ export function setPythonExecAreaExpandButtonPos(): void{
  * to allow the commands to be displayed in columns when they can't be shown as one column.
  * See Commands.vue for the HTML template logics.
  */
-export function resetAddFrameCommandContainerHeight(): void{
-    (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.height = "";
-}
+export const debounceComputeAddFrameCommandContainerSize = debounce(computeAddFrameCommandContainerSize, 100);
 
-export function computeAddFrameCommandContainerHeight(): void{
-    // When the container div overflows, we remove the overflow extra height to the p element containing the commands
-    // so that we can shorten the p height to trigger the commands to be displayed in columns.  
-    const scrollContainerH = document.getElementsByClassName("no-PEA-commands")[0].scrollHeight;
-    const noPEACommandsH =  Math.round(document.getElementsByClassName("no-PEA-commands")[0].getBoundingClientRect().height);
-    if(noPEACommandsH < scrollContainerH){
-        const addFrameCmdsPH = (document.querySelector(".frameCommands p") as HTMLParagraphElement).getBoundingClientRect().height;
-        (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.height = (addFrameCmdsPH - (scrollContainerH - noPEACommandsH)) + "px";
+export function computeAddFrameCommandContainerSize(isExpandedPEA?: boolean): void{
+    // Two situations can happen: being or not in expanded PEA view.
+    // If we are in expanded PEA view, the height of the frame commands panel is aligned with the editor's "cropped" size.
+    // If we are in collapsed PEA view, the height of the frame commands is aligned with the commands/PEA splitter pane's size.
+    if(isExpandedPEA){
+        const projectNameContainerH = (document.getElementsByClassName(scssVars.strypeProjectNameContainerClassName)[0] as HTMLDivElement).clientHeight;
+        const croppedEditorH = (manuallyResizedEditorHeight) ? manuallyResizedEditorHeight : (document.getElementsByTagName("body")[0].clientHeight / 2);
+        (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.height = (croppedEditorH - projectNameContainerH) + "px";
+        // In expanded view, we need to set the frame commmands container to "position: absolute" for the content to overlay the commands/PEA splitter.
+        // However, the width won't align properly, we need to set that width manually.
+        const frameCmdsParagraphContainer =  document.querySelector("." + scssVars.addFrameCommandsContainerClassName) as HTMLDivElement;
+        (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.width = frameCmdsParagraphContainer.clientWidth + "px";
+    }
+    else {
+        // Reset the frame commands container's width to natural behaviour (see case above)
+        (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.width = "";
+
+        // When the container div overflows, we remove the overflow extra height to the p element containing the commands
+        // so that we can shorten the p height to trigger the commands to be displayed in columns.
+        const scrollContainerH = document.getElementsByClassName(scssVars.noPEACommandsClassName)[0].scrollHeight;
+        const noPEACommandsH =  document.getElementsByClassName(scssVars.noPEACommandsClassName)[0].getBoundingClientRect().height;
+        const addFrameCmdsPH = (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement).getBoundingClientRect().height;
+        const commandsFlexContainer = (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement);
+        if(noPEACommandsH < scrollContainerH){
+            commandsFlexContainer.style.height = (addFrameCmdsPH - (scrollContainerH - noPEACommandsH)) + "px";
+        }
+        else{
+            // The commands panel is not overflowing, but it could be because it is already collapsed (elements are wrapped) and now we have more space for it to expand:
+            // in the case, we want to increase the commands panel size.
+            if(commandsFlexContainer.childElementCount > 0){
+                const firstCommandLeft = commandsFlexContainer.children[0].getBoundingClientRect().left;
+                const lastCommandLeft =  commandsFlexContainer.children[commandsFlexContainer.childElementCount - 1].getBoundingClientRect().left;
+                if(firstCommandLeft != lastCommandLeft){
+                    const projectNameContainerH = document.getElementsByClassName(scssVars.strypeProjectNameContainerClassName)[0].getBoundingClientRect().height;
+                    (document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement).style.height = (noPEACommandsH - projectNameContainerH) + "px";
+                }
+            }
+        }
+            
+        // When we are done, we need to check again the min size of the commands/PEA splitter pane 1, since scroll bars
+        // could have been added with the new change (need to wait for it to be effective though).
+        setTimeout(() => {
+            (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).setPEACommandsSplitterPanesMinSize(true);    
+        }, 100);    
     }
 }
+/* FITRUE_isPython */
+
 
 export function getCurrentFrameSelectionScope(): SelectAllFramesFuncDefScope {
     // This method checks the current selection scope that we need to know when doing select-all (for function definitions).
@@ -1786,4 +2097,132 @@ export function getCurrentFrameSelectionScope(): SelectAllFramesFuncDefScope {
         return SelectAllFramesFuncDefScope.wholeFunctionBody;
     }
     return SelectAllFramesFuncDefScope.none;
+}
+
+
+/**
+ * Gets selected text from editable text nodes by traversing DOM from anchor to focus
+ * Similar to document.getSelection().toString() but only including nodes where
+ * isNodeSelectableText() returns true
+ *
+ * @returns {string} The concatenated text from all selected editable text nodes
+ */
+export function getEditableSelectionText() : string {
+    const selection = document.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+        return "";
+    }
+
+    // Get the range covering the current selection
+    const range = selection.getRangeAt(0);
+
+    // If selection is within a single node.  Note that if it's within an element it might be in Firefox
+    // where it's possible for the selection to be in the parent div 
+    if (range.startContainer === range.endContainer && range.startContainer.nodeType != Node.ELEMENT_NODE) {
+        if (range.startContainer.nodeType === Node.TEXT_NODE && isNodeSelectableText(range.startContainer)) {
+            return range.startContainer.nodeValue?.substring(Math.min(range.startOffset, range.endOffset), Math.max(range.startOffset, range.endOffset)) ?? "";
+        }
+        return "";
+    }
+    
+    // For multi-node selection
+    const allNodes = [] as string[];
+    const treeWalker = document.createTreeWalker(
+        range.cloneContents(),
+        // Need to show elements to find the media literal images:
+        NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
+        null
+    );
+
+    for (let node = treeWalker.nextNode(); node; node = treeWalker.nextNode()) {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            const el = node as HTMLElement;
+            if (el.classList.contains(scssVars.labelSlotMediaClassName)) {
+                const code = el.getAttribute("data-code");
+                if (code) {
+                    allNodes.push(code);
+                }
+            }
+        }
+        else {
+            const selectableText = isNodeSelectableText(node);
+            if (selectableText == "yes" || selectableText == "yes_quote") {
+                let nodeContent = node.nodeValue ?? "";
+                if (selectableText == "yes_quote") {
+                    nodeContent = nodeContent.replaceAll(/[“”]/g, "\"").replaceAll(/[‘’]/g, "'");
+                }
+                allNodes.push(nodeContent);
+            }
+        }
+    }
+
+    return allNodes.join("").replace(/\u200B/g, "");
+}
+
+// Helper function to check if a node is inside a contenteditable element
+function isNodeSelectableText(node: Node | null) : ("no" | "yes_quote" | "yes") {
+    if (!node || node.nodeType !== Node.TEXT_NODE) {
+        return "no";
+    }
+
+    // Check if the nearest element ancestors is contenteditable
+    let current: Node | null = node;
+    let editable = false;
+    let quote = false;
+    while (current) {
+        if (current.nodeType === Node.ELEMENT_NODE) {
+            const el = current as HTMLElement;
+            if (el.classList.contains(scssVars.labelSlotInputClassName)){
+                editable = true;
+            }
+            if (el.classList.contains(scssVars.frameStringSlotQuoteClassName)) {
+                quote = true;
+            }
+        }
+        current = current.parentNode;
+    }
+    if (editable && quote) {
+        return "yes_quote";
+    }
+    else if (editable) {
+        return "yes";
+    }
+    else {
+        return "no";
+    }
+}
+
+// Gets all the HTML elements which are part of the window text selection.
+// The returned list may contain duplicates
+export function getElementsInSelection() : Element[] {
+    const selection = window.getSelection();
+    if (!selection || !selection.rangeCount) {
+        return [];
+    }
+
+    const elements = [];
+
+    for (let i = 0; i < selection.rangeCount; i++) {
+        const range = selection.getRangeAt(i);
+        // Clone the selected content to be able to access the sub-elements:
+        const fragment = range.cloneContents();
+        elements.push(...fragment.querySelectorAll("*"));
+    }
+
+    return elements;
+}
+
+// Joins fields and operators, but ignores brackets, quotes, media:
+export function simpleSlotStructureToString(ss: SlotsStructure) : string {
+    const r : string[] = [];
+    for (let i = 0; i < ss.fields.length; i++) {
+        const field = ss.fields[i];
+        if (isFieldBaseSlot(field)) {
+            r.push(field.code);
+        }
+        if (i < ss.operators.length) {
+            r.push(ss.operators[i].code);
+        }
+    }
+    return r.join("");
 }

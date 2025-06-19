@@ -1,11 +1,12 @@
 <template>
-    <div class="frame-container" :style="frameStyle" @click.self="onOuterContainerClick">
+    <div class="frame-container" :style="frameStyle" @click.self="onOuterContainerClick" @mouseenter="onFrameContainerHover(true)" @mouseleave="onFrameContainerHover(false)">
         <div class="frame-container-header">
-            <button class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
-            <span class="frame-container-label-span" @click.self="toggleCollapse">{{containerLabel}}</span>
+            <button v-if="!isMainCodeFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
+            <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer}" @click.self="toggleCollapse">{{containerLabel}}</span>
         </div>
 
         <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
+        <hr v-if="isCollapsed && frames.length > 0" class="non-empty-collapsed-frame-container-hr">
         <div :id="frameUID" :style="containerStyle" class="container-frames" @click="onFrameContainerClick" tabindex="-1" ref="containerFrames">
             <CaretContainer
                 :frameId="frameId"
@@ -40,7 +41,9 @@ import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
 import { CaretPosition, FrameObject, DefaultFramesDefinition, FramesDefinitions, FrameContainersDefinitions, getFrameDefType, AllFrameTypesIdentifier, PythonExecRunningState } from "@/types/types";
 import { mapStores } from "pinia";
-import { getCaretContainerRef, getCaretUID, getFrameUID} from "@/helpers/editor";
+import { CustomEventTypes, getCaretContainerRef, getCaretUID, getFrameUID} from "@/helpers/editor";
+import scssVars from "@/assets/style/_export.module.scss";
+import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 
 //////////////////////
 //     Component    //
@@ -74,8 +77,20 @@ export default Vue.extend({
         delete this.$root.$refs[getCaretUID(this.caretPosition.body, this.frameId)];
     },
 
+    data: function(){
+        return {
+            isHovered: false,
+            currentDragAndDropHoverTimeoutHandle: -1,
+        };
+    },
+
     computed: {
         ...mapStores(useStore),
+
+        scssVars() {
+            // just to be able to use in template
+            return scssVars;
+        },
 
         frameUID(): string{
             return getFrameUID(this.frameId);
@@ -83,6 +98,10 @@ export default Vue.extend({
 
         getCaretContainerRef(): string {
             return getCaretContainerRef();
+        },
+
+        isMainCodeFrameContainer(): boolean {
+            return this.frameId == this.appStore.getMainCodeFrameContainerId;
         },
         
         frames: {
@@ -112,7 +131,7 @@ export default Vue.extend({
             };
             // For the main code, add 200px at the bottom so you can scroll down to put the last bit of code
             // above the bottom of the window.
-            if (this.frameId == -3) {
+            if (this.isMainCodeFrameContainer) {
                 defaultStyle["padding-bottom"] = "200px";
             }
             return defaultStyle;
@@ -124,7 +143,8 @@ export default Vue.extend({
 
         isCollapsed: {
             get(): boolean {
-                return this.appStore.isContainerCollapsed(this.frameId);
+                // Ignore the value for "My code" container for compatibility with saved project having collapsable "My code" container.
+                return (this.isMainCodeFrameContainer)? false : this.appStore.isContainerCollapsed(this.frameId);
             },
             set(value: boolean){
                 this.appStore.setCollapseStatusContainer(
@@ -160,7 +180,22 @@ export default Vue.extend({
         },
         
         toggleCollapse(): void {
-            this.isCollapsed = !this.isCollapsed;
+            // Only collapse Imports and Definitions frame containers.
+            if(!this.isMainCodeFrameContainer){
+                this.isCollapsed = !this.isCollapsed;
+                
+                // Also move the frame cursor to the next uncollapsed frame container
+                // if we were inside the frame container being collapsed
+                if(this.isCollapsed && getFrameSectionIdFromFrameId(this.appStore.currentFrame.id) == this.frameId) {
+                    const nextFrameContainerIndex = this.appStore.frameObjects[this.appStore.getRootFrameContainerId].childrenIds.indexOf(this.frameId) + 1;
+                    const nextFrameContainerId = this.appStore.frameObjects[this.appStore.getRootFrameContainerId].childrenIds.at(nextFrameContainerIndex);
+                    // As we have only 3 sections, if the next section is collapsed we automatically get to "My code", as this one is never collapsed.
+                    const targetFrameContainerId = (nextFrameContainerId && !this.appStore.frameObjects[nextFrameContainerId].isCollapsed)
+                        ? nextFrameContainerId
+                        : this.appStore.getMainCodeFrameContainerId;
+                    this.appStore.setCurrentFrame({id: targetFrameContainerId, caretPosition: CaretPosition.body});
+                }
+            }
         },
 
         onFrameContainerClick(event: any): void {
@@ -174,7 +209,7 @@ export default Vue.extend({
         },
         
         onOuterContainerClick(event : any): void {
-            var containerFramesBounds = (this.$refs.containerFrames as HTMLElement).getBoundingClientRect();
+            const containerFramesBounds = (this.$refs.containerFrames as HTMLElement).getBoundingClientRect();
             
             // Was the click beneath the bottom of the frame container?
             if (event.clientY > containerFramesBounds.bottom) {
@@ -199,6 +234,34 @@ export default Vue.extend({
                 event.stopPropagation();
                 event.stopImmediatePropagation();
             }
+
+            // Make sure the container is expanded.
+            this.appStore.frameObjects[this.frameId].isCollapsed = false;
+        },
+
+        onFrameContainerHover(isHovered: boolean): void {
+            this.isHovered = isHovered;
+            
+            // Stop the timeout if one was set
+            if(!isHovered && this.currentDragAndDropHoverTimeoutHandle > -1){
+                window.clearTimeout(this.currentDragAndDropHoverTimeoutHandle);
+                this.currentDragAndDropHoverTimeoutHandle = -1;
+            }
+
+            // During a drag and drop, if the frame container is collapsed and we've waited long enough, 
+            // we can expand the frame (and we trigger an event to allow the drag and drop mechanism to 
+            // take the new situation into account.)
+            const timeout = 1000;
+            if(isHovered && this.appStore.isDraggingFrame && !this.isMainCodeFrameContainer && this.isCollapsed){
+                this.currentDragAndDropHoverTimeoutHandle = window.setTimeout(() => {
+                    // Check if we are still hovering and dragging                
+                    if(this.isHovered && this.appStore.isDraggingFrame){
+                        this.appStore.frameObjects[this.frameId].isCollapsed = false;
+                        document.dispatchEvent(new CustomEvent(CustomEventTypes.dropFramePositionsUpdated));
+                    }
+                }, timeout);
+            }
+
         },
     },
 });
@@ -216,22 +279,30 @@ export default Vue.extend({
     border-color: transparent;
     background-color: transparent;
     outline:none;
+    padding-inline: 2px; // Not only for us to custom style, but because otherwise browsers set different values
 }
 
 .frame-container-btn-collapse:focus {
     outline: none;
 }
 
-.frame-container-label-span {       
+.#{$strype-classname-frame-container-label-span} {       
     margin-left: 5px;
     cursor:default;
     color: #274D19;
     font-weight: 600;
 }
 
+.no-toggle-frame-container-span {
+  margin-left: 4px; // 2px in place of the button border + 2px in place of the button inline padding 
+}
+
+.container-frames, .non-empty-collapsed-frame-container-hr {
+    margin-left: 10px; // 1px less than for the right margin to make the rendering neat
+    margin-right: 11px;
+}
+
 .container-frames {
-    margin-left: 14px; // 1px less than for the right margin to wake the rendering neat
-    margin-right: 15px;
     border-radius: 8px;
     border: 1px solid #B4B4B4;
     outline: none;

@@ -72,7 +72,7 @@
     "gdriveConnectionSaveToLoadProjFailed": "尝试保存当前项目时无法连接到 Google Drive。请尝试重新登录以打开另一个项目。",
     "gdriveConnectionSaveToUnloadPageFailed": "尝试保存当前项目时无法连接到 Google Drive。请在离开Strype前尝试重新登录以保存当前项目 。",
     "gdrivePermissionsNotMet": "Strype 至少需要一项访问权限才能使用 Google Drive。",
-    "gdriveReadOnly": "此文件为只读。自动保存已关闭。",
+    "gdriveReadOnly": "此Google Drive文件为只读。",
     "gdriveWrongFile": "请选择一个 Strype 文件（扩展名为 \".spy\"）。",
     "unexpectedCharsPython": "意外字符"
   },
@@ -107,6 +107,7 @@
     "selectStrypeFile": "选择一个 Strype 项目",
     "gdriveLocation": "文件夹：",
     "gdriveAllStrypeFiles": "所有 Strype 文件",
+    "gdriveAllPythonFiles": "所有 Python 文件",
     "gdriveTab": "我的 Drive",
     "editorErrors": "错误",
     "resyncToGDAtStartup": "上次编辑此项目时，您正在保存到 Google Drive。\n是否要重新连接到 Google Drive 以同步您的更改？\n如果不这样做，您将无法获得来自 Google Drive 的最新版本，并且您的更改将不会保存回那里。"
@@ -132,12 +133,11 @@
   "appMenu": {
     "downloadHex": "转换为 Hex 文件",
     "downloadPython": "转换为 Python 文件",
-    "loadProject": "打开",
+    "loadProject": "打开...",
     "saveProject": "保存",
     "saveAsProject": "另存为...",
     "resetProject": "新项目",
     "resetProjectTooltip": "使用 Strype 默认项目重置编辑器",
-    "prefs": "首选项",
     "lang": "语言：",
     "homepage": "Strype 主页",
     "version": "版本"

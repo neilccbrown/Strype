@@ -1,7 +1,9 @@
 import { defineConfig } from "cypress";
 import {rimraf} from "rimraf";
+import fs from "fs";
 
 export default defineConfig({
+    retries: 2,
     downloadsFolder: "tests/cypress/downloads",
     fixturesFolder:	"tests/cypress/fixtures",
     screenshotsFolder: "tests/cypress/screenshots",
@@ -29,12 +31,31 @@ export default defineConfig({
                         });
                     });
                 },
+                renameFile(args: {srcPath: string, destPath: string}) {
+                    fs.renameSync(args.srcPath, args.destPath);
+                    return null;
+                },
             });
             // Allow logging to console (although only the first message seems to get logged?)
             on("task", {
                 log (message) {
                     console.log(message); 
                     return null;
+                },
+            });
+
+            // downloads is a task which lists all the files in the Cypress downloads directory:
+            on("task", {
+                downloads:  () => {
+                    return new Promise((resolve, reject) => {
+                        fs.readdir("tests/cypress/downloads", (err, files) => {
+                            if (err) {
+                                return reject(err);
+                            }
+
+                            resolve(files);
+                        });
+                    });
                 },
             });
             

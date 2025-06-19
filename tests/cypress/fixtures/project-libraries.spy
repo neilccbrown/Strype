@@ -1,0 +1,8 @@
+#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Library:foo
+import bar 
+#(=> Library:https://www.google.com/
+#(=> Section:Definitions
+#(=> Section:Main
+#(=> Section:End

@@ -47,7 +47,6 @@
   "appMenu": {
     "downloadHex": "Μετατροπή σε Εξαδικό αρχείο",
     "downloadPython": "Μετατροπή σε Αρχείο Python",
-    "prefs": "Ρυθμίσεις",
     "lang": "Γλώσσα: "
   },
   "autoCompletion": {

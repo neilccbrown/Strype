@@ -2,11 +2,12 @@ import { getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
-import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
+import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, isFieldMediaSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
 import Vue from "vue";
-import { checkEditorCodeErrors, countEditorCodeErrors, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID } from "./editor";
+import { checkEditorCodeErrors, countEditorCodeErrors, getCaretContainerUID, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID } from "./editor";
 import { nextTick } from "@vue/composition-api";
 import { cloneDeep } from "lodash";
+import scssVars from "@/assets/style/_export.module.scss";
 
 export const retrieveSlotFromSlotInfos = (slotCoreInfos: SlotCoreInfos): FieldSlot => {
     // Retrieve the slot from its id (used for UI), check generateFlatSlotBases() for IDs explanation    
@@ -46,18 +47,22 @@ export const retrieveParentSlotFromSlotInfos = (slotInfos: SlotCoreInfos): Field
 // for example if the root slot has only 3 same level children (field/operator/field), ids will respectively be "0", "0" and "1"
 // if the root slot as 3 level children and the second of them has 3 same level children (again field/operator/field), ids will respectively be:
 // "0", "1,0", "1,0", "1,1", "2"
-export const generateFlatSlotBases = (slotStructure: SlotsStructure, parentId?: string, flatSlotConsumer?: (slot: FlatSlotBase) => void): FlatSlotBase[] => {
+export const generateFlatSlotBases = (slotStructure: SlotsStructure, parentId?: string, flatSlotConsumer?: (slot: FlatSlotBase, besidesOp: boolean, opAfter?: string) => void, transformEachLevel?: (oneLevel: SlotsStructure) => SlotsStructure): FlatSlotBase[] => {
     // The operators always get in between the fields, and we always have one 1 root structure for a label,
     // and bracketed structures can never be found at 1st or last position
     let currIndex = -1;
     const flatSlotBases: FlatSlotBase[] = [];
-    const addFlatSlot = (flatSlot: FlatSlotBase) => {
+    const addFlatSlot = (flatSlot: FlatSlotBase, besidesOp: boolean, opAfter?: string) => {
         flatSlotBases.push(flatSlot);
         // If a flat slot consumer is defined, we call it here
         if(flatSlotConsumer){
-            flatSlotConsumer(flatSlot);
+            flatSlotConsumer(flatSlot, besidesOp, opAfter);
         }
     };
+    
+    if (transformEachLevel) {
+        slotStructure = transformEachLevel(slotStructure);
+    }
 
     slotStructure.operators.forEach((operatorSlot, index) => {
         // Add the precededing field
@@ -67,37 +72,43 @@ export const generateFlatSlotBases = (slotStructure: SlotsStructure, parentId?: 
         if(isFieldBracketedSlot(fieldSlot)){
             // We have a bracketed structure, so we need to get into the nested level.
             // 1) add the opening bracket
-            addFlatSlot({id: slotId, code: fieldSlot.openingBracketValue as string, type:SlotType.openingBracket});
+            addFlatSlot({id: slotId, code: fieldSlot.openingBracketValue as string, type:SlotType.openingBracket}, false);
             // 2) add what is inside the brackets
-            flatSlotBases.push(...generateFlatSlotBases(fieldSlot as SlotsStructure, slotId, flatSlotConsumer));
+            flatSlotBases.push(...generateFlatSlotBases(fieldSlot as SlotsStructure, slotId, flatSlotConsumer, transformEachLevel));
             // 3) add the closing bracket
-            addFlatSlot({id: slotId, code: getMatchingBracket(fieldSlot.openingBracketValue as string, true), type:SlotType.closingBracket});
+            addFlatSlot({id: slotId, code: getMatchingBracket(fieldSlot.openingBracketValue as string, true), type:SlotType.closingBracket}, false);
 
         }
         else if(isFieldStringSlot(fieldSlot)){
             // We have a string slot
             // 1) add the opening quote
-            addFlatSlot({id: slotId, code: fieldSlot.quote as string, type:SlotType.openingQuote});
+            addFlatSlot({id: slotId, code: fieldSlot.quote as string, type:SlotType.openingQuote}, false);
             // 2) add what is inside the quotes
-            addFlatSlot({id: slotId, code: fieldSlot.code, type:SlotType.string});
+            addFlatSlot({id: slotId, code: fieldSlot.code, type:SlotType.string}, false);
             // 3) add the closing quote
-            addFlatSlot({id: slotId, code: fieldSlot.quote as string, type:SlotType.closingQuote});
+            addFlatSlot({id: slotId, code: fieldSlot.quote as string, type:SlotType.closingQuote}, false);
         }
         else{
             // we have a simple slot, we check if we can infer the detailed type (i.e. number or boolean literals)
             // otherwise we consider it is just a code slot
-            addFlatSlot({...(fieldSlot as BaseSlot), id: slotId, type: evaluateSlotType(fieldSlot)});
+            
+            // We pass true if we're beside an operator and the other side is the end or a non-blank operator
+            const adjacentOp =
+                ((operatorSlot.code !== "" && (index == 0 || slotStructure.operators[index - 1].code != ""))
+                || (index > 0 && slotStructure.operators[index - 1].code != "" && operatorSlot.code !== ""))
+                && !["not", "~"].includes(operatorSlot.code.trim());
+            addFlatSlot({...(fieldSlot as BaseSlot), id: slotId, type: evaluateSlotType(fieldSlot)}, adjacentOp, operatorSlot.code);
         }   
 
         // Add this operator only if it is not blank
         if(operatorSlot.code.length > 0) {
-            addFlatSlot({...operatorSlot, id: slotId, type: SlotType.operator});
+            addFlatSlot({...operatorSlot, id: slotId, type: SlotType.operator}, false);
         }
     });
 
     // Add the last remaining field and call the consumer (if provided)
     currIndex++;
-    addFlatSlot({...(slotStructure.fields.at(-1) as BaseSlot), id: getSlotIdFromParentIdAndIndexSplit(parentId??"", currIndex), type: evaluateSlotType(slotStructure.fields.at(-1) as FieldSlot)});
+    addFlatSlot({...(slotStructure.fields.at(-1) as BaseSlot), id: getSlotIdFromParentIdAndIndexSplit(parentId??"", currIndex), type: evaluateSlotType(slotStructure.fields.at(-1) as FieldSlot)}, slotStructure.operators.length > 0 && slotStructure.operators.at(-1)?.code != "");
 
     return flatSlotBases;
 };
@@ -181,6 +192,17 @@ export const getFlatNeighbourFieldSlotInfos = (slotInfos: SlotCoreInfos, findNex
     }
 };
 
+// Helper method to get the number of direct children for a slot's parent based on its ID
+export const getFrameParentSlotsLength = (slotInfos: SlotCoreInfos): number => {
+    if(slotInfos.slotId.includes(",")) {
+        return (retrieveSlotFromSlotInfos({...slotInfos, slotId: getSlotParentIdAndIndexSplit(slotInfos.slotId).parentId}) as SlotsStructure).fields.length;
+    }
+    else {
+        // If the slot is already at the top level of the label slot structure, we look directly inside the store at the labelSlotsDict level.
+        return useStore().frameObjects[slotInfos.frameId].labelSlotsDict[slotInfos.labelSlotsIndex].slotStructures.fields.length;
+    }
+};
+
 export function isFrameLabelSlotStructWithCodeContent(slotsStruct: SlotsStructure): boolean {
     let hasContent = false;
     for(const fieldSlot of slotsStruct.fields){
@@ -203,6 +225,9 @@ export const evaluateSlotType = (slot: FieldSlot): SlotType => {
     }
     else if (isFieldStringSlot(slot)){
         return  SlotType.string;
+    }
+    else if (isFieldMediaSlot(slot)){
+        return SlotType.media;
     }
     else {
         // Other things are just "code"
@@ -469,7 +494,7 @@ export const restoreSavedStateFrameTypes = function(state:{[id: string]: any}): 
     // If we have managed to load the state, then we might need to make sure the caret is in view
     if(success){
         setTimeout(() => {
-            const htmlElementToShowId = (useStore().focusSlotCursorInfos) ? getLabelSlotUID((useStore().focusSlotCursorInfos as SlotCursorInfos).slotInfos) : ("caret_"+useStore().currentFrame.caretPosition+"_of_frame_"+useStore().currentFrame.id);
+            const htmlElementToShowId = (useStore().focusSlotCursorInfos) ? getLabelSlotUID((useStore().focusSlotCursorInfos as SlotCursorInfos).slotInfos) : getCaretContainerUID(useStore().currentFrame.caretPosition, useStore().currentFrame.id);
             document.getElementById(htmlElementToShowId)?.scrollIntoView();
         }, 1000);
     }   
@@ -701,10 +726,12 @@ export const isContainedInFrame = function (currFrameId: number, caretPosition: 
 
 // Instead of calculating the available caret positions through the store (where the frameObjects object is hard to use for this)
 // We get the available caret positions through the DOM, where they are all present.
-export const getAvailableNavigationPositions = function(): NavigationPosition[] {
+// If showIsInCollapsedFrameContainer is set to true, we check that the frame container (section) containing the cursor is not collapsed 
+// and add the corresponding information in the results (we do that optionally as it calls a recursive method).
+export const getAvailableNavigationPositions = function(showIsInCollapsedFrameContainer?: boolean): NavigationPosition[] {
     // We start by getting from the DOM all the available caret and editable slot positions 
     // (slots of "code" type slots, e.g. not operators -- won't appear in allCaretDOMPositions)
-    const allCaretDOMpositions = document.getElementsByClassName("navigationPosition");
+    const allCaretDOMpositions = document.getElementsByClassName(scssVars.navigationPositionClassName);
     // We create a list that hold objects of {frameId,isSlotNavigationPosition,caretPosition?,labelSlotsIndex?, slotId?) for each available navigation positions
     // and discard the locations that correspond to the editable slots of disable frames
     return Object.values(allCaretDOMpositions).map((e)=> {
@@ -723,8 +750,9 @@ export const getAvailableNavigationPositions = function(): NavigationPosition[] 
         return {
             frameId: (frameIdMatch != null) ? parseInt(frameIdMatch[0]) : -100, // need to check the match isn't null for TS, but it should NOT be.
             isSlotNavigationPosition: isSlotNavigationPosition, 
-            ...positionObjIdentifier,            
-        };
+            ...positionObjIdentifier,
+            isInCollapsedFrameContainer: (showIsInCollapsedFrameContainer) ? (useStore().frameObjects[getFrameSectionIdFromFrameId(parseInt(frameIdMatch?.[0]??"-100"))].isCollapsed) : undefined,            
+        } as NavigationPosition;
     }).filter((navigationPosition) => useStore().frameObjects[navigationPosition.frameId] && !(navigationPosition.isSlotNavigationPosition && useStore().frameObjects[navigationPosition.frameId].isDisabled)) as NavigationPosition[]; 
 };
 
@@ -832,7 +860,7 @@ export function checkCodeErrors(frameIdForPrecompiled?: number): void {
     // So in case of an error, we catch it to allow the rest of the code to execute...
     try{
         const parser = new Parser(true);
-        parser.getErrorsFormatted(parser.parse());
+        parser.getErrorsFormatted(parser.parse({}));
     }
     catch(error){
         console.log(error);

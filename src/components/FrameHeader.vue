@@ -9,7 +9,7 @@
                 <!-- the class isn't set on the parent div so the size of hidden editable slots can still be evaluated correctly -->
                 <div 
                     style="font-weight: 600;"
-                    :class="{'next-to-eachother frame-keyword': true, hidden: isLabelHidden(item), leftMargin: index > 0, rightMargin: (item.label.length > 0 && !item.appendSelfWhenInClass),'frameColouredLabel': !isCommentFrame}"
+                    :class="{['next-to-eachother ' + scssVars.framePythonTokenClassName]: true, hidden: isLabelHidden(item), leftMargin: index > 0, rightMargin: (item.label.length > 0 && !item.appendSelfWhenInClass), [scssVars.frameColouredLabelClassName]: !isCommentFrame}"
                     v-html="item.label"
                 >
                 </div>
@@ -37,6 +37,7 @@ import LabelSlotsStructure from "@/components/LabelSlotsStructure.vue";
 import { useStore } from "@/store/store";
 import {AllFrameTypesIdentifier, FrameLabel} from "@/types/types";
 import { mapStores } from "pinia";
+import scssVars from "@/assets/style/_export.module.scss";
 
 //////////////////////
 //     Component    //
@@ -67,6 +68,11 @@ export default Vue.extend({
         isCommentFrame(): boolean{
             return this.frameType===AllFrameTypesIdentifier.comment;
         },
+
+        scssVars() {
+            // just to be able to use in template
+            return scssVars;
+        },
     },
 
     methods:{
@@ -87,7 +93,7 @@ export default Vue.extend({
     width: 100%;
 }
 
-.frame-keyword {
+.#{$strype-classname-frame-python-token} {
     margin-top: 1px; // to align the keyword with the slots (that has 1 px border)
 }
 
@@ -101,7 +107,7 @@ export default Vue.extend({
 }
 
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 .leftMargin {
@@ -112,7 +118,7 @@ export default Vue.extend({
     margin-right: 4px;
 }
 
-.frameColouredLabel {
+.#{$strype-classname-frame-coloured-label} {
     color: rgb(2, 33, 168);
 }
 

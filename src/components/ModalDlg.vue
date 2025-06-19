@@ -1,10 +1,16 @@
 <!-- this acts as a wrapper around the bootstrap modals, to have centralised control and customisation -->
 <template>
     <b-modal no-close-on-backdrop :hide-header-close="!showCloseBtn" :id="dlgId" :title="dlgTitle" :ok-only="okOnly" 
-        :ok-title="okTitle" :cancel-title="cancelTitle" :size="size" :auto-focus-button="autoFocusButton">
+        :ok-title="okTitle" :ok-disabled="okDisabled" :cancel-title="cancelTitle" :size="size" :auto-focus-button="autoFocusButton" :modal-class="cssClass">
         <slot/>
+        <!-- if we use a loading OK, we assume ONLY the OK button is customised and use the default cancel/hide buttons of the modal -->
+        <template v-if="useLoadingOK" #modal-ok>
+            <b-spinner label="Spinning" small></b-spinner>
+            <span class="modal-spin-ok-btn-span">{{ okTitle }}</span>
+        </template>
+        <!-- if we are not using a loading OK, we entirely customise the modal footer -->
         <!-- the footer part is entirely optional if other buttons than the default OK/Cancel or Yes/No are required -->
-        <template v-if="!hideDlgBtns" #modal-footer="{ok, cancel, hide}">
+        <template v-else-if="!hideDlgBtns" #modal-footer="{ok, cancel, hide}">
             <slot name="modal-footer-content" :ok="ok" :cancel="cancel" :hide="hide"/>
         </template>
         <template v-else #modal-footer>
@@ -28,6 +34,8 @@ export default Vue.extend({
         dlgTitle: String,
         okOnly: Boolean,
         okCustomTitle: String,
+        okDisabled: Boolean, // this is meant as a TEMPORARY disable, for example when async methods are called in between
+        useLoadingOK: Boolean, // when we want to include a progress inside a OK button. Assumed "Cancel" and "Hide" are used with OK.
         cancelCustomTitle: String,
         hideDlgBtns: Boolean,
         showCloseBtn: Boolean,     
@@ -41,6 +49,7 @@ export default Vue.extend({
         },
         elementToFocusId: String,
         useYesNo: Boolean, // by default, the values of the buttons are OK and Cancel, this flag allows using Yes/No (in combination with okOnly) if needed
+        cssClass: String,
     },
 
     mounted(){
@@ -97,4 +106,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
+.modal-spin-ok-btn-span {
+    margin-left: 5px;
+}
 </style>

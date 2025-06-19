@@ -26,7 +26,7 @@ export interface LabelSlotsContent {
     slotStructures: SlotsStructure; // the root slot for that label
 }
 
-export type FieldSlot = (BaseSlot | SlotsStructure | StringSlot);
+export type FieldSlot = (BaseSlot | SlotsStructure | StringSlot | MediaSlot);
 export interface SlotsStructure {
     operators: BaseSlot[];
     fields: FieldSlot[];
@@ -49,6 +49,16 @@ export interface StringSlot extends BaseSlot {
     quote: string;    
 }
 
+// For MediaSlot, code contains: load_image("data:image/png;base64,......")
+// This will be the code generated if converted to Python or copied as text
+// The mediaType is for convenience here e.g. "image/png".
+// and we can infer the function is "load_image" from the media type.
+// None of this can be edited after the image is initially inserted into the code
+// so there are no problems with keeping the different parts in sync
+export interface MediaSlot extends BaseSlot {
+    mediaType: string;
+}
+
 export interface FlatSlotBase extends BaseSlot{    
     id: string;
     type: SlotType;
@@ -62,8 +72,12 @@ export function isFieldBracketedSlot(field: FieldSlot): field is SlotsStructure 
     return (field as SlotsStructure).openingBracketValue !== undefined;
 }
 
+export function isFieldMediaSlot(field: FieldSlot): field is SlotsStructure {
+    return (field as MediaSlot).mediaType !== undefined;
+}
+
 export function isFieldBaseSlot(field: FieldSlot): field is BaseSlot {
-    return (!isFieldBracketedSlot(field) && !isFieldStringSlot(field));
+    return (!isFieldBracketedSlot(field) && !isFieldStringSlot(field) && !isFieldMediaSlot(field));
 }
 
 // Used by the UI and in the code-behind mechanisms
@@ -84,6 +98,8 @@ export enum SlotType{
     // operator type
     operator = 0o7000, // meta category
     // "no type", which can be used for undo/redo difference marking
+    // media type
+    media = 0o70000, // meta category
     none = 0,    
 }
 
@@ -128,6 +144,12 @@ export interface FrameObject {
     runTimeError?: string; //this contains the error message for a runtime error, as the granularity of the Skulpt doesn't go beyond the line number
 }
 
+export enum AllowedSlotContent {
+    ONLY_NAMES,
+    ONLY_NAMES_OR_STAR,
+    TERMINAL_EXPRESSION
+}
+
 export interface FrameLabel {
     label: string;
     hidableLabelSlots?: boolean; // default false, true indicate that this label and associated slots can be hidden (ex: "as" in import frame)
@@ -136,8 +158,8 @@ export interface FrameLabel {
     defaultText: string;
     optionalSlot?: boolean; //default false (indicate that this label does not require at least 1 slot value)
     acceptAC?: boolean; //default true
+    allowedSlotContent?: AllowedSlotContent; // default TERMINAL_EXPRESSION; what the slot accepts
     appendSelfWhenInClass?: boolean, // default false.  For the opening bracket in function definitions (which show "self" if inside a class)
-
 }
 
 export enum CaretPosition {
@@ -235,6 +257,11 @@ export interface SlotInfos extends SlotCoreInfos {
     errorTitle?: string;
 }
 
+// Like SlotInfos but may contain a MediaType (if it's a media slot)
+export interface SlotInfosOptionalMedia extends SlotInfos {
+    mediaType?: string;
+}
+
 export interface SlotCursorInfos{
     slotInfos: SlotCoreInfos;
     cursorPos: number;
@@ -251,12 +278,14 @@ export interface NavigationPosition {
     labelSlotsIndex?: number;
     slotId?: string;
     slotType?: SlotType;
+    isInCollapsedFrameContainer?: boolean;
 }
 export interface AddFrameCommandDef {
     type: FramesDefinitions;
     description: string; // The label that shown next to the key shortcut button
     shortcuts: [string, string?]; // The keyboard key shortcuts to be used to add a frame (eg "i" for an if frame), usually that's a single value array, but we can have 1 hidden shortcut as well
-    symbol?: string; // The symbol to show in the key shortcut button when the key it's not easily reprenstable (e.g. "⌴" for space)
+    symbol?: string; // The SVGIcon name for a symbol OR a string representation of the symbol to show in the key shortcut button when the key it's not easily representable
+    isSVGIconSymbol?: boolean; // To differenciate between the two situations mentioned above
     index?: number; // the index of frame type when a shortcut matches more than 1 context-distinct frames
 }
 
@@ -301,6 +330,7 @@ const CommentFrameTypesIdentifier = {
 const ImportFrameTypesIdentifiers = {
     import: "import",
     fromimport: "from-import",
+    library: "library",
 };
 
 export const DefIdentifiers = {
@@ -444,7 +474,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
     const GlobalDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.global,
-        labels: [{ label: "global ", defaultText: i18n.t("frame.defaultText.variable") as string}],
+        labels: [{ label: "global ", defaultText: i18n.t("frame.defaultText.variable") as string, allowedSlotContent: AllowedSlotContent.ONLY_NAMES}],
         colour: scssVars.mainCodeContainerBackground,
     };
 
@@ -489,7 +519,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...StatementDefinition,
         type: ImportFrameTypesIdentifiers.import,
         labels: [
-            { label: "import ", defaultText: i18n.t("frame.defaultText.modulePart") as string},
+            { label: "import ", defaultText: i18n.t("frame.defaultText.modulePart") as string, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
             // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
             // and thus not giving us back any AC results on the shortcut
             //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
@@ -502,14 +532,23 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...StatementDefinition,
         type: ImportFrameTypesIdentifiers.fromimport,
         labels: [
-            { label: "from ", defaultText: i18n.t("frame.defaultText.module") as string},
-            { label: "import ", defaultText: i18n.t("frame.defaultText.modulePart") as string},
+            { label: "from ", defaultText: i18n.t("frame.defaultText.module") as string, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
+            { label: "import ", defaultText: i18n.t("frame.defaultText.modulePart") as string, allowedSlotContent: AllowedSlotContent.ONLY_NAMES_OR_STAR },
             // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
             // and thus not giving us back any AC results on the shortcut
             //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
         ],    
         colour: scssVars.nonMainCodeContainerBackground,        
         isImportFrame: true,
+    };
+
+    const LibraryDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: ImportFrameTypesIdentifiers.library,
+        labels: [
+            { label: "library ", defaultText: i18n.t("frame.defaultText.libraryAddress") as string, acceptAC: false},
+        ],
+        colour: "#B4C8DC",
     };
 
     const CommentDefinition: FramesDefinitions = {
@@ -581,7 +620,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.except,
         labels: [
-            { label: "except ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: true},
+            { label: "except ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: true, allowedSlotContent: AllowedSlotContent.ONLY_NAMES},
             { label: " :", showSlots: false, defaultText: ""},
         ],
         jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
@@ -613,8 +652,8 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: DefIdentifiers.funcdef,
         labels: [
-            { label: "def ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false},
-            { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: true, acceptAC: false, appendSelfWhenInClass: true},
+            { label: "def ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
+            { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: true, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES, appendSelfWhenInClass: true },
             { label: ") :", showSlots: false, defaultText: ""},
         ],
         colour: "#ECECC8",
@@ -640,7 +679,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         type: StandardFrameTypesIdentifiers.with,
         labels: [
             { label: "with ", defaultText: i18n.t("frame.defaultText.expression") as string},
-            { label: " as ", defaultText: i18n.t("frame.defaultText.identifier") as string},
+            { label: " as ", defaultText: i18n.t("frame.defaultText.identifier") as string, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
             { label: " :", showSlots: false, defaultText: ""},
         ],
         colour: "#ede8f2",
@@ -668,6 +707,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         VarAssignDefinition,
         ImportDefinition,
         FromImportDefinition,
+        LibraryDefinition,
         CommentDefinition,
         GlobalDefinition,
         // also add the frame containers as we might need to retrieve them too
@@ -677,16 +717,19 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
     /*3) if required, update the types in all the frames existing in the editor (needed to update default texts and frame container labels) */
     if(regenerateExistingFrames){
         Object.values(useStore().frameObjects).forEach((frameObject: FrameObject) => {
-            // For containers, we just assign the label manually again here
+            // For containers, we just assign the label manually again here and change the definitons
             switch(frameObject.frameType.type){
             case ImportsContainerDefinition.type:
                 frameObject.frameType.labels[0].label = i18n.t("appMessage.importsContainer") as string;
+                ImportsContainerDefinition.labels[0].label = i18n.t("appMessage.importsContainer") as string;
                 break;
             case DefsContainerDefinition.type:
                 frameObject.frameType.labels[0].label = i18n.t("appMessage.defsContainer") as string;
+                DefsContainerDefinition.labels[0].label = i18n.t("appMessage.defsContainer") as string;
                 break;
             case MainFramesContainerDefinition.type:
                 frameObject.frameType.labels[0].label = i18n.t("appMessage.mainContainer") as string;
+                MainFramesContainerDefinition.labels[0].label = i18n.t("appMessage.mainContainer") as string;
                 break;
             default:
                 // For all normal frames, we rely on the frame definition type                
@@ -998,23 +1041,6 @@ export interface LibraryPath {
     aliasFor: string;
 }
 
-export interface CursorPosition {
-    top: number;
-    left: number;
-    height: number;
-}
-
-export const DefaultCursorPosition: CursorPosition = {
-    top: 0,
-    left: 0,
-    height: 0,
-};
-
-export interface EditableSlotReachInfos {
-    isKeyboard: boolean;
-    direction: -1 | 1;
-}
-
 export interface StateAppObject {
     debugging: boolean;
     initialState: EditorFrameObjects;
@@ -1044,6 +1070,17 @@ export enum StrypeSyncTarget {
     gd, // Google Drive
 }
 
+export enum GAPIState {
+    unloaded, // default state : the Google API hasn't been loaded yet
+    loaded, // when the Google API has been loaded
+    failed, // when the Google API failed to load
+}
+
+export enum ShareProjectMode {
+    public, // A public sharing (generic cases)
+    withinGD, // A share within Google Drive access rights
+}
+
 export enum SaveRequestReason {
     autosave,
     saveProjectAtLocation, // explicit save at the given location in the dialog
@@ -1052,6 +1089,7 @@ export enum SaveRequestReason {
     loadProject,
     unloadPage,
     reloadBrowser, // for Google Drive: when a project was previously saved in GD and the browser is reloaded and the user requested to save the local changes to GD.
+    saveSettings, // for saving Strype settings
 }
 
 export interface SaveExistingGDProjectInfos {
@@ -1118,4 +1156,40 @@ export interface Locale {
     code: string, // a 2 letter code idenitifying the locale (e.g.: "en")
     name: string, // the user-friendly locale's name (e.g.: "English")
 }
+
+export enum StrypePEALayoutMode {
+    tabsCollapsed = "tabsCollapsed", // the default layout mode where PEA is collapsed and using tabs for console/graphics (and selected mode for the micro:bit version)
+    tabsExpanded = "tabsExpanded", // the layout mode where PEA is expanded and using tabs for console/graphics
+    splitCollapsed = "splitCollapsed", // the layout mode where PEA is collapsed and console/graphics windows are (horizontally) split
+    splitExpanded = "splitExpanded", // the layout mode where PEA is expanded and console/graphics windows are (vertically) split
+}
+export interface StrypePEALayoutData {
+    mode: StrypePEALayoutMode, // The layout view for the PEA in Strype, see related enum
+    iconName: string, // the name of the icon to be retrieved from our SVG icons + localisation key name (makes it simpler to have one property!)
+}
+
+// Typescript doesn't allow to declare types with an index signature parameter being something else than number or string or symbol.
+// So to be able to still use types, we can use this trick that will use the values of the enum we want to use for the index signature type.
+// This type however requires all values of the enum to be used as indexes - so we need to also allow undefined values for the indexes.
+export type StrypeLayoutDividerSettings = {
+    [layout in StrypePEALayoutMode]: number | undefined;
+};
+
+export const defaultEmptyStrypeLayoutDividerSettings: StrypeLayoutDividerSettings = {
+    [StrypePEALayoutMode.tabsCollapsed]: undefined,
+    [StrypePEALayoutMode.tabsExpanded]: undefined,
+    [StrypePEALayoutMode.splitCollapsed]: undefined,
+    [StrypePEALayoutMode.splitExpanded]: undefined,
+};
+
+export interface LoadedMedia {
+    mediaType: string,
+    // Both sounds and images have an imageDataURL which acts as the preview:
+    imageDataURL : string,
+    // But only sounds have this item:
+    audioBuffer?: AudioBuffer,
+}
+
+export type EditImageInDialogFunction = (imageDataURL: string, showPreview: (dataURL : string) => void, callback: (replacement: {code: string, mediaType: string}) => void) => void;
+export type EditSoundInDialogFunction = (sound: AudioBuffer, callback: (replacement: {code: string, mediaType: string}) => void) => void;
 

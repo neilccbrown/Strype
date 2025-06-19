@@ -1,6 +1,6 @@
 <template>
     <div>
-        <div class="popupContainer" spellcheck="false">
+        <div :class="scssVars.acPopupContainerClassName" spellcheck="false">
             <div
                 :style="popupPosition"
                 class="popup"
@@ -21,7 +21,7 @@
                         </div>
                         <PopUpItem
                             v-for="(item) in resultsToShow[module]"
-                            class="popUpItems"
+                            :class="scssVars.acPopupItemClassName"
                             :id="UID+'_'+item.index"
                             :index="item.index"
                             :item="textForAC(item)"
@@ -37,7 +37,7 @@
                 </ul>
                 <div v-show="!areResultsToShow()">
                     <div 
-                        class="module empty-results"
+                        :class="'module ' + scssVars.acEmptyResultsContainerClassName"
                         @mousedown.prevent.stop
                         @mouseup.prevent.stop
                     >
@@ -72,15 +72,16 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import PopUpItem from "@/components/PopUpItem.vue";
-import {DefaultCursorPosition, IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWithCategory, BaseSlot} from "@/types/types";
+import {IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWithCategory, BaseSlot, AllFrameTypesIdentifier} from "@/types/types";
 import _ from "lodash";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
-import { getAllEnabledUserDefinedFunctions } from "@/helpers/storeMethods";
-import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, extractCommaSeparatedNames} from "@/autocompletion/acManager";
-import Parser from "@/parser/parser";
+import {getAllEnabledUserDefinedFunctions, getFrameContainer} from "@/helpers/storeMethods";
+import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, extractCommaSeparatedNames, tpyDefineLibraries} from "@/autocompletion/acManager";
+import Parser from "@/parser/parser"; 
 import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
 import {TPyParser} from "tigerpython-parser";
+import scssVars from "@/assets/style/_export.module.scss";
 
 //////////////////////
 export default Vue.extend({
@@ -93,14 +94,11 @@ export default Vue.extend({
     props: {
         list: [String],
         slotId: String,
-        cursorPosition: {
-            type: Object,
-            default: () => DefaultCursorPosition,
-        },
     },
 
     data: function() {
         return {
+            scssVars, // just to be able to use in template 
             acResults: {} as AcResultsWithCategory,
             resultsToShow: {} as IndexedAcResultWithCategory,
             documentation: [] as string[],
@@ -130,14 +128,14 @@ export default Vue.extend({
         popupPosition(): Record<string, string> {
             return {
                 "float" : "left",
-                "left": (this.cursorPosition.left+25)+"px",
+                "left": "25px",
             }; 
         },
 
         popupDocumentationPosition(): Record<string, string> {
             return {
                 "float" : "right",
-                "right": -(this.cursorPosition.left+25)+"px",
+                "right": "-25px",
                 //this is needed to avoid showing an empty documentation pane
                 "min-width":((this.documentation[this.selected]?.length>0)?"200px":"0px"),
             }; 
@@ -152,13 +150,14 @@ export default Vue.extend({
         sortCategories(categories : string[]) : string[] {
             // Other items (like the names of variables when you do var.) will come out as -1,
             // which works nicely because they should be first:
+            const isInsideFuncCallFrame = this.appStore.frameObjects[(parseLabelSlotUID(this.slotId).frameId)].frameType.type === AllFrameTypesIdentifier.funccall;
             const getOrder = (cat : string) => {
-                // First is my variables and my functions
+                // First is my variables and my functions (in that order, except when we are inside a function call frame.)
                 if (cat === this.$i18n.t("autoCompletion.myVariables")) {
-                    return 0;
+                    return (isInsideFuncCallFrame) ? 1 : 0;
                 }
                 else if (cat === this.$i18n.t("autoCompletion.myFunctions")) {
-                    return 1;
+                    return (isInsideFuncCallFrame) ? 0 : 1;
                 }
                 else if (cat === this.$i18n.t("autoCompletion.importedModules")) {
                     return 2;
@@ -187,8 +186,8 @@ export default Vue.extend({
             return sortedCategories;
         },
       
-        updateACForModuleImport(token: string) : void {
-            this.acResults = getAvailableModulesForImport();
+        async updateACForModuleImport(token: string) : Promise<void> {
+            this.acResults = await getAvailableModulesForImport();
             this.showFunctionBrackets = false;
             // Only show imports if the slot isn't following "as" (so we need to check the operator)
             const {frameId, slotId} = parseLabelSlotUID(this.slotId);
@@ -198,9 +197,11 @@ export default Vue.extend({
         },
 
         updateACForImportFrom(token: string, module: string) : void {
-            this.acResults = {"": getAvailableItemsForImportFromModule(module)};
-            this.showFunctionBrackets = false;
-            this.showSuggestionsAC(token);
+            getAvailableItemsForImportFromModule(module).then((items) => {
+                this.acResults = {"": items.filter((ac) => !ac.acResult.startsWith("_"))};
+                this.showFunctionBrackets = false;
+                this.showSuggestionsAC(token);
+            });
         },
       
         // frameId is which frame we're in.
@@ -209,7 +210,10 @@ export default Vue.extend({
         async updateAC(frameId: number, token : string | null, context: string): Promise<void> {
             const tokenStartsWithUnderscore = (token ?? "").startsWith("_");
             const parser = new Parser();
-            const userCode = parser.getCodeWithoutErrors(frameId);
+            const inFuncDef = getFrameContainer(frameId) == useStore().getFuncDefsFrameContainerId;
+            const userCode = parser.getCodeWithoutErrors(frameId, inFuncDef);
+            
+            await tpyDefineLibraries(parser);
             
             // If nothing relevant changed, no need to recalculate, just update based on latest token:
             if (this.lastTokenStartedUnderscore == tokenStartsWithUnderscore &&
@@ -227,7 +231,7 @@ export default Vue.extend({
             }
             
             this.showFunctionBrackets = true;
-            const imported = getAllExplicitlyImportedItems(context);
+            const imported = await getAllExplicitlyImportedItems(context);
             this.acResults = {};
             if (token === null) {
                 this.showSuggestionsAC("");
@@ -347,7 +351,7 @@ export default Vue.extend({
                 this.allowHoverSelection = true;
                 this.$nextTick(() => {
                     // Select the item immediately manually, because otherwise we need to wait that another item is selected for hover to work
-                    const selectedItem = document.querySelector(".acItem:hover");
+                    const selectedItem = document.querySelector("." + scssVars.acItemClassName + ":hover");
                     if(selectedItem){
                         const indexOfSelected = parseInt(selectedItem.id.replace(this.UID + "_",""));
                         this.handleACItemHover(indexOfSelected);
@@ -383,7 +387,7 @@ export default Vue.extend({
             this.currentDocumentation = this.getCurrentDocumentation();
 
             // now scroll to the selected view
-            const items = this.$el.querySelectorAll(".popUpItems");
+            const items = this.$el.querySelectorAll(".ac-popup-item");
             // we want to get the selected item to the end of the scrolling area (so inline set to "end", the other properties are used
             // to avoid the whole page to scroll down (bug #279), see https://stackoverflow.com/questions/11039885/scrollintoview-causing-the-whole-page-to-move).
             items[this.selected].scrollIntoView({block:"nearest", inline:"end"});
@@ -427,7 +431,7 @@ export default Vue.extend({
                 // With CSS, we simply look up the parent of the *hovered* item (one of the LIs) and retrieve its data-title attribute.
                 // There SHOULD be a selection, but in case something is messed up and we don't retrieve, we'll return the current module.
                 // (we use "hover" because when this method is called, the new selection isn't yet reflected in the change of styling);
-                const selectedLIElementParent = document.querySelector("li.acItem:hover")?.parentElement;
+                const selectedLIElementParent = document.querySelector("li." + scssVars.acItemClassName +":hover")?.parentElement;
                 return (selectedLIElementParent?.getAttribute("data-title")) ?? this.currentModule;
             }
         },
@@ -470,12 +474,12 @@ export default Vue.extend({
     cursor: default;
 }
 
-.empty-results {
+.#{$strype-classname-ac-empty-results-container} {
     white-space: nowrap;
     padding-right: 3px;
 }
 
-.popupContainer {
+.#{$strype-classname-ac-popup-container} {
     display: flex;
 }
 
