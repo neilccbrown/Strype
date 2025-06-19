@@ -18,7 +18,7 @@
       "parameters": "参数 ",
       "module": "模块 ",
       "modulePart": "函数/类 ",
-      "comment": "您的评论 "
+      "comment": "评论 "
     },
     "funcdef_desc": "函数定义",
     "varassign_desc": "赋值",

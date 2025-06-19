@@ -18,7 +18,7 @@
       "parameters": "parámetros ",
       "module": "módulo ",
       "modulePart": "función/clase ",
-      "comment": "tu comentario "
+      "comment": "comentario "
     },
     "funcdef_desc": " definición de la función",
     "varassign_desc": "asignación de la variable",

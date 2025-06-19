@@ -18,7 +18,7 @@
       "module": "module ",
       "modulePart": "fonction/classe ",
       "libraryAddress": "emplacement",
-      "comment": "ton commentaire "
+      "comment": "commentaire "
     },
     "funcdef_desc": "définition de fonction",
     "varassign_desc": "affectation",
@@ -183,7 +183,7 @@
     "runtimeErrorConsole": "Erreur d'exécution",
     "console": "Console",
     "Graphics": "Graphics",
-    "importTurtle": "Importe le module 'turtle' pour utiliser Turtle Graphics",
+    "importTurtle": "Importez le module 'turtle' pour utiliser Turtle Graphics",
     "PEA-layout-tabs-collapsed": "Disposition en onglets reduite",
     "PEA-layout-tabs-expanded":"Disposition en onglets étendue",
     "PEA-layout-split-collapsed": "Disposition fractionnée réduite",

@@ -19,7 +19,7 @@
       "module": "module ",
       "modulePart": "function/class ",
       "libraryAddress": "location",
-      "comment": "your comment "
+      "comment": "comment "
     },
     "funcdef_desc": "function definition",
     "varassign_desc": "assignment",
