@@ -235,7 +235,7 @@ export default class Parser {
                 ? indentation + "except " + STRYPE_DUMMY_FIELD + ":\n" + indentation + "    pass\n" : "") +
             this.parseFrames(
                 useStore().getJointFramesForFrameId(block.id),
-                insideAClass
+                insideAClass,
                 indentation
             );
         
@@ -246,7 +246,7 @@ export default class Parser {
         // This method is called when parsing the content of a block frame that only contains simple comments or blank frames,
         // effectively making the block content empty. However, we need to 1) allow "passing" the content for Python to 
         // compile properly, and 2) make sure we keep the slots/lines mapping for proper errors handling.
-        const emptyContent = this.parseFrames(children, indentation + conditionalIndent);
+        const emptyContent = this.parseFrames(children, false, indentation + conditionalIndent);
         const passLine = indentation + conditionalIndent + "pass" + "\n";
         return this.saveAsSPY ? emptyContent : passLine.repeat(children.length);
     }
@@ -348,7 +348,7 @@ export default class Parser {
                 output += "#" + AppSPYPrefix + " Section:Main\n";
                 this.line += 1;
             }
-            else if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.funcDefsContainer) {
+            else if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.defsContainer) {
                 output += "#" + AppSPYPrefix + " Section:Definitions\n";
                 this.line += 1;
             }
@@ -411,7 +411,7 @@ export default class Parser {
     }
     
     public parseJustImports() : string {
-        return this.parse({startAtFrameId: useStore().getImportsFrameContainerId, stopAtFrameId: useStore().getFuncDefsFrameContainerId});
+        return this.parse({startAtFrameId: useStore().getImportsFrameContainerId, stopAtFrameId: useStore().getDefsFrameContainerId});
     }
 
     public parse({startAtFrameId, stopAtFrameId, excludeLoopsAndCommentsAndCloseTry, defsLast}: {startAtFrameId?: number, stopAtFrameId?: number, excludeLoopsAndCommentsAndCloseTry?: boolean, defsLast?: boolean}): string {
@@ -441,11 +441,11 @@ export default class Parser {
             codeUnits = useStore().getFramesForParentId(0);
             if (defsLast) {
                 codeUnits = codeUnits
-                    .filter((item) => item.frameType.type !== ContainerTypesIdentifiers.funcDefsContainer)
-                    .concat(codeUnits.filter((item) => item.frameType.type === ContainerTypesIdentifiers.funcDefsContainer));
+                    .filter((item) => item.frameType.type !== ContainerTypesIdentifiers.defsContainer)
+                    .concat(codeUnits.filter((item) => item.frameType.type === ContainerTypesIdentifiers.defsContainer));
             }
         }
-        output += this.parseFrames(codeUnits, "");
+        output += this.parseFrames(codeUnits, false, "");
         // We could have disabled frame(s) just at the end of the code. 
         // Since no further frame would be used in the parse to close the ongoing comment block we need to check
         // if there are disabled frames being rendered when reaching the end of the editor's code.

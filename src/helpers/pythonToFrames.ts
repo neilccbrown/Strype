@@ -930,26 +930,28 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
             }
         }
         break;
-    case Sk.ParseTables.sym.funcdef:
+    case Sk.ParseTables.sym.funcdef: {
         // First child is keyword, second is the name, third is params, fourth is colon, fifth is body
-        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.funcdef, 0, [1, 2], 4, s, (f) => {
-            if (s.parent?.frameType.type == AllFrameTypesIdentifier.classdef) {
-                // We remove the first param from the start of function params,
-                // assuming it is the self parameter that we add automatically.
-                const params = f.labelSlotsDict[1];
-                
-                if (params && params.slotStructures.fields.length == 1) {
-                    // We need to keep a field, but we blank the content:
-                    (params.slotStructures.fields[0] as BaseSlot).code = "";
-                }
-                else if (params && params.slotStructures.fields.length > 1) {
-                    // We can just delete the first item and first operator, and rest can stay:
-                    params.slotStructures.fields.splice(0, 1);
-                    params.slotStructures.operators.splice(0, 1);
-                }
+        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.funcdef, 0, [1, 2], 4, s);
+        const f = r.frame;
+        s = r.s;
+        if (s.parent?.frameType.type == AllFrameTypesIdentifier.classdef) {
+            // We remove the first param from the start of function params,
+            // assuming it is the self parameter that we add automatically.
+            const params = f.labelSlotsDict[1];
+
+            if (params && params.slotStructures.fields.length == 1) {
+                // We need to keep a field, but we blank the content:
+                (params.slotStructures.fields[0] as BaseSlot).code = "";
             }
-        }).s;
+            else if (params && params.slotStructures.fields.length > 1) {
+                // We can just delete the first item and first operator, and rest can stay:
+                params.slotStructures.fields.splice(0, 1);
+                params.slotStructures.operators.splice(0, 1);
+            }
+        }
         break;
+    }
     case Sk.ParseTables.sym.classdef: {
         // First child is keyword, second is the name, penultimate is colon, last is body.
         // If there are parent classes, third is open-bracket, fourth is content, fifth is close bracket
@@ -971,10 +973,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
             name.operators.push({code: ""}, {code: ""});
             slots[0] = {slotStructures: name};
         }
-        const frame = makeFrame(AllFrameTypesIdentifier.classdef, slots);
-        s = addFrame(frame, s);
-        const nextId = copyFramesFromPython(children(p)[numChildren - 1], {...s, addTo: frame.childrenIds, parent: frame}).nextId;
-        s = {...s, nextId: nextId};
+        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.classdef, 0, numChildren == 4 ? [1] : [1,3], numChildren - 1, s).s;
         break;
     }
     }
@@ -1197,7 +1196,7 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
     // if there are any errors we don't want to paste any:
     let err = copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.format, s.importsMapping);
     if (typeof err != "string") {
-        err = copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.FUNCDEF_SECTION, s.format, s.defsMapping);
+        err = copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.DEFS_SECTION, s.format, s.defsMapping);
     }
     if (typeof err != "string") {
         err = copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION, s.format, s.mainMapping);
@@ -1222,14 +1221,14 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
         if (useStore().copiedSelectionFrameIds.length > 0) {
             getCaretContainerComponent(getFrameComponent(useStore().getImportsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(curLocation == STRYPE_LOCATION.IMPORTS_SECTION ? "caret" : "end");
         }
-        copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.FUNCDEF_SECTION, s.format);
+        copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.DEFS_SECTION, s.format);
         if (useStore().copiedSelectionFrameIds.length > 0) {
-            getCaretContainerComponent(getFrameComponent(useStore().getFuncDefsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(curLocation == STRYPE_LOCATION.FUNCDEF_SECTION ? "caret" : "end");
+            getCaretContainerComponent(getFrameComponent(useStore().getDefsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(curLocation == STRYPE_LOCATION.DEFS_SECTION ? "caret" : "end");
         }
         if (s.main.length > 0) {
             copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION, s.format);
             if (useStore().copiedSelectionFrameIds.length > 0) {
-                getCaretContainerComponent(getFrameComponent(curLocation == STRYPE_LOCATION.IN_FUNCDEF ? useStore().getFuncDefsFrameContainerId : useStore().getMainCodeFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste((curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) ? "caret" : "start");
+                getCaretContainerComponent(getFrameComponent(curLocation == STRYPE_LOCATION.IN_FUNCDEF ? useStore().getDefsFrameContainerId : useStore().getMainCodeFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste((curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) ? "caret" : "start");
             }
         }
         return s;

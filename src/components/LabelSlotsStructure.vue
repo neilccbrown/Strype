@@ -67,7 +67,6 @@ export default Vue.extend({
         return {
             CustomEventTypes, // just to be able to use in template
             ignoreBracketEmphasisCheck: false, // cf. isSlotEmphasised()
-            isFocused: false,
             // Because the user edits the DOM directly, Vue can fail to realise it needs to update the DOM.
             // So we add a dummy counter variable that just increases every time we refactor (which includes all cases where
             // the user has edited things which might affect the slot structure) in order to nudge
