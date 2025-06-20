@@ -1035,8 +1035,22 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION)
         return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type));
     case  STRYPE_LOCATION.DEFS_SECTION:
         removeTopLevelBlankFrames();
+        // We are checking if we can paste; the not at the beginning means everything here is actually the cases
+        // where we *cannot* paste.
         return !(topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type))
-            || copiedPythonToFrames.some((frame) => !topLevelCopiedFrameIds.includes(frame.id) && [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef].includes(frame.frameType.type)));
+            || copiedPythonToFrames.some((frame) =>
+                // Look only at non-top-level (i.e. child) frames    
+                !topLevelCopiedFrameIds.includes(frame.id) &&
+                // Look for frames which are outright banned as children: 
+                ([AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef].includes(frame.frameType.type)
+                // Funcdefs are a special case; they can be children, but only inside classes:
+                ||
+                (frame.frameType.type === AllFrameTypesIdentifier.funcdef
+                    // Forbidden if either their parent is not top-level,
+                    && (!topLevelCopiedFrameIds.includes(frame.parentId)
+                        // Or if that parent is not a class:
+                        || !topLevelCopiedFrames.some((p) => p.id == frame.parentId && p.frameType.type == AllFrameTypesIdentifier.classdef)))
+                )));
     case  STRYPE_LOCATION.IMPORTS_SECTION:
         removeTopLevelBlankFrames();
         return !topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.library, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type));
@@ -1194,6 +1208,7 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
         allLines.pop();
     }
     const s = splitLinesToSections(allLines);
+    console.log("Split to: " + JSON.stringify(s));
     
     // Bit awkward but we first attempt to copy each to check for errors because
     // if there are any errors we don't want to paste any:
