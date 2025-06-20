@@ -28,24 +28,16 @@ jobs:
       if: ${{ matrix.os == 'ubuntu-latest' }}
       shell: bash
       run: |
-        timeout 5400s npm run test:playwright -- --shard=${{ matrix.playwright_shard }}/3 || { echo "Test command exited or timed out"; exit 1; }
+        jq ".scripts[\"playwright:run\"] = \"npx playwright test --shard=${{ matrix.playwright_shard }}/3\"" package.json > temp.json && mv temp.json package.json
+        timeout 5400s npm run test:playwright || { echo "Test command exited or timed out"; exit 1; }
     - name: Run Playwright tests (MacOS)
       if: ${{ matrix.os == 'macos-latest' }}
       shell: bash
       run: |
         brew install coreutils
-        gtimeout 5400s npm run test:playwright -- --shard=${{ matrix.playwright_shard }}/3 || { echo "Test command exited or timed out"; exit 1; }
-    - name: Run Playwright tests (Windows)
-      if: ${{ matrix.os == 'windows-latest' }}
-      shell: powershell
-      run: |
-        $p = Start-Process npm -ArgumentList 'run', 'test:playwright', '--', '--shard=${{ matrix.playwright_shard }}/3' -NoNewWindow -PassThru
-        $completed = $p.WaitForExit(5400000)
-        if (-not $completed) {
-          Write-Host 'Timed out, killing process...'
-          $p.Kill()
-          exit 124
-        }
+        brew install jq
+        jq ".scripts[\"playwright:run\"] = \"npx playwright test --shard=${{ matrix.playwright_shard }}/3\"" package.json > temp.json && mv temp.json package.json
+        gtimeout 5400s npm run test:playwright || { echo "Test command exited or timed out"; exit 1; }
     - name: Upload Playwright report
       if: always()
       uses: actions/upload-artifact@v4
