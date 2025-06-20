@@ -261,3 +261,12 @@ describe("Tests loading/saving library frames", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-libraries-disable.spy");
     });
 });
+
+describe("Tests loading/saving classes", () => {
+    it("Loads/saves classes", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/oop-crab-no-images.spy");
+    });
+    it("Loads/saves classes", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/oop-crab.spy");
+    });
+});

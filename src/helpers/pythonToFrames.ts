@@ -658,6 +658,9 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
                 // Can be blank on RHS of colon
                 latest = concatSlots(latest, op, {fields: [{code: ""}], operators: []});
             }
+            else if (op == "," && ps.nextIndex == ps.seq.length) {
+                // Can have a trailing comma with nothing following; ignore
+            }
             else {
                 latest = concatSlots(latest, op, parseNextTerm(ps));
             }
@@ -708,6 +711,7 @@ function getRealLineNo(p: ParsedConcreteTree) : number | undefined {
 
 // the given index for the body, and call addFrame on it.
 function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, keywordIndexForLineno: number, childrenIndicesForSlots: (number | number[])[] | { [index: number]: LabelSlotsContent}, childIndexForBody: number, s : CopyState) : {s: CopyState, frame: FrameObject} {
+    console.log("Slots: " + JSON.stringify(childrenIndicesForSlots) + " for " + frameType + "\n" + debugToString(p, ""));
     let slots : { [index: number]: LabelSlotsContent} = {};
     if (Array.isArray(childrenIndicesForSlots)) {
         for (let slotIndex = 0; slotIndex < childrenIndicesForSlots.length; slotIndex++) {
