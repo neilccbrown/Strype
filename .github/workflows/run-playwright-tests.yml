@@ -13,7 +13,9 @@ jobs:
         # the ctrl-c keypress that is intended for the browser.  But for now, we take it out
         # because testing on Mac and Ubuntu alone is better than no tests, or tests which
         # always fail
-        os: [ubuntu-latest, macos-latest]          
+        os: [ubuntu-latest, macos-latest]
+        # For parallelising the tests:
+        playwright_shard: [1, 2, 3]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
@@ -26,18 +28,18 @@ jobs:
       if: ${{ matrix.os == 'ubuntu-latest' }}
       shell: bash
       run: |
-        timeout 5400s npm run test:playwright || { echo "Test command exited or timed out"; exit 1; }
+        timeout 5400s npm run test:playwright -- --shard=${{ matrix.playwright_shard }}/3 || { echo "Test command exited or timed out"; exit 1; }
     - name: Run Playwright tests (MacOS)
       if: ${{ matrix.os == 'macos-latest' }}
       shell: bash
       run: |
         brew install coreutils
-        gtimeout 5400s npm run test:playwright || { echo "Test command exited or timed out"; exit 1; }
+        gtimeout 5400s npm run test:playwright -- --shard=${{ matrix.playwright_shard }}/3 || { echo "Test command exited or timed out"; exit 1; }
     - name: Run Playwright tests (Windows)
       if: ${{ matrix.os == 'windows-latest' }}
       shell: powershell
       run: |
-        $p = Start-Process npm -ArgumentList 'run', 'test:playwright' -NoNewWindow -PassThru
+        $p = Start-Process npm -ArgumentList 'run', 'test:playwright', '--', '--shard=${{ matrix.playwright_shard }}/3' -NoNewWindow -PassThru
         $completed = $p.WaitForExit(5400000)
         if (-not $completed) {
           Write-Host 'Timed out, killing process...'
