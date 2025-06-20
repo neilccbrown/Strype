@@ -2,7 +2,7 @@
 // and fill the slots with blanks or random content then see if it
 // saves or not.
 
-import {allFrameCommandsDefs, FuncDefIdentifiers, getFrameDefType, CommentFrameTypesIdentifier, JointFrameIdentifiers, ImportFrameTypesIdentifiers, StandardFrameTypesIdentifiers} from "../../cypress/support/frame-types";
+import {allFrameCommandsDefs, DefIdentifiers, getFrameDefType, CommentFrameTypesIdentifier, JointFrameIdentifiers, ImportFrameTypesIdentifiers, StandardFrameTypesIdentifiers} from "../../cypress/support/frame-types";
 import seedrandom from "seedrandom";
 import en from "../../../src/localisation/en/en_main.json";
 
@@ -58,7 +58,7 @@ type FrameEntry = {
 let rng = () => 0;
 
 const framesBySection = [Object.values(ImportFrameTypesIdentifiers),
-    [... Object.values(FuncDefIdentifiers), ...Object.values(CommentFrameTypesIdentifier)],
+    [... Object.values(DefIdentifiers), ...Object.values(CommentFrameTypesIdentifier)],
     Object.values(StandardFrameTypesIdentifiers).filter((id) => id != "global" && id != "return" && id != "continue" && id != "break" && !Object.values(JointFrameIdentifiers).includes(id))];
 
 function genRandomInt(n: number): number {
