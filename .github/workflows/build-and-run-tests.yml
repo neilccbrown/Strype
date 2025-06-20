@@ -35,7 +35,7 @@ jobs:
         # Store screenshots and videos only on failure:
         if: ${{ failure() }}
         with:
-            name: cypress-screenshots-and-video-${{matrix.os}}-${{matrix.testtype}}
+            name: cypress-screenshots-and-video-${{matrix.os}}-${{matrix.testtype}}-${{ matrix.cypress_split }}
             path: |
               tests/cypress/expected-screenshots
               tests/cypress/screenshots
