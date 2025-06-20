@@ -915,15 +915,15 @@ export default Vue.extend({
     flex-wrap: wrap;
 }
 
-.label-slot-container.prepend-self-only::before, .label-slot-container.prepend-self-comma::before {
+.label-slot-structure.prepend-self-only::before, .label-slot-container.prepend-self-comma::before {
     color: rgb(2, 33, 168);
     font-weight: 600;
     margin-right: 4px;
 }
-.label-slot-container.prepend-self-only::before {
-    content: "self ";
+.label-slot-structure.prepend-self-only::before {
+    content: "self";
 }
-.label-slot-container.prepend-self-comma::before {
+.label-slot-structure.prepend-self-comma::before {
     content: "self,";
 }
 </style>
