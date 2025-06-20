@@ -95,6 +95,7 @@
       "fileNotWritableErr":"file not open for writing.",
       "fileWriteNotBytesErr": "a bytes-like array object is required, not '{type}'",
       "fileWriteNotStrErr": "write() argument must be str, not {type}",
+      "fileWriteLinesNotArrayErr":"writelines() argument must be a list",
       "fileNotReadableErr":"file not open for reading.",
       "fileClosedErr":"I/O operation on closed file.",
       "fileModeErr":"invalid file opening mode: {mode}.",

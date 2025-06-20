@@ -188,6 +188,7 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         fileModeErr: i18n.t("errorMessage.fileIO.fileModeErr"), // This is an added property in Skulpt for fileIO
         fileWriteNotStrErr: i18n.t("errorMessage.fileIO.fileWriteNotStrErr"), // This is an added property in Skulpt for fileIO
         fileWriteNotBytesErr: i18n.t("errorMessage.fileIO.fileWriteNotBytesErr"), // This is an added property in Skulpt for fileIO
+        fileWriteLinesNotArrayErr: i18n.t("errorMessage.fileIO.fileWriteLinesNotArrayErr"), // This is an added property in Skulpt for fileIO
         nonreadopen: true,
         filewrite: skulptInteralFileWrite, // see skulptFileIO.ts
         inputfun:sInput,
