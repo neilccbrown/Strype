@@ -61,6 +61,11 @@ export default defineConfig({
                     });
                 },
             });
+
+            const specFromEnv = process.env.SPEC;
+            if (specFromEnv) {
+                config.specPattern = "tests/cypress/e2e/" + specFromEnv;
+            }
             
             cypressSplit(on, config);
             

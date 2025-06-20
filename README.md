@@ -41,12 +41,17 @@ npm run test:cypress
 npm run test:playwright
 ```
 
-To speed up the tests locally, we can target specific tests by setting an environment variable, e.g.
+To speed up the Cypress tests locally, we can target specific tests by setting an environment variable, e.g. this would work on Mac and Linux
 ```
-SPEC="--spec tests/cypress/e2e/autocomplete.cy.ts" npm run:test:cypress
+SPEC="autocomplete.cy.ts" npm run:test:cypress
 ```
 
 You can also change the relevant ```describe``` function call in the test file into ```describe.only``` to only run that test in the file. Be aware that it will silently turns off all the other tests!  **Do not commit this change!**
+
+To run a specific Playwright test, you can do the same with SPEC, e.g. this would work on Mac and Linux:
+```
+SPEC="graphics.spec.ts" npm run test:playwright 
+```
 
 The tests and linter are run automatically in Github actions and they should always pass before changes are merged in.  You can run the linter manually with:
 
