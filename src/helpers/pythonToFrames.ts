@@ -707,10 +707,15 @@ function getRealLineNo(p: ParsedConcreteTree) : number | undefined {
 }
 
 // the given index for the body, and call addFrame on it.
-function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, keywordIndexForLineno: number, childrenIndicesForSlots: (number | number[])[], childIndexForBody: number, s : CopyState) : {s: CopyState, frame: FrameObject} {
-    const slots : { [index: number]: LabelSlotsContent} = {};
-    for (let slotIndex = 0; slotIndex < childrenIndicesForSlots.length; slotIndex++) {
-        slots[slotIndex] = {slotStructures : toSlots(applyIndex(p, childrenIndicesForSlots[slotIndex]))};
+function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, keywordIndexForLineno: number, childrenIndicesForSlots: (number | number[])[] | { [index: number]: LabelSlotsContent}, childIndexForBody: number, s : CopyState) : {s: CopyState, frame: FrameObject} {
+    let slots : { [index: number]: LabelSlotsContent} = {};
+    if (Array.isArray(childrenIndicesForSlots)) {
+        for (let slotIndex = 0; slotIndex < childrenIndicesForSlots.length; slotIndex++) {
+            slots[slotIndex] = {slotStructures : toSlots(applyIndex(p, childrenIndicesForSlots[slotIndex]))};
+        }
+    }
+    else {
+        slots = childrenIndicesForSlots; 
     }
     const frame = makeFrame(frameType, slots);
     s = addFrame(frame, applyIndex(p, keywordIndexForLineno).lineno, s);
@@ -973,7 +978,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
             name.operators.push({code: ""}, {code: ""});
             slots[0] = {slotStructures: name};
         }
-        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.classdef, 0, numChildren == 4 ? [1] : [1,3], numChildren - 1, s).s;
+        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.classdef, 0, slots, numChildren - 1, s).s;
         break;
     }
     }
@@ -1128,36 +1133,37 @@ export function splitLinesToSections(allLines : string[]) : {imports: string[]; 
     const imports: NumberedLine[] = [];
     const defs: NumberedLine[] = [];
     const main: NumberedLine[] = [];
-    let addingToDef = false;
-    let defIndent = 0;
+    // -1 if we're not in a def
+    let outermostDefIndentLevel = -1;
     allLines.forEach((line : string, zeroBasedLine : number) => {
         const lineWithNum : NumberedLine = {text: line, lineno: zeroBasedLine + 1};
+        const indentLevel = line.length - line.trimStart().length;
+        if (line.trim() != "" && indentLevel <= outermostDefIndentLevel) {
+            outermostDefIndentLevel = -1;
+        }
         if (line.match(/^\s*(import|from)\s+/)) {
             // Import:
             imports.push(...latestComments);
             latestComments = [];
             imports.push(lineWithNum);
-            addingToDef = false;
         }
-        else if (line.match(/^\s*(def|class)\s+/)) {
-            addingToDef = true;
-            defIndent = line.length - line.trimStart().length;
-            defs.push(...latestComments.map((l) => ({...l, text: l.text.trimStart() + " ".repeat(defIndent)})));
+        // We're only the new outermost if there is no current outermost:
+        else if (line.match(/^\s*(def|class)\s+/) && outermostDefIndentLevel == -1) {
+            defs.push(...latestComments.map((l) => ({...l, text: l.text.trimStart() + " ".repeat(indentLevel)})));
             latestComments = [];
             defs.push({...lineWithNum, text: line.trimStart()});
-            
+            outermostDefIndentLevel = indentLevel;
         }
         else if (line.match(/^\s*#/)) {
             latestComments.push(lineWithNum);
         }
-        else if (addingToDef && (line.trim() == "" || (line.length - line.trimStart().length) > defIndent)) {
+        else if (outermostDefIndentLevel >= 0) {
             // Keep adding to defs until we see a non-comment non-blank line with less or equal indent:
             defs.push(...latestComments);
             latestComments = [];
-            defs.push({...lineWithNum, text: line.slice(defIndent)});
+            defs.push({...lineWithNum, text: line.slice(outermostDefIndentLevel)});
         }
         else {
-            addingToDef = false;
             main.push(...latestComments);
             latestComments = [];
             // We don't push leading blanks to main (i.e. blank lines while main is empty), otherwise all the blanks before/between imports and defs end up there:
