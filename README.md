@@ -34,20 +34,19 @@ Strype is currently an entirely client-side tool; there is no server component t
 Development
 ---
 
-To work on the project, you can use a variety of tools: our team members use <a href="https://code.visualstudio.com/" target="_blank">VS Code</a> or <a href="https://www.jetbrains.com/webstorm/" target="_blank">Webstorm</a>.  To run the full test suite (which takes around 50 minutes) you can run:
+To work on the project, you can use a variety of tools: our team members use <a href="https://code.visualstudio.com/" target="_blank">VS Code</a> or <a href="https://www.jetbrains.com/webstorm/" target="_blank">Webstorm</a>.  To run the full test suite (which takes 2+ hours) you can run:
 
 ```
 npm run test:cypress
+npm run test:playwright
 ```
 
-To speed up the tests locally, we can target specific tests by editing package.json to run only the files of interest (**when doing so, remember not to commit the changes!**).
-For example, adding the ```--spec``` argument like in this example:
+To speed up the tests locally, we can target specific tests by setting an environment variable, e.g.
 ```
-"cy:run:microbit": "cypress run --env mode=microbit --spec tests/cypress/e2e/autocomplete.cy.ts",
-"cy:run:python": "cypress run --env mode=python --spec tests/cypress/e2e/autocomplete.cy.ts",
+SPEC="--spec tests/cypress/e2e/autocomplete.cy.ts" npm run:test:cypress
 ```
 
-You can also change the relevant ```describe``` function call in the test file into ```describe.only``` to only run that test in the file. Be aware that it will silently turns off all the other tests!  **Do not commit this change, either!**
+You can also change the relevant ```describe``` function call in the test file into ```describe.only``` to only run that test in the file. Be aware that it will silently turns off all the other tests!  **Do not commit this change!**
 
 The tests and linter are run automatically in Github actions and they should always pass before changes are merged in.  You can run the linter manually with:
 
@@ -67,7 +66,7 @@ Current team:
 - Pierre Weill-Tessier (King's College London)
 
 Other contributors:
-- Tobias Kohn (<a href="https://github.com/Tobias-Kohn/TigerPython-Parser" target="_blank">TigerPython parser<a>)
+- Tobias Kohn (<a href="https://github.com/Tobias-Kohn/TigerPython-Parser" target="_blank">TigerPython parser</a>)
 - Babis Kyfonidis
 - Zak Singh
 - Aleksandr Voronstov
@@ -84,9 +83,7 @@ Roadmap
 
 Strype is currently under very active development.  A rough roadmap of some major planned features (beyond the general bugfixing and polishing):
 
- - Add class frames (for object-oriented programming): Q1 2025
- - Add a graphics and sound API: Q1 2025
- - Add support for third-party library import: Q2 2025
+ - Add class frames (for object-oriented programming): Q3 2025
  - Add support for data processing and/or charting: Q3 2025
 
 The dates and choices may change as we receive more user feedback.
