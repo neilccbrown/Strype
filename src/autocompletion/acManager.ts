@@ -9,7 +9,7 @@ import {getMatchingBracket, transformFieldPlaceholders} from "@/helpers/editor";
 import {getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import {OUR_PUBLIC_LIBRARY_MODULES} from "@/autocompletion/ac-skulpt";
-import {TPyParser} from "tigerpython-parser";
+import {Signature, TPyParser} from "tigerpython-parser";
 import graphicsMod from "../../public/public_libraries/strype/graphics.py";
 import soundMod from "../../public/public_libraries/strype/sound.py";
 import {getAvailablePyPyiFromLibrary, getPossibleImports, getTextFileFromLibraries} from "@/helpers/libraryManager";
@@ -446,19 +446,39 @@ export function getBuiltins() : AcResultType[] {
     /* FITRUE_isMicrobit */
 }
 
+// Get the placeholder text for the given function parameter index
+// If it's the last parameter, glue the rest together with commas
+function getParamPromptOld(params: string[], hasDefaultValues: boolean[] | null, targetParamIndex: number, lastParam: boolean) : string {
+    if (targetParamIndex >= params.length) {
+        return "";
+    } else if (!lastParam) {
+        return params[targetParamIndex];
+    } else {
+        return params.filter((_, i) => hasDefaultValues == null || i >= hasDefaultValues.length || !hasDefaultValues[i]).slice(targetParamIndex).join(", ");
+    }
+}
+
 
 // Get the placeholder text for the given function parameter index
 // If it's the last parameter, glue the rest together with commas
-function getParamPrompt(params: string[], hasDefaultValues: boolean[] | null, targetParamIndex: number, lastParam: boolean) : string {
-    if (targetParamIndex >= params.length) {
-        return "";
+function getParamPrompt(sig: Signature, targetParamIndex: number, afterKeywordArg: boolean, lastParam: boolean) : string {
+    const t = function(arg : {name: string, defaultValue: string | null}) {
+        // Deliberately no spaces around equals to compress the display:
+        return arg.name + (arg.defaultValue ? "=" + arg.defaultValue : "");
+    };
+    if (!afterKeywordArg) {
+        const flattenedPositional = [...sig.positionalOnlyArgs, ...sig.positionalOrKeywordArgs].slice(sig.firstParamIsSelf ? 1 : 0);
+        if (targetParamIndex < flattenedPositional.length) {
+            if (!lastParam) {
+                return t(flattenedPositional[targetParamIndex]);
+            }
+            else {
+                return flattenedPositional.slice(targetParamIndex).map(t).join(", ");
+            }
+        }
     }
-    else if (!lastParam) {
-        return params[targetParamIndex];
-    }
-    else {
-        return params.filter((_, i) => hasDefaultValues == null || i >= hasDefaultValues.length || !hasDefaultValues[i]).slice(targetParamIndex).join(", ");
-    }
+    // TODO keyword, then varargs
+    return "";
 }
 
 export async function tpyDefineLibraries(parser: Parser) : Promise<void> {
@@ -495,12 +515,12 @@ export async function calculateParamPrompt(frameId: number, context: string, tok
         const userFunc = getAllEnabledUserDefinedFunctions().find((f) => (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot)?.code === token);
         if (userFunc !== undefined) {
             const params : string[] = extractCommaSeparatedNames(userFunc.labelSlotsDict[1].slotStructures);
-            return getParamPrompt(params, null, paramIndex, lastParam);
+            return getParamPromptOld(params, null, paramIndex, lastParam);
         }
         const builtinFunc = getBuiltins().find((f) => f.acResult === token);
         if (builtinFunc !== undefined) {
             if (builtinFunc.params) {
-                return getParamPrompt(builtinFunc.params.filter((p) => !p.hide).map((p) => p.name), builtinFunc.params.filter((p) => !p.hide).map((p) => p.defaultValue !== undefined), paramIndex, lastParam);
+                return getParamPromptOld(builtinFunc.params.filter((p) => !p.hide).map((p) => p.name), builtinFunc.params.filter((p) => !p.hide).map((p) => p.defaultValue !== undefined), paramIndex, lastParam);
             }
             else {
                 return "\u200b";
@@ -511,7 +531,7 @@ export async function calculateParamPrompt(frameId: number, context: string, tok
         // If the context is non-blank and matches an imported module, we can look it up there.        
         const fromModule = (await getAvailableItemsForImportFromModule(context)).find((ac) => ac.acResult === token);
         if (fromModule?.params !== undefined) {
-            return getParamPrompt(fromModule.params.filter((p) => !p.hide).map((p) => p.name), fromModule.params.filter((p) => !p.hide).map((p) => p.defaultValue !== undefined), paramIndex, lastParam);
+            return getParamPromptOld(fromModule.params.filter((p) => !p.hide).map((p) => p.name), fromModule.params.filter((p) => !p.hide).map((p) => p.defaultValue !== undefined), paramIndex, lastParam);
         }
     }
     
@@ -520,7 +540,7 @@ export async function calculateParamPrompt(frameId: number, context: string, tok
     const importedFunc = Object.values(await getAllExplicitlyImportedItems(context)).flat().find((f) => f.acResult === token || f.acResult === context + "." + token);
     if (importedFunc !== undefined) {
         if (importedFunc.params) {
-            return getParamPrompt(importedFunc.params.filter((p) => !p.hide).map((p) => p.name), importedFunc.params.filter((p) => !p.hide).map((p) => p.defaultValue !== undefined), paramIndex, lastParam);
+            return getParamPromptOld(importedFunc.params.filter((p) => !p.hide).map((p) => p.name), importedFunc.params.filter((p) => !p.hide).map((p) => p.defaultValue !== undefined), paramIndex, lastParam);
         }
         else {
             return "\u200b";
@@ -538,8 +558,8 @@ export async function calculateParamPrompt(frameId: number, context: string, tok
         const totalCode = userCode + "\n" + parser.getStoppedIndentation() + "f(" + transformFieldPlaceholders(context) + "." + "x)";
         const tppCompletions = TPyParser.autoCompleteExt(totalCode, totalCode.length - 2);
         const match = tppCompletions?.filter((c) => c.acResult === token);
-        if (match && match.length > 0 && match[0].params) {
-            return getParamPrompt(match[0].params, match[0].params.map((p) => false), paramIndex, lastParam);
+        if (match && match.length > 0 && match[0].signature) {
+            return getParamPrompt(match[0].signature, paramIndex, false, lastParam);
         }
     }
     

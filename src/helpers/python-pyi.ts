@@ -48,7 +48,7 @@ export function extractPYI(original : string) : string {
             const [indent, fnName, args] = funcDefMatch.slice(1);
             const argNames : [string, string | null][] = args.trim() ? args.split(",").map((s) => {
                 if (s.includes("=")) {
-                    return [s.replace(/=.*/, "").trim(), "..."];
+                    return [s.replace(/=.*$/, "").trim(), s.replace(/^[^=]*=/, "").trim()];
                 }
                 else {
                     return [s.trim(), null];

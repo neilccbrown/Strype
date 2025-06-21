@@ -3015,7 +3015,7 @@ export const settingsStore = defineStore("settings", {
             i18n.locale = lang;
 
             // And also change TigerPython locale -- if Strype locale is not available in TigerPython, we use English instead
-            const tpLangs = TPyParser.getLanguages as any as string[]; // TODO remove this casting once TigerPython's type for getLanguages is fixed
+            const tpLangs = TPyParser.getLanguages();
             useStore().tigerPythonLang = (tpLangs.includes(lang)) ? lang : "en";
 
             // Change all frame definition types to update the localised bits

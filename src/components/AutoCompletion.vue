@@ -259,7 +259,7 @@ export default Vue.extend({
                     acResult: s.acResult,
                     documentation: s.documentation,
                     params: s.params == null ? [] : s.params.map((p) => ({name: p})),
-                    type: ["function", "module", "variable", "type"].includes(s.type) ? [s.type] : [],
+                    type: ["function", "module", "variable", "type"].includes(s.type ?? "") ? [s.type] : [],
                     version: 0,
                 } as AcResultType));
                 this.acResults = {[context]: items};
