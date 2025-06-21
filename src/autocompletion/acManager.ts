@@ -451,9 +451,11 @@ export function getBuiltins() : AcResultType[] {
 function getParamPromptOld(params: string[], hasDefaultValues: boolean[] | null, targetParamIndex: number, lastParam: boolean) : string {
     if (targetParamIndex >= params.length) {
         return "";
-    } else if (!lastParam) {
+    }
+    else if (!lastParam) {
         return params[targetParamIndex];
-    } else {
+    }
+    else {
         return params.filter((_, i) => hasDefaultValues == null || i >= hasDefaultValues.length || !hasDefaultValues[i]).slice(targetParamIndex).join(", ");
     }
 }
