@@ -209,5 +209,24 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | null, string
             cy.get("body").type(" max(0," + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
             withFrameId((frameId) => assertState(frameId, "max(0," + func.funcName + "($))", "max(0," + func.funcName + "(" + func.params.join(", ") + "))"));
         });
+        
+        if (func.params.length >= 3) {
+            it("Hides positional params and prev used named params once name entered", () => {
+                focusEditorAC();
+                if (func.keyboardTypingToImport) {
+                    cy.get("body").type(func.keyboardTypingToImport);
+                }
+                // We pick an arbitrary param to pass from the middle:
+                const midParam = Math.floor(func.params.length / 2);
+                // We enter first one, then named middle one:
+                cy.get("body").type(" " + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
+                const midName = func.params[midParam].replace(/=.*/, "");
+                cy.get("body").type("0, " + midName + "=0,");
+                // Now it should hide the first param, and the middle one, and show the others as keyword possibilities
+                withFrameId((frameId) => assertState(frameId,
+                    func.funcName + "(0," + midName + "=0,$)",
+                    func.funcName + "(0," + midName + "=0," + [...func.params.slice(1, midParam), ...func.params.slice(midParam + 1)].join(", ") + ")"));
+            });
+        }
     }
 }
