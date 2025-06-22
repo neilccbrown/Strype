@@ -13,6 +13,7 @@ describe("Parameter prompts objects", () => {
     const rawFuncs : [string | null | [string, string], string, string[]][] = [];
     rawFuncs.push([null, "str(8).center", ["width"]]);
     if (Cypress.env("mode") !== "microbit") {
+        rawFuncs.push(["turtle", "Turtle().write", ["arg", "move=False", "align='left'", "font=('Arial', 8, 'normal')"]]);
         rawFuncs.push(["strype.graphics", "Actor(s).move", ["distance"]]);
         rawFuncs.push(["strype.graphics", "Actor(t).set_location", ["x", "y"]]);
         rawFuncs.push(["strype.graphics", "get_background().draw_circle", ["centre_x", "centre_y", "radius"]]);

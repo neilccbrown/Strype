@@ -12,7 +12,8 @@ describe("Parameter prompts", () => {
     const rawFuncs : [string | null | [string, string], string, string[]][] = [
         [null, "abs", ["x"]],
         [null, "dir", []],
-        [null, "setattr", ["obj, name, value"]],
+        [null, "setattr", ["obj", "name", "value"]],
+        [null, "open", ["file", "mode='r'", "buffering=-1", "encoding=None", "errors=None", "newline=None", "closefd=True", "opener=None"]],
         ["collections", "namedtuple", ["typename", "field_names"]],
         // These are object oriented items, so we are checking the self has been removed:
         ["random", "randint", ["a, b"]],
