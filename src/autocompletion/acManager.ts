@@ -463,13 +463,15 @@ function getParamPromptOld(params: string[], hasDefaultValues: boolean[] | null,
 
 // Get the placeholder text for the given function parameter index
 // If it's the last parameter, glue the rest together with commas
-function getParamPrompt(sig: Signature, targetParamIndex: number, afterKeywordArg: boolean, lastParam: boolean) : string {
+function getParamPrompt(sig: Signature, targetParamIndex: number, prevKeywordArgs: string[], lastParam: boolean) : string {
     const t = function(arg : {name: string, defaultValue: string | null}) {
         // Deliberately no spaces around equals to compress the display:
         return arg.name + (arg.defaultValue ? "=" + arg.defaultValue : "");
     };
-    if (!afterKeywordArg) {
-        const flattenedPositional = [...sig.positionalOnlyArgs, ...sig.positionalOrKeywordArgs].slice(sig.firstParamIsSelf ? 1 : 0);
+    const positionalOnlyArgsMinusSelf = sig.positionalOnlyArgs.slice(sig.firstParamIsSelf ? 1 : 0);
+    if (prevKeywordArgs.length == 0) {
+        // Still in the positional args, find the right index:
+        const flattenedPositional = [...positionalOnlyArgsMinusSelf, ...sig.positionalOrKeywordArgs];
         if (targetParamIndex < flattenedPositional.length) {
             if (!lastParam) {
                 return t(flattenedPositional[targetParamIndex]);
@@ -479,7 +481,19 @@ function getParamPrompt(sig: Signature, targetParamIndex: number, afterKeywordAr
             }
         }
     }
-    // TODO keyword, then varargs
+    // Otherwise we must only show args which can be specified by keyword, and only those
+    // not already specified:
+    const remainingKeywordNames = [...sig.positionalOrKeywordArgs.slice(targetParamIndex - prevKeywordArgs.length - positionalOnlyArgsMinusSelf.length), ...sig.keywordOnlyArgs]
+        .filter((k) => !prevKeywordArgs.includes(k.name));
+    if (remainingKeywordNames.length > 0) {
+        return remainingKeywordNames.map(t).join(", ");
+    }
+    if (sig.varArgs) {
+        return "*" + sig.varArgs.name;
+    }
+    if (sig.varKwargs) {
+        return "**" + sig.varKwargs.name;
+    }
     return "";
 }
 
@@ -507,7 +521,7 @@ export async function tpyDefineLibraries(parser: Parser) : Promise<void> {
 
 // Gets the parameter name prompt for the given autocomplete details (context+token)
 // for the given parameter. Note that for the UI to display spans properly, empty placeholders are returned as \u200b (0-width space)
-export async function calculateParamPrompt(frameId: number, context: string, token: string, paramIndex: number, lastParam: boolean) : Promise<string> {
+export async function calculateParamPrompt(frameId: number, {context, token, paramIndex, lastParam, prevKeywordNames} : {context: string, token: string, paramIndex: number, lastParam: boolean, prevKeywordNames: string[]}) : Promise<string> {
     if (!context) {
         // If context is blank, we know that the function must be one of:
         // - A user-defined function
@@ -561,7 +575,7 @@ export async function calculateParamPrompt(frameId: number, context: string, tok
         const tppCompletions = TPyParser.autoCompleteExt(totalCode, totalCode.length - 2);
         const match = tppCompletions?.filter((c) => c.acResult === token);
         if (match && match.length > 0 && match[0].signature) {
-            return getParamPrompt(match[0].signature, paramIndex, false, lastParam);
+            return getParamPrompt(match[0].signature, paramIndex, prevKeywordNames, lastParam);
         }
     }
     
@@ -571,12 +585,10 @@ export async function calculateParamPrompt(frameId: number, context: string, tok
         const lastDotIndex = context.lastIndexOf(".");
         token = context.substring(lastDotIndex + 1) + "." + token;
         context = context.substring(0, lastDotIndex);
-        return calculateParamPrompt(frameId, context, token, paramIndex, lastParam);
+        return calculateParamPrompt(frameId, {context, token, paramIndex, lastParam, prevKeywordNames});
     }
     
-    // Otherwise, if there's context, we would have to use Skulpt, but the problem is that Skulpt
-    // doesn't have an inspect module to reflect params
-    // So unfortunately, we just can't help with param names.
+    // Can't find it!
     return "\u200b";
 
 }

@@ -1497,6 +1497,35 @@ export function transformFieldPlaceholders(input: string) : string {
     return transformFieldPlaceholders(newInput);
 }
 
+function splitAtCommas<X>(operands: X[], operators: BaseSlot[]): { operands: X[], operators: string[] }[] {
+    const result: { operands: X[], operators: string[] }[] = [];
+
+    let currentOperands: X[] = [];
+    let currentOperators: string[] = [];
+
+    for (let i = 0; i < operators.length; i++) {
+        currentOperands.push(operands[i]);
+
+        if (operators[i].code === ",") {
+            result.push({ operands: currentOperands, operators: currentOperators });
+
+            // Reset for next chunk
+            currentOperands = [];
+            currentOperators = [];
+        }
+        else {
+            currentOperators.push(operators[i].code);
+        }
+    }
+
+    // Handle remaining expression (after last comma or if no comma at all)
+    currentOperands.push(operands[operands.length - 1]);
+    result.push({ operands: currentOperands, operators: currentOperators });
+
+    return result;
+}
+
+
 export const IMAGE_PLACERHOLDER = "$strype_image_placeholder$";
 // The placeholders for the string quotes when strings are extracted FROM THE EDITOR SLOTS,
 // both placeholders need to have THE SAME LENGHT so sustitution operations are done with more ease
@@ -1621,27 +1650,32 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         cursorOffset += beforeBracketCursorOffset;
         const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, {isInsideString: false, cursorPos: (flags?.cursorPos) ? flags.cursorPos - (firstOpenedBracketPos + 1) : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         if (openingBracketValue === "(") {
-            // First scan and find all the comma-separated parameters that are a single field:
-            let lastParamStart = -1;
-            let curParam = 0;
-            const singleFieldParams : Record<number, BaseSlot> = {};
-            for (let i = 0; i < structOfBracket.fields.length; i++) {
-                if (i == structOfBracket.operators.length || structOfBracket.operators[i].code === ",") {
-                    if (i - lastParamStart == 1 && "code" in structOfBracket.fields[i] && !("quote" in structOfBracket.fields[i])) {
-                        singleFieldParams[curParam] = structOfBracket.fields[i] as BaseSlot;
+            // First scan and find all the comma-separated parameters:
+            const params = splitAtCommas(structOfBracket.fields, structOfBracket.operators);
+            const keywordNames : (string | null)[] = params.flatMap((p) => {
+                if (p.operators.length >= 1 && p.operators[0] == "=") {
+                    const possName = p.operands[0];
+                    if (isFieldBaseSlot(possName)) {
+                        return possName.code;
                     }
-                    curParam += 1;
-                    lastParamStart = i;
                 }
-            }
-            (Object.entries(singleFieldParams) as unknown as [number, BaseSlot][]).forEach(([paramIndex, slot] : [number, BaseSlot]) => {
-                const context = getContentForACPrefix(structBeforeBracket, true);
-                slot.placeholderSource = {
-                    token: (structBeforeBracket.fields.at(-1) as BaseSlot)?.code ?? "",
-                    context: context,
-                    paramIndex: paramIndex,
-                    lastParam: paramIndex == curParam - 1,
-                };
+                return null;
+            });
+            const context = getContentForACPrefix(structBeforeBracket, true);
+            params.forEach((param, paramIndex) => {
+                // We only apply placeholderSource info if the parameter is a single plain slot:
+                if (param.operands.length == 1) {
+                    const oneSlot = param.operands[0];
+                    if (isFieldBaseSlot(oneSlot)) {
+                        oneSlot.placeholderSource = {
+                            token: (structBeforeBracket.fields.at(-1) as BaseSlot)?.code ?? "",
+                            context: context,
+                            paramIndex: paramIndex,
+                            lastParam: paramIndex == params.length - 1,
+                            prevKeywordNames: keywordNames.slice(0, paramIndex).filter((s): s is string => s !== null),
+                        };
+                    }
+                }
             });
         }
         const structOfBracketField = {...structOfBracket, openingBracketValue: openingBracketValue};
