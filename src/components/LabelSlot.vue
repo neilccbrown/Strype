@@ -1154,13 +1154,15 @@ export default Vue.extend({
                 // Find which bounds we should target (which bound in the current level based on the key, and also the bound based on current text cursor position)
                 const moveToHome = (event.key === "Home");
                 const isSelecting = event.shiftKey;
+                const isInString = isFieldStringSlot(retrieveSlotFromSlotInfos(this.coreSlotInfo));
                 const parentSlotId = getSlotParentIdAndIndexSplit(this.coreSlotInfo.slotId).parentId;
                 // First focus: it will change to one end of the current level depending on the direction we're going
                 const newFocusSlotId = (moveToHome) 
-                    ? ((parentSlotId.length > 0) ? (parentSlotId + ",0") : "0")
-                    : ((parentSlotId.length > 0) ? (parentSlotId + "," + ((retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: parentSlotId}) as SlotsStructure).fields.length -1)) : ("" + (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.coreSlotInfo.labelSlotsIndex].slotStructures.fields.length - 1)));
-                const newFocusSlotType = evaluateSlotType(retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: newFocusSlotId}));
-                const newFocusSlotCoreInfo =  {...this.coreSlotInfo, slotId: newFocusSlotId, slotType: newFocusSlotType};
+                    ? (isInString ? this.slotId : ((parentSlotId.length > 0) ? (parentSlotId + ",0") : "0"))
+                    : (isInString ? this.slotId : ((parentSlotId.length > 0) ? (parentSlotId + "," + ((retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: parentSlotId}) as SlotsStructure).fields.length -1)) : ("" + (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.coreSlotInfo.labelSlotsIndex].slotStructures.fields.length - 1))));
+                // We only look for the new type and slot core infos for non-string current location to save unnecessary function calls
+                const newFocusSlotType = (isInString) ? this.slotType : evaluateSlotType(retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: newFocusSlotId}));
+                const newFocusSlotCoreInfo = (isInString) ? this.coreSlotInfo : {...this.coreSlotInfo, slotId: newFocusSlotId, slotType: newFocusSlotType};
                 const newFocusCursorPos = (moveToHome) ? 0 : (retrieveSlotFromSlotInfos(newFocusSlotCoreInfo) as BaseSlot).code.length;
                 // Then anchor: it will either keep the same if we are doing a selection, or change to the same as focus if we are not.
                 const newAnchorSlotCursorInfo: SlotCursorInfos = (isSelecting) ? this.appStore.anchorSlotCursorInfos as SlotCursorInfos: {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos}; 
