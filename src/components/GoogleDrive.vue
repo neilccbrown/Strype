@@ -274,8 +274,8 @@ export default Vue.extend({
                 // If it doesn't exist anymore, we set the default location to the Strype folder (if available) or just the Drive itself if not.
                 // NOTE: we do not need to check a folder when opening a shared project
                 if(this.openSharedProjectFileId.length == 0){
-                    this.checkDriveStrypeFolder(false, (strypeFolderId) => {
-                        if(this.appStore.strypeProjectLocation && (this.appStore.strypeProjectLocation instanceof String)){
+                    this.checkDriveStrypeOrOtherFolder(false, !(this.appStore.strypeProjectLocation), (strypeFolderId) => {
+                        if(this.appStore.strypeProjectLocation && (typeof this.appStore.strypeProjectLocation == "string")){
                             gapi.client.request({
                                 path: "https://www.googleapis.com/drive/v3/files/" + this.appStore.strypeProjectLocation,
                                 method: "GET",
@@ -384,7 +384,7 @@ export default Vue.extend({
             // In any other case, we only save a file if there is a save file id set
             if(saveReason == SaveRequestReason.saveProjectAtLocation || saveReason == SaveRequestReason.saveProjectAtOtherLocation){
                 // For this case, we ask for the location (with /Strype as the default location -- which is created if non existant)
-                this.checkDriveStrypeFolder(true, (strypeFolderId: string | null)=> {
+                this.checkDriveStrypeOrOtherFolder(true, true, (strypeFolderId: string | null)=> {
                     // Show the file picker to select a folder (with default location) if the location specified doesn't exist, or if the user asked for changing it
                     if(strypeFolderId != null && this.appStore.strypeProjectLocation == undefined){
                         // No location is set, we set the Strype folder
@@ -651,52 +651,57 @@ export default Vue.extend({
             this.$root.$emit("bv::show::modal", this.unsupportedByStrypeFilePickedModalDlgId);
         },
 
-        checkDriveStrypeFolder(createIfNone: boolean, checkFolderDoneCallBack: (strypeFolderId: string | null) => void, failedConnectionCallBack?: () => void) {
-            // Check if the Strype folder exists on the Drive. If not, we create it if createIfNone is set to true.
+        checkDriveStrypeOrOtherFolder(createIfNone: boolean, checkStrypeFolder: boolean, checkFolderDoneCallBack: (strypeFolderId: string | null) => void, failedConnectionCallBack?: () => void) {
+            // Check if the Strype folder (when checkStrypeFolder is true) or the state's folder (otherwise) exists on the Drive. If not, we create it if createIfNone is set to true.
             // Returns the file ID or null if the file couldn't be found/created.
             // Note that we need to specify the parent folder of the search (root folder) otherwise we would also get subfolders; and don't get trashed folders 
             // (that will also discard shared folders, so we don't need to check the writing rights...)
             let strypeFolderId: string | null = null;
             gapi.client.request({
-                path: "https://www.googleapis.com/drive/v3/files",
-                params: {"q": "mimeType='application/vnd.google-apps.folder' and name='Strype' and parents='root' and trashed=false"},
+                path: "https://www.googleapis.com/drive/v3/files/" + (checkStrypeFolder ? "" : this.appStore.strypeProjectLocation),
+                params: checkStrypeFolder ? {"q": "mimeType='application/vnd.google-apps.folder' and name='Strype' and parents='root' and trashed=false"} : {},
             }).then((response) => {
-                // Check if the response returns a folder. As Google Drive allows entries with same name, it is possible that several "Strype" folder exists; we will use the first one.
-                const filesArray: {id: string}[] = JSON.parse(response.body).files;
-                if(filesArray.length > 0){
-                    // If the Strype root folder exists, then we make it the location reference if none is defined yet.
-                    strypeFolderId = filesArray[0].id;
-                    // Continue with callback method after check is done
-                    checkFolderDoneCallBack(strypeFolderId);
-                }
-                else if(createIfNone){
-                    // If the Strype root folder doesn't exist in the user's Drive, we create one when requested
-                    const body = JSON.stringify({
-                        "name": "Strype",
-                        "mimeType": "application/vnd.google-apps.folder",
-                    });
-                    gapi.client.request({
-                        path: "https://www.googleapis.com/drive/v3/files",
-                        method: "POST",
-                        params: {"uploadType": "media"},
-                        body: body,
-                    }).then((resp) => {
-                        strypeFolderId = JSON.parse(resp.body).id; 
+                if(checkStrypeFolder){
+                    // Check if the response returns a folder. As Google Drive allows entries with same name, it is possible that several "Strype" folder exists; we will use the first one.
+                    const filesArray: {id: string}[] = JSON.parse(response.body).files;
+                    if(filesArray.length > 0){
+                        // If the Strype root folder exists, then we make it the location reference if none is defined yet.
+                        strypeFolderId = filesArray[0].id;
                         // Continue with callback method after check is done
                         checkFolderDoneCallBack(strypeFolderId);
-                    },
-                    (reason) => {
-                        // If the Strype folder cound't be created, we alert the user (temporary message banner) but we proceed with the save file workflow1
-                        this.appStore.showMessage(MessageDefinitions.GDriveCantCreateStrypeFolder, 3000);  
+                    }
+                    else if(createIfNone){
+                        // If the Strype root folder doesn't exist in the user's Drive, we create one when requested
+                        const body = JSON.stringify({
+                            "name": "Strype",
+                            "mimeType": "application/vnd.google-apps.folder",
+                        });
+                        gapi.client.request({
+                            path: "https://www.googleapis.com/drive/v3/files",
+                            method: "POST",
+                            params: {"uploadType": "media"},
+                            body: body,
+                        }).then((resp) => {
+                            strypeFolderId = JSON.parse(resp.body).id; 
+                            // Continue with callback method after check is done
+                            checkFolderDoneCallBack(strypeFolderId);
+                        },
+                        (reason) => {
+                            // If the Strype folder cound't be created, we alert the user (temporary message banner) but we proceed with the save file workflow1
+                            this.appStore.showMessage(MessageDefinitions.GDriveCantCreateStrypeFolder, 3000);  
+                            // Continue with callback method after check is done
+                            checkFolderDoneCallBack(strypeFolderId);
+                        });
+                    }
+                    else{
                         // Continue with callback method after check is done
                         checkFolderDoneCallBack(strypeFolderId);
-                    });
+                    }
                 }
                 else{
-                    // Continue with callback method after check is done
-                    checkFolderDoneCallBack(strypeFolderId);
+                    // We made a standard query to check the folder by ID, so it can be returned.
+                    checkFolderDoneCallBack(this.appStore.strypeProjectLocation as string);
                 }
-
             },(reason) => {
                 // If the login to the Google failed (or the user wasn't logged in), handle it via the callback
                 if(failedConnectionCallBack && (reason.status == 401 || reason.status == 403)){
