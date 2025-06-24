@@ -526,8 +526,8 @@ function getParamPrompt(sig: Signature, targetParamIndex: number, prevKeywordArg
     }
     // Otherwise we must only show args which can be specified by keyword, and only those
     // not already specified:
-    const remainingKeywordNames = [...sig.positionalOrKeywordArgs.slice(targetParamIndex - prevKeywordArgs.length - positionalOnlyArgsMinusSelf.length), ...sig.keywordOnlyArgs]
-        .filter((k) => !prevKeywordArgs.includes(k.name));
+    const remainingKeywordNames = [...sig.positionalOrKeywordArgs.slice(targetParamIndex - prevKeywordArgs.length - positionalOnlyArgsMinusSelf.length), ...(isFocused ? sig.keywordOnlyArgs : [])]
+        .filter((k) => !prevKeywordArgs.includes(k.name) && (isFocused || k.defaultValue == null));
     if (remainingKeywordNames.length > 0) {
         // Make the equals show up by filling in defaultValue if blank:
         return remainingKeywordNames.map((c) => ({...c, defaultValue: c.defaultValue ?? ""})).map(t).join(", ");
