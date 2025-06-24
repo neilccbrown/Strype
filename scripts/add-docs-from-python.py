@@ -14,6 +14,15 @@ import traceback
 sys.path.append("../public/public_libraries")
 sys.path.append("./stubs")
 
+def make_default(v):
+    defValStr = str(v)
+    if defValStr.startswith("<"):
+        defValStr = "..."
+    if isinstance(v, str):
+        defValStr = "'" + defValStr + "'"
+    return defValStr
+
+
 def convert_argspec_to_signature(func, argspec, owner_class):
     def make_arg(name, default_value, arg_type):
         return {
@@ -57,14 +66,6 @@ def convert_argspec_to_signature(func, argspec, owner_class):
     num_pos_defaults = len(defaults)
     default_start_index = len(all_pos_args) - num_pos_defaults
 
-    def make_default(v):
-        defValStr = str(v)
-        if defValStr.startswith("<"):
-            defValStr = "..."
-        if isinstance(v, str):
-            defValStr = "'" + defValStr + "'"
-        return defValStr
-
     def get_default(i):
         return make_default(defaults[i - default_start_index]) if i >= default_start_index else None
 
@@ -80,7 +81,7 @@ def convert_argspec_to_signature(func, argspec, owner_class):
         ],
         "varArgs": make_vararg(argspec.varargs, None),
         "keywordOnlyArgs": [
-            make_arg(name, kw_defaults.get(name), None)
+            make_arg(name, make_default(kw_defaults.get(name)), None)
             for name in kwonlyargs
         ],
         "varKwargs": make_vararg(argspec.varkw, None),
@@ -99,7 +100,7 @@ def convert_inspect_signature_to_signature(sig):
     for param in params:
         param_info = {
             "name": param.name,
-            "defaultValue": None if param.default is inspect.Parameter.empty else param.default,
+            "defaultValue": None if param.default is inspect.Parameter.empty else make_default(param.default),
             "argType": None  # type annotations can be added if needed
         }
 
