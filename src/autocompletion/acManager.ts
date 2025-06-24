@@ -17,8 +17,8 @@ import Parser from "@/parser/parser";
 import { z } from "zod";
 import {extractPYI} from "@/helpers/python-pyi";
 
-(TPyParser as any).defineModule("strype.graphics", extractPYI(graphicsMod), "pyi");
-(TPyParser as any).defineModule("strype.sound", extractPYI(soundMod), "pyi");
+TPyParser.defineModule("strype.graphics", extractPYI(graphicsMod), "pyi");
+TPyParser.defineModule("strype.sound", extractPYI(soundMod), "pyi");
 
 // Given a FieldSlot, get the program code corresponding to it, to use
 // as the prefix (context) for code completion.
