@@ -926,7 +926,8 @@ export default Vue.extend({
                 let focusSpanElement =  docSelection?.focusNode?.parentElement;
                 // When the editable slots are empty, the span doesn't get the focus, but the container div does.
                 // So we need to retrieve the right HTML component by hand.      
-                // (usually, the first level div container gets the selection, but with FF, the second level container can also get it)   
+                // (usually, the first level div container gets the selection, but with FF, the second level container can also get it,
+                // and still with FF, a select-all will select the slot wrapper div)   
                 const classCheckerRegex = new RegExp("(^| )" + scssVars.labelSlotContainerClassName + "($| )");
                 if(anchorSpanElement?.tagName.toLowerCase() == "div"){
                     if(anchorSpanElement.className.match(classCheckerRegex) != null){
@@ -934,8 +935,15 @@ export default Vue.extend({
                         anchorSpanElement = anchorSpanElement.firstElementChild as HTMLSpanElement;
                     }
                     else if(anchorSpanElement.firstElementChild?.className.match(classCheckerRegex) != null){
-                        // The odd case in FF
+                        // The odd case in FF (level 2)
                         anchorSpanElement = anchorSpanElement.firstElementChild.firstElementChild as HTMLSpanElement;
+                    }
+                    else{
+                        // The odd case in FF of select-all: here we need to find out the span that starts the structure.
+                        const firstStructSpan = anchorSpanElement.getElementsByClassName(scssVars.labelSlotStructClassName).item(0)?.firstChild?.firstChild;
+                        if(firstStructSpan){
+                            anchorSpanElement = firstStructSpan as HTMLSpanElement;
+                        }
                     }
                 }
                 if(focusSpanElement?.tagName.toLowerCase() == "div"){
@@ -944,8 +952,16 @@ export default Vue.extend({
                         focusSpanElement = focusSpanElement.firstElementChild as HTMLSpanElement;
                     }
                     else if(focusSpanElement.firstElementChild?.className.match(classCheckerRegex) != null){
-                        // The odd case in FF
+                        // The odd case in FF (level 2)
                         focusSpanElement = focusSpanElement.firstElementChild.firstElementChild as HTMLSpanElement;
+                    }
+                    else{
+                        // The odd case in FF of select-all: here we need to find out the span that ends the structure.
+                        const divFocusChildren = focusSpanElement.getElementsByClassName(scssVars.labelSlotStructClassName);
+                        const lastStructSpan = divFocusChildren.item(0)?.lastChild?.firstChild;
+                        if(lastStructSpan){
+                            focusSpanElement = lastStructSpan as HTMLSpanElement;                        
+                        }
                     }
                 }
                 if(anchorSpanElement && focusSpanElement && isElementLabelSlotInput(anchorSpanElement) && isElementLabelSlotInput(focusSpanElement)){

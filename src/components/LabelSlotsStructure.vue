@@ -13,7 +13,7 @@
         @paste.prevent.stop="forwardPaste"
         @input="onInput"
         @compositionend="onCompositionEnd"
-        class="next-to-eachother label-slot-structure"
+        :class="'next-to-eachother '+scssVars.labelSlotStructClassName"
     >
             <!-- Note: the default text is only showing for new slots (1 subslot), we also use unicode zero width space character for empty slots for UI -->
             <LabelSlot
@@ -82,6 +82,11 @@ export default Vue.extend({
 
     computed:{
         ...mapStores(useStore),
+
+        scssVars() {
+            // just to be able to use in template
+            return scssVars;
+        },
 
         labelSlotsStructDivId(): string {
             return getFrameLabelSlotsStructureUID(this.frameId, this.labelIndex);
@@ -873,7 +878,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.label-slot-structure{
+.#{$strype-classname-label-slot-struct} {
     outline: none;
     max-width: 100%;
     flex-wrap: wrap;
