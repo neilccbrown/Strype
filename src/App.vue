@@ -1050,6 +1050,14 @@ export default Vue.extend({
                     const isSelectionNotAllowed = (focusLevel != anchorLevel) || sameLevelDiffParents || oneQuoteOrBracketSelected
                         || (hasStringSelected && focusSlotCursorInfos.slotInfos.slotId != anchorSlotCursorInfos.slotInfos.slotId);
 
+                    // Fix an issue with anchor on empty slots: the underlying span element matching the anchor slot contains a zero-width space when empty,
+                    // therefore it possible that, with the mouse, the cursor was placed right after that ZWSP and we get an anchor slot core infos that
+                    // doesn't match our "code" content. So we always replace the cursor position when detect this situation.
+                    if(anchorSlotCursorInfos.cursorPos == 1 && (anchorSlotCursorInfos.slotInfos.slotType & SlotType.code) > 0
+                        && (retrieveSlotFromSlotInfos(anchorSlotCursorInfos.slotInfos) as BaseSlot).code.length == 0){
+                        anchorSlotCursorInfos.cursorPos = 0;
+                    } 
+                        
                     let amendedSelectionFocusCursorSlotInfos = cloneDeep(anchorSlotCursorInfos) as SlotCursorInfos;
                     if(isSelectionNotAllowed) {
                         const forwardSelection = ((getSelectionCursorsComparisonValue() as number) < 0);
