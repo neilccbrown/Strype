@@ -53,7 +53,7 @@ function assertState(frameId: number, expectedState : string, expectedStateWithP
                 // If the text for a span is blank, use the placeholder since that's what the user will be seeing:
                 if (!text) {
                     // Get rid of zero-width spaces (trim() doesn't seem to do this):
-                    contentWithPlaceholders += p.getAttribute("placeholder")?.replace(/\u200B/g,"") ?? "";
+                    contentWithPlaceholders += p.getAttribute("placeholder")?.replace(/\u200B/g,"").replaceAll("\"","'") ?? "";
                 }
                 else {
                     contentWithPlaceholders += text;

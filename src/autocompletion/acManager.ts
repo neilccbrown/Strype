@@ -12,6 +12,7 @@ import {OUR_PUBLIC_LIBRARY_MODULES} from "@/autocompletion/ac-skulpt";
 import {Signature, TPyParser} from "tigerpython-parser";
 import graphicsMod from "../../public/public_libraries/strype/graphics.py";
 import soundMod from "../../public/public_libraries/strype/sound.py";
+import turtleMod from "../../public/pyi/turtle.pyi";
 import {getAvailablePyPyiFromLibrary, getPossibleImports, getTextFileFromLibraries} from "@/helpers/libraryManager";
 import Parser from "@/parser/parser";
 import { z } from "zod";
@@ -19,6 +20,7 @@ import {extractPYI} from "@/helpers/python-pyi";
 
 TPyParser.defineModule("strype.graphics", extractPYI(graphicsMod), "pyi");
 TPyParser.defineModule("strype.sound", extractPYI(soundMod), "pyi");
+TPyParser.defineModule("turtle", turtleMod, "pyi");
 
 // Given a FieldSlot, get the program code corresponding to it, to use
 // as the prefix (context) for code completion.
