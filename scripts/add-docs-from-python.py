@@ -9,9 +9,133 @@ import pydoc
 import re
 import sys
 from operator import attrgetter
+import traceback
 
 sys.path.append("../public/public_libraries")
 sys.path.append("./stubs")
+
+def convert_argspec_to_signature(func, argspec, owner_class):
+    def make_arg(name, default_value, arg_type):
+        return {
+            "name": name,
+            "defaultValue": default_value,
+            "argType": str(arg_type)
+        }
+
+    def make_vararg(name, arg_type):
+        return {"name": name, "argType": str(arg_type)} if name else None
+
+    args = argspec.args or []
+    posonlyargs = getattr(argspec, "posonlyargs", [])  # Python 3.8+
+    kwonlyargs = argspec.kwonlyargs or []
+    defaults = argspec.defaults or []
+    kw_defaults = argspec.kwonlydefaults or {}
+
+
+    # Determine if the method is a staticmethod
+    is_static = owner_class is not None and isinstance(
+        getattr(owner_class, func.__name__, None),
+        staticmethod
+    )
+
+    # Check if first param is 'self' or 'cls' and it's not a static method
+    first_param_is_self_or_cls = (
+        bool(args)
+        and (owner_class is not None
+             # This section part checks for bound methods, e.g. in random, randint = _inst.randint
+             or (hasattr(func, '__self__') and hasattr(func, '__func__'))
+             # Check for constructors:
+             or (getattr(func, '__name__', None) in {'__init__', '__new__'})
+             or inspect.isclass(func))
+        and not is_static
+    )
+    
+    if len(posonlyargs) == 0 and len(args) > 0 and first_param_is_self_or_cls:
+        posonlyargs.append(args.pop(0))
+
+    all_pos_args = posonlyargs + [arg for arg in args if arg not in posonlyargs]
+    num_pos_defaults = len(defaults)
+    default_start_index = len(all_pos_args) - num_pos_defaults
+
+    def make_default(v):
+        defValStr = str(v)
+        if defValStr.startswith("<"):
+            defValStr = "..."
+        if isinstance(v, str):
+            defValStr = "'" + defValStr + "'"
+        return defValStr
+
+    def get_default(i):
+        return make_default(defaults[i - default_start_index]) if i >= default_start_index else None
+
+
+    return {
+        "positionalOnlyArgs": [
+            make_arg(name, get_default(i), None)
+            for i, name in enumerate(posonlyargs)
+        ],
+        "positionalOrKeywordArgs": [
+            make_arg(name, get_default(i + len(posonlyargs)), None)
+            for i, name in enumerate(args) if name not in posonlyargs
+        ],
+        "varArgs": make_vararg(argspec.varargs, None),
+        "keywordOnlyArgs": [
+            make_arg(name, kw_defaults.get(name), None)
+            for name in kwonlyargs
+        ],
+        "varKwargs": make_vararg(argspec.varkw, None),
+        "firstParamIsSelfOrCls": first_param_is_self_or_cls
+    }
+
+def convert_inspect_signature_to_signature(sig):
+    params = list(sig.parameters.values())
+
+    positional_only_args = []
+    positional_or_keyword_args = []
+    keyword_only_args = []
+    varargs = None
+    varkwargs = None
+
+    for param in params:
+        param_info = {
+            "name": param.name,
+            "defaultValue": None if param.default is inspect.Parameter.empty else param.default,
+            "argType": None  # type annotations can be added if needed
+        }
+
+        if param.kind == inspect.Parameter.POSITIONAL_ONLY:
+            positional_only_args.append(param_info)
+        elif param.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD:
+            positional_or_keyword_args.append(param_info)
+        elif param.kind == inspect.Parameter.KEYWORD_ONLY:
+            keyword_only_args.append(param_info)
+        elif param.kind == inspect.Parameter.VAR_POSITIONAL:
+            varargs = {"name": param.name, "argType": None}
+        elif param.kind == inspect.Parameter.VAR_KEYWORD:
+            varkwargs = {"name": param.name, "argType": None}
+
+    return {
+        "positionalOnlyArgs": positional_only_args,
+        "positionalOrKeywordArgs": positional_or_keyword_args,
+        "varArgs": varargs,
+        "keywordOnlyArgs": keyword_only_args,
+        "varKwargs": varkwargs,
+        "firstParamIsSelf": False
+    }
+
+
+def get_class_and_func(ac_result, imp_mod):
+    parts = ac_result.split('.')
+    for i in range(len(parts) - 1, 0, -1):
+        class_path = parts[:i]
+        method_name = parts[i]
+        try:
+            cls = attrgetter('.'.join(class_path))(imp_mod)
+            func = inspect.getfullargspec(attrgetter(ac_result)(imp_mod))
+            return cls, func
+        except AttributeError:
+            continue
+    return None, inspect.getfullargspec(attrgetter(ac_result)(imp_mod))  # fallback
 
 def parse_arguments(text, func_name):
     # Split the text into lines
@@ -97,52 +221,35 @@ for mod in targetAPI:
             except:
                 # If we get an AttributeError or any other error, we just can't provide the doc:
                 pass
-        if 'function' in item['type'] and not 'params' in item:
+        if 'function' in item['type']:
             try:
-                 argspec = inspect.getfullargspec(attrgetter(item['acResult'])(imp_mod))
+                 cls, argspec = get_class_and_func(item['acResult'], imp_mod)
                  # The args item in the tuple is a list of names of positional arguments:
                  numArgs = len(argspec.args)
                  if numArgs > 0:
-                    # As per https://stackoverflow.com/questions/47599749/check-if-function-belongs-to-a-class
-                    # check if the method belongs to a class:
-                    try:
-                        hasTypeSelfParam = '.' in attrgetter(item['acResult'] + '.__qualname__')(imp_mod)
-                    except:
-                        # Might not have a qualname:
-                        hasTypeSelfParam = False
-                    # Constructors are separate, but can be identified by showing up as function and a type:
-                    if 'function' in item['type'] and 'type' in item['type']:
-                        hasTypeSelfParam = True
-                    item['params'] = []
-                    for i, arg in enumerate(argspec.args):
-                        details = {"name": arg}
-                        if i == 0 and hasTypeSelfParam:
-                            details['hide'] = True
-                        # The defaults item in the tuple is None or a list of default values but it goes backwards
-                        # So if you have 5 args, and 2 in the default, they apply to the fifth and fourth arg
-                        if argspec.defaults and ((numArgs - i) <= len(argspec.defaults)):
-                            try:
-                                defVal = str(argspec.defaults[numArgs - i - 1])
-                                # Don't record things like "<unittest.loader.TestLoader object at 0x10391f8e0>" as a defaultValue,
-                                # as it changes each run:
-                                defVal = re.sub(r' at 0x[0-9a-fA-F]+', "", defVal)
-                                details['defaultValue'] = defVal 
-                            except:
-                                pass
-                        item['params'].append(details)
-                        
-            except:
+                     item['signature'] = convert_argspec_to_signature(attrgetter(item['acResult'])(imp_mod), argspec, cls)                        
+            except Exception as e:
+                error_desc = str(e) + traceback.format_exc()
                 try:
                     # print is a weird case because the docs say it has a mandatory argument,
                     # but actually you can call it without any args
                     if item['acResult'] == "print" and (mod == "builtins" or not mod):
-                        del item['params']
+                        del item['signature']
                     else:
-                        args = parse_arguments(pydoc.render_doc(mod + "." + item['acResult']), item['acResult'])
-                        if args:
-                            item['params'] = args 
-                except:
-                    pass
+                        try:
+                            item['signature'] = convert_inspect_signature_to_signature(inspect.signature(mod + "." + item['acResult']))
+                            item['first_errors'] = error_desc 
+                        except Exception as e2:
+                            error_desc += str(e2) + traceback.format_exc()
+                            rendered_doc = pydoc.render_doc(mod + "." + item['acResult'])
+                            args = parse_arguments(rendered_doc, item['acResult'])
+                            if args:
+                                item['params'] = args
+                            else:
+                                item['errors'] = "Fellback through everything and parse_arguments failed on " + rendered_doc + " earlier errs: " + error_desc
+                except Exception as e3:
+                    error_desc += str(e3) + traceback.format_exc()
+                    item['errors'] = error_desc
                 pass 
 
 
