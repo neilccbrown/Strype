@@ -95,17 +95,25 @@ function focusEditorAC(): void {
 // Param is tuple:
 //  - First item is null (no module), string (module name) or [string, string] (library + module name)
 //  - Second item is func name, possibly including dots
-//  - Third item is param list which should be shown (i.e. excluding those with a default value)
-export function testRawFuncs(rawFuncs: [string | [string, string] | null, string, string[]][], skipFullyQualifiedVersion?: boolean) : void {
+//  - Third item is param list which should be shown.  If it's a pair it's [unfocused, focused], if it's single it's the same in both cases
+export function testRawFuncs(rawFuncs: [string | [string, string] | null, string, (string[] | [string[], string[]])][], skipFullyQualifiedVersion?: boolean) : void {
     const funcs: {
         keyboardTypingToImport?: string,
         funcName: string,
-        params: string[],
+        // Focused,unfocused, or single if same in both cases 
+        params: { focused: string[], unfocused: string[] },
         displayName: string,
         acSection: string,
         acName: string
     }[] = [];
     for (const rawFunc of rawFuncs) {
+        // Normalise to a pair of focused/unfocused arrays:
+        const params = (Array.isArray(rawFunc[2]) &&
+            rawFunc[2].length === 2 &&
+            Array.isArray(rawFunc[2][0]) ? {unfocused: rawFunc[2][0], focused: rawFunc[2][1]} : {
+                focused: rawFunc[2],
+                unfocused: rawFunc[2],
+            }) as { focused: string[], unfocused: string[] };
         if (rawFunc[0] != null) {
             let module: any;
             let libraryTyping;
@@ -127,7 +135,7 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | null, string
                 funcs.push({
                     keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + "i" + module + "{rightarrow}{downarrow}{downarrow}",
                     funcName: module + "." + rawFunc[1],
-                    params: rawFunc[2],
+                    params: params,
                     acSection: module,
                     acName: rawFunc[1],
                     displayName: rawFunc[1] + " with import frame",
@@ -137,7 +145,7 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | null, string
             funcs.push({
                 keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + "f" + module + "{rightarrow}*{rightarrow}{downarrow}{downarrow}",
                 funcName: rawFunc[1],
-                params: rawFunc[2],
+                params: params,
                 acSection: module,
                 acName: rawFunc[1],
                 displayName: rawFunc[1] + " with from-import-* frame",
@@ -147,7 +155,7 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | null, string
             funcs.push({
                 keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + "f" + module + "{rightarrow}" + (rawFunc[1].match(/^[A-Za-z0-9_]+/)?.[0] ?? rawFunc[1]) + "{rightarrow}{downarrow}{downarrow}",
                 funcName: rawFunc[1],
-                params: rawFunc[2],
+                params: params,
                 acName: rawFunc[1],
                 acSection: module,
                 displayName: rawFunc[1] + " with from-import-funcName frame",
@@ -157,61 +165,90 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | null, string
             // No import necessary
             funcs.push({
                 funcName: rawFunc[1],
-                params: rawFunc[2],
+                params: params,
                 acSection: BUILTIN,
                 acName: rawFunc[1],
                 displayName: rawFunc[1],
             });
         }
     }
-
+    testFuncs([
+        ...funcs.map((f) => ({...f, params: f.params.focused, defocus: false})),
+        ...funcs.map((f) => ({...f, params: f.params.unfocused, defocus: true})),
+    ]);
+}
+function testFuncs(funcs: {
+        keyboardTypingToImport?: string,
+        funcName: string,
+        params: string[],
+        defocus: boolean,
+        displayName: string,
+        acSection: string,
+        acName: string
+    }[]) {
     for (const func of funcs) {
-        it("Shows prompts after manually writing function name and brackets for " + func.displayName, () => {
+        const after = function() {
+            if (func.defocus) {
+                cy.get("body").type("{downarrow}");
+                cy.wait(500);
+            }
+        };
+        it("Shows prompts after manually writing function name and brackets for " + func.displayName + " defocus: " + func.defocus, () => {
             focusEditorAC();
             if (func.keyboardTypingToImport) {
                 cy.get("body").type(func.keyboardTypingToImport);
             }
             cy.get("body").type(" " + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
-            withFrameId((frameId) => assertState(frameId, func.funcName + "($)", func.funcName + "(" + func.params.join(", ") + ")"));
+            withFrameId((frameId) => {
+                after();
+                assertState(frameId, func.funcName + (func.defocus ? "()" : "($)"), func.funcName + "(" + func.params.join(", ") + ")");
+            });
         });
-        it("Shows prompts after manually writing function name and brackets AND commas for " + func.displayName, () => {
-            focusEditorAC();
-            if (func.keyboardTypingToImport) {
-                cy.get("body").type(func.keyboardTypingToImport);
-            }
-            cy.get("body").type(" " + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
-            // Type commas for num params minus 1:
-            for (let i = 0; i < func.params.length; i++) {
-                if (i > 0) {
-                    cy.get("body").type(",");
+        if (!func.defocus) {
+            it("Shows prompts after manually writing function name and brackets AND commas for " + func.displayName, () => {
+                focusEditorAC();
+                if (func.keyboardTypingToImport) {
+                    cy.get("body").type(func.keyboardTypingToImport);
                 }
-                withFrameId((frameId) => assertState(frameId,
-                    func.funcName + "(" + ",".repeat(i) + "$)",
-                    func.funcName + "(" + func.params.slice(0, i).join(",") + (i > 0 ? "," : "") + func.params.slice(i).join(", ") + ")"));
-            }
+                cy.get("body").type(" " + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
+                // Type commas for num params minus 1:
+                for (let i = 0; i < func.params.length; i++) {
+                    if (i > 0) {
+                        cy.get("body").type(",");
+                    }
+                    withFrameId((frameId) => assertState(frameId,
+                        func.funcName + "(" + ",".repeat(i) + "$)",
+                        func.funcName + "(" + func.params.slice(0, i).map((s) => s.replace(/=.*/, "")).join(",") + (i > 0 ? "," : "") + func.params.slice(i).map((s, j) => i == 0 || j > 0 ? s : s.replace(/=.*/, "")).join(", ") + ")"));
+                }
+            });
+        }
 
-        });
-
-        it("Shows prompts in nested function (part 1) " + func.displayName, () => {
+        it("Shows prompts in nested function (part 1) " + func.displayName + " defocus: " + func.defocus, () => {
             focusEditorAC();
             if (func.keyboardTypingToImport) {
                 cy.get("body").type(func.keyboardTypingToImport);
             }
             cy.get("body").type(" abs(" + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
-            withFrameId((frameId) => assertState(frameId, "abs(" + func.funcName + "($))", "abs(" + func.funcName + "(" + func.params.join(", ") + "))"));
+            withFrameId((frameId) => {
+                after();
+                assertState(frameId, "abs(" + func.funcName + (func.defocus? "())" : "($))"), "abs(" + func.funcName + "(" + func.params.join(", ") + "))");
+            });
         });
 
-        it("Shows prompts in nested function (part 2) " + func.displayName, () => {
+        it("Shows prompts in nested function (part 2) " + func.displayName + " defocus: " + func.defocus, () => {
             focusEditorAC();
             if (func.keyboardTypingToImport) {
                 cy.get("body").type(func.keyboardTypingToImport);
             }
             cy.get("body").type(" max(0," + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
-            withFrameId((frameId) => assertState(frameId, "max(0," + func.funcName + "($))", "max(0," + func.funcName + "(" + func.params.join(", ") + "))"));
+            withFrameId((frameId) => {
+                after();
+                assertState(frameId, "max(0," + func.funcName + (func.defocus? "())" : "($))"), "max(0," + func.funcName + "(" + func.params.join(", ") + "))");
+            });
         });
         
         if (func.params.length >= 3) {
-            it("Hides positional params and prev used named params once name entered", () => {
+            it("Hides positional params and prev used named params once name entered " + func.displayName + " defocus: " + func.defocus, () => {
                 focusEditorAC();
                 if (func.keyboardTypingToImport) {
                     cy.get("body").type(func.keyboardTypingToImport);
@@ -223,9 +260,12 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | null, string
                 const midName = func.params[midParam].replace(/=.*/, "");
                 cy.get("body").type("0, " + midName + "=0,");
                 // Now it should hide the first param, and the middle one, and show the others as keyword possibilities
-                withFrameId((frameId) => assertState(frameId,
-                    func.funcName + "(0," + midName + "=0,$)",
-                    func.funcName + "(0," + midName + "=0," + [...func.params.slice(1, midParam), ...func.params.slice(midParam + 1)].join(", ") + ")"));
+                withFrameId((frameId) => {
+                    after();
+                    assertState(frameId,
+                        func.funcName + "(0," + midName + "=0," + (func.defocus ? ")" : "$)"),
+                        func.funcName + "(0," + midName + "=0," + [...func.params.slice(1, midParam), ...func.params.slice(midParam + 1)].map((s) => s.includes("=") ? s : (s + "=")).join(", ") + ")");
+                });
             });
         }
     }

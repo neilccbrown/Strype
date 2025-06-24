@@ -110,7 +110,7 @@ export default Vue.extend({
             }
             else {
                 return Promise.all(this.subSlots.map((slotItem, index) => slotItem.placeholderSource !== undefined 
-                    ? calculateParamPrompt(this.frameId, slotItem.placeholderSource) 
+                    ? calculateParamPrompt(this.frameId, slotItem.placeholderSource, slotItem.focused ?? false) 
                     : Promise.resolve((this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && index == 0) 
                         ? getFunctionCallDefaultText(this.frameId)
                         : "\u200b")));

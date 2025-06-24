@@ -375,6 +375,27 @@ export async function getAvailableModulesForImport() : Promise<AcResultsWithCate
     /* FITRUE_isPython */
 }
 
+const SignatureArgSchema = z.object({
+    name: z.string(),
+    defaultValue: z.string().nullable(),
+    argType: z.string().nullable(),
+});
+
+const SignatureVarArgSchema = z.object({
+    name: z.string(),
+    argType: z.string().nullable(),
+});
+
+const SignatureSchema = z.object({
+    positionalOnlyArgs: z.array(SignatureArgSchema),
+    positionalOrKeywordArgs: z.array(SignatureArgSchema),
+    varArgs: SignatureVarArgSchema.nullable(),
+    keywordOnlyArgs: z.array(SignatureArgSchema),
+    varKwargs: SignatureVarArgSchema.nullable(),
+    firstParamIsSelfOrCls: z.boolean(),
+});
+
+
 // Define AcResultType
 const AcResultTypeSchema = z.object({
     acResult: z.string(),
@@ -389,6 +410,7 @@ const AcResultTypeSchema = z.object({
             })
         )
         .optional(),
+    signature: SignatureSchema.optional(),
     version: z.number(),
 });
 
@@ -463,30 +485,50 @@ function getParamPromptOld(params: string[], hasDefaultValues: boolean[] | null,
 
 // Get the placeholder text for the given function parameter index
 // If it's the last parameter, glue the rest together with commas
-function getParamPrompt(sig: Signature, targetParamIndex: number, prevKeywordArgs: string[], lastParam: boolean) : string {
+function getParamPrompt(sig: Signature, targetParamIndex: number, prevKeywordArgs: string[], lastParam: boolean, isFocused: boolean) : string {
     const t = function(arg : {name: string, defaultValue: string | null}) {
         // Deliberately no spaces around equals to compress the display:
-        return arg.name + (arg.defaultValue ? "=" + arg.defaultValue : "");
+        return arg.name + (arg.defaultValue != null ? "=" + arg.defaultValue : "");
     };
-    const positionalOnlyArgsMinusSelf = sig.positionalOnlyArgs.slice(sig.firstParamIsSelf ? 1 : 0);
+    const positionalOnlyArgsMinusSelf = sig.positionalOnlyArgs.slice(sig.firstParamIsSelfOrCls ? 1 : 0);
     if (prevKeywordArgs.length == 0) {
         // Still in the positional args, find the right index:
-        const flattenedPositional = [...positionalOnlyArgsMinusSelf, ...sig.positionalOrKeywordArgs];
+        let flattenedPositional = [...positionalOnlyArgsMinusSelf, ...sig.positionalOrKeywordArgs];
         if (targetParamIndex < flattenedPositional.length) {
             if (!lastParam) {
-                return t(flattenedPositional[targetParamIndex]);
+                // Don't show default if not last param
+                return t({...flattenedPositional[targetParamIndex], defaultValue: null});
             }
             else {
-                return flattenedPositional.slice(targetParamIndex).map(t).join(", ");
+                if (!isFocused) {
+                    // If not focused, don't show params that have a default value:
+                    flattenedPositional = flattenedPositional.filter((p) => p.defaultValue == null);
+                }
+                const remaining = flattenedPositional.slice(targetParamIndex);
+                if (isFocused && targetParamIndex == 0 && lastParam) {
+                    // If it's empty and we're focused in the parents,
+                    // show the keyword ones as well:
+                    remaining.push(...sig.keywordOnlyArgs);
+                }
+                if (remaining.length >= 1 && targetParamIndex > 0) {
+                    // Don't show default for next param:
+                    remaining[0] = {...remaining[0], defaultValue: null};
+                }
+                return remaining.map(t).join(", ");
             }
         }
+    }
+    // If only optional keyword args left, don't show them if not focused:
+    if (!isFocused && sig.positionalOrKeywordArgs.length <=  targetParamIndex - prevKeywordArgs.length - positionalOnlyArgsMinusSelf.length) {
+        return "";
     }
     // Otherwise we must only show args which can be specified by keyword, and only those
     // not already specified:
     const remainingKeywordNames = [...sig.positionalOrKeywordArgs.slice(targetParamIndex - prevKeywordArgs.length - positionalOnlyArgsMinusSelf.length), ...sig.keywordOnlyArgs]
         .filter((k) => !prevKeywordArgs.includes(k.name));
     if (remainingKeywordNames.length > 0) {
-        return remainingKeywordNames.map(t).join(", ");
+        // Make the equals show up by filling in defaultValue if blank:
+        return remainingKeywordNames.map((c) => ({...c, defaultValue: c.defaultValue ?? ""})).map(t).join(", ");
     }
     if (sig.varArgs) {
         return "*" + sig.varArgs.name;
@@ -509,7 +551,7 @@ export async function tpyDefineLibraries(parser: Parser) : Promise<void> {
                 const pyi = pyPYI.endsWith(".pyi") ? text : extractPYI(text);
                 
                 try {
-                    (TPyParser as any).defineModule(pyPYI.replace(/\.pyi?$/, "").replaceAll("/", "."), pyi, "pyi");
+                    TPyParser.defineModule(pyPYI.replace(/\.pyi?$/, "").replaceAll("/", "."), pyi, "pyi");
                 }
                 catch (e) {
                     console.error(e);
@@ -521,7 +563,7 @@ export async function tpyDefineLibraries(parser: Parser) : Promise<void> {
 
 // Gets the parameter name prompt for the given autocomplete details (context+token)
 // for the given parameter. Note that for the UI to display spans properly, empty placeholders are returned as \u200b (0-width space)
-export async function calculateParamPrompt(frameId: number, {context, token, paramIndex, lastParam, prevKeywordNames} : {context: string, token: string, paramIndex: number, lastParam: boolean, prevKeywordNames: string[]}) : Promise<string> {
+export async function calculateParamPrompt(frameId: number, {context, token, paramIndex, lastParam, prevKeywordNames} : {context: string, token: string, paramIndex: number, lastParam: boolean, prevKeywordNames: string[]}, isFocused: boolean) : Promise<string> {
     if (!context) {
         // If context is blank, we know that the function must be one of:
         // - A user-defined function
@@ -535,7 +577,10 @@ export async function calculateParamPrompt(frameId: number, {context, token, par
         }
         const builtinFunc = getBuiltins().find((f) => f.acResult === token);
         if (builtinFunc !== undefined) {
-            if (builtinFunc.params) {
+            if (builtinFunc.signature) {
+                return getParamPrompt(builtinFunc.signature, paramIndex, prevKeywordNames, lastParam, isFocused);
+            }
+            else if (builtinFunc.params) {
                 return getParamPromptOld(builtinFunc.params.filter((p) => !p.hide).map((p) => p.name), builtinFunc.params.filter((p) => !p.hide).map((p) => p.defaultValue !== undefined), paramIndex, lastParam);
             }
             else {
@@ -546,7 +591,10 @@ export async function calculateParamPrompt(frameId: number, {context, token, par
     else {
         // If the context is non-blank and matches an imported module, we can look it up there.        
         const fromModule = (await getAvailableItemsForImportFromModule(context)).find((ac) => ac.acResult === token);
-        if (fromModule?.params !== undefined) {
+        if (fromModule?.signature) {
+            return getParamPrompt(fromModule.signature, paramIndex, prevKeywordNames, lastParam, isFocused);
+        }
+        else if (fromModule?.params !== undefined) {
             return getParamPromptOld(fromModule.params.filter((p) => !p.hide).map((p) => p.name), fromModule.params.filter((p) => !p.hide).map((p) => p.defaultValue !== undefined), paramIndex, lastParam);
         }
     }
@@ -555,7 +603,10 @@ export async function calculateParamPrompt(frameId: number, {context, token, par
     // If there is a context, we see if the full item (context.token) is in the AC:
     const importedFunc = Object.values(await getAllExplicitlyImportedItems(context)).flat().find((f) => f.acResult === token || f.acResult === context + "." + token);
     if (importedFunc !== undefined) {
-        if (importedFunc.params) {
+        if (importedFunc.signature) {
+            return getParamPrompt(importedFunc.signature, paramIndex, prevKeywordNames, lastParam, isFocused);
+        }
+        else if (importedFunc.params) {
             return getParamPromptOld(importedFunc.params.filter((p) => !p.hide).map((p) => p.name), importedFunc.params.filter((p) => !p.hide).map((p) => p.defaultValue !== undefined), paramIndex, lastParam);
         }
         else {
@@ -575,7 +626,7 @@ export async function calculateParamPrompt(frameId: number, {context, token, par
         const tppCompletions = TPyParser.autoCompleteExt(totalCode, totalCode.length - 2);
         const match = tppCompletions?.filter((c) => c.acResult === token);
         if (match && match.length > 0 && match[0].signature) {
-            return getParamPrompt(match[0].signature, paramIndex, prevKeywordNames, lastParam);
+            return getParamPrompt(match[0].signature, paramIndex, prevKeywordNames, lastParam, isFocused);
         }
     }
     
@@ -585,7 +636,7 @@ export async function calculateParamPrompt(frameId: number, {context, token, par
         const lastDotIndex = context.lastIndexOf(".");
         token = context.substring(lastDotIndex + 1) + "." + token;
         context = context.substring(0, lastDotIndex);
-        return calculateParamPrompt(frameId, {context, token, paramIndex, lastParam, prevKeywordNames});
+        return calculateParamPrompt(frameId, {context, token, paramIndex, lastParam, prevKeywordNames}, isFocused);
     }
     
     // Can't find it!
