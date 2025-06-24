@@ -513,7 +513,13 @@ export default Vue.extend({
                         ctrlKey: event.ctrlKey,
                         metaKey: event.metaKey,
                     }));
-                if (event.key.toLowerCase() == "backspace"
+                
+                if(["PageUp", "PageDown", "Home", "End"].includes(event.key) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment){
+                    // A few events need to be handled by the brower solely.
+                    // That is, for comments: "PageUp", "PageDown", "Home", "End":
+                    return;
+                }
+                else if (event.key.toLowerCase() == "backspace"
                     || event.key.toLowerCase() == "delete"
                     || event.key.toLowerCase() == "enter"
                     || event.key == "ArrowUp"
