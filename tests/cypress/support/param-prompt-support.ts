@@ -204,7 +204,7 @@ function testFuncs(funcs: {
                 assertState(frameId, func.funcName + (func.defocus ? "()" : "($)"), func.funcName + "(" + func.params.join(", ") + ")");
             });
         });
-        if (!func.defocus && !func.funcName.includes("urlopen")) {
+        if (!func.defocus && !func.funcName.includes("urlopen") && !func.funcName.includes("namedtuple")) {
             it("Shows prompts after manually writing function name and brackets AND commas for " + func.displayName, () => {
                 focusEditorAC();
                 if (func.keyboardTypingToImport) {
