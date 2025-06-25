@@ -1,14 +1,17 @@
 <template>
     <!-- @mousedown must be kept to avoid the click to move the focus from input text field -->
     <li
-        v-show="item"
+        v-show="item || itemHTML"
         :class="{[scssVars.acItemClassName]: true, [scssVars.acItemSelectedClassName]: selected}"
         :id="id"
+        :data-item="item"
         @mouseover="onHover"
         @mousedown.prevent.stop
         @mouseup.self="$emit('acItemClicked',id)"
     >
-        {{item}}
+        <!-- One or the other: -->
+        <span v-if="itemHTML" v-html="itemHTML"></span>
+        <span v-else>{{ item }}</span>
         <span v-if="version > 1" class="api-item-version" :title="$t('apidiscovery.v2InfoMsg')">v{{version}}</span>
     </li>
 </template>
@@ -25,6 +28,10 @@ export default Vue.extend({
 
     props: {
         item: String,
+        itemHTML: {
+            type: String,
+            default: "",
+        },
         id: String,
         index: Number,
         selected: Boolean,

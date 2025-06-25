@@ -24,7 +24,8 @@
                             :class="scssVars.acPopupItemClassName"
                             :id="UID+'_'+item.index"
                             :index="item.index"
-                            :item="textForAC(item)"
+                            :item="codeForAC(item)"
+                            :itemHTML="htmlForAC(item)"
                             :key="UID+'_'+item.index"
                             :selected="item.index==selected"
                             v-on="$listeners"
@@ -143,25 +144,34 @@ export default Vue.extend({
     },
 
     methods: {
-        textForAC(item : AcResultType) : string {
+        codeForAC(item: AcResultType) : string {
+            return item.acResult + ((this.showFunctionBrackets && item.type.includes("function")) ? "()" : "");
+        },
+        htmlForAC(item : AcResultType) : string {
+            // Note: the autocomplete info can be third-party if libraries are involved, or just from
+            // the user's own code, so we should HTML escape it to avoid any Javascript injection, etc.
+            const spanStart = "<span class='ac-optional-param'>";
             function argText(arg: SignatureArg) : string {
-                return arg.name + (arg.defaultValue != null ? "=" + arg.defaultValue : "");
+                if (arg.defaultValue != null) {
+                    return spanStart + _.escape(arg.name) + "</span>";
+                }
+                else {
+                    return _.escape(arg.name);
+                }
             }
             function paramsText(sig: Signature) : string{
                 const posOnly = sig.positionalOnlyArgs.slice(sig.firstParamIsSelfOrCls ? 1 : 0);
+                // Note that the comma needs to be formatted differently between grey optional params, hence the odd map and join at the end:
                 return [
                     ...posOnly.map(argText),
                     ...(posOnly.length > 0 ? ["/"] : []),
                     ...sig.positionalOrKeywordArgs.map(argText),
-                    ...(sig.varArgs != null ? ["*" + sig.varArgs.name] : (sig.keywordOnlyArgs.length > 0 ? ["*"] : [])),
+                    ...(sig.varArgs != null ? [spanStart + "*" + _.escape(sig.varArgs.name) + "</span>"] : (sig.keywordOnlyArgs.length > 0 ? [`${spanStart}*</span>`] : [])),
                     ...sig.keywordOnlyArgs.map(argText),
-                    ...(sig.varKwargs != null ? ["**" + sig.varKwargs.name] : []),
-                ].join(", ");
+                    ...(sig.varKwargs != null ? [spanStart + "**" + _.escape(sig.varKwargs.name) + "</span>"] : []),
+                ].map((p, i) => (i > 0 ? (p.startsWith(spanStart) ? spanStart + ",</span> " : ", ") : "") + p).join("");
             }
-            if (item.acResult == "load_image") {
-                console.log(JSON.stringify(item));
-            }
-            return item.acResult + ((this.showFunctionBrackets && item.type.includes("function")) ? "(" + (item.signature ? paramsText(item.signature) : item.params?.filter((p) => !p.hide && p.defaultValue === undefined)?.map((p) => p.name)?.join(", ") || "") + ")" : "");
+            return _.escape(item.acResult) + ((this.showFunctionBrackets && item.type.includes("function")) ? "(" + (item.signature ? paramsText(item.signature) : item.params?.filter((p) => !p.hide && p.defaultValue === undefined)?.map((p) => _.escape(p.name))?.join(", ") || "") + ")" : "");
         },
 
         sortCategories(categories : string[]) : string[] {
@@ -521,6 +531,11 @@ export default Vue.extend({
 .popup li {
     padding-left: 5px;
     padding-right: 25px;
+}
+
+.popup .ac-optional-param {
+    font-style: italic;
+    color: #aaaaaa;
 }
 
 </style>

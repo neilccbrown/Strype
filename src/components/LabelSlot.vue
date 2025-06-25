@@ -1515,7 +1515,7 @@ export default Vue.extend({
 
         acItemClicked(item: string) {
             // Get the content of the <li> element through the child node to avoid getting nested text elements (like the version)
-            const selectedItem = (document.getElementById(item) as HTMLLIElement)?.firstChild?.nodeValue?.trim()??"";
+            const selectedItem = (document.getElementById(item) as HTMLLIElement)?.getAttribute("data-item")?.trim()??"";
             if(selectedItem === undefined) {
                 return;
             }

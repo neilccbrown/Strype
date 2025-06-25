@@ -107,7 +107,13 @@ export function checkExactlyOneItem(acIDSel : string, category: string | null, t
     cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName + (category == null ? "" : " div[data-title='" + category + "']")).within(() => {
         // Logging; useful in case of failure but we don't want it on by default:
         // cy.findAllByText(text, { exact: true}).each(x => cy.log(x.get()[0].id));
-        cy.findAllByText(text, { exact: true}).should("have.length", 1);
+        cy.findAllByText((content, element) => {
+            // From https://stackoverflow.com/questions/68209510/how-to-access-text-broken-by-multiple-elements-in-testing-library
+            const hasText = (element : Element | null) => element?.textContent === text;
+            const elementHasText = hasText(element);
+            const childrenDontHaveText : boolean = Array.from(element?.children || []).every((child) => !hasText(child));
+            return elementHasText && childrenDontHaveText;
+        }).should("have.length", 1);
     });
 }
 
