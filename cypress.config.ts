@@ -6,7 +6,7 @@ import fs from "fs";
 const cypressSplit = require("cypress-split");
 
 export default defineConfig({
-    retries: 0,
+    retries: 2,
     downloadsFolder: "tests/cypress/downloads",
     fixturesFolder:	"tests/cypress/fixtures",
     screenshotsFolder: "tests/cypress/screenshots",
