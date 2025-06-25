@@ -321,7 +321,8 @@ export default Vue.extend({
                 (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields[0] as BaseSlot).code = (document.getElementById(getLabelSlotUID(currentFocusSlotCursorInfos.slotInfos))?.textContent??"").replace(/\u200B/g, "");
                 this.$nextTick(() => {
                     setDocumentSelection(currentFocusSlotCursorInfos, currentFocusSlotCursorInfos);
-                    options?.doAfterCursorSet?.();
+                    options?.doAfterCursorSet?.();                    
+                    this.appStore.saveStateChanges(stateBeforeChanges);
                 });
                 return;
             }
