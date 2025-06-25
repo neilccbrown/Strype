@@ -423,52 +423,6 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
 }
 
 
-// We want to know if the cursor position in a comment frame will still allow for moving that cursor up/down within the frame or need to be interpreted as an "exit" out the frame.
-// A naive way of approaching this would be to check the line returns (\n) before/after the cursor, but this is not reliable because the text content associated with the span
-// element will not necessarily be represented exactly in the same way on the browser (because of text wrapping) -- and there is no easy way to retrieve the text AS IT IS PRESENTED.
-// However, we can check the bounds of the current selection to help us find where we are in the span, and therefore know if we're in the top/last VISUALLY SHOWING line of the text
-// Based on https://www.bennadel.com/blog/4310-detecting-rendered-line-breaks-in-a-text-node-in-javascript.htm
-export function checkCanReachAnotherCommentLine(isCommentFrame: boolean, isArrowUp: boolean, commentSpanElement: HTMLSpanElement): boolean{
-    // If the span isn't a comment, or is a comment that has no content (there won't be more than a single line): we can return false
-    if(!isCommentFrame || (commentSpanElement.textContent as string).replaceAll("\u200b","").length == 0){
-        return false;
-    }
-
-    const currentDocSelection = document.getSelection();
-    if(currentDocSelection){
-        const commentSpanRect = commentSpanElement.getClientRects()[0];
-        const commentSelectionRects = currentDocSelection.getRangeAt(0).getClientRects();
-        // When we are at a line that contains nothing, the client rect may not exist:
-        // we need to add a temporary invisible character to get a box, and use that, then we can remove it.
-        let rectAtSelection = null;
-        if(commentSelectionRects.length == 0){
-            const range = currentDocSelection.getRangeAt(0).cloneRange();
-            range.collapse(true);
-            // Create a temporary marker
-            const marker = document.createElement("span");
-            marker.style.display = "inline-block";
-            marker.appendChild(document.createTextNode("\u200b")); // zero-width space
-            range.insertNode(marker);
-            rectAtSelection =marker.getBoundingClientRect();
-            marker.remove();
-            commentSpanElement.normalize(); // Clean up any split text nodes
-        }
-        else{
-            rectAtSelection = commentSelectionRects[0];
-        }
-
-        if(rectAtSelection){
-            const lineheight = rectAtSelection.height;
-            // The weird case when we are below an empty line
-            const firstRect = (commentSelectionRects.length == 2 && currentDocSelection.getRangeAt(0).collapsed) ? commentSelectionRects[1] : rectAtSelection;
-            const isInFirstVisualLine = (firstRect.top - commentSpanRect.top) < lineheight;
-            const isInLastVisualLine = (commentSpanRect.bottom - ((commentSelectionRects.length == 2) ? commentSelectionRects[1] : rectAtSelection).bottom) < lineheight;
-            return ((isArrowUp) ? !isInFirstVisualLine : !isInLastVisualLine);
-        }
-    }
-    return false;
-}
-
 export function getFrameContextMenuUID(frameUID: string): string {
     return frameUID + "_frameContextMenu";
 }
