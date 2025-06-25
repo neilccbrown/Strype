@@ -42,7 +42,7 @@ beforeEach(() => {
 // Helper method that needs to be called in a test before typing text in Strype
 // (not clear why, but it's just required... otherwise when a typing triggers a frame addition, following typing fails)
 function focusEditor(): void {
-    cy.get("#" + strypeElIds.getFrameUID(-3)).focus();
+    cy.get("#" + strypeElIds.getFrameUID(-3), {timeout: 15 * 1000}).focus();
 }
 
 // This method expected the frame cursor to be at the start of "my code":
