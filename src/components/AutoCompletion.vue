@@ -81,7 +81,7 @@ import _ from "lodash";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 import {getAllEnabledUserDefinedFunctions, getFrameContainer} from "@/helpers/storeMethods";
-import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, extractCommaSeparatedNames, tpyDefineLibraries} from "@/autocompletion/acManager";
+import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, tpyDefineLibraries, getUserDefinedSignature} from "@/autocompletion/acManager";
 import Parser from "@/parser/parser"; 
 import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
 import {Signature, SignatureArg, TPyParser} from "tigerpython-parser";
@@ -307,7 +307,7 @@ export default Vue.extend({
                     acResult: (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code,
                     documentation: "",
                     type: ["function"],
-                    params: extractCommaSeparatedNames(f.labelSlotsDict[1].slotStructures).map((p) => ({name: p})),
+                    signature: getUserDefinedSignature(f),
                     version: 0,
                 }));
                 

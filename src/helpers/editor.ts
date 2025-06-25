@@ -1,6 +1,6 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesFuncDefScope, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import {AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesFuncDefScope, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot} from "@/types/types";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameContainer, getFrameSectionIdFromFrameId } from "./storeMethods";
 import { splitByRegexMatches, strypeFileExtension } from "./common";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
@@ -1532,6 +1532,28 @@ export const IMAGE_PLACERHOLDER = "$strype_image_placeholder$";
 export const STRING_SINGLEQUOTE_PLACERHOLDER = "$strype_StrSgQuote_placeholder$";
 export const STRING_DOUBLEQUOTE_PLACERHOLDER = "$strype_StrDbQuote_placeholder$";
 
+// Each params item is the set of operands and operators that are before the next comma or end of bracket
+// Each item in keyValues corresponds to the item in params
+export function extractFormalParamsFromSlot(structOfBracket: SlotsStructure) : {params: { operands: FieldSlot[], operators: string[] }[], keyValues: ([string, string | null] | null)[]} {
+    const params = splitAtCommas(structOfBracket.fields, structOfBracket.operators);
+    const keyValues: ([string, string | null] | null)[] = params.map((p) => {
+        if (p.operators.length >= 1 && p.operators[0] == "=") {
+            const possName = p.operands[0];
+            if (isFieldBaseSlot(possName)) {
+                return [possName.code, slotStructureToString({operators: p.operators.slice(1).map((c) => ({code: c})), fields: p.operands.slice(1)})];
+            }
+        }
+        else if (p.operands.length == 1) {
+            const possName = p.operands[0];
+            if (isFieldBaseSlot(possName)) {
+                return [possName.code, null];
+            }
+        }
+        return null;
+    });
+    return {params, keyValues};
+}
+
 export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: boolean, cursorPos?: number, skipStringEscape?: boolean, frameType?: string, imageLiterals?: {code: string, mediaType: string}[]}): {slots: SlotsStructure, cursorOffset: number} => {
     const imageLiterals : { code: string, mediaType: string }[] = flags?.imageLiterals ?? [];
     // This method parse a code literal to generate the equivalent slot structure.
@@ -1651,16 +1673,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, {isInsideString: false, cursorPos: (flags?.cursorPos) ? flags.cursorPos - (firstOpenedBracketPos + 1) : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         if (openingBracketValue === "(") {
             // First scan and find all the comma-separated parameters:
-            const params = splitAtCommas(structOfBracket.fields, structOfBracket.operators);
-            const keywordNames : (string | null)[] = params.flatMap((p) => {
-                if (p.operators.length >= 1 && p.operators[0] == "=") {
-                    const possName = p.operands[0];
-                    if (isFieldBaseSlot(possName)) {
-                        return possName.code;
-                    }
-                }
-                return null;
-            });
+            const {params, keyValues} = extractFormalParamsFromSlot(structOfBracket);
             const context = getContentForACPrefix(structBeforeBracket, true);
             params.forEach((param, paramIndex) => {
                 // We only apply placeholderSource info if the parameter is a single plain slot:
@@ -1672,7 +1685,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
                             context: context,
                             paramIndex: paramIndex,
                             lastParam: paramIndex == params.length - 1,
-                            prevKeywordNames: keywordNames.slice(0, paramIndex).filter((s): s is string => s !== null),
+                            prevKeywordNames: keyValues.slice(0, paramIndex).filter((s): s is [string, string] => s !== null && s[1] !== null).map((s) => s[0]),
                         };
                     }
                 }
@@ -2252,6 +2265,35 @@ export function simpleSlotStructureToString(ss: SlotsStructure) : string {
         if (i < ss.operators.length) {
             r.push(ss.operators[i].code);
         }
+    }
+    return r.join("");
+}
+
+export function slotStructureToString(ss: SlotsStructure) : string {
+    const r : string[] = [];
+    if (ss.openingBracketValue) {
+        r.push(ss.openingBracketValue);
+    }
+    for (let i = 0; i < ss.fields.length; i++) {
+        const field = ss.fields[i];
+        if (isFieldMediaSlot(field)) {
+            r.push("<img>");
+        }
+        else if (isFieldStringSlot(field)) {
+            r.push(field.quote + field.code + field.quote);
+        }
+        else if (isFieldBaseSlot(field)) {
+            r.push(field.code);
+        }
+        else {
+            r.push(slotStructureToString(ss));
+        }
+        if (i < ss.operators.length) {
+            r.push(ss.operators[i].code);
+        }
+    }
+    if (ss.openingBracketValue) {
+        r.push(getMatchingBracket(ss.openingBracketValue, true));
     }
     return r.join("");
 }

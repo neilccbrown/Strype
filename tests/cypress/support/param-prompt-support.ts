@@ -96,7 +96,7 @@ function focusEditorAC(): void {
 //  - First item is null (no module), string (module name) or [string, string] (library + module name)
 //  - Second item is func name, possibly including dots
 //  - Third item is param list which should be shown.  If it's a pair it's [unfocused, focused], if it's single it's the same in both cases
-export function testRawFuncs(rawFuncs: [string | [string, string] | null, string, (string[] | [string[], string[]])][], skipFullyQualifiedVersion?: boolean) : void {
+export function testRawFuncs(rawFuncs: [string | [string, string] | {udf: string} | null, string, (string[] | [string[], string[]])][], skipFullyQualifiedVersion?: boolean) : void {
     const funcs: {
         keyboardTypingToImport?: string,
         funcName: string,
@@ -117,12 +117,23 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | null, string
         if (rawFunc[0] != null) {
             let module: any;
             let libraryTyping;
-            if (typeof rawFunc[0] == "string") {
+            if ((rawFunc[0] as any)?.udf) {
+                funcs.push({
+                    keyboardTypingToImport: "{uparrow}f" + (rawFunc[0] as any)?.udf + "{downarrow}",
+                    funcName: rawFunc[1],
+                    params: params,
+                    acSection: "My functions",
+                    acName: rawFunc[1],
+                    displayName: rawFunc[1] + " udf: " + (rawFunc[0] as any)?.udf,
+                });
+                continue;
+            }
+            else if (typeof rawFunc[0] == "string") {
                 // No library:
                 libraryTyping = "";
                 module = rawFunc[0];
             }
-            else {
+            else if (Array.isArray(rawFunc[0])) {
                 // Enter the library:
                 libraryTyping = "l" + rawFunc[0][0] + "{rightarrow}";
                 module = rawFunc[0][1];

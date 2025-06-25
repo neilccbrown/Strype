@@ -1,11 +1,11 @@
-import {AcResultsWithCategory, AllFrameTypesIdentifier, BaseSlot, FrameObject, AcResultType, SlotsStructure, FieldSlot, StringSlot} from "@/types/types";
+import {AcResultsWithCategory, AllFrameTypesIdentifier, BaseSlot, FrameObject, AcResultType, SlotsStructure, FieldSlot, StringSlot, isFieldBaseSlot} from "@/types/types";
 
 import {useStore} from "@/store/store";
 import microbitPythonAPI from "@/autocompletion/microbit-api.json";
 import { pythonBuiltins } from "@/autocompletion/pythonBuiltins";
 import skulptPythonAPI from "@/autocompletion/skulpt-api.json";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
-import {getMatchingBracket, transformFieldPlaceholders} from "@/helpers/editor";
+import {extractFormalParamsFromSlot, getMatchingBracket, transformFieldPlaceholders} from "@/helpers/editor";
 import {getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import {OUR_PUBLIC_LIBRARY_MODULES} from "@/autocompletion/ac-skulpt";
@@ -563,6 +563,19 @@ export async function tpyDefineLibraries(parser: Parser) : Promise<void> {
     }
 }
 
+export function getUserDefinedSignature(userFunc: FrameObject) : Signature {
+    const {params, keyValues} = extractFormalParamsFromSlot(userFunc.labelSlotsDict[1].slotStructures);
+    // TODO look for *
+    return {
+        positionalOnlyArgs: [], //TODO self if class
+        positionalOrKeywordArgs: params.map((p, i) => ({name: keyValues[i]?.[0] ?? (p.operands.length == 1 && isFieldBaseSlot(p.operands[0]) ? p.operands[0].code : undefined) ?? ("error" + i), defaultValue: keyValues[i]?.[1] ?? null, argType: null})),
+        keywordOnlyArgs: [/*TODO*/],
+        varArgs: null, // TODO support this
+        varKwargs: null, // TODO support this
+        firstParamIsSelfOrCls: false, // TODO support this
+    };
+}
+
 // Gets the parameter name prompt for the given autocomplete details (context+token)
 // for the given parameter. Note that for the UI to display spans properly, empty placeholders are returned as \u200b (0-width space)
 export async function calculateParamPrompt(frameId: number, {context, token, paramIndex, lastParam, prevKeywordNames} : {context: string, token: string, paramIndex: number, lastParam: boolean, prevKeywordNames: string[]}, isFocused: boolean) : Promise<string> {
@@ -574,8 +587,8 @@ export async function calculateParamPrompt(frameId: number, {context, token, par
         // We check the items in that order.  We can do this without using Skulpt, which will speed things up
         const userFunc = getAllEnabledUserDefinedFunctions().find((f) => (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot)?.code === token);
         if (userFunc !== undefined) {
-            const params : string[] = extractCommaSeparatedNames(userFunc.labelSlotsDict[1].slotStructures);
-            return getParamPromptOld(params, null, paramIndex, lastParam);
+            const sig = getUserDefinedSignature(userFunc);
+            return getParamPrompt(sig, paramIndex, prevKeywordNames, lastParam, isFocused);
         }
         const builtinFunc = getBuiltins().find((f) => f.acResult === token);
         if (builtinFunc !== undefined) {
