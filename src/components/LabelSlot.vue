@@ -429,7 +429,7 @@ export default Vue.extend({
                 const slotXPos = document.getElementById(getLabelSlotUID(this.coreSlotInfo))?.getBoundingClientRect().x??0; 
 
                 // Get the spans of that frame label container
-                const spans = document.querySelectorAll("#"+getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex) + " span");
+                const spans = document.querySelectorAll("#"+getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex) + " span." + scssVars.labelSlotInputClassName);
                 let indexOfCurrentSpan = 0;
                 spans.forEach((element, index) => {
                     if(element.id == getLabelSlotUID(this.coreSlotInfo)){
