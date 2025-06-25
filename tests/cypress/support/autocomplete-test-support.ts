@@ -104,12 +104,12 @@ export function withSelection(inner : (arg0: { id: string, cursorPos : number })
 // Given a selector for the auto-complete and text for an item, checks that exactly one item with that text
 // exists in the autocomplete
 export function checkExactlyOneItem(acIDSel : string, category: string | null, text : string) : void {
-    cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName + (category == null ? "" : " div[data-title='" + category + "']")).within(() => {
+    cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName + ">.popup:first-of-type" + (category == null ? "" : " div[data-title='" + category + "']")).within(() => {
         // Logging; useful in case of failure but we don't want it on by default:
         // cy.findAllByText(text, { exact: true}).each(x => cy.log(x.get()[0].id));
         cy.findAllByText((content, element) => {
             // From https://stackoverflow.com/questions/68209510/how-to-access-text-broken-by-multiple-elements-in-testing-library
-            const hasText = (element : Element | null) => element?.textContent === text;
+            const hasText = (element : Element | null) => element?.textContent?.replaceAll(/\u200B/g, "") === text;
             const elementHasText = hasText(element);
             const childrenDontHaveText : boolean = Array.from(element?.children || []).every((child) => !hasText(child));
             return elementHasText && childrenDontHaveText;

@@ -493,8 +493,8 @@ export default Vue.extend({
                     ].join(", ");
                 }
                 // &#8203; is a zero-width space that allows line breaking, for things like Actor(image_or_filename where you'd like to break after the bracket but without showing a space
-                doc = `<span class='ac-doc-header'>${_.escape(curAC.acResult) + (curAC.type.includes("function") ? "(&#8203;" + (curAC.signature ? paramsText(curAC.signature) : (curAC.params ?? []).filter((p) => !p.hide).map((p) => p.name + (p.defaultValue !== undefined ? " = " + p.defaultValue : "")).join(", ")) + ")" : "")}</span>` + doc.trimStart();
-                return doc || (this.$i18n.t("autoCompletion.noDocumentation") as string); 
+                return `<span class='ac-doc-header'>${_.escape(curAC.acResult) + (curAC.type.includes("function") ? "(&#8203;" + (curAC.signature ? paramsText(curAC.signature) : (curAC.params ?? []).filter((p) => !p.hide).map((p) => p.name + (p.defaultValue !== undefined ? " = " + p.defaultValue : "")).join(", ")) + ")" : "")}</span>`
+                    + (doc?.trimStart() || (this.$i18n.t("autoCompletion.noDocumentation") as string));
             }
             else {
                 return "";
