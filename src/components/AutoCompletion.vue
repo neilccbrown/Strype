@@ -26,6 +26,7 @@
                             :index="item.index"
                             :item="codeForAC(item)"
                             :itemHTML="htmlForAC(item)"
+                            :indent-wrapped="true"
                             :key="UID+'_'+item.index"
                             :selected="item.index==selected"
                             v-on="$listeners"
@@ -55,7 +56,9 @@
                     <PopUpItem
                         class="newlines"
                         :id="UID+'documentation'"
-                        :item="currentDocumentation"
+                        item=""
+                        :itemHTML="currentDocumentation"
+                        :indent-wrapped="false"
                         :key="UID+'documentation'"
                         :isSelectable="false"
                         ref="documentations"
@@ -171,7 +174,8 @@ export default Vue.extend({
                     ...(sig.varKwargs != null ? [spanStart + "**" + _.escape(sig.varKwargs.name) + "</span>"] : []),
                 ].map((p, i) => (i > 0 ? (p.startsWith(spanStart) ? spanStart + ",</span> " : ", ") : "") + p).join("");
             }
-            return _.escape(item.acResult) + ((this.showFunctionBrackets && item.type.includes("function")) ? "(" + (item.signature ? paramsText(item.signature) : item.params?.filter((p) => !p.hide && p.defaultValue === undefined)?.map((p) => _.escape(p.name))?.join(", ") || "") + ")" : "");
+            // &#8203; is a zero-width space that allows line breaking, for things like Actor(image_or_filename where you'd like to break after the bracket but without showing a space
+            return _.escape(item.acResult) + ((this.showFunctionBrackets && item.type.includes("function")) ? "(&#8203;" + (item.signature ? paramsText(item.signature) : item.params?.filter((p) => !p.hide && p.defaultValue === undefined)?.map((p) => _.escape(p.name))?.join(", ") || "") + ")" : "");
         },
 
         sortCategories(categories : string[]) : string[] {
@@ -466,7 +470,31 @@ export default Vue.extend({
         getCurrentDocumentation(): string {
             const curAC = this.resultsToShow[this.currentModule].find((e) => e.index === this.selected) as AcResultType;
             if (curAC) {
-                return curAC.documentation || (this.$i18n.t("autoCompletion.noDocumentation") as string); 
+                let doc = curAC.documentation;
+                // eslint-disable-next-line no-inner-declarations
+                function argText(arg: SignatureArg) : string {
+                    if (arg.defaultValue != null) {
+                        return _.escape(arg.name) + " = " + _.escape(arg.defaultValue);
+                    }
+                    else {
+                        return _.escape(arg.name);
+                    }
+                }
+                // eslint-disable-next-line no-inner-declarations
+                function paramsText(sig: Signature) : string{
+                    const posOnly = sig.positionalOnlyArgs.slice(sig.firstParamIsSelfOrCls ? 1 : 0);
+                    return [
+                        ...posOnly.map(argText),
+                        ...(posOnly.length > 0 ? ["/"] : []),
+                        ...sig.positionalOrKeywordArgs.map(argText),
+                        ...(sig.varArgs != null ? ["*" + _.escape(sig.varArgs.name)] : (sig.keywordOnlyArgs.length > 0 ? ["*"] : [])),
+                        ...sig.keywordOnlyArgs.map(argText),
+                        ...(sig.varKwargs != null ? ["**" + _.escape(sig.varKwargs.name)] : []),
+                    ].join(", ");
+                }
+                // &#8203; is a zero-width space that allows line breaking, for things like Actor(image_or_filename where you'd like to break after the bracket but without showing a space
+                doc = `<span class='ac-doc-header'>${_.escape(curAC.acResult) + (curAC.type.includes("function") ? "(&#8203;" + (curAC.signature ? paramsText(curAC.signature) : (curAC.params ?? []).filter((p) => !p.hide).map((p) => p.name + (p.defaultValue !== undefined ? " = " + p.defaultValue : "")).join(", ")) + ")" : "")}</span>` + doc.trimStart();
+                return doc || (this.$i18n.t("autoCompletion.noDocumentation") as string); 
             }
             else {
                 return "";
@@ -525,6 +553,7 @@ export default Vue.extend({
     list-style: none;
     padding-left: 0;
     width: max-content;
+    max-width: 25vw;
     cursor: pointer;
 }
 
@@ -536,6 +565,11 @@ export default Vue.extend({
 .popup .ac-optional-param {
     font-style: italic;
     color: #aaaaaa;
+}
+.popup .ac-doc-header {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
 }
 
 </style>

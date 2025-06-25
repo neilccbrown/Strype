@@ -2,7 +2,7 @@
     <!-- @mousedown must be kept to avoid the click to move the focus from input text field -->
     <li
         v-show="item || itemHTML"
-        :class="{[scssVars.acItemClassName]: true, [scssVars.acItemSelectedClassName]: selected}"
+        :class="{[scssVars.acItemClassName]: true, [scssVars.acItemSelectedClassName]: selected, 'ac-indent-wrapped': indentWrapped}"
         :id="id"
         :data-item="item"
         @mouseover="onHover"
@@ -36,6 +36,7 @@ export default Vue.extend({
         index: Number,
         selected: Boolean,
         isSelectable: Boolean,
+        indentWrapped: Boolean,
         version: Number,
     },
 
@@ -65,5 +66,11 @@ export default Vue.extend({
 }
 
 // Style related to the context menu are in App.vue
+
+// Indent lines after the first:
+.ac-indent-wrapped {
+    padding-left: 20px !important;
+    text-indent: -15px;
+}
 </style>
 
