@@ -514,9 +514,14 @@ export default Vue.extend({
                         metaKey: event.metaKey,
                     }));
                 
-                if(["PageUp", "PageDown", "Home", "End"].includes(event.key) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment){
+                // We want to prevent some events to be handled wrongly twice or at all by the browser and our code.
+                // However, for comments, we need to let some navigation event go through otherwise they're blocked as we rely on the browser for them.
+                if(this.appStore.allowsKeyEventThroughInLabelSlotStructure || 
+                    (["PageUp", "PageDown", "Home", "End"].includes(event.key) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment)){
                     // A few events need to be handled by the brower solely.
-                    // That is, for comments: "PageUp", "PageDown", "Home", "End":
+                    // That is, for comments: "PageUp", "PageDown", "Home", "End" 
+                    // and anytime we set allowsKeyUpThroughInLabelSlotStructure (which we need to reset):
+                    this.appStore.allowsKeyEventThroughInLabelSlotStructure = false;
                     return;
                 }
                 else if (event.key.toLowerCase() == "backspace"

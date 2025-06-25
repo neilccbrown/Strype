@@ -637,8 +637,7 @@ export default Vue.extend({
             const isArrowUp = (event.key == "ArrowUp");
            
             // Check if we can reach another VISUAL line in a comment (this method returns false if we're not in a comment frame)
-            const canReachAnotherCommentLine = checkCanReachAnotherCommentLine((this.frameType == AllFrameTypesIdentifier.comment), isArrowUp, document.getElementById(getLabelSlotUID(this.coreSlotInfo)) as HTMLSpanElement); /*&& isCommentFrame && ((isArrowUp && slotContentToCursor.includes("\n")) || (!isArrowUp && slotContentAfterCursor.includes("\n")))*/
-           
+            const canReachAnotherCommentLine = checkCanReachAnotherCommentLine((this.frameType == AllFrameTypesIdentifier.comment), isArrowUp, document.getElementById(getLabelSlotUID(this.coreSlotInfo)) as HTMLSpanElement);
             // When no key modifier is hit, we either navigate in A/C or leave the frame or move to another line of text for comments, depending on the context
             // Everything is handled manually except when navigating within a comment.
             if(!(event.ctrlKey || event.shiftKey || event.metaKey)){
@@ -653,7 +652,9 @@ export default Vue.extend({
                 }
                 else if(canReachAnotherCommentLine){
                     // We are in a comment, and in a line that is VISUALLY (in the browser) not the first (if we go up) or not the last (if we go down):
-                    // we let the browser handle the selection change nativately
+                    // we let the browser handle the selection change nativately and set a flag for allowing the LabelSlotsStructure parent 
+                    // letting the event "keyup" go through.
+                    this.appStore.allowsKeyEventThroughInLabelSlotStructure = true;
                     return;
                 }
                 // Else we move the caret
