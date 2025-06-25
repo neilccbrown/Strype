@@ -80,7 +80,7 @@ import {getAllEnabledUserDefinedFunctions, getFrameContainer} from "@/helpers/st
 import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, extractCommaSeparatedNames, tpyDefineLibraries} from "@/autocompletion/acManager";
 import Parser from "@/parser/parser"; 
 import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
-import {TPyParser} from "tigerpython-parser";
+import {Signature, SignatureArg, TPyParser} from "tigerpython-parser";
 import scssVars from "@/assets/style/_export.module.scss";
 
 //////////////////////
@@ -144,7 +144,24 @@ export default Vue.extend({
 
     methods: {
         textForAC(item : AcResultType) : string {
-            return item.acResult + ((this.showFunctionBrackets && item.type.includes("function")) ? "(" + (item.params?.filter((p) => !p.hide && p.defaultValue === undefined)?.map((p) => p.name)?.join(", ") || "") + ")" : "");
+            function argText(arg: SignatureArg) : string {
+                return arg.name + (arg.defaultValue != null ? "=" + arg.defaultValue : "");
+            }
+            function paramsText(sig: Signature) : string{
+                const posOnly = sig.positionalOnlyArgs.slice(sig.firstParamIsSelfOrCls ? 1 : 0);
+                return [
+                    ...posOnly.map(argText),
+                    ...(posOnly.length > 0 ? ["/"] : []),
+                    ...sig.positionalOrKeywordArgs.map(argText),
+                    ...(sig.varArgs != null ? ["*" + sig.varArgs.name] : (sig.keywordOnlyArgs.length > 0 ? ["*"] : [])),
+                    ...sig.keywordOnlyArgs.map(argText),
+                    ...(sig.varKwargs != null ? ["**" + sig.varKwargs.name] : []),
+                ].join(", ");
+            }
+            if (item.acResult == "load_image") {
+                console.log(JSON.stringify(item));
+            }
+            return item.acResult + ((this.showFunctionBrackets && item.type.includes("function")) ? "(" + (item.signature ? paramsText(item.signature) : item.params?.filter((p) => !p.hide && p.defaultValue === undefined)?.map((p) => p.name)?.join(", ") || "") + ")" : "");
         },
 
         sortCategories(categories : string[]) : string[] {
@@ -325,7 +342,7 @@ export default Vue.extend({
                     .sort((a, b) => a.acResult.localeCompare(b.acResult))
                     .map((e,i) => {
                         let contextPath = module + "." + e.acResult;
-                        return {index: lastIndex+i, acResult: e.acResult, documentation: e.documentation, type: e.type??"", params: e.params, version: this.getACEntryVersion(_.get(this.acVersions, contextPath))};
+                        return {index: lastIndex+i, acResult: e.acResult, documentation: e.documentation, type: e.type??"", params: e.params, signature: e.signature, version: this.getACEntryVersion(_.get(this.acVersions, contextPath))};
                     });
                 lastIndex += filteredResults.length;    
             }

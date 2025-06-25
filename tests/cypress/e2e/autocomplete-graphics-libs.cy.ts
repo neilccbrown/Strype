@@ -46,7 +46,7 @@ describe("Graphics library", () => {
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel, frameId) => {
             cy.get(acIDSel).should("be.visible");
-            checkExactlyOneItem(acIDSel, "strype.graphics", "Actor(image_or_filename)");
+            checkExactlyOneItem(acIDSel, "strype.graphics", "Actor(image_or_filename, x=0, y=0, tag=None)");
         }, false);
     });
 
