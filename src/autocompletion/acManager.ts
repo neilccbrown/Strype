@@ -528,10 +528,10 @@ function getParamPrompt(sig: Signature, targetParamIndex: number, prevKeywordArg
         // Make the equals show up by filling in defaultValue if blank:
         return remainingKeywordNames.map((c) => ({...c, defaultValue: c.defaultValue ?? ""})).map(t).join(", ");
     }
-    if (sig.varArgs) {
+    if (sig.varArgs && isFocused) {
         return "*" + sig.varArgs.name;
     }
-    if (sig.varKwargs) {
+    if (sig.varKwargs && isFocused) {
         return "**" + sig.varKwargs.name;
     }
     return "";

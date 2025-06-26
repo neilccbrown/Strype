@@ -215,8 +215,9 @@ function emptyDisplay(sig: Signature, defocused: boolean) {
     return [
         ...sig.positionalOnlyArgs,
         ...sig.positionalOrKeywordArgs,
+        ...(!defocused && sig.varArgs != null ? [{name: sig.varArgs.name, defaultValue: null, argType: null}] : []),
         ...sig.keywordOnlyArgs,
-    ].filter((p) => !defocused || p.defaultValue == null).map(argToString).join(", ");
+    ].filter((p) => !defocused || p?.defaultValue == null).map(argToString).join(", ");
 }
 
 
@@ -261,7 +262,7 @@ function testFuncs(funcs: {
                 }
                 withFrameId((frameId) => assertState(frameId,
                     func.funcName + "(" + ",".repeat(i) + "$)",
-                    func.funcName + "(" + positional.slice(0, i).map((s) => s.name).join(",") + (i > 0 ? "," : "") + positional.slice(i).map(argToString).join(", ") + ")"));
+                    func.funcName + "(" + positional.slice(0, i).map((s) => s.name).join(",") + (i > 0 ? "," : "") + [...positional.slice(i), ...func.params.keywordOnlyArgs].map(argToString).join(", ") + ")"));
             }
         });
 
@@ -296,7 +297,7 @@ function testFuncs(funcs: {
                 withFrameId((frameId) => {
                     assertState(frameId,
                         func.funcName + "(0," + midName + "=0," + "$)",
-                        func.funcName + "(0," + midName + "=0," + [...func.params.positionalOnlyArgs, ...func.params.positionalOrKeywordArgs.slice(1, midParam), ...func.params.positionalOrKeywordArgs.slice(midParam + 1)].map((s) => argToString(s.defaultValue != null ? s : {...s, defaultValue: ""})).join(", ") + ")");
+                        func.funcName + "(0," + midName + "=0," + [...func.params.positionalOnlyArgs, ...func.params.positionalOrKeywordArgs.slice(1, midParam), ...func.params.positionalOrKeywordArgs.slice(midParam + 1), ...func.params.keywordOnlyArgs].map((s) => argToString(s.defaultValue != null ? s : {...s, defaultValue: ""})).join(", ") + ")");
                 });
                 withFrameId((frameId) => {
                     defocus();
