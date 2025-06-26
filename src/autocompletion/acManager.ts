@@ -566,11 +566,27 @@ export async function tpyDefineLibraries(parser: Parser) : Promise<void> {
 export function getUserDefinedSignature(userFunc: FrameObject) : Signature {
     const {params, keyValues} = extractFormalParamsFromSlot(userFunc.labelSlotsDict[1].slotStructures);
     // TODO look for *
+    const singleStar = params
+        .map((value, index) =>
+            (value.operands.length == 2
+                && value.operators[0] == "*"
+                && isFieldBaseSlot(value.operands[0])
+                && isFieldBaseSlot(value.operands[1])
+                && value.operands[0].code.trim().length == 0)
+                ? [value.operands[1].code.trim(), index]
+                : null)
+        .find((x) : x is [string, number] => x != null);
+
+    function toParam(p: { operands: FieldSlot[]; operators: string[]; }, i: number) : { name: string; defaultValue: string | null; argType: null; } {
+        return ({ name: keyValues[i]?.[0] ?? (p.operands.length == 1 && isFieldBaseSlot(p.operands[0]) ? p.operands[0].code : undefined) ?? ("error" + i), defaultValue: keyValues[i]?.[1] ?? null, argType: null });
+    }
+    
+    const keywordOnlyStart = 1 + (singleStar?.[1] ?? (params.length - 1));
     return {
         positionalOnlyArgs: [], //TODO self if class
-        positionalOrKeywordArgs: params.map((p, i) => ({name: keyValues[i]?.[0] ?? (p.operands.length == 1 && isFieldBaseSlot(p.operands[0]) ? p.operands[0].code : undefined) ?? ("error" + i), defaultValue: keyValues[i]?.[1] ?? null, argType: null})),
-        keywordOnlyArgs: [/*TODO*/],
-        varArgs: null, // TODO support this
+        positionalOrKeywordArgs: params.slice(0, singleStar?.[1] ?? params.length).map(toParam),
+        keywordOnlyArgs: params.slice(keywordOnlyStart).map((p, i) => toParam(p, i + keywordOnlyStart)),
+        varArgs: singleStar !== undefined ? {name: singleStar[0], argType: null} : null,
         varKwargs: null, // TODO support this
         firstParamIsSelfOrCls: false, // TODO support this
     };
