@@ -208,7 +208,7 @@ export default Vue.extend({
                 // to those indicating there is no compulsory value
                 "background-color": ((this.focused) 
                     ? ((this.getSlotContent().trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") 
-                    : (((isStructureSingleSlot || isEmptyFunctionCallSlot) && !isSlotOptional && this.code.replace(/\u200B/g, "").trim().length == 0) ? "#FFFFFF" : "rgba(255, 255, 255, 0)")) 
+                    : (((isStructureSingleSlot || isEmptyFunctionCallSlot || this.defaultText?.replace(/\u200B/g, "")?.trim()) && !isSlotOptional && this.code.replace(/\u200B/g, "").trim().length == 0) ? "#FFFFFF" : "rgba(255, 255, 255, 0)")) 
                     + " !important", 
             };
         }, 
