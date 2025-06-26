@@ -224,27 +224,27 @@ function testFuncs(funcs: {
         keyboardTypingToImport?: string,
         funcName: string,
         params: Signature,
-        defocus: boolean,
         displayName: string,
         acSection: string,
         acName: string
     }[]) {
     for (const func of funcs) {
-        const after = function() {
-            if (func.defocus) {
-                cy.get("body").type("{downarrow}");
-                cy.wait(500);
-            }
+        const defocus = function() {
+            cy.get("body").type("{downarrow}");
+            cy.wait(500);
         };
-        it("Shows prompts after manually writing function name and brackets for " + func.displayName + " defocus: " + func.defocus, () => {
+        it("Shows prompts after manually writing function name and brackets for " + func.displayName, () => {
             focusEditorAC();
             if (func.keyboardTypingToImport) {
                 cy.get("body").type(func.keyboardTypingToImport);
             }
             cy.get("body").type(" " + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
             withFrameId((frameId) => {
-                after();
-                assertState(frameId, func.funcName + (func.defocus ? "()" : "($)"), func.funcName + "(" + emptyDisplay(func.params, func.defocus) + ")");
+                assertState(frameId, func.funcName + "($)", func.funcName + "(" + emptyDisplay(func.params, false) + ")");
+            });
+            withFrameId((frameId) => {
+                defocus();
+                assertState(frameId, func.funcName + "()", func.funcName + "(" + emptyDisplay(func.params, true) + ")");
             });
         });
         it("Shows prompts after manually writing function name and brackets AND commas for " + func.displayName, () => {
@@ -265,32 +265,23 @@ function testFuncs(funcs: {
             }
         });
 
-        it("Shows prompts in nested function (part 1) " + func.displayName + " defocus: " + func.defocus, () => {
-            focusEditorAC();
-            if (func.keyboardTypingToImport) {
-                cy.get("body").type(func.keyboardTypingToImport);
-            }
-            cy.get("body").type(" abs(" + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
-            withFrameId((frameId) => {
-                after();
-                assertState(frameId, "abs(" + func.funcName + (func.defocus? "())" : "($))"), "abs(" + func.funcName + "(" + emptyDisplay(func.params, func.defocus) + "))");
-            });
-        });
-
-        it("Shows prompts in nested function (part 2) " + func.displayName + " defocus: " + func.defocus, () => {
+        it("Shows prompts in nested function " + func.displayName, () => {
             focusEditorAC();
             if (func.keyboardTypingToImport) {
                 cy.get("body").type(func.keyboardTypingToImport);
             }
             cy.get("body").type(" max(0," + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
             withFrameId((frameId) => {
-                after();
-                assertState(frameId, "max(0," + func.funcName + (func.defocus? "())" : "($))"), "max(0," + func.funcName + "(" + emptyDisplay(func.params, func.defocus) + "))");
+                assertState(frameId, "max(0," + func.funcName + "($))", "max(0," + func.funcName + "(" + emptyDisplay(func.params, false) + "))");
+            });
+            withFrameId((frameId) => {
+                defocus();
+                assertState(frameId, "max(0," + func.funcName + "())", "max(0," + func.funcName + "(" + emptyDisplay(func.params, true) + "))");
             });
         });
         
         if (func.params.positionalOrKeywordArgs.length >= 3) {
-            it("Hides positional params and prev used named params once name entered " + func.displayName + " defocus: " + func.defocus, () => {
+            it("Hides positional params and prev used named params once name entered " + func.displayName, () => {
                 focusEditorAC();
                 if (func.keyboardTypingToImport) {
                     cy.get("body").type(func.keyboardTypingToImport);
@@ -303,10 +294,15 @@ function testFuncs(funcs: {
                 cy.get("body").type("0, " + midName + "=0,");
                 // Now it should hide the first param, and the middle one, and show the others as keyword possibilities
                 withFrameId((frameId) => {
-                    after();
                     assertState(frameId,
-                        func.funcName + "(0," + midName + "=0," + (func.defocus ? ")" : "$)"),
-                        func.funcName + "(0," + midName + "=0," + [...func.params.positionalOnlyArgs, ...func.params.positionalOrKeywordArgs.slice(1, midParam), ...func.params.positionalOrKeywordArgs.slice(midParam + 1)].filter((p) => !func.defocus || p.defaultValue == null).map((s) => argToString(s.defaultValue != null ? s : {...s, defaultValue: ""})).join(", ") + ")");
+                        func.funcName + "(0," + midName + "=0," + "$)",
+                        func.funcName + "(0," + midName + "=0," + [...func.params.positionalOnlyArgs, ...func.params.positionalOrKeywordArgs.slice(1, midParam), ...func.params.positionalOrKeywordArgs.slice(midParam + 1)].map((s) => argToString(s.defaultValue != null ? s : {...s, defaultValue: ""})).join(", ") + ")");
+                });
+                withFrameId((frameId) => {
+                    defocus();
+                    assertState(frameId,
+                        func.funcName + "(0," + midName + "=0," + ")",
+                        func.funcName + "(0," + midName + "=0," + [...func.params.positionalOnlyArgs, ...func.params.positionalOrKeywordArgs.slice(1, midParam), ...func.params.positionalOrKeywordArgs.slice(midParam + 1)].filter((p) => p.defaultValue == null).map((s) => argToString(s.defaultValue != null ? s : {...s, defaultValue: ""})).join(", ") + ")");
                 });
             });
         }
