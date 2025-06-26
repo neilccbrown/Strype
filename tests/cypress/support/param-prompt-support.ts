@@ -2,6 +2,7 @@
 
 import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
 import {cleanFromHTML} from "./test-support";
+import {Signature, SignatureArg} from "tigerpython-parser";
 
 // Must clear all local storage between tests to reset the state,
 // and also retrieve the shared CSS and HTML elements IDs exposed
@@ -95,25 +96,44 @@ function focusEditorAC(): void {
 // Param is tuple:
 //  - First item is null (no module), string (module name) or [string, string] (library + module name)
 //  - Second item is func name, possibly including dots
-//  - Third item is param list which should be shown.  If it's a pair it's [unfocused, focused], if it's single it's the same in both cases
-export function testRawFuncs(rawFuncs: [string | [string, string] | {udf: string} | null, string, (string[] | [string[], string[]])][], skipFullyQualifiedVersion?: boolean) : void {
+function calcSignature(rawParams: string[]) : Signature {
+    const slashIndex = rawParams.findIndex((p) => p == "/");
+    const starIndex = rawParams.findIndex((p) => p.startsWith("*"));
+    const posOnly = rawParams.slice(0, slashIndex == -1 ? 0 : slashIndex);
+    const posOrKey = rawParams.slice(slashIndex + 1, starIndex == -1 ? rawParams.length : starIndex);
+    const keyOnly = rawParams.slice(starIndex == -1 ? rawParams.length : starIndex + 1);
+    function makeArg(p: string) : SignatureArg {
+        if (p.includes("=")) {
+            const [name, defaultValue] = p.split("=");
+            return {name, defaultValue, argType: null};
+        }
+        else {
+            return {name: p, defaultValue: null, argType: null};
+        }
+    }
+    // TODO ** support
+    return {
+        positionalOnlyArgs: posOnly.map(makeArg),
+        positionalOrKeywordArgs: posOrKey.map(makeArg),
+        keywordOnlyArgs: keyOnly.map(makeArg),
+        varArgs: starIndex != -1 && rawParams[starIndex].length > 1 ? {name: rawParams[starIndex].slice(0), argType: null} : null,
+        varKwargs: null,
+        firstParamIsSelfOrCls: false,
+    };
+}
+
+//  - Third item is param list, including * and similar if appropriate.
+export function testRawFuncs(rawFuncs: [string | [string, string] | {udf: string} | null, string, string[]][], skipFullyQualifiedVersion?: boolean) : void {
     const funcs: {
         keyboardTypingToImport?: string,
-        funcName: string,
-        // Focused,unfocused, or single if same in both cases 
-        params: { focused: string[], unfocused: string[] },
+        funcName: string, 
+        params: Signature,
         displayName: string,
         acSection: string,
         acName: string
     }[] = [];
     for (const rawFunc of rawFuncs) {
-        // Normalise to a pair of focused/unfocused arrays:
-        const params = (Array.isArray(rawFunc[2]) &&
-            rawFunc[2].length === 2 &&
-            Array.isArray(rawFunc[2][0]) ? {unfocused: rawFunc[2][0], focused: rawFunc[2][1]} : {
-                focused: rawFunc[2],
-                unfocused: rawFunc[2],
-            }) as { focused: string[], unfocused: string[] };
+        const params = calcSignature(rawFunc[2]);
         if (rawFunc[0] != null) {
             let module: any;
             let libraryTyping;
@@ -184,14 +204,26 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | {udf: string
         }
     }
     testFuncs([
-        ...funcs.map((f) => ({...f, params: f.params.focused, defocus: false})),
-        ...funcs.map((f) => ({...f, params: f.params.unfocused, defocus: true})),
+        ...funcs.map((f) => ({...f, defocus: false})),
+        ...funcs.map((f) => ({...f, defocus: true})),
     ]);
 }
+function argToString(s: SignatureArg) : string {
+    return s.name + (s.defaultValue != null ? "=" + s.defaultValue : "");
+}
+function emptyDisplay(sig: Signature, defocused: boolean) {
+    return [
+        ...sig.positionalOnlyArgs,
+        ...sig.positionalOrKeywordArgs,
+        ...sig.keywordOnlyArgs,
+    ].filter((p) => !defocused || p.defaultValue == null).map(argToString).join(", ");
+}
+
+
 function testFuncs(funcs: {
         keyboardTypingToImport?: string,
         funcName: string,
-        params: string[],
+        params: Signature,
         defocus: boolean,
         displayName: string,
         acSection: string,
@@ -212,27 +244,26 @@ function testFuncs(funcs: {
             cy.get("body").type(" " + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
             withFrameId((frameId) => {
                 after();
-                assertState(frameId, func.funcName + (func.defocus ? "()" : "($)"), func.funcName + "(" + func.params.join(", ") + ")");
+                assertState(frameId, func.funcName + (func.defocus ? "()" : "($)"), func.funcName + "(" + emptyDisplay(func.params, func.defocus) + ")");
             });
         });
-        if (!func.defocus && !func.funcName.includes("urlopen") && !func.funcName.includes("namedtuple") && !func.funcName.includes("draw_text")) {
-            it("Shows prompts after manually writing function name and brackets AND commas for " + func.displayName, () => {
-                focusEditorAC();
-                if (func.keyboardTypingToImport) {
-                    cy.get("body").type(func.keyboardTypingToImport);
+        it("Shows prompts after manually writing function name and brackets AND commas for " + func.displayName, () => {
+            focusEditorAC();
+            if (func.keyboardTypingToImport) {
+                cy.get("body").type(func.keyboardTypingToImport);
+            }
+            cy.get("body").type(" " + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
+            const positional = [...func.params.positionalOnlyArgs, ...func.params.positionalOrKeywordArgs];
+            // Type commas for num params minus 1:
+            for (let i = 0; i < positional.length; i++) {
+                if (i > 0) {
+                    cy.get("body").type(",");
                 }
-                cy.get("body").type(" " + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
-                // Type commas for num params minus 1:
-                for (let i = 0; i < func.params.length; i++) {
-                    if (i > 0) {
-                        cy.get("body").type(",");
-                    }
-                    withFrameId((frameId) => assertState(frameId,
-                        func.funcName + "(" + ",".repeat(i) + "$)",
-                        func.funcName + "(" + func.params.slice(0, i).map((s) => s.replace(/=.*/, "")).join(",") + (i > 0 ? "," : "") + func.params.slice(i).map((s, j) => i == 0 || j > 0 ? s : s.replace(/=.*/, "")).join(", ") + ")"));
-                }
-            });
-        }
+                withFrameId((frameId) => assertState(frameId,
+                    func.funcName + "(" + ",".repeat(i) + "$)",
+                    func.funcName + "(" + positional.slice(0, i).map((s) => s.name).join(",") + (i > 0 ? "," : "") + positional.slice(i).map((s, j) => i == 0 || j > 0 ? argToString(s) : s.name).join(", ") + ")"));
+            }
+        });
 
         it("Shows prompts in nested function (part 1) " + func.displayName + " defocus: " + func.defocus, () => {
             focusEditorAC();
@@ -242,7 +273,7 @@ function testFuncs(funcs: {
             cy.get("body").type(" abs(" + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
             withFrameId((frameId) => {
                 after();
-                assertState(frameId, "abs(" + func.funcName + (func.defocus? "())" : "($))"), "abs(" + func.funcName + "(" + func.params.join(", ") + "))");
+                assertState(frameId, "abs(" + func.funcName + (func.defocus? "())" : "($))"), "abs(" + func.funcName + "(" + emptyDisplay(func.params, func.defocus) + "))");
             });
         });
 
@@ -254,28 +285,28 @@ function testFuncs(funcs: {
             cy.get("body").type(" max(0," + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
             withFrameId((frameId) => {
                 after();
-                assertState(frameId, "max(0," + func.funcName + (func.defocus? "())" : "($))"), "max(0," + func.funcName + "(" + func.params.join(", ") + "))");
+                assertState(frameId, "max(0," + func.funcName + (func.defocus? "())" : "($))"), "max(0," + func.funcName + "(" + emptyDisplay(func.params, func.defocus) + "))");
             });
         });
         
-        if (func.params.length >= 3) {
+        if (func.params.positionalOrKeywordArgs.length >= 3) {
             it("Hides positional params and prev used named params once name entered " + func.displayName + " defocus: " + func.defocus, () => {
                 focusEditorAC();
                 if (func.keyboardTypingToImport) {
                     cy.get("body").type(func.keyboardTypingToImport);
                 }
                 // We pick an arbitrary param to pass from the middle:
-                const midParam = Math.floor(func.params.length / 2);
+                const midParam = Math.floor(func.params.positionalOrKeywordArgs.length / 2);
                 // We enter first one, then named middle one:
                 cy.get("body").type(" " + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
-                const midName = func.params[midParam].replace(/=.*/, "");
+                const midName = func.params.positionalOrKeywordArgs[midParam].name;
                 cy.get("body").type("0, " + midName + "=0,");
                 // Now it should hide the first param, and the middle one, and show the others as keyword possibilities
                 withFrameId((frameId) => {
                     after();
                     assertState(frameId,
                         func.funcName + "(0," + midName + "=0," + (func.defocus ? ")" : "$)"),
-                        func.funcName + "(0," + midName + "=0," + [...func.params.slice(1, midParam), ...func.params.slice(midParam + 1)].map((s) => s.includes("=") ? s : (s + "=")).join(", ") + ")");
+                        func.funcName + "(0," + midName + "=0," + [...func.params.positionalOnlyArgs, ...func.params.positionalOrKeywordArgs.slice(1, midParam), ...func.params.positionalOrKeywordArgs.slice(midParam + 1)].map((s) => argToString(s.defaultValue != null ? s : {...s, defaultValue: ""})).join(", ") + ")");
                 });
             });
         }
