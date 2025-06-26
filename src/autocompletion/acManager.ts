@@ -507,14 +507,10 @@ function getParamPrompt(sig: Signature, targetParamIndex: number, prevKeywordArg
                     flattenedPositional = flattenedPositional.filter((p) => p.defaultValue == null);
                 }
                 const remaining = flattenedPositional.slice(targetParamIndex);
-                if (isFocused && targetParamIndex == 0 && lastParam) {
-                    // If it's empty and we're focused in the parents,
+                if (isFocused) {
+                    // If we're focused in the last param,
                     // show the keyword ones as well:
                     remaining.push(...sig.keywordOnlyArgs);
-                }
-                if (remaining.length >= 1 && targetParamIndex > 0) {
-                    // Don't show default for next param:
-                    remaining[0] = {...remaining[0], defaultValue: null};
                 }
                 return remaining.map(t).join(", ");
             }
@@ -525,7 +521,7 @@ function getParamPrompt(sig: Signature, targetParamIndex: number, prevKeywordArg
         return "";
     }
     // Otherwise we must only show args which can be specified by keyword, and only those
-    // not already specified:
+    // not already specified (unless focused):
     const remainingKeywordNames = [...sig.positionalOrKeywordArgs.slice(targetParamIndex - prevKeywordArgs.length - positionalOnlyArgsMinusSelf.length), ...(isFocused ? sig.keywordOnlyArgs : [])]
         .filter((k) => !prevKeywordArgs.includes(k.name) && (isFocused || k.defaultValue == null));
     if (remainingKeywordNames.length > 0) {

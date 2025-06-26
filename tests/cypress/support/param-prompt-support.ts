@@ -261,7 +261,7 @@ function testFuncs(funcs: {
                 }
                 withFrameId((frameId) => assertState(frameId,
                     func.funcName + "(" + ",".repeat(i) + "$)",
-                    func.funcName + "(" + positional.slice(0, i).map((s) => s.name).join(",") + (i > 0 ? "," : "") + positional.slice(i).map((s, j) => i == 0 || j > 0 ? argToString(s) : s.name).join(", ") + ")"));
+                    func.funcName + "(" + positional.slice(0, i).map((s) => s.name).join(",") + (i > 0 ? "," : "") + positional.slice(i).map(argToString).join(", ") + ")"));
             }
         });
 
@@ -306,7 +306,7 @@ function testFuncs(funcs: {
                     after();
                     assertState(frameId,
                         func.funcName + "(0," + midName + "=0," + (func.defocus ? ")" : "$)"),
-                        func.funcName + "(0," + midName + "=0," + [...func.params.positionalOnlyArgs, ...func.params.positionalOrKeywordArgs.slice(1, midParam), ...func.params.positionalOrKeywordArgs.slice(midParam + 1)].map((s) => argToString(s.defaultValue != null ? s : {...s, defaultValue: ""})).join(", ") + ")");
+                        func.funcName + "(0," + midName + "=0," + [...func.params.positionalOnlyArgs, ...func.params.positionalOrKeywordArgs.slice(1, midParam), ...func.params.positionalOrKeywordArgs.slice(midParam + 1)].filter((p) => !func.defocus || p.defaultValue == null).map((s) => argToString(s.defaultValue != null ? s : {...s, defaultValue: ""})).join(", ") + ")");
                 });
             });
         }
