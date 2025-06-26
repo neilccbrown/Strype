@@ -12,12 +12,12 @@
                         :data-title="module"
                     >
                         <div 
-                            class="module"
+                            class="ac-module-header"
                             v-show="module !== ''"
                             @mousedown.prevent.stop
                             @mouseup.prevent.stop
                         >
-                            <em>{{module}}</em>
+                            {{module}}
                         </div>
                         <PopUpItem
                             v-for="(item) in resultsToShow[module]"
@@ -39,7 +39,7 @@
                 </ul>
                 <div v-show="!areResultsToShow()">
                     <div 
-                        :class="'module ' + scssVars.acEmptyResultsContainerClassName"
+                        :class="'ac-module-header ' + scssVars.acEmptyResultsContainerClassName"
                         @mousedown.prevent.stop
                         @mouseup.prevent.stop
                     >
@@ -519,13 +519,14 @@ export default Vue.extend({
 
 <style lang="scss">
 
-.module{
-    color: #919191;
+.ac-module-header{
+    color: #555;
     border-top: 1px;
     border-bottom: 1px;
     border-color:#919191;
+    background-color: #edf6f9;
 }
-.module:hover{
+.ac-module-header:hover{
     cursor: default;
 }
 
