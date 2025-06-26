@@ -169,7 +169,7 @@ export default Vue.extend({
                     ...posOnly.map(argText),
                     ...(posOnly.length > 0 ? ["/"] : []),
                     ...sig.positionalOrKeywordArgs.map(argText),
-                    ...(sig.varArgs != null ? [spanStart + "*" + _.escape(sig.varArgs.name) + "</span>"] : (sig.keywordOnlyArgs.length > 0 ? [`${spanStart}*</span>`] : [])),
+                    ...(sig.varArgs != null ? [spanStart + "*" + _.escape(sig.varArgs.name) + "</span>"] : []),
                     ...sig.keywordOnlyArgs.map(argText),
                     ...(sig.varKwargs != null ? [spanStart + "**" + _.escape(sig.varKwargs.name) + "</span>"] : []),
                 ].map((p, i) => (i > 0 ? (p.startsWith(spanStart) ? spanStart + ",</span> " : ", ") : "") + p).join("");

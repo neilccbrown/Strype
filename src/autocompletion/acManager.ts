@@ -561,7 +561,6 @@ export async function tpyDefineLibraries(parser: Parser) : Promise<void> {
 
 export function getUserDefinedSignature(userFunc: FrameObject) : Signature {
     const {params, keyValues} = extractFormalParamsFromSlot(userFunc.labelSlotsDict[1].slotStructures);
-    // TODO look for *
     const singleStar = params
         .map((value, index) =>
             (value.operands.length == 2
@@ -582,7 +581,7 @@ export function getUserDefinedSignature(userFunc: FrameObject) : Signature {
         positionalOnlyArgs: [], //TODO self if class
         positionalOrKeywordArgs: params.slice(0, singleStar?.[1] ?? params.length).map(toParam),
         keywordOnlyArgs: params.slice(keywordOnlyStart).map((p, i) => toParam(p, i + keywordOnlyStart)),
-        varArgs: singleStar !== undefined ? {name: singleStar[0], argType: null} : null,
+        varArgs: singleStar !== undefined && singleStar[0].trim().length > 0 ? {name: singleStar[0].trim(), argType: null} : null,
         varKwargs: null, // TODO support this
         firstParamIsSelfOrCls: false, // TODO support this
     };
