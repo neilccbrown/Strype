@@ -567,6 +567,9 @@ export default Vue.extend({
     font-style: italic;
     color: #aaaaaa;
 }
+.#{$strype-classname-ac-item}.#{$strype-classname-ac-item-selected} .ac-optional-param {
+    color: #ddd !important;
+}
 .popup .ac-doc-header {
     font-weight: bold;
     display: block;
