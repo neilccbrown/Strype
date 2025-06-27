@@ -6,7 +6,7 @@ import { skulptReadPythonLib } from "@/autocompletion/ac-skulpt";
 import i18n from "@/i18n";
 import Vue from "vue";
 import { CustomEventTypes, setPythonExecAreaLayoutButtonPos } from "./editor";
-import { clearGDFileIOMap, skulptCloseFileIO, skulptInteralFileWrite, skulptOpenFileIO } from "./skulptFileIO";
+import { clearFileIOCaches, skulptCloseFileIO, skulptInteralFileWrite, skulptOpenFileIO } from "./skulptFileIO";
 
 const STRYPE_RUN_ACTION_MSG = "StrypeRunActionCalled";
 const STRYPE_INPUT_INTERRUPT_ERR_MSG = "ExternalError: " + STRYPE_RUN_ACTION_MSG;
@@ -174,8 +174,8 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         executionFinished(finishedWithError, isTurtleListeningKB, isTurtleListeningMouse, isTurtleListeningTimer, stopTurtleListeners);
     }
     
-    // Clear the FileIO map before running anything
-    clearGDFileIOMap();
+    // Clear the cloud FileIO map and directories references before running anything
+    clearFileIOCaches();
 
     Sk.configure({
         output:outf, 

@@ -10,7 +10,6 @@ import { getGoogleDriveComponentRefId, getMenuLeftPaneUID } from "./editor";
 import GoogleDriveComponent from "@/components/GoogleDrive.vue";
 import MenuComponent from "@/components/Menu.vue";
 import { useStore } from "@/store/store";
-import {arrayToTree, TreeItem}  from "performant-array-to-tree";
 import { StrypeSyncTarget } from "@/types/types";
 import i18n from "@/i18n";
 
@@ -34,9 +33,6 @@ interface GDFileWithMetaData extends GDFile{
     readOnly: boolean, // Readonly status of the file in Google Drive
 }
 const gdFilesMap: GDFileWithMetaData[] = [];
-export function clearGDFileIOMap(): void {
-    gdFilesMap.splice(0);
-}
 
 // The TS typing to describe the file object implemented by Skulpt
 // it depends on Skulpt implementation of course, but having it here is just for ease of using TS.
@@ -53,6 +49,23 @@ interface SkulptFile {
     closed: boolean,
     fileno: number, // internal file number used by Skulpt, external files are number 11
     isInError?: boolean, // custom flag to indicate an error state, we need to know that when closing files.
+}
+
+// A simple Google Drive folder typing for the Strype project's location folder tree structure
+interface gdFolder {
+    id: string,
+    name: string,
+    children: gdFolder[],
+}
+// The cached tree of the Strype's project folder descendants (children their children etc).
+// The tree is constructed "on demand", that is we only add the folders when they are referenced in a file path
+// that we want to resolve; we don't retrieve all the descendants at once.
+const currentStrypeProjectGDFolderTree: gdFolder[] =  [];
+
+// Clearing method for cached elements (need to be called externally by the code runner)
+export function clearFileIOCaches(): void {
+    gdFilesMap.splice(0);
+    currentStrypeProjectGDFolderTree.splice(0);
 }
 
 // This small helper method is used during writing operations (either for Skulpt internally or for us in the cloud)
@@ -92,204 +105,167 @@ export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, error
     const posixPathObj = path.parse(posixPath);
     const fileName = posixPathObj.name + posixPathObj.ext;
 
-    // Look up the file on Google Drive in the location:      
-    let gdFile: GDFile;
-    return new Sk.misceval.promiseToSuspension(
-        // First we need to check/retrieve the file's containing folder.
-        getgdFileFolderIdFromPath(posixPathObj)
-            .then((fileFolderId) => {
-                // We have a fileFolder Id so we can now get the file itself within that location
-                return googleDriveComponent.searchGoogleDriveElement(`name='${fileName}' and parents='${fileFolderId}' and trashed=false`, {orderBy: "modifiedTime", fileFields: "files(id,name,capabilities,contentRestrictions)"})
-                    .then((response) => {      
-                        const filesArray: GDFile[] = JSON.parse(response.body).files;
-                        // See GoogleDrive.vue: the results are not always what expected, so double check is required.
-                        // Files are ordered by ascending modified date, we always use the most recent one if there duplicated names.
-                        filesArray.forEach((file) => {
-                            if(file.name == fileName){
-                                gdFile = file;
-                            }
-                        });
+    // Look up the file on Google Drive in the location:
+    // We don't support parent directory references, so if there are any, we can already return in error...
+    if(posixPathObj.dir.split("/").includes("..")){
+        return {succeeded: false,errorMsg: i18n.t("errorMessage.fileIO.parentDirRefNotSupported") as string};
+    }   
+    else {
+        let gdFile: GDFile;
+        return new Sk.misceval.promiseToSuspension(
+            // First we need to check/retrieve the file's containing folder.
+            getgdFileFolderIdFromPath(posixPathObj)
+                .then((fileFolderId) => {
+                    // We have a fileFolder Id so we can now get the file itself within that location
+                    return googleDriveComponent.searchGoogleDriveElement(`name='${fileName}' and parents='${fileFolderId}' and trashed=false`, {orderBy: "modifiedTime", fileFields: "files(id,name,capabilities,contentRestrictions)"})
+                        .then((response) => {    
+                            const filesArray: GDFile[] = JSON.parse(response.body).files;
+                            // See GoogleDrive.vue: the results are not always what expected, so double check is required.
+                            // Files are ordered by ascending modified date, we always use the most recent one if there duplicated names.
+                            filesArray.forEach((file) => {
+                                if(file.name == fileName){
+                                    gdFile = file;
+                                }
+                            });
 
-                        if(gdFile){
-                            // Before adding the file in the map, we do some basic checks.
-                            // Check 1: if the file is in x mode, it can't exist
-                            if(skFile.mode.v.startsWith("x")){
-                                return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.fileAlreadyExists", {filename: filePath}) as string};
+                            if(gdFile){
+                                // Before adding the file in the map, we do some basic checks.
+                                // Check 1: if the file is in x mode, it can't exist
+                                if(skFile.mode.v.startsWith("x")){
+                                    return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.fileAlreadyExists", {filename: filePath}) as string};
 
-                            }
-                            // Check 2: if the file is in write, append, or r+ mode, it can't be readonly. 
-                            const isReadonly = !(gdFile.capabilities.canEdit??true) || !(gdFile.capabilities.canModifyContent??true) || !!(gdFile.contentRestrictions?.readOnly);
-                            if(isReadonly && /^([wa])|(rb?\+)/.test(skFile.mode.v)) {
-                                return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.readonlyFile", {filename: filePath}) as string};
-                            }
-                            // Can add the matched file to the mapping object unless we are in "x" mode which requires the file not to exist.
-                            const fileMapEntry: GDFileWithMetaData = {...gdFile, filePath: filePath, locationId: fileFolderId, readOnly: isReadonly};
-                            gdFilesMap.push(fileMapEntry);     
+                                }
+                                // Check 2: if the file is in write, append, or r+ mode, it can't be readonly. 
+                                const isReadonly = !(gdFile.capabilities.canEdit??true) || !(gdFile.capabilities.canModifyContent??true) || !!(gdFile.contentRestrictions?.readOnly);
+                                if(isReadonly && /^([wa])|(rb?\+)/.test(skFile.mode.v)) {
+                                    return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.readonlyFile", {filename: filePath}) as string};
+                                }
+                                // Can add the matched file to the mapping object unless we are in "x" mode which requires the file not to exist.
+                                const fileMapEntry: GDFileWithMetaData = {...gdFile, filePath: filePath, locationId: fileFolderId, readOnly: isReadonly};
+                                gdFilesMap.push(fileMapEntry);     
                                 
-                            // If we are in reading mode or append mode, we need to retrieve the file's content.
-                            // This is for internal mechanisms, but if we fail to read the file at this stage, we'll raise an error.
-                            // For writing mode, we just set the file content to empty as it will be truncated anyway.
-                            if(!skFile.mode.v.startsWith("w")){
-                                return skupltReadFileIO(filePath, skFile.mode.v.includes("b")).then((fileContent) => {                                           
-                                    (gdFilesMap.at(-1)as GDFile).content = fileContent;
-                                    // Very importantly, the Skulpt internal data buffer is updated here for reading mode:
-                                    if(skFile.mode.v.startsWith("r")){
-                                        skFile.data$ = Sk.ffi.remapToPy(fileContent);
-                                    }
-                                    return {succeeded: true, errorMsg: ""};
-                                },
-                                () => {
-                                    return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.openReadingError", {filename: filePath}) as string};
-                                });
-                            }
-                            else{
-                                // At this stage everythig is fine, we can return success
-                                return {succeeded: true, errorMsg: ""};
-                            }
-                        }
-                        else{
-                            // The file may have not be found, which is a stopper in read mode.
-                            // However, in write, append and exclusive creation mode, we can create a file. 
-                            // Python creates the file right at the call to open().
-                            // So we try that first.
-                            if(skFile.mode.v.startsWith("r")){
-                                return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.fileNotFound", {filename: filePath}) as string};
-                            }
-                            else if(skFile.mode.v.startsWith("w") || skFile.mode.v.startsWith("a") || skFile.mode.v.startsWith("x")){
-                                return googleDriveComponent.writeFileContentForIO((skFile.mode.v.includes("b") ? new Uint8Array(0) : ""), {filePath: filePath, fileName: fileName, folderId: fileFolderId})
-                                    .then((newFileId) => {
-                                        // Since the file has been created we can now keep it's fileId in the map:
-                                        gdFilesMap.push({name: fileName, content: "", filePath: filePath, id: newFileId, locationId: fileFolderId,
-                                            readOnly: false, capabilities: {canEdit: true, canModifyContent: true}});
+                                // If we are in reading mode or append mode, we need to retrieve the file's content.
+                                // This is for internal mechanisms, but if we fail to read the file at this stage, we'll raise an error.
+                                // For writing mode, we just set the file content to empty as it will be truncated anyway.
+                                if(!skFile.mode.v.startsWith("w")){
+                                    return skupltReadFileIO(filePath, skFile.mode.v.includes("b")).then((fileContent) => {                                           
+                                        (gdFilesMap.at(-1)as GDFile).content = fileContent;
+                                        // Very importantly, the Skulpt internal data buffer is updated here for reading mode:
+                                        if(skFile.mode.v.startsWith("r")){
+                                            skFile.data$ = Sk.ffi.remapToPy(fileContent);
+                                        }
                                         return {succeeded: true, errorMsg: ""};
                                     },
-                                    (errorMsg) =>  {
-                                        return {succeeded: false, errorMsg: errorMsg};
-                                    });                               
+                                    () => {
+                                        return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.openReadingError", {filename: filePath}) as string};
+                                    });
+                                }
+                                else{
+                                    // At this stage everythig is fine, we can return success
+                                    return {succeeded: true, errorMsg: ""};
+                                }
                             }
-                        }
-                    },
-                    (reason) => {
-                        const errorMsg = i18n.t("errorMessage.fileIO.accessToGDError", {fileName: filePath, error: (typeof reason == "string") ? reason : (reason.status??"unknown")});
-                        return {succeeded:false,errorMsg: errorMsg};
-                    });
-            },
-            (errorMsg) => {
-                return {succeeded: false, errorMsg: errorMsg??i18n.t("errorMessage.fileIO.fileLocationNotFound", {filename: filePath}) as string};
-            })     
-    );
+                            else{
+                                // The file may have not be found, which is a stopper in read mode.
+                                // However, in write, append and exclusive creation mode, we can create a file. 
+                                // Python creates the file right at the call to open().
+                                // So we try that first.
+                                if(skFile.mode.v.startsWith("r")){
+                                    return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.fileNotFound", {filename: filePath}) as string};
+                                }
+                                else if(skFile.mode.v.startsWith("w") || skFile.mode.v.startsWith("a") || skFile.mode.v.startsWith("x")){
+                                    return googleDriveComponent.writeFileContentForIO((skFile.mode.v.includes("b") ? new Uint8Array(0) : ""), {filePath: filePath, fileName: fileName, folderId: fileFolderId})
+                                        .then((newFileId) => {
+                                            // Since the file has been created we can now keep it's fileId in the map:
+                                            gdFilesMap.push({name: fileName, content: "", filePath: filePath, id: newFileId, locationId: fileFolderId,
+                                                readOnly: false, capabilities: {canEdit: true, canModifyContent: true}});
+                                            return {succeeded: true, errorMsg: ""};
+                                        },
+                                        (errorMsg) =>  {
+                                            return {succeeded: false, errorMsg: errorMsg};
+                                        });                               
+                                }
+                            }
+                        },
+                        (reason) => {
+                            const errorMsg = i18n.t("errorMessage.fileIO.accessToGDError", {fileName: filePath, error: (typeof reason == "string") ? reason : (reason.status??"unknown")});
+                            return {succeeded:false,errorMsg: errorMsg};
+                        });
+                },
+                (errorMsg) => {
+                    return {succeeded: false, errorMsg: errorMsg??i18n.t("errorMessage.fileIO.fileLocationNotFound", {filename: filePath}) as string};
+                })     
+        );
+    }
 };
 
 const getgdFileFolderIdFromPath = (fileFolderPath: path.PathObject): Promise<string> => {
     // We retrieve (and check) the location of the file, specified by fileFolderPath.
     // The base location of the Google Drive search is the project's current directory.
-    // (Note: the root of the Google Drive folders, the drive itself is identified in Google Drive by "root".)
-    return new Promise<string>((resolve, reject) => {
-        const baseFolderLocationId = useStore().strypeProjectLocation as string;
-        if(fileFolderPath.dir && fileFolderPath.dir != "./"){
-            // We need to look up the directory/directories from top to bottom.
-            // When there is some folder retrieve to do, we only do one query to "search" the folders under "root" and use that to walk the path given by the user.
-            const cleanedPath = fileFolderPath.dir.replace(/^.\//,"");
-            const userGivenFolderParts = cleanedPath.split("/");
-            //let gdFoldersInRoot: TreeItem[];
-            //const childrenLookUpBaseFolderId = fileLocationId;            
-            return googleDriveComponent.searchGoogleDriveElement("mimeType = 'application/vnd.google-apps.folder' and 'me' in owners and trashed=false", 
-                {orderBy: "modifiedTime", fileFields: "files(id,name,parents)"})
-                .then((response) => {         
-                    const folderArray: {id: string, name: string, parents: string[], parentId?: string}[] = JSON.parse(response.body).files;
-                    // We transform the response to a tree so we can navigate it later.
-                    // The folder's  parent is an array of 1 element, it is an array for historical reasons of the Google Drive API.
-                    // Even if "root" is used as an ID alias by Google Drive, there is a "real" ID returned by the search query, we need to find it...
-                    // Unfortunaltely, that means calling twice the arrayToTre method: once to get the "missing" entry, the other to make the tree proper.
-                    // It's still better than calling the Google API twice.
-                    folderArray.forEach((value) => value.parentId = value.parents[0]);
-                    try{
-                        arrayToTree(folderArray, {throwIfOrphans: true})??"didnt work :(";
-                    }
-                    catch(orphanError) {
-                        const rootId = /\[(.+)\]/.exec((orphanError as Error).message)?.[1];
-                        if(!rootId){
-                            // Something went wrong, we should not have issue, but if we do we need to raise an error and let the users know.
-                            reject(i18n.t("errorMessage.fileIO.fileLocationCheckingError"));
+    // We do not allow references to parent directories, therefore we can never go "up" the Strype project directory.
+    // Also, we resolve the path one folder at a time, and keep it for reference in our folder tree, currentStrypeProjectGDFolderTree.
+    const baseFolderLocationId = useStore().strypeProjectLocation as string;
+    if(fileFolderPath.dir && fileFolderPath.dir != "./"){
+        // We need to look up the directory/directories from top to bottom, unless it is already cached in currentStrypeProjectGDFolderTree.
+        const cleanedPath = fileFolderPath.dir.replace(/^.\//,"");
+        const userGivenFolderParts = cleanedPath.split("/");
+        let currentCachedFolder = null as gdFolder | null;       
+
+        const resolveFilePath = (folderNameToCheck: string, folderChildrenNames: string[]): Promise<string> => {
+            const handleFoundFolder = (foundCachedFolder: gdFolder): Promise<string> => {
+                if(folderChildrenNames.length > 0){
+                    currentCachedFolder = foundCachedFolder;
+                    return resolveFilePath(folderChildrenNames[0], folderChildrenNames.slice(1));
+                }
+                else{
+                    return Promise.resolve(foundCachedFolder.id);
+                }
+            };
+
+            // When resolving the token ".", we stay where are, move on the next token if needed
+            if(folderNameToCheck == "."){                
+                if(folderChildrenNames.length > 0){
+                    return resolveFilePath(folderChildrenNames[0], folderChildrenNames.slice(1));
+                }
+                else{
+                    // The silly case users would type "./././filename" should be handled.
+                    return Promise.resolve((currentCachedFolder?.id)??baseFolderLocationId);
+                }
+            }
+
+            // Is this path part already cached?
+            const toLookIn = (currentCachedFolder) ? currentCachedFolder.children : currentStrypeProjectGDFolderTree;
+            const cachedChildFolder = toLookIn.find((folder: gdFolder) => folder.name == folderNameToCheck); 
+            if(cachedChildFolder){
+                // It's cached, we either return the file ID when there is nothing else to resolve, otherwise we change our pointers and keep resolving
+                return handleFoundFolder(cachedChildFolder);
+            }
+            else{
+                // It's not cached: we need to look for it against Google Drive.
+                return googleDriveComponent.searchGoogleDriveElement(`name='${folderNameToCheck}' and parents='${(currentCachedFolder?.id)??baseFolderLocationId}' and mimeType = 'application/vnd.google-apps.folder' and 'me' in owners and trashed=false`, 
+                    {orderBy: "modifiedTime", fileFields: "files(id,name)"})
+                    .then((response) => {                             
+                        // The search succeeded and we expect only one folder to be found (if any, so we'll use the first one returned).
+                        // We can save that folder in the cache and either return it's ID if we don't have other folder to resolve, or continue resolving otherwise.
+                        const foundFolders: {id: string, name: string}[] = JSON.parse(response.body).files;
+                        if(foundFolders.length > 0){
+                            const toAppendIn = (currentCachedFolder) ? currentCachedFolder.children : currentStrypeProjectGDFolderTree;
+                            toAppendIn.push({id: foundFolders[0].id, name: foundFolders[0].name, children: []});
+                            currentCachedFolder = toAppendIn.at(-1) as gdFolder;
+                            return handleFoundFolder(currentCachedFolder);
                         }
                         else{
-                            // We generate the tree again, providing the root ID this time 
-                            // (the root isn't included in arrayToTree since it's not return as an element by the Google Drive API query, we add it manually)
-                            const gdRootFoldersTree = [{data: {id: rootId, parentId: null}, children: arrayToTree(folderArray, {rootParentIds: {[rootId]: true}})}];
-                            // The base is the Strype's project folder, which we need to retrieve and set as current base.
-                            const findNodeInGDRootFolderTree = (folderId: string, folderNode: TreeItem = gdRootFoldersTree[0]): TreeItem | undefined => {
-                                // No need to look if the node given is the right one: we look *in* the tree
-                                let nodeToReturn = undefined;    
-                                for (const childNode of folderNode.children){
-                                    if(childNode.data.id == folderId){
-                                        nodeToReturn = childNode;
-                                        break;
-                                    }
-                                    else{
-                                        nodeToReturn = findNodeInGDRootFolderTree(folderId, childNode);
-                                        if(nodeToReturn) {
-                                            break;
-                                        }
-
-                                    }
-                                }
-                                return nodeToReturn;
-                            };
-                            // Now we walk the user's given path to check it is valid, and retrieve the file's location.
-                            //for (const [index, pathBit] of userGivenFolderParts.entries()){
-                            let currentBaseTreeItem = (baseFolderLocationId == rootId || baseFolderLocationId == "root") ? gdRootFoldersTree[0] :  findNodeInGDRootFolderTree(baseFolderLocationId);                            
-                            const erroneousPathPart = userGivenFolderParts.some((pathPart, index) => {
-                                if(pathPart == "."){
-                                    // Stay where we are
-                                    return false;
-                                }
-                                if(pathPart == ".."){
-                                    // Look up the parent of the current's position.
-                                    // Usually, we need to find the parent of the Strype project's folder (i.e. ".." is at the start of the path),
-                                    // but if ".." appears somewhere else, that's relative to where we were before.
-                                    if(currentBaseTreeItem?.data.id == rootId){
-                                        // We are already at the root of the drive: there can't be a level up.
-                                        return true;
-                                    }
-                                    currentBaseTreeItem = (currentBaseTreeItem?.data.parentId == rootId) ? gdRootFoldersTree[0] : findNodeInGDRootFolderTree(currentBaseTreeItem?.data.parentId);
-                                    return false;                                    
-                                }
-                                if(pathPart.length == 0){
-                                    // The case we meet "/" as the start of the path (absolute path), the current reference is the root of the drive, we continue.
-                                    if(index == 0){
-                                        //childrenLookUpBaseFolderId = rootId;
-                                        currentBaseTreeItem = gdRootFoldersTree[0];
-                                    }
-                                    return false;
-                                }
-                                
-                                // Check the folder exist under the current base: if it does, we reset the currentBaseTreeItem, and continue walking the path.
-                                // If it doesn't exist, we stop walking the path and reject the promise (error).
-                                const subFolderNode = currentBaseTreeItem?.children.find((folderNode: TreeItem) => folderNode.data.name == pathPart);
-                                if(subFolderNode){
-                                    currentBaseTreeItem = subFolderNode;                                    
-                                    return false;
-                                }
-                                else{
-                                    return true;
-                                }
-                            });
-                            if(erroneousPathPart){
-                                // The path couldn't be resolved, we reject the promise                                
-                                reject();
-                            }
-                            else{
-                                resolve(currentBaseTreeItem?.data.id);
-                            }
+                            return Promise.reject(undefined);
                         }
-                    }                    
-                },
-                (error) => reject(error.result));
-        }
+                    },
+                    (error) => Promise.reject(error.result));
+            }
+        };        
+        return resolveFilePath(userGivenFolderParts[0], userGivenFolderParts.slice(1));
+    }
     
-        // No directory specified, we're in the project location, we can return now.
-        resolve(baseFolderLocationId as string);
-    });
+    // No directory specified, we're in the project location, we can return now.
+    return Promise.resolve(baseFolderLocationId as string);
 };
 
 // Handling the closing request of a file from Skulpt. In our Google Drive context.
