@@ -46,7 +46,7 @@ describe("User-defined items", () => {
             cy.get("body").type("foo");
             cy.wait(600);
             cy.get("body").type("{enter}");
-            assertState(frameId, "foo($)", "foo(a, b)");
+            assertState(frameId, "foo($)", "foo(a, b=)");
         }, true);
     });
 
