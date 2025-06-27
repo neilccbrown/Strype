@@ -12,6 +12,7 @@ describe("Parameter prompts for user-defined functions", () => {
     const rawFuncs : [string | null | [string, string] | {udf: string}, string, string[]][] = [
         [{udf: "draw_circle(x,y,radius,thickness=5,fill=None)"}, "draw_circle", ["x", "y", "radius", "thickness=5","fill=None"]],
         [{udf: "sum(*numbers)"}, "sum", ["*numbers"]],
+        [{udf: "sum(initial, *numbers, **attrs)"}, "sum", ["initial", "*numbers", "**attrs"]],
         [{udf: "draw_text(x,y,text,*,font_family=None)"}, "draw_text", ["x", "y", "text", "font_family=None"]],
         // TODO test a class function once OOP merged:
         //[{class: "Foo", udf: "set_location(x,y)"}, "Foo().set_location", ["x", "y"]],

@@ -98,10 +98,11 @@ function focusEditorAC(): void {
 //  - Second item is func name, possibly including dots
 function calcSignature(rawParams: string[]) : Signature {
     const slashIndex = rawParams.findIndex((p) => p == "/");
-    const starIndex = rawParams.findIndex((p) => p.startsWith("*"));
+    const starIndex = rawParams.findIndex((p) => p.startsWith("*") && !p.startsWith("**"));
+    const doubleStarIndex = rawParams.findIndex((p) => p.startsWith("**"));
     const posOnly = rawParams.slice(0, slashIndex == -1 ? 0 : slashIndex);
     const posOrKey = rawParams.slice(slashIndex + 1, starIndex == -1 ? rawParams.length : starIndex);
-    const keyOnly = rawParams.slice(starIndex == -1 ? rawParams.length : starIndex + 1);
+    const keyOnly = rawParams.slice(starIndex == -1 ? rawParams.length : starIndex + 1, doubleStarIndex == -1 ? rawParams.length : doubleStarIndex);
     function makeArg(p: string) : SignatureArg {
         if (p.includes("=")) {
             const [name, defaultValue] = p.split("=");
@@ -111,13 +112,12 @@ function calcSignature(rawParams: string[]) : Signature {
             return {name: p, defaultValue: null, argType: null};
         }
     }
-    // TODO ** support
     return {
         positionalOnlyArgs: posOnly.map(makeArg),
         positionalOrKeywordArgs: posOrKey.map(makeArg),
         keywordOnlyArgs: keyOnly.map(makeArg),
         varArgs: starIndex != -1 && rawParams[starIndex].length > 1 ? {name: rawParams[starIndex].slice(0), argType: null} : null,
-        varKwargs: null,
+        varKwargs: doubleStarIndex != -1 && rawParams[doubleStarIndex].length > 1 ? {name: rawParams[doubleStarIndex].slice(0), argType: null} : null,
         firstParamIsSelfOrCls: false,
     };
 }
@@ -217,6 +217,7 @@ function emptyDisplay(sig: Signature, defocused: boolean) {
         ...sig.positionalOrKeywordArgs,
         ...(!defocused && sig.varArgs != null ? [{name: sig.varArgs.name, defaultValue: null, argType: null}] : []),
         ...sig.keywordOnlyArgs,
+        ...(!defocused && sig.varKwargs != null ? [{name: sig.varKwargs.name, defaultValue: null, argType: null}] : []),
     ].filter((p) => !defocused || p?.defaultValue == null).map(argToString).join(", ");
 }
 
@@ -254,15 +255,20 @@ function testFuncs(funcs: {
                 cy.get("body").type(func.keyboardTypingToImport);
             }
             cy.get("body").type(" " + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
+            const extra = [
+                ...func.params.varArgs ? [func.params.varArgs.name] : "",
+                ...func.params.varKwargs ? [func.params.varKwargs.name] : [],
+            ].join(", ");
+            const extraArg = extra ? [{name: extra, defaultValue: null, argType: null}] : [];
             const positional = [...func.params.positionalOnlyArgs, ...func.params.positionalOrKeywordArgs];
             // Type commas for num params minus 1:
-            for (let i = 0; i < positional.length; i++) {
+            for (let i = 0; i < positional.length + extraArg.length; i++) {
                 if (i > 0) {
                     cy.get("body").type(",");
                 }
                 withFrameId((frameId) => assertState(frameId,
                     func.funcName + "(" + ",".repeat(i) + "$)",
-                    func.funcName + "(" + positional.slice(0, i).map((s) => s.name).join(",") + (i > 0 ? "," : "") + [...positional.slice(i), ...func.params.keywordOnlyArgs].map(argToString).join(", ") + ")"));
+                    func.funcName + "(" + positional.slice(0, i).map((s) => s.name).join(",") + (i > 0 ? "," : "") + [...positional.slice(i), ...func.params.keywordOnlyArgs, ...extraArg].map(argToString).join(", ") + ")"));
             }
         });
 

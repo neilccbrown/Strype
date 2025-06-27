@@ -506,11 +506,17 @@ function getParamPrompt(sig: Signature, targetParamIndex: number, prevKeywordArg
                     // If not focused, don't show params that have a default value:
                     flattenedPositional = flattenedPositional.filter((p) => p.defaultValue == null);
                 }
-                const remaining = flattenedPositional.slice(targetParamIndex);
+                const remaining: {name: string, defaultValue: string | null}[] = flattenedPositional.slice(targetParamIndex);
                 if (isFocused) {
                     // If we're focused in the last param,
                     // show the keyword ones as well:
                     remaining.push(...sig.keywordOnlyArgs);
+                    if (sig.varArgs != null) {
+                        remaining.push({name: "*" + sig.varArgs.name, defaultValue: null});
+                    }
+                    if (sig.varKwargs != null) {
+                        remaining.push({name: "**" + sig.varKwargs.name, defaultValue: null});
+                    }
                 }
                 return remaining.map(t).join(", ");
             }
@@ -528,11 +534,8 @@ function getParamPrompt(sig: Signature, targetParamIndex: number, prevKeywordArg
         // Make the equals show up by filling in defaultValue if blank:
         return remainingKeywordNames.map((c) => ({...c, defaultValue: c.defaultValue ?? ""})).map(t).join(", ");
     }
-    if (sig.varArgs && isFocused) {
-        return "*" + sig.varArgs.name;
-    }
-    if (sig.varKwargs && isFocused) {
-        return "**" + sig.varKwargs.name;
+    if (isFocused) {
+        return [...sig.varArgs ? ["*" + sig.varArgs.name] : [], ...sig.varKwargs ? ["**" + sig.varKwargs.name] : []].join(", ");
     }
     return "";
 }
@@ -571,6 +574,16 @@ export function getUserDefinedSignature(userFunc: FrameObject) : Signature {
                 ? [value.operands[1].code.trim(), index]
                 : null)
         .find((x) : x is [string, number] => x != null);
+    const doubleStar = params
+        .map((value, index) =>
+            (value.operands.length == 2
+                && value.operators[0] == "**"
+                && isFieldBaseSlot(value.operands[0])
+                && isFieldBaseSlot(value.operands[1])
+                && value.operands[0].code.trim().length == 0)
+                ? [value.operands[1].code.trim(), index]
+                : null)
+        .find((x) : x is [string, number] => x != null);
 
     function toParam(p: { operands: FieldSlot[]; operators: string[]; }, i: number) : { name: string; defaultValue: string | null; argType: null; } {
         return ({ name: keyValues[i]?.[0] ?? (p.operands.length == 1 && isFieldBaseSlot(p.operands[0]) ? p.operands[0].code : undefined) ?? ("error" + i), defaultValue: keyValues[i]?.[1] ?? null, argType: null });
@@ -579,11 +592,11 @@ export function getUserDefinedSignature(userFunc: FrameObject) : Signature {
     const keywordOnlyStart = 1 + (singleStar?.[1] ?? (params.length - 1));
     return {
         positionalOnlyArgs: [], //TODO self if class
-        positionalOrKeywordArgs: params.slice(0, singleStar?.[1] ?? params.length).map(toParam),
-        keywordOnlyArgs: params.slice(keywordOnlyStart).map((p, i) => toParam(p, i + keywordOnlyStart)),
+        positionalOrKeywordArgs: params.slice(0, singleStar?.[1] ?? doubleStar?.[1] ?? params.length).map(toParam),
+        keywordOnlyArgs: params.slice(keywordOnlyStart, doubleStar?.[1] ?? params.length).map((p, i) => toParam(p, i + keywordOnlyStart)),
         varArgs: singleStar !== undefined && singleStar[0].trim().length > 0 ? {name: singleStar[0].trim(), argType: null} : null,
-        varKwargs: null, // TODO support this
-        firstParamIsSelfOrCls: false, // TODO support this
+        varKwargs: doubleStar !== undefined && doubleStar[0].trim().length > 0 ? {name: doubleStar[0].trim(), argType: null} : null,
+        firstParamIsSelfOrCls: false, // TODO support this once OOP is in place
     };
 }
 
