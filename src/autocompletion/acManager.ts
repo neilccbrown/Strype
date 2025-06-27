@@ -510,7 +510,8 @@ function getParamPrompt(sig: Signature, targetParamIndex: number, prevKeywordArg
                 if (isFocused) {
                     // If we're focused in the last param,
                     // show the keyword ones as well:
-                    remaining.push(...sig.keywordOnlyArgs);
+                    // Make sure the = shows up after the keyword-only if they don't have a default:
+                    remaining.push(...sig.keywordOnlyArgs.map((k) => ({...k, defaultValue: k.defaultValue ?? ""})));
                     if (sig.varArgs != null) {
                         remaining.push({name: "*" + sig.varArgs.name, defaultValue: null});
                     }

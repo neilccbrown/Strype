@@ -216,7 +216,8 @@ function emptyDisplay(sig: Signature, defocused: boolean) {
         ...sig.positionalOnlyArgs,
         ...sig.positionalOrKeywordArgs,
         ...(!defocused && sig.varArgs != null ? [{name: sig.varArgs.name, defaultValue: null, argType: null}] : []),
-        ...sig.keywordOnlyArgs,
+        // Make sure the = shows up after the keyword-only if they don't have a default:
+        ...sig.keywordOnlyArgs.map((k) => ({...k, defaultValue: k.defaultValue ?? ""})),
         ...(!defocused && sig.varKwargs != null ? [{name: sig.varKwargs.name, defaultValue: null, argType: null}] : []),
     ].filter((p) => !defocused || p?.defaultValue == null).map(argToString).join(", ");
 }
