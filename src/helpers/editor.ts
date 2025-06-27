@@ -21,7 +21,6 @@ import { debounce } from "lodash";
 import {toUnicodeEscapes} from "@/parser/parser";
 import {fromUnicodeEscapes} from "@/helpers/pythonToFrames";
 
-
 export const undoMaxSteps = 200;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
 
@@ -423,30 +422,6 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
     return {uiLiteralCode: uiLiteralCode, focusSpanPos: focusSpanPos, hasStringSlots: hasStringSlots, mediaLiterals: mediaLiterals};
 }
 
-
-// We want to know if the cursor position in a comment frame will still allow for moving that cursor up/down within the frame or need to be interpreted as an "exit" out the frame.
-// A naive way of approaching this would be to check the line returns (\n) before/after the cursor, but this is not reliable because the text content associated with the span
-// element will not necessarily be represented exactly in the same way on the browser (because of text wrapping) -- and there is no easy way to retrieve the text AS IT IS PRESENTED.
-// However, we can check the bounds of the current selection to help us find where we are in the span, and therefore know if we're in the top/last VISUALLY SHOWING line of the text
-// Based on https://www.bennadel.com/blog/4310-detecting-rendered-line-breaks-in-a-text-node-in-javascript.htm
-export function checkCanReachAnotherCommentLine(isCommentFrame: boolean, isArrowUp: boolean, commentSpanElement: HTMLSpanElement): boolean{
-    // If we're not in a comment, just don't check
-    const currentDocSelection = document.getSelection();
-    if(isCommentFrame && currentDocSelection){
-        const commentSpanRect = commentSpanElement.getClientRects()[0];
-        const commentSelectionRects = currentDocSelection.getRangeAt(0).getClientRects();
-        // When there is nothing in the comment, the range may have no rectangles, then we clearly can return false
-        if(commentSelectionRects[0]){
-            const lineheight = commentSelectionRects[0].height;
-            // The weird case when we are below an empty line
-            const firstRect = (commentSelectionRects.length == 2 && currentDocSelection.getRangeAt(0).collapsed) ? commentSelectionRects[1] : commentSelectionRects[0];
-            const isInFirstVisualLine = (firstRect.top - commentSpanRect.top) < lineheight;
-            const isInLastVisualLine = (commentSpanRect.bottom - commentSelectionRects[commentSelectionRects.length - 1].bottom) < lineheight;
-            return ((isArrowUp) ? !isInFirstVisualLine : !isInLastVisualLine);
-        }
-    }
-    return false;
-}
 
 export function getFrameContextMenuUID(frameUID: string): string {
     return frameUID + "_frameContextMenu";

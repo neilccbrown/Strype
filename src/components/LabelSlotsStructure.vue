@@ -13,7 +13,7 @@
         @paste.prevent.stop="forwardPaste"
         @input="onInput"
         @compositionend="onCompositionEnd"
-        class="next-to-eachother label-slot-structure"
+        :class="'next-to-eachother '+scssVars.labelSlotStructClassName"
     >
             <!-- Note: the default text is only showing for new slots (1 subslot), we also use unicode zero width space character for empty slots for UI -->
             <LabelSlot
@@ -82,6 +82,11 @@ export default Vue.extend({
 
     computed:{
         ...mapStores(useStore),
+
+        scssVars() {
+            // just to be able to use in template
+            return scssVars;
+        },
 
         labelSlotsStructDivId(): string {
             return getFrameLabelSlotsStructureUID(this.frameId, this.labelIndex);
@@ -316,7 +321,8 @@ export default Vue.extend({
                 (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields[0] as BaseSlot).code = (document.getElementById(getLabelSlotUID(currentFocusSlotCursorInfos.slotInfos))?.textContent??"").replace(/\u200B/g, "");
                 this.$nextTick(() => {
                     setDocumentSelection(currentFocusSlotCursorInfos, currentFocusSlotCursorInfos);
-                    options?.doAfterCursorSet?.();
+                    options?.doAfterCursorSet?.();                    
+                    this.appStore.saveStateChanges(stateBeforeChanges);
                 });
                 return;
             }
@@ -508,7 +514,18 @@ export default Vue.extend({
                         ctrlKey: event.ctrlKey,
                         metaKey: event.metaKey,
                     }));
-                if (event.key.toLowerCase() == "backspace"
+                
+                // We want to prevent some events to be handled wrongly twice or at all by the browser and our code.
+                // However, for comments, we need to let some navigation event go through otherwise they're blocked as we rely on the browser for them.
+                if(this.appStore.allowsKeyEventThroughInLabelSlotStructure || 
+                    (["PageUp", "PageDown", "Home", "End"].includes(event.key) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment)){
+                    // A few events need to be handled by the brower solely.
+                    // That is, for comments: "PageUp", "PageDown", "Home", "End" 
+                    // and anytime we set allowsKeyUpThroughInLabelSlotStructure (which we need to reset):
+                    this.appStore.allowsKeyEventThroughInLabelSlotStructure = false;
+                    return;
+                }
+                else if (event.key.toLowerCase() == "backspace"
                     || event.key.toLowerCase() == "delete"
                     || event.key.toLowerCase() == "enter"
                     || event.key == "ArrowUp"
@@ -873,7 +890,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.label-slot-structure{
+.#{$strype-classname-label-slot-struct} {
     outline: none;
     max-width: 100%;
     flex-wrap: wrap;

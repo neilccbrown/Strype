@@ -134,6 +134,9 @@ export const useStore = defineStore("app", {
             // This flag is to avoid a loss of focus when we are leaving the application
             ignoreFocusRequest: false,
 
+            // This flag indicates we should not block a key event inside a LabelSlotsStructure
+            allowsKeyEventThroughInLabelSlotStructure: false,
+
             bypassEditableSlotBlurErrorCheck: false,
             
             // Flag to indicate when an action of selection spans across slots
