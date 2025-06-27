@@ -151,7 +151,7 @@ export function checkAutocompleteSorted(acIDSel: string, isInFuncCallFrame: bool
         "time",
         BUILTIN,
     ];
-    cy.get(acIDSel + " div.module:not(." + scssVars.acEmptyResultsContainerClassName + ") > em")
+    cy.get(acIDSel + " div.ac-module-header:not(." + scssVars.acEmptyResultsContainerClassName + ")")
         .then((items) => [...items].map((item) => intendedOrder.indexOf(item.innerText.trim())))
         .should("be.sorted");
 
