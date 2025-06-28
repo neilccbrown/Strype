@@ -41,7 +41,7 @@ def convert_argspec_to_signature(func, argspec, owner_class):
     kw_defaults = argspec.kwonlydefaults or {}
 
 
-    # Determine if the method is a staticmethod
+    # Determine if the method is a static method
     is_static = owner_class is not None and isinstance(
         getattr(owner_class, func.__name__, None),
         staticmethod
