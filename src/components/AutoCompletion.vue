@@ -12,19 +12,21 @@
                         :data-title="module"
                     >
                         <div 
-                            class="module"
+                            class="ac-module-header"
                             v-show="module !== ''"
                             @mousedown.prevent.stop
                             @mouseup.prevent.stop
                         >
-                            <em>{{module}}</em>
+                            {{module}}
                         </div>
                         <PopUpItem
                             v-for="(item) in resultsToShow[module]"
                             :class="scssVars.acPopupItemClassName"
                             :id="UID+'_'+item.index"
                             :index="item.index"
-                            :item="textForAC(item)"
+                            :item="codeForAC(item)"
+                            :itemHTML="htmlForAC(item)"
+                            :indent-wrapped="true"
                             :key="UID+'_'+item.index"
                             :selected="item.index==selected"
                             v-on="$listeners"
@@ -37,7 +39,7 @@
                 </ul>
                 <div v-show="!areResultsToShow()">
                     <div 
-                        :class="'module ' + scssVars.acEmptyResultsContainerClassName"
+                        :class="'ac-module-header ' + scssVars.acEmptyResultsContainerClassName"
                         @mousedown.prevent.stop
                         @mouseup.prevent.stop
                     >
@@ -54,7 +56,9 @@
                     <PopUpItem
                         class="newlines"
                         :id="UID+'documentation'"
-                        :item="currentDocumentation"
+                        item=""
+                        :itemHTML="currentDocumentation"
+                        :indent-wrapped="false"
                         :key="UID+'documentation'"
                         :isSelectable="false"
                         ref="documentations"
@@ -77,10 +81,10 @@ import _ from "lodash";
 import { mapStores } from "pinia";
 import microbitModuleDescription from "@/autocompletion/microbit.json";
 import {getAllEnabledUserDefinedFunctions, getFrameContainer} from "@/helpers/storeMethods";
-import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, extractCommaSeparatedNames, tpyDefineLibraries} from "@/autocompletion/acManager";
+import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, tpyDefineLibraries, getUserDefinedSignature} from "@/autocompletion/acManager";
 import Parser from "@/parser/parser"; 
 import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
-import {TPyParser} from "tigerpython-parser";
+import {Signature, SignatureArg, TPyParser} from "tigerpython-parser";
 import scssVars from "@/assets/style/_export.module.scss";
 
 //////////////////////
@@ -143,8 +147,35 @@ export default Vue.extend({
     },
 
     methods: {
-        textForAC(item : AcResultType) : string {
-            return item.acResult + ((this.showFunctionBrackets && item.type.includes("function")) ? "(" + (item.params?.filter((p) => !p.hide && p.defaultValue === undefined)?.map((p) => p.name)?.join(", ") || "") + ")" : "");
+        codeForAC(item: AcResultType) : string {
+            return item.acResult + ((this.showFunctionBrackets && item.type.includes("function")) ? "()" : "");
+        },
+        htmlForAC(item : AcResultType) : string {
+            // Note: the autocomplete info can be third-party if libraries are involved, or just from
+            // the user's own code, so we should HTML escape it to avoid any Javascript injection, etc.
+            const spanStart = "<span class='ac-optional-param'>";
+            function argText(arg: SignatureArg) : string {
+                if (arg.defaultValue != null) {
+                    return spanStart + _.escape(arg.name) + "</span>";
+                }
+                else {
+                    return _.escape(arg.name);
+                }
+            }
+            function paramsText(sig: Signature) : string{
+                const posOnly = sig.positionalOnlyArgs.slice(sig.firstParamIsSelfOrCls ? 1 : 0);
+                // Note that the comma needs to be formatted differently between grey optional params, hence the odd map and join at the end:
+                return [
+                    ...posOnly.map(argText),
+                    ...(posOnly.length > 0 ? ["/"] : []),
+                    ...sig.positionalOrKeywordArgs.map(argText),
+                    ...(sig.varArgs != null ? [spanStart + "*" + _.escape(sig.varArgs.name) + "</span>"] : []),
+                    ...sig.keywordOnlyArgs.map(argText),
+                    ...(sig.varKwargs != null ? [spanStart + "**" + _.escape(sig.varKwargs.name) + "</span>"] : []),
+                ].map((p, i) => (i > 0 ? (p.startsWith(spanStart) ? spanStart + ",</span> " : ", ") : "") + p).join("");
+            }
+            // &#8203; is a zero-width space that allows line breaking, for things like Actor(image_or_filename where you'd like to break after the bracket but without showing a space
+            return _.escape(item.acResult) + ((this.showFunctionBrackets && item.type.includes("function")) ? "(&#8203;" + (item.signature ? paramsText(item.signature) : item.params?.filter((p) => !p.hide && p.defaultValue === undefined)?.map((p) => _.escape(p.name))?.join(", ") || "") + ")" : "");
         },
 
         sortCategories(categories : string[]) : string[] {
@@ -259,7 +290,7 @@ export default Vue.extend({
                     acResult: s.acResult,
                     documentation: s.documentation,
                     params: s.params == null ? [] : s.params.map((p) => ({name: p})),
-                    type: ["function", "module", "variable", "type"].includes(s.type) ? [s.type] : [],
+                    type: ["function", "module", "variable", "type"].includes(s.type ?? "") ? [s.type] : [],
                     version: 0,
                 } as AcResultType));
                 this.acResults = {[context]: items};
@@ -276,7 +307,7 @@ export default Vue.extend({
                     acResult: (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code,
                     documentation: "",
                     type: ["function"],
-                    params: extractCommaSeparatedNames(f.labelSlotsDict[1].slotStructures).map((p) => ({name: p})),
+                    signature: getUserDefinedSignature(f),
                     version: 0,
                 }));
                 
@@ -325,7 +356,7 @@ export default Vue.extend({
                     .sort((a, b) => a.acResult.localeCompare(b.acResult))
                     .map((e,i) => {
                         let contextPath = module + "." + e.acResult;
-                        return {index: lastIndex+i, acResult: e.acResult, documentation: e.documentation, type: e.type??"", params: e.params, version: this.getACEntryVersion(_.get(this.acVersions, contextPath))};
+                        return {index: lastIndex+i, acResult: e.acResult, documentation: e.documentation, type: e.type??"", params: e.params, signature: e.signature, version: this.getACEntryVersion(_.get(this.acVersions, contextPath))};
                     });
                 lastIndex += filteredResults.length;    
             }
@@ -439,7 +470,31 @@ export default Vue.extend({
         getCurrentDocumentation(): string {
             const curAC = this.resultsToShow[this.currentModule].find((e) => e.index === this.selected) as AcResultType;
             if (curAC) {
-                return curAC.documentation || (this.$i18n.t("autoCompletion.noDocumentation") as string); 
+                let doc = curAC.documentation;
+                // eslint-disable-next-line no-inner-declarations
+                function argText(arg: SignatureArg) : string {
+                    if (arg.defaultValue != null) {
+                        return _.escape(arg.name) + " = " + _.escape(arg.defaultValue);
+                    }
+                    else {
+                        return _.escape(arg.name);
+                    }
+                }
+                // eslint-disable-next-line no-inner-declarations
+                function paramsText(sig: Signature) : string{
+                    const posOnly = sig.positionalOnlyArgs.slice(sig.firstParamIsSelfOrCls ? 1 : 0);
+                    return [
+                        ...posOnly.map(argText),
+                        ...(posOnly.length > 0 ? ["/"] : []),
+                        ...sig.positionalOrKeywordArgs.map(argText),
+                        ...(sig.varArgs != null ? ["*" + _.escape(sig.varArgs.name)] : (sig.keywordOnlyArgs.length > 0 ? ["*"] : [])),
+                        ...sig.keywordOnlyArgs.map(argText),
+                        ...(sig.varKwargs != null ? ["**" + _.escape(sig.varKwargs.name)] : []),
+                    ].join(", ");
+                }
+                // &#8203; is a zero-width space that allows line breaking, for things like Actor(image_or_filename where you'd like to break after the bracket but without showing a space
+                return `<span class='ac-doc-header'>${_.escape(curAC.acResult) + (curAC.type.includes("function") ? "(&#8203;" + (curAC.signature ? paramsText(curAC.signature) : (curAC.params ?? []).filter((p) => !p.hide).map((p) => p.name + (p.defaultValue !== undefined ? " = " + p.defaultValue : "")).join(", ")) + ")" : "")}</span>`
+                    + (doc?.trimStart() || (this.$i18n.t("autoCompletion.noDocumentation") as string));
             }
             else {
                 return "";
@@ -464,13 +519,14 @@ export default Vue.extend({
 
 <style lang="scss">
 
-.module{
-    color: #919191;
+.ac-module-header{
+    color: #555;
     border-top: 1px;
     border-bottom: 1px;
     border-color:#919191;
+    background-color: #edf6f9;
 }
-.module:hover{
+.ac-module-header:hover{
     cursor: default;
 }
 
@@ -498,12 +554,26 @@ export default Vue.extend({
     list-style: none;
     padding-left: 0;
     width: max-content;
+    max-width: 25vw;
     cursor: pointer;
 }
 
 .popup li {
     padding-left: 5px;
     padding-right: 25px;
+}
+
+.popup .ac-optional-param {
+    font-style: italic;
+    color: #aaaaaa;
+}
+.#{$strype-classname-ac-item}.#{$strype-classname-ac-item-selected} .ac-optional-param {
+    color: #ddd !important;
+}
+.popup .ac-doc-header {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
 }
 
 </style>

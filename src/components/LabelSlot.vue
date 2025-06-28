@@ -208,7 +208,7 @@ export default Vue.extend({
                 // to those indicating there is no compulsory value
                 "background-color": ((this.focused) 
                     ? ((this.getSlotContent().trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") 
-                    : (((isStructureSingleSlot || isEmptyFunctionCallSlot) && !isSlotOptional && this.code.replace(/\u200B/g, "").trim().length == 0) ? "#FFFFFF" : "rgba(255, 255, 255, 0)")) 
+                    : (((isStructureSingleSlot || isEmptyFunctionCallSlot || this.defaultText?.replace(/\u200B/g, "")?.trim()) && !isSlotOptional && this.code.replace(/\u200B/g, "").trim().length == 0) ? "#FFFFFF" : "rgba(255, 255, 255, 0)")) 
                     + " !important", 
             };
         }, 
@@ -429,7 +429,7 @@ export default Vue.extend({
                 const slotXPos = document.getElementById(getLabelSlotUID(this.coreSlotInfo))?.getBoundingClientRect().x??0; 
 
                 // Get the spans of that frame label container
-                const spans = document.querySelectorAll("#"+getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex) + " span");
+                const spans = document.querySelectorAll("#"+getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex) + " span." + scssVars.labelSlotInputClassName);
                 let indexOfCurrentSpan = 0;
                 spans.forEach((element, index) => {
                     if(element.id == getLabelSlotUID(this.coreSlotInfo)){
@@ -1535,7 +1535,7 @@ export default Vue.extend({
 
         acItemClicked(item: string) {
             // Get the content of the <li> element through the child node to avoid getting nested text elements (like the version)
-            const selectedItem = (document.getElementById(item) as HTMLLIElement)?.firstChild?.nodeValue?.trim()??"";
+            const selectedItem = (document.getElementById(item) as HTMLLIElement)?.getAttribute("data-item")?.trim()??"";
             if(selectedItem === undefined) {
                 return;
             }
