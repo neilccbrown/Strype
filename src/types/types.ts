@@ -100,6 +100,7 @@ export enum SlotType{
     // "no type", which can be used for undo/redo difference marking
     // media type
     media = 0o70000, // meta category
+    comment = 0o700000, // meta category
     none = 0,    
 }
 
