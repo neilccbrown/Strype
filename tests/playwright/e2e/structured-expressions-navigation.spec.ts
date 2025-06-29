@@ -103,8 +103,10 @@ test.describe("Check navigation", () => {
         for (let i = 0; i < 200; i++) {
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowDown");
+            await page.waitForTimeout(200);
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowDown");
+            await page.waitForTimeout(200);
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowLeft");
         }
@@ -129,8 +131,10 @@ test.describe("Check navigation", () => {
         for (let i = 0; i < 200; i++) {
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowDown");
+            await page.waitForTimeout(200);
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowDown");
+            await page.waitForTimeout(200);
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("Shift+Tab");
         }
