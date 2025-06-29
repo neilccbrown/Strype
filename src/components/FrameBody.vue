@@ -39,7 +39,7 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
-import { AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState } from "@/types/types";
+import { CaretPosition, FrameObject, PythonExecRunningState } from "@/types/types";
 import { mapStores } from "pinia";
 import { getCaretContainerRef, getCaretUID, getFrameBodyUID, getFrameUID } from "@/helpers/editor";
 
@@ -82,10 +82,6 @@ export default Vue.extend({
             set() {
                 return;
             },    
-        },
-
-        hasDisabledOrCommentFrames(): boolean {
-            return (this.frames).filter((frame) => frame.isDisabled || frame.frameType.type === AllFrameTypesIdentifier.comment).length > 0;
         },
 
         // Needed in order to use the `CaretPosition` type in the v-show
