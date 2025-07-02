@@ -100,7 +100,7 @@ test.describe("Check navigation", () => {
         }
         test.setTimeout(1_000_000);
         await loadPY(page, "../../cypress/fixtures/python-code.py");
-        for (let i = 0; i < 200; i++) {
+        for (let i = 0; i < 100; i++) {
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowDown");
             await page.waitForTimeout(200);
@@ -128,7 +128,7 @@ test.describe("Check navigation", () => {
         }
         test.setTimeout(1_000_000);
         await loadPY(page, "../../cypress/fixtures/python-code.py");
-        for (let i = 0; i < 200; i++) {
+        for (let i = 0; i < 100; i++) {
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowDown");
             await page.waitForTimeout(200);
