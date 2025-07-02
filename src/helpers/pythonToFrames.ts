@@ -29,6 +29,7 @@ interface CopyState {
     disabledLines: number[]; // The line numbers which had a Disabled: prefix
     lineNumberToIndentation: Map<number, string>; // Maps a line number to a string of indentation
     isSPY: boolean;
+    multiLinesCommentContent: string | null; // The content of a multilines comment (retrieved and built up line by line)
 }
 
 // Declare Skulpt:
@@ -400,7 +401,7 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
     useStore().copiedSelectionFrameIds = [];
     try {
         // Use the next available ID to avoid clashing with any existing IDs:
-        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: useStore().nextAvailableId, addToNonJoint: useStore().copiedSelectionFrameIds, addToJoint: undefined, loadedFrames: useStore().copiedFrames, disabledLines: transformed.disabledLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0});
+        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: useStore().nextAvailableId, addToNonJoint: useStore().copiedSelectionFrameIds, addToJoint: undefined, loadedFrames: useStore().copiedFrames, disabledLines: transformed.disabledLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0, multiLinesCommentContent: null});
         // At this stage, we can make a sanity check that we can copy the given Python code in the current position in Strype (for example, no "import" in a function definition section)
         if(!canPastePythonAtStrypeLocation(currentStrypeLocation)){
             useStore().copiedFrames = {};
@@ -754,17 +755,16 @@ function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, keywo
     return {s: s, frame: frame};
 }
 
-// Process the given node in the tree at the current point designed by CopyState,
-// and maintain an object, extraInfos, for things that need to be deferred (for example, multilines comments).
+// Process the given node in the tree at the current point designed by CopyState
 // Returns a copy state, including the frame ID of the next insertion point for any following statements
-function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState, extraInfos: {multiLinesCommentContent: string | null} = {multiLinesCommentContent: null}) : CopyState {
+function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState/*, extraInfos: {multiLinesCommentContent: string | null} = {multiLinesCommentContent: null}*/) : CopyState {
     //console.log("Processing type: " + (Sk.ParseTables.number2symbol[p.type] || ("#" + p.type)));
         
     switch (p.type) {
     case Sk.ParseTables.sym.file_input:
         // The outer wrapper for the whole file, just dig in:
         for (const child of children(p)) {
-            s = copyFramesFromPython(child, s, extraInfos);
+            s = copyFramesFromPython(child, s);
         }
         break;
     case Sk.ParseTables.sym.stmt:
@@ -775,7 +775,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState, extraInfos: 
     case Sk.ParseTables.sym.import_stmt: 
         // Wrappers where we just skip to the children:
         for (const child of children(p)) {
-            s = copyFramesFromPython(child, s, extraInfos);
+            s = copyFramesFromPython(child, s);
         }
         break;
     case Sk.ParseTables.sym.expr_stmt:
@@ -800,20 +800,20 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState, extraInfos: 
                     const commentCodeLine = fromUnicodeEscapes((slots.fields[0] as BaseSlot).code.slice(STRYPE_MULTILINES_COMMENT_PREFIX.length));
                     if(commentCodeLine.startsWith("'''") || commentCodeLine.endsWith("'''")){
                         // It's the start or the end of a multilines comment: we know we started one if multiLinesCommentContent is null.
-                        if(extraInfos.multiLinesCommentContent == null){
+                        if(s.multiLinesCommentContent == null){
                             // Starting a multilines comment (got past the comment token, 3 chars length) and add \n if there is already some comment content.
-                            extraInfos.multiLinesCommentContent = (commentCodeLine.slice(3) + ((commentCodeLine.length > 3) ? "\n" : ""));
+                            s.multiLinesCommentContent = (commentCodeLine.slice(3) + ((commentCodeLine.length > 3) ? "\n" : ""));
                         }
                         else{
                             // Ending a mulilines comment: we get potential comment's part that is starting the line, and we add that comment in a frame, and reset multiLinesCommentContent.
-                            (extraInfos.multiLinesCommentContent  as string) += commentCodeLine.slice(0, -3);
-                            s = addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: extraInfos.multiLinesCommentContent}], operators: []}}}), p.lineno, s);
-                            extraInfos.multiLinesCommentContent = null;
+                            (s.multiLinesCommentContent  as string) += commentCodeLine.slice(0, -3);
+                            s = addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: s.multiLinesCommentContent}], operators: []}}}), p.lineno, s);
+                            s.multiLinesCommentContent = null;
                         }
                     }
                     else{
                         // It's the content of a multilines comment (not the start, not the end), we add it up with an appeneded \n to mark the line return of the comment.                       
-                        (extraInfos.multiLinesCommentContent as unknown as string) += (commentCodeLine + "\n");
+                        (s.multiLinesCommentContent as unknown as string) += (commentCodeLine + "\n");
                     }
                 }
                 else if (slots.fields.length == 1 && (slots.fields[0] as BaseSlot)?.code && (slots.fields[0] as BaseSlot).code.startsWith(STRYPE_LIBRARY_PREFIX)) {
@@ -984,7 +984,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState, extraInfos: 
         // but it seems if we ignore these extra children we can proceed and it will all work:
         for (const child of children(p)) {
             if (child.type > 250) { // Only count the non-expression nodes
-                s = copyFramesFromPython(child, s, extraInfos);
+                s = copyFramesFromPython(child, s);
             }
         }
         break;
