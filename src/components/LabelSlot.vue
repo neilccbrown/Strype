@@ -89,6 +89,7 @@ import Frame from "@/components/Frame.vue";
 import scssVars from "@/assets/style/_export.module.scss";
 import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
 import {drawSoundOnCanvas} from "@/helpers/media";
+import {handleVerticalCaretMove} from "@/helpers/spans";
 
 // Default time to keep in cache: 5 minutes.
 const soundPreviewImages = new Cache<LoadedMedia>({ defaultTtl: 5 * 60 * 1000 });
@@ -622,7 +623,7 @@ export default Vue.extend({
             const isArrowUp = (event.key == "ArrowUp");
            
             // Check if we could potentilly reach another VISUAL line in a comment (this method returns false if we're not in a comment frame or that comment is empty)
-            const couldReachAnotherCommentLine = this.frameType == AllFrameTypesIdentifier.comment && ((document.getElementById(getLabelSlotUID(this.coreSlotInfo)) as HTMLSpanElement).textContent as string).replaceAll("\u200b","").length > 0;            
+            const couldReachAnotherCommentLine = (this.frameType == AllFrameTypesIdentifier.comment && ((document.getElementById(getLabelSlotUID(this.coreSlotInfo)) as HTMLSpanElement).textContent as string).replaceAll("\u200b","").length > 0);            
             // When no key modifier is hit, we either navigate in A/C or leave the frame or move to another line of text for comments, depending on the context
             // Everything is handled manually except when navigating within a comment.
             if(!(event.ctrlKey || event.shiftKey || event.metaKey)){
@@ -649,7 +650,11 @@ export default Vue.extend({
                     setTimeout(() => {
                         try{
                             const currentSelectionRange = document.getSelection()?.getRangeAt(0).cloneRange();
-                            if(prevSelectionRange && currentSelectionRange?.startOffset==prevSelectionRange.startOffset && currentSelectionRange?.endOffset==prevSelectionRange.endOffset){
+                            if(prevSelectionRange
+                                && currentSelectionRange
+                                && prevSelectionRange.collapsed && currentSelectionRange.collapsed
+                                && prevSelectionRange.startContainer == currentSelectionRange.startContainer
+                                && prevSelectionRange.startOffset==currentSelectionRange.startOffset){
                                 this.appStore.leftRightKey({key: (isArrowUp) ? "ArrowLeft": "ArrowRight"});
                             }
                         }
@@ -664,6 +669,11 @@ export default Vue.extend({
                     event.stopImmediatePropagation();
                     event.stopPropagation();
                     event.preventDefault();
+                    if (Math.abs(-3) > 0) {
+                        this.$emit(CustomEventTypes.slotUpDown, event.key);
+                        return;
+                    }
+                    
                     // In any case the focus is lost, and the caret is shown (visually below by default)
                     this.onLoseCaret();
                     //If the up arrow is pressed you need to move the caret as well.

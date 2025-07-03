@@ -29,12 +29,13 @@
                 :isEditableSlot="isEditableSlot(slotItem.type)"
                 :isEmphasised="isSlotEmphasised(slotItem)"
                 v-on:[CustomEventTypes.requestSlotsRefactoring]="checkSlotRefactoring"
+                v-on:[CustomEventTypes.slotUpDown]="slotUpDown"
             /> 
     </div>
 </template>
 
 <script lang="ts">
-import { AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
+import {AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType} from "@/types/types";
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
@@ -47,6 +48,7 @@ import scssVars from "@/assets/style/_export.module.scss";
 import {readFileAsyncAsData, readImageSizeFromDataURI, splitByRegexMatches} from "@/helpers/common";
 import {detectBrowser} from "@/helpers/browser";
 import { isMacOSPlatform } from "@/helpers/common";
+import {handleVerticalCaretMove} from "@/helpers/spans";
 
 export default Vue.extend({
     name: "LabelSlotsStructure",
@@ -667,6 +669,23 @@ export default Vue.extend({
                 event.preventDefault();
                 event.stopImmediatePropagation();  
             }                      
+        },
+        
+        slotUpDown(keyName: string) {
+            const spans = document.getElementById(this.labelSlotsStructDivId)?.querySelectorAll("span." + scssVars.labelSlotInputClassName + "[contenteditable=\"true\"]") as NodeListOf<HTMLSpanElement>;
+            if (spans.length > 0) {
+                const dest = handleVerticalCaretMove(Array.from(spans), keyName == "ArrowUp" ? "up" : "down");
+                if (dest) {
+                    const infos = {slotInfos: parseLabelSlotUID(dest.span.id), cursorPos: dest.offset};
+                    this.appStore.setSlotTextCursors(infos, infos);
+                    this.appStore.setFocusEditableSlot({
+                        frameSlotInfos: infos.slotInfos,
+                        caretPosition: (this.appStore.getAllowedChildren(this.frameId)) ? CaretPosition.body : CaretPosition.below,
+                    });
+                    return;
+                }
+            }
+            //TODO move to frame cursor
         },
 
         checkAndDoPushBracket(focusSlotCursorInfos: SlotCursorInfos, isToPushLeft: boolean): void {
