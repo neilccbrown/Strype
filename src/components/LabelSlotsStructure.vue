@@ -5,6 +5,8 @@
         contenteditable="true"
         @keydown.left="onLRKeyDown($event)"
         @keydown.right="onLRKeyDown($event)"
+        @keydown.up="slotUpDown($event)"
+        @keydown.down="slotUpDown($event)"
         @beforeinput="beforeInput"
         @keydown="forwardKeyEvent($event)"
         @keyup="forwardKeyEvent($event)"
@@ -29,7 +31,6 @@
                 :isEditableSlot="isEditableSlot(slotItem.type)"
                 :isEmphasised="isSlotEmphasised(slotItem)"
                 v-on:[CustomEventTypes.requestSlotsRefactoring]="checkSlotRefactoring"
-                v-on:[CustomEventTypes.slotUpDown]="slotUpDown"
             /> 
     </div>
 </template>
@@ -671,10 +672,14 @@ export default Vue.extend({
             }                      
         },
         
-        slotUpDown(keyName: string) {
+        slotUpDown(event: KeyboardEvent) {
+            event.stopImmediatePropagation();
+            event.stopPropagation();
+            event.preventDefault();
+            
             const spans = document.getElementById(this.labelSlotsStructDivId)?.querySelectorAll("span." + scssVars.labelSlotInputClassName + "[contenteditable=\"true\"]") as NodeListOf<HTMLSpanElement>;
             if (spans.length > 0) {
-                const dest = handleVerticalCaretMove(Array.from(spans), keyName == "ArrowUp" ? "up" : "down");
+                const dest = handleVerticalCaretMove(Array.from(spans), event.key == "ArrowUp" ? "up" : "down");
                 if (dest) {
                     const infos = {slotInfos: parseLabelSlotUID(dest.span.id), cursorPos: dest.offset};
                     this.appStore.setSlotTextCursors(infos, infos);

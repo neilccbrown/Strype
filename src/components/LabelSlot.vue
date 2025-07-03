@@ -80,7 +80,7 @@ import {getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharac
 import { AllowedSlotContent, CaretPosition, FrameObject, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, EditImageInDialogFunction, FieldSlot, LoadedMedia, MediaSlot, PythonExecRunningState, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
-import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
 import { cloneDeep } from "lodash";
 import LabelSlotsStructure from "./LabelSlotsStructure.vue";
@@ -89,7 +89,6 @@ import Frame from "@/components/Frame.vue";
 import scssVars from "@/assets/style/_export.module.scss";
 import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
 import {drawSoundOnCanvas} from "@/helpers/media";
-import {handleVerticalCaretMove} from "@/helpers/spans";
 
 // Default time to keep in cache: 5 minutes.
 const soundPreviewImages = new Cache<LoadedMedia>({ defaultTtl: 5 * 60 * 1000 });
@@ -636,6 +635,7 @@ export default Vue.extend({
                     event.preventDefault();
                     (this.$refs.AC as any).changeSelection((isArrowUp)?-1:1);
                 }
+                /*
                 else if(couldReachAnotherCommentLine){
                     // We are in a comment, and in a line that is VISUALLY (in the browser) not the first (if we go up) or not the last (if we go down):
                     // we let the browser handle the selection change nativately and set a flag for allowing the LabelSlotsStructure parent 
@@ -669,10 +669,6 @@ export default Vue.extend({
                     event.stopImmediatePropagation();
                     event.stopPropagation();
                     event.preventDefault();
-                    if (Math.abs(-3) > 0) {
-                        this.$emit(CustomEventTypes.slotUpDown, event.key);
-                        return;
-                    }
                     
                     // In any case the focus is lost, and the caret is shown (visually below by default)
                     this.onLoseCaret();
@@ -692,6 +688,8 @@ export default Vue.extend({
                     this.appStore.setSlotTextCursors(undefined, undefined);
                     document.getSelection()?.removeAllRanges();
                 }
+                
+                 */
             }
             else if(event.shiftKey && couldReachAnotherCommentLine){
                 // We are in a comment and do a selection using up or down keys that won't lead outside the comment, we leave the browser handle it natively

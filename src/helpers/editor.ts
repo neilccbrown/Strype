@@ -47,7 +47,6 @@ export enum CustomEventTypes {
     editorAddFrameCommandsUpdated = "frameCommandsUpdated",
     frameContentEdited = "frameContentEdited",
     requestSlotsRefactoring ="requestSlotsRefactoring",
-    slotUpDown = "slotUpDown",
     editableSlotGotCaret= "slotGotCaret",
     editableSlotLostCaret = "slotLostCaret",
     editorContentPastedInSlot = "contentPastedInSlot",
