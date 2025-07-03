@@ -270,11 +270,7 @@ export default Vue.extend({
         errorHeader(): string{
             return this.appStore.getErrorHeaderForSlot(this.coreSlotInfo);
         },
-
-        debugAC(): boolean{
-            return this.appStore.debugAC;
-        },
-
+        
         isDraggingFrame(): boolean{
             return this.appStore.isDraggingFrame;
         },
@@ -585,43 +581,42 @@ export default Vue.extend({
             // and that our slot still exists.  If we shouldn't exist any more, we should
             // just do nothing and exit quietly:
             if(this.appStore.frameObjects[this.frameId] != undefined && retrieveSlotFromSlotInfos(this.coreSlotInfo)){
-                if(!this.debugAC) {
-                    this.showAC = false;
-                    this.acRequested = false;
-                    if((this.appStore.bypassEditableSlotBlurErrorCheck && !keepIgnoreKeyEventFlagOn) || this.appStore.isSelectingMultiSlots){
-                        this.appStore.setEditableFocus(
-                            {
-                                ...this.coreSlotInfo,
-                                focused: false,
-                            }
-                        );
-                    }
-                    else{
-                        this.appStore.validateSlot(
-                            {
-                                ...this.coreSlotInfo,
-                                code: this.getSlotContent().replace(/\u200B/g, "").trim(),
-                                initCode: this.initCode,
-                                isFirstChange: this.isFirstChange,
-                            }   
-                        );
-                    }
-                    //reset the flag for first code change
-                    this.isFirstChange = true;
-
-                    // As we leave a slot, we reset the slot cursor infos EXCEPT when the keyboard event is ignored
-                    // or when we are doing multislot selection
-                    if(!this.appStore.ignoreKeyEvent && !this.appStore.isSelectingMultiSlots){
-                        this.appStore.setSlotTextCursors(undefined, undefined);
-                    }
-                    
-                    if(!keepIgnoreKeyEventFlagOn){
-                        this.appStore.ignoreKeyEvent = false;
-                    }
-
-                    // And we hide the error popover. Note that we do it programmatically as it seems the focus trigger on popover isn't working in our configuration
-                    (this.$refs.errorPopover as InstanceType<typeof BPopover>)?.$emit("close");
+                this.showAC = false;
+                this.acRequested = false;
+                if((this.appStore.bypassEditableSlotBlurErrorCheck && !keepIgnoreKeyEventFlagOn) || this.appStore.isSelectingMultiSlots){
+                    this.appStore.setEditableFocus(
+                        {
+                            ...this.coreSlotInfo,
+                            focused: false,
+                        }
+                    );
                 }
+                else{
+                    this.appStore.validateSlot(
+                        {
+                            ...this.coreSlotInfo,
+                            code: this.getSlotContent().replace(/\u200B/g, "").trim(),
+                            initCode: this.initCode,
+                            isFirstChange: this.isFirstChange,
+                        }   
+                    );
+                }
+                //reset the flag for first code change
+                this.isFirstChange = true;
+
+                // As we leave a slot, we reset the slot cursor infos EXCEPT when the keyboard event is ignored
+                // or when we are doing multislot selection
+                if(!this.appStore.ignoreKeyEvent && !this.appStore.isSelectingMultiSlots){
+                    this.appStore.setSlotTextCursors(undefined, undefined);
+                }
+                
+                if(!keepIgnoreKeyEventFlagOn){
+                    this.appStore.ignoreKeyEvent = false;
+                }
+
+                // And we hide the error popover. Note that we do it programmatically as it seems the focus trigger on popover isn't working in our configuration
+                (this.$refs.errorPopover as InstanceType<typeof BPopover>)?.$emit("close");
+            
             }
         },
 
@@ -714,7 +709,7 @@ export default Vue.extend({
             if(this.showAC && this.acRequested) {
                 event.preventDefault();
                 event.stopPropagation();
-                this.showAC = this.debugAC;
+                this.showAC = false;
                 this.acRequested = false;
                 return;
             }
@@ -805,7 +800,7 @@ export default Vue.extend({
                     );
                 }
             }
-            this.showAC = this.debugAC;
+            this.showAC = false;
             this.acRequested = false;
         },
 
@@ -1627,7 +1622,7 @@ export default Vue.extend({
                 }
             }        
             
-            this.showAC = this.debugAC;
+            this.showAC = false;
             this.acRequested = false;
         },
    

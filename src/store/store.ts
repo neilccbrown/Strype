@@ -65,9 +65,6 @@ export const useStore = defineStore("app", {
             /** these flags need checking when a build is done **/
             debugging: initialState.debugging,
 
-            // Flag used to keep the AC shown for debug purposes
-            debugAC: false,
-
             showKeystroke: initialState.showKeystroke,
 
             frameObjects: cloneDeep(initialState.initialState),
