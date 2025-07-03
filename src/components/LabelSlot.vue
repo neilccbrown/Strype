@@ -60,7 +60,7 @@
 
         <AutoCompletion
             v-show="focused && showAC"
-            :class="{ac: true, hidden: !acRequested}"
+            :class="{ac: true}"
             :slotId="UID"
             ref="AC"
             :key="AC_UID"
@@ -141,7 +141,6 @@ export default Vue.extend({
             //as we don't want to save each single change of the content, but the full content change itself.
             isFirstChange: true,
             showAC: false,
-            acRequested: false,
             contextAC: "",
             // tokenAC can be null if code completion is invalid here
             tokenAC: "" as string | null,
@@ -534,7 +533,6 @@ export default Vue.extend({
                     if (this.tokenAC.includes(",")) {
                         this.tokenAC = this.tokenAC.substring(this.tokenAC.lastIndexOf(",") + 1); 
                     }
-                    this.showAC = true;
                     this.contextAC = "";
                     this.$nextTick(() => {
                         const ac = this.$refs.AC as InstanceType<typeof AutoCompletion>;
@@ -553,7 +551,6 @@ export default Vue.extend({
                 }
                 else {
                     const resultsAC = getCandidatesForAC(frame.labelSlotsDict[this.labelSlotsIndex].slotStructures, new RegExp("[0-9,]+$").exec(this.slotId)?.[0]?.trim()?.split(",")?.map((x) => parseInt(x)) ?? []);
-                    this.showAC = true;
                     this.contextAC = resultsAC.contextAC;
                     this.tokenAC = resultsAC.tokenAC;
   
@@ -576,7 +573,6 @@ export default Vue.extend({
             // just do nothing and exit quietly:
             if(this.appStore.frameObjects[this.frameId] != undefined && retrieveSlotFromSlotInfos(this.coreSlotInfo)){
                 this.showAC = false;
-                this.acRequested = false;
                 if((this.appStore.bypassEditableSlotBlurErrorCheck && !keepIgnoreKeyEventFlagOn) || this.appStore.isSelectingMultiSlots){
                     this.appStore.setEditableFocus(
                         {
@@ -633,7 +629,7 @@ export default Vue.extend({
                 // If the AutoCompletion is on we just browse through it's contents
                 // The `results` check, prevents `changeSelection()` when there are no results matching this token
                 // And instead, since there is no AC list to show, moves to the next slot
-                if(this.showAC && this.acRequested && (this.$refs.AC as any)?.areResultsToShow()) {
+                if(this.showAC && (this.$refs.AC as any)?.areResultsToShow()) {
                     event.stopImmediatePropagation();
                     event.stopPropagation();
                     event.preventDefault();
@@ -700,11 +696,10 @@ export default Vue.extend({
             }
 
             // If the AC is loaded we want to close it with an ESC and stay focused on the editableSlot
-            if(this.showAC && this.acRequested) {
+            if(this.showAC) {
                 event.preventDefault();
                 event.stopPropagation();
                 this.showAC = false;
-                this.acRequested = false;
                 return;
             }
 
@@ -723,7 +718,7 @@ export default Vue.extend({
         onTabKeyDown(event: KeyboardEvent){
             // We replicate the default browser behaviour when tab is pressed AND we're not having AC on, otherwise just do nothing
             // (the default behaviour doesn't work at least on Windows+Chrome)
-            if(!(this.showAC && this.acRequested && this.getSelectedACItem())) {
+            if(!(this.showAC && this.getSelectedACItem())) {
                 // First move the cursor to the correct end of the slot
                 const goToNextSlot = !event.shiftKey;
                 const newCursorPosition = (goToNextSlot) ? this.code.length : 0;
@@ -750,7 +745,7 @@ export default Vue.extend({
             }
 
             // If the AC is loaded we want to select the AC suggestion the user chose and stay focused on the editableSlot
-            if(this.showAC && this.acRequested && this.getSelectedACItem()) {
+            if(this.showAC && this.getSelectedACItem()) {
                 event.preventDefault();
                 event.stopPropagation();
                 // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
@@ -795,7 +790,6 @@ export default Vue.extend({
                 }
             }
             this.showAC = false;
-            this.acRequested = false;
         },
 
         onKeyDown(event: KeyboardEvent){
@@ -806,7 +800,7 @@ export default Vue.extend({
 
             // We capture the key shortcut for opening the a/c
             if((event.metaKey || event.ctrlKey) && event.key == " "){
-                this.acRequested = true;
+                this.showAC = true;
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
@@ -1617,7 +1611,6 @@ export default Vue.extend({
             }        
             
             this.showAC = false;
-            this.acRequested = false;
         },
    
         isImportFrame(): boolean {
