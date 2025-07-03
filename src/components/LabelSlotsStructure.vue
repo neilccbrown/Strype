@@ -673,6 +673,9 @@ export default Vue.extend({
         },
         
         slotUpDown(event: KeyboardEvent) {
+            if(!this.appStore.focusSlotCursorInfos){
+                return;
+            }
             event.stopImmediatePropagation();
             event.stopPropagation();
             event.preventDefault();
@@ -690,7 +693,18 @@ export default Vue.extend({
                     return;
                 }
             }
-            //TODO move to frame cursor
+            // Otherwise we move to an adjacent frame cursor:
+            this.appStore.isEditing = false;
+            this.blurEditableSlot(true);            
+            
+            //If the up arrow is pressed you need to move the caret as well.
+            if(event.key == "ArrowUp") {
+                this.appStore.changeCaretPosition(event.key);
+            }
+            else{
+                // Restore the caret visibility
+                Vue.set(this.appStore.frameObjects[this.appStore.currentFrame.id], "caretVisibility", this.appStore.currentFrame.caretPosition);
+            }
         },
 
         checkAndDoPushBracket(focusSlotCursorInfos: SlotCursorInfos, isToPushLeft: boolean): void {
@@ -859,7 +873,7 @@ export default Vue.extend({
             this.appStore.ignoreFocusRequest = false;
         },
 
-        blurEditableSlot(){
+        blurEditableSlot(force?: boolean){
             this.isFocused = false;
             // If a flag to ignore editable slot focus is set, we just revert it and do nothing else
             if(this.appStore.bypassEditableSlotBlurErrorCheck){
@@ -869,7 +883,7 @@ export default Vue.extend({
                    
             // When the div containing the slots loses focus, we need to also notify the currently focused slot inside *this* container
             // that the caret has been "lost" (since a contenteditable div won't let its children having/loosing focus)
-            if(document.activeElement?.id === this.labelSlotsStructDivId){
+            if(!force && document.activeElement?.id === this.labelSlotsStructDivId){
                 // We don't lose focus that's from an outside event (like when the browser itself loses focus)
                 // cf https://stackoverflow.com/questions/24638129/javascript-dom-how-to-prevent-blur-event-if-focus-is-lost-to-another-window
                 this.appStore.ignoreFocusRequest = true;
