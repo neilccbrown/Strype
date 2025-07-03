@@ -139,9 +139,13 @@ function transformSlotLevel(slots: SlotsStructure, topLevel?: {frameType: string
         }
         if (slots.operators[i].code.trim() === ",") {
             if (topLevel) {
-                if (![AllFrameTypesIdentifier.varassign,
+                // We invert where commas are allowed:
+                if (!([AllFrameTypesIdentifier.varassign,
                     AllFrameTypesIdentifier.for,
-                    AllFrameTypesIdentifier.return].includes(topLevel.frameType)) {
+                    AllFrameTypesIdentifier.return].includes(topLevel.frameType)
+                    || (topLevel.frameType === AllFrameTypesIdentifier.funcdef && topLevel.slotIndex == 1)
+                    || (topLevel.frameType === AllFrameTypesIdentifier.fromimport && topLevel.slotIndex == 1)
+                    || (topLevel.frameType === AllFrameTypesIdentifier.import && topLevel.slotIndex == 0))) {
                     valid = false;
                 }
             }
