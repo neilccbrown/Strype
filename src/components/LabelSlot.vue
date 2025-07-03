@@ -82,7 +82,7 @@ import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
 import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
-import { cloneDeep, debounce } from "lodash";
+import { cloneDeep } from "lodash";
 import LabelSlotsStructure from "./LabelSlotsStructure.vue";
 import { BPopover } from "bootstrap-vue";
 import Frame from "@/components/Frame.vue";
@@ -132,12 +132,6 @@ export default Vue.extend({
 
     beforeDestroy() {
         this.appStore.removePreCompileErrors(this.UID);
-    },
-    
-    created() {
-        // Stop updateAC firing until 500ms after last time it is requested.
-        // More efficient than running on every keystroke:
-        this.updateAC = debounce(this.updateAC, 500, {trailing: true});
     },
 
     data: function() {
