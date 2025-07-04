@@ -136,7 +136,7 @@ function testEntryDisableAndSave(commands: string, disableFrames: string[], file
         cy.get("body").type(commands);
         
         disableFrames.forEach((txt) => {
-            cy.contains("span", txt).rightclick();
+            cy.contains("span." + scssVars.labelSlotInputClassName, txt).rightclick();
             cy.contains("*", i18n.t("contextMenu.disable") as string).click();
         });
 
