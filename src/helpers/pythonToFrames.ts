@@ -999,15 +999,18 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState/*, extraInfos
 // Function to check the current position in Strype 
 export function findCurrentStrypeLocation(): STRYPE_LOCATION {
     // We detect the location by nativagating to the parents of the current Strype location (blue cursor) until we reach a significant parent type (see enum STRYPE_LOCATION)
-    // If are below a frame, we look for its parent right away, otheriwse we can use that fraome
-    let navigFrameId = useStore().currentFrame.id;
+    // If are below a frame, we look for its parent right away, otheriwse we can use that frame.
+    let {id: navigFrameId, caretPosition: navigFrameCaretPos} = useStore().currentFrame;
     do{
         const frameType = useStore().frameObjects[navigFrameId].frameType;
         switch(frameType.type){
         case ContainerTypesIdentifiers.framesMainContainer:
             return STRYPE_LOCATION.MAIN_CODE_SECTION;
         case AllFrameTypesIdentifier.funcdef:
-            return STRYPE_LOCATION.IN_FUNCDEF;
+            // Two possible cases: we are at the body of a function definition or at the bottom:
+            // in the first case, we are inside a function definition,
+            // in the second case, we are inside the definitions section.
+            return (navigFrameCaretPos == CaretPosition.body) ? STRYPE_LOCATION.IN_FUNCDEF : STRYPE_LOCATION.FUNCDEF_SECTION;
         case ContainerTypesIdentifiers.funcDefsContainer:
             return STRYPE_LOCATION.FUNCDEF_SECTION;
         case ContainerTypesIdentifiers.importsContainer:
@@ -1019,6 +1022,7 @@ export function findCurrentStrypeLocation(): STRYPE_LOCATION {
             else {
                 navigFrameId = useStore().frameObjects[navigFrameId].parentId;
             }
+            navigFrameCaretPos = CaretPosition.body; // since the frame is contained in something else.
             break;
         }
     }while(navigFrameId != 0);
@@ -1228,20 +1232,24 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
             useStore().clearAllFrames();
         }
         
+        // The logic for pasting is: every frame that are allowed at the current cursor's position are added.
+        // Frames that are related to another section where the caret is not present are added in that section.
         const curLocation = findCurrentStrypeLocation();
+        const isCurLocationInImportsSection = curLocation == STRYPE_LOCATION.IMPORTS_SECTION, isCurLocationInDefsSection = curLocation == STRYPE_LOCATION.FUNCDEF_SECTION, 
+            isCurLocationInMainCodeSection = curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION, isCurLocationInAFuncDefFrame = curLocation == STRYPE_LOCATION.IN_FUNCDEF;
 
         copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.format);
         if (useStore().copiedSelectionFrameIds.length > 0) {
-            getCaretContainerComponent(getFrameComponent(useStore().getImportsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(curLocation == STRYPE_LOCATION.IMPORTS_SECTION ? "caret" : "end");
+            getCaretContainerComponent(getFrameComponent((isCurLocationInImportsSection) ? useStore().currentFrame.id : useStore().getImportsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(isCurLocationInImportsSection ? "caret" : "end");
         }
         copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.FUNCDEF_SECTION, s.format);
         if (useStore().copiedSelectionFrameIds.length > 0) {
-            getCaretContainerComponent(getFrameComponent(useStore().getFuncDefsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(curLocation == STRYPE_LOCATION.FUNCDEF_SECTION ? "caret" : "end");
+            getCaretContainerComponent(getFrameComponent((isCurLocationInDefsSection) ? useStore().currentFrame.id : useStore().getFuncDefsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(isCurLocationInDefsSection ? "caret" : "end");
         }
         if (s.main.length > 0) {
-            copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION, s.format);
+            copyFramesFromParsedPython(s.main, (isCurLocationInAFuncDefFrame) ? STRYPE_LOCATION.IN_FUNCDEF : STRYPE_LOCATION.MAIN_CODE_SECTION, s.format);
             if (useStore().copiedSelectionFrameIds.length > 0) {
-                getCaretContainerComponent(getFrameComponent(curLocation == STRYPE_LOCATION.IN_FUNCDEF ? useStore().getFuncDefsFrameContainerId : useStore().getMainCodeFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste((curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) ? "caret" : "start");
+                getCaretContainerComponent(getFrameComponent((isCurLocationInAFuncDefFrame || isCurLocationInMainCodeSection) ? useStore().currentFrame.id : useStore().getMainCodeFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste((isCurLocationInAFuncDefFrame || isCurLocationInMainCodeSection) ? "caret" : "start");
             }
         }
         return s;
