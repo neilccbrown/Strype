@@ -33,6 +33,23 @@ describe("User-defined items", () => {
         }, true);
     });
 
+    it("Offers auto-complete for user-defined functions with *", () => {
+        focusEditorAC();
+        // Go up to functions section, add a function named "foo" then come back down and make a function call frame:
+        cy.get("body").type("{uparrow}ffoo(a,*,b){downarrow}{downarrow}{downarrow} ");
+        cy.wait(500);
+        // Trigger auto-complete:
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel, frameId) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkExactlyOneItem(acIDSel, MYFUNCS, "foo(a, b)");
+            cy.get("body").type("foo");
+            cy.wait(600);
+            cy.get("body").type("{enter}");
+            assertState(frameId, "foo($)", "foo(a, b=)");
+        }, true);
+    });
+
     it("Offers auto-complete for user-defined variables", () => {
         focusEditorAC();
         // Make an assignment frame that says "myVar=23", then make a function call frame beneath:

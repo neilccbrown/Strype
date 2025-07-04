@@ -46,6 +46,12 @@ To speed up the Cypress tests locally, we can target specific tests by setting a
 SPEC="autocomplete.cy.ts" npm run:test:cypress
 ```
 
+This item can have wildcards, e.g.
+
+```
+SPEC="**/autocomplete*.cy.ts" npm run:test:cypress
+```
+
 You can also change the relevant ```describe``` function call in the test file into ```describe.only``` to only run that test in the file. Be aware that it will silently turns off all the other tests!  **Do not commit this change!**
 
 To run a specific Playwright test, you can do the same with SPEC, e.g. this would work on Mac and Linux:

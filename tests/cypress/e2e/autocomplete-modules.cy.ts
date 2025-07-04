@@ -302,7 +302,7 @@ describe("Nested modules", () => {
     // in terms of the autocomplete tests here, it should function in exactly the same way: 
     const targetModule = Cypress.env("mode") == "microbit" ? "microbit.accelerometer" : "urllib.request";
     const targetFunction = Cypress.env("mode") == "microbit" ? "get_x" : "urlopen";
-    const targetFunctionWithParam = Cypress.env("mode") == "microbit" ? "get_x()" : "urlopen(url)";
+    const targetFunctionWithParam = Cypress.env("mode") == "microbit" ? "get_x()" : "urlopen(url, data, timeout, cafile, capath, cadefault, context)";
 
     it("Offers auto-completion for modules with names a.b when imported as a.b", () => {
         // This works on microbit without using Skulpt because we have special cases to look up microbit in our precalculated JSON

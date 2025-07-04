@@ -88,7 +88,7 @@ export function withAC(inner : (acIDSel : string, frameId: number) => void, isIn
 export function focusEditorAC(): void {
     // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
     // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
-    cy.get("#" + strypeElIds.getFrameUID(-3)).focus();
+    cy.get("#" + strypeElIds.getFrameUID(-3), {timeout: 15 * 1000}).focus();
 }
 
 export function withSelection(inner : (arg0: { id: string, cursorPos : number }) => void) : void {
@@ -104,10 +104,16 @@ export function withSelection(inner : (arg0: { id: string, cursorPos : number })
 // Given a selector for the auto-complete and text for an item, checks that exactly one item with that text
 // exists in the autocomplete
 export function checkExactlyOneItem(acIDSel : string, category: string | null, text : string) : void {
-    cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName + (category == null ? "" : " div[data-title='" + category + "']")).within(() => {
+    cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName + ">.popup:first-of-type" + (category == null ? "" : " div[data-title='" + category + "']")).within(() => {
         // Logging; useful in case of failure but we don't want it on by default:
         // cy.findAllByText(text, { exact: true}).each(x => cy.log(x.get()[0].id));
-        cy.findAllByText(text, { exact: true}).should("have.length", 1);
+        cy.findAllByText((content, element) => {
+            // From https://stackoverflow.com/questions/68209510/how-to-access-text-broken-by-multiple-elements-in-testing-library
+            const hasText = (element : Element | null) => element?.textContent?.replaceAll(/\u200B/g, "") === text;
+            const elementHasText = hasText(element);
+            const childrenDontHaveText : boolean = Array.from(element?.children || []).every((child) => !hasText(child));
+            return elementHasText && childrenDontHaveText;
+        }).should("have.length", 1);
     });
 }
 
@@ -145,7 +151,7 @@ export function checkAutocompleteSorted(acIDSel: string, isInFuncCallFrame: bool
         "time",
         BUILTIN,
     ];
-    cy.get(acIDSel + " div.module:not(." + scssVars.acEmptyResultsContainerClassName + ") > em")
+    cy.get(acIDSel + " div.ac-module-header:not(." + scssVars.acEmptyResultsContainerClassName + ")")
         .then((items) => [...items].map((item) => intendedOrder.indexOf(item.innerText.trim())))
         .should("be.sorted");
 

@@ -4,13 +4,13 @@ import {Page, expect} from "@playwright/test";
 // If it's not given, no specific check, just check only one or the other is visible
 export async function checkFrameXorTextCursor(page: Page, specificFrameCursor?: boolean, message?: string) : Promise<void> {
     // Check exactly one caret visible or focused input field:
-    const hasTextCursor = await page.evaluate(() => {
-        return document?.getSelection()?.focusNode != null;
-    });
     const numFrameCursors = await page.evaluate(() => {
         const scssVars = (window as any)["StrypeSCSSVarsGlobals"];
         const visibleFrameCursorElements = document.querySelectorAll("."+ scssVars.caretClassName + ":not(." + scssVars.invisibleClassName +")");
         return visibleFrameCursorElements.length;
+    });
+    const hasTextCursor = await page.evaluate(() => {
+        return document?.getSelection()?.focusNode != null;
     });
     expect(numFrameCursors, message).toEqual(hasTextCursor ? 0 : 1);
     if (specificFrameCursor !== undefined) {

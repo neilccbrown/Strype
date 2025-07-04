@@ -22,8 +22,6 @@ describe("Demo dialog", () => {
         cy.contains(".list-group-item", "Turtle").should("exist");
         cy.contains(".list-group-item", "Graphics").click();
         cy.contains(".open-demo-dlg-name", "Knock knock").should("exist");
-        cy.contains(".list-group-item", "mediacomp-strype").click();
-        cy.contains(".open-demo-dlg-name", "Image mirroring").should("exist");
         cy.get(".modal-dialog input").type("http://localhost:8089/test-library/");
         cy.contains(".btn", "Add").click();
         cy.contains(".list-group-item", "test-library").should("exist");

@@ -23,7 +23,7 @@ import {
 } from "../src/autocompletion/ac-skulpt";
 import {AcResultsWithCategory, AcResultType} from "../src/types/ac-types";
 import {getAvailablePyPyiFromLibrary, getTextFileFromLibraries} from "../src/helpers/libraryManager";
-import {extractPYI, parsePyi} from "../src/helpers/python-pyi";
+import {extractPYI, parsePyiForPreprocess} from "../src/helpers/python-pyi";
 
 declare const Sk: any;
 declare const window: any;
@@ -95,7 +95,9 @@ function getDetailsForListOfItems(module: string | null, items: AcResultType[], 
         return Sk.importMainWithBody("<stdin>", false, codeToRun, true);
     }, {}).then(() => {
         items[next].type = Sk.ffi.remapToJs(Sk.globals["itemTypes"]) as AcResultType["type"];
-        items[next].documentation = (Sk.ffi.remapToJs(Sk.globals["itemDocumentation"]) as string).replace(/\r\n/g, "\n");
+        // Skulpt's documentation is so patchy we don't use it.
+        // If we want it back, it's this code: (Sk.ffi.remapToJs(Sk.globals["itemDocumentation"]) as string).replace(/\r\n/g, "\n");
+        items[next].documentation = "";
         // Sanity check the returns.  type can be the empty list and documentation can be the empty string,
         // so we can't do e.g. !items[next].type, we must explicitly compare to null and undefined:
         if (items[next].type === null || items[next].type === undefined || items[next].documentation === null || items[next].documentation === undefined) {
@@ -120,16 +122,14 @@ function getDetailsForListOfItems(module: string | null, items: AcResultType[], 
 }
 
 function addParamsFromPYI(items: AcResultType[], pyiContent: string) {
-    const params = parsePyi(pyiContent);
+    const params = parsePyiForPreprocess(pyiContent);
     for (const item of items) {
-        if (!item.params) {
+        if (!item.signature) {
             if (item.acResult in params) {
-                item.params = params[item.acResult].map((p) => ({name: p}));
+                item.signature = params[item.acResult];
             }
             else if ((item.acResult + ".__init__") in params) {
-                item.params = params[item.acResult + ".__init__"].map((p) => ({name: p}));
-                // Hide the self param:
-                item.params[0].hide = true;
+                item.signature = params[item.acResult + ".__init__"];
             }
         }
     }

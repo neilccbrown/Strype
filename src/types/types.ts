@@ -37,8 +37,8 @@ export interface BaseSlot {
     code: string;
     // Details for working out the prompt for this slot.  Absent if not a parameter to a function.
     // If a parameter, records the context and token for autocomplete purposes, plus the index and whether
-    // we are the last parameter.
-    placeholderSource?: {context: string, token: string, paramIndex: number, lastParam: boolean};
+    // we are the last parameter, and which keyword params are already given.
+    placeholderSource?: {context: string, token: string, paramIndex: number, lastParam: boolean, prevKeywordNames: string[]};
     focused?: boolean; // default false
     error?: string; // default ""
     errorTitle?: string; // default ""
