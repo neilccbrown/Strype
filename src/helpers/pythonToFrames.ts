@@ -31,7 +31,6 @@ interface CopyState {
     disabledLines: number[]; // The line numbers which had a Disabled: prefix
     lineNumberToIndentation: Map<number, string>; // Maps a line number to a string of indentation
     isSPY: boolean;
-    multiLinesCommentContent: string | null; // The content of a multilines comment (retrieved and built up line by line)
 }
 
 // Declare Skulpt:
@@ -196,7 +195,6 @@ function getIndent(codeLine: string) {
 }
 
 const STRYPE_COMMENT_PREFIX = "___strype_comment_";
-const STRYPE_MULTILINES_COMMENT_PREFIX = "___strype_multlines_comment_";
 const STRYPE_LIBRARY_PREFIX = "___strype_library_";
 
 const STRYPE_WHOLE_LINE_BLANK = "___strype_whole_line_blank";
@@ -444,7 +442,7 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
     useStore().copiedSelectionFrameIds = [];
     try {
         // Use the next available ID to avoid clashing with any existing IDs:
-        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: useStore().nextAvailableId, addToNonJoint: useStore().copiedSelectionFrameIds, addToJoint: undefined, loadedFrames: useStore().copiedFrames, disabledLines: transformed.disabledLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0, multiLinesCommentContent: null});
+        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: useStore().nextAvailableId, addToNonJoint: useStore().copiedSelectionFrameIds, addToJoint: undefined, loadedFrames: useStore().copiedFrames, disabledLines: transformed.disabledLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0});
         // At this stage, we can make a sanity check that we can copy the given Python code in the current position in Strype (for example, no "import" in a function definition section)
         if(!canPastePythonAtStrypeLocation(currentStrypeLocation)){
             useStore().copiedFrames = {};
@@ -836,28 +834,6 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
                     // A single line comment: we retrieve and decode the comment part following the STRYPE_COMMENT_PREFIX placeholder.
                     const comment = fromUnicodeEscapes((slots.fields[0] as BaseSlot).code.slice(STRYPE_COMMENT_PREFIX.length));
                     s = addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: comment}], operators: []}}}, s.isSPY), p.lineno, s);    
-                }
-                else if (slots.fields.length == 1 && (slots.fields[0] as BaseSlot)?.code && (slots.fields[0] as BaseSlot).code.startsWith(STRYPE_MULTILINES_COMMENT_PREFIX)){
-                    // Part of a multilines comment: we look for the comment token (''') to know if we are starting/ending parsing that comment.
-                    // We save the comment's content without making a frame until we find the end the comment, and can create the frame with its content
-                    const commentCodeLine = fromUnicodeEscapes((slots.fields[0] as BaseSlot).code.slice(STRYPE_MULTILINES_COMMENT_PREFIX.length));
-                    if(commentCodeLine.startsWith("'''") || commentCodeLine.endsWith("'''")){
-                        // It's the start or the end of a multilines comment: we know we started one if multiLinesCommentContent is null.
-                        if(s.multiLinesCommentContent == null){
-                            // Starting a multilines comment (got past the comment token, 3 chars length) and add \n if there is already some comment content.
-                            s.multiLinesCommentContent = (commentCodeLine.slice(3) + ((commentCodeLine.length > 3) ? "\n" : ""));
-                        }
-                        else{
-                            // Ending a mulilines comment: we get potential comment's part that is starting the line, and we add that comment in a frame, and reset multiLinesCommentContent.
-                            (s.multiLinesCommentContent  as string) += commentCodeLine.slice(0, -3);
-                            s = addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: s.multiLinesCommentContent}], operators: []}}}, s.isSPY), p.lineno, s);
-                            s.multiLinesCommentContent = null;
-                        }
-                    }
-                    else{
-                        // It's the content of a multilines comment (not the start, not the end), we add it up with an appeneded \n to mark the line return of the comment.                       
-                        (s.multiLinesCommentContent as unknown as string) += (commentCodeLine + "\n");
-                    }
                 }
                 else if (slots.fields.length == 1 && (slots.fields[0] as BaseSlot)?.code && (slots.fields[0] as BaseSlot).code.startsWith(STRYPE_LIBRARY_PREFIX)) {
                     const library = fromUnicodeEscapes((slots.fields[0] as BaseSlot).code.slice(STRYPE_LIBRARY_PREFIX.length));
