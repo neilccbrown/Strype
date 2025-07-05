@@ -21,6 +21,7 @@
             <LabelSlot
                 v-for="(slotItem, slotIndex) in subSlots"
                 :key="frameId + '_'  + labelIndex + '_' + slotIndex + '_' + refactorCount"
+                ref="labelSlots"
                 :labelSlotsIndex="labelIndex"
                 :slotId="slotItem.id"
                 :slotType="slotItem.type"
@@ -457,8 +458,9 @@ export default Vue.extend({
         forwardKeyEvent(event: KeyboardEvent) {
             // The container div of this LabelSlotsStructure is editable. Editable divs capture the key events. 
             // We need to forward the event to the currently "focused" (editable) slot.
-            // ** LEFT/RIGHT ARROWS ARE TREATED SEPARATELY BY THIS COMPONENT, we don't forward related events **
-            if(event.key == "ArrowLeft" || event.key == "ArrowRight"){
+            // ** LEFT/RIGHT AND UP/DOWN ARROWS ARE TREATED SEPARATELY BY THIS COMPONENT, we don't forward related events **
+            if(event.key == "ArrowLeft" || event.key == "ArrowRight"
+                || event.key == "ArrowUp" || event.key == "ArrowDown"){
                 return;
             }
 
@@ -673,29 +675,47 @@ export default Vue.extend({
         },
         
         slotUpDown(event: KeyboardEvent) {
-            if(!this.appStore.focusSlotCursorInfos){
-                return;
-            }
-            event.stopImmediatePropagation();
             event.stopPropagation();
+            event.stopImmediatePropagation();
             event.preventDefault();
             
-            const spans = document.getElementById(this.labelSlotsStructDivId)?.querySelectorAll("span." + scssVars.labelSlotInputClassName + "[contenteditable=\"true\"]") as NodeListOf<HTMLSpanElement>;
-            if (spans.length > 0) {
-                const dest = handleVerticalCaretMove(Array.from(spans), event.key == "ArrowUp" ? "up" : "down");
-                if (dest) {
-                    const infos = {slotInfos: parseLabelSlotUID(dest.span.id), cursorPos: dest.offset};
-                    this.appStore.setSlotTextCursors(infos, infos);
-                    this.appStore.setFocusEditableSlot({
-                        frameSlotInfos: infos.slotInfos,
-                        caretPosition: (this.appStore.getAllowedChildren(this.frameId)) ? CaretPosition.body : CaretPosition.below,
-                    });
+            if (!(event.shiftKey || event.metaKey || event.altKey || event.ctrlKey)) {
+                const subSlots = this.$refs.labelSlots as InstanceType<typeof LabelSlot>[];
+                for (const subSlot of subSlots) {
+                    if (subSlot.handleUpDown(event)) {
+                        // Consumed by focused slot which is showing autocomplete:
+                        return;
+                    }
+                }
+            }
+            
+            if (!(event.metaKey || event.altKey || event.ctrlKey)) {
+                // Try to move up/down with this item, if we have wrapped:
+                const spans = document.getElementById(this.labelSlotsStructDivId)?.querySelectorAll("span." + scssVars.labelSlotInputClassName + "[contenteditable=\"true\"]") as NodeListOf<HTMLSpanElement>;
+                if (spans.length > 0) {
+                    const dest = handleVerticalCaretMove(Array.from(spans), event.key == "ArrowUp" ? "up" : "down");
+                    if (dest) {
+                        const infos = {slotInfos: parseLabelSlotUID(dest.span.id), cursorPos: dest.offset};
+                        const anchor = (event.shiftKey ? this.appStore.anchorSlotCursorInfos : undefined) ?? infos; 
+                        this.appStore.setSlotTextCursors(anchor, infos);
+                        setDocumentSelection(anchor, infos);
+                        this.appStore.setFocusEditableSlot({
+                            frameSlotInfos: infos.slotInfos,
+                            caretPosition: (this.appStore.getAllowedChildren(this.frameId)) ? CaretPosition.body : CaretPosition.below,
+                        });
+                        return;
+                    }
+                }
+                
+                if (event.shiftKey) {
+                    // If shift is pressed, we don't leave for a frame cursor:
                     return;
                 }
             }
             // Otherwise we move to an adjacent frame cursor:
             this.appStore.isEditing = false;
-            this.blurEditableSlot(true);            
+            this.blurEditableSlot(true);
+            document.getSelection()?.removeAllRanges();
             
             //If the up arrow is pressed you need to move the caret as well.
             if(event.key == "ArrowUp") {

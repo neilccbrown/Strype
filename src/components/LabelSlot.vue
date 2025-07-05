@@ -12,8 +12,6 @@
             @slotLostCaret="onLoseCaret"
             @mouseenter="handleMouseEnterLeave(true)"
             @mouseleave="handleMouseEnterLeave(false)"
-            @keydown.up="onUDKeyDown($event)"
-            @keydown.down="onUDKeyDown($event)"
             @keydown.prevent.stop.esc
             @keyup.esc="onEscKeyUp($event)"
             @keydown.prevent.stop.enter
@@ -609,92 +607,18 @@ export default Vue.extend({
             
             }
         },
-
-        onUDKeyDown(event: KeyboardEvent) {
-            // We may still have the focus even when not logically editing, so we want to
-            // avoid handling the keypress in this case; let the code in Commands handle it
-            // which moves the frame cursor up and down:
-            if (!this.appStore.isEditing) {
-                return;
+        
+        // Returns true if we are focused and AC is showing => we have handled keypress
+        handleUpDown(event: KeyboardEvent): boolean {
+            const focus = this.appStore.focusSlotCursorInfos;
+            if (!this.appStore.isEditing || !focus || !areSlotCoreInfosEqual(this.coreSlotInfo, focus.slotInfos)) {
+                return false;
             }
-            
-            this.appStore.isSelectingMultiSlots = false; // reset the flag
-            const isArrowUp = (event.key == "ArrowUp");
-           
-            // Check if we could potentilly reach another VISUAL line in a comment (this method returns false if we're not in a comment frame or that comment is empty)
-            const couldReachAnotherCommentLine = (this.frameType == AllFrameTypesIdentifier.comment && ((document.getElementById(getLabelSlotUID(this.coreSlotInfo)) as HTMLSpanElement).textContent as string).replaceAll("\u200b","").length > 0);            
-            // When no key modifier is hit, we either navigate in A/C or leave the frame or move to another line of text for comments, depending on the context
-            // Everything is handled manually except when navigating within a comment.
-            if(!(event.ctrlKey || event.shiftKey || event.metaKey)){
-                // If the AutoCompletion is on we just browse through it's contents
-                // The `results` check, prevents `changeSelection()` when there are no results matching this token
-                // And instead, since there is no AC list to show, moves to the next slot
-                if(this.showAC && (this.$refs.AC as any)?.areResultsToShow()) {
-                    event.stopImmediatePropagation();
-                    event.stopPropagation();
-                    event.preventDefault();
-                    (this.$refs.AC as any).changeSelection((isArrowUp)?-1:1);
-                }
-                /*
-                else if(couldReachAnotherCommentLine){
-                    // We are in a comment, and in a line that is VISUALLY (in the browser) not the first (if we go up) or not the last (if we go down):
-                    // we let the browser handle the selection change nativately and set a flag for allowing the LabelSlotsStructure parent 
-                    // letting the event "keyup" go through.
-                    this.appStore.allowsKeyEventThroughInLabelSlotStructure = true;
-                    // Because of Firefox usual problems, we can't reliably use the document selection to infer where we are within the span.
-                    // Instead, we let it be handled by the brower and check the selection again in a short time: if it's different, it means 
-                    // the up/down arrow was used by the browser to change the position of the cursor within the comment and we don't do anything else. 
-                    // However if the selection remains the same, then we can assume the cursor hasn't changed because there is no line to get to,
-                    // so we can consequently get out the frame.
-                    const prevSelectionRange = document.getSelection()?.getRangeAt(0).cloneRange();
-                    setTimeout(() => {
-                        try{
-                            const currentSelectionRange = document.getSelection()?.getRangeAt(0).cloneRange();
-                            if(prevSelectionRange
-                                && currentSelectionRange
-                                && prevSelectionRange.collapsed && currentSelectionRange.collapsed
-                                && prevSelectionRange.startContainer == currentSelectionRange.startContainer
-                                && prevSelectionRange.startOffset==currentSelectionRange.startOffset){
-                                this.appStore.leftRightKey({key: (isArrowUp) ? "ArrowLeft": "ArrowRight"});
-                            }
-                        }
-                        catch {
-                            // If we couldn't get the selection then we're defintely out already, we can ignore.                    }
-                        }
-                    }, 100);
-                    return;
-                }
-                // Else we move the caret
-                else {  
-                    event.stopImmediatePropagation();
-                    event.stopPropagation();
-                    event.preventDefault();
-                    
-                    // In any case the focus is lost, and the caret is shown (visually below by default)
-                    this.onLoseCaret();
-                    //If the up arrow is pressed you need to move the caret as well.
-                    if(isArrowUp) {
-                        this.appStore.changeCaretPosition(event.key);
-                    }
-                    else{
-                        // Restore the caret visibility
-                        this.appStore.frameObjects[this.appStore.currentFrame.id].caretVisibility = this.appStore.currentFrame.caretPosition;
-                    }
-
-                    // And check for precompiled errors on the frame, and TP errors on the whole code
-                    checkCodeErrors(this.frameId);
-
-                    // Make sure there is no longer a selection
-                    this.appStore.setSlotTextCursors(undefined, undefined);
-                    document.getSelection()?.removeAllRanges();
-                }
-                
-                 */
+            if(this.showAC && (this.$refs.AC as any)?.areResultsToShow()) {
+                (this.$refs.AC as any).changeSelection((event.key == "ArrowUp")?-1:1);
+                return true;
             }
-            else if(event.shiftKey && couldReachAnotherCommentLine){
-                // We are in a comment and do a selection using up or down keys that won't lead outside the comment, we leave the browser handle it natively
-                return;
-            }
+            return false;
         },
         
         onEscKeyUp(event: KeyboardEvent) {
