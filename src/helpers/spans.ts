@@ -1,11 +1,16 @@
-function getCaretScreenPosition() : {x: number; y: number } | null {
+function getCaretScreenPosition() : { x: number; y: number } | null {
     const sel = window.getSelection();
-    if (!sel?.rangeCount) {
+    if (!sel || sel.rangeCount === 0 || !sel.focusNode) {
         return null;
     }
-    const range = sel.getRangeAt(0).cloneRange();
-    if (range.collapsed === false) {
+
+    const range = document.createRange();
+    try {
+        range.setStart(sel.focusNode, sel.focusOffset);
         range.collapse(true);
+    }
+    catch {
+        return null;
     }
     const rect = range.getBoundingClientRect();
     return { x: rect.left, y: rect.top };
