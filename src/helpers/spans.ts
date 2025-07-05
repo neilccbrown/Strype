@@ -23,7 +23,7 @@ function getCharRects(span : HTMLSpanElement) : SpanRect[] {
 
     for (let i = 0; i <= text.length; i++) {
         // Don't consider positioning after a final zero-width space:
-        if (i === text.length - 1 && text[i] == "\u200B") {
+        if (i === text.length && text[i - 1] == "\u200B") {
             break;
         }
         const range = document.createRange();
