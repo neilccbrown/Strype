@@ -65,9 +65,6 @@ export const useStore = defineStore("app", {
             /** these flags need checking when a build is done **/
             debugging: initialState.debugging,
 
-            // Flag used to keep the AC shown for debug purposes
-            debugAC: false,
-
             showKeystroke: initialState.showKeystroke,
 
             frameObjects: cloneDeep(initialState.initialState),
@@ -133,6 +130,9 @@ export const useStore = defineStore("app", {
 
             // This flag is to avoid a loss of focus when we are leaving the application
             ignoreFocusRequest: false,
+
+            // This flag indicates we should not block a key event inside a LabelSlotsStructure
+            allowsKeyEventThroughInLabelSlotStructure: false,
 
             bypassEditableSlotBlurErrorCheck: false,
             
@@ -3015,7 +3015,7 @@ export const settingsStore = defineStore("settings", {
             i18n.locale = lang;
 
             // And also change TigerPython locale -- if Strype locale is not available in TigerPython, we use English instead
-            const tpLangs = TPyParser.getLanguages as any as string[]; // TODO remove this casting once TigerPython's type for getLanguages is fixed
+            const tpLangs = TPyParser.getLanguages();
             useStore().tigerPythonLang = (tpLangs.includes(lang)) ? lang : "en";
 
             // Change all frame definition types to update the localised bits

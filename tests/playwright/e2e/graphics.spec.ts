@@ -160,7 +160,8 @@ test.describe("Check turtle works when shared with graphics", () => {
         `]);
         await page.click("#graphicsPEATab");
         await page.click("#runButton");
-        await page.waitForTimeout(1000);
+        // Seems to take a while to initialise on Firefox:
+        await page.waitForTimeout(3000);
         await checkGraphicsAreaContent(page, "turtle-graphics-blank");
         await page.keyboard.press("ArrowUp");
         // Turtle takes a moment to actually animate:

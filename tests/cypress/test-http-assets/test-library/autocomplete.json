@@ -8,24 +8,41 @@
                 "type"
             ],
             "version": 0,
-            "params": [
-                {
-                    "name": "self",
-                    "hide": true
-                },
-                {
-                    "name": "picture"
-                },
-                {
-                    "name": "x"
-                },
-                {
-                    "name": "y"
-                },
-                {
-                    "name": "index"
-                }
-            ]
+            "signature": {
+                "positionalOnlyArgs": [
+                    {
+                        "name": "self",
+                        "defaultValue": null,
+                        "argType": "type"
+                    }
+                ],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "picture",
+                        "defaultValue": null,
+                        "argType": "type"
+                    },
+                    {
+                        "name": "x",
+                        "defaultValue": null,
+                        "argType": "type"
+                    },
+                    {
+                        "name": "y",
+                        "defaultValue": null,
+                        "argType": "type"
+                    },
+                    {
+                        "name": "index",
+                        "defaultValue": null,
+                        "argType": "type"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": true
+            }
         },
         {
             "acResult": "__doc__",
@@ -86,11 +103,20 @@
                 "function"
             ],
             "version": 0,
-            "params": [
-                {
-                    "name": "duration"
-                }
-            ]
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "duration",
+                        "defaultValue": null,
+                        "argType": "type"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            }
         },
         {
             "acResult": "makePicture",
@@ -99,11 +125,20 @@
                 "function"
             ],
             "version": 0,
-            "params": [
-                {
-                    "name": "path"
-                }
-            ]
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "path",
+                        "defaultValue": null,
+                        "argType": "type"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            }
         },
         {
             "acResult": "makeSound",
@@ -112,11 +147,20 @@
                 "function"
             ],
             "version": 0,
-            "params": [
-                {
-                    "name": "path"
-                }
-            ]
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "path",
+                        "defaultValue": null,
+                        "argType": "type"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            }
         }
     ]
 }

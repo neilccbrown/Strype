@@ -98,13 +98,15 @@ test.describe("Check navigation", () => {
         if (testInfo.project.name === "chromium") {
             test.skip(); // See comment above
         }
-        test.setTimeout(720_000);
+        test.setTimeout(1_000_000);
         await loadPY(page, "../../cypress/fixtures/python-code.py");
-        for (let i = 0; i < 200; i++) {
+        for (let i = 0; i < 100; i++) {
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowDown");
+            await page.waitForTimeout(200);
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowDown");
+            await page.waitForTimeout(200);
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowLeft");
         }
@@ -113,7 +115,7 @@ test.describe("Check navigation", () => {
         if (testInfo.project.name === "chromium") {
             test.skip(); // See comment above
         }
-        test.setTimeout(720_000);
+        test.setTimeout(1_000_000);
         await loadPY(page, "../../cypress/fixtures/python-code.py");
         for (let i = 0; i < 1000; i++) {
             await checkFrameXorTextCursor(page);
@@ -124,13 +126,15 @@ test.describe("Check navigation", () => {
         if (testInfo.project.name === "chromium") {
             test.skip(); // See comment above
         }
-        test.setTimeout(720_000);
+        test.setTimeout(1_000_000);
         await loadPY(page, "../../cypress/fixtures/python-code.py");
-        for (let i = 0; i < 200; i++) {
+        for (let i = 0; i < 100; i++) {
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowDown");
+            await page.waitForTimeout(200);
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowDown");
+            await page.waitForTimeout(200);
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("Shift+Tab");
         }

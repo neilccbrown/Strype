@@ -104,7 +104,7 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane, PaneData} from "splitpanes";
 import { useStore, settingsStore } from "@/store/store";
-import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, GAPIState, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction } from "@/types/types";
+import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, GAPIState, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos } from "@/types/types";
 import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames } from "./helpers/editor";
 /* IFTRUE_isPython */
 import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getPEAComponentRefId } from "@/helpers/editor";
@@ -114,7 +114,7 @@ import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
 /* FITRUE_isMicrobit */
 import { mapStores } from "pinia";
-import { getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "./helpers/storeMethods";
+import { getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "./helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import { VueContextConstructor } from "vue-context";
 import { BACKEND_SKULPT_DIV_ID } from "@/autocompletion/ac-skulpt";
@@ -640,6 +640,8 @@ export default Vue.extend({
                                 ).then(() => {
                                     alertMsgKey = "appMessage.retrievedSharedGenericProject";
                                     alertParams = this.appStore.projectName;
+                                    // A generic project is saved in memory, so we must make sure there is no target destination saved.
+                                    (this.$refs[this.menuUID] as InstanceType<typeof Menu>).saveTargetChoice(StrypeSyncTarget.none);
                                 },
                                 (reason) => {
                                     alertMsgKey = "errorMessage.retrievedSharedGenericProject";
@@ -926,7 +928,8 @@ export default Vue.extend({
                 let focusSpanElement =  docSelection?.focusNode?.parentElement;
                 // When the editable slots are empty, the span doesn't get the focus, but the container div does.
                 // So we need to retrieve the right HTML component by hand.      
-                // (usually, the first level div container gets the selection, but with FF, the second level container can also get it)   
+                // (usually, the first level div container gets the selection, but with FF, the second level container can also get it,
+                // and still with FF, a select-all will select the slot wrapper div)   
                 const classCheckerRegex = new RegExp("(^| )" + scssVars.labelSlotContainerClassName + "($| )");
                 if(anchorSpanElement?.tagName.toLowerCase() == "div"){
                     if(anchorSpanElement.className.match(classCheckerRegex) != null){
@@ -934,8 +937,15 @@ export default Vue.extend({
                         anchorSpanElement = anchorSpanElement.firstElementChild as HTMLSpanElement;
                     }
                     else if(anchorSpanElement.firstElementChild?.className.match(classCheckerRegex) != null){
-                        // The odd case in FF
+                        // The odd case in FF (level 2)
                         anchorSpanElement = anchorSpanElement.firstElementChild.firstElementChild as HTMLSpanElement;
+                    }
+                    else{
+                        // The odd case in FF of select-all: here we need to find out the span that starts the structure.
+                        const firstStructSpan = anchorSpanElement.getElementsByClassName(scssVars.labelSlotStructClassName).item(0)?.firstChild?.firstChild;
+                        if(firstStructSpan){
+                            anchorSpanElement = firstStructSpan as HTMLSpanElement;
+                        }
                     }
                 }
                 if(focusSpanElement?.tagName.toLowerCase() == "div"){
@@ -944,8 +954,16 @@ export default Vue.extend({
                         focusSpanElement = focusSpanElement.firstElementChild as HTMLSpanElement;
                     }
                     else if(focusSpanElement.firstElementChild?.className.match(classCheckerRegex) != null){
-                        // The odd case in FF
+                        // The odd case in FF (level 2)
                         focusSpanElement = focusSpanElement.firstElementChild.firstElementChild as HTMLSpanElement;
+                    }
+                    else{
+                        // The odd case in FF of select-all: here we need to find out the span that ends the structure.
+                        const divFocusChildren = focusSpanElement.getElementsByClassName(scssVars.labelSlotStructClassName);
+                        const lastStructSpan = divFocusChildren.item(0)?.lastChild?.firstChild;
+                        if(lastStructSpan){
+                            focusSpanElement = lastStructSpan as HTMLSpanElement;                        
+                        }
                     }
                 }
                 if(anchorSpanElement && focusSpanElement && isElementLabelSlotInput(anchorSpanElement) && isElementLabelSlotInput(focusSpanElement)){
@@ -1039,49 +1057,104 @@ export default Vue.extend({
                     const anchorParentSlotId = getSlotParentIdAndIndexSplit(anchorSlotCursorInfos.slotInfos.slotId).parentId;
                     const focusParentSlotId = getSlotParentIdAndIndexSplit(focusSlotCursorInfos.slotInfos.slotId).parentId;
                     // If one of the anchor/focus is a string and the other isn't the same string (case A),or the anchor and focus are not in the same level (tree-wise) (case B)
+                    // or the selection is one quote or bracket token (case C, and oneQuoteOrBracketSelected is set to true)
                     // then we need to amend the selection
                     const anchorLevel =  (anchorSlotCursorInfos?.slotInfos.slotId.split(",").length)??0;
                     const focusLevel = (focusSlotCursorInfos?.slotInfos.slotId.split(",").length)??0;
                     const sameLevelDiffParents = (focusLevel == anchorLevel && anchorParentSlotId != focusParentSlotId);
                     const hasStringSelected = (focusSlotCursorInfos.slotInfos.slotType == SlotType.string || anchorSlotCursorInfos.slotInfos.slotType == SlotType.string);
-                    const isSelectionNotAllowed = (focusLevel != anchorLevel) || sameLevelDiffParents
+                    const oneQuoteOrBracketSelected = ((focusSlotCursorInfos.slotInfos.slotType & SlotType.quote) > 0  || (focusSlotCursorInfos.slotInfos.slotType & SlotType.bracket) > 0)
+                        && areSlotCoreInfosEqual(focusSlotCursorInfos.slotInfos,anchorSlotCursorInfos.slotInfos);
+                    const isSelectionNotAllowed = (focusLevel != anchorLevel) || sameLevelDiffParents || oneQuoteOrBracketSelected
                         || (hasStringSelected && focusSlotCursorInfos.slotInfos.slotId != anchorSlotCursorInfos.slotInfos.slotId);
+
+                    // Fix an issue with anchor on empty slots: the underlying span element matching the anchor slot contains a zero-width space when empty,
+                    // therefore it possible that, with the mouse, the cursor was placed right after that ZWSP and we get an anchor slot core infos that
+                    // doesn't match our "code" content. So we always replace the cursor position when detect this situation.
+                    if(anchorSlotCursorInfos.cursorPos == 1 && (anchorSlotCursorInfos.slotInfos.slotType & SlotType.code) > 0
+                        && (retrieveSlotFromSlotInfos(anchorSlotCursorInfos.slotInfos) as BaseSlot).code.length == 0){
+                        anchorSlotCursorInfos.cursorPos = 0;
+                    } 
+                        
                     let amendedSelectionFocusCursorSlotInfos = cloneDeep(anchorSlotCursorInfos) as SlotCursorInfos;
                     if(isSelectionNotAllowed) {
                         const forwardSelection = ((getSelectionCursorsComparisonValue() as number) < 0);
-                        // Case A: problem with string selection :
-                        // if the anchor is a string we reach the beginning or the end of that string depending on the selection direction
-                        // if the anchor is not a string then we stop just before or after the target string depending on the selection direction
-                        //     and the validity of where we would "land" --> cf case B
-                        if(hasStringSelected && anchorSlotCursorInfos.slotInfos.slotType == SlotType.string){
-                            const anchorSlot = (retrieveSlotFromSlotInfos(anchorSlotCursorInfos.slotInfos) as StringSlot);
-                            amendedSelectionFocusCursorSlotInfos.cursorPos = (forwardSelection) ? anchorSlot.code.length : 0;
+                        if(oneQuoteOrBracketSelected) {
+                            // For case C: we have a quote/string token selection (the anchor/focus is on a TOKEN slot): we prevent that selection by getting a not spanning selection.
+                            // The final cursor position might not be the one set below, because something else in the code later places the caret to the a valid place.
+                            // The important thing is to make sure we don't have spanning selection anymore, and that we don't keep the cursor on the token slot.
+                            // Therefore we reset the anchor/focus to a valid anchor position that depends on the nature and direction of the selection.
+                            const isBracketToken = (focusSlotCursorInfos.slotInfos.slotType & SlotType.bracket) > 0;
+                            if(amendedSelectionFocusCursorSlotInfos.slotInfos.slotType == SlotType.openingBracket || amendedSelectionFocusCursorSlotInfos.slotInfos.slotType == SlotType.openingQuote) {
+                                amendedSelectionFocusCursorSlotInfos.cursorPos = 0;
+                                // If we go backward after an opening quote/bracket we need to stay on the string literal/first bracketed element
+                                amendedSelectionFocusCursorSlotInfos.slotInfos.slotType = (isBracketToken) ? SlotType.code : SlotType.string;
+                                amendedSelectionFocusCursorSlotInfos.slotInfos.slotId += ((isBracketToken) ?  ",0" : "");
+                                if(forwardSelection){
+                                    // If we go forward before an opening quote/bracket we need to stay on the previous sibling.
+                                    // So we "go inside the string/brackets" (done above) and look before.
+                                    amendedSelectionFocusCursorSlotInfos.slotInfos.slotType = SlotType.code;
+                                    amendedSelectionFocusCursorSlotInfos.slotInfos = getFlatNeighbourFieldSlotInfos(amendedSelectionFocusCursorSlotInfos.slotInfos, false) as SlotCoreInfos;
+                                    amendedSelectionFocusCursorSlotInfos.cursorPos = (retrieveSlotFromSlotInfos(amendedSelectionFocusCursorSlotInfos.slotInfos) as BaseSlot).code.length;
+                                }
+                            }
+                            else{                
+                                // If we go forward before a closing quote/bracket we need to stay on the string literal/last bracketed element
+                                const structureSlot = retrieveSlotFromSlotInfos({...focusSlotCursorInfos.slotInfos, slotType: (isBracketToken) ? SlotType.bracket : SlotType.string});
+                                amendedSelectionFocusCursorSlotInfos.slotInfos.slotType = (isBracketToken) ? SlotType.code : SlotType.string;
+                                if(isBracketToken){
+                                    const lastBracketChildSlotIndex = (structureSlot as SlotsStructure).fields.length -1;
+                                    const lastBracketChildCodeLength = ((structureSlot as SlotsStructure).fields[lastBracketChildSlotIndex] as BaseSlot).code.length;
+                                    amendedSelectionFocusCursorSlotInfos.slotInfos.slotId += ("," + lastBracketChildSlotIndex);
+                                    amendedSelectionFocusCursorSlotInfos.cursorPos =  lastBracketChildCodeLength;
+                                }
+                                else{
+                                    amendedSelectionFocusCursorSlotInfos.cursorPos =  (structureSlot as BaseSlot).code.length;
+                                }                                
+                                if(!forwardSelection){
+                                    // If we go backward after an closing quote/bracket we need to stay on the next sibling
+                                    // So we "go inside the string/brackets" (done above) and look after.
+                                    amendedSelectionFocusCursorSlotInfos.slotInfos.slotType = SlotType.code;
+                                    amendedSelectionFocusCursorSlotInfos.slotInfos = getFlatNeighbourFieldSlotInfos(amendedSelectionFocusCursorSlotInfos.slotInfos, true) as SlotCoreInfos;
+                                    amendedSelectionFocusCursorSlotInfos.cursorPos = 0;
+                                }
+                            }
                         }
-                        else{
-                            // Case B: different levels of slots or destination is a string
-                            if ((focusLevel < anchorLevel) || sameLevelDiffParents) {
-                                // Case B.1: if we go from a deeper level to an outer level, then we stop at the last [resp. first] sibling of the anchor level when selection forwards [resp. backwards]
-                                const anchorParentSlot = retrieveParentSlotFromSlotInfos(anchorSlotCursorInfos.slotInfos) as SlotsStructure;
-                                const siblingSlotId = getSlotIdFromParentIdAndIndexSplit(anchorParentSlotId,  (forwardSelection) ? anchorParentSlot.fields.length - 1 : 0);
-                                amendedSelectionFocusCursorSlotInfos.slotInfos.slotId = siblingSlotId;
-                                const siblingSlot = retrieveSlotFromSlotInfos(amendedSelectionFocusCursorSlotInfos.slotInfos);
-                                amendedSelectionFocusCursorSlotInfos.cursorPos = (forwardSelection) ? (siblingSlot as BaseSlot).code.length : 0;
+                        else {
+                            // Case A: problem with string selection :
+                            // if the anchor is a string we reach the beginning or the end of that string depending on the selection direction
+                            // if the anchor is not a string then we stop just before or after the target string depending on the selection direction
+                            //     and the validity of where we would "land" --> cf case B
+                            if(hasStringSelected && anchorSlotCursorInfos.slotInfos.slotType == SlotType.string){
+                                const anchorSlot = (retrieveSlotFromSlotInfos(anchorSlotCursorInfos.slotInfos) as StringSlot);
+                                amendedSelectionFocusCursorSlotInfos.cursorPos = (forwardSelection) ? anchorSlot.code.length : 0;
                             }
                             else{
-                                // case B.2: if we go from an outer level to a deeper level, then need to find where is the focus "ancestor" in same level of the anchor, and stop before [resp. after] if going forwards [resp. backwards]
-                                const ancestorIndex = getSameLevelAncestorIndex(focusSlotCursorInfos.slotInfos.slotId, anchorParentSlotId);
-                                const closestAncestorNeighbourSlotId = getSlotIdFromParentIdAndIndexSplit(anchorParentSlotId,  (forwardSelection) ? ancestorIndex - 1 : ancestorIndex + 1);
-                                const closestAncestorNeighbourSlot = retrieveSlotFromSlotInfos({...amendedSelectionFocusCursorSlotInfos.slotInfos, slotId: closestAncestorNeighbourSlotId}) as BaseSlot;
-                                amendedSelectionFocusCursorSlotInfos.slotInfos.slotId = closestAncestorNeighbourSlotId;
-                                amendedSelectionFocusCursorSlotInfos.cursorPos = (forwardSelection) ? closestAncestorNeighbourSlot.code.length : 0;
-                            } 
+                                // Case B: different levels of slots or destination is a string
+                                if ((focusLevel < anchorLevel) || sameLevelDiffParents) {
+                                    // Case B.1: if we go from a deeper level to an outer level, then we stop at the last [resp. first] sibling of the anchor level when selection forwards [resp. backwards]
+                                    const anchorParentSlot = retrieveParentSlotFromSlotInfos(anchorSlotCursorInfos.slotInfos) as SlotsStructure;
+                                    const siblingSlotId = getSlotIdFromParentIdAndIndexSplit(anchorParentSlotId,  (forwardSelection) ? anchorParentSlot.fields.length - 1 : 0);
+                                    amendedSelectionFocusCursorSlotInfos.slotInfos.slotId = siblingSlotId;
+                                    const siblingSlot = retrieveSlotFromSlotInfos(amendedSelectionFocusCursorSlotInfos.slotInfos);
+                                    amendedSelectionFocusCursorSlotInfos.cursorPos = (forwardSelection) ? (siblingSlot as BaseSlot).code.length : 0;
+                                }
+                                else{
+                                    // case B.2: if we go from an outer level to a deeper level, then need to find where is the focus "ancestor" in same level of the anchor, and stop before [resp. after] if going forwards [resp. backwards]
+                                    const ancestorIndex = getSameLevelAncestorIndex(focusSlotCursorInfos.slotInfos.slotId, anchorParentSlotId);
+                                    const closestAncestorNeighbourSlotId = getSlotIdFromParentIdAndIndexSplit(anchorParentSlotId,  (forwardSelection) ? ancestorIndex - 1 : ancestorIndex + 1);
+                                    const closestAncestorNeighbourSlot = retrieveSlotFromSlotInfos({...amendedSelectionFocusCursorSlotInfos.slotInfos, slotId: closestAncestorNeighbourSlotId}) as BaseSlot;
+                                    amendedSelectionFocusCursorSlotInfos.slotInfos.slotId = closestAncestorNeighbourSlotId;
+                                    amendedSelectionFocusCursorSlotInfos.cursorPos = (forwardSelection) ? closestAncestorNeighbourSlot.code.length : 0;
+                                }
+                            }
                         }
                     }
 
                     // Update the selection now 
                     const focusCursorInfoToUse = (isSelectionNotAllowed) ? amendedSelectionFocusCursorSlotInfos : focusSlotCursorInfos;
-                    this.appStore.setSlotTextCursors(anchorSlotCursorInfos, focusCursorInfoToUse);
-                    setDocumentSelection(anchorSlotCursorInfos, focusCursorInfoToUse);
+                    this.appStore.setSlotTextCursors((oneQuoteOrBracketSelected) ? focusCursorInfoToUse : anchorSlotCursorInfos, focusCursorInfoToUse);
+                    setDocumentSelection((oneQuoteOrBracketSelected) ? focusCursorInfoToUse : anchorSlotCursorInfos, focusCursorInfoToUse);
                     // Explicitly set the focused property to the focused slot
                     if (this.appStore.frameObjects[focusCursorInfoToUse.slotInfos.frameId]) {
                         this.appStore.setFocusEditableSlot({

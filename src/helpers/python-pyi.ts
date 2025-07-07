@@ -1,6 +1,8 @@
 
 // Splits arguments at a comma, but allows brackets with commas in them
 // which do not split.  So only splits at top-level of a potentially nested expression.
+import {Signature, TPyParser} from "tigerpython-parser";
+
 function splitTopLevelArgs(s: string): string[] {
     const result: string[] = [];
     let depth = 0;
@@ -48,7 +50,7 @@ export function extractPYI(original : string) : string {
             const [indent, fnName, args] = funcDefMatch.slice(1);
             const argNames : [string, string | null][] = args.trim() ? args.split(",").map((s) => {
                 if (s.includes("=")) {
-                    return [s.replace(/=.*/, "").trim(), "..."];
+                    return [s.replace(/=.*$/, "").trim(), s.replace(/^[^=]*=/, "").trim()];
                 }
                 else {
                     return [s.trim(), null];
@@ -105,12 +107,18 @@ export function extractPYI(original : string) : string {
     return output.join("\n");
 }
 
-// Maps function name to list of parameter names
-type FunctionMap = Record<string, string[]>;
+// Maps function name and class.function name to signatures
+type FunctionMap = Record<string, Signature>;
 
-export function parsePyi(content: string): FunctionMap {
+// This uses TigerPython to define a module, and is not intended to be called from Strype main,
+// only from the preprocessing code.
+export function parsePyiForPreprocess(content: string): FunctionMap {
     const lines = content.split(/\r?\n/);
     const result: FunctionMap = {};
+    
+    // Unique name:
+    const modName = "foo" + Date.now();
+    TPyParser.defineModule(modName, content, "pyi");
 
     const classRegex = /^\s*class\s+(\w+)\s*[:(]/;
     const funcRegex = /^\s*def\s+(\w+)\s*\(([^)]*)\)/;
@@ -126,18 +134,23 @@ export function parsePyi(content: string): FunctionMap {
 
         const funcMatch = funcRegex.exec(line);
         if (funcMatch) {
-            const [, funcName, paramList] = funcMatch;
-            let params = paramList.split(",")
-                .map((p) => p.trim().split(":")[0].trim())
-                .filter((p) => p && !p.startsWith("*"));
-
-            // Remove 'self' or 'cls' from class methods
-            if (currentClass && (params[0] === "self" || params[0] === "cls")) {
-                params = params.slice(1);
-            }
-
+            let funcName = funcMatch[1];
+            
             const fullName = currentClass ? `${currentClass}.${funcName}` : funcName;
-            result[fullName] = params;
+            let code = "import " + modName + "\n" + modName + ".";
+            if (currentClass) {
+                if (funcName == "__init__") {
+                    funcName = currentClass;
+                }
+                else {
+                    code += currentClass + ".";
+                }
+            }
+            const tigerResult = TPyParser.autoCompleteExt(code, code.length);
+            const r = tigerResult?.filter((c) => c.acResult == funcName)?.[0];
+            if (r?.signature) {
+                result[fullName] = r?.signature;
+            }
         }
 
         // Reset class context if we are back to top-level

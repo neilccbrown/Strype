@@ -23,7 +23,7 @@ describe("Built-ins", () => {
             checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
             checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
             // We had a previous bug with multiple sum items in microbit:
-            checkExactlyOneItem(acIDSel, BUILTIN, "sum(iterable)");
+            checkExactlyOneItem(acIDSel, BUILTIN, "sum(iterable, start)");
             checkExactlyOneItem(acIDSel, BUILTIN, "ZeroDivisionError()");
             checkExactlyOneItem(acIDSel, BUILTIN, "zip()");
             checkNoItems(acIDSel, "__name__");
@@ -100,7 +100,7 @@ describe("Behaviour with operators, brackets and complex expressions", () => {
                 checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
                 checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
                 // We had a previous bug with multiple sum items in microbit:
-                checkExactlyOneItem(acIDSel, BUILTIN, "sum(iterable)");
+                checkExactlyOneItem(acIDSel, BUILTIN, "sum(iterable, start)");
                 checkExactlyOneItem(acIDSel, BUILTIN, "ZeroDivisionError()");
                 checkExactlyOneItem(acIDSel, BUILTIN, "zip()");
                 checkNoItems(acIDSel, "__name__");

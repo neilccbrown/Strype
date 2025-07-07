@@ -60,7 +60,7 @@
 
         <AutoCompletion
             v-show="focused && showAC"
-            :class="{ac: true, hidden: !acRequested}"
+            :class="{ac: true}"
             :slotId="UID"
             ref="AC"
             :key="AC_UID"
@@ -76,13 +76,13 @@ import Vue, { PropType } from "vue";
 import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import {getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUID, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUID, getFrameUID, getFrameComponent, simpleSlotStructureToString} from "@/helpers/editor";
+import {getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUID, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, getACLabelSlotUID, getFrameUID, getFrameComponent, simpleSlotStructureToString} from "@/helpers/editor";
 import { AllowedSlotContent, CaretPosition, FrameObject, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, EditImageInDialogFunction, FieldSlot, LoadedMedia, MediaSlot, PythonExecRunningState, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
 import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
-import { cloneDeep, debounce } from "lodash";
+import { cloneDeep } from "lodash";
 import LabelSlotsStructure from "./LabelSlotsStructure.vue";
 import { BPopover } from "bootstrap-vue";
 import Frame from "@/components/Frame.vue";
@@ -133,12 +133,6 @@ export default Vue.extend({
     beforeDestroy() {
         this.appStore.removePreCompileErrors(this.UID);
     },
-    
-    created() {
-        // Stop updateAC firing until 500ms after last time it is requested.
-        // More efficient than running on every keystroke:
-        this.updateAC = debounce(this.updateAC, 500, {trailing: true});
-    },
 
     data: function() {
         return {
@@ -147,7 +141,6 @@ export default Vue.extend({
             //as we don't want to save each single change of the content, but the full content change itself.
             isFirstChange: true,
             showAC: false,
-            acRequested: false,
             contextAC: "",
             // tokenAC can be null if code completion is invalid here
             tokenAC: "" as string | null,
@@ -208,7 +201,7 @@ export default Vue.extend({
                 // to those indicating there is no compulsory value
                 "background-color": ((this.focused) 
                     ? ((this.getSlotContent().trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") 
-                    : (((isStructureSingleSlot || isEmptyFunctionCallSlot) && !isSlotOptional && this.code.replace(/\u200B/g, "").trim().length == 0) ? "#FFFFFF" : "rgba(255, 255, 255, 0)")) 
+                    : (((isStructureSingleSlot || isEmptyFunctionCallSlot || this.defaultText?.replace(/\u200B/g, "")?.trim()) && !isSlotOptional && this.code.replace(/\u200B/g, "").trim().length == 0) ? "#FFFFFF" : "rgba(255, 255, 255, 0)")) 
                     + " !important", 
             };
         }, 
@@ -270,11 +263,7 @@ export default Vue.extend({
         errorHeader(): string{
             return this.appStore.getErrorHeaderForSlot(this.coreSlotInfo);
         },
-
-        debugAC(): boolean{
-            return this.appStore.debugAC;
-        },
-
+        
         isDraggingFrame(): boolean{
             return this.appStore.isDraggingFrame;
         },
@@ -429,7 +418,7 @@ export default Vue.extend({
                 const slotXPos = document.getElementById(getLabelSlotUID(this.coreSlotInfo))?.getBoundingClientRect().x??0; 
 
                 // Get the spans of that frame label container
-                const spans = document.querySelectorAll("#"+getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex) + " span");
+                const spans = document.querySelectorAll("#"+getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex) + " span." + scssVars.labelSlotInputClassName);
                 let indexOfCurrentSpan = 0;
                 spans.forEach((element, index) => {
                     if(element.id == getLabelSlotUID(this.coreSlotInfo)){
@@ -544,7 +533,6 @@ export default Vue.extend({
                     if (this.tokenAC.includes(",")) {
                         this.tokenAC = this.tokenAC.substring(this.tokenAC.lastIndexOf(",") + 1); 
                     }
-                    this.showAC = true;
                     this.contextAC = "";
                     this.$nextTick(() => {
                         const ac = this.$refs.AC as InstanceType<typeof AutoCompletion>;
@@ -563,7 +551,6 @@ export default Vue.extend({
                 }
                 else {
                     const resultsAC = getCandidatesForAC(frame.labelSlotsDict[this.labelSlotsIndex].slotStructures, new RegExp("[0-9,]+$").exec(this.slotId)?.[0]?.trim()?.split(",")?.map((x) => parseInt(x)) ?? []);
-                    this.showAC = true;
                     this.contextAC = resultsAC.contextAC;
                     this.tokenAC = resultsAC.tokenAC;
   
@@ -585,43 +572,41 @@ export default Vue.extend({
             // and that our slot still exists.  If we shouldn't exist any more, we should
             // just do nothing and exit quietly:
             if(this.appStore.frameObjects[this.frameId] != undefined && retrieveSlotFromSlotInfos(this.coreSlotInfo)){
-                if(!this.debugAC) {
-                    this.showAC = false;
-                    this.acRequested = false;
-                    if((this.appStore.bypassEditableSlotBlurErrorCheck && !keepIgnoreKeyEventFlagOn) || this.appStore.isSelectingMultiSlots){
-                        this.appStore.setEditableFocus(
-                            {
-                                ...this.coreSlotInfo,
-                                focused: false,
-                            }
-                        );
-                    }
-                    else{
-                        this.appStore.validateSlot(
-                            {
-                                ...this.coreSlotInfo,
-                                code: this.getSlotContent().replace(/\u200B/g, "").trim(),
-                                initCode: this.initCode,
-                                isFirstChange: this.isFirstChange,
-                            }   
-                        );
-                    }
-                    //reset the flag for first code change
-                    this.isFirstChange = true;
-
-                    // As we leave a slot, we reset the slot cursor infos EXCEPT when the keyboard event is ignored
-                    // or when we are doing multislot selection
-                    if(!this.appStore.ignoreKeyEvent && !this.appStore.isSelectingMultiSlots){
-                        this.appStore.setSlotTextCursors(undefined, undefined);
-                    }
-                    
-                    if(!keepIgnoreKeyEventFlagOn){
-                        this.appStore.ignoreKeyEvent = false;
-                    }
-
-                    // And we hide the error popover. Note that we do it programmatically as it seems the focus trigger on popover isn't working in our configuration
-                    (this.$refs.errorPopover as InstanceType<typeof BPopover>)?.$emit("close");
+                this.showAC = false;
+                if((this.appStore.bypassEditableSlotBlurErrorCheck && !keepIgnoreKeyEventFlagOn) || this.appStore.isSelectingMultiSlots){
+                    this.appStore.setEditableFocus(
+                        {
+                            ...this.coreSlotInfo,
+                            focused: false,
+                        }
+                    );
                 }
+                else{
+                    this.appStore.validateSlot(
+                        {
+                            ...this.coreSlotInfo,
+                            code: this.getSlotContent().replace(/\u200B/g, "").trim(),
+                            initCode: this.initCode,
+                            isFirstChange: this.isFirstChange,
+                        }   
+                    );
+                }
+                //reset the flag for first code change
+                this.isFirstChange = true;
+
+                // As we leave a slot, we reset the slot cursor infos EXCEPT when the keyboard event is ignored
+                // or when we are doing multislot selection
+                if(!this.appStore.ignoreKeyEvent && !this.appStore.isSelectingMultiSlots){
+                    this.appStore.setSlotTextCursors(undefined, undefined);
+                }
+                
+                if(!keepIgnoreKeyEventFlagOn){
+                    this.appStore.ignoreKeyEvent = false;
+                }
+
+                // And we hide the error popover. Note that we do it programmatically as it seems the focus trigger on popover isn't working in our configuration
+                (this.$refs.errorPopover as InstanceType<typeof BPopover>)?.$emit("close");
+            
             }
         },
 
@@ -636,24 +621,42 @@ export default Vue.extend({
             this.appStore.isSelectingMultiSlots = false; // reset the flag
             const isArrowUp = (event.key == "ArrowUp");
            
-            // Check if we can reach another VISUAL line in a comment (this method returns false if we're not in a comment frame)
-            const canReachAnotherCommentLine = checkCanReachAnotherCommentLine((this.frameType == AllFrameTypesIdentifier.comment), isArrowUp, document.getElementById(getLabelSlotUID(this.coreSlotInfo)) as HTMLSpanElement); /*&& isCommentFrame && ((isArrowUp && slotContentToCursor.includes("\n")) || (!isArrowUp && slotContentAfterCursor.includes("\n")))*/
-           
+            // Check if we could potentilly reach another VISUAL line in a comment (this method returns false if we're not in a comment frame or that comment is empty)
+            const couldReachAnotherCommentLine = this.frameType == AllFrameTypesIdentifier.comment && ((document.getElementById(getLabelSlotUID(this.coreSlotInfo)) as HTMLSpanElement).textContent as string).replaceAll("\u200b","").length > 0;            
             // When no key modifier is hit, we either navigate in A/C or leave the frame or move to another line of text for comments, depending on the context
             // Everything is handled manually except when navigating within a comment.
             if(!(event.ctrlKey || event.shiftKey || event.metaKey)){
                 // If the AutoCompletion is on we just browse through it's contents
                 // The `results` check, prevents `changeSelection()` when there are no results matching this token
                 // And instead, since there is no AC list to show, moves to the next slot
-                if(this.showAC && this.acRequested && (this.$refs.AC as any)?.areResultsToShow()) {
+                if(this.showAC && (this.$refs.AC as any)?.areResultsToShow()) {
                     event.stopImmediatePropagation();
                     event.stopPropagation();
                     event.preventDefault();
                     (this.$refs.AC as any).changeSelection((isArrowUp)?-1:1);
                 }
-                else if(canReachAnotherCommentLine){
+                else if(couldReachAnotherCommentLine){
                     // We are in a comment, and in a line that is VISUALLY (in the browser) not the first (if we go up) or not the last (if we go down):
-                    // we let the browser handle the selection change nativately
+                    // we let the browser handle the selection change nativately and set a flag for allowing the LabelSlotsStructure parent 
+                    // letting the event "keyup" go through.
+                    this.appStore.allowsKeyEventThroughInLabelSlotStructure = true;
+                    // Because of Firefox usual problems, we can't reliably use the document selection to infer where we are within the span.
+                    // Instead, we let it be handled by the brower and check the selection again in a short time: if it's different, it means 
+                    // the up/down arrow was used by the browser to change the position of the cursor within the comment and we don't do anything else. 
+                    // However if the selection remains the same, then we can assume the cursor hasn't changed because there is no line to get to,
+                    // so we can consequently get out the frame.
+                    const prevSelectionRange = document.getSelection()?.getRangeAt(0).cloneRange();
+                    setTimeout(() => {
+                        try{
+                            const currentSelectionRange = document.getSelection()?.getRangeAt(0).cloneRange();
+                            if(prevSelectionRange && currentSelectionRange?.startOffset==prevSelectionRange.startOffset && currentSelectionRange?.endOffset==prevSelectionRange.endOffset){
+                                this.appStore.leftRightKey({key: (isArrowUp) ? "ArrowLeft": "ArrowRight"});
+                            }
+                        }
+                        catch {
+                            // If we couldn't get the selection then we're defintely out already, we can ignore.                    }
+                        }
+                    }, 100);
                     return;
                 }
                 // Else we move the caret
@@ -680,7 +683,7 @@ export default Vue.extend({
                     document.getSelection()?.removeAllRanges();
                 }
             }
-            else if(event.shiftKey && canReachAnotherCommentLine){
+            else if(event.shiftKey && couldReachAnotherCommentLine){
                 // We are in a comment and do a selection using up or down keys that won't lead outside the comment, we leave the browser handle it natively
                 return;
             }
@@ -693,11 +696,10 @@ export default Vue.extend({
             }
 
             // If the AC is loaded we want to close it with an ESC and stay focused on the editableSlot
-            if(this.showAC && this.acRequested) {
+            if(this.showAC) {
                 event.preventDefault();
                 event.stopPropagation();
-                this.showAC = this.debugAC;
-                this.acRequested = false;
+                this.showAC = false;
                 return;
             }
 
@@ -716,7 +718,7 @@ export default Vue.extend({
         onTabKeyDown(event: KeyboardEvent){
             // We replicate the default browser behaviour when tab is pressed AND we're not having AC on, otherwise just do nothing
             // (the default behaviour doesn't work at least on Windows+Chrome)
-            if(!(this.showAC && this.acRequested && this.getSelectedACItem())) {
+            if(!(this.showAC && this.getSelectedACItem())) {
                 // First move the cursor to the correct end of the slot
                 const goToNextSlot = !event.shiftKey;
                 const newCursorPosition = (goToNextSlot) ? this.code.length : 0;
@@ -743,7 +745,7 @@ export default Vue.extend({
             }
 
             // If the AC is loaded we want to select the AC suggestion the user chose and stay focused on the editableSlot
-            if(this.showAC && this.acRequested && this.getSelectedACItem()) {
+            if(this.showAC && this.getSelectedACItem()) {
                 event.preventDefault();
                 event.stopPropagation();
                 // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
@@ -787,8 +789,7 @@ export default Vue.extend({
                     );
                 }
             }
-            this.showAC = this.debugAC;
-            this.acRequested = false;
+            this.showAC = false;
         },
 
         onKeyDown(event: KeyboardEvent){
@@ -799,7 +800,7 @@ export default Vue.extend({
 
             // We capture the key shortcut for opening the a/c
             if((event.metaKey || event.ctrlKey) && event.key == " "){
-                this.acRequested = true;
+                this.showAC = true;
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
@@ -1154,13 +1155,15 @@ export default Vue.extend({
                 // Find which bounds we should target (which bound in the current level based on the key, and also the bound based on current text cursor position)
                 const moveToHome = (event.key === "Home");
                 const isSelecting = event.shiftKey;
+                const isInString = isFieldStringSlot(retrieveSlotFromSlotInfos(this.coreSlotInfo));
                 const parentSlotId = getSlotParentIdAndIndexSplit(this.coreSlotInfo.slotId).parentId;
                 // First focus: it will change to one end of the current level depending on the direction we're going
                 const newFocusSlotId = (moveToHome) 
-                    ? ((parentSlotId.length > 0) ? (parentSlotId + ",0") : "0")
-                    : ((parentSlotId.length > 0) ? (parentSlotId + "," + ((retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: parentSlotId}) as SlotsStructure).fields.length -1)) : ("" + (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.coreSlotInfo.labelSlotsIndex].slotStructures.fields.length - 1)));
-                const newFocusSlotType = evaluateSlotType(retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: newFocusSlotId}));
-                const newFocusSlotCoreInfo =  {...this.coreSlotInfo, slotId: newFocusSlotId, slotType: newFocusSlotType};
+                    ? (isInString ? this.slotId : ((parentSlotId.length > 0) ? (parentSlotId + ",0") : "0"))
+                    : (isInString ? this.slotId : ((parentSlotId.length > 0) ? (parentSlotId + "," + ((retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: parentSlotId}) as SlotsStructure).fields.length -1)) : ("" + (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.coreSlotInfo.labelSlotsIndex].slotStructures.fields.length - 1))));
+                // We only look for the new type and slot core infos for non-string current location to save unnecessary function calls
+                const newFocusSlotType = (isInString) ? this.slotType : evaluateSlotType(retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: newFocusSlotId}));
+                const newFocusSlotCoreInfo = (isInString) ? this.coreSlotInfo : {...this.coreSlotInfo, slotId: newFocusSlotId, slotType: newFocusSlotType};
                 const newFocusCursorPos = (moveToHome) ? 0 : (retrieveSlotFromSlotInfos(newFocusSlotCoreInfo) as BaseSlot).code.length;
                 // Then anchor: it will either keep the same if we are doing a selection, or change to the same as focus if we are not.
                 const newAnchorSlotCursorInfo: SlotCursorInfos = (isSelecting) ? this.appStore.anchorSlotCursorInfos as SlotCursorInfos: {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos}; 
@@ -1515,7 +1518,7 @@ export default Vue.extend({
 
         acItemClicked(item: string) {
             // Get the content of the <li> element through the child node to avoid getting nested text elements (like the version)
-            const selectedItem = (document.getElementById(item) as HTMLLIElement)?.firstChild?.nodeValue?.trim()??"";
+            const selectedItem = (document.getElementById(item) as HTMLLIElement)?.getAttribute("data-item")?.trim()??"";
             if(selectedItem === undefined) {
                 return;
             }
@@ -1607,8 +1610,7 @@ export default Vue.extend({
                 }
             }        
             
-            this.showAC = this.debugAC;
-            this.acRequested = false;
+            this.showAC = false;
         },
    
         isImportFrame(): boolean {

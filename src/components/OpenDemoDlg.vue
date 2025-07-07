@@ -89,7 +89,9 @@ export default Vue.extend({
             // We only need to parse the imports container:
             p.parseJustImports();
             // Then we can get the libraries and look for demos:
-            for (const library of [...new Set(["github:k-pet-group/mediacomp-strype", ...p.getLibraries()])]) {
+            // Don't show mediacomp-strype in testing mode because it can get us temporarily banned by Github:
+            const testingMode = window.Cypress || (window as any).Playwright;
+            for (const library of [...new Set([...(testingMode? [] : ["github:k-pet-group/mediacomp-strype"]), ...p.getLibraries()])]) {
                 this.availableDemos.push(getThirdPartyLibraryDemos(library));
             }
         },
