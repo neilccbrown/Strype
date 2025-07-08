@@ -430,7 +430,7 @@ export default Vue.extend({
             // while when do autosave etc, we use th PROJECT saved name in the store.
             const fullFileName = newProjectName + "." + strypeFileExtension;        
             // Using this example: https://stackoverflow.com/a/38475303/412908
-            // Arbitrary long string:
+            // Arbitrary long string (delimiter for the multipart upload):
             const boundary = "2db8c22f75474a58cd13fa2d3425017015d392ce0";
             const body : string[] = [];
             // Prepare the request body parameters. Note that we only set the parent ID for explicit save
@@ -710,46 +710,55 @@ export default Vue.extend({
             });
         },
 
+        searchGoogleDriveElement(query: string, options?: {orderBy?: string, fileFields?: string}): gapi.client.HttpRequest<any>{
+            // Make a search query on Google Drive, with the provided query parameter.
+            // Returns the HTTPRequest object obtained with the call to gapi.client.request(). 
+            const orderByParam = (options?.orderBy) ? {orderBy: options.orderBy} : {};
+            const fileFieldsParam = (options?.fileFields) ? {fields: options?.fileFields} : {};
+            return gapi.client.request({
+                path: "https://www.googleapis.com/drive/v3/files",
+                params: {...orderByParam, ...fileFieldsParam, "q": query},
+            });
+        },
+
         lookForAvailableProjectFileName(onSuccessCallback: () => void){
             // We check if the currently suggested file name is not already used in the location we save the file.
             // (note: it seems that searching against regex isn't supported. cf https://developers.google.com/drive/api/guides/ref-search-terms,
             // the matching works in a very strange way, on a prefix and word basis, but yet I get results I didn't expect, so better double check on the results to make sure).
-            gapi.client.request({
-                path: "https://www.googleapis.com/drive/v3/files",
-                params: {"q": "name contains '*.spy' and parents='" + ((this.appStore.strypeProjectLocation) ? this.appStore.strypeProjectLocation : "root") + "' and trashed=false"},
-            }).then((response) => {
-                let hasAlreadyFile = false, existingFileId = "";
-                this.isFileLocked = false;
-                const filesArray: {name: string, id: string}[] = JSON.parse(response.body).files;
-                filesArray.forEach((file) => {
-                    const listingThisFile = (file.name == (this.saveFileName + "." + strypeFileExtension));
-                    hasAlreadyFile ||= listingThisFile;
-                    if(listingThisFile){
-                        existingFileId = file.id;
-                    }
-                });
-
-                if(hasAlreadyFile){
-                    // Check if the file is locked before we propose to overwrite
-                    this.checkIsFileLocked(existingFileId, () => {
-                        // We show a dialog to the user to make their choice about what to do next
-                        this.$root.$emit("bv::show::modal", this.saveExistingGDProjectModalDlgId);                        
-                    }, () => {
-                        // We shouldn't have an issue at this stage, but if it happens, we just attempt to connect again
-                        this.proceedFailedConnectionCheckOnSave();
+            this.searchGoogleDriveElement("name contains '*.spy' and parents='" + ((this.appStore.strypeProjectLocation) ? this.appStore.strypeProjectLocation : "root") + "' and trashed=false")
+                .then((response) => {
+                    let hasAlreadyFile = false, existingFileId = "";
+                    this.isFileLocked = false;
+                    const filesArray: {name: string, id: string}[] = JSON.parse(response.body).files;
+                    filesArray.forEach((file) => {
+                        const listingThisFile = (file.name == (this.saveFileName + "." + strypeFileExtension));
+                        hasAlreadyFile ||= listingThisFile;
+                        if(listingThisFile){
+                            existingFileId = file.id;
+                        }
                     });
 
-                    // We do not continue the saving process at this stage: we wait for the user action,
-                    // but we save the bits we need for continuing the process later (initiate the request to copy file to false at this stage)
-                    this.saveExistingGDProjectInfos = {existingFileId: existingFileId, existingFileName: this.saveFileName, resumeProcessCallback: onSuccessCallback, isCopyFileRequested: false};                
-                    return;                    
-                }
-                // Keep on with the flow of actions if everything went smooth so far
-                onSuccessCallback();
-            },(reason) => {
+                    if(hasAlreadyFile){
+                    // Check if the file is locked before we propose to overwrite
+                        this.checkIsFileLocked(existingFileId, () => {
+                        // We show a dialog to the user to make their choice about what to do next
+                            this.$root.$emit("bv::show::modal", this.saveExistingGDProjectModalDlgId);                        
+                        }, () => {
+                        // We shouldn't have an issue at this stage, but if it happens, we just attempt to connect again
+                            this.proceedFailedConnectionCheckOnSave();
+                        });
+
+                        // We do not continue the saving process at this stage: we wait for the user action,
+                        // but we save the bits we need for continuing the process later (initiate the request to copy file to false at this stage)
+                        this.saveExistingGDProjectInfos = {existingFileId: existingFileId, existingFileName: this.saveFileName, resumeProcessCallback: onSuccessCallback, isCopyFileRequested: false};                
+                        return;                    
+                    }
+                    // Keep on with the flow of actions if everything went smooth so far
+                    onSuccessCallback();
+                },(reason) => {
                 // We shouldn't have an issue at this stage, but if it happens, we just attempt to connect again
-                this.proceedFailedConnectionCheckOnSave();
-            });
+                    this.proceedFailedConnectionCheckOnSave();
+                });
         },
 
         checkIsFileLocked(fileId: string, onSuccessCallback: () => void, onFailureCallBack: VoidFunction): void {
@@ -820,6 +829,76 @@ export default Vue.extend({
             this.appStore.strypeProjectLocationAlias = "";
             this.appStore.projectLastSaveDate = -1;
             this.saveFileId = undefined;
+        },
+
+        readFileContentForIO(fileId: string, isBinaryMode: boolean, filePath: string): Promise<string | Uint8Array | {success: boolean, errorMsg: string}> {
+            // This method is used by FileIO to get a file string content.
+            // It relies on the Google File Id passed as argument, and the callback method for handling succes or failure is also passed as arguments.
+            // The argument "filePath" is only used for error message.
+            // The nature of the answer depends on the reading mode: a string in normal text case, an array of bytes in binary mode.
+            // Because we want to be able to read raw data, we use the fetch API to query Google Drive.
+            return fetch("https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media", {
+                headers: { Authorization: "Bearer "+ this.oauthToken },
+            }).then((resp) => {
+                // Fetch returns a fulfilled promise even if the response is not 200.
+                if(resp.status != 200){
+                    return Promise.reject({success: false, errorMsg: this.$i18n.t("errorMessage.fileIO.fetchFileError", {filename: filePath, error: resp.status}) as string}); 
+                }
+                return (isBinaryMode) 
+                    ? resp.arrayBuffer().then((buffer) => {
+                        return new Uint8Array(buffer);
+                    }) 
+                    : resp.text().then((text) => {
+                        return text;
+                    });
+            },
+            // Case of errors
+            (resp) => {
+                return {success: false, errorMsg: this.$i18n.t("errorMessage.fileIO.fetchFileError", {filename: filePath, error: (resp?.status?.toString()??"unknown")}) as string}; 
+            });
+        },
+
+        writeFileContentForIO(fileContent: string|Uint8Array, fileInfos: {filePath: string, fileName?: string, fileId?: string, folderId?: string}): Promise<string> {
+            // Write file supports 2 modes: normal writing that only relies on the content and fileId,
+            // and file creation which relies on the folderId, fileName and returns the generated fileId.
+            // The fileName is always set because it may be used inside the error message.
+            // The method returns a string promise: the file ID on success, the error message on failure.
+            const isCreatingFile = !!(fileInfos.folderId);
+            
+            // The gapi.client.request() we have used for writing Strype projects in Drive isn't working for binary data.
+            // So we use fetch() for binary files to be supported.
+            // Arbitrary long string (delimiter for the multipart upload)
+            const boundary = "2db8c22f75474a58cd13fa2d3425017015d392ce0";
+            const bodyReqParams: {name?: string, parents?: [string]} = {};
+            if(isCreatingFile){
+                bodyReqParams.name = fileInfos.fileName??""; // the file name must be set by the caller!
+                bodyReqParams.parents = [fileInfos.folderId??""]; // the containing folder id must be set by the caller!
+            }
+
+            // Construct the multipart body
+            const body = `--${boundary}\nContent-Type: application/json; charset=UTF-8\n\n${JSON.stringify(bodyReqParams)}\n--${boundary}\n\n`;
+            // Convert binary data to Blob
+            const blob = new Blob([body, fileContent, `\n--${boundary}--`], { type: "multipart/related; boundary=" + boundary });
+            return new Promise<string>((resolve, reject) => {
+                fetch(`https://www.googleapis.com/upload/drive/v3/files${(isCreatingFile) ? "" : "/" + (fileInfos.fileId??"")}?uploadType=multipart`, {
+                    method: isCreatingFile ?  "POST" : "PATCH",
+                    headers: {
+                        "Authorization": "Bearer " + this.oauthToken,
+                        "Content-Type": "multipart/related; boundary=" + boundary,
+                    },
+                    body: blob,
+                })
+                    .then((response) => response.json())
+                    .then((respJson) => {
+                        if(respJson.id){                        
+                            resolve(respJson.id);
+                        }
+                        else{
+                            reject(i18n.t("errorMessage.fileIO.writingFileFailed", {filename: fileInfos.filePath, error: respJson.error.message??respJson.error.code}));            
+                        }
+                    })
+                    .catch((error) => reject(i18n.t("errorMessage.fileIO.writingFileFailed", {filename: fileInfos.filePath, error: error})));          
+            });     
         },
     },
 });

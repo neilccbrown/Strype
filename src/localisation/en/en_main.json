@@ -85,7 +85,28 @@
     "gdriveNoFile": "The project does not exist in Google Drive.",
     "gdriveError": "An error occured when attempting to load your Google Drive project (error: {error}).",
     "gdPublicShareFailed":"The project could not be shared publicly.<br>(Error: {error})",
-    "unexpectedCharsPython": "unexpected character(s)"
+    "unexpectedCharsPython": "unexpected character(s)",
+    "fileIO": {
+      "openReadingError":"Strype ran into an internal error when opening the file (reading content issue).",
+      "notConnectedToCloud":"access to files for IO operations is only possible from a Strype project saved in the Cloud.",
+      "parentDirRefNotSupported":"parent directory references in paths (\"..\") are not supported by Strype",
+      "fileLocationNotFound":"the location of the file \"{filename}\" could not be found.",
+      "unsupportedFile":"Strype forbids reading operations to this file \"{filename}\", because of its type.",
+      "fileNotWritableErr":"file not open for writing.",
+      "fileWriteNotBytesErr": "a bytes-like array object is required, not '{type}'",
+      "fileWriteNotStrErr": "write() argument must be str, not {type}",
+      "fileWriteLinesNotArrayErr":"writelines() argument must be a list",
+      "fileNotReadableErr":"file not open for reading.",
+      "fileClosedErr":"I/O operation on closed file.",
+      "fileModeErr":"invalid file opening mode: {mode}.",
+      "fileNotFound":"the file \"{filename}\" could not be found.",
+      "fileFetchError":"the file \"{filename}\" could not be retrieved. (error: {error})",
+      "accessToGDError":"the file \"{filename}\" could not be accessed on Google Drive. (error: {error})",
+      "readonlyFile":"the file \"{filename}\" is read-only.",
+      "writingFileFailed":"the file \"{filename}\" could not be written. (error: {error})",
+      "fileAlreadyExists":"the file \"{filename}\" already exists (a file opened with the 'exclusive creation' mode cannot exist).",
+      "closeInternalError":"Strype ran into an internal error when closing the file (file could not be found)."
+    }
   },
   "appMessage": {
     "editorFileUpload": "Uploading your file to the editor...",
