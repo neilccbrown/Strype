@@ -9,6 +9,10 @@ import FrameContainer from "@/components/FrameContainer.vue";
 
 const TOP_LEVEL_TEMP_ID = -999;
 
+// This regex is used to find triple single quotes strings within Strype's slots.
+// Once parsed to frames, such strings will be created as single quoted literals in Strype,
+// and the 2 remaining single quotes are included at the start and the end of the literal.
+// Therefore, we look for the content starting with '' and finishing with ''.
 const parsedTripleQuotesStrRegex = /^''.*''$/s;
 
 // Type for the things we get from the Skulpt parser:
