@@ -430,7 +430,7 @@ export default Vue.extend({
             // while when do autosave etc, we use th PROJECT saved name in the store.
             const fullFileName = newProjectName + "." + strypeFileExtension;        
             // Using this example: https://stackoverflow.com/a/38475303/412908
-            // Arbitrary long string:
+            // Arbitrary long string (delimiter for the multipart upload):
             const boundary = "2db8c22f75474a58cd13fa2d3425017015d392ce0";
             const body : string[] = [];
             // Prepare the request body parameters. Note that we only set the parent ID for explicit save
@@ -867,6 +867,7 @@ export default Vue.extend({
             
             // The gapi.client.request() we have used for writing Strype projects in Drive isn't working for binary data.
             // So we use fetch() for binary files to be supported.
+            // Arbitrary long string (delimiter for the multipart upload)
             const boundary = "2db8c22f75474a58cd13fa2d3425017015d392ce0";
             const bodyReqParams: {name?: string, parents?: [string]} = {};
             if(isCreatingFile){
