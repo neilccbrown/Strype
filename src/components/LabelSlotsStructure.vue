@@ -675,6 +675,9 @@ export default Vue.extend({
         },
         
         slotUpDown(event: KeyboardEvent) {
+            if (!this.isFocused || !this.appStore.isEditing) {
+                return;
+            }
             event.stopPropagation();
             event.stopImmediatePropagation();
             event.preventDefault();
