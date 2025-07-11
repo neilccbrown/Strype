@@ -73,7 +73,7 @@
         <ModalDlg :dlgId="importDiffVersionModalDlgId" :useYesNo="true">
             <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
         </ModalDlg>
-        <ModalDlg :dlgId="resyncGDAtStartupModalDlgId" :useYesNo="true" :okCustomTitle="$t('buttonLabel.yesSign')" :cancelCustomTitle="$t('buttonLabel.noContinueWithout')">
+        <ModalDlg :dlgId="resyncToCloudAtStartupModalDlgId" :useYesNo="true" :okCustomTitle="$t('buttonLabel.yesSign')" :cancelCustomTitle="$t('buttonLabel.noContinueWithout')">
             <span style="white-space:pre-wrap" v-html="$t('appMessage.resyncToGDAtStartup')"></span>
         </ModalDlg>
         <MediaPreviewPopup ref="mediaPreviewPopup" />
@@ -251,8 +251,8 @@ export default Vue.extend({
             return getImportDiffVersionModalDlgId();
         },
 
-        resyncGDAtStartupModalDlgId(): string {
-            return "resyncGDAtStartupModalDlg";
+        resyncToCloudAtStartupModalDlgId(): string {
+            return "resyncToCloudAtStartupModalDlg";
         },
 
         getSkulptBackendTurtleDivId(): string {
@@ -854,7 +854,8 @@ export default Vue.extend({
                     // about reloading the project from Google Drive again (only if we were not attempting to open a shared project via the URL)
                     if(this.appStore.currentGoogleDriveSaveFileId) {
                         const execGetGDFileFunction = (event: BvModalEvent, dlgId: string) => {
-                            if((event.trigger == "ok" || event.trigger=="event") && dlgId == this.resyncGDAtStartupModalDlgId){
+                            if((event.trigger == "ok" || event.trigger=="event") && dlgId == this.resyncToCloudAtStartupModalDlgId){
+                                //TODO OneDrive: adapt
                                 // Fetch the Google Drive component
                                 const gdVueComponent = ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>);
                                 // Initiate a connection to Google Drive via saving mechanisms (for updating Google Drive with local changes)
@@ -864,7 +865,7 @@ export default Vue.extend({
                             }
                         };
                         this.$root.$on("bv::modal::hide", execGetGDFileFunction); 
-                        this.$root.$emit("bv::show::modal", this.resyncGDAtStartupModalDlgId);
+                        this.$root.$emit("bv::show::modal", this.resyncToCloudAtStartupModalDlgId);
                     }
                 }, () => {});
             }, () => {});

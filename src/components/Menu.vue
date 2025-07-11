@@ -26,6 +26,11 @@
                             <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive"/> 
                             <span>Google Drive</span>
                         </div>
+                        <div id="loadFromODStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncODValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
+                            @mouseenter="changeTargetFocusOnMouseOver">
+                            <img :src="require('@/assets/images/logoOneDrive.svg')" alt="OneDrive"/> 
+                            <span>OneDrive</span>
+                        </div>
                         <div :id="loadFromFSStrypeButtonId" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
                             @mouseenter="changeTargetFocusOnMouseOver">
                             <img :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')"/> 
@@ -52,6 +57,11 @@
                                     <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive"/> 
                                     <span>Google Drive</span>
                                 </div>
+                                <div id="saveToODStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncODValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)"
+                                    :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncODValue}">
+                                    <img :src="require('@/assets/images/logoOneDrive.svg')" alt="OneDrive"/> 
+                                    <span>OneDrive</span>
+                                </div>
                                 <div :id="saveToFSStrypeButtonId" tabindex="0"  @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)"
                                     :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncFSValue}">
                                     <img :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')"/> 
@@ -61,8 +71,8 @@
                         </div>
                     </div>
                     <div class="row">
-                        <label v-show="showGDSaveLocation" v-t="'appMessage.gdriveLocation'" class="load-save-label cell"/>
-                        <div v-show="showGDSaveLocation" class="cell">                        
+                        <label v-show="showCloudSaveLocation" v-t="'appMessage.cloudLocation'" class="load-save-label cell"/>
+                        <div v-show="showCloudSaveLocation" class="cell">                        
                             <span class="load-save-label">{{currentDriveLocation}}</span>
                             <b-button v-t="'buttonLabel.saveDiffLocation'" variant="outline-primary" @click="onSaveDiffLocationClick" size="sm" />
                         </div>
@@ -239,7 +249,7 @@ export default Vue.extend({
             tempSyncTarget: StrypeSyncTarget.none,
             // The current selection for the sync target (local to this component, not in the store)            
             localSyncTarget: StrypeSyncTarget.gd,
-            showGDSaveLocation: false,
+            showCloudSaveLocation: false,
             // Flag to know if a request to change with a different folder location for Googe Drive has been requested
             saveAtOtherLocation: false,
             // Indicator of the error index that is currently being looked at (0-based index, and reset when errors are regenerated)
@@ -368,8 +378,16 @@ export default Vue.extend({
             return StrypeSyncTarget.gd;
         },
 
+        syncODValue(): StrypeSyncTarget {
+            return StrypeSyncTarget.od;
+        },
+
         isSyncingToGoogleDrive(): boolean {
             return this.appStore.syncTarget == StrypeSyncTarget.gd;
+        },
+
+        isSyncingToOneDrive(): boolean {
+            return this.appStore.syncTarget == StrypeSyncTarget.od;
         },
 
         currentDriveLocation(): string {
@@ -656,7 +674,7 @@ export default Vue.extend({
         },
 
         onSaveTargetChanged(){
-            this.showGDSaveLocation = (this.getTargetSelectVal() == this.syncGDValue);
+            this.showCloudSaveLocation = (this.getTargetSelectVal() == this.syncGDValue || this.getTargetSelectVal() == this.syncODValue);
         },
 
         saveTargetChoice(target: StrypeSyncTarget){
@@ -1487,6 +1505,7 @@ export default Vue.extend({
 
 .project-target-button-container img {
     width: 64px;
+    height: 64px;
 }
 
 .toggle-button {

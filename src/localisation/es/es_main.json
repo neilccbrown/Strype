@@ -91,7 +91,7 @@
     "savedGDrive": "Guardardo",
     "selectFolder": "Seleccione una carpeta",
     "selectStrypeFile": "Seleccione un proyecto Strype",
-    "gdriveLocation": "Carpeta:",
+    "cloudLocation": "Carpeta:",
     "gdriveAllStrypeFiles": "Todos los archivos Strype",
     "gdriveAllPythonFiles": "Todos los archivos Python",
     "gdriveTab": "Mi Drive",

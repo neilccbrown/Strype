@@ -90,7 +90,7 @@
     "savedGDrive": "Gespeichert",
     "selectFolder": "Wähle einen Ordner",
     "selectStrypeFile": "Wähle ein Strype-Projekt",
-    "gdriveLocation": "Ordner:",
+    "cloudLocation": "Ordner:",
     "gdriveAllStrypeFiles": "Alle Strype-Dateien",
     "gdriveAllPythonFiles": "Alle Python-Dateien",
     "gdriveTab": "Mein Drive",

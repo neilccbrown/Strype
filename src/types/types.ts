@@ -1050,6 +1050,7 @@ export enum StrypeSyncTarget {
     none, // Nothing set up (note that auto save is always available on WebStores)
     fs, // The local file system (note that this is only for us to know saving has been requested once, there is NO auto-sync to the local FS)
     gd, // Google Drive
+    od, // Microsoft One Drive
 }
 
 export enum GAPIState {
