@@ -637,7 +637,7 @@ export default Vue.extend({
         openLoadProjectDlgAfterSaved(): void {
             // Reset the flag to request opening the project later (see flag definition)
             this.requestOpenProjectLater = false;
-            this.$root.$emit("bv::show::modal", this.loadProjectModalDlgId);            
+            this.$root.$emit("bv::show::modal", (this.showDialogAfterSave.length > 0) ? this.showDialogAfterSave : this.loadProjectModalDlgId);            
         },
 
         changeTargetFocusOnMouseOver(event: MouseEvent) {
