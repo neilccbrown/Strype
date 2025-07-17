@@ -18,9 +18,9 @@
             <!-- open project -->
             <a :id="loadProjectLinkId" v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLoadProjectModal">{{$t('appMenu.loadProject')}}<span class="strype-menu-kb-shortcut">{{loadProjectKBShortcut}}</span></a>
             <ModalDlg :dlgId="loadProjectModalDlgId" showCloseBtn hideDlgBtns >
-                <div>
-                    <div :ref="loadProjectTargetButtonGpId" class="project-target-button-container">
+                <div class="project-target-popup-content-container">
                         <span v-t="'appMessage.loadToTarget'" class="load-save-label"/>
+                    <div :ref="loadProjectTargetButtonGpId" class="project-target-button-container">
                         <div id="loadFromGDStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
                             @mouseenter="changeTargetFocusOnMouseOver">
                             <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive"/> 
@@ -42,7 +42,7 @@
             <!-- save project -->
             <a :id="saveProjectLinkId" v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="handleSaveMenuClick">{{$t('appMenu.saveProject')}}<span class="strype-menu-kb-shortcut">{{saveProjectKBShortcut}}</span></a>
             <a v-if="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !isSynced }" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveAsProject'"/>
-            <ModalDlg :dlgId="saveProjectModalDlgId" :autoFocusButton="'ok'">
+            <ModalDlg :dlgId="saveProjectModalDlgId" size="lg" :autoFocusButton="'ok'">
                 <div class="save-project-modal-dlg-container">
                     <div class="row">
                         <label v-t="'appMessage.fileName'" class="load-save-label cell"/>
@@ -1461,11 +1461,17 @@ export default Vue.extend({
     border-radius: 50%;
 }
 
+.project-target-popup-content-container {
+    display: flex;
+    flex-direction: column;
+    gap:5px;
+}
+
 .project-target-button-container {
     display: flex;
     flex-wrap: nowrap;
-    gap: 5px;
-    justify-content: space-around;
+    gap: 20px;
+    justify-content: space-between;
     align-items: center;
 }
 
@@ -1478,7 +1484,7 @@ export default Vue.extend({
     padding: 5px;
     align-items: center;
     justify-content: space-between;
-    width: 120px;
+    width: 150px;
 }
 
 .#{$strype-classname-project-target-button}.load-dlg:focus,
