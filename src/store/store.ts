@@ -122,7 +122,7 @@ export const useStore = defineStore("app", {
             /* FITRUE_isPython */
             /* end properties for saving layout */
 
-            // This flag indicates if the user code is being executed in the Python Execution Area
+            // This flag indicates if the user code is being executed in the Python Execution Area (including the micro:bit simulator)
             pythonExecRunningState: PythonExecRunningState.NotRunning,
 
             // This flag can be used anywhere a key event should be ignored within the application
