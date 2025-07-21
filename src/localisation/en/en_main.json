@@ -245,6 +245,7 @@
     "add": "Add",
     "builtinGraphics": "Graphics",
     "builtinConsole": "Console",
-    "builtinTurtle": "Turtle"
+    "builtinTurtle": "Turtle",
+    "builtinMicrobit": "micro:bit"
   }
 }

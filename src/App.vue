@@ -259,11 +259,11 @@ export default Vue.extend({
             return BACKEND_SKULPT_DIV_ID;
         },
 
-        /* IFTRUE_isPython */
         isPythonExecuting(): boolean {
             return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
         },
-
+        
+        /* IFTRUE_isPython */
         expandedPEAOverlaySplitterPane2Size: {
             get(): number {
                 const value = (this.appStore.peaExpandedSplitterPane2Size != undefined && this.appStore.peaLayoutMode != undefined && this.appStore.peaExpandedSplitterPane2Size[this.appStore.peaLayoutMode] != undefined)
