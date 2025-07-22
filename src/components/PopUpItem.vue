@@ -10,8 +10,8 @@
         @mouseup.self="$emit('acItemClicked',id)"
     >
         <!-- One or the other: -->
-        <span v-if="itemHTML" v-html="itemHTML"></span>
-        <span v-else>{{ item }}</span>
+        <span v-if="itemHTML" v-html="itemHTML" @mousedown.prevent.stop @mouseup.self="$emit('acItemClicked',id)"></span>
+        <span v-else @mousedown.prevent.stop @mouseup.self="$emit('acItemClicked',id)">{{ item }}</span>
         <span v-if="version > 1" class="api-item-version" :title="$t('apidiscovery.v2InfoMsg')">v{{version}}</span>
     </li>
 </template>

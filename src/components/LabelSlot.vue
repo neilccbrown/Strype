@@ -737,8 +737,8 @@ export default Vue.extend({
         },
 
         onEnterOrTabKeyUp(event: KeyboardEvent){
-            // Ignore tab events
-            if(event.key === "Tab") {
+            // Ignore tab events except when a/c is showing and there is a selection
+            if(event.key === "Tab" && !(this.showAC && this.getSelectedACItem())) {
                 event.preventDefault();
                 event.stopPropagation();
                 return;
@@ -753,7 +753,7 @@ export default Vue.extend({
             }
             // For Enter, if AC is not loaded or no selection is available, we want to take the focus out the slot,
             // except for comment frame that will generate a line return when Control/Shift is combined with Enter
-            else {
+            else if(event.key === "Enter"){
                 if(this.frameType == AllFrameTypesIdentifier.comment && (event.shiftKey || event.ctrlKey)){
                     const isAnchorBeforeFocus = (getSelectionCursorsComparisonValue()??0) <= 0;
                     const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos as SlotCursorInfos;
@@ -815,8 +815,8 @@ export default Vue.extend({
             // We already handle some keys separately, so no need to process any further (i.e. deletion)
             // We can just discard any keys with length > 0
             if(event.key.length > 1 || event.ctrlKey || event.metaKey || event.altKey){
-                // Do not updated the a/c if arrows up/down, escape and enter keys are hit because it will mess with navigation of the a/c
-                if(!["ArrowUp", "ArrowDown","Enter","Escape"].includes(event.key)) {
+                // Do not updated the a/c if arrows up/down, escape, enter and tab keys are hit because it will mess with navigation of the a/c
+                if(!["ArrowUp", "ArrowDown","Enter","Escape", "Tab"].includes(event.key)) {
                     this.$nextTick(() => {
                         this.updateAC();
                     });
