@@ -34,16 +34,19 @@ class TreeWalk(ast.NodeVisitor):
                     # A lot of microbit stubs seem to have __ at the beginning of param names, which we trim:
                     paramName = re.sub(r'^_+', '', arg.arg)
                     details = {"name": paramName}
-                    # The defaults item in the tuple is None or a list of default values but it goes backwards
-                    # So if you have 5 args, and 2 in the default, they apply to the fifth and fourth arg
+                    # The defaults item in the tuple is None or a list of default values
                     if node.args.defaults and ((numArgs - i) <= len(node.args.defaults)):
+                        defaultValIndex = i - (numArgs - len(node.args.defaults)) 
                         try:
-                            if isinstance(node.args.defaults[numArgs - i - 1], ast.Constant): 
-                                details['defaultValue'] = str(node.args.defaults[numArgs - i - 1].value)
+                            if isinstance(node.args.defaults[defaultValIndex], ast.Constant): 
+                                details['defaultValue'] = str(node.args.defaults[defaultValIndex].value)
+                            elif isinstance(node.args.defaults[defaultValIndex], ast.Name):
+                                details['defaultValue'] = node.args.defaults[defaultValIndex].id
                             else:
-                                details['defaultValue'] = str(ast.literal_eval(node.args.defaults[numArgs - i - 1])) 
-                        except:
-                            pass
+                                details['defaultValue'] = str(ast.literal_eval(node.args.defaults[defaultValIndex])) 
+                        except Exception as e:
+                            print("ERROR WHEN TRYING TO PARSE DEFAULT FOR ARG",paramName)
+                            print(e)
                     self.content[node.name]['params'].append(details)
             
         self.content[node.name]["type"].append("function")
