@@ -72,8 +72,10 @@ class TreeWalk(ast.NodeVisitor):
                 self.content[alias.asname]["type"].append("module")
 
 # Either checkout https://github.com/microbit-foundation/micropython-microbit-stubs or do a git pull if directory exists
-if os.path.isdir("temp-scripts/micropython-microbit-stubs"):
-    subprocess.run(["git", "pull"], cwd="temp-scripts/micropython-microbit-stubs", stdout=subprocess.DEVNULL)
+repo_path = "temp-scripts/micropython-microbit-stubs"
+if os.path.isdir(repo_path):
+    subprocess.run(["git", "fetch"], cwd=repo_path)
+    subprocess.run(["git", "reset", "--hard", "origin/main"], cwd=repo_path, stdout=subprocess.DEVNULL)
 else:
     Path("temp-scripts").mkdir(exist_ok=True)
     subprocess.run(["git", "clone", "https://github.com/microbit-foundation/micropython-microbit-stubs"], cwd="temp-scripts", stdout=subprocess.DEVNULL)
