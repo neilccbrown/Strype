@@ -243,7 +243,9 @@ export default Vue.extend({
             // update this flag -- but we always end up here when the focus (for slots) is updated.
             const isSlotFocused = this.appStore.isEditableFocused(this.coreSlotInfo);
             console.log("Setting focused externally to " + isSlotFocused + " on basis of " + this.UID);
-            (this.$parent as InstanceType<typeof LabelSlotsStructure>).isFocused = isSlotFocused;
+            if (isSlotFocused || (this.appStore.focusSlotCursorInfos?.slotInfos.frameId != this.coreSlotInfo.frameId || this.appStore.focusSlotCursorInfos?.slotInfos.labelSlotsIndex != this.coreSlotInfo.labelSlotsIndex)) {
+                (this.$parent as InstanceType<typeof LabelSlotsStructure>).isFocused = isSlotFocused;
+            }
             return isSlotFocused;
         },
 
