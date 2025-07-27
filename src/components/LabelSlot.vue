@@ -242,7 +242,6 @@ export default Vue.extend({
             // We need to keep update of the label slots structure's "isFocused" flag, because using the keyboard to navigate will not
             // update this flag -- but we always end up here when the focus (for slots) is updated.
             const isSlotFocused = this.appStore.isEditableFocused(this.coreSlotInfo);
-            console.log("Setting focused externally to " + isSlotFocused + " on basis of " + this.UID);
             if (isSlotFocused || (this.appStore.focusSlotCursorInfos?.slotInfos.frameId != this.coreSlotInfo.frameId || this.appStore.focusSlotCursorInfos?.slotInfos.labelSlotsIndex != this.coreSlotInfo.labelSlotsIndex)) {
                 (this.$parent as InstanceType<typeof LabelSlotsStructure>).isFocused = isSlotFocused;
             }
@@ -672,7 +671,6 @@ export default Vue.extend({
         },
 
         onEnterOrTabKeyUp(event: KeyboardEvent){
-            console.log("Enter or tab key up: " + event.key);
             // Ignore tab events except when a/c is showing and there is a selection
             if(event.key === "Tab" && !(this.showAC && this.getSelectedACItem())) {
                 event.preventDefault();
@@ -682,7 +680,6 @@ export default Vue.extend({
 
             // If the AC is loaded we want to select the AC suggestion the user chose and stay focused on the editableSlot
             if(this.showAC && this.getSelectedACItem()) {
-                console.log("AC");
                 event.preventDefault();
                 event.stopPropagation();
                 // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
