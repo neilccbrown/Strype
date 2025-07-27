@@ -1,0 +1,28 @@
+{
+    "durations": [
+        { "spec": "tests/cypress/e2e/autocomplete-graphics-libs.cy.ts", "duration": 130 },
+        { "spec": "tests/cypress/e2e/autocomplete-modules.cy.ts", "duration": 125 },
+        { "spec": "tests/cypress/e2e/autocomplete-user-defined.cy.ts", "duration": 65 },
+        { "spec": "tests/cypress/e2e/autocomplete.cy.ts", "duration": 215 },
+        { "spec": "tests/cypress/e2e/basics.cy.ts", "duration": 30 },
+        { "spec": "tests/cypress/e2e/demos.cy.ts", "duration": 10 },
+        { "spec": "tests/cypress/e2e/graphics.cy.ts", "duration": 260 },
+        { "spec": "tests/cypress/e2e/load-save.cy.ts", "duration": 135 },
+        { "spec": "tests/cypress/e2e/media-literals.cy.ts", "duration": 95 },
+        { "spec": "tests/cypress/e2e/param-prompts-objects-graphics.cy.ts", "duration": 365 },
+        { "spec": "tests/cypress/e2e/param-prompts-objects.cy.ts", "duration": 180 },
+        { "spec": "tests/cypress/e2e/param-prompts-python-graphics.cy.ts", "duration": 350 },
+        { "spec": "tests/cypress/e2e/param-prompts-python-library.cy.ts", "duration": 230 },
+        { "spec": "tests/cypress/e2e/param-prompts-python.cy.ts", "duration": 430 },
+        { "spec": "tests/cypress/e2e/param-prompts-user-defined.cy.ts", "duration": 145 },
+        { "spec": "tests/cypress/e2e/param-prompts.cy.ts", "duration": 360 },
+        { "spec": "tests/cypress/e2e/paste-python-mixed.cy.ts", "duration": 140 },
+        { "spec": "tests/cypress/e2e/paste-python.cy.ts", "duration": 365 },
+        { "spec": "tests/cypress/e2e/structured-expressions-brackets.cy.ts", "duration": 150 },
+        { "spec": "tests/cypress/e2e/structured-expressions-floating.cy.ts", "duration": 205 },
+        { "spec": "tests/cypress/e2e/structured-expressions-selection.cy.ts", "duration": 55 },
+        { "spec": "tests/cypress/e2e/structured-expressions-terms.cy.ts", "duration": 180 },
+        { "spec": "tests/cypress/e2e/structured-expressions.cy.ts", "duration": 460 },
+        { "spec": "tests/cypress/e2e/translation.cy.ts", "duration": 30 }
+    ]
+}
