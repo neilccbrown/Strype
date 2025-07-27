@@ -233,7 +233,8 @@ function testFuncs(funcs: {
     }[]) {
     for (const func of funcs) {
         const defocus = function() {
-            cy.get("body").type("{downarrow}");
+            // The frame might wrap so add modifiers to make sure we move down to frame cursor:
+            cy.get("body").type("{ctrl+alt+downarrow}");
             cy.wait(500);
         };
         it("Shows prompts after manually writing function name and brackets for " + func.displayName, () => {
