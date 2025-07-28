@@ -5,6 +5,8 @@
         contenteditable="true"
         @keydown.left="onLRKeyDown($event)"
         @keydown.right="onLRKeyDown($event)"
+        @keydown.up="slotUpDown($event)"
+        @keydown.down="slotUpDown($event)"
         @beforeinput="beforeInput"
         @keydown="forwardKeyEvent($event)"
         @keyup="forwardKeyEvent($event)"
@@ -19,6 +21,7 @@
             <LabelSlot
                 v-for="(slotItem, slotIndex) in subSlots"
                 :key="frameId + '_'  + labelIndex + '_' + slotIndex + '_' + refactorCount"
+                ref="labelSlots"
                 :labelSlotsIndex="labelIndex"
                 :slotId="slotItem.id"
                 :slotType="slotItem.type"
@@ -34,7 +37,7 @@
 </template>
 
 <script lang="ts">
-import { AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
+import {AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType} from "@/types/types";
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
@@ -47,6 +50,7 @@ import scssVars from "@/assets/style/_export.module.scss";
 import {readFileAsyncAsData, readImageSizeFromDataURI, splitByRegexMatches} from "@/helpers/common";
 import {detectBrowser} from "@/helpers/browser";
 import { isMacOSPlatform } from "@/helpers/common";
+import {handleVerticalCaretMove} from "@/helpers/spans";
 
 export default Vue.extend({
     name: "LabelSlotsStructure",
@@ -454,8 +458,9 @@ export default Vue.extend({
         forwardKeyEvent(event: KeyboardEvent) {
             // The container div of this LabelSlotsStructure is editable. Editable divs capture the key events. 
             // We need to forward the event to the currently "focused" (editable) slot.
-            // ** LEFT/RIGHT ARROWS ARE TREATED SEPARATELY BY THIS COMPONENT, we don't forward related events **
-            if(event.key == "ArrowLeft" || event.key == "ArrowRight"){
+            // ** LEFT/RIGHT AND UP/DOWN ARROWS ARE TREATED SEPARATELY BY THIS COMPONENT, we don't forward related events **
+            if(event.key == "ArrowLeft" || event.key == "ArrowRight"
+                || event.key == "ArrowUp" || event.key == "ArrowDown"){
                 return;
             }
 
@@ -668,6 +673,62 @@ export default Vue.extend({
                 event.stopImmediatePropagation();  
             }                      
         },
+        
+        slotUpDown(event: KeyboardEvent) {
+            if (!this.isFocused || !this.appStore.isEditing) {
+                return;
+            }
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            event.preventDefault();
+            
+            if (!(event.shiftKey || event.metaKey || event.altKey || event.ctrlKey)) {
+                const subSlots = this.$refs.labelSlots as InstanceType<typeof LabelSlot>[];
+                for (const subSlot of subSlots) {
+                    if (subSlot.handleUpDown(event)) {
+                        // Consumed by focused slot which is showing autocomplete:
+                        return;
+                    }
+                }
+            }
+            
+            if (!(event.metaKey || event.altKey || event.ctrlKey)) {
+                // Try to move up/down with this item, if we have wrapped:
+                const spans = document.getElementById(this.labelSlotsStructDivId)?.querySelectorAll("span." + scssVars.labelSlotInputClassName + "[contenteditable=\"true\"]") as NodeListOf<HTMLSpanElement>;
+                if (spans.length > 0) {
+                    const dest = handleVerticalCaretMove(Array.from(spans), event.key == "ArrowUp" ? "up" : "down");
+                    if (dest) {
+                        const infos = {slotInfos: parseLabelSlotUID(dest.span.id), cursorPos: dest.offset};
+                        const anchor = (event.shiftKey ? this.appStore.anchorSlotCursorInfos : undefined) ?? infos; 
+                        this.appStore.setSlotTextCursors(anchor, infos);
+                        setDocumentSelection(anchor, infos);
+                        this.appStore.setFocusEditableSlot({
+                            frameSlotInfos: infos.slotInfos,
+                            caretPosition: (this.appStore.getAllowedChildren(this.frameId)) ? CaretPosition.body : CaretPosition.below,
+                        });
+                        return;
+                    }
+                }
+                
+                if (event.shiftKey) {
+                    // If shift is pressed, we don't leave for a frame cursor:
+                    return;
+                }
+            }
+            // Otherwise we move to an adjacent frame cursor:
+            this.appStore.isEditing = false;
+            this.blurEditableSlot(true);
+            document.getSelection()?.removeAllRanges();
+            
+            //If the up arrow is pressed you need to move the caret as well.
+            if(event.key == "ArrowUp") {
+                this.appStore.changeCaretPosition(event.key);
+            }
+            else{
+                // Restore the caret visibility
+                Vue.set(this.appStore.frameObjects[this.appStore.currentFrame.id], "caretVisibility", this.appStore.currentFrame.caretPosition);
+            }
+        },
 
         checkAndDoPushBracket(focusSlotCursorInfos: SlotCursorInfos, isToPushLeft: boolean): void {
             // We can "push" only one half a bracket pair with "Alt" (or Ctrl on macOS) + arrow 
@@ -835,7 +896,7 @@ export default Vue.extend({
             this.appStore.ignoreFocusRequest = false;
         },
 
-        blurEditableSlot(){
+        blurEditableSlot(force?: boolean){
             this.isFocused = false;
             // If a flag to ignore editable slot focus is set, we just revert it and do nothing else
             if(this.appStore.bypassEditableSlotBlurErrorCheck){
@@ -845,7 +906,7 @@ export default Vue.extend({
                    
             // When the div containing the slots loses focus, we need to also notify the currently focused slot inside *this* container
             // that the caret has been "lost" (since a contenteditable div won't let its children having/loosing focus)
-            if(document.activeElement?.id === this.labelSlotsStructDivId){
+            if(!force && document.activeElement?.id === this.labelSlotsStructDivId){
                 // We don't lose focus that's from an outside event (like when the browser itself loses focus)
                 // cf https://stackoverflow.com/questions/24638129/javascript-dom-how-to-prevent-blur-event-if-focus-is-lost-to-another-window
                 this.appStore.ignoreFocusRequest = true;

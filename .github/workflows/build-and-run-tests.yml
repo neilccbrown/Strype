@@ -30,6 +30,7 @@ jobs:
         env:
             SPLIT: ${{ 3 }}
             SPLIT_INDEX: ${{ matrix.cypress_split }}
+            SPLIT_FILE: tests/cypress/timings/timings-${{ matrix.testtype }}.json
       - name: Upload test videos (if any)
         uses: actions/upload-artifact@v4
         # Store screenshots and videos only on failure:

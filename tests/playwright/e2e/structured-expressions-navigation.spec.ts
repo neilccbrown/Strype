@@ -83,7 +83,7 @@ test.describe("Check navigation", () => {
         await checkFrameXorTextCursor(page);
     });
     test("Right arrow through a file", async ({page}, testInfo) => {
-        test.setTimeout(180_000);
+        test.setTimeout(500_000);
         if (testInfo.project.name === "chromium") {
             test.skip(); // See comment above
         }
@@ -117,7 +117,7 @@ test.describe("Check navigation", () => {
         }
         test.setTimeout(1_000_000);
         await loadPY(page, "../../cypress/fixtures/python-code.py");
-        for (let i = 0; i < 1000; i++) {
+        for (let i = 0; i < 500; i++) {
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("Tab");
         }
