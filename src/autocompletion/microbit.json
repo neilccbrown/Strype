@@ -1,7 +1,13 @@
 {
     "modules": ["audio","machine","microbit","micropython","music","neopixel","os","radio","random","speech","time","utime"],
-    "versions":{
+    "versions":{       
+        "audio":{
+            "SoundEffect": 2
+        },
         "microbit":{
+            "audio":{
+                "SoundEffect": 2
+            },
             "set_volume": 2,
             "__Microphone":2,
             "microphone":2,
@@ -22,10 +28,12 @@
                 "set_touch_mode":2
             },
             "SoundEvent":2,
-            "__Audio":2,
-            "audio":2,
             "Sound":2
-        }
+        },
+        "power":2,
+        "log":2,
+        "speaker": 2,
+        "microphone":2
     },
     "api":[
         {"name":"led","codePortion":"display.","children":[
