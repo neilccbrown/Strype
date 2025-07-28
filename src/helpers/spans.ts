@@ -1,3 +1,7 @@
+// This file helps in handling the up/down arrow keys in a set of spans which might have wrapped
+// The main function is handleVerticalCaretMove at the end of the file, the others are internal helpers.
+// It helps us find the horizontally aligned position on the line below/above so that up/down key
+// moves to the position you would expect, looking at the screen.
 function getCaretScreenPosition() : { x: number; y: number } | null {
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0 || !sel.focusNode) {
