@@ -27,7 +27,7 @@ class TreeWalk(ast.NodeVisitor):
         
     def visit_FunctionDef(self, node):
         if not node.name in self.content:
-            self.content[node.name] = {"acResult": node.name, "type": [], "documentation": ast.get_docstring(node) or "", "version": get_microbit_version(self.moduleName +"."+ node.name)}
+            self.content[node.name] = {"acResult": node.name, "type": [], "documentation": ast.get_docstring(node) or "", "version": getMicrobitVersion(self.moduleName, node.name)}
             # Put args together:
             args = node.args
             default_offset = len(args.args) - len(args.defaults)
@@ -131,7 +131,7 @@ class TreeWalk(ast.NodeVisitor):
         self.content[node.name]["type"].append("function")
     def visit_ClassDef(self, node):
         if not node.name in self.content:
-            self.content[node.name] = {"acResult": node.name, "type": [], "documentation": ast.get_docstring(node) or "", "version": get_microbit_version(self.moduleName +"."+ node.name)}
+            self.content[node.name] = {"acResult": node.name, "type": [], "documentation": ast.get_docstring(node) or "", "version": getMicrobitVersion(self.moduleName, node.name)}
         self.content[node.name]["type"].append("type")
         # Classes have a constructor:
         self.content[node.name]["type"].append("function")
@@ -139,17 +139,36 @@ class TreeWalk(ast.NodeVisitor):
         # Temporarily change the tree walker module name and content
         old_module = self.moduleName
         old_content = self.content
-        self.moduleName = self.moduleName + "." + node.name
+        self.moduleName = self.moduleName + "." + node.name if len(self.moduleName) > 0 else node.name
         self.content = {}
         # We need to use the __init__ arguments and signature parts to plunk them inside
         # the class after we're done with getting all children
+        # Note that a class may be a super class, so we may need to check the super class
+        # and we expect it to be defined beforehand... (in Python, a class can inherit from
+        # several parents, but __init__ will be chose as the first one (MRO)).
         class_signature = None
+        from_bases_content = ()
         for child in node.body:
             signature = self.visit_with_updated_module(child, node.name)            
             if signature is not None and child.name == "__init__" :
                 class_signature = signature
+        for base_class in node.bases:
+            # Limit to simple inheritance
+            if isinstance(base_class, ast.Name) :
+                # We try to get the content from upper level, if it doesn't get anything, we just skip
+                from_base_content = {}
+                try:
+                    from_base_content = getDictContentFromList(found[old_module + "." + base_class.id if len(old_module) > 0 else base_class.id])
+                except KeyError :
+                    pass
+                for from_base_content_entry_key in from_base_content :
+                    if not from_base_content_entry_key in self.content :
+                        self.content[from_base_content_entry_key] = from_base_content[from_base_content_entry_key]                    
+                signature_of_base = findSignatureForClassInOldContent(old_content, base_class.id)
+                if class_signature is None and signature_of_base is not None :
+                    class_signature =  signature_of_base   
         # Add the class content to the results as it is separate from the normal flow
-        found[self.moduleName] = list(self.content.values())  
+        found[self.moduleName] = list(self.content.values())
         # Restaure the tree walker module name and content
         self.moduleName = old_module
         self.content = old_content
@@ -167,7 +186,7 @@ class TreeWalk(ast.NodeVisitor):
         # Picks up items like "button_a : Button" which appear in the type stubs.  The target is the LHS
         if node.target.id:
             if not node.target.id in self.content:
-                self.content[node.target.id] = {"acResult": node.target.id, "type": [], "documentation": "", "version": get_microbit_version(self.moduleName +"."+ node.target.id)}
+                self.content[node.target.id] = {"acResult": node.target.id, "type": [], "documentation": "", "version": getMicrobitVersion(self.moduleName, node.target.id)}
             self.content[node.target.id]["type"].append("variable")
     def visit_ImportFrom(self, node):
         # Picks up items like "from .microbit.audio import (play as play, ....)"
@@ -181,7 +200,7 @@ class TreeWalk(ast.NodeVisitor):
         if node.module is None:
             for alias in node.names:
                 if not alias.asname in self.content:
-                    self.content[alias.asname] = {"acResult": alias.asname, "type": [], "documentation": "", "version": get_microbit_version("microbit."+alias.asname)}
+                    self.content[alias.asname] = {"acResult": alias.asname, "type": [], "documentation": "", "version": getMicrobitVersion("microbit",alias.asname)}
                 self.content[alias.asname]["type"].append("module")
 
 # Either checkout https://github.com/microbit-foundation/micropython-microbit-stubs or do a git pull if directory exists
@@ -193,10 +212,25 @@ else:
     Path("temp-scripts").mkdir(exist_ok=True)
     subprocess.run(["git", "clone", "https://github.com/microbit-foundation/micropython-microbit-stubs"], cwd="temp-scripts", stdout=subprocess.DEVNULL)
 
-def get_microbit_version(element_path) :
+def findSignatureForClassInOldContent(oldContent, className) :
+    try:
+        if "signature" in oldContent[className] :        
+            return oldContent[className]["signature"]
+    except:
+        return None
+    return None
+
+def getDictContentFromList(contentList):   
+    dict_res = {};
+    for content_entry in contentList :
+        dict_res[content_entry["acResult"]] = content_entry
+    return dict_res
+
+def getMicrobitVersion(element_path_part1, element_path_part2=None) :
     # This methods runs a check on microbit.json where we had listed which elements of the micro:bit API are v2+
     # everything that is NOT listed in {versions:{...}} of mbDescJson is considered as v1, the default value.
     # We don't list every parts of a module if the whole module is of a specific version: then we stop there.
+    element_path = element_path_part1 if element_path_part2 is None else ((element_path_part1 + "." + element_path_part2) if len(element_path_part1) > 0 else element_path_part2)
     versionsData = mbDescJson["versions"]   
     keys = element_path.split(".")
     for key in keys:
@@ -235,6 +269,8 @@ def processdir(dir, parent):
                     walker = TreeWalk(moduleName)
                     walker.visit(parsed)
                     found[moduleName] = list(walker.content.values())
+                    # Add module to description JSON
+                    add_module_in_json_descrition(moduleName, ast.get_docstring(parsed), getMicrobitVersion(moduleName))                    
         elif file == "__init__.pyi" and parent.endswith("."):
             with open(dir + "/" + file, 'r', encoding="utf-8") as fileHandle:
                 parsed = ast.parse(fileHandle.read())
@@ -242,13 +278,29 @@ def processdir(dir, parent):
                 walker = TreeWalk(moduleName)
                 walker.visit(parsed)
                 topLevelDoc = ast.get_docstring(parsed)
-                found[moduleName] = list(walker.content.values()) + ([{"acResult": "__doc__", "type": ["module"], "documentation": topLevelDoc, "version": get_microbit_version(moduleName)}] if topLevelDoc else [])                  
+                found[moduleName] = list(walker.content.values()) + ([{"acResult": "__doc__", "type": ["module"], "documentation": topLevelDoc, "version": getMicrobitVersion(moduleName)}] if topLevelDoc else [])                  
+                # Add module to description JSON
+                add_module_in_json_descrition(moduleName, topLevelDoc, getMicrobitVersion(moduleName))
 
-# Retrieve the microbit.json content for versions
+def add_module_in_json_descrition(moduleName, doc, version) :
+    if(len(moduleName) > 0) :
+        mbDescJson["modules"][moduleName] = {"type": "module", "documentation": doc, "version": version}
+
+# Get and set initial data in the microbit.json file
 with open("./src/autocompletion/microbit.json") as mbDescJsonFile :
+    # Retrieve the microbit.json content for versions
     mbDescJson =  json.load(mbDescJsonFile)
+    # Clear the microbit.json content for modules (so we can write them again when we parse the pyi files)
+    # (the expected format of the content is equivalent to Record<string, { type: "module", documentation?: string, version: number })
+    mbDescJson["modules"] = {}
 
 # Entry point for getting the micro:bit API stubs from GitHub and parse them
 processdir("temp-scripts/micropython-microbit-stubs/lang/en/typeshed/stdlib", "")
 
+# Save the microbit.json for the modules description (versions are kept untouched)
+with open("./src/autocompletion/microbit.json", "w") as mbDescJsonFile :
+    json.dump(mbDescJson, mbDescJsonFile, indent=4)
+
+
+# Dump the API JSON description for creating the doc API file
 json.dump(found, sys.stdout, indent=4)
