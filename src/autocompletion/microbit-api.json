@@ -258,13 +258,14 @@
             "documentation": "A sound effect, composed by a set of parameters configured via the constructor or attributes.",
             "version": 2,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
-                    },
+                    }
+                ],
+                "positionalOrKeywordArgs": [
                     {
                         "name": "freq_start",
                         "defaultValue": "500",
@@ -1760,13 +1761,14 @@
             "documentation": "An image to show on the micro:bit LED display.\n\nGiven an image object it's possible to display it via the ``display`` API::\n\n    display.show(Image.HAPPY)",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
-                    },
+                    }
+                ],
+                "positionalOrKeywordArgs": [
                     {
                         "name": "string",
                         "defaultValue": null,
@@ -2003,13 +2005,14 @@
             "documentation": "Return a new array whose items are restricted by typecode, and\ninitialized from the optional initializer value, which must be a list,\nstring or iterable over elements of the appropriate type.\n\nArrays represent basic values and behave very much like lists, except\nthe type of objects stored in them is constrained. The type is specified\nat object creation time by using a type code, which is a single character.\nThe following type codes are defined:\n\n    Type code   C Type             Minimum size in bytes\n    'b'         signed integer     1\n    'B'         unsigned integer   1\n    'u'         Unicode character  2 (see note)\n    'h'         signed integer     2\n    'H'         unsigned integer   2\n    'i'         signed integer     2\n    'I'         unsigned integer   2\n    'l'         signed integer     4\n    'L'         unsigned integer   4\n    'q'         signed integer     8 (see note)\n    'Q'         unsigned integer   8 (see note)\n    'f'         floating-point     4\n    'd'         floating-point     8\n\nNOTE: The 'u' typecode corresponds to Python's unicode character. On\nnarrow builds this is 2-bytes on wide builds this is 4-bytes.\n\nNOTE: The 'q' and 'Q' type codes are only available if the platform\nC compiler used to build Python supports 'long long', or, on Windows,\n'__int64'.\n\nMethods:\n\nappend() -- append a new item to the end of the array\nbuffer_info() -- return information giving the current memory info\nbyteswap() -- byteswap all the items of the array\ncount() -- return number of occurrences of an object\nextend() -- extend array by appending multiple elements from an iterable\nfromfile() -- read items from a file object\nfromlist() -- append items from the list\nfrombytes() -- append items from the string\nindex() -- return index of first occurrence of an object\ninsert() -- insert a new item into the array at a provided position\npop() -- remove and return item (default last)\nremove() -- remove first occurrence of an object\nreverse() -- reverse the order of the items in the array\ntofile() -- write all items to a file object\ntolist() -- return the array converted to an ordinary list\ntobytes() -- return the array converted to a string\n\nAttributes:\n\ntypecode -- the typecode character used to create the array\nitemsize -- the length in bytes of one array item",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": "array[int]"
-                    },
+                    }
+                ],
+                "positionalOrKeywordArgs": [
                     {
                         "name": "typecode",
                         "defaultValue": null,
@@ -2117,13 +2120,14 @@
             "documentation": "A sound effect, composed by a set of parameters configured via the constructor or attributes.",
             "version": 2,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
-                    },
+                    }
+                ],
+                "positionalOrKeywordArgs": [
                     {
                         "name": "freq_start",
                         "defaultValue": "500",
@@ -2192,14 +2196,14 @@
             "documentation": "The base class of the class hierarchy.\n\nWhen called, it accepts no arguments and returns a new featureless\ninstance that has no instance attributes and cannot be given any.",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
                     }
                 ],
+                "positionalOrKeywordArgs": [],
                 "varArgs": null,
                 "keywordOnlyArgs": [],
                 "varKwargs": null,
@@ -2261,13 +2265,14 @@
             "documentation": "type(object) -> the object's type\ntype(name, bases, dict, **kwds) -> a new type",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
-                    },
+                    }
+                ],
+                "positionalOrKeywordArgs": [
                     {
                         "name": "o",
                         "defaultValue": null,
@@ -2290,13 +2295,14 @@
             "documentation": "super() -> same as super(__class__, <first argument>)\nsuper(type) -> unbound super object\nsuper(type, obj) -> bound super object; requires isinstance(obj, type)\nsuper(type, type2) -> bound super object; requires issubclass(type2, type)\nTypical use to call a cooperative superclass method:\nclass C(B):\n    def meth(self, arg):\n        super().meth(arg)\nThis works for class methods too:\nclass C(B):\n    @classmethod\n    def cmeth(cls, arg):\n        super().cmeth(arg)",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
-                    },
+                    }
+                ],
+                "positionalOrKeywordArgs": [
                     {
                         "name": "t",
                         "defaultValue": null,
@@ -2406,14 +2412,14 @@
             "documentation": "Construct a mutable bytearray object from:\n  - an iterable yielding integers in range(256)\n  - a text string encoded using the specified encoding\n  - a bytes or a buffer object\n  - any object implementing the buffer API.\n  - an integer",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
                     }
                 ],
+                "positionalOrKeywordArgs": [],
                 "varArgs": null,
                 "keywordOnlyArgs": [],
                 "varKwargs": null,
@@ -2476,14 +2482,14 @@
             "documentation": "Create a slice object.  This is used for extended slicing (e.g. a[0:10:2]).",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
                     }
                 ],
+                "positionalOrKeywordArgs": [],
                 "varArgs": null,
                 "keywordOnlyArgs": [],
                 "varKwargs": null,
@@ -2579,14 +2585,14 @@
             "documentation": "dict() -> new empty dictionary\ndict(mapping) -> new dictionary initialized from a mapping object's\n    (key, value) pairs\ndict(iterable) -> new dictionary initialized as if via:\n    d = {}\n    for k, v in iterable:\n        d[k] = v\ndict(**kwargs) -> new dictionary initialized with the name=value pairs\n    in the keyword argument list.  For example:  dict(one=1, two=2)",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": "dict[_KT, _VT]"
                     }
                 ],
+                "positionalOrKeywordArgs": [],
                 "varArgs": null,
                 "keywordOnlyArgs": [],
                 "varKwargs": null,
@@ -2655,13 +2661,14 @@
             "documentation": "Return an object that produces a sequence of integers from start (inclusive)\nto stop (exclusive) by step.  range(i, j) produces i, i+1, i+2, ..., j-1.\nstart defaults to 0, and stop is omitted!  range(4) produces 0, 1, 2, 3.\nThese are exactly the valid indices for a list of 4 elements.\nWhen step is given, it specifies the increment (or decrement).",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
-                    },
+                    }
+                ],
+                "positionalOrKeywordArgs": [
                     {
                         "name": "stop",
                         "defaultValue": null,
@@ -4017,14 +4024,14 @@
             "documentation": "Common base class for all exceptions",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
                     }
                 ],
+                "positionalOrKeywordArgs": [],
                 "varArgs": {
                     "name": "args",
                     "argType": "object"
@@ -4044,14 +4051,14 @@
             "documentation": "Request that a generator exit.",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
                     }
                 ],
+                "positionalOrKeywordArgs": [],
                 "varArgs": {
                     "name": "args",
                     "argType": "object"
@@ -4071,14 +4078,14 @@
             "documentation": "Program interrupted by user.",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
                     }
                 ],
+                "positionalOrKeywordArgs": [],
                 "varArgs": {
                     "name": "args",
                     "argType": "object"
@@ -4098,14 +4105,14 @@
             "documentation": "Request to exit from the interpreter.",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
                     }
                 ],
+                "positionalOrKeywordArgs": [],
                 "varArgs": {
                     "name": "args",
                     "argType": "object"
@@ -4125,14 +4132,14 @@
             "documentation": "Common base class for all non-exit exceptions.",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
                     }
                 ],
+                "positionalOrKeywordArgs": [],
                 "varArgs": {
                     "name": "args",
                     "argType": "object"
@@ -4152,14 +4159,14 @@
             "documentation": "Signal the end from iterator.__next__().",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
                     }
                 ],
+                "positionalOrKeywordArgs": [],
                 "varArgs": {
                     "name": "args",
                     "argType": "object"
@@ -4179,14 +4186,14 @@
             "documentation": "Base class for I/O related errors.",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
                     }
                 ],
+                "positionalOrKeywordArgs": [],
                 "varArgs": {
                     "name": "args",
                     "argType": "object"
@@ -4246,14 +4253,14 @@
             "documentation": "Import can't find module, or can't find name in module.",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
                     }
                 ],
+                "positionalOrKeywordArgs": [],
                 "varArgs": {
                     "name": "args",
                     "argType": "object"
@@ -4324,14 +4331,14 @@
             "documentation": "Signal the end from iterator.__anext__().",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
                     }
                 ],
+                "positionalOrKeywordArgs": [],
                 "varArgs": {
                     "name": "args",
                     "argType": "object"
@@ -6275,13 +6282,14 @@
             "documentation": "",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
-                    },
+                    }
+                ],
+                "positionalOrKeywordArgs": [
                     {
                         "name": "pin",
                         "defaultValue": null,
@@ -8175,13 +8183,14 @@
             "documentation": "Type variable.\n\nThe preferred way to construct a type variable is via the dedicated\nsyntax for generic functions, classes, and type aliases::\n\n    class Sequence[T]:  # T is a TypeVar\n        ...\n\nThis syntax can also be used to create bound and constrained type\nvariables::\n\n    # S is a TypeVar bound to str\n    class StrSequence[S: str]:\n        ...\n\n    # A is a TypeVar constrained to str or bytes\n    class StrOrBytesSequence[A: (str, bytes)]:\n        ...\n\nType variables can also have defaults:\n\n    class IntDefault[T = int]:\n        ...\n\nHowever, if desired, reusable type variables can also be constructed\nmanually, like so::\n\n   T = TypeVar('T')  # Can be anything\n   S = TypeVar('S', bound=str)  # Can be any subtype of str\n   A = TypeVar('A', str, bytes)  # Must be exactly str or bytes\n   D = TypeVar('D', default=int)  # Defaults to int\n\nType variables exist primarily for the benefit of static type\ncheckers.  They serve as the parameters for generic types as well\nas for generic function and type alias definitions.\n\nThe variance of type variables is inferred by type checkers when they\nare created through the type parameter syntax and when\n``infer_variance=True`` is passed. Manually created type variables may\nbe explicitly marked covariant or contravariant by passing\n``covariant=True`` or ``contravariant=True``. By default, manually\ncreated type variables are invariant. See PEP 484 and PEP 695 for more\ndetails.",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
-                    },
+                    }
+                ],
+                "positionalOrKeywordArgs": [
                     {
                         "name": "name",
                         "defaultValue": null,
@@ -8405,13 +8414,14 @@
             "documentation": "The args for a ParamSpec object.\n\nGiven a ParamSpec object P, P.args is an instance of ParamSpecArgs.\n\nParamSpecArgs objects have a reference back to their ParamSpec::\n\n    >>> P = ParamSpec(\"P\")\n    >>> P.args.__origin__ is P\n    True\n\nThis type is meant for runtime introspection and has no special meaning\nto static type checkers.",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
-                    },
+                    }
+                ],
+                "positionalOrKeywordArgs": [
                     {
                         "name": "origin",
                         "defaultValue": null,
@@ -8434,13 +8444,14 @@
             "documentation": "The kwargs for a ParamSpec object.\n\nGiven a ParamSpec object P, P.kwargs is an instance of ParamSpecKwargs.\n\nParamSpecKwargs objects have a reference back to their ParamSpec::\n\n    >>> P = ParamSpec(\"P\")\n    >>> P.kwargs.__origin__ is P\n    True\n\nThis type is meant for runtime introspection and has no special meaning\nto static type checkers.",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
-                    },
+                    }
+                ],
+                "positionalOrKeywordArgs": [
                     {
                         "name": "origin",
                         "defaultValue": null,
@@ -8463,13 +8474,14 @@
             "documentation": "Parameter specification variable.\n\nThe preferred way to construct a parameter specification is via the\ndedicated syntax for generic functions, classes, and type aliases,\nwhere the use of '**' creates a parameter specification::\n\n    type IntFunc[**P] = Callable[P, int]\n\nThe following syntax creates a parameter specification that defaults\nto a callable accepting two positional-only arguments of types int\nand str:\n\n    type IntFuncDefault[**P = (int, str)] = Callable[P, int]\n\nFor compatibility with Python 3.11 and earlier, ParamSpec objects\ncan also be created as follows::\n\n    P = ParamSpec('P')\n    DefaultP = ParamSpec('DefaultP', default=(int, str))\n\nParameter specification variables exist primarily for the benefit of\nstatic type checkers.  They are used to forward the parameter types of\none callable to another callable, a pattern commonly found in\nhigher-order functions and decorators.  They are only valid when used\nin ``Concatenate``, or as the first argument to ``Callable``, or as\nparameters for user-defined Generics. See class Generic for more\ninformation on generic types.\n\nAn example for annotating a decorator::\n\n    def add_logging[**P, T](f: Callable[P, T]) -> Callable[P, T]:\n        '''A type-safe decorator to add logging to a function.'''\n        def inner(*args: P.args, **kwargs: P.kwargs) -> T:\n            logging.info(f'{f.__name__} was called')\n            return f(*args, **kwargs)\n        return inner\n\n    @add_logging\n    def add_two(x: float, y: float) -> float:\n        '''Add two numbers together.'''\n        return x + y\n\nParameter specification variables can be introspected. e.g.::\n\n    >>> P = ParamSpec(\"P\")\n    >>> P.__name__\n    'P'\n\nNote that only parameter specification variables defined in the global\nscope can be pickled.",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
-                    },
+                    }
+                ],
+                "positionalOrKeywordArgs": [
                     {
                         "name": "name",
                         "defaultValue": null,
@@ -9957,14 +9969,14 @@
             "documentation": "",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "cls",
                         "defaultValue": null,
                         "argType": "_TC"
                     }
                 ],
+                "positionalOrKeywordArgs": [],
                 "varArgs": null,
                 "keywordOnlyArgs": [],
                 "varKwargs": null,
@@ -10177,13 +10189,14 @@
             "documentation": "",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
-                    },
+                    }
+                ],
+                "positionalOrKeywordArgs": [
                     {
                         "name": "origin",
                         "defaultValue": null,
@@ -10205,13 +10218,14 @@
             "documentation": "",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
-                    },
+                    }
+                ],
+                "positionalOrKeywordArgs": [
                     {
                         "name": "origin",
                         "defaultValue": null,
@@ -10233,13 +10247,14 @@
             "documentation": "",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [],
-                "positionalOrKeywordArgs": [
+                "positionalOnlyArgs": [
                     {
                         "name": "self",
                         "defaultValue": null,
                         "argType": null
-                    },
+                    }
+                ],
+                "positionalOrKeywordArgs": [
                     {
                         "name": "name",
                         "defaultValue": null,

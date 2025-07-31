@@ -126,6 +126,11 @@ class TreeWalk(ast.NodeVisitor):
                     "argType": get_annotation(args.kwarg)
                 }
 
+            #TODO : observed issue with micro:bit things, like "Image(self, string)", but not sure it is a problem that self is in positionalOrKeywordArgs by mistake or a default behaviour
+            # it also happens rarely in skulpt-api, what we do here is move it manually to the right place.
+            if signature["firstParamIsSelfOrCls"] and len(signature["positionalOrKeywordArgs"]) > 0 and (signature["positionalOrKeywordArgs"][0]["name"] == "self" or signature["positionalOrKeywordArgs"][0]["name"] == "cls") :
+                signature["positionalOnlyArgs"].insert(0, signature["positionalOrKeywordArgs"].pop(0))
+
             self.content[node.name]['signature'] = signature   
             
         self.content[node.name]["type"].append("function")
