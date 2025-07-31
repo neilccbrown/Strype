@@ -135,47 +135,36 @@ class TreeWalk(ast.NodeVisitor):
         self.content[node.name]["type"].append("type")
         # Classes have a constructor:
         self.content[node.name]["type"].append("function")
-        # Visit children of this class
+        # Visit children of this class to find its constructor
         # Temporarily change the tree walker module name and content
         old_module = self.moduleName
         old_content = self.content
         self.moduleName = self.moduleName + "." + node.name if len(self.moduleName) > 0 else node.name
         self.content = {}
         # We need to use the __init__ arguments and signature parts to plunk them inside
-        # the class after we're done with getting all children
+        # the class after we're done with checkking all children
         # Note that a class may be a super class, so we may need to check the super class
         # and we expect it to be defined beforehand... (in Python, a class can inherit from
         # several parents, but __init__ will be chose as the first one (MRO)).
         class_signature = None
-        from_bases_content = ()
         for child in node.body:
-            signature = self.visit_with_updated_module(child, node.name)            
+            signature = self.visit_with_updated_module(child)            
             if signature is not None and child.name == "__init__" :
                 class_signature = signature
         for base_class in node.bases:
             # Limit to simple inheritance
             if isinstance(base_class, ast.Name) :
                 # We try to get the content from upper level, if it doesn't get anything, we just skip
-                from_base_content = {}
-                try:
-                    from_base_content = getDictContentFromList(found[old_module + "." + base_class.id if len(old_module) > 0 else base_class.id])
-                except KeyError :
-                    pass
-                for from_base_content_entry_key in from_base_content :
-                    if not from_base_content_entry_key in self.content :
-                        self.content[from_base_content_entry_key] = from_base_content[from_base_content_entry_key]                    
                 signature_of_base = findSignatureForClassInOldContent(old_content, base_class.id)
                 if class_signature is None and signature_of_base is not None :
                     class_signature =  signature_of_base   
-        # Add the class content to the results as it is separate from the normal flow
-        found[self.moduleName] = list(self.content.values())
         # Restaure the tree walker module name and content
         self.moduleName = old_module
         self.content = old_content
         # Add the class signature, if we got it
         if class_signature is not None :
             self.content[node.name]["signature"] = class_signature
-    def visit_with_updated_module(self, node, child_node_name):
+    def visit_with_updated_module(self, node):
         self.visit(node)
         # Return the signature if we got one (see above why)
         try :
@@ -183,10 +172,14 @@ class TreeWalk(ast.NodeVisitor):
         except (KeyError, AttributeError) :
             return None
     def visit_AnnAssign(self, node):
-        # Picks up items like "button_a : Button" which appear in the type stubs.  The target is the LHS
+        # Picks up items like "button_a : Button" which appear in the type stubs.  The target is the LHS.
+        # In order to get a/c on these without using TPP (see Autocompletion.vue for details), we also save
+        # the type in a specific property.
         if node.target.id:
             if not node.target.id in self.content:
                 self.content[node.target.id] = {"acResult": node.target.id, "type": [], "documentation": "", "version": getMicrobitVersion(self.moduleName, node.target.id)}
+                if isinstance(node.annotation, ast.Name) :
+                    self.content[node.target.id]["mbVarType"] = node.annotation.id
             self.content[node.target.id]["type"].append("variable")
     def visit_ImportFrom(self, node):
         # Picks up items like "from .microbit.audio import (play as play, ....)"

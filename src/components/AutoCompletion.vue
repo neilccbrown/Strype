@@ -76,15 +76,19 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import PopUpItem from "@/components/PopUpItem.vue";
-import {IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWithCategory, BaseSlot, AllFrameTypesIdentifier} from "@/types/types";
+import {IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWithCategory, BaseSlot, AllFrameTypesIdentifier, AcMicrobitResultType} from "@/types/types";
 import _ from "lodash";
 import { mapStores } from "pinia";
 import {getAllEnabledUserDefinedFunctions, getFrameContainer} from "@/helpers/storeMethods";
 import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, tpyDefineLibraries, getUserDefinedSignature} from "@/autocompletion/acManager";
 import Parser from "@/parser/parser"; 
 import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
-import {Signature, SignatureArg, TPyParser} from "tigerpython-parser";
+import {Completion, Signature, SignatureArg, TPyParser} from "tigerpython-parser";
 import scssVars from "@/assets/style/_export.module.scss";
+/* IFTRUE_isMicrobit */
+import microbitDescriptions from "@/autocompletion/microbit.json";
+import microbitAPI from "@/autocompletion/microbit-api.json";
+/* FITRUE_isMicrobit */
 
 //////////////////////
 export default Vue.extend({
@@ -139,6 +143,22 @@ export default Vue.extend({
                 "min-width":((this.documentation[this.selected]?.length>0)?"200px":"0px"),
             }; 
         },
+
+        /* IFTRUE_isMicrobit */
+        allMicrobitAnnotatedVariables(): AcMicrobitResultType[] {
+            // We retrieve the micro:bit annoted variables only once, as this won't change.
+            // See updateAC() why.
+            const res: AcMicrobitResultType[] = [];
+            Object.values(microbitAPI).forEach((elementDetailsArray) => {
+                elementDetailsArray.forEach((elementDetails) => {
+                    if(elementDetails.type.includes("variable") && (elementDetails as AcMicrobitResultType).mbVarType){
+                        res.push(elementDetails as AcMicrobitResultType);
+                    }
+                });
+            });
+            return res;
+        },
+        /* FITRUE_isMicrobit */
     },
 
     methods: {
@@ -275,18 +295,77 @@ export default Vue.extend({
                 //
                 // To give TigerPython's autocomplete a place to examine to do the autocompletion
                 // we actually generate a dummy extra line of code with the context that we want
-                // plus a dot, then ask TigerPython to complete at the very end: 
-                let totalCode = userCode + "\n" + parser.getStoppedIndentation() + context + ".";
+                // plus a dot, then ask TigerPython to complete at the very end (and for microbit,
+                // we add a dummy "from builtins import *" to allow builtins a/c): 
+                const preamble = "" /* IFTRUE_isMicrobit + "from builtins import *\n" FITRUE_isMicrobit */;
+                let totalCode = preamble + userCode + "\n" + parser.getStoppedIndentation() + context + ".";
                 let tppCompletions = TPyParser.autoCompleteExt(totalCode, totalCode.length);
                 if (tppCompletions == null) {
-                    tppCompletions = [];
+                    tppCompletions = [];                    
                 }
+                /* IFTRUE_isMicrobit */
+                // TODO 
+                // TPP, at least now, doesn't interpret module annotated-only variable in PYI properly,
+                // like for "button_a: Button" for the microbit init file :
+                // it will bring up the class instead of the variable for a/c suggestions.
+                // Also, something like "button_a = Button()" does work better and brings something "<any>".
+                // So we use autoComplete() and compare the results to find mismatched.
+                // NOTE that TPP complete for the (wrong) code "button_a()." (with parenthesis).
+                try{
+                    const tppCompletions2 = TPyParser.autoComplete(totalCode, totalCode.length, false);
+                    if(tppCompletions.filter((s) => !s.acResult.startsWith("_")).length != tppCompletions2.length){
+                        console.error("There is a mismatch between autoCompleteEx and autoComplete");
+                        throw new Error();
+                    }
+                    else {
+                        tppCompletions2.forEach((completionItem, index) => {
+                            if((tppCompletions as Completion[])[index].acResult != completionItem){
+                                (tppCompletions as Completion[])[index].acResult = completionItem;
+                                (tppCompletions as Completion[])[index].type = "variable";
+                            }
+                        });
+                    }
+                }
+                catch{
+                    // We couldn't get the completions with autoComplete(), just give up...
+                }
+                
+
+                if(tppCompletions.length == 0){
+                    // TODO 
+                    // TPP, at least now, doesn't interpret module annotated-only variable in PYI properly,
+                    // like for "button_a: Button" for the microbit init file :
+                    // If the context text is a variable, we don't get its type content in a/c.
+                    // So we use very rudimentary way to get it the type content (if any) by looking up
+                    // the variable name, replacing it in a fake code and use TPP again.
+                    // Note: we can't know for sure the context will be the variable name as we want it: 
+                    // for example if the code contains "a = button_a" and next line "a.", the variable
+                    // name at the context is "a", not "button_a". So we (again very rudimentary) look up
+                    // every variables...
+                    this.allMicrobitAnnotatedVariables.forEach((varAcEntry) => {
+                        // Replace the variable name by an instance of its type in the user code
+                        totalCode = totalCode.replaceAll(new RegExp(`^.*?[^\\w](${varAcEntry.acResult})\\b`,"gm"), (matchInLine) => {
+                            const constructorCallerStr = (matchInLine.startsWith ("from ")) ? "" : "()";
+                            return matchInLine.replace(varAcEntry.acResult, varAcEntry.mbVarType + constructorCallerStr);
+                        });
+                    });
+                    
+                    // And run TPP again.
+                    tppCompletions = TPyParser.autoCompleteExt(totalCode, totalCode.length);
+                    if (tppCompletions == null) {
+                        tppCompletions = [];
+                    }                       
+                }                
+                /* FITRUE_isMicrobit */
+                
+
+                let version0 = 0;                
                 const items =  tppCompletions.filter((s) => !s.acResult.startsWith("_") || token.startsWith("_")).map((s) => ({
                     acResult: s.acResult,
                     documentation: s.documentation,
                     params: s.params == null ? [] : s.params.map((p) => ({name: p})),
                     type: ["function", "module", "variable", "type"].includes(s.type ?? "") ? [s.type] : [],
-                    version: 0,
+                    version: version0 /* IFTRUE_isMicrobit + this.getMicrobitVersionFor(context + "." + token) FITRUE_isMicrobit */, //for micro:bit we can get the version from the version reference JSON
                 } as AcResultType));
                 this.acResults = {[context]: items};
                 this.showSuggestionsAC(token);
@@ -497,6 +576,31 @@ export default Vue.extend({
         areResultsToShow(): boolean {
             return Object.values(this.resultsToShow)?.length > 0;
         },  
+
+        /* IFTRUE_isMicrobit */
+        getMicrobitVersionFor(elementPath: string): number {
+            // Get through the version definitions to find the version.
+            // The version is listed for things v2+.
+            // If an intermediate level is found, we don't need to get deeper.
+            // Version 1 is returned as default.
+            let versionsData = microbitDescriptions.versions;
+            const keys = elementPath.split(".");
+            let resVersion = 1;
+            for (const key of keys) {
+                if (Object.keys(versionsData).includes(key)){
+                    versionsData = (versionsData as Record<string, any>)[key];
+                    if(typeof versionsData == "number"){
+                        resVersion = versionsData;
+                        break;
+                    }
+                }
+                else{
+                    break;
+                }       
+            }
+            return resVersion;
+        },        
+        /* FITRUE_isMicrobit */
     }, 
 
 });

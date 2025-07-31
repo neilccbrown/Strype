@@ -52,3 +52,9 @@ export interface IndexedAcResultWithCategory {
 export interface AcResultsWithCategory {
     [category: string]: AcResultType[];
 }
+
+/* IFTRUE_isMicrobit */
+export interface AcMicrobitResultType extends AcResultType {
+    mbVarType?: string;
+}
+/* FITRUE_isMicrobit */

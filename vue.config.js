@@ -13,12 +13,12 @@ const configureWebpackExtraProps =
     {
         plugins: [
             // We don't need our Strype librairies and standard examples for micro:bit
-            // Conversely, we don't need micro:bit-specific examples for the standard version
+            // Conversely, we don't need micro:bit-specific libraries and examples for the standard version
             new RemoveFilePlugin({
                 after: {                    
                     include: (process.env.npm_config_microbit)
-                        ? ["./dist/demos/console", "./dist/demos/graphics", "./dist/demos/turtle", "./dist/graphics_images", "./dist/sounds", "./dist/public_libraries", "./dist/pyi"]
-                        : ["./dist/demos/microbit"],
+                        ? ["./dist/demos/console", "./dist/demos/graphics", "./dist/demos/turtle", "./dist/graphics_images", "./dist/sounds", "./dist/public_libraries/strype", "./dist/pyi"]
+                        : ["./dist/demos/microbit", "./dist/public/public_libraries/microbit"],
                     trash: true,
                 },
             }),

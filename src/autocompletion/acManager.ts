@@ -22,7 +22,23 @@ TPyParser.defineModule("turtle", turtleMod, "pyi");
 /* FITRUE_isPython */
 /* IFTRUE_isMicrobit */
 import microbitPythonAPI from "@/autocompletion/microbit-api.json";
-import microbitModuleDescription from "@/autocompletion/microbit.json";
+import microbitDescriptions from "@/autocompletion/microbit.json";
+// Import all the micro:bit PYI files and load the modules in TigerPython.
+// If these files need update, replace "audio.pyi" in the root folder
+// by the one in /microbit/ because it seems reimports don't work well.
+// Remove "VERSIONS" as well.
+const mbPYIContextFolderContext = require.context("../../public/public_libraries/microbit/");
+const mbPYContextPaths = mbPYIContextFolderContext.keys();
+mbPYContextPaths.forEach((mbPYContextPath) => {
+    if(mbPYContextPath.endsWith("pyi")) {        
+        const mbPYIAsModule = mbPYIContextFolderContext(mbPYContextPath); // Immediately loads the module
+        // Module paths start with "./" and finish with ".pyi", 
+        // to get the module name we scrap these off, change "/"
+        // to "." and remove the file name altogether if we have "__init__".
+        const moduleName = mbPYContextPath.slice(2, -4).replaceAll("/", ".").replace(".__init__", "");
+        TPyParser.defineModule(moduleName, (mbPYIAsModule as any).default, "pyi");
+    }   
+});
 /* FITRUE_isMicrobit */
 
 // Given a FieldSlot, get the program code corresponding to it, to use
@@ -317,8 +333,8 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
                 }
                 /* FITRUE_isPython */
                 /* IFTRUE_isMicrobit */
-                if((microbitModuleDescription.modules as any as Record<string, AcResultType>)[realModule]){
-                    const moduleEntry = (microbitModuleDescription.modules as any as Record<string, AcResultType>)[realModule];
+                if((microbitDescriptions.modules as any as Record<string, AcResultType>)[realModule]){
+                    const moduleEntry = (microbitDescriptions.modules as any as Record<string, AcResultType>)[realModule];
                     const moduleDoc = (moduleEntry.documentation ?? "");
                     const imports = soFar[importedModulesCategory] ?? [];
                     imports.push({acResult: module, documentation: moduleDoc, type: ["module"], version: moduleEntry.version});
@@ -389,7 +405,7 @@ export async function getAvailableModulesForImport() : Promise<AcResultsWithCate
     // eslint-disable-next-line prefer-const
     let isMicrobit = false;
     /* IFTRUE_isMicrobit isMicrobit = true; FITRUE_isMicrobit */
-    const apiModules = (isMicrobit) ? (microbitModuleDescription.modules as any as Record<string, {type: "module", documentation?: string, version: number}>) : pythonBuiltins;   
+    const apiModules = (isMicrobit) ? (microbitDescriptions.modules as any as Record<string, {type: "module", documentation?: string, version: number}>) : pythonBuiltins;   
     // Only add our own public libraries (at the end of this chain) when we are in the standard Stype version.
     return {[""] : Object.keys(apiModules)
         .filter((k) => apiModules[k]?.type === "module" && !k.startsWith("_"))
