@@ -74,11 +74,11 @@ import Vue, { PropType } from "vue";
 import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import {getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUID, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, getACLabelSlotUID, getFrameUID, getFrameComponent, simpleSlotStructureToString} from "@/helpers/editor";
-import { AllowedSlotContent, CaretPosition, FrameObject, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, EditImageInDialogFunction, FieldSlot, LoadedMedia, MediaSlot, PythonExecRunningState, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
+import { closeBracketCharacters, CustomEventTypes, getACLabelSlotUID, getFocusedEditableSlotTextSelectionStartEnd, getFrameComponent, getFrameHeaderUID, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFrameUID, getLabelSlotUID, getMatchingBracket, getNumPrecedingBackslashes, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, keywordOperatorsWithSurroundSpaces, openBracketCharacters, operators, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, simpleSlotStructureToString, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringDoubleQuoteChar, stringQuoteCharacters, stringSingleQuoteChar, UIDoubleQuotesCharacters, UISingleQuotesCharacters } from "@/helpers/editor";
+import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
-import { evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import {evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
 import { cloneDeep } from "lodash";
 import LabelSlotsStructure from "./LabelSlotsStructure.vue";
@@ -1096,7 +1096,7 @@ export default Vue.extend({
                     ? (isInString ? this.slotId : ((parentSlotId.length > 0) ? (parentSlotId + ",0") : "0"))
                     : (isInString ? this.slotId : ((parentSlotId.length > 0) ? (parentSlotId + "," + ((retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: parentSlotId}) as SlotsStructure).fields.length -1)) : ("" + (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.coreSlotInfo.labelSlotsIndex].slotStructures.fields.length - 1))));
                 // We only look for the new type and slot core infos for non-string current location to save unnecessary function calls
-                const newFocusSlotType = (isInString) ? this.slotType : evaluateSlotType(retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: newFocusSlotId}));
+                const newFocusSlotType = (isInString) ? this.slotType : evaluateSlotType(getSlotDefFromInfos(this.coreSlotInfo), retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: newFocusSlotId}));
                 const newFocusSlotCoreInfo = (isInString) ? this.coreSlotInfo : {...this.coreSlotInfo, slotId: newFocusSlotId, slotType: newFocusSlotType};
                 const newFocusCursorPos = (moveToHome) ? 0 : (retrieveSlotFromSlotInfos(newFocusSlotCoreInfo) as BaseSlot).code.length;
                 // Then anchor: it will either keep the same if we are doing a selection, or change to the same as focus if we are not.
@@ -1161,7 +1161,7 @@ export default Vue.extend({
             // 3) set the text cursor at the right location       
             // 4) check if the slots need to be refactorised
             // (note: we do not make text treatment for comment frames, except for transforming \r\n to \n)
-            const isCommentFrame = (this.frameType == AllFrameTypesIdentifier.comment);
+            const isCommentSlot = this.slotType === SlotType.comment;
             const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
             const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UID);
             if (type.startsWith("image") || type.startsWith("audio")) {
@@ -1182,7 +1182,7 @@ export default Vue.extend({
                 // and if the line returns are line returns or coming from the UI (slots). For the moment, do as if we can only work from the UI.
                 let cursorOffset = 0;
                 let correctedPastedCode = "";
-                if(isCommentFrame){
+                if(isCommentSlot){
                     correctedPastedCode = content.replaceAll(/(\r\n)/g, "\n");
                 }
                 else{
@@ -1303,7 +1303,7 @@ export default Vue.extend({
                         // Restore the text cursor position (need to wait for reactive changes)
                         this.$nextTick(() => {
                             const newCurrentSlotInfoNoType = {...this.coreSlotInfo, slotId: newSlotId};
-                            const newCurrentSlotType = evaluateSlotType(retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
+                            const newCurrentSlotType = evaluateSlotType(getSlotDefFromInfos(newCurrentSlotInfoNoType), retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
                             let newSlotInfos = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
                             const slotUID = getLabelSlotUID(newSlotInfos); 
                             const inputSpanField = document.getElementById(slotUID) as HTMLSpanElement;
@@ -1350,7 +1350,7 @@ export default Vue.extend({
                             // Restore the text cursor position (need to wait for reactive changes)
                             this.$nextTick(() => {
                                 const newCurrentSlotInfoNoType = {...this.coreSlotInfo, slotId: newSlotId};
-                                const newCurrentSlotType = evaluateSlotType(retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
+                                const newCurrentSlotType = evaluateSlotType(getSlotDefFromInfos(newCurrentSlotInfoNoType), retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
                                 const newCurrentSlotInfoWithType = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
                                 const slotCursorInfos: SlotCursorInfos = {slotInfos: newCurrentSlotInfoWithType, cursorPos: newCursorPosition};
                                 resultingSlotUID = getLabelSlotUID(newCurrentSlotInfoWithType);

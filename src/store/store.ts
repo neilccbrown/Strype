@@ -2,7 +2,7 @@ import Vue from "vue";
 import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
-import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import {checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion, vm } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
@@ -235,7 +235,7 @@ export const useStore = defineStore("app", {
             // Flatten the imbricated slots of associated with a label and return the corresponding array of FlatSlotBase objects
             // The operators always get in between the fields, and we always have one 1 root structure for a label,
             // and bracketed structures can never be found at 1st or last position
-            return generateFlatSlotBases(state.frameObjects[frameId].labelSlotsDict[labelIndex].slotStructures);
+            return generateFlatSlotBases(state.frameObjects[frameId].frameType.labels[labelIndex], state.frameObjects[frameId].labelSlotsDict[labelIndex].slotStructures);
         },
 
         getJointFramesForFrameId: (state) => (frameId: number) => {
@@ -2311,7 +2311,7 @@ export const useStore = defineStore("app", {
                     slotType: SlotType.code, // we can only focus a code slot
                 };
                 const nextSlot = retrieveSlotFromSlotInfos(nextSlotCoreInfos);
-                nextSlotCoreInfos.slotType = evaluateSlotType(nextSlot);
+                nextSlotCoreInfos.slotType = evaluateSlotType(getSlotDefFromInfos(nextSlotCoreInfos), nextSlot);
 
                 this.setEditableFocus(
                     {

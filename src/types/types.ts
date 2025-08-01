@@ -100,6 +100,7 @@ export enum SlotType {
     // "no type", which can be used for undo/redo difference marking
     // media type
     media = 0o70000, // meta category
+    comment = 0o700000, // meta category
     none = 0,
 }
 
@@ -147,7 +148,9 @@ export interface FrameObject {
 export enum AllowedSlotContent {
     ONLY_NAMES,
     ONLY_NAMES_OR_STAR,
-    TERMINAL_EXPRESSION
+    TERMINAL_EXPRESSION,
+    FREE_TEXT_DOCUMENTATION,
+    LIBRARY_ADDRESS
 }
 
 export interface FrameLabel {
@@ -545,7 +548,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...StatementDefinition,
         type: ImportFrameTypesIdentifiers.library,
         labels: [
-            { label: "library ", defaultText: i18n.t("frame.defaultText.libraryAddress") as string, acceptAC: false },
+            { label: "library ", defaultText: i18n.t("frame.defaultText.libraryAddress") as string, acceptAC: false, allowedSlotContent: AllowedSlotContent.LIBRARY_ADDRESS},
         ],
         colour: "#B4C8DC",
     };
@@ -553,7 +556,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
     const CommentDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.comment,
-        labels: [{ label: "# ", defaultText: i18n.t("frame.defaultText.comment") as string, optionalSlot: true, acceptAC: false }],
+        labels: [{ label: "# ", defaultText: i18n.t("frame.defaultText.comment") as string, optionalSlot: true, acceptAC: false, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION}],
         colour: scssVars.mainCodeContainerBackground,
     };
 

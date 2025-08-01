@@ -633,7 +633,7 @@ export default class Parser {
             slotTypes.push(type);
         };
 
-        generateFlatSlotBases(slotStructures, "", (flatSlot: FlatSlotBase, besidesOp: boolean, opAfter: undefined | string) => {
+        generateFlatSlotBases({allowedSlotContent: allowed }, slotStructures, "", (flatSlot: FlatSlotBase, besidesOp: boolean, opAfter: undefined | string) => {
             if(isSlotQuoteType(flatSlot.type) || isSlotBracketType(flatSlot.type) || flatSlot.type === SlotType.media){
                 // a quote or a bracket is a 1 character token, shown in the code
                 // but it's not editable so we don't include it in the slot positions
