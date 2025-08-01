@@ -162,6 +162,7 @@ export interface FrameLabel {
     optionalSlot?: boolean; //default false (indicate that this label does not require at least 1 slot value)
     acceptAC?: boolean; //default true
     allowedSlotContent?: AllowedSlotContent; // default TERMINAL_EXPRESSION; what the slot accepts
+    newLine?: boolean; //default false; this item starts a new line
 }
 
 export enum CaretPosition {

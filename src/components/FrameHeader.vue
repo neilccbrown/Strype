@@ -1,15 +1,17 @@
 <template>
     <div tabindex="-1" @focus="onFocus(true)" @blur="onFocus(false)" style="outline: none;">
-        <div class="frame-header-div">
+        <div :class="'frame-header-div-line' + (groupIndex > 0 ? ' frame-header-later-line' : '')"
+             v-for="(group, groupIndex) in splitAtNewLines(labels)"
+             :key="groupIndex">
             <div
-                class="next-to-eachother label-slots-struct-wrapper"
-                v-for="(item, index) in labels"
-                :key="item.label + frameId"
+                :class="'next-to-eachother label-slots-struct-wrapper' + (item.label=='\'\'\'' ? ' magicdoc' : '')"
+                v-for="({ item, originalIndex }) in group"
+                :key="originalIndex"
             >
                 <!-- the class isn't set on the parent div so the size of hidden editable slots can still be evaluated correctly -->
                 <div 
                     style="font-weight: 600;"
-                    :class="{['next-to-eachother ' + scssVars.framePythonTokenClassName]: true, hidden: isLabelHidden(item), leftMargin: index > 0, rightMargin: (item.label.length > 0), [scssVars.frameColouredLabelClassName]: !isCommentFrame}"
+                    :class="{['next-to-eachother ' + scssVars.framePythonTokenClassName]: true, hidden: isLabelHidden(item), leftMargin: originalIndex > 0, rightMargin: (item.label.length > 0), [scssVars.frameColouredLabelClassName]: !isCommentFrame}"
                     v-html="item.label"
                 >
                 </div>
@@ -18,7 +20,7 @@
                     :isDisabled="isDisabled"
                     :default-text="item.defaultText"
                     :frameId="frameId"
-                    :labelIndex="index"
+                    :labelIndex="originalIndex"
                 />
             </div>
         </div>
@@ -81,14 +83,38 @@ export default Vue.extend({
         areSlotsShown(labelDetails: FrameLabel): boolean {
             return labelDetails.showSlots??true;
         },
+
+        // Splits into a list of lists (each outer list is a line, with 1 or more items on it)
+        // by looking at the newLine flag in the FrameLabel.
+        splitAtNewLines(labels : FrameLabel[]) : {item: FrameLabel, originalIndex: number}[][] {
+            const result : {item: FrameLabel, originalIndex: number}[][] = [];
+            let currentGroup : {item: FrameLabel, originalIndex: number}[] = [];
+            labels.forEach((item, index) => {
+                if (item.newLine && currentGroup.length > 0) {
+                    result.push(currentGroup);
+                    currentGroup = [];
+                }
+                currentGroup.push({ item, originalIndex: index });
+            });
+            if (currentGroup.length > 0) {
+                result.push(currentGroup);
+            }
+            return result;
+        },
     },
 });
 </script>
 
 <style lang="scss">
-.frame-header-div {
+.frame-header-div-line {
     display: flex;
     width: 100%;
+}
+.frame-header-later-line {
+    margin-left: 30px;
+    margin-right: 28px;
+    margin-bottom: 10px;
+    width: auto !important;
 }
 
 .#{$strype-classname-frame-python-token} {
