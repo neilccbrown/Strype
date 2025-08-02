@@ -412,7 +412,7 @@ export default Vue.extend({
 
             // If we arrive here by a click, and the slot is a bracket, a quote or an operator, we should get the focus to the nearest editable frame.
             // We should have neigbours because brackets, quotes and operators are always surronded by fields, but keep TS happy
-            if(this.slotType != SlotType.code && this.slotType != SlotType.string){
+            if(this.slotType != SlotType.code && this.slotType != SlotType.string && this.slotType != SlotType.comment){
                 const clickXValue = event.x;
                 const slotWidth = document.getElementById(getLabelSlotUID(this.coreSlotInfo))?.offsetWidth??0;
                 const slotXPos = document.getElementById(getLabelSlotUID(this.coreSlotInfo))?.getBoundingClientRect().x??0; 
