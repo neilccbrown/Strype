@@ -658,6 +658,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             { label: "def ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
             { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: true, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
             { label: ") :", showSlots: false, defaultText: "" },
+            { label: "‘‘‘", newLine: true, showSlots: true, acceptAC: false, optionalSlot: false, defaultText: "Describe the function", allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],
         colour: "#ECECC8",
     };
