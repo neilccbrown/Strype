@@ -688,7 +688,7 @@ export default Vue.extend({
             // For Enter, if AC is not loaded or no selection is available, we want to take the focus out the slot,
             // except for comment frame that will generate a line return when Control/Shift is combined with Enter
             else if(event.key === "Enter"){
-                if(this.frameType == AllFrameTypesIdentifier.comment && (event.shiftKey || event.ctrlKey)){
+                if(this.slotType == SlotType.comment && (event.shiftKey || event.ctrlKey)){
                     const isAnchorBeforeFocus = (getSelectionCursorsComparisonValue()??0) <= 0;
                     const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos as SlotCursorInfos;
                     const startSlotCursorInfos = (isAnchorBeforeFocus) ? this.appStore.anchorSlotCursorInfos as SlotCursorInfos : focusSlotCursorInfos;
