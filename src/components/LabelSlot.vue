@@ -275,9 +275,9 @@ export default Vue.extend({
                 return false;
             }            
             let firstVisibleLabelSlotsIndex = -1;
-            const isEmpty = !(Object.values(this.appStore.frameObjects[this.frameId].labelSlotsDict).some((labelSlotContent, index) => {
+            const isEmpty = !(Object.entries(this.appStore.frameObjects[this.frameId].labelSlotsDict).some(([index, labelSlotContent]) => {
                 if((labelSlotContent.shown??true) && firstVisibleLabelSlotsIndex < 0 ){
-                    firstVisibleLabelSlotsIndex = index;
+                    firstVisibleLabelSlotsIndex = Number(index);
                 }
                 return ((labelSlotContent.shown??true) && isFrameLabelSlotStructWithCodeContent(labelSlotContent.slotStructures));
             })

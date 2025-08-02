@@ -1929,10 +1929,10 @@ export const useStore = defineStore("app", {
             const newFramesCaretPositions: NavigationPosition[] = [];
             
             //first add the slots
-            Object.values(newFrame.labelSlotsDict).forEach((element,index) => {
+            Object.entries(newFrame.labelSlotsDict).forEach(([index, element]) => {
                 if(element.shown??true){
                     // we would only have 1 empty slot for this label, so its ID is "0"
-                    newFramesCaretPositions.push({frameId: newFrame.id, isSlotNavigationPosition:true, labelSlotsIndex: index, slotId: "0"});
+                    newFramesCaretPositions.push({frameId: newFrame.id, isSlotNavigationPosition:true, labelSlotsIndex: Number(index), slotId: "0"});
                 }
             });
       

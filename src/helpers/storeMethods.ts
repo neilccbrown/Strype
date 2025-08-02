@@ -821,12 +821,12 @@ export function checkPrecompiledErrorsForFrame(frameId: number): void {
     // so we use the FlatSlotBase generator (only on that frame), and apply the error checks for each flat slot
     // ONLY on code type slots
     const frameObject = useStore().frameObjects[frameId];
-    Object.values(frameObject.labelSlotsDict).forEach((labelSlotStruct, labelSlotsIndex) => {
-        generateFlatSlotBases(getSlotDefFromInfos({frameId, labelSlotsIndex}), labelSlotStruct.slotStructures, "", (flatSlot: FlatSlotBase) => {
+    Object.entries(frameObject.labelSlotsDict).forEach(([labelSlotsIndex, labelSlotStruct]) => {
+        generateFlatSlotBases(getSlotDefFromInfos({frameId, labelSlotsIndex: Number(labelSlotsIndex)}), labelSlotStruct.slotStructures, "", (flatSlot: FlatSlotBase) => {
             if(isSlotCodeType(flatSlot.type)){
                 const slotInfos = {
                     frameId: frameId,
-                    labelSlotsIndex: labelSlotsIndex,
+                    labelSlotsIndex: Number(labelSlotsIndex),
                     slotId: flatSlot.id,
                     slotType: flatSlot.type,
                     code: flatSlot.code,
