@@ -496,6 +496,18 @@ export const restoreSavedStateFrameTypes = function(state:{[id: string]: any}): 
             const correspondingFrameObj = getFrameDefType(frameTypeValue);
             if(correspondingFrameObj  !== undefined) {
                 state["frameObjects"][frameId].frameType = correspondingFrameObj;
+                // Make sure all label slots are in the frame state.  They might not be if we have added one
+                // (as we did for the documentation for methods) so we should make sure to add a blank value
+                // to stop exceptions in the code while accessing that value.
+                for (let i = 0; i < state["frameObjects"][frameId].frameType.labels.length; i++) {
+                    if ((state["frameObjects"][frameId].frameType.labels[i].showSlots ?? true) 
+                        && !(i in state["frameObjects"][frameId].labelSlotsDict)) {
+                        state["frameObjects"][frameId].labelSlotsDict[i] = {
+                            shown: !state["frameObjects"][frameId].frameType.labels[i].hidableLabelSlots,
+                            slotStructures: {fields: [{code: ""}], operators: []},
+                        };
+                    }
+                }
                 return true;
             }
             success = false;
@@ -772,6 +784,7 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
     // This method for checking errors is called when a frame has been edited (and lost focus), or during undo/redo changes. As we don't have a way to
     // find which errors are from TigerPython or precompiled errors, and that we wouldn't know what specific error to remove anyway,
     // we clear the errors completely for that frame/slot before we check the errors again for it.
+    console.log("Check errors: " + JSON.stringify(slotInfos));
     const slot = retrieveSlotFromSlotInfos(slotInfos);
     const currentErrorMessage = (slot as BaseSlot).error;
     useStore().setSlotErroneous(
