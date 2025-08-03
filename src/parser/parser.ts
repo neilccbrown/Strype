@@ -303,16 +303,19 @@ export default class Parser {
         }
             
         statement.frameType.labels.forEach((label, labelSlotsIndex) => {
-            if (label.newLine ?? false) {
-                this.line += 1;
-                // Newlines indent below, e.g. comments in funcdef frames:
-                output += "\n" + indentation + "    ";
-            } 
-            
+            let hasDocContent = false;
             // For varassign frames, the symbolic assignment on the UI should be replaced by the Python "=" symbol
             if(label.showLabel??true){
                 if (label.allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
-                    output += "'''";
+                    if (useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields.length > 1 || (useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields[0] as BaseSlot).code.trim().length > 0) {
+                        if (label.newLine ?? false) {
+                            this.line += 1;
+                            // Newlines indent below, e.g. comments in funcdef frames:
+                            output += "\n" + indentation + "    ";
+                        }
+                        output += "'''";
+                        hasDocContent = true;
+                    }
                 }
                 else {
                     output += ((label.label.length > 0 && statement.frameType.type === AllFrameTypesIdentifier.varassign) ? " = " : label.label);
@@ -333,7 +336,7 @@ export default class Parser {
                 // add their code to the output
                 output += slotStartsLengthsAndCode.code.trimStart() + " ";
 
-                if (label.allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
+                if (hasDocContent) {
                     output = output.trimEnd() + "'''";
                 }
             }            
