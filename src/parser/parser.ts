@@ -1,15 +1,16 @@
 import Compiler from "@/compiler/compiler";
-import { hasEditorCodeErrors, trimmedKeywordOperators } from "@/helpers/editor";
-import { generateFlatSlotBases, retrieveSlotByPredicate } from "@/helpers/storeMethods";
+import {hasEditorCodeErrors, trimmedKeywordOperators} from "@/helpers/editor";
+import {generateFlatSlotBases, retrieveSlotByPredicate} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
-import { useStore } from "@/store/store";
+import {useStore} from "@/store/store";
 import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
-import { ErrorInfo, TPyParser } from "tigerpython-parser";
+import {ErrorInfo, TPyParser} from "tigerpython-parser";
 import {AppSPYPrefix} from "@/main";
 /*IFTRUE_isPython */
 import { actOnTurtleImport } from "@/helpers/editor";
 /*FITRUE_isPython */
 import {STRYPE_DUMMY_FIELD, STRYPE_EXPRESSION_BLANK, STRYPE_INVALID_OP, STRYPE_INVALID_OPS_WRAPPER, STRYPE_INVALID_SLOT} from "@/helpers/pythonToFrames";
+
 const INDENT = "    ";
 const DISABLEDFRAMES_FLAG =  "\"\"\""; 
 
@@ -303,9 +304,23 @@ export default class Parser {
         }
             
         statement.frameType.labels.forEach((label, labelSlotsIndex) => {
+            let hasDocContent = false;
             // For varassign frames, the symbolic assignment on the UI should be replaced by the Python "=" symbol
             if(label.showLabel??true){
-                output += ((label.label.length > 0 && statement.frameType.type === AllFrameTypesIdentifier.varassign) ? " = " : label.label);
+                if (label.allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
+                    if (useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields.length > 1 || (useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields[0] as BaseSlot).code.trim().length > 0) {
+                        if (label.newLine ?? false) {
+                            this.line += 1;
+                            // Newlines indent below, e.g. comments in funcdef frames:
+                            output += "\n" + indentation + "    ";
+                        }
+                        output += "'''";
+                        hasDocContent = true;
+                    }
+                }
+                else {
+                    output += ((label.label.length > 0 && statement.frameType.type === AllFrameTypesIdentifier.varassign) ? " = " : label.label);
+                }
             }
             
             //if there are slots
@@ -321,6 +336,13 @@ export default class Parser {
                 };
                 // add their code to the output
                 output += slotStartsLengthsAndCode.code.trimStart() + " ";
+
+                if (hasDocContent) {
+                    output = output.trimEnd() + "'''";
+                }
+                else if (label.allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
+                    output = output.trimEnd();
+                }
             }            
         });
         
@@ -633,7 +655,7 @@ export default class Parser {
             slotTypes.push(type);
         };
 
-        generateFlatSlotBases(slotStructures, "", (flatSlot: FlatSlotBase, besidesOp: boolean, opAfter: undefined | string) => {
+        generateFlatSlotBases({allowedSlotContent: allowed }, slotStructures, "", (flatSlot: FlatSlotBase, besidesOp: boolean, opAfter: undefined | string) => {
             if(isSlotQuoteType(flatSlot.type) || isSlotBracketType(flatSlot.type) || flatSlot.type === SlotType.media){
                 // a quote or a bracket is a 1 character token, shown in the code
                 // but it's not editable so we don't include it in the slot positions
@@ -653,7 +675,7 @@ export default class Parser {
                 // we trim the field's code when we are not in a string literal
                 let flatSlotCode = (isSlotStringLiteralType(flatSlot.type) ? flatSlot.code : flatSlot.code.trim());
                 if (flatSlot.type != SlotType.string) {
-                    if (besidesOp && this.saveAsSPY && flatSlotCode === "") {
+                    if (besidesOp && this.saveAsSPY && flatSlotCode === "" && allowed != AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
                         flatSlotCode = STRYPE_EXPRESSION_BLANK;
                     }
                     if (this.saveAsSPY && flatSlotCode != "") {
@@ -685,10 +707,10 @@ export default class Parser {
                 }
                 addSlotInPositionLengths(flatSlotCode.length, flatSlot.id, flatSlotCode, flatSlot.type);
             }
-        }, this.saveAsSPY ? transformSlotLevel : ((s) => s), topLevel);
+        }, this.saveAsSPY && allowed != AllowedSlotContent.FREE_TEXT_DOCUMENTATION ? transformSlotLevel : ((s) => s), topLevel);
 
         // There are a few fields which are permitted to be blank:
-        if (this.saveAsSPY && code == "" && !optionalSlot) {
+        if (this.saveAsSPY && code == "" && !optionalSlot && allowed != AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
             code = STRYPE_EXPRESSION_BLANK;
         }
         

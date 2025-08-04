@@ -502,7 +502,7 @@ test.describe("Enters, saves and loads specific frames", () => {
 
     test("Blanks at the end of funcdef", async ({page}) => {
         await testSpecific(page, [[], [
-            {frameType: "funcdef", slotContent: ["foo", ""], body: [
+            {frameType: "funcdef", slotContent: ["foo", "", ""], body: [
                 {frameType: "blank", slotContent: []},
                 {frameType: "while", slotContent: ["foo"], body: [
                     {frameType: "comment", slotContent: ["Inside def"]},
@@ -520,7 +520,7 @@ test.describe("Enters, saves and loads specific frames", () => {
 
     test("Blanks at the end of funcdef #2", async ({page}) => {
         await testSpecific(page, [[], [
-            {frameType: "funcdef", slotContent: ["foo", ""], body: [
+            {frameType: "funcdef", slotContent: ["foo", "", ""], body: [
                 {frameType: "blank", slotContent: []},
                 {frameType: "blank", slotContent: []},
                 {frameType: "blank", slotContent: []},
@@ -544,7 +544,7 @@ test.describe("Enters, saves and loads specific frames", () => {
 
     test("Comments at the end of funcdefs", async ({page}) => {
         await testSpecific(page, [[], [
-            {frameType: "funcdef", slotContent: ["foo", ""], body: [
+            {frameType: "funcdef", slotContent: ["foo", "", ""], body: [
                 {frameType: "varassign", slotContent: ["1_", "#!0"]},
                 {frameType: "while", slotContent: ["foo"], body: []},
                 {frameType: "comment", slotContent: ["Inside def"]},

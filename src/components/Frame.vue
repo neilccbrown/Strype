@@ -1214,8 +1214,6 @@ export default Vue.extend({
 
 .#{$strype-classname-frame-header} {
     border-radius: 5px;
-    display: flex; 
-    flex-wrap: nowrap;
     justify-content: space-between;
 }
 

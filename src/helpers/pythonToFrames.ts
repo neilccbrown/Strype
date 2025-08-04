@@ -41,6 +41,7 @@ interface CopyState {
     jointParent: FrameObject | null; // The joint parent, if any, for borrowing the parent ID
     disabledLines: number[]; // The line numbers which had a Disabled: prefix
     lineNumberToIndentation: Map<number, string>; // Maps a line number to a string of indentation
+    transformTopComment: ((content: SlotsStructure) => void) | undefined; // If defined, consumes the top docstring-style comment rather than adding it as a frame.
     isSPY: boolean;
 }
 
@@ -524,7 +525,7 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
     useStore().copiedSelectionFrameIds = [];
     try {
         // Use the next available ID to avoid clashing with any existing IDs:
-        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: useStore().nextAvailableId, addToNonJoint: useStore().copiedSelectionFrameIds, addToJoint: undefined, loadedFrames: useStore().copiedFrames, disabledLines: transformed.disabledLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0});
+        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: useStore().nextAvailableId, addToNonJoint: useStore().copiedSelectionFrameIds, addToJoint: undefined, loadedFrames: useStore().copiedFrames, disabledLines: transformed.disabledLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0, transformTopComment: undefined});
         // At this stage, we can make a sanity check that we can copy the given Python code in the current position in Strype (for example, no "import" in a function definition section)
         if(!canPastePythonAtStrypeLocation(currentStrypeLocation)){
             useStore().copiedFrames = {};
@@ -865,7 +866,7 @@ function getRealLineNo(p: ParsedConcreteTree) : number | undefined {
 }
 
 // the given index for the body, and call addFrame on it.
-function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, keywordIndexForLineno: number, childrenIndicesForSlots: (number | number[])[], childIndexForBody: number, s : CopyState) : {s: CopyState, frame: FrameObject} {
+function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, keywordIndexForLineno: number, childrenIndicesForSlots: (number | number[])[], childIndexForBody: number, s : CopyState, transformTopComment?: (content: SlotsStructure, frame: FrameObject) => void) : {s: CopyState, frame: FrameObject} {
     const slots : { [index: number]: LabelSlotsContent} = {};
     for (let slotIndex = 0; slotIndex < childrenIndicesForSlots.length; slotIndex++) {
         slots[slotIndex] = {slotStructures : toSlots(applyIndex(p, childrenIndicesForSlots[slotIndex]))};
@@ -873,7 +874,7 @@ function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, keywo
     const frame = makeFrame(frameType, slots, s.isSPY);    
     s = addFrame(frame, applyIndex(p, keywordIndexForLineno).lineno, s);
     const frameChildren = children(p);
-    const afterChild = copyFramesFromPython(frameChildren[childIndexForBody], {...s, addToNonJoint: frame.childrenIds, addToJoint: undefined, parent: frame});
+    const afterChild = copyFramesFromPython(frameChildren[childIndexForBody], {...s, addToNonJoint: frame.childrenIds, addToJoint: undefined, parent: frame, transformTopComment: transformTopComment ? ((s) => transformTopComment(s, frame)) : undefined});
     s = {...s, nextId: afterChild.nextId, lastLineProcessed: afterChild.lastLineProcessed};
     return {s: s, frame: frame};
 }
@@ -899,6 +900,8 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         // Wrappers where we just skip to the children:
         for (const child of children(p)) {
             s = copyFramesFromPython(child, s);
+            // After the first, it's no longer the top comment:
+            s.transformTopComment = undefined;
         }
         break;
     case Sk.ParseTables.sym.expr_stmt:
@@ -926,7 +929,14 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
                 }
                 else {
                     // Everything else goes in method call:
-                    s = addFrame(makeFrame(AllFrameTypesIdentifier.funccall, {0: {slotStructures: slots}}, s.isSPY), p.lineno, s);
+                    const misc = makeFrame(AllFrameTypesIdentifier.funccall, {0: {slotStructures: slots}}, s.isSPY);
+                    if (misc.frameType.type == AllFrameTypesIdentifier.comment && s.transformTopComment) {
+                        s.transformTopComment(misc.labelSlotsDict[0].slotStructures);
+                        s = {...s, transformTopComment: undefined};
+                    }
+                    else {
+                        s = addFrame(misc, p.lineno, s);
+                    }
                 }
             }
         }
@@ -1089,10 +1099,18 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
             }
         }
         break;
-    case Sk.ParseTables.sym.funcdef:
+    case Sk.ParseTables.sym.funcdef: {
         // First child is keyword, second is the name, third is params, fourth is colon, fifth is body
-        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.funcdef, 0, [1, 2], 4, s).s;
+        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.funcdef, 0, [1, 2], 4, s, (comment : SlotsStructure, frame : FrameObject) => {
+            frame.labelSlotsDict[3] = {slotStructures: comment};
+        });
+        s = r.s;
+        // If we didn't find a top comment, add blank:
+        if (!(3 in r.frame.labelSlotsDict)) {
+            r.frame.labelSlotsDict[3] = {slotStructures: {operators: [], fields: [{code: ""}]}};
+        }
         break;
+    }
     }
     return s;
 }
