@@ -339,6 +339,9 @@ export default class Parser {
                 if (hasDocContent) {
                     output = output.trimEnd() + "'''";
                 }
+                else if (label.allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
+                    output = output.trimEnd();
+                }
             }            
         });
         
