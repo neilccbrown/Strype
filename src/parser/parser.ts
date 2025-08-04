@@ -1,12 +1,13 @@
 import Compiler from "@/compiler/compiler";
-/*IFTRUE_isPython */
-import {actOnTurtleImport, hasEditorCodeErrors, trimmedKeywordOperators} from "@/helpers/editor";
+import {hasEditorCodeErrors, trimmedKeywordOperators} from "@/helpers/editor";
 import {generateFlatSlotBases, retrieveSlotByPredicate} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import {useStore} from "@/store/store";
 import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
 import {ErrorInfo, TPyParser} from "tigerpython-parser";
 import {AppSPYPrefix} from "@/main";
+/*IFTRUE_isPython */
+import { actOnTurtleImport } from "@/helpers/editor";
 /*FITRUE_isPython */
 import {STRYPE_DUMMY_FIELD, STRYPE_EXPRESSION_BLANK, STRYPE_INVALID_OP, STRYPE_INVALID_OPS_WRAPPER, STRYPE_INVALID_SLOT} from "@/helpers/pythonToFrames";
 
