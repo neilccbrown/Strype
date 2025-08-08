@@ -499,7 +499,11 @@ export default Vue.extend({
             // see https://stackoverflow.com/questions/21680363/prevent-drag-event-to-interfere-with-input-elements-in-firefox-using-html5-drag
             let frameId = this.frameId;
             do{
-                (document.getElementById(getFrameUID(frameId)) as HTMLDivElement).draggable = this.isDisabled || (!isEntering && !this.isDisabled);
+                const frameElement = document.getElementById(getFrameUID(frameId)) as HTMLDivElement;
+                // Possible to not have a frame, e.g. for project doc header:
+                if (frameElement) {
+                    frameElement.draggable = this.isDisabled || (!isEntering && !this.isDisabled);
+                }
                 frameId = this.appStore.frameObjects[frameId].parentId;
             } 
             while(frameId > 0);

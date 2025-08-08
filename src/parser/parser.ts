@@ -276,6 +276,7 @@ export default class Parser {
         // and 2) we need to check if the comment is multilines for setting the right comment indicator (''' instead of #). A comment is always a single slot so there is no extra logic to consider.
         if((statement.frameType.type === AllFrameTypesIdentifier.comment)
         || (statement.frameType.type === AllFrameTypesIdentifier.library)
+        || (statement.frameType.type === AllFrameTypesIdentifier.projectDocumentation)
         || (!this.saveAsSPY && statement.frameType.type === AllFrameTypesIdentifier.funccall && isFieldBaseSlot(statement.labelSlotsDict[0].slotStructures.fields[0]) && (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.startsWith("#"))){
             const commentContent = (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code;
             
@@ -300,7 +301,7 @@ export default class Parser {
             
             return (this.excludeLoopsAndCommentsAndCloseTry)
                 ? passLine // This will just be an empty code placeholder, so it shouldn't be a problem for the code
-                : ((commentContent.includes("\n")) ? (indentation+"'''" + commentContent.replaceAll("\n", ("\n"+indentation)).replaceAll("'''","\\'\\'\\'") + "'''\n") : (indentation + "#" + commentContent + "\n"));
+                : ((commentContent.includes("\n") || statement.frameType.type === AllFrameTypesIdentifier.projectDocumentation) ? (indentation+"'''" + commentContent.replaceAll("\n", ("\n"+indentation)).replaceAll("'''","\\'\\'\\'") + "'''\n") : (indentation + "#" + commentContent + "\n"));
         }
             
         statement.frameType.labels.forEach((label, labelSlotsIndex) => {

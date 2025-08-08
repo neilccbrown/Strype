@@ -49,6 +49,15 @@
                                     :class="{'editor-code-div noselect print-full-height':true/* IFTRUE_isPython , 'full-height-editor-code-div':!isExpandedPythonExecArea, [scssVars.croppedEditorDivClassName]: isExpandedPythonExecArea FITRUE_isPython */}"
                                     @mousedown="handleWholeEditorMouseDown"
                                 >
+                                    <FrameHeader
+                                        :labels="projectDocLabels"
+                                        :frameId="-10"
+                                        frameType="projectDocFrameType"
+                                        :isDisabled="false"
+                                        :frameAllowChildren="false"
+                                        :erroneous="false"
+                                        :wasLastRuntimeError="false"
+                                        :onFocus="() => {}"/>
                                     <FrameContainer
                                         v-for="container in containerFrames"
                                         :key="container.frameType.type + '-id:' + container.id"
@@ -106,6 +115,7 @@ import {Splitpanes, Pane, PaneData} from "splitpanes";
 import { useStore, settingsStore } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, GAPIState, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos } from "@/types/types";
 import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames } from "./helpers/editor";
+import {AllowedSlotContent, AllFrameTypesIdentifier} from "@/types/types";
 /* IFTRUE_isPython */
 import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getPEAComponentRefId } from "@/helpers/editor";
 /* FITRUE_isPython */
@@ -127,6 +137,7 @@ import EditSoundDlg from "@/components/EditSoundDlg.vue";
 import axios from "axios";
 import scssVars from "@/assets/style/_export.module.scss";
 import {loadDivider} from "@/helpers/load-save";
+import FrameHeader from "@/components/FrameHeader.vue";
 
 let autoSaveTimerId = -1;
 let projectSaveFunctionsState : ProjectSaveFunction[] = [];
@@ -138,6 +149,7 @@ export default Vue.extend({
     name: "App",
     
     components: {
+        FrameHeader,
         MessageBanner,
         FrameContainer,
         Commands,
@@ -177,7 +189,7 @@ export default Vue.extend({
              
         // gets the container frames objects which are in the root
         containerFrames(): FrameObject[] {
-            return this.appStore.getFramesForParentId(0);
+            return this.appStore.getFramesForParentId(0).filter((f) => f.frameType.type != AllFrameTypesIdentifier.projectDocumentation);
         },
 
         slotFocusId() : string {
@@ -203,6 +215,14 @@ export default Vue.extend({
 
         strypeCommandsRefId(): string {
             return getStrypeCommandComponentRefId();
+        },
+        
+        projectDocLabels() {
+            return [{ label: "‘‘‘", showSlots: true, acceptAC: false, optionalSlot: false, defaultText: "Project description", allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION}];
+        },
+        
+        projectDocFrameType() {
+            return AllFrameTypesIdentifier.projectDocumentation;
         },
 
         editorCommandsSplitterPane2Size: {
