@@ -298,6 +298,10 @@ export default class Parser {
                     return passLine; // Make sure we don't mess up the line numbers
                 }
             }
+            // The project doc is optional so if it's blank omit it, and we don't mind about line numbers for SPY:
+            if (statement.frameType.type === AllFrameTypesIdentifier.projectDocumentation && commentContent.trim().length == 0) {
+                return "";
+            }
             
             return (this.excludeLoopsAndCommentsAndCloseTry)
                 ? passLine // This will just be an empty code placeholder, so it shouldn't be a problem for the code
