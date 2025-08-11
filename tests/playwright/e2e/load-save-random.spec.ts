@@ -2,7 +2,7 @@
 // and fill the slots with blanks or random content then see if it
 // saves or not.
 
-import {allFrameCommandsDefs, FuncDefIdentifiers, getFrameDefType, CommentFrameTypesIdentifier, JointFrameIdentifiers, ImportFrameTypesIdentifiers, StandardFrameTypesIdentifiers} from "../../cypress/support/frame-types";
+import {allFrameCommandsDefs, AllowedSlotContent, CommentFrameTypesIdentifier, FuncDefIdentifiers, getFrameDefType, ImportFrameTypesIdentifiers, JointFrameIdentifiers, StandardFrameTypesIdentifiers} from "../../cypress/support/frame-types";
 import seedrandom from "seedrandom";
 import en from "../../../src/localisation/en/en_main.json";
 
@@ -149,7 +149,7 @@ function genRandomFrame(fromFrames: string[], level : number): FrameEntry {
             }
             else {
                 const expr = genRandomExpression();
-                return id == "comment" ? expr.trim() : expr;
+                return id == "comment" || id == "library" ? expr.trim() : expr;
             }
         }),
         ...(children !== undefined ? { body: disable ? disableAll(children) : children } : {}),
@@ -210,10 +210,12 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
         await page.waitForTimeout(100);
     }
     
-    for (const s of frame.slotContent) {
+    for (let i = 0; i < frame.slotContent.length; i++){
+        const slotType = getFrameDefType(frame.frameType).labels.filter((l) => l.showSlots ?? true)[i].allowedSlotContent ?? AllowedSlotContent.TERMINAL_EXPRESSION;
+        const s = frame.slotContent[i];
         console.log("Entering slot:   <<<" + s + ">>> into " + frame.frameType);
         await checkFrameXorTextCursor(page, false, "Slot of frame " + frame.frameType);
-        const enterable = frame.frameType === "comment" ? s : s.replaceAll(/[“”]/g, "\"").replaceAll(/[‘’]/g, "'");
+        const enterable = slotType == AllowedSlotContent.FREE_TEXT_DOCUMENTATION || slotType == AllowedSlotContent.LIBRARY_ADDRESS ? s : s.replaceAll(/[“”]/g, "\"").replaceAll(/[‘’]/g, "'");
         await typeIndividually(page, enterable, 200);
         await page.keyboard.press("ArrowRight");
         await page.waitForTimeout(100);
@@ -339,7 +341,7 @@ async function getAllFrames(container : ElementHandle<HTMLElement>) : Promise<Fr
         const disabled = await el.evaluate((el) => el.classList.contains("disabled"));
         frameEntries.push({
             frameType: frameType ?? "<unknown>",
-            slotContent: slots.map((s) => s.trim().replace(/\u200B/g, "") ?? ""),
+            slotContent: slots.map((s) => s.replace(/\u200B/g, "") ?? ""),
             ...(disabled ? {disabled: true} : {}),
             ...(body !== undefined ? { body } : {}),
             ...(joint !== undefined ? { joint } : {}),
