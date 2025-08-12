@@ -1,7 +1,7 @@
 <template>
     <div tabindex="-1" @focus="onFocus(true)" @blur="onFocus(false)" style="outline: none;">
         <div :class="'frame-header-div-line' + (groupIndex > 0 ? ' frame-header-later-line' : '')"
-             v-for="(group, groupIndex) in splitAtNewLines(labels)"
+             v-for="(group, groupIndex) in splitLabels"
              :key="groupIndex">
             <div
                 :class="'next-to-eachother label-slots-struct-wrapper' + (item.label=='\'\'\'' ? ' magicdoc' : '')"
@@ -23,8 +23,8 @@
                     :labelIndex="originalIndex"
                 />
             </div>
+            <i v-if="wasLastRuntimeError && groupIndex == splitLabels.length - 1" :class="{'fas fa-exclamation-triangle fa-xs runtime-err-icon': true, 'runtime-past-err-icon': !erroneous}"></i>
         </div>
-        <i v-if="wasLastRuntimeError" :class="{'fas fa-exclamation-triangle fa-xs runtime-err-icon': true, 'runtime-past-err-icon': !erroneous}"></i>
     </div>
 </template>
 
@@ -38,6 +38,24 @@ import { useStore } from "@/store/store";
 import {AllFrameTypesIdentifier, FrameLabel} from "@/types/types";
 import { mapStores } from "pinia";
 import scssVars from "@/assets/style/_export.module.scss";
+
+// Splits into a list of lists (each outer list is a line, with 1 or more items on it)
+// by looking at the newLine flag in the FrameLabel.
+function splitAtNewLines(labels : FrameLabel[]) : {item: FrameLabel, originalIndex: number}[][] {
+    const result : {item: FrameLabel, originalIndex: number}[][] = [];
+    let currentGroup : {item: FrameLabel, originalIndex: number}[] = [];
+    labels.forEach((item, index) => {
+        if (item.newLine && currentGroup.length > 0) {
+            result.push(currentGroup);
+            currentGroup = [];
+        }
+        currentGroup.push({ item, originalIndex: index });
+    });
+    if (currentGroup.length > 0) {
+        result.push(currentGroup);
+    }
+    return result;
+}
 
 //////////////////////
 //     Component    //
@@ -73,6 +91,10 @@ export default Vue.extend({
             // just to be able to use in template
             return scssVars;
         },
+        
+        splitLabels() {
+            return splitAtNewLines(this.labels as FrameLabel[]);
+        },
     },
 
     methods:{
@@ -82,24 +104,6 @@ export default Vue.extend({
 
         areSlotsShown(labelDetails: FrameLabel): boolean {
             return labelDetails.showSlots??true;
-        },
-
-        // Splits into a list of lists (each outer list is a line, with 1 or more items on it)
-        // by looking at the newLine flag in the FrameLabel.
-        splitAtNewLines(labels : FrameLabel[]) : {item: FrameLabel, originalIndex: number}[][] {
-            const result : {item: FrameLabel, originalIndex: number}[][] = [];
-            let currentGroup : {item: FrameLabel, originalIndex: number}[] = [];
-            labels.forEach((item, index) => {
-                if (item.newLine && currentGroup.length > 0) {
-                    result.push(currentGroup);
-                    currentGroup = [];
-                }
-                currentGroup.push({ item, originalIndex: index });
-            });
-            if (currentGroup.length > 0) {
-                result.push(currentGroup);
-            }
-            return result;
         },
     },
 });
@@ -148,6 +152,7 @@ export default Vue.extend({
 
 .runtime-err-icon {
     margin: 7px 2px 0px 2px;
+    margin-left: auto;
     color:#d66;
 }
 
