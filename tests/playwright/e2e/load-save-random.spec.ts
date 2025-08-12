@@ -416,7 +416,16 @@ test.describe("Enters, saves and loads random frame", () => {
 
             const seed = Math.random().toString();
             console.log(`Seed: "${seed}"`);
-            rng = seedrandom(seed).int32;
+            const prng = seedrandom(seed);
+            rng = prng.int32.bind(prng);
+            if (genRandomInt(3) == 1) {
+                await page.keyboard.press("ArrowLeft");
+                await page.waitForTimeout(100);
+                await page.keyboard.type("Doc " + rng());
+                await page.keyboard.press("ArrowRight");
+                await page.waitForTimeout(100);
+            }
+            
             const frames = [[], [], []] as FrameEntry[][];
             for (let section = 0; section < 3; section++) {
                 const numFrames = 5;
