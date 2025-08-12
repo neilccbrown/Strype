@@ -363,11 +363,26 @@ async function newProject(page: Page) : Promise<void> {
     await page.waitForTimeout(2000);
 }
 
-async function testSpecific(page: Page, sections: FrameEntry[][]) : Promise<void> {
+async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: string) : Promise<void> {
     await page.keyboard.press("Delete");
     await page.keyboard.press("Delete");
     await page.keyboard.press("ArrowUp");
     await page.keyboard.press("ArrowUp");
+    
+    if (projectDoc) {
+        await page.keyboard.press("ArrowLeft");
+        await page.waitForTimeout(100);
+        const lines = projectDoc.split("\n");
+        for (let i = 0; i < lines.length; i++) {
+            if (i > 0) {
+                await page.keyboard.press("Shift+Enter");
+            }
+            await page.keyboard.type(lines[i]);
+        }
+        await page.waitForTimeout(100);
+        await page.keyboard.press("ArrowRight");
+        await page.waitForTimeout(500);
+    }
 
     for (let section = 0; section < 3; section++) {
         for (let j = 0; j < sections[section].length; j++) {
@@ -477,6 +492,22 @@ test.describe("Enters, saves and loads specific frames", () => {
             {frameType: "funccall", slotContent: ["foo()"]},
             {frameType: "comment", slotContent: [""]},
         ]]);
+    });
+    test("Project documentation #1", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "funccall", slotContent: ["foo()"]},
+        ]], "This is the project docs");
+    });
+    test("Project documentation #2", async ({page}) => {
+        await testSpecific(page, [[
+            {frameType: "comment", slotContent: ["This is an import comment"]}], [], [
+            {frameType: "funccall", slotContent: ["foo()"]},
+        ]]);
+    });
+    test("Project documentation #3", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "funccall", slotContent: ["foo()"]},
+        ]], "This is the project docs\nwith newlines in it\nand a trailing newline\n");
     });
     test("Tests trailing blank line", async ({page}) => {
         await testSpecific(page, [[], [], [
@@ -979,6 +1010,17 @@ test.describe("Enters, saves and loads specific frames", () => {
         ]]);
     });
 
+    test("Invalid expressions #2", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "if", slotContent: ["+“”{‘’}"], body: [], joint: []},
+        ]]);
+    });
+    test("Invalid expressions #3", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "varassign", slotContent: ["1_0B", "[1‘ foo bar ’aBü0]‘a’"]},
+        ]]);
+    });
+
     test("Valid nots", async ({page}) => {
         await testSpecific(page, [[], [], [
             {frameType: "funccall", slotContent: [" not foo( not bar)"]},
@@ -1013,5 +1055,14 @@ test.describe("Enters, saves and loads specific frames", () => {
             {frameType: "for", slotContent: ["a,b,c", "x,y,z==d"], body: [], joint: []},
             {frameType: "varassign", slotContent: ["a,b,c", "x,y,z+5"]},
         ]]);
+    });
+
+    test("Libraries with quotes", async ({page}) => {
+        await testSpecific(page, [[
+            {frameType: "library", slotContent: ["\"a\"+\"\""]},
+            {frameType: "library", slotContent: ["(+6.7){\" and \"[]} is not \"\"1"]},
+            {frameType: "library", slotContent: ["(+6.7){“ and ”[]} is not “”1"]},
+            {frameType: "library", slotContent: ["(#‘+’_$\\\\) not in "]},
+        ], [], []]);
     });
 });
