@@ -16,11 +16,14 @@ const DISABLEDFRAMES_FLAG =  "\"\"\"";
 
 // Parse the code contained in the editor, and generate a compiler for this code if no error are found.
 // The method returns an object containing the output code and the compiler.
-export function parseCodeAndGetParseElements(requireCompilation: boolean, saveAsSPY?: boolean): ParserElements{
+// The destination is .spy, or two types of .py.  The plain "py" omits the docstrings from methods and project
+// which can upset the line numbers, for ease of processing during execution, autocomplete, etc.
+// The "py-export" is for user-visible Python when we export to Python, and we should include the doc strings.
+export function parseCodeAndGetParseElements(requireCompilation: boolean, destination: "spy" | "py-export" | "py"): ParserElements{
     // Errors in the code (precompiled errors and TigerPython errors) are looked up at code edition.
     // Therefore, we expect the errors to already be found out when this method is called, and we don't need
     // to retrieve them again.
-    const parser = new Parser(false, saveAsSPY);
+    const parser = new Parser(false, destination);
     const out = parser.parse({});
 
     const hasErrors = hasEditorCodeErrors();
@@ -189,14 +192,14 @@ export default class Parser {
     private excludeLoopsAndCommentsAndCloseTry = false;
     private ignoreCheckErrors = false;
     private saveAsSPY = false;
+    private outputProjectDoc = false;
     private stoppedIndentation = ""; // The indentation level when we encountered the stop frame.
     private libraries : string[] = [];
     
-    constructor(ignoreCheckErrors?: boolean, saveAsSPY?: boolean) {
-        if(ignoreCheckErrors != undefined){
-            this.ignoreCheckErrors = ignoreCheckErrors;
-        }
-        this.saveAsSPY = saveAsSPY ?? false;
+    constructor(ignoreCheckErrors = false, destination: "spy" | "py-export" | "py" = "py") {
+        this.ignoreCheckErrors = ignoreCheckErrors;
+        this.saveAsSPY = destination == "spy";
+        this.outputProjectDoc = destination == "spy" || destination == "py-export";
     }
     
     public getStoppedIndentation() : string {
@@ -279,6 +282,12 @@ export default class Parser {
         || (statement.frameType.type === AllFrameTypesIdentifier.projectDocumentation)
         || (!this.saveAsSPY && statement.frameType.type === AllFrameTypesIdentifier.funccall && isFieldBaseSlot(statement.labelSlotsDict[0].slotStructures.fields[0]) && (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.startsWith("#"))){
             const commentContent = (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code;
+
+
+            // The project doc is optional so if it's blank omit it, and we don't mind about line numbers for SPY:
+            if (!this.outputProjectDoc || statement.frameType.type === AllFrameTypesIdentifier.projectDocumentation && commentContent.trim().length == 0) {
+                return "";
+            }
             
             // Before returning, we update the line counter used for the frame mapping in the parser:
             // +1 except if we are in a multiline comment (and not excluding them) when we then return the number of lines-1 + 2 for the multi quotes
@@ -297,10 +306,6 @@ export default class Parser {
                 else {
                     return passLine; // Make sure we don't mess up the line numbers
                 }
-            }
-            // The project doc is optional so if it's blank omit it, and we don't mind about line numbers for SPY:
-            if (statement.frameType.type === AllFrameTypesIdentifier.projectDocumentation && commentContent.trim().length == 0) {
-                return "";
             }
             
             return (this.excludeLoopsAndCommentsAndCloseTry)
