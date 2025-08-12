@@ -131,10 +131,23 @@ function transformSlotLevel(slots: SlotsStructure, topLevel?: {frameType: string
         // OR the left-hand side is blank
         if (slots.operators[i].code.trim() === "") {
             const before = slots.fields[i];
-            if (!(isFieldBaseSlot(before) && before.code.trim() === "")) {
+            const blankBefore = isFieldBaseSlot(before) && before.code.trim() === "";
+            if (!blankBefore) {
                 if (i + 1 < slots.fields.length) {
                     const after = slots.fields[i + 1];
                     if (!(isFieldBaseSlot(after) && after.code == "") && !(isFieldBracketedSlot(after) && (after.openingBracketValue == "(" || after.openingBracketValue == "["))) {
+                        valid = false;
+                        break;
+                    }
+                }
+            }
+            else {
+                // As a further case, it is not valid to have two blank operators around a blank
+                // slot because that indicates that there are two adjacent brackets/quotes, unless
+                // the right-hand item is a square bracket (which can be parsed as a subscript)
+                if (i > 0 && slots.operators[i - 1].code.trim() === "" && i + 1 < slots.fields.length) {
+                    const nextField = slots.fields[i + 1];
+                    if (!(isFieldBracketedSlot(nextField) && nextField.openingBracketValue == "[")) {
                         valid = false;
                         break;
                     }
