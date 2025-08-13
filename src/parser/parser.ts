@@ -298,7 +298,7 @@ export default class Parser {
 
 
             // The project doc is optional so if it's blank omit it, and we don't mind about line numbers for SPY:
-            if (!this.outputProjectDoc || statement.frameType.type === AllFrameTypesIdentifier.projectDocumentation && commentContent.trim().length == 0) {
+            if (statement.frameType.type === AllFrameTypesIdentifier.projectDocumentation && (!this.outputProjectDoc || commentContent.trim().length == 0)) {
                 return "";
             }
             
