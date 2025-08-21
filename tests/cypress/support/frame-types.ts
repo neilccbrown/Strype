@@ -321,6 +321,8 @@ export function generateAllFrameDefinitionTypes(): void{
             { label: "while ", defaultText: i18n.t("frame.defaultText.condition") as string},
             { label: " :", showSlots: false, defaultText: ""},
         ],
+        allowJointChildren: true,
+        jointFrameTypes: [StandardFrameTypesIdentifiers.else],
         colour: "#E4D5D5",
     };
 
