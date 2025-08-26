@@ -42,14 +42,13 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
-import {CustomEventTypes, getFrameLabelSlotsStructureUID, getLabelSlotUID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, getFunctionCallDefaultText, getEditableSelectionText, openBracketCharacters, stringQuoteCharacters, getMatchingBracket, UIDoubleQuotesCharacters, STRING_DOUBLEQUOTE_PLACERHOLDER, UISingleQuotesCharacters, STRING_SINGLEQUOTE_PLACERHOLDER} from "@/helpers/editor";
+import {CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters} from "@/helpers/editor";
 import {checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import {calculateParamPrompt} from "@/autocompletion/acManager";
 import scssVars from "@/assets/style/_export.module.scss";
-import {readFileAsyncAsData, readImageSizeFromDataURI, splitByRegexMatches} from "@/helpers/common";
+import {isMacOSPlatform, readFileAsyncAsData, readImageSizeFromDataURI, splitByRegexMatches} from "@/helpers/common";
 import {detectBrowser} from "@/helpers/browser";
-import { isMacOSPlatform } from "@/helpers/common";
 import {handleVerticalCaretMove} from "@/helpers/spans";
 
 export default Vue.extend({
@@ -633,13 +632,13 @@ export default Vue.extend({
                 const {slotInfos, cursorPos} = this.appStore.focusSlotCursorInfos;
                 const spanInput = document.getElementById(getLabelSlotUID(slotInfos)) as HTMLSpanElement;
                 const spanInputContent = spanInput.textContent ?? "";
-                const isCommentFrame = (this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment);
+                const allowed = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelIndex].allowedSlotContent;
 
                 // If we're trying to go off the bounds of this slot
                 // For comments, if there is a terminating line return, we do not allow the cursor to be past it (cf LabelSlot.vue onEnterOrTabKeyUp() for why)
                 // We can "push" one half a bracket pair only with "Alt" (or Ctrl on macOS) + arrow within the same level.                
                 if((cursorPos == 0 && event.key==="ArrowLeft") 
-                        || (((cursorPos >= spanInputContent.replace(/\u200B/, "").length) || (isCommentFrame && spanInputContent.endsWith("\n") && cursorPos == spanInputContent.length - 1)) && event.key==="ArrowRight")) {
+                        || (((cursorPos >= spanInputContent.replaceAll(/\u200B/g, "").length) || (allowed == AllowedSlotContent.FREE_TEXT_DOCUMENTATION && spanInputContent.endsWith("\n") && cursorPos == spanInputContent.length - 1)) && event.key==="ArrowRight")) {
                     // DO NOT request a loss of focus here, because we need to be able to know which element of the UI has focus to find the neighbour in this.appStore.leftRightKey()
                     if((event.altKey && !isMacOSPlatform()) || (event.ctrlKey && isMacOSPlatform())){
                         this.checkAndDoPushBracket(this.appStore.focusSlotCursorInfos, event.key==="ArrowLeft");

@@ -327,6 +327,10 @@ export const ContainerTypesIdentifiers = {
     framesMainContainer: "mainContainer",
 };
 
+const SpecialTypesIdentifiers = {
+    projectDocumentation: "projectDocumentation",
+};
+
 const CommentFrameTypesIdentifier = {
     comment: "comment",
 };
@@ -367,6 +371,7 @@ const StandardFrameTypesIdentifiers = {
 };
 
 export const AllFrameTypesIdentifier = {
+    ...SpecialTypesIdentifiers,
     ...ImportFrameTypesIdentifiers,
     ...FuncDefIdentifiers,
     ...StandardFrameTypesIdentifiers,
@@ -446,6 +451,16 @@ export const FrameContainersDefinitions = {
     FuncDefContainerDefinition,
     MainFramesContainerDefinition,
 };
+
+export const ProjectDocumentationDefinition: FramesDefinitions = {
+    ...StatementDefinition,
+    type: AllFrameTypesIdentifier.projectDocumentation,
+    labels: [
+        { label: "‘‘‘", showSlots: true, acceptAC: false, optionalSlot: false, defaultText: "Project description", allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
+    ],
+    colour: "#A00000",
+};
+
 
 let Definitions = {};
 
@@ -700,6 +715,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         LibraryDefinition,
         CommentDefinition,
         GlobalDefinition,
+        ProjectDocumentationDefinition,
         // also add the frame containers as we might need to retrieve them too
         ...FrameContainersDefinitions,
     };
@@ -720,6 +736,8 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             case MainFramesContainerDefinition.type:
                 frameObject.frameType.labels[0].label = i18n.t("appMessage.mainContainer") as string;
                 MainFramesContainerDefinition.labels[0].label = i18n.t("appMessage.mainContainer") as string;
+                break;
+            case ProjectDocumentationDefinition.type:
                 break;
             default:
                 // For all normal frames, we rely on the frame definition type                

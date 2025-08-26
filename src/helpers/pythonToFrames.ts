@@ -51,6 +51,7 @@ declare const Sk: any;
 // The different "locations" in Strype 
 export enum STRYPE_LOCATION {
     UNKNOWN,
+    PROJECT_DOC_SECTION,
     MAIN_CODE_SECTION,
     IN_FUNCDEF,
     FUNCDEF_SECTION,
@@ -481,7 +482,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
 // ready to be pasted immediately afterwards.
 // If successful, returns a map with key-value Strype directives.  If unsuccessful, returns a string with some info about
 // where the Python parse failed.
-export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, format: "py" | "spy", linenoMapping?: Record<number, number>) : string | null | Map<string, string> {
+export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, format: "py" | "spy", linenoMapping?: Record<number, number>, dryrun?: "dryrun" | undefined) : string | null | Map<string, string> {
     const mapLineno = (lineno : number) : number => linenoMapping ? linenoMapping[lineno] : lineno;
     const indents = new Map<number, string>();
     
@@ -525,7 +526,12 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
     useStore().copiedSelectionFrameIds = [];
     try {
         // Use the next available ID to avoid clashing with any existing IDs:
-        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: useStore().nextAvailableId, addToNonJoint: useStore().copiedSelectionFrameIds, addToJoint: undefined, loadedFrames: useStore().copiedFrames, disabledLines: transformed.disabledLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0, transformTopComment: undefined});
+        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: useStore().nextAvailableId, addToNonJoint: useStore().copiedSelectionFrameIds, addToJoint: undefined, loadedFrames: useStore().copiedFrames, disabledLines: transformed.disabledLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0, transformTopComment: (c) => {
+            if (!dryrun) {
+                const docFrame = useStore().frameObjects[-10] as FrameObject;
+                docFrame.labelSlotsDict[0].slotStructures = c;
+            }
+        }});
         // At this stage, we can make a sanity check that we can copy the given Python code in the current position in Strype (for example, no "import" in a function definition section)
         if(!canPastePythonAtStrypeLocation(currentStrypeLocation)){
             useStore().copiedFrames = {};
@@ -1186,6 +1192,10 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION)
     case  STRYPE_LOCATION.IMPORTS_SECTION:
         removeTopLevelBlankFrames();
         return !topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.library, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type));
+    case STRYPE_LOCATION.PROJECT_DOC_SECTION:
+        removeTopLevelBlankFrames();
+        // Given we transform top comment, shouldn't be anything left:
+        return topLevelCopiedFrames.length == 0;
     default:
         // We shouldn't reach this but for safety we return false
         return false;
@@ -1222,7 +1232,7 @@ function makeMapping(section: NumberedLine[]) : Record<number, number> {
 // Each line of the original will end up in exactly one of the three parts of the return.
 // With Python's indentation rules, this operation is actually easier at line level than it is post-parse.
 // The mappings map line numbers in the returned sections to line numbers in the original
-export function splitLinesToSections(allLines : string[]) : {imports: string[]; defs: string[]; main: string[], importsMapping: Record<number, number>, defsMapping: Record<number, number>, mainMapping: Record<number, number>, headers: Record<string, string>, format: "py" | "spy"} {
+export function splitLinesToSections(allLines : string[]) : {projectDoc: string[], imports: string[]; defs: string[]; main: string[], importsMapping: Record<number, number>, defsMapping: Record<number, number>, mainMapping: Record<number, number>, headers: Record<string, string>, format: "py" | "spy"} {
     // There's two possibilities:
     //  - we're loading a .spy with section headings, or
     //  - we're loading a .py where we must infer it.
@@ -1231,6 +1241,7 @@ export function splitLinesToSections(allLines : string[]) : {imports: string[]; 
         // It's a .spy!  Easy street, let's find the headings:
         let line = 1;
         const r = {
+            projectDoc: [] as string[],
             imports: [] as string[],
             defs: [] as string[],
             main: [] as string[],
@@ -1246,6 +1257,9 @@ export function splitLinesToSections(allLines : string[]) : {imports: string[]; 
             if (m) {
                 // Note: we only trim left-hand side, right-hand side is as-is:
                 r.headers[m[1].trim()] = m[2];
+            }
+            else {
+                r.projectDoc.push(allLines[line]);
             }
             line += 1;
         }
@@ -1276,6 +1290,7 @@ export function splitLinesToSections(allLines : string[]) : {imports: string[]; 
     
     // We associate comments with the line immediately following them, so we keep a list of the most recent comments:
     let latestComments: NumberedLine[] = [];
+    const projectDoc: NumberedLine[] = [];
     const imports: NumberedLine[] = [];
     const defs: NumberedLine[] = [];
     const main: NumberedLine[] = [];
@@ -1283,7 +1298,10 @@ export function splitLinesToSections(allLines : string[]) : {imports: string[]; 
     let defIndent = 0;
     allLines.forEach((line : string, zeroBasedLine : number) => {
         const lineWithNum : NumberedLine = {text: line, lineno: zeroBasedLine + 1};
-        if (line.match(/^\s*(import|from)\s+/)) {
+        if (line.match(/^\s*["'].*/) && imports.length + defs.length + main.length == 0) {
+            projectDoc.push(lineWithNum);
+        }
+        else if (line.match(/^\s*(import|from)\s+/)) {
             // Import:
             imports.push(...latestComments);
             latestComments = [];
@@ -1320,6 +1338,7 @@ export function splitLinesToSections(allLines : string[]) : {imports: string[]; 
     // Add any trailing comments:
     main.push(...latestComments);
     return {
+        projectDoc: projectDoc.map((l) => l.text), 
         imports: imports.map((l) => l.text),
         defs: defs.map((l) => l.text),
         main: main.map((l) => l.text),
@@ -1342,12 +1361,15 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
     
     // Bit awkward but we first attempt to copy each to check for errors because
     // if there are any errors we don't want to paste any:
-    let err = copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.format, s.importsMapping);
+    let err = copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.format, s.importsMapping, "dryrun");
     if (typeof err != "string") {
-        err = copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.FUNCDEF_SECTION, s.format, s.defsMapping);
+        err = copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.FUNCDEF_SECTION, s.format, s.defsMapping, "dryrun");
     }
     if (typeof err != "string") {
-        err = copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION, s.format, s.mainMapping);
+        err = copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION, s.format, s.mainMapping, "dryrun");
+    }
+    if (typeof err != "string") {
+        err = copyFramesFromParsedPython(s.projectDoc, STRYPE_LOCATION.PROJECT_DOC_SECTION, s.format, s.mainMapping, "dryrun");
     }
     if (typeof err == "string") {
         const msg = cloneDeep(MessageDefinitions.InvalidPythonParseImport);
@@ -1369,6 +1391,7 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
         const isCurLocationInImportsSection = curLocation == STRYPE_LOCATION.IMPORTS_SECTION, isCurLocationInDefsSection = curLocation == STRYPE_LOCATION.FUNCDEF_SECTION, 
             isCurLocationInMainCodeSection = curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION, isCurLocationInAFuncDefFrame = curLocation == STRYPE_LOCATION.IN_FUNCDEF;
 
+        copyFramesFromParsedPython(s.projectDoc, STRYPE_LOCATION.PROJECT_DOC_SECTION, s.format);
         copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.format);
         if (useStore().copiedSelectionFrameIds.length > 0) {
             getCaretContainerComponent(getFrameComponent((isCurLocationInImportsSection) ? useStore().currentFrame.id : useStore().getImportsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(isCurLocationInImportsSection ? "caret" : "end");

@@ -8,7 +8,7 @@ import { getAppSimpleMsgDlgId } from "./editor";
 import i18n from "@/i18n";
 
 export function downloadHex(showImagePopup?: boolean): void {
-    const parserElements = parseCodeAndGetParseElements(true);
+    const parserElements = parseCodeAndGetParseElements(true, "py");
     let succeeded = !parserElements.hasErrors;
     if(succeeded){
         const blob = compileBlob(parserElements.compiler);
@@ -32,7 +32,7 @@ export function downloadHex(showImagePopup?: boolean): void {
 }
 
 export function getPythonContent(): Promise<string> {
-    const parserElements = parseCodeAndGetParseElements(false);
+    const parserElements = parseCodeAndGetParseElements(false, "py-export");
     if (parserElements.hasErrors) {
         // Notify the user of any detected errors in the code
         useStore().simpleModalDlgMsg = i18n.t("appMessage.preCompiledErrorNeedFix") as string;
