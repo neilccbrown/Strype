@@ -5,7 +5,9 @@ const i18n = { t: ((x : string) => x)};
 export enum AllowedSlotContent {
     ONLY_NAMES,
     ONLY_NAMES_OR_STAR,
-    TERMINAL_EXPRESSION
+    TERMINAL_EXPRESSION,
+    FREE_TEXT_DOCUMENTATION,
+    LIBRARY_ADDRESS,
 }
 
 export interface FrameLabel {
@@ -17,6 +19,7 @@ export interface FrameLabel {
     optionalSlot?: boolean; //default false (indicate that this label does not require at least 1 slot value)
     acceptAC?: boolean; //default true
     allowedSlotContent?: AllowedSlotContent; // default TERMINAL_EXPRESSION; what the slot accepts
+    newLine?: boolean;
 }
 
 export interface FramesDefinitions {
@@ -256,14 +259,14 @@ export function generateAllFrameDefinitionTypes(): void{
         ...StatementDefinition,
         type: ImportFrameTypesIdentifiers.library,
         labels: [
-            { label: "library ", defaultText: i18n.t("frame.defaultText.libraryAddress") as string, acceptAC: false},
+            { label: "library ", defaultText: i18n.t("frame.defaultText.libraryAddress") as string, acceptAC: false, allowedSlotContent: AllowedSlotContent.LIBRARY_ADDRESS },
         ],
     };
 
     const CommentDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.comment,
-        labels: [{ label: "# ", defaultText: i18n.t("frame.defaultText.comment") as string, optionalSlot: true, acceptAC: false}],
+        labels: [{ label: "# ", defaultText: i18n.t("frame.defaultText.comment") as string, optionalSlot: true, acceptAC: false, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION}],
     };
 
     // Blocks
@@ -321,6 +324,8 @@ export function generateAllFrameDefinitionTypes(): void{
             { label: "while ", defaultText: i18n.t("frame.defaultText.condition") as string},
             { label: " :", showSlots: false, defaultText: ""},
         ],
+        allowJointChildren: true,
+        jointFrameTypes: [StandardFrameTypesIdentifiers.else],
         colour: "#E4D5D5",
     };
 
@@ -363,6 +368,7 @@ export function generateAllFrameDefinitionTypes(): void{
             { label: "def ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
             { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: true, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
             { label: ") :", showSlots: false, defaultText: ""},
+            { label: "‘‘‘", newLine: true, showSlots: true, acceptAC: false, optionalSlot: false, defaultText: "Describe the function", allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],
         colour: "#ECECC8",
     };
