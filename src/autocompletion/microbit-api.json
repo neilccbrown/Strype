@@ -9969,18 +9969,18 @@
             "documentation": "",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
                     {
                         "name": "cls",
                         "defaultValue": null,
                         "argType": "_TC"
                     }
                 ],
-                "positionalOrKeywordArgs": [],
                 "varArgs": null,
                 "keywordOnlyArgs": [],
                 "varKwargs": null,
-                "firstParamIsSelfOrCls": true
+                "firstParamIsSelfOrCls": false
             }
         },
         {

@@ -11,7 +11,6 @@ import ast
 import json
 import os
 from pathlib import Path
-import re
 import subprocess
 import sys
 
@@ -24,6 +23,8 @@ class TreeWalk(ast.NodeVisitor):
         self.content = {}
         # This is used to resolve the version against microbit.json which lists all v2+ parts of the microbit API.
         self.moduleName = moduleName
+        # This is used for detecting the validity of "self" inside a function
+        self.isInsideClass = False
         
     def visit_FunctionDef(self, node):
         if not node.name in self.content:
@@ -79,7 +80,7 @@ class TreeWalk(ast.NodeVisitor):
             # First param check
             if args.args:
                 first_arg_name = args.args[0].arg
-                if first_arg_name in ("self", "cls"):
+                if self.isInsideClass and first_arg_name in ("self", "cls"):
                     signature["firstParamIsSelfOrCls"] = True
 
             # Positional-only args (Python 3.8+)
@@ -139,6 +140,7 @@ class TreeWalk(ast.NodeVisitor):
         self.content[node.name]["type"].append("function")
         # Visit children of this class to find its constructor
         classContentWalker = TreeWalk(self.moduleName + "." + node.name if len(self.moduleName) > 0 else node.name)
+        classContentWalker.isInsideClass = True
         # We need to use the __init__ arguments and signature parts to plunk them inside
         # the class after we're done with checkking all children
         # Note that a class may be a super class, so we may need to check the super class
