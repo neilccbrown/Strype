@@ -66,10 +66,7 @@ class TreeWalk(ast.NodeVisitor):
                     except Exception as e:
                         print("ERROR PARSING ANNOTATION", e)
                 return None
-
-            def clean_arg_name(arg):
-                return re.sub(r'^_+', '', arg.arg)
-
+            
             signature = {
                 "positionalOnlyArgs": [],
                 "positionalOrKeywordArgs": [],
@@ -89,7 +86,7 @@ class TreeWalk(ast.NodeVisitor):
             posonly = getattr(args, "posonlyargs", [])
             for i, arg in enumerate(posonly):
                 signature["positionalOnlyArgs"].append({
-                    "name": clean_arg_name(arg),
+                    "name": arg.arg,
                     "defaultValue": get_default(i, args.defaults, default_offset),
                     "argType": get_annotation(arg)
                 })
@@ -98,7 +95,7 @@ class TreeWalk(ast.NodeVisitor):
             for i, arg in enumerate(args.args):
                 arg_index = i + len(posonly)
                 signature["positionalOrKeywordArgs"].append({
-                    "name": clean_arg_name(arg),
+                    "name": arg.arg,
                     "defaultValue": get_default(arg_index, args.defaults, default_offset),
                     "argType": get_annotation(arg)
                 })
@@ -106,7 +103,7 @@ class TreeWalk(ast.NodeVisitor):
             # *args
             if args.vararg:
                 signature["varArgs"] = {
-                    "name": clean_arg_name(args.vararg),
+                    "name": args.vararg.arg,
                     "argType": get_annotation(args.vararg)
                 }
 
@@ -114,7 +111,7 @@ class TreeWalk(ast.NodeVisitor):
             for i, arg in enumerate(args.kwonlyargs):
                 default_val = get_default(i, args.kw_defaults)
                 signature["keywordOnlyArgs"].append({
-                    "name": clean_arg_name(arg),
+                    "name": arg.arg,
                     "defaultValue": default_val,
                     "argType": get_annotation(arg)
                 })
@@ -122,7 +119,7 @@ class TreeWalk(ast.NodeVisitor):
             # **kwargs
             if args.kwarg:
                 signature["varKwargs"] = {
-                    "name": clean_arg_name(args.kwarg),
+                    "name": args.kwarg.arg,
                     "argType": get_annotation(args.kwarg)
                 }
 
