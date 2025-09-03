@@ -138,11 +138,7 @@ class TreeWalk(ast.NodeVisitor):
         # Classes have a constructor:
         self.content[node.name]["type"].append("function")
         # Visit children of this class to find its constructor
-        # Temporarily change the tree walker module name and content
-        old_module = self.moduleName
-        old_content = self.content
-        self.moduleName = self.moduleName + "." + node.name if len(self.moduleName) > 0 else node.name
-        self.content = {}
+        classContentWalker = TreeWalk(self.moduleName + "." + node.name if len(self.moduleName) > 0 else node.name)
         # We need to use the __init__ arguments and signature parts to plunk them inside
         # the class after we're done with checkking all children
         # Note that a class may be a super class, so we may need to check the super class
@@ -150,19 +146,16 @@ class TreeWalk(ast.NodeVisitor):
         # several parents, but __init__ will be chose as the first one (MRO)).
         class_signature = None
         for child in node.body:
-            signature = self.visit_with_updated_module(child)            
+            signature = classContentWalker.visit_with_updated_module(child)            
             if signature is not None and child.name == "__init__" :
                 class_signature = signature
         for base_class in node.bases:
             # Limit to simple inheritance
             if isinstance(base_class, ast.Name) :
                 # We try to get the content from upper level, if it doesn't get anything, we just skip
-                signature_of_base = findSignatureForClassInOldContent(old_content, base_class.id)
+                signature_of_base = findSignatureForClassInOldContent(self.content, base_class.id)
                 if class_signature is None and signature_of_base is not None :
-                    class_signature =  signature_of_base   
-        # Restaure the tree walker module name and content
-        self.moduleName = old_module
-        self.content = old_content
+                    class_signature =  signature_of_base
         # Add the class signature, if we got it
         if class_signature is not None :
             self.content[node.name]["signature"] = class_signature
