@@ -11,7 +11,6 @@ import ast
 import json
 import os
 from pathlib import Path
-import re
 import subprocess
 import sys
 
@@ -24,6 +23,8 @@ class TreeWalk(ast.NodeVisitor):
         self.content = {}
         # This is used to resolve the version against microbit.json which lists all v2+ parts of the microbit API.
         self.moduleName = moduleName
+        # This is used for detecting the validity of "self" inside a function
+        self.isInsideClass = False
         
     def visit_FunctionDef(self, node):
         if not node.name in self.content:
@@ -66,10 +67,7 @@ class TreeWalk(ast.NodeVisitor):
                     except Exception as e:
                         print("ERROR PARSING ANNOTATION", e)
                 return None
-
-            def clean_arg_name(arg):
-                return re.sub(r'^_+', '', arg.arg)
-
+            
             signature = {
                 "positionalOnlyArgs": [],
                 "positionalOrKeywordArgs": [],
@@ -82,14 +80,14 @@ class TreeWalk(ast.NodeVisitor):
             # First param check
             if args.args:
                 first_arg_name = args.args[0].arg
-                if first_arg_name in ("self", "cls"):
+                if self.isInsideClass and first_arg_name in ("self", "cls"):
                     signature["firstParamIsSelfOrCls"] = True
 
             # Positional-only args (Python 3.8+)
             posonly = getattr(args, "posonlyargs", [])
             for i, arg in enumerate(posonly):
                 signature["positionalOnlyArgs"].append({
-                    "name": clean_arg_name(arg),
+                    "name": arg.arg,
                     "defaultValue": get_default(i, args.defaults, default_offset),
                     "argType": get_annotation(arg)
                 })
@@ -98,7 +96,7 @@ class TreeWalk(ast.NodeVisitor):
             for i, arg in enumerate(args.args):
                 arg_index = i + len(posonly)
                 signature["positionalOrKeywordArgs"].append({
-                    "name": clean_arg_name(arg),
+                    "name": arg.arg,
                     "defaultValue": get_default(arg_index, args.defaults, default_offset),
                     "argType": get_annotation(arg)
                 })
@@ -106,7 +104,7 @@ class TreeWalk(ast.NodeVisitor):
             # *args
             if args.vararg:
                 signature["varArgs"] = {
-                    "name": clean_arg_name(args.vararg),
+                    "name": args.vararg.arg,
                     "argType": get_annotation(args.vararg)
                 }
 
@@ -114,7 +112,7 @@ class TreeWalk(ast.NodeVisitor):
             for i, arg in enumerate(args.kwonlyargs):
                 default_val = get_default(i, args.kw_defaults)
                 signature["keywordOnlyArgs"].append({
-                    "name": clean_arg_name(arg),
+                    "name": arg.arg,
                     "defaultValue": default_val,
                     "argType": get_annotation(arg)
                 })
@@ -122,7 +120,7 @@ class TreeWalk(ast.NodeVisitor):
             # **kwargs
             if args.kwarg:
                 signature["varKwargs"] = {
-                    "name": clean_arg_name(args.kwarg),
+                    "name": args.kwarg.arg,
                     "argType": get_annotation(args.kwarg)
                 }
 
@@ -141,11 +139,8 @@ class TreeWalk(ast.NodeVisitor):
         # Classes have a constructor:
         self.content[node.name]["type"].append("function")
         # Visit children of this class to find its constructor
-        # Temporarily change the tree walker module name and content
-        old_module = self.moduleName
-        old_content = self.content
-        self.moduleName = self.moduleName + "." + node.name if len(self.moduleName) > 0 else node.name
-        self.content = {}
+        classContentWalker = TreeWalk(self.moduleName + "." + node.name if len(self.moduleName) > 0 else node.name)
+        classContentWalker.isInsideClass = True
         # We need to use the __init__ arguments and signature parts to plunk them inside
         # the class after we're done with checkking all children
         # Note that a class may be a super class, so we may need to check the super class
@@ -153,19 +148,16 @@ class TreeWalk(ast.NodeVisitor):
         # several parents, but __init__ will be chose as the first one (MRO)).
         class_signature = None
         for child in node.body:
-            signature = self.visit_with_updated_module(child)            
+            signature = classContentWalker.visit_with_updated_module(child)            
             if signature is not None and child.name == "__init__" :
                 class_signature = signature
         for base_class in node.bases:
             # Limit to simple inheritance
             if isinstance(base_class, ast.Name) :
                 # We try to get the content from upper level, if it doesn't get anything, we just skip
-                signature_of_base = findSignatureForClassInOldContent(old_content, base_class.id)
+                signature_of_base = findSignatureForClassInOldContent(self.content, base_class.id)
                 if class_signature is None and signature_of_base is not None :
-                    class_signature =  signature_of_base   
-        # Restaure the tree walker module name and content
-        self.moduleName = old_module
-        self.content = old_content
+                    class_signature =  signature_of_base
         # Add the class signature, if we got it
         if class_signature is not None :
             self.content[node.name]["signature"] = class_signature

@@ -2019,7 +2019,7 @@
                         "argType": "_IntTypeCode"
                     },
                     {
-                        "name": "initializer",
+                        "name": "__initializer",
                         "defaultValue": "Ellipsis",
                         "argType": "Union[bytes, Iterable[_T]]"
                     }
@@ -2964,7 +2964,7 @@
                 "positionalOnlyArgs": [],
                 "positionalOrKeywordArgs": [
                     {
-                        "name": "o",
+                        "name": "__o",
                         "defaultValue": "Ellipsis",
                         "argType": "object"
                     }
@@ -3117,7 +3117,7 @@
                 "positionalOnlyArgs": [],
                 "positionalOrKeywordArgs": [
                     {
-                        "name": "o",
+                        "name": "__o",
                         "defaultValue": null,
                         "argType": "object"
                     },
@@ -3313,7 +3313,7 @@
                 "positionalOnlyArgs": [],
                 "positionalOrKeywordArgs": [
                     {
-                        "name": "iterable",
+                        "name": "__iterable",
                         "defaultValue": null,
                         "argType": "Iterable[_T]"
                     }
@@ -3467,18 +3467,18 @@
                 "positionalOnlyArgs": [],
                 "positionalOrKeywordArgs": [
                     {
-                        "name": "arg1",
+                        "name": "__arg1",
                         "defaultValue": null,
                         "argType": "SupportsLessThanT"
                     },
                     {
-                        "name": "arg2",
+                        "name": "__arg2",
                         "defaultValue": null,
                         "argType": "SupportsLessThanT"
                     }
                 ],
                 "varArgs": {
-                    "name": "args",
+                    "name": "_args",
                     "argType": "SupportsLessThanT"
                 },
                 "keywordOnlyArgs": [
@@ -3513,18 +3513,18 @@
                 "positionalOnlyArgs": [],
                 "positionalOrKeywordArgs": [
                     {
-                        "name": "arg1",
+                        "name": "__arg1",
                         "defaultValue": null,
                         "argType": "SupportsLessThanT"
                     },
                     {
-                        "name": "arg2",
+                        "name": "__arg2",
                         "defaultValue": null,
                         "argType": "SupportsLessThanT"
                     }
                 ],
                 "varArgs": {
-                    "name": "args",
+                    "name": "_args",
                     "argType": "SupportsLessThanT"
                 },
                 "keywordOnlyArgs": [
@@ -3555,7 +3555,7 @@
                 "positionalOnlyArgs": [],
                 "positionalOrKeywordArgs": [
                     {
-                        "name": "i",
+                        "name": "__i",
                         "defaultValue": null,
                         "argType": "Iterator[_T]"
                     }
@@ -3657,13 +3657,13 @@
             "type": [
                 "function"
             ],
-            "documentation": "Return the Unicode code point for a one-character string.",
+            "documentation": "Return the ordinal value of a character.\n\nIf the argument is a one-character string, return the Unicode code\npoint of that character.\n\nIf the argument is a bytes or bytearray object of length 1, return its\nsingle byte value.",
             "version": 1,
             "signature": {
                 "positionalOnlyArgs": [],
                 "positionalOrKeywordArgs": [
                     {
-                        "name": "c",
+                        "name": "character",
                         "defaultValue": null,
                         "argType": "None"
                     }
@@ -9969,18 +9969,18 @@
             "documentation": "",
             "version": 1,
             "signature": {
-                "positionalOnlyArgs": [
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
                     {
                         "name": "cls",
                         "defaultValue": null,
                         "argType": "_TC"
                     }
                 ],
-                "positionalOrKeywordArgs": [],
                 "varArgs": null,
                 "keywordOnlyArgs": [],
                 "varKwargs": null,
-                "firstParamIsSelfOrCls": true
+                "firstParamIsSelfOrCls": false
             }
         },
         {
