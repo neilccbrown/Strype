@@ -992,10 +992,22 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         }
         break;
     }
-    case Sk.ParseTables.sym.while_stmt:
+    case Sk.ParseTables.sym.while_stmt: {
         // First child is keyword, second is the condition, third is colon, fourth is body
-        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.while, 0, [1], 3, s).s;
+        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.while, 0, [1], 3, s);
+        s = r.s;
+        let i = 3;
+        if (children(p).length >= 5 && children(p)[4].value === "else") {
+            // Skip the else and the colon, which are separate tokens:
+            i += 3;
+            updateFrom(s, makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.else, 4,[], i, {
+                ...s,
+                addToJoint: r.frame.jointFrameIds,
+                jointParent: r.frame,
+            }).s);
+        }
         break;
+    }
     case Sk.ParseTables.sym.for_stmt: {
         // First child is keyword, second is the loop var, third is keyword, fourth is collection, fifth is colon, sixth is body
         const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.for, 0, [1, 3], 5, s);

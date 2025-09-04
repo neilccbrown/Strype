@@ -476,7 +476,7 @@ test.describe("Enters, saves and loads specific frames", () => {
     });
     test("Tests blank between while and if", async ({page}) => {
         await testSpecific(page, [[], [], [
-            {frameType: "while", slotContent: ["foo"], body: []},
+            {frameType: "while", slotContent: ["foo"], body: [], joint: []},
             {frameType: "blank", slotContent: []},
             {frameType: "if", slotContent: ["foo"], body: [], joint: []},
         ]]);
@@ -485,7 +485,7 @@ test.describe("Enters, saves and loads specific frames", () => {
         await testSpecific(page, [[], [], [
             {frameType: "while", slotContent: ["foo"], body: [
                 {frameType: "blank", slotContent: []},
-            ]},
+            ], joint: []},
             {frameType: "if", slotContent: ["foo"], body: [], joint: []},
         ]]);
     });
@@ -513,7 +513,7 @@ test.describe("Enters, saves and loads specific frames", () => {
             {frameType: "blank", slotContent: []},
             {frameType: "while", slotContent: ["foo"], body: [
                 {frameType: "comment", slotContent: ["Inside while"]},
-            ]},
+            ], joint: []},
             {frameType: "comment", slotContent: ["Outside while"]},
         ]]);
     });
@@ -546,7 +546,7 @@ test.describe("Enters, saves and loads specific frames", () => {
         await testSpecific(page, [[], [
             {frameType: "funcdef", slotContent: ["foo", ""], body: [
                 {frameType: "varassign", slotContent: ["1_", "#!0"]},
-                {frameType: "while", slotContent: ["foo"], body: []},
+                {frameType: "while", slotContent: ["foo"], body: [], joint: []},
                 {frameType: "comment", slotContent: ["Inside def"]},
             ]},
             {frameType: "comment", slotContent: ["Outside def"]},
@@ -554,7 +554,7 @@ test.describe("Enters, saves and loads specific frames", () => {
             {frameType: "blank", slotContent: []},
             {frameType: "while", slotContent: ["foo"], body: [
                 {frameType: "comment", slotContent: ["Inside while"]},
-            ]},
+            ], joint: []},
             {frameType: "comment", slotContent: ["Outside while"]},
         ]]);
     });
@@ -563,7 +563,7 @@ test.describe("Enters, saves and loads specific frames", () => {
         await testSpecific(page, [[], [], [
             {frameType: "while", slotContent: ["foo"], body: [
                 {frameType: "comment", slotContent: ["Only comment in body"]},
-            ]},
+            ], joint: []},
             {frameType: "raise", slotContent: ["foo"]},
         ]]);
     });
@@ -643,6 +643,19 @@ test.describe("Enters, saves and loads specific frames", () => {
         ]);
     });
 
+    test("While with else", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "while", slotContent: ["True"], body: [
+                {frameType: "raise", slotContent: ["baz"]},
+            ], joint: [
+                {frameType: "else", slotContent: [], body: [
+                    {frameType: "raise", slotContent: ["abc"]},
+                ]},
+            ]},
+            {frameType: "raise", slotContent: ["foo"]},
+        ]]);
+    });
+
     test("Blanks in try", async ({page}) => {
         test.slow();
         await testSpecific(page, [[], [],
@@ -687,6 +700,7 @@ test.describe("Enters, saves and loads specific frames", () => {
                             "joint": [],
                         },
                     ],
+                    "joint": [],
                 },
                 {
                     "frameType": "blank",
@@ -997,7 +1011,7 @@ test.describe("Enters, saves and loads specific frames", () => {
     test("Invalid commas", async ({page}) => {
         await testSpecific(page, [[], [], [
             {frameType: "if", slotContent: ["a,b,c==d"], body: [], joint: []},
-            {frameType: "while", slotContent: ["a,b,c==d"], body: []},
+            {frameType: "while", slotContent: ["a,b,c==d"], body: [], joint: []},
             {frameType: "with", slotContent: ["a,b,c==d", "x,y,z"], body: []},
             {frameType: "for", slotContent: ["a,b,c", "x,y,z==d"], body: [], joint: []},
             {frameType: "varassign", slotContent: ["a,b,c", "x,y,z+5"]},
