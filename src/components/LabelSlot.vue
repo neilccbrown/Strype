@@ -194,6 +194,7 @@ export default Vue.extend({
                     || isFieldBracketedSlot(this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.fields[1])));
             const isDoc = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex].allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION;
             const frameType = this.appStore.frameObjects[this.frameId].frameType.type;
+            let styles : Record<string, string> = {};
             // Background: if the field has a value, it's set to a semi transparent background when focused, and transparent when not
             // if the field doesn't have a value, it's always set to a white background unless it is not the only field of the current structure 
             // and content isn't optional (then it's transparent) - that is to distinguish the fields that are used for cursors placeholders 
@@ -213,15 +214,19 @@ export default Vue.extend({
                 if ((isStructureSingleSlot || isEmptyFunctionCallSlot || this.defaultText?.replace(/\u200B/g, "")?.trim()) && (optionalSlot != OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK) && this.code.replace(/\u200B/g, "").trim().length == 0) {
                     // Non-focused and empty; white if required, or semi-transparent white if shows prompt
                     backgroundColor = optionalSlot == OptionalSlotType.REQUIRED ? "#FFFFFF" : "rgba(255, 255, 255, 0.6)";
+                    if (isDoc && frameType == AllFrameTypesIdentifier.funcdef) {
+                        backgroundColor = "rgba(255, 255, 255, 0.35)";
+                        styles["--prompt-color"] = "rgb(255, 255, 255, 0)";
+                        styles["transform"] = "scaleY(0.4)";
+                        styles["transform-origin"] = "center";
+                    }
                 }
                 else {
                     // Non-focused and non-empty, leave the underlying background as-is by applying fully transparent background: 
                     backgroundColor = "rgba(255, 255, 255, 0)";
                 }
             }
-            let styles : Record<string, string> = {
-                "background-color": backgroundColor + " !important",
-            };
+            styles["background-color"] = backgroundColor + " !important";
             if (isDoc) {
                 // Note: comment frames would be true here but their colour is set for the whole frame.  We need to set
                 // project and function doc colours per slot because project doc has no frame and function doc has other
@@ -1670,10 +1675,10 @@ export default Vue.extend({
 
 // We can't use :empty because we use a zero-width space for the content
 // when it is empty (at which point :empty is not applied).  So we use our own version:
-    .#{$strype-classname-label-slot-input}[empty-content="true"]::after {
+.#{$strype-classname-label-slot-input}[empty-content="true"]::after {
     content: attr(placeholder);
     font-style: italic;
-    color: #bbb;
+    color: var(--prompt-color, #bbb);
 }
 
 .#{$strype-classname-label-slot-input}.readonly {
