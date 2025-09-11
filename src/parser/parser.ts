@@ -733,7 +733,7 @@ export default class Parser {
         }, this.saveAsSPY && allowed != AllowedSlotContent.FREE_TEXT_DOCUMENTATION ? transformSlotLevel : ((s) => s), topLevel);
 
         // There are a few fields which are permitted to be blank:
-        if (this.saveAsSPY && code == "" && optionalSlot != OptionalSlotType.REQUIRED && allowed != AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
+        if (this.saveAsSPY && code == "" && optionalSlot == OptionalSlotType.REQUIRED && allowed != AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
             code = STRYPE_EXPRESSION_BLANK;
         }
         
