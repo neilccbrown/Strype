@@ -2,6 +2,9 @@ import i18n from "@/i18n";
 import Compiler from "@/compiler/compiler";
 import { useStore } from "@/store/store";
 import scssVars from "@/assets/style/_export.module.scss";
+//import quoteCircle from "@/assets/images/quote-circle.svg?raw";
+import quoteCircle from "!!raw-loader!@/assets/images/quote-circle.svg";
+
 
 // Re-export types from ac-types:
 // Note, important to use * here rather than individual imports, to avoid this issue with Babel:
@@ -462,7 +465,7 @@ export const ProjectDocumentationDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: AllFrameTypesIdentifier.projectDocumentation,
     labels: [
-        { label: "‘‘‘", showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: "Project description", allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
+        { label: quoteCircle, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: "Project description", allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
     ],
     colour: "#A00000",
 };
@@ -681,7 +684,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             { label: "def ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
             { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
             { label: ") :", showSlots: false, defaultText: "" },
-            { label: "‘‘‘", newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: "Describe the function", allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
+            { label: quoteCircle, newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: "Describe the function", allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],
         colour: "#ECECC8",
     };
