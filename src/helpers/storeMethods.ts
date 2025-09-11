@@ -2,7 +2,7 @@ import { getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
-import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameLabel, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
+import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameLabel, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
 import Vue from "vue";
 import { checkEditorCodeErrors, countEditorCodeErrors, getCaretContainerUID, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID } from "./editor";
 import { nextTick } from "@vue/composition-api";
@@ -810,7 +810,7 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
             || slotInfos.slotId != "0");
     }
     const isOptionalSlot = (frameObject.labelSlotsDict[slotInfos.labelSlotsIndex].slotStructures.fields.length > 1 && notEmptyFunctionNameInFunctionCallFrame()) 
-        || (frameObject.frameType.labels[slotInfos.labelSlotsIndex].optionalSlot ?? false);
+        || ((frameObject.frameType.labels[slotInfos.labelSlotsIndex].optionalSlot ?? OptionalSlotType.REQUIRED) != OptionalSlotType.REQUIRED);
     if(slotInfos.code !== "") {
         //if the user entered text in a slot that was blank before the change, remove the error
         if(currentErrorMessage === i18n.t("errorMessage.emptyEditableSlot")) {

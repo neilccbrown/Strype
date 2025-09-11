@@ -3,7 +3,7 @@ import {hasEditorCodeErrors, trimmedKeywordOperators} from "@/helpers/editor";
 import {generateFlatSlotBases, retrieveSlotByPredicate} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import {useStore} from "@/store/store";
-import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
+import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
 import {ErrorInfo, TPyParser} from "tigerpython-parser";
 import {AppSPYPrefix} from "@/main";
 /*IFTRUE_isPython */
@@ -350,7 +350,7 @@ export default class Parser {
             if(label.showSlots??true){
                 // Record each slots' vertical positions for that label.
                 const currentPosition = output.length;
-                const slotStartsLengthsAndCode = this.getSlotStartsLengthsAndCodeForFrameLabel(useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures, currentPosition, label.optionalSlot ?? false, label.allowedSlotContent ?? AllowedSlotContent.TERMINAL_EXPRESSION, {frameType: statement.frameType.type, slotIndex: labelSlotsIndex});
+                const slotStartsLengthsAndCode = this.getSlotStartsLengthsAndCodeForFrameLabel(useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures, currentPosition, label.optionalSlot ?? OptionalSlotType.REQUIRED, label.allowedSlotContent ?? AllowedSlotContent.TERMINAL_EXPRESSION, {frameType: statement.frameType.type, slotIndex: labelSlotsIndex});
                 labelSlotsPositionLengths[labelSlotsIndex] = {
                     slotStarts: slotStartsLengthsAndCode.slotStarts, 
                     slotLengths: slotStartsLengthsAndCode.slotLengths,
@@ -662,7 +662,7 @@ export default class Parser {
         return this.framePositionMap;
     }
 
-    public getSlotStartsLengthsAndCodeForFrameLabel(slotStructures: SlotsStructure, currentOutputPosition: number, optionalSlot: boolean, allowed: AllowedSlotContent, topLevel?: {frameType: string, slotIndex: number}): LabelSlotPositionsAndCode {
+    public getSlotStartsLengthsAndCodeForFrameLabel(slotStructures: SlotsStructure, currentOutputPosition: number, optionalSlot: OptionalSlotType, allowed: AllowedSlotContent, topLevel?: {frameType: string, slotIndex: number}): LabelSlotPositionsAndCode {
         // To retrieve this information, we procede with the following: 
         // we get the flat map of the slots and operate a consumer at each iteration to retrieve the infos we need
         let code = "";
@@ -733,7 +733,7 @@ export default class Parser {
         }, this.saveAsSPY && allowed != AllowedSlotContent.FREE_TEXT_DOCUMENTATION ? transformSlotLevel : ((s) => s), topLevel);
 
         // There are a few fields which are permitted to be blank:
-        if (this.saveAsSPY && code == "" && !optionalSlot && allowed != AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
+        if (this.saveAsSPY && code == "" && optionalSlot != OptionalSlotType.REQUIRED && allowed != AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
             code = STRYPE_EXPRESSION_BLANK;
         }
         

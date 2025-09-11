@@ -75,7 +75,7 @@ import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { closeBracketCharacters, CustomEventTypes, getACLabelSlotUID, getFocusedEditableSlotTextSelectionStartEnd, getFrameComponent, getFrameHeaderUID, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFrameUID, getLabelSlotUID, getMatchingBracket, getNumPrecedingBackslashes, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, keywordOperatorsWithSurroundSpaces, openBracketCharacters, operators, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, simpleSlotStructureToString, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringDoubleQuoteChar, stringQuoteCharacters, stringSingleQuoteChar, UIDoubleQuotesCharacters, UISingleQuotesCharacters } from "@/helpers/editor";
-import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
 import {evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
@@ -187,7 +187,7 @@ export default Vue.extend({
 
         spanBackgroundStyle(): Record<string, string> {
             const isStructureSingleSlot = this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelSlotsIndex].slotStructures.fields.length == 1;
-            const isSlotOptional = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex].optionalSlot;
+            const isSlotOptional = (this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex].optionalSlot ?? OptionalSlotType.REQUIRED) != OptionalSlotType.REQUIRED;
             const isEmptyFunctionCallSlot = (this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall 
                 && this.isFrameEmptyAndAtLabelSlotStart
                 && (this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.operators.length == 0 
@@ -1212,7 +1212,7 @@ export default Vue.extend({
                         const specifyFromImportFrame = (this.frameType == AllFrameTypesIdentifier.fromimport) ? AllFrameTypesIdentifier.fromimport : undefined;
                         const {slots: tempSlots, cursorOffset: tempcursorOffset} = parseCodeLiteral(content, {frameType: specifyFromImportFrame});
                         const parser = new Parser();
-                        correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0, false, AllowedSlotContent.TERMINAL_EXPRESSION).code;
+                        correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0, OptionalSlotType.REQUIRED, AllowedSlotContent.TERMINAL_EXPRESSION).code;
                         cursorOffset = tempcursorOffset;
 
                         // We do a small check here to avoid as much as we can invalid pasted code inside imports.
