@@ -11,7 +11,7 @@
                 <!-- the class isn't set on the parent div so the size of hidden editable slots can still be evaluated correctly -->
                 <div 
                     style="font-weight: 600;"
-                    :class="{['next-to-eachother ' + scssVars.framePythonTokenClassName]: true, hidden: isLabelHidden(item), leftMargin: originalIndex > 0, rightMargin: (item.label.length > 0), [scssVars.frameColouredLabelClassName]: !isCommentFrame}"
+                    :class="{['frame-header-label frame-header-label-' + frameType + ' next-to-eachother ' + scssVars.framePythonTokenClassName]: true, hidden: isLabelHidden(item), leftMargin: originalIndex > 0, rightMargin: (item.label.length > 0), [scssVars.frameColouredLabelClassName]: !isCommentFrame}"
                     v-html="item.label"
                 >
                 </div>
@@ -158,5 +158,22 @@ export default Vue.extend({
 
 .runtime-past-err-icon {
     color:#706e6e;
+}
+.frame-header-label:has(svg) {
+    display: flex;
+    align-items: center;
+    justify-content: center; /* optional */
+}
+.frame-header-label-projectDocumentation svg circle {
+    stroke: #274D19 !important;
+}
+.frame-header-label-projectDocumentation svg text {
+    fill: #274D19 !important;
+}
+.frame-header-label-funcdef svg circle {
+    stroke: rgb(151, 151, 30) !important;
+}
+.frame-header-label-funcdef svg text {
+    fill: rgb(151, 151, 30) !important;
 }
 </style>

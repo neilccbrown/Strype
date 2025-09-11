@@ -52,7 +52,7 @@
                                     <FrameHeader
                                         :labels="projectDocLabels"
                                         :frameId="-10"
-                                        frameType="projectDocFrameType"
+                                        :frameType="projectDocFrameType"
                                         :isDisabled="false"
                                         :frameAllowChildren="false"
                                         :erroneous="false"
