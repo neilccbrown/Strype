@@ -22,7 +22,7 @@ export interface FrameLabel {
     showLabel?: boolean; // default true, indicates if the label is showned (ex method call frame has no label text)
     showSlots?: boolean; // default true, false indicates that the label has no slot to be associated with it (for example label ":" in "if <xxx> :")
     defaultText: string;
-    optionalSlot?: OptionalSlotType; //default false (indicate that this label does not require at least 1 slot value)
+    optionalSlot?: OptionalSlotType; //default REQUIRED (indicate that this label does not require at least 1 slot value)
     acceptAC?: boolean; //default true
     allowedSlotContent?: AllowedSlotContent; // default TERMINAL_EXPRESSION; what the slot accepts
     newLine?: boolean;
@@ -52,6 +52,11 @@ export const ContainerTypesIdentifiers = {
     funcDefsContainer: "funcDefsContainer",
     framesMainContainer: "mainContainer",
 };
+
+export const SpecialTypesIdentifiers = {
+    projectDocumentation: "projectDocumentation",
+};
+
 
 export const CommentFrameTypesIdentifier = {
     comment: "comment",
@@ -93,6 +98,7 @@ export const StandardFrameTypesIdentifiers = {
 };
 
 export const AllFrameTypesIdentifier = {
+    ...SpecialTypesIdentifiers,
     ...ImportFrameTypesIdentifiers,
     ...FuncDefIdentifiers,
     ...StandardFrameTypesIdentifiers,
@@ -171,6 +177,15 @@ export const FrameContainersDefinitions = {
     ImportsContainerDefinition,
     FuncDefContainerDefinition,
     MainFramesContainerDefinition,
+};
+
+export const ProjectDocumentationDefinition: FramesDefinitions = {
+    ...StatementDefinition,
+    type: AllFrameTypesIdentifier.projectDocumentation,
+    labels: [
+        { label: "‘‘‘", showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: "Project description", allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
+    ],
+    colour: "#A00000",
 };
 
 let Definitions = {};
@@ -374,7 +389,7 @@ export function generateAllFrameDefinitionTypes(): void{
             { label: "def ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
             { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
             { label: ") :", showSlots: false, defaultText: ""},
-            { label: "‘‘‘", newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.REQUIRED, defaultText: "Describe the function", allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
+            { label: "‘‘‘", newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: "Describe the function", allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],
         colour: "#ECECC8",
     };
@@ -414,6 +429,7 @@ export function generateAllFrameDefinitionTypes(): void{
         LibraryDefinition,
         CommentDefinition,
         GlobalDefinition,
+        ProjectDocumentationDefinition,
         // also add the frame containers as we might need to retrieve them too
         ...FrameContainersDefinitions,
     };

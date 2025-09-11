@@ -218,7 +218,7 @@ export default Vue.extend({
         },
         
         projectDocLabels() {
-            return [{ label: "‘‘‘", showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, defaultText: "Project description", allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION}];
+            return [{ label: "‘‘‘", showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: "Project description", allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION}];
         },
         
         projectDocFrameType() {
