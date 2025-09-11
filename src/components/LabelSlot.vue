@@ -187,20 +187,39 @@ export default Vue.extend({
 
         spanBackgroundStyle(): Record<string, string> {
             const isStructureSingleSlot = this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelSlotsIndex].slotStructures.fields.length == 1;
-            const isSlotOptional = (this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex].optionalSlot ?? OptionalSlotType.REQUIRED) != OptionalSlotType.REQUIRED;
+            let optionalSlot = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex].optionalSlot ?? OptionalSlotType.REQUIRED;
             const isEmptyFunctionCallSlot = (this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall 
                 && this.isFrameEmptyAndAtLabelSlotStart
                 && (this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.operators.length == 0 
                     || isFieldBracketedSlot(this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.fields[1])));
+            // Background: if the field has a value, it's set to a semi transparent background when focused, and transparent when not
+            // if the field doesn't have a value, it's always set to a white background unless it is not the only field of the current structure 
+            // and content isn't optional (then it's transparent) - that is to distinguish the fields that are used for cursors placeholders 
+            // to those indicating there is no compulsory value            
+            let backgroundColor: string;
+            if (this.focused) {
+                if (this.getSlotContent().trim().length > 0) {
+                    // Focused and non-empty, lighten the background through a semi-transparent white:
+                    backgroundColor = "rgba(255, 255, 255, 0.6)";
+                }
+                else {
+                    // Focused and empty, make it solid white:
+                    backgroundColor = "#FFFFFF";
+                }
+            }
+            else {
+                if ((isStructureSingleSlot || isEmptyFunctionCallSlot || this.defaultText?.replace(/\u200B/g, "")?.trim()) && (optionalSlot != OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK) && this.code.replace(/\u200B/g, "").trim().length == 0) {
+                    // Non-focused and empty; white if required, or semi-transparent white if shows prompt
+                    backgroundColor = optionalSlot == OptionalSlotType.REQUIRED ? "#FFFFFF" : "rgba(255, 255, 255, 0.6)";
+                }
+                else {
+                    // Non-focused and non-empty, leave the underlying background as-is by applying fully transparent background: 
+                    backgroundColor = "rgba(255, 255, 255, 0)";
+                }
+            }
             return {
-                // Background: if the field has a value, it's set to a semi transparent background when focused, and transparent when not
-                // if the field doesn't have a value, it's always set to a white background unless it is not the only field of the current structure 
-                // and content isn't optional (then it's transparent) - that is to distinguish the fields that are used for cursors placeholders 
-                // to those indicating there is no compulsory value
-                "background-color": ((this.focused) 
-                    ? ((this.getSlotContent().trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") 
-                    : (((isStructureSingleSlot || isEmptyFunctionCallSlot || this.defaultText?.replace(/\u200B/g, "")?.trim()) && !isSlotOptional && this.code.replace(/\u200B/g, "").trim().length == 0) ? "#FFFFFF" : "rgba(255, 255, 255, 0)")) 
-                    + " !important", 
+                
+                "background-color": backgroundColor + " !important", 
             };
         }, 
 
