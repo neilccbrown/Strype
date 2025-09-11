@@ -192,6 +192,8 @@ export default Vue.extend({
                 && this.isFrameEmptyAndAtLabelSlotStart
                 && (this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.operators.length == 0 
                     || isFieldBracketedSlot(this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.fields[1])));
+            const isDoc = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex].allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION;
+            const frameType = this.appStore.frameObjects[this.frameId].frameType.type;
             // Background: if the field has a value, it's set to a semi transparent background when focused, and transparent when not
             // if the field doesn't have a value, it's always set to a white background unless it is not the only field of the current structure 
             // and content isn't optional (then it's transparent) - that is to distinguish the fields that are used for cursors placeholders 
@@ -217,10 +219,23 @@ export default Vue.extend({
                     backgroundColor = "rgba(255, 255, 255, 0)";
                 }
             }
-            return {
-                
-                "background-color": backgroundColor + " !important", 
+            let styles : Record<string, string> = {
+                "background-color": backgroundColor + " !important",
             };
+            if (isDoc) {
+                // Note: comment frames would be true here but their colour is set for the whole frame.  We need to set
+                // project and function doc colours per slot because project doc has no frame and function doc has other
+                // things in the function frame header that we don't want to colour
+                if (frameType == AllFrameTypesIdentifier.funcdef) {
+                    styles["color"] = "rgb(114, 114, 39) !important";
+                    styles["font-style"] = "italic";
+                }
+                else if (frameType == AllFrameTypesIdentifier.projectDocumentation) {
+                    styles["color"] = "rgb(39, 77, 25) !important";
+                    styles["font-style"] = "italic";
+                }
+            }
+            return styles;
         }, 
 
         getSpanTypeClass(): string {
