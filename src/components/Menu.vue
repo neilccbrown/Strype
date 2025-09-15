@@ -133,6 +133,8 @@
                 <!-- version indicator-->
                 <a href="https://www.strype.org/history" target="_blank">{{$t('appMenu.version') + '&nbsp;' + getAppVersion +' (' + getLocaleBuildDate +')'}}</a>
                 <span class="hidden">{{ getBuildHash }}</span>
+                <!-- link to privacy policy-->
+                <a href="https://www.strype.org/policy/" target="_blank">{{ $t("appMenu.policy") }}</a>
             </div>
         </Slide>
         <div>
@@ -1518,6 +1520,8 @@ export default Vue.extend({
 .app-menu-footer {
     font-size: smaller;
     color: #3467FE;
+    display: flex;
+    flex-direction: column;
 }
 
 .app-menu-footer:hover {

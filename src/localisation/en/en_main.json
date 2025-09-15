@@ -186,7 +186,8 @@
     "lang": "Language: ",
     "homepage": "Strype Homepage", 
     "apiDocumentation": "Library Documentation...",
-    "version": "Version"
+    "version": "Version",
+    "policy": "Privacy policy"
   },
   "autoCompletion": {
     "myFunctions": "My functions",
