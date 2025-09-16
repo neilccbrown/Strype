@@ -14,6 +14,8 @@
         <!-- Each specific drive is created here, but typing inference is done in getSpecificCloudDriveComponent() -->
         <GoogleDriveComponent driveName="Google Drive" apiName="GAPI" ref="googleDriveComponent"
             :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
+        <OneDriveComponent drive-name="OneDrive" apiName="OneDrive FilePicker API" ref="oneDriveComponent" 
+            :onFileToLoadPicked="()=> console.log('a')" :onFolderToSaveFilePicked="()=> console.log('a')" :onUnsupportedByStrypeFilePicked="()=> console.log('a')" />
     </div>
 </template>
 
@@ -31,6 +33,7 @@ import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { BootstrapDlgSize, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
 import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, SaveExistingCloudProjectInfos } from "@/types/cloud-drive-types";
 import GoogleDriveComponent from "@/components/GoogleDriveComponent.vue";
+import OneDriveComponent from "@/components/OneDriveComponent.vue";
 
 // This enum is used for flaging the action taken when a request to save a file on Google Drive
 // has been done, and a file of the same name already exists on the Drive
@@ -47,6 +50,7 @@ export default Vue.extend({
         SimpleMsgModalDlg,
         ModalDlg,
         GoogleDriveComponent,
+        OneDriveComponent,
     },
 
     props: {
@@ -129,14 +133,14 @@ export default Vue.extend({
             // Each Cloud Drive is created on request (that is, only if such Cloud Drive is needed by the user).
             // (IMPORTANT note: we return a *Promise* because we need to wait for the watcher to perform its actions.)
             let compoment = null as CloudDriveComponent | null;
-            //if(cloudTarget == StrypeSyncTarget.gd){
-            // Google Drive
-            compoment = this.$refs.googleDriveComponent as InstanceType<typeof GoogleDriveComponent>;
-            /*}
+            if(cloudTarget == StrypeSyncTarget.gd){
+                // Google Drive
+                compoment = this.$refs.googleDriveComponent as InstanceType<typeof GoogleDriveComponent>;
+            }
             else{
                 // OneDrive
-                return this.$refs.oneDriveComponent as CloudDriveComponent;
-            }*/
+                compoment = this.$refs.oneDriveComponent as InstanceType<typeof OneDriveComponent>;
+            }
             // We only update the specific Drive's method delegates when needed (that is when the cloudTarget changes)
             if(this.currentCloudTarget != cloudTarget){
                 const resetToDefault = (cloudTarget ==  StrypeSyncTarget.none || cloudTarget == StrypeSyncTarget.fs);

@@ -337,6 +337,9 @@ export default Vue.extend({
                 }, 10000);
                 
             }
+
+            // We clear the session storage as well. This is notably used to clear MSAL authentication data (when using OneDrive).
+            sessionStorage.clear();
         });
 
         // By means of protection against browser crashes or anything that could prevent auto-backup, we do a backup every 2 minutes

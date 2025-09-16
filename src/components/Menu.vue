@@ -19,7 +19,7 @@
             <a :id="loadProjectLinkId" v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLoadProjectModal">{{$t('appMenu.loadProject')}}<span class="strype-menu-kb-shortcut">{{loadProjectKBShortcut}}</span></a>
             <ModalDlg :dlgId="loadProjectModalDlgId" showCloseBtn hideDlgBtns >
                 <div class="project-target-popup-content-container">
-                        <span v-t="'appMessage.loadToTarget'" class="load-save-label"/>
+                    <span v-t="'appMessage.loadToTarget'" class="load-save-label"/>
                     <div :ref="loadProjectTargetButtonGpId" class="project-target-button-container">
                         <div id="loadFromGDStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
                             @mouseenter="changeTargetFocusOnMouseOver">
@@ -1002,14 +1002,15 @@ export default Vue.extend({
 
         loadProject(){
             // Called once sanity save has been performed
-            // If the user chose to sync on Google Drive, we should open the Drive loader. Otherwise, we open default file system.
+            // If the user chose to sync on a Cloud Drive, we should open the Drive loader. Otherwise, we open default file system.
             // DO NOT UPDATE THE CURRENT SYNC FLAG IN THE STATE - we only do that IF loading succeed (because it can be still cancelled or impossible to achieve)
             const selectValue = this.getTargetSelectVal();
             // Reset the temporary sync file flag
             this.tempSyncTarget = this.appStore.syncTarget;
-            if(selectValue == StrypeSyncTarget.gd || this.openSharedProjectId.length > 0 ){
-                (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).loadFile(StrypeSyncTarget.gd);
-            }
+            if(selectValue == StrypeSyncTarget.gd || selectValue == StrypeSyncTarget.od || this.openSharedProjectId.length > 0 ){
+                //TODO resolve the shared project Id and check logic to target the right Drive!
+                (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).loadFile(selectValue);
+            }            
             else{               
                 // And let the user choose a file
                 if(canBrowserOpenFilePicker()){
