@@ -164,16 +164,8 @@ export default Vue.extend({
     align-items: center;
     justify-content: center; /* optional */
 }
-.frame-header-label-projectDocumentation svg circle {
-    stroke: #274D19 !important;
-}
-.frame-header-label-projectDocumentation svg text {
-    fill: #274D19 !important;
-}
-.frame-header-label-funcdef svg circle {
-    stroke: rgb(151, 151, 30) !important;
-}
-.frame-header-label-funcdef svg text {
-    fill: rgb(151, 151, 30) !important;
+.frame-header-label-projectDocumentation > img, .frame-header-label-funcdef > img {
+    height: 0.9em;
+    align-self: center;
 }
 </style>
