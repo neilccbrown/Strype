@@ -2251,7 +2251,13 @@ export const useStore = defineStore("app", {
                 // Retrieve the slot that currently has focus in the current frame by looking up in the DOM
                 const foundSlotCoreInfos = this.focusSlotCursorInfos?.slotInfos as SlotCoreInfos;
                 currentFramePosition = availablePositions.findIndex((e) => e.isSlotNavigationPosition && e.frameId === this.currentFrame.id 
-                        && e.labelSlotsIndex === foundSlotCoreInfos.labelSlotsIndex && e.slotId === foundSlotCoreInfos.slotId);     
+                        && e.labelSlotsIndex === foundSlotCoreInfos.labelSlotsIndex && e.slotId === foundSlotCoreInfos.slotId);
+                
+                if (currentFramePosition == 0 && directionDelta < 0) {
+                    // Nowhere to go (start of project doc slot), stay here:
+                    return;
+                }
+                
                 // Now we can effectively ask the slot to "lose focus" because we could retrieve it (and we need to get it blurred so further actions are not happening in the span)
                 document.getElementById(getLabelSlotUID(foundSlotCoreInfos))?.dispatchEvent(new CustomEvent(CustomEventTypes.editableSlotLostCaret));         
             }
