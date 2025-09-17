@@ -876,7 +876,10 @@ export default Vue.extend({
             // to selectionEnd, below.
             const hasTextSelection = !!this.appStore.mostRecentSelectedText;
             let refactorFocusSpanUID = this.UID; // by default the focus stays where we are
-            const cursorPos = (getTextStartCursorPositionOfHTMLElement(inputSpanField) ?? inputString.length) - inputString.length;
+            let fieldPos = getTextStartCursorPositionOfHTMLElement(inputSpanField);
+            // Account for any zero width spaces:
+            fieldPos -= (inputSpanFieldContent.substring(0, fieldPos).match(/\u200B/g) || []).length; 
+            const cursorPos = fieldPos - inputString.length;
             
             // Our position will no longer have a selection, it's just us at the given cursor pos:
             this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: cursorPos + inputString.length}, {slotInfos: this.coreSlotInfo, cursorPos: cursorPos + inputString.length});
