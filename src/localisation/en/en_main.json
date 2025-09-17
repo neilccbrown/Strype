@@ -19,7 +19,9 @@
       "module": "module ",
       "modulePart": "function/class ",
       "libraryAddress": "location",
-      "comment": "comment "
+      "comment": "comment ",
+      "projectDescription": "project description",
+      "funcDescription": "function description"
     },
     "funcdef_desc": "function definition",
     "varassign_desc": "assignment",

@@ -75,7 +75,7 @@ import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { closeBracketCharacters, CustomEventTypes, getACLabelSlotUID, getFocusedEditableSlotTextSelectionStartEnd, getFrameComponent, getFrameHeaderUID, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFrameUID, getLabelSlotUID, getMatchingBracket, getNumPrecedingBackslashes, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, keywordOperatorsWithSurroundSpaces, openBracketCharacters, operators, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, simpleSlotStructureToString, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringDoubleQuoteChar, stringQuoteCharacters, stringSingleQuoteChar, UIDoubleQuotesCharacters, UISingleQuotesCharacters } from "@/helpers/editor";
-import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
 import {evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
@@ -187,21 +187,60 @@ export default Vue.extend({
 
         spanBackgroundStyle(): Record<string, string> {
             const isStructureSingleSlot = this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelSlotsIndex].slotStructures.fields.length == 1;
-            const isSlotOptional = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex].optionalSlot;
+            let optionalSlot = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex].optionalSlot ?? OptionalSlotType.REQUIRED;
             const isEmptyFunctionCallSlot = (this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall 
                 && this.isFrameEmptyAndAtLabelSlotStart
                 && (this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.operators.length == 0 
                     || isFieldBracketedSlot(this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.fields[1])));
-            return {
-                // Background: if the field has a value, it's set to a semi transparent background when focused, and transparent when not
-                // if the field doesn't have a value, it's always set to a white background unless it is not the only field of the current structure 
-                // and content isn't optional (then it's transparent) - that is to distinguish the fields that are used for cursors placeholders 
-                // to those indicating there is no compulsory value
-                "background-color": ((this.focused) 
-                    ? ((this.getSlotContent().trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") 
-                    : (((isStructureSingleSlot || isEmptyFunctionCallSlot || this.defaultText?.replace(/\u200B/g, "")?.trim()) && !isSlotOptional && this.code.replace(/\u200B/g, "").trim().length == 0) ? "#FFFFFF" : "rgba(255, 255, 255, 0)")) 
-                    + " !important", 
-            };
+            const isDoc = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex].allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION;
+            const frameType = this.appStore.frameObjects[this.frameId].frameType.type;
+            let styles : Record<string, string> = {};
+            // Background: if the field has a value, it's set to a semi transparent background when focused, and transparent when not
+            // if the field doesn't have a value, it's always set to a white background unless it is not the only field of the current structure 
+            // and content isn't optional (then it's transparent) - that is to distinguish the fields that are used for cursors placeholders 
+            // to those indicating there is no compulsory value            
+            let backgroundColor: string;
+            if (this.focused) {
+                if (this.getSlotContent().trim().length > 0) {
+                    // Focused and non-empty, lighten the background through a semi-transparent white:
+                    backgroundColor = "rgba(255, 255, 255, 0.6)";
+                }
+                else {
+                    // Focused and empty, make it solid white:
+                    backgroundColor = "#FFFFFF";
+                }
+            }
+            else {
+                if ((isStructureSingleSlot || isEmptyFunctionCallSlot || this.defaultText?.replace(/\u200B/g, "")?.trim()) && (optionalSlot != OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK) && this.code.replace(/\u200B/g, "").trim().length == 0) {
+                    // Non-focused and empty; white if required, or semi-transparent white if shows prompt
+                    backgroundColor = optionalSlot == OptionalSlotType.REQUIRED ? "#FFFFFF" : "rgba(255, 255, 255, 0.6)";
+                    if (isDoc && frameType == AllFrameTypesIdentifier.funcdef) {
+                        backgroundColor = "rgba(255, 255, 255, 0.35)";
+                        styles["--prompt-color"] = "rgb(255, 255, 255, 0)";
+                        styles["transform"] = "scaleY(0.4)";
+                        styles["transform-origin"] = "center";
+                    }
+                }
+                else {
+                    // Non-focused and non-empty, leave the underlying background as-is by applying fully transparent background: 
+                    backgroundColor = "rgba(255, 255, 255, 0)";
+                }
+            }
+            styles["background-color"] = backgroundColor + " !important";
+            if (isDoc) {
+                // Note: comment frames would be true here but their colour is set for the whole frame.  We need to set
+                // project and function doc colours per slot because project doc has no frame and function doc has other
+                // things in the function frame header that we don't want to colour
+                if (frameType == AllFrameTypesIdentifier.funcdef) {
+                    styles["color"] = "rgb(114, 114, 39) !important";
+                    styles["font-style"] = "italic";
+                }
+                else if (frameType == AllFrameTypesIdentifier.projectDocumentation) {
+                    styles["color"] = "rgb(39, 77, 25) !important";
+                    styles["font-style"] = "italic";
+                }
+            }
+            return styles;
         }, 
 
         getSpanTypeClass(): string {
@@ -1212,7 +1251,7 @@ export default Vue.extend({
                         const specifyFromImportFrame = (this.frameType == AllFrameTypesIdentifier.fromimport) ? AllFrameTypesIdentifier.fromimport : undefined;
                         const {slots: tempSlots, cursorOffset: tempcursorOffset} = parseCodeLiteral(content, {frameType: specifyFromImportFrame});
                         const parser = new Parser();
-                        correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0, false, AllowedSlotContent.TERMINAL_EXPRESSION).code;
+                        correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0, OptionalSlotType.REQUIRED, AllowedSlotContent.TERMINAL_EXPRESSION).code;
                         cursorOffset = tempcursorOffset;
 
                         // We do a small check here to avoid as much as we can invalid pasted code inside imports.
@@ -1636,10 +1675,10 @@ export default Vue.extend({
 
 // We can't use :empty because we use a zero-width space for the content
 // when it is empty (at which point :empty is not applied).  So we use our own version:
-    .#{$strype-classname-label-slot-input}[empty-content="true"]::after {
+.#{$strype-classname-label-slot-input}[empty-content="true"]::after {
     content: attr(placeholder);
     font-style: italic;
-    color: #bbb;
+    color: var(--prompt-color, #bbb);
 }
 
 .#{$strype-classname-label-slot-input}.readonly {

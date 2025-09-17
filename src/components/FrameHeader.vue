@@ -1,5 +1,5 @@
 <template>
-    <div tabindex="-1" @focus="onFocus(true)" @blur="onFocus(false)" style="outline: none;">
+    <div tabindex="-1" @focus="onFocus(true)" @blur="onFocus(false)" :style="'outline: none;' + (frameType == 'projectDocFrameType' ? 'padding:10px;' : '')">
         <div :class="'frame-header-div-line' + (groupIndex > 0 ? ' frame-header-later-line' : '')"
              v-for="(group, groupIndex) in splitLabels"
              :key="groupIndex">
@@ -11,7 +11,7 @@
                 <!-- the class isn't set on the parent div so the size of hidden editable slots can still be evaluated correctly -->
                 <div 
                     style="font-weight: 600;"
-                    :class="{['next-to-eachother ' + scssVars.framePythonTokenClassName]: true, hidden: isLabelHidden(item), leftMargin: originalIndex > 0, rightMargin: (item.label.length > 0), [scssVars.frameColouredLabelClassName]: !isCommentFrame}"
+                    :class="{['frame-header-label frame-header-label-' + frameType + ' next-to-eachother ' + scssVars.framePythonTokenClassName]: true, hidden: isLabelHidden(item), leftMargin: originalIndex > 0, rightMargin: (item.label.length > 0), [scssVars.frameColouredLabelClassName]: !isCommentFrame}"
                     v-html="item.label"
                 >
                 </div>
@@ -158,5 +158,14 @@ export default Vue.extend({
 
 .runtime-past-err-icon {
     color:#706e6e;
+}
+.frame-header-label:has(svg) {
+    display: flex;
+    align-items: center;
+    justify-content: center; /* optional */
+}
+.frame-header-label-projectDocumentation > img, .frame-header-label-funcdef > img {
+    height: 0.9em;
+    align-self: center;
 }
 </style>
