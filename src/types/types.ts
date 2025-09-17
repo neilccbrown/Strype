@@ -155,6 +155,9 @@ export enum AllowedSlotContent {
     LIBRARY_ADDRESS
 }
 
+// REQUIRED means it must have a value, and slot will always show regardless of content or focus
+// HIDDEN_WHEN_UNFOCUSED_AND_BLANK means if empty and unfocused the whole slot will be hidden
+// PROMPT_WHEN_UNFOCUSED_AND_BLANK means if empty and unfocused it will show the slot, and show some prompt text 
 export enum OptionalSlotType {
     REQUIRED,
     HIDDEN_WHEN_UNFOCUSED_AND_BLANK,
@@ -167,7 +170,7 @@ export interface FrameLabel {
     showLabel?: boolean; // default true, indicates if the label is showned (ex method call frame has no label text)
     showSlots?: boolean; // default true, false indicates that the label has no slot to be associated with it (for example label ":" in "if <xxx> :")
     defaultText: string;
-    optionalSlot?: OptionalSlotType; //default REQUIRED (indicate that this label does not require at least 1 slot value)
+    optionalSlot?: OptionalSlotType; //default REQUIRED (indicates whether this label requires a value, and its hiding behaviour when empty; see OptionalSlotType)
     acceptAC?: boolean; //default true
     allowedSlotContent?: AllowedSlotContent; // default TERMINAL_EXPRESSION; what the slot accepts
     newLine?: boolean; //default false; this item starts a new line
