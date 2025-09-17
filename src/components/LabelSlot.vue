@@ -1460,7 +1460,9 @@ export default Vue.extend({
             // To avoid unwanted deletion, we "force" a delay before removing the frame.
             const anchor = this.appStore.anchorSlotCursorInfos;
             const focus = this.appStore.focusSlotCursorInfos;
-            if(this.isFrameEmptyAndAtLabelSlotStart && (!anchor || !focus || areSlotCoreInfosEqual(anchor.slotInfos, focus.slotInfos))){
+            if(this.isFrameEmptyAndAtLabelSlotStart && (!anchor || !focus || areSlotCoreInfosEqual(anchor.slotInfos, focus.slotInfos))
+                // Backspace can't delete from documentation slots in other frames (e.g. project doc, funcdef doc), only from comment frames themselves:
+                && (this.coreSlotInfo.slotType != SlotType.comment || this.frameType == AllFrameTypesIdentifier.comment)){
                 event.stopPropagation();
                 event.stopImmediatePropagation();
                 event.preventDefault();
