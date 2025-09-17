@@ -18,7 +18,10 @@
       "module": "module ",
       "modulePart": "fonction/classe ",
       "libraryAddress": "emplacement",
-      "comment": "commentaire "
+      "comment": "commentaire ",
+      "projectDescription": "description du projet",
+      "funcDescription": "description de la fonction"
+        
     },
     "funcdef_desc": "définition de fonction",
     "varassign_desc": "affectation",
