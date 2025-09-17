@@ -37,19 +37,18 @@
 </template>
 
 <script lang="ts">
-import {AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType} from "@/types/types";
+import {AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType} from "@/types/types";
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
-import {CustomEventTypes, getFrameLabelSlotsStructureUID, getLabelSlotUID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, getFunctionCallDefaultText, getEditableSelectionText, openBracketCharacters, stringQuoteCharacters, getMatchingBracket, UIDoubleQuotesCharacters, STRING_DOUBLEQUOTE_PLACERHOLDER, UISingleQuotesCharacters, STRING_SINGLEQUOTE_PLACERHOLDER} from "@/helpers/editor";
-import {checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
+import {CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters} from "@/helpers/editor";
+import {checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import {calculateParamPrompt} from "@/autocompletion/acManager";
 import scssVars from "@/assets/style/_export.module.scss";
-import {readFileAsyncAsData, readImageSizeFromDataURI, splitByRegexMatches} from "@/helpers/common";
+import {isMacOSPlatform, readFileAsyncAsData, readImageSizeFromDataURI, splitByRegexMatches} from "@/helpers/common";
 import {detectBrowser} from "@/helpers/browser";
-import { isMacOSPlatform } from "@/helpers/common";
 import {handleVerticalCaretMove} from "@/helpers/spans";
 
 export default Vue.extend({
@@ -111,7 +110,7 @@ export default Vue.extend({
             const isFuncCallFrame = this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall;
             if (this.subSlots.length == 1) {
                 // If we are on an optional label slots structure that doesn't contain anything yet, we only show the placeholder if we're focused
-                const isOptionalEmpty = (this.appStore.frameObjects[this.frameId].frameType.labels[this.labelIndex].optionalSlot??false) && this.subSlots.length == 1 && this.subSlots[0].code.length == 0;
+                const isOptionalEmpty = (this.appStore.frameObjects[this.frameId].frameType.labels[this.labelIndex].optionalSlot??OptionalSlotType.REQUIRED) == OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK && this.subSlots.length == 1 && this.subSlots[0].code.length == 0;
                 if(isOptionalEmpty && !this.isFocused){
                     return Promise.resolve([" "]);
                 }
@@ -288,8 +287,9 @@ export default Vue.extend({
         },
 
         majorChange(before: SlotsStructure, after: SlotsStructure) : boolean {
-            const beforeFlat = generateFlatSlotBases(before);
-            const afterFlat = generateFlatSlotBases(after);
+            const slotDef = getSlotDefFromInfos({frameId: this.frameId, labelSlotsIndex: this.labelIndex});
+            const beforeFlat = generateFlatSlotBases(slotDef, before);
+            const afterFlat = generateFlatSlotBases(slotDef, after);
             // Our default behaviour is to discard all AC.  We only keep it if:
             //  - the flat length is the same, AND
             //  - at most one slot has changed
@@ -321,7 +321,8 @@ export default Vue.extend({
         checkSlotRefactoring(slotUID: string, stateBeforeChanges: any, options?: {doAfterCursorSet?: VoidFunction, useFlatMediaDataCode?: boolean}) {
             // Comments do not need to be checked, so we do nothing special for them, but just enforce the caret to be placed at the right place and the code value to be updated
             const currentFocusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
-            if((this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment || this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.library) && currentFocusSlotCursorInfos){
+            const allowed = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelIndex].allowedSlotContent;
+            if (allowed !== undefined && [AllowedSlotContent.FREE_TEXT_DOCUMENTATION, AllowedSlotContent.LIBRARY_ADDRESS].includes(allowed) && currentFocusSlotCursorInfos) {
                 (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields[0] as BaseSlot).code = (document.getElementById(getLabelSlotUID(currentFocusSlotCursorInfos.slotInfos))?.textContent??"").replace(/\u200B/g, "");
                 this.$nextTick(() => {
                     setDocumentSelection(currentFocusSlotCursorInfos, currentFocusSlotCursorInfos);
@@ -631,13 +632,13 @@ export default Vue.extend({
                 const {slotInfos, cursorPos} = this.appStore.focusSlotCursorInfos;
                 const spanInput = document.getElementById(getLabelSlotUID(slotInfos)) as HTMLSpanElement;
                 const spanInputContent = spanInput.textContent ?? "";
-                const isCommentFrame = (this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment);
+                const allowed = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelIndex].allowedSlotContent;
 
                 // If we're trying to go off the bounds of this slot
                 // For comments, if there is a terminating line return, we do not allow the cursor to be past it (cf LabelSlot.vue onEnterOrTabKeyUp() for why)
                 // We can "push" one half a bracket pair only with "Alt" (or Ctrl on macOS) + arrow within the same level.                
                 if((cursorPos == 0 && event.key==="ArrowLeft") 
-                        || (((cursorPos >= spanInputContent.replace(/\u200B/, "").length) || (isCommentFrame && spanInputContent.endsWith("\n") && cursorPos == spanInputContent.length - 1)) && event.key==="ArrowRight")) {
+                        || (((cursorPos >= spanInputContent.replaceAll(/\u200B/g, "").length) || (allowed == AllowedSlotContent.FREE_TEXT_DOCUMENTATION && spanInputContent.endsWith("\n") && cursorPos == spanInputContent.length - 1)) && event.key==="ArrowRight")) {
                     // DO NOT request a loss of focus here, because we need to be able to know which element of the UI has focus to find the neighbour in this.appStore.leftRightKey()
                     if((event.altKey && !isMacOSPlatform()) || (event.ctrlKey && isMacOSPlatform())){
                         this.checkAndDoPushBracket(this.appStore.focusSlotCursorInfos, event.key==="ArrowLeft");
@@ -751,7 +752,7 @@ export default Vue.extend({
             // 1.b) are we after an opening bracket [resp. before a closing bracket] ? (i.e. we are in the first [resp. last] slot of a bracketed structure)
             const immediatePrevNeighbourSlotInfo = getFlatNeighbourFieldSlotInfos(slotInfos, !isToPushLeft, true);
             const isNextToExternalStructBracket = (immediatePrevNeighbourSlotInfo != null && immediatePrevNeighbourSlotInfo.slotType == SlotType.bracket);
-            const isNextToInternalStructBracket =  !isNextToExternalStructBracket && slotInfos.slotId.includes(",") && evaluateSlotType(parentSlot) == SlotType.bracket && ((isToPushLeft) ? slotIndex == 0 : slotIndex == (parentSlot as SlotsStructure).fields.length - 1);
+            const isNextToInternalStructBracket =  !isNextToExternalStructBracket && slotInfos.slotId.includes(",") && evaluateSlotType(getSlotDefFromInfos(slotInfos), parentSlot) == SlotType.bracket && ((isToPushLeft) ? slotIndex == 0 : slotIndex == (parentSlot as SlotsStructure).fields.length - 1);
             isNextToBracket = isNextToExternalStructBracket || isNextToInternalStructBracket;
             if(isNextToBracket) {
                 // Set the slot infos of the neighbour slot to check: that is the slot just preceding [resp. following] the bracketed structure we are in now

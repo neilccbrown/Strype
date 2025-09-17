@@ -74,11 +74,11 @@ import Vue, { PropType } from "vue";
 import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import {getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUID, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, getACLabelSlotUID, getFrameUID, getFrameComponent, simpleSlotStructureToString} from "@/helpers/editor";
-import { AllowedSlotContent, CaretPosition, FrameObject, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, EditImageInDialogFunction, FieldSlot, LoadedMedia, MediaSlot, PythonExecRunningState, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
+import { closeBracketCharacters, CustomEventTypes, getACLabelSlotUID, getFocusedEditableSlotTextSelectionStartEnd, getFrameComponent, getFrameHeaderUID, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFrameUID, getLabelSlotUID, getMatchingBracket, getNumPrecedingBackslashes, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, keywordOperatorsWithSurroundSpaces, openBracketCharacters, operators, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, simpleSlotStructureToString, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringDoubleQuoteChar, stringQuoteCharacters, stringSingleQuoteChar, UIDoubleQuotesCharacters, UISingleQuotesCharacters } from "@/helpers/editor";
+import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
-import { evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import {evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
 import { cloneDeep } from "lodash";
 import LabelSlotsStructure from "./LabelSlotsStructure.vue";
@@ -187,21 +187,60 @@ export default Vue.extend({
 
         spanBackgroundStyle(): Record<string, string> {
             const isStructureSingleSlot = this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelSlotsIndex].slotStructures.fields.length == 1;
-            const isSlotOptional = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex].optionalSlot;
+            let optionalSlot = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex].optionalSlot ?? OptionalSlotType.REQUIRED;
             const isEmptyFunctionCallSlot = (this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall 
                 && this.isFrameEmptyAndAtLabelSlotStart
                 && (this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.operators.length == 0 
                     || isFieldBracketedSlot(this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.fields[1])));
-            return {
-                // Background: if the field has a value, it's set to a semi transparent background when focused, and transparent when not
-                // if the field doesn't have a value, it's always set to a white background unless it is not the only field of the current structure 
-                // and content isn't optional (then it's transparent) - that is to distinguish the fields that are used for cursors placeholders 
-                // to those indicating there is no compulsory value
-                "background-color": ((this.focused) 
-                    ? ((this.getSlotContent().trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") 
-                    : (((isStructureSingleSlot || isEmptyFunctionCallSlot || this.defaultText?.replace(/\u200B/g, "")?.trim()) && !isSlotOptional && this.code.replace(/\u200B/g, "").trim().length == 0) ? "#FFFFFF" : "rgba(255, 255, 255, 0)")) 
-                    + " !important", 
-            };
+            const isDoc = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex].allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION;
+            const frameType = this.appStore.frameObjects[this.frameId].frameType.type;
+            let styles : Record<string, string> = {};
+            // Background: if the field has a value, it's set to a semi transparent background when focused, and transparent when not
+            // if the field doesn't have a value, it's always set to a white background unless it is not the only field of the current structure 
+            // and content isn't optional (then it's transparent) - that is to distinguish the fields that are used for cursors placeholders 
+            // to those indicating there is no compulsory value            
+            let backgroundColor: string;
+            if (this.focused) {
+                if (this.getSlotContent().trim().length > 0) {
+                    // Focused and non-empty, lighten the background through a semi-transparent white:
+                    backgroundColor = "rgba(255, 255, 255, 0.6)";
+                }
+                else {
+                    // Focused and empty, make it solid white:
+                    backgroundColor = "#FFFFFF";
+                }
+            }
+            else {
+                if ((isStructureSingleSlot || isEmptyFunctionCallSlot || this.defaultText?.replace(/\u200B/g, "")?.trim()) && (optionalSlot != OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK) && this.code.replace(/\u200B/g, "").trim().length == 0) {
+                    // Non-focused and empty; white if required, or semi-transparent white if shows prompt
+                    backgroundColor = optionalSlot == OptionalSlotType.REQUIRED ? "#FFFFFF" : "rgba(255, 255, 255, 0.6)";
+                    if (isDoc && frameType == AllFrameTypesIdentifier.funcdef) {
+                        backgroundColor = "rgba(255, 255, 255, 0.35)";
+                        styles["--prompt-color"] = "rgb(255, 255, 255, 0)";
+                        styles["transform"] = "scaleY(0.4)";
+                        styles["transform-origin"] = "center";
+                    }
+                }
+                else {
+                    // Non-focused and non-empty, leave the underlying background as-is by applying fully transparent background: 
+                    backgroundColor = "rgba(255, 255, 255, 0)";
+                }
+            }
+            styles["background-color"] = backgroundColor + " !important";
+            if (isDoc) {
+                // Note: comment frames would be true here but their colour is set for the whole frame.  We need to set
+                // project and function doc colours per slot because project doc has no frame and function doc has other
+                // things in the function frame header that we don't want to colour
+                if (frameType == AllFrameTypesIdentifier.funcdef) {
+                    styles["color"] = "rgb(114, 114, 39) !important";
+                    styles["font-style"] = "italic";
+                }
+                else if (frameType == AllFrameTypesIdentifier.projectDocumentation) {
+                    styles["color"] = "rgb(39, 77, 25) !important";
+                    styles["font-style"] = "italic";
+                }
+            }
+            return styles;
         }, 
 
         getSpanTypeClass(): string {
@@ -275,9 +314,9 @@ export default Vue.extend({
                 return false;
             }            
             let firstVisibleLabelSlotsIndex = -1;
-            const isEmpty = !(Object.values(this.appStore.frameObjects[this.frameId].labelSlotsDict).some((labelSlotContent, index) => {
+            const isEmpty = !(Object.entries(this.appStore.frameObjects[this.frameId].labelSlotsDict).some(([index, labelSlotContent]) => {
                 if((labelSlotContent.shown??true) && firstVisibleLabelSlotsIndex < 0 ){
-                    firstVisibleLabelSlotsIndex = index;
+                    firstVisibleLabelSlotsIndex = Number(index);
                 }
                 return ((labelSlotContent.shown??true) && isFrameLabelSlotStructWithCodeContent(labelSlotContent.slotStructures));
             })
@@ -412,7 +451,7 @@ export default Vue.extend({
 
             // If we arrive here by a click, and the slot is a bracket, a quote or an operator, we should get the focus to the nearest editable frame.
             // We should have neigbours because brackets, quotes and operators are always surronded by fields, but keep TS happy
-            if(this.slotType != SlotType.code && this.slotType != SlotType.string){
+            if(this.slotType != SlotType.code && this.slotType != SlotType.string && this.slotType != SlotType.comment){
                 const clickXValue = event.x;
                 const slotWidth = document.getElementById(getLabelSlotUID(this.coreSlotInfo))?.offsetWidth??0;
                 const slotXPos = document.getElementById(getLabelSlotUID(this.coreSlotInfo))?.getBoundingClientRect().x??0; 
@@ -499,7 +538,11 @@ export default Vue.extend({
             // see https://stackoverflow.com/questions/21680363/prevent-drag-event-to-interfere-with-input-elements-in-firefox-using-html5-drag
             let frameId = this.frameId;
             do{
-                (document.getElementById(getFrameUID(frameId)) as HTMLDivElement).draggable = this.isDisabled || (!isEntering && !this.isDisabled);
+                const frameElement = document.getElementById(getFrameUID(frameId)) as HTMLDivElement;
+                // Possible to not have a frame, e.g. for project doc header:
+                if (frameElement) {
+                    frameElement.draggable = this.isDisabled || (!isEntering && !this.isDisabled);
+                }
                 frameId = this.appStore.frameObjects[frameId].parentId;
             } 
             while(frameId > 0);
@@ -688,7 +731,7 @@ export default Vue.extend({
             // For Enter, if AC is not loaded or no selection is available, we want to take the focus out the slot,
             // except for comment frame that will generate a line return when Control/Shift is combined with Enter
             else if(event.key === "Enter"){
-                if(this.frameType == AllFrameTypesIdentifier.comment && (event.shiftKey || event.ctrlKey)){
+                if(this.slotType == SlotType.comment && (event.shiftKey || event.ctrlKey)){
                     const isAnchorBeforeFocus = (getSelectionCursorsComparisonValue()??0) <= 0;
                     const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos as SlotCursorInfos;
                     const startSlotCursorInfos = (isAnchorBeforeFocus) ? this.appStore.anchorSlotCursorInfos as SlotCursorInfos : focusSlotCursorInfos;
@@ -1096,7 +1139,7 @@ export default Vue.extend({
                     ? (isInString ? this.slotId : ((parentSlotId.length > 0) ? (parentSlotId + ",0") : "0"))
                     : (isInString ? this.slotId : ((parentSlotId.length > 0) ? (parentSlotId + "," + ((retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: parentSlotId}) as SlotsStructure).fields.length -1)) : ("" + (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.coreSlotInfo.labelSlotsIndex].slotStructures.fields.length - 1))));
                 // We only look for the new type and slot core infos for non-string current location to save unnecessary function calls
-                const newFocusSlotType = (isInString) ? this.slotType : evaluateSlotType(retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: newFocusSlotId}));
+                const newFocusSlotType = (isInString) ? this.slotType : evaluateSlotType(getSlotDefFromInfos(this.coreSlotInfo), retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: newFocusSlotId}));
                 const newFocusSlotCoreInfo = (isInString) ? this.coreSlotInfo : {...this.coreSlotInfo, slotId: newFocusSlotId, slotType: newFocusSlotType};
                 const newFocusCursorPos = (moveToHome) ? 0 : (retrieveSlotFromSlotInfos(newFocusSlotCoreInfo) as BaseSlot).code.length;
                 // Then anchor: it will either keep the same if we are doing a selection, or change to the same as focus if we are not.
@@ -1161,7 +1204,7 @@ export default Vue.extend({
             // 3) set the text cursor at the right location       
             // 4) check if the slots need to be refactorised
             // (note: we do not make text treatment for comment frames, except for transforming \r\n to \n)
-            const isCommentFrame = (this.frameType == AllFrameTypesIdentifier.comment);
+            const isCommentSlot = this.slotType === SlotType.comment;
             const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
             const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UID);
             if (type.startsWith("image") || type.startsWith("audio")) {
@@ -1182,7 +1225,7 @@ export default Vue.extend({
                 // and if the line returns are line returns or coming from the UI (slots). For the moment, do as if we can only work from the UI.
                 let cursorOffset = 0;
                 let correctedPastedCode = "";
-                if(isCommentFrame){
+                if(isCommentSlot){
                     correctedPastedCode = content.replaceAll(/(\r\n)/g, "\n");
                 }
                 else{
@@ -1208,7 +1251,7 @@ export default Vue.extend({
                         const specifyFromImportFrame = (this.frameType == AllFrameTypesIdentifier.fromimport) ? AllFrameTypesIdentifier.fromimport : undefined;
                         const {slots: tempSlots, cursorOffset: tempcursorOffset} = parseCodeLiteral(content, {frameType: specifyFromImportFrame});
                         const parser = new Parser();
-                        correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0, false, AllowedSlotContent.TERMINAL_EXPRESSION).code;
+                        correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0, OptionalSlotType.REQUIRED, AllowedSlotContent.TERMINAL_EXPRESSION).code;
                         cursorOffset = tempcursorOffset;
 
                         // We do a small check here to avoid as much as we can invalid pasted code inside imports.
@@ -1303,7 +1346,7 @@ export default Vue.extend({
                         // Restore the text cursor position (need to wait for reactive changes)
                         this.$nextTick(() => {
                             const newCurrentSlotInfoNoType = {...this.coreSlotInfo, slotId: newSlotId};
-                            const newCurrentSlotType = evaluateSlotType(retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
+                            const newCurrentSlotType = evaluateSlotType(getSlotDefFromInfos(newCurrentSlotInfoNoType), retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
                             let newSlotInfos = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
                             const slotUID = getLabelSlotUID(newSlotInfos); 
                             const inputSpanField = document.getElementById(slotUID) as HTMLSpanElement;
@@ -1350,7 +1393,7 @@ export default Vue.extend({
                             // Restore the text cursor position (need to wait for reactive changes)
                             this.$nextTick(() => {
                                 const newCurrentSlotInfoNoType = {...this.coreSlotInfo, slotId: newSlotId};
-                                const newCurrentSlotType = evaluateSlotType(retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
+                                const newCurrentSlotType = evaluateSlotType(getSlotDefFromInfos(newCurrentSlotInfoNoType), retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
                                 const newCurrentSlotInfoWithType = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
                                 const slotCursorInfos: SlotCursorInfos = {slotInfos: newCurrentSlotInfoWithType, cursorPos: newCursorPosition};
                                 resultingSlotUID = getLabelSlotUID(newCurrentSlotInfoWithType);
@@ -1632,10 +1675,10 @@ export default Vue.extend({
 
 // We can't use :empty because we use a zero-width space for the content
 // when it is empty (at which point :empty is not applied).  So we use our own version:
-    .#{$strype-classname-label-slot-input}[empty-content="true"]::after {
+.#{$strype-classname-label-slot-input}[empty-content="true"]::after {
     content: attr(placeholder);
     font-style: italic;
-    color: #bbb;
+    color: var(--prompt-color, #bbb);
 }
 
 .#{$strype-classname-label-slot-input}.readonly {
