@@ -694,7 +694,7 @@ export default Vue.extend({
             }
             
             if (!(event.metaKey || event.altKey || event.ctrlKey)) {
-                // Try to move up/down with this item, if we have wrapped:
+                // Try to move up/down within this item, if we have wrapped:
                 const spans = document.getElementById(this.labelSlotsStructDivId)?.querySelectorAll("span." + scssVars.labelSlotInputClassName + "[contenteditable=\"true\"]") as NodeListOf<HTMLSpanElement>;
                 if (spans.length > 0) {
                     const dest = handleVerticalCaretMove(Array.from(spans), event.key == "ArrowUp" ? "up" : "down");
@@ -716,7 +716,14 @@ export default Vue.extend({
                     return;
                 }
             }
-            // Otherwise we move to an adjacent frame cursor:
+            // Otherwise we move to an adjacent frame cursor.
+            // Special case: if we are the project doc frame, up doesn't do anything and down has to not go beneath us, but rather into the imports
+            let isProjectDoc = this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.projectDocumentation;
+            if (isProjectDoc && event.key == "ArrowUp") {
+                // Do nothing further; up can't go anywhere:
+                return;
+            }
+            
             this.appStore.isEditing = false;
             this.blurEditableSlot(true);
             document.getSelection()?.removeAllRanges();
@@ -726,8 +733,16 @@ export default Vue.extend({
                 this.appStore.changeCaretPosition(event.key);
             }
             else{
-                // Restore the caret visibility
-                Vue.set(this.appStore.frameObjects[this.appStore.currentFrame.id], "caretVisibility", this.appStore.currentFrame.caretPosition);
+                if (isProjectDoc) {
+                    // We want the section after the project doc:
+                    const newCaretId = this.appStore.frameObjects[0].childrenIds[1];
+                    const newCaretPosition = CaretPosition.body;
+                    this.appStore.toggleCaret({id: newCaretId, caretPosition: newCaretPosition});
+                }
+                else {
+                    // Restore the caret visibility
+                    Vue.set(this.appStore.frameObjects[this.appStore.currentFrame.id], "caretVisibility", this.appStore.currentFrame.caretPosition);
+                }
             }
         },
 
