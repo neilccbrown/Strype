@@ -248,11 +248,14 @@ export default Vue.extend({
         doLoadFile(openSharedProjectFileId: string): Promise<void> {
             if(this.oauthToken != null){
                 // When we load for the very first time, we may not have a Drive location to look for. In that case, we look for a Strype folder existence 
-                // (however we do not create it here, we would do this on a save action). If a location is already set, we make sure it still exists. 
+                // (however we do not create it here, we would do this on a save action). If a location is already set*, we make sure it still exists. 
                 // If it doesn't exist anymore, we set the default location to the Strype folder (if available) or just the Drive itself if not.
                 // NOTE: we do not need to check a folder when opening a shared project
+                // (*) so the logic is like so we always check a folder location in Google Drive - if the strypeProjectLocation is a non-empty string 
+                // then we check that folder name; if it's an empty string, or not a string (i.e. when we were on a project opened on the File System)
+                // then we check for "Strype", because it is our default location.
                 if(openSharedProjectFileId.length == 0){
-                    return this.checkDriveStrypeOrOtherFolder(false, !(this.appStore.strypeProjectLocation), (strypeFolderId: string | null) => {
+                    return this.checkDriveStrypeOrOtherFolder(false, !(this.appStore.strypeProjectLocation) || (typeof this.appStore.strypeProjectLocation != "string"), (strypeFolderId: string | null) => {
                         const finaliseCall = () => {
                             // Method called to trigger the file load -- this would be called after we made sure the connection to Google Drive is (still) valid
                             (this.$refs[this.googleDriveFilePickerComponentId] as InstanceType<typeof GoogleDriveFilePicker>).startPicking(false);
