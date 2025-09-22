@@ -20,7 +20,7 @@ src/bar.py              <-- Alternative location is inside src directory
 
 index.txt               <-- Required for non-Github libraries
 
-autocompletion.json     <-- optional, see code completion below
+autocomplete.json     <-- optional, see code completion below
 
 assets/                 <-- optional, see assets below
 

@@ -1,6 +1,9 @@
 import { defineConfig } from "cypress";
 import {rimraf} from "rimraf";
 import fs from "fs";
+// https://github.com/bahmutov/cypress-split
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const cypressSplit = require("cypress-split");
 
 export default defineConfig({
     retries: 2,
@@ -58,6 +61,13 @@ export default defineConfig({
                     });
                 },
             });
+
+            const specFromEnv = process.env.SPEC;
+            if (specFromEnv) {
+                config.specPattern = "tests/cypress/e2e/" + specFromEnv;
+            }
+            
+            cypressSplit(on, config);
             
             config.baseUrl = config.env.mode == "microbit" ? "http://localhost:8081/microbit/" : "http://localhost:8081/editor/";
             return config;

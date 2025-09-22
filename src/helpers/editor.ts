@@ -1,6 +1,6 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesFuncDefScope, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import {AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesFuncDefScope, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot} from "@/types/types";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameContainer, getFrameSectionIdFromFrameId } from "./storeMethods";
 import { splitByRegexMatches, strypeFileExtension } from "./common";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
@@ -20,7 +20,6 @@ import { debounce } from "lodash";
 /* FITRUE_isPython */
 import {toUnicodeEscapes} from "@/parser/parser";
 import {fromUnicodeEscapes} from "@/helpers/pythonToFrames";
-
 
 export const undoMaxSteps = 200;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
@@ -133,7 +132,7 @@ export function parseFrameUID(frameUID: string): number {
     return (frameUIDMatch) ? parseInt(frameUIDMatch[1]) : -100;
 }
 
-const labelSlotUIDRegex = /^input_frame_(\d+)_label_(\d+)_slot_([0-7]{4})_(\d+(,\d+)*)$/;
+const labelSlotUIDRegex = /^input_frame_(-?\d+)_label_(\d+)_slot_([0-7]{4})_(\d+(,\d+)*)$/;
 export function getLabelSlotUID(slotCoreInfos: SlotCoreInfos): string {
     // If a change is done in this method, also update isElementLabelSlotInput() and parseLabelSlotUID()
     // For explanation about the slotID format, see generateFlatSlotBases() in storeMethods.ts
@@ -170,7 +169,7 @@ export function isElementEditableLabelSlotInput(element: EventTarget | null): bo
         return false;
     }
     // Cf. getLabelSlotUID() for the format
-    const regexMatch = (element as HTMLSpanElement).id.match("^input_frame_\\d+_label_\\d+_slot_000(\\d)_\\d+(,\\d+)*$");
+    const regexMatch = (element as HTMLSpanElement).id.match("^input_frame_-?\\d+_label_\\d+_slot_000(\\d)_\\d+(,\\d+)*$");
     return regexMatch != null && parseInt(regexMatch[1]) < 8;
 }
 
@@ -423,30 +422,6 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
     return {uiLiteralCode: uiLiteralCode, focusSpanPos: focusSpanPos, hasStringSlots: hasStringSlots, mediaLiterals: mediaLiterals};
 }
 
-
-// We want to know if the cursor position in a comment frame will still allow for moving that cursor up/down within the frame or need to be interpreted as an "exit" out the frame.
-// A naive way of approaching this would be to check the line returns (\n) before/after the cursor, but this is not reliable because the text content associated with the span
-// element will not necessarily be represented exactly in the same way on the browser (because of text wrapping) -- and there is no easy way to retrieve the text AS IT IS PRESENTED.
-// However, we can check the bounds of the current selection to help us find where we are in the span, and therefore know if we're in the top/last VISUALLY SHOWING line of the text
-// Based on https://www.bennadel.com/blog/4310-detecting-rendered-line-breaks-in-a-text-node-in-javascript.htm
-export function checkCanReachAnotherCommentLine(isCommentFrame: boolean, isArrowUp: boolean, commentSpanElement: HTMLSpanElement): boolean{
-    // If we're not in a comment, just don't check
-    const currentDocSelection = document.getSelection();
-    if(isCommentFrame && currentDocSelection){
-        const commentSpanRect = commentSpanElement.getClientRects()[0];
-        const commentSelectionRects = currentDocSelection.getRangeAt(0).getClientRects();
-        // When there is nothing in the comment, the range may have no rectangles, then we clearly can return false
-        if(commentSelectionRects[0]){
-            const lineheight = commentSelectionRects[0].height;
-            // The weird case when we are below an empty line
-            const firstRect = (commentSelectionRects.length == 2 && currentDocSelection.getRangeAt(0).collapsed) ? commentSelectionRects[1] : commentSelectionRects[0];
-            const isInFirstVisualLine = (firstRect.top - commentSpanRect.top) < lineheight;
-            const isInLastVisualLine = (commentSpanRect.bottom - commentSelectionRects[commentSelectionRects.length - 1].bottom) < lineheight;
-            return ((isArrowUp) ? !isInFirstVisualLine : !isInLastVisualLine);
-        }
-    }
-    return false;
-}
 
 export function getFrameContextMenuUID(frameUID: string): string {
     return frameUID + "_frameContextMenu";
@@ -1502,11 +1477,62 @@ export function transformFieldPlaceholders(input: string) : string {
     return transformFieldPlaceholders(newInput);
 }
 
+function splitAtCommas<X>(operands: X[], operators: BaseSlot[]): { operands: X[], operators: string[] }[] {
+    const result: { operands: X[], operators: string[] }[] = [];
+
+    let currentOperands: X[] = [];
+    let currentOperators: string[] = [];
+
+    for (let i = 0; i < operators.length; i++) {
+        currentOperands.push(operands[i]);
+
+        if (operators[i].code === ",") {
+            result.push({ operands: currentOperands, operators: currentOperators });
+
+            // Reset for next chunk
+            currentOperands = [];
+            currentOperators = [];
+        }
+        else {
+            currentOperators.push(operators[i].code);
+        }
+    }
+
+    // Handle remaining expression (after last comma or if no comma at all)
+    currentOperands.push(operands[operands.length - 1]);
+    result.push({ operands: currentOperands, operators: currentOperators });
+
+    return result;
+}
+
+
 export const IMAGE_PLACERHOLDER = "$strype_image_placeholder$";
 // The placeholders for the string quotes when strings are extracted FROM THE EDITOR SLOTS,
 // both placeholders need to have THE SAME LENGHT so sustitution operations are done with more ease
 export const STRING_SINGLEQUOTE_PLACERHOLDER = "$strype_StrSgQuote_placeholder$";
 export const STRING_DOUBLEQUOTE_PLACERHOLDER = "$strype_StrDbQuote_placeholder$";
+
+// Each params item is the set of operands and operators that are before the next comma or end of bracket
+// Each item in keyValues corresponds to the item in params
+export function extractFormalParamsFromSlot(structOfBracket: SlotsStructure) : {params: { operands: FieldSlot[], operators: string[] }[], keyValues: ([string, string | null] | null)[]} {
+    const params = splitAtCommas(structOfBracket.fields, structOfBracket.operators);
+    const keyValues: ([string, string | null] | null)[] = params.map((p) => {
+        if (p.operators.length >= 1 && p.operators[0] == "=") {
+            const possName = p.operands[0];
+            if (isFieldBaseSlot(possName)) {
+                return [possName.code, slotStructureToString({operators: p.operators.slice(1).map((c) => ({code: c})), fields: p.operands.slice(1)})];
+            }
+        }
+        else if (p.operands.length == 1) {
+            const possName = p.operands[0];
+            if (isFieldBaseSlot(possName)) {
+                return [possName.code, null];
+            }
+        }
+        return null;
+    });
+    return {params, keyValues};
+}
 
 export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: boolean, cursorPos?: number, skipStringEscape?: boolean, frameType?: string, imageLiterals?: {code: string, mediaType: string}[]}): {slots: SlotsStructure, cursorOffset: number} => {
     const imageLiterals : { code: string, mediaType: string }[] = flags?.imageLiterals ?? [];
@@ -1626,27 +1652,23 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         cursorOffset += beforeBracketCursorOffset;
         const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, {isInsideString: false, cursorPos: (flags?.cursorPos) ? flags.cursorPos - (firstOpenedBracketPos + 1) : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         if (openingBracketValue === "(") {
-            // First scan and find all the comma-separated parameters that are a single field:
-            let lastParamStart = -1;
-            let curParam = 0;
-            const singleFieldParams : Record<number, BaseSlot> = {};
-            for (let i = 0; i < structOfBracket.fields.length; i++) {
-                if (i == structOfBracket.operators.length || structOfBracket.operators[i].code === ",") {
-                    if (i - lastParamStart == 1 && "code" in structOfBracket.fields[i] && !("quote" in structOfBracket.fields[i])) {
-                        singleFieldParams[curParam] = structOfBracket.fields[i] as BaseSlot;
+            // First scan and find all the comma-separated parameters:
+            const {params, keyValues} = extractFormalParamsFromSlot(structOfBracket);
+            const context = getContentForACPrefix(structBeforeBracket, true);
+            params.forEach((param, paramIndex) => {
+                // We only apply placeholderSource info if the parameter is a single plain slot:
+                if (param.operands.length == 1) {
+                    const oneSlot = param.operands[0];
+                    if (isFieldBaseSlot(oneSlot)) {
+                        oneSlot.placeholderSource = {
+                            token: (structBeforeBracket.fields.at(-1) as BaseSlot)?.code ?? "",
+                            context: context,
+                            paramIndex: paramIndex,
+                            lastParam: paramIndex == params.length - 1,
+                            prevKeywordNames: keyValues.slice(0, paramIndex).filter((s): s is [string, string] => s !== null && s[1] !== null).map((s) => s[0]),
+                        };
                     }
-                    curParam += 1;
-                    lastParamStart = i;
                 }
-            }
-            (Object.entries(singleFieldParams) as unknown as [number, BaseSlot][]).forEach(([paramIndex, slot] : [number, BaseSlot]) => {
-                const context = getContentForACPrefix(structBeforeBracket, true);
-                slot.placeholderSource = {
-                    token: (structBeforeBracket.fields.at(-1) as BaseSlot)?.code ?? "",
-                    context: context,
-                    paramIndex: paramIndex,
-                    lastParam: paramIndex == curParam - 1,
-                };
             });
         }
         const structOfBracketField = {...structOfBracket, openingBracketValue: openingBracketValue};
@@ -2223,6 +2245,35 @@ export function simpleSlotStructureToString(ss: SlotsStructure) : string {
         if (i < ss.operators.length) {
             r.push(ss.operators[i].code);
         }
+    }
+    return r.join("");
+}
+
+export function slotStructureToString(ss: SlotsStructure) : string {
+    const r : string[] = [];
+    if (ss.openingBracketValue) {
+        r.push(ss.openingBracketValue);
+    }
+    for (let i = 0; i < ss.fields.length; i++) {
+        const field = ss.fields[i];
+        if (isFieldMediaSlot(field)) {
+            r.push("<img>");
+        }
+        else if (isFieldStringSlot(field)) {
+            r.push(field.quote + field.code + field.quote);
+        }
+        else if (isFieldBaseSlot(field)) {
+            r.push(field.code);
+        }
+        else {
+            r.push(slotStructureToString(ss));
+        }
+        if (i < ss.operators.length) {
+            r.push(ss.operators[i].code);
+        }
+    }
+    if (ss.openingBracketValue) {
+        r.push(getMatchingBracket(ss.openingBracketValue, true));
     }
     return r.join("");
 }

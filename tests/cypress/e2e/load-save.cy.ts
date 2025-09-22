@@ -46,7 +46,7 @@ beforeEach(() => {
 function focusEditorPasteAndClear(): void {
     // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
     // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
-    cy.get("#" + strypeElIds.getFrameUID(-3)).focus();
+    cy.get("#" + strypeElIds.getFrameUID(-3), {timeout: 15 * 1000}).focus();
     // Delete existing content (bit of a hack):
     cy.get("body").type("{uparrow}{uparrow}{uparrow}{del}{downarrow}{downarrow}{downarrow}{downarrow}{backspace}{backspace}");
 }
@@ -136,7 +136,7 @@ function testEntryDisableAndSave(commands: string, disableFrames: string[], file
         cy.get("body").type(commands);
         
         disableFrames.forEach((txt) => {
-            cy.contains("span", txt).rightclick();
+            cy.contains("span." + scssVars.labelSlotInputClassName, txt).rightclick();
             cy.contains("*", i18n.t("contextMenu.disable") as string).click();
         });
 
@@ -150,6 +150,9 @@ describe("Loads and re-saves fixture files", () => {
     });
     it("Loads a basic trisection project", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic-trisection.spy");
+    });
+    it("Loads a project with docs", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-documented.spy");
     });
     it("Outputs a dummy for solo try", () => {
         // Make an empty try, which should save with a placeholder:

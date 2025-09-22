@@ -6,7 +6,18 @@ const i18n = { t: ((x : string) => x)};
 export enum AllowedSlotContent {
     ONLY_NAMES,
     ONLY_NAMES_OR_STAR,
-    TERMINAL_EXPRESSION
+    TERMINAL_EXPRESSION,
+    FREE_TEXT_DOCUMENTATION,
+    LIBRARY_ADDRESS,
+}
+
+// REQUIRED means it must have a value, and slot will always show regardless of content or focus
+// HIDDEN_WHEN_UNFOCUSED_AND_BLANK means if empty and unfocused the whole slot will be hidden
+// PROMPT_WHEN_UNFOCUSED_AND_BLANK means if empty and unfocused it will show the slot, and show some prompt text
+export enum OptionalSlotType {
+    REQUIRED,
+    HIDDEN_WHEN_UNFOCUSED_AND_BLANK,
+    PROMPT_WHEN_UNFOCUSED_AND_BLANK
 }
 
 export interface FrameLabel {
@@ -15,9 +26,10 @@ export interface FrameLabel {
     showLabel?: boolean; // default true, indicates if the label is showned (ex method call frame has no label text)
     showSlots?: boolean; // default true, false indicates that the label has no slot to be associated with it (for example label ":" in "if <xxx> :")
     defaultText: string;
-    optionalSlot?: boolean; //default false (indicate that this label does not require at least 1 slot value)
+    optionalSlot?: OptionalSlotType; //default REQUIRED (indicates whether this label requires a value, and its hiding behaviour when empty; see OptionalSlotType)
     acceptAC?: boolean; //default true
     allowedSlotContent?: AllowedSlotContent; // default TERMINAL_EXPRESSION; what the slot accepts
+    newLine?: boolean;
 }
 
 export interface FramesDefinitions {
@@ -44,6 +56,11 @@ export const ContainerTypesIdentifiers = {
     defsContainer: "defsContainer",
     framesMainContainer: "mainContainer",
 };
+
+export const SpecialTypesIdentifiers = {
+    projectDocumentation: "projectDocumentation",
+};
+
 
 export const CommentFrameTypesIdentifier = {
     comment: "comment",
@@ -86,6 +103,7 @@ export const StandardFrameTypesIdentifiers = {
 };
 
 export const AllFrameTypesIdentifier = {
+    ...SpecialTypesIdentifiers,
     ...ImportFrameTypesIdentifiers,
     ...DefIdentifiers,
     ...StandardFrameTypesIdentifiers,
@@ -166,6 +184,15 @@ export const FrameContainersDefinitions = {
     MainFramesContainerDefinition,
 };
 
+export const ProjectDocumentationDefinition: FramesDefinitions = {
+    ...StatementDefinition,
+    type: AllFrameTypesIdentifier.projectDocumentation,
+    labels: [
+        { label: "‘‘‘", showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: "Project description", allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
+    ],
+    colour: "#A00000",
+};
+
 let Definitions = {};
 
 // Entry point for generating the frame definition types -- only doing so to allow dynamic localisation bits...
@@ -187,7 +214,7 @@ export function generateAllFrameDefinitionTypes(): void{
     const ReturnDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.return,
-        labels: [{ label: "return ", defaultText: i18n.t("frame.defaultText.expression") as string, optionalSlot: true}],
+        labels: [{ label: "return ", defaultText: i18n.t("frame.defaultText.expression") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK}],
     };
 
     const GlobalDefinition: FramesDefinitions = {
@@ -225,7 +252,7 @@ export function generateAllFrameDefinitionTypes(): void{
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.raise,
         labels: [
-            { label: "raise ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: true },
+            { label: "raise ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK },
         ],
     };
 
@@ -258,14 +285,14 @@ export function generateAllFrameDefinitionTypes(): void{
         ...StatementDefinition,
         type: ImportFrameTypesIdentifiers.library,
         labels: [
-            { label: "library ", defaultText: i18n.t("frame.defaultText.libraryAddress") as string, acceptAC: false},
+            { label: "library ", defaultText: i18n.t("frame.defaultText.libraryAddress") as string, acceptAC: false, allowedSlotContent: AllowedSlotContent.LIBRARY_ADDRESS },
         ],
     };
 
     const CommentDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.comment,
-        labels: [{ label: "# ", defaultText: i18n.t("frame.defaultText.comment") as string, optionalSlot: true, acceptAC: false}],
+        labels: [{ label: "# ", defaultText: i18n.t("frame.defaultText.comment") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION}],
     };
 
     // Blocks
@@ -323,6 +350,8 @@ export function generateAllFrameDefinitionTypes(): void{
             { label: "while ", defaultText: i18n.t("frame.defaultText.condition") as string},
             { label: " :", showSlots: false, defaultText: ""},
         ],
+        allowJointChildren: true,
+        jointFrameTypes: [StandardFrameTypesIdentifiers.else],
         colour: "#E4D5D5",
     };
 
@@ -330,7 +359,7 @@ export function generateAllFrameDefinitionTypes(): void{
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.except,
         labels: [
-            { label: "except ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: true, allowedSlotContent: AllowedSlotContent.ONLY_NAMES},
+            { label: "except ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, allowedSlotContent: AllowedSlotContent.ONLY_NAMES},
             { label: " :", showSlots: false, defaultText: ""},
         ],
         jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
@@ -363,8 +392,9 @@ export function generateAllFrameDefinitionTypes(): void{
         type: DefIdentifiers.funcdef,
         labels: [
             { label: "def ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
-            { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: true, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
+            { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
             { label: ") :", showSlots: false, defaultText: ""},
+            { label: "‘‘‘", newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: "Describe the function", allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],
         colour: "#ECECC8",
     };
@@ -419,6 +449,7 @@ export function generateAllFrameDefinitionTypes(): void{
         LibraryDefinition,
         CommentDefinition,
         GlobalDefinition,
+        ProjectDocumentationDefinition,
         // also add the frame containers as we might need to retrieve them too
         ...FrameContainersDefinitions,
     };

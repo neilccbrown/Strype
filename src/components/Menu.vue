@@ -76,10 +76,10 @@
                 </div>
             </ModalDlg>            
             <!-- new section -->
-            <div class="menu-separator-div"></div>
-            /* IFTRUE_isPython
+            <div class="menu-separator-div"></div>           
             <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLoadDemoProjectModal">{{$t('appMenu.loadDemoProject')}}</a>
             <OpenDemoDlg ref="openDemoDlg" :dlg-id="loadDemoProjectModalDlgId"/>
+            /* IFTRUE_isPython
             <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLibraryDoc">{{$t('appMenu.apiDocumentation')}}</a>
                FITRUE_isPython */
             <!-- category: export -->
@@ -909,7 +909,7 @@ export default Vue.extend({
                             return;
                         }
                         // Save the .spy file of the state, we try to use the file picker if the browser allows it, otherwise, download to the default download repertory of the browser.
-                        let saveContent = parseCodeAndGetParseElements(false, true).parsedOutput;
+                        let saveContent = parseCodeAndGetParseElements(false, "spy").parsedOutput;
                         // We add the initial headers:
                         const headers = new Map<string, string | undefined>();
                         headers.set(AppName, AppSPYSaveVersion + ":" + AppPlatform);

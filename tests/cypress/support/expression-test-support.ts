@@ -170,7 +170,7 @@ function reachFrameLabelSlot(targetSlotSpanID: string, goLeft: boolean): boolean
 export function focusEditor(): void {
     // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
     // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
-    cy.get("#" + strypeElIds.getFrameUID(-3)).focus();
+    cy.get("#" + strypeElIds.getFrameUID(-3), {timeout: 15 * 1000}).focus();
 }
 
 export function testMultiInsert(multiInsertion : string, firstResult : string, secondResult : string) : void {

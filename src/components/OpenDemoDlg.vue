@@ -12,7 +12,7 @@
                 <b-list-group-item
                     v-for="(item, index) in availableDemos"
                     :key="index"
-                    :active="selectedDemoCategoryIndex === index"
+                    :active="selectedDemoCategoryIndex === index && availableDemos.length > 1"
                     @click="changeDemoDialogCategory(index, item.demos)"
                     button
                 >
@@ -36,13 +36,14 @@
                         :class="{'d-flex': true, 'open-demo-dlg-demo-item': true, 'open-demo-dlg-selected-demo-item': selectedDemoItemIndex === i}"
                         type="button"
                         @click="selectedDemoItemIndex = i"
+                        @dblclick="onDblClick"
                         @keydown.space.self="selectedDemoItemIndex = i"
                     >
                         <!-- 1x1 transparent image if image is missing: -->
                         <img :src="item.imgURL || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII='" alt="Preview" class="open-demo-dlg-preview flex-shrink-0"/>
                         <div class="d-flex flex-column flex-fill">
                             <span class="open-demo-dlg-name">{{item.name}}</span>
-                            <span class="open-demo-dlg-description">{{item.description}}</span>
+                            <span class="open-demo-dlg-description" v-html="item.description" />
                         </div>
                     </button>
                 </div>
@@ -53,11 +54,14 @@
 <script lang="ts">
 
 import Vue from "vue";
+import MenuComponent from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import {Demo, DemoGroup, getBuiltinDemos, getThirdPartyLibraryDemos} from "@/helpers/demos";
 import Parser from "@/parser/parser";
 import {AppSPYPrefix} from "@/main";
 import {escapeRegExp} from "lodash";
+import { BvModalEvent } from "bootstrap-vue";
+import { getMenuLeftPaneUID } from "@/helpers/editor";
 
 export default Vue.extend({
     components: {ModalDlg},
@@ -75,21 +79,31 @@ export default Vue.extend({
         };
     },
     
-    methods: {
+    methods: {       
         updateAvailableDemos() {
             // We must update the available demos based on the code.
             // Our built-in demos are always available:
             this.availableDemos = [
+                /* IFTRUE_isPython */
                 {name: this.$i18n.t("demos.builtinGraphics") as string, demos: getBuiltinDemos("graphics")},
                 {name: this.$i18n.t("demos.builtinTurtle") as string, demos: getBuiltinDemos("turtle")},
                 {name: this.$i18n.t("demos.builtinConsole") as string, demos: getBuiltinDemos("console")},
+                /* FITRUE_isPython */
+                /* IFTRUE_isMicrobit */
+                // A bit pointless to show "micro:bit" for micro:bit version since there is no other choice,
+                // but let's keep the same presentation across the different versions.
+                {name: this.$i18n.t("demos.builtinMicrobit") as string, demos: getBuiltinDemos("microbit")},
+                /* FITRUE_isMicrobit */
+
             ];
             // To get library demos, we first get the libraries:
             const p = new Parser();
             // We only need to parse the imports container:
             p.parseJustImports();
             // Then we can get the libraries and look for demos:
-            for (const library of [...new Set(["github:k-pet-group/mediacomp-strype", ...p.getLibraries()])]) {
+            // Don't show mediacomp-strype in the micro:bit verison, nor when testing mode because it can get us temporarily banned by Github:
+            /*IFTRUE_isPython const testingMode = window.Cypress || (window as any).Playwright; FITRUE_isPython */
+            for (const library of [...new Set([/*IFTRUE_isPython ...(testingMode? [] : ["github:k-pet-group/mediacomp-strype"]), FITRUE_isPython*/...p.getLibraries()])]) {
                 this.availableDemos.push(getThirdPartyLibraryDemos(library));
             }
         },
@@ -137,6 +151,14 @@ export default Vue.extend({
                 return {name: d.name, demoFile: d.demoFile()};
             }
             return undefined;
+        },
+
+        onDblClick(){
+            // Triggers the modal's OK event to load the selected example. The click event is fired before the double-click event:
+            // selectedDemoItemIndex is already set to the right value.
+            // We first close the dialog, than simulate a "close with action" in the Menu (since we can't close with "OK" status.)
+            this.$root.$emit("bv::hide::modal", this.dlgId);
+            (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.dlgId);
         },
 
         addSpecifiedLibrary() {
@@ -191,6 +213,7 @@ export default Vue.extend({
   border: 0px;
   text-align: left;
 }
+
 .open-demo-dlg-demo-item:hover {
   background-color: #f8f9fa;
 }
@@ -206,13 +229,16 @@ img.open-demo-dlg-preview {
     display: block;
     margin-right: 30px;
 }
+
 span.open-demo-dlg-name {
     font-weight: bold;
     font-size: 125%;
 }
+
 .open-demo-dlg-selected-demo-item span.open-demo-dlg-name {
     color: white;
 }
+
 span.open-demo-dlg-description {
     color: #777;
     overflow: hidden;
@@ -221,17 +247,25 @@ span.open-demo-dlg-description {
     -webkit-line-clamp: 2; /* 2 lines of text at most */
     -webkit-box-orient: vertical;
 }
+
 .open-demo-dlg-selected-demo-item span.open-demo-dlg-description {
   color: #eee;
 }
+
+.open-demo-dlg-selected-demo-item span.open-demo-dlg-description a {
+    color: white;
+}
+
 .open-demo-dlg-demo-group-type {
     display: block;
     color: #999;
     font-size: 80%;
 }
+
 .open-demo-dlg-add-library-panel {
     margin-top: 50px;
 }
+
 .open-demo-dlg-add-library-panel input {
     margin-top: 10px;
     margin-bottom: 10px;

@@ -12,8 +12,6 @@
             @slotLostCaret="onLoseCaret"
             @mouseenter="handleMouseEnterLeave(true)"
             @mouseleave="handleMouseEnterLeave(false)"
-            @keydown.up="onUDKeyDown($event)"
-            @keydown.down="onUDKeyDown($event)"
             @keydown.prevent.stop.esc
             @keyup.esc="onEscKeyUp($event)"
             @keydown.prevent.stop.enter
@@ -60,7 +58,7 @@
 
         <AutoCompletion
             v-show="focused && showAC"
-            :class="{ac: true, hidden: !acRequested}"
+            :class="{ac: true}"
             :slotId="UID"
             ref="AC"
             :key="AC_UID"
@@ -76,13 +74,13 @@ import Vue, { PropType } from "vue";
 import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import {getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUID, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUID, getFrameUID, getFrameComponent, simpleSlotStructureToString} from "@/helpers/editor";
-import { AllowedSlotContent, CaretPosition, FrameObject, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, EditImageInDialogFunction, FieldSlot, LoadedMedia, MediaSlot, PythonExecRunningState, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
+import { closeBracketCharacters, CustomEventTypes, getACLabelSlotUID, getFocusedEditableSlotTextSelectionStartEnd, getFrameComponent, getFrameHeaderUID, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFrameUID, getLabelSlotUID, getMatchingBracket, getNumPrecedingBackslashes, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, keywordOperatorsWithSurroundSpaces, openBracketCharacters, operators, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, simpleSlotStructureToString, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringDoubleQuoteChar, stringQuoteCharacters, stringSingleQuoteChar, UIDoubleQuotesCharacters, UISingleQuotesCharacters } from "@/helpers/editor";
+import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
-import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import {evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
-import { cloneDeep, debounce } from "lodash";
+import { cloneDeep } from "lodash";
 import LabelSlotsStructure from "./LabelSlotsStructure.vue";
 import { BPopover } from "bootstrap-vue";
 import Frame from "@/components/Frame.vue";
@@ -133,12 +131,6 @@ export default Vue.extend({
     beforeDestroy() {
         this.appStore.removePreCompileErrors(this.UID);
     },
-    
-    created() {
-        // Stop updateAC firing until 500ms after last time it is requested.
-        // More efficient than running on every keystroke:
-        this.updateAC = debounce(this.updateAC, 500, {trailing: true});
-    },
 
     data: function() {
         return {
@@ -147,7 +139,6 @@ export default Vue.extend({
             //as we don't want to save each single change of the content, but the full content change itself.
             isFirstChange: true,
             showAC: false,
-            acRequested: false,
             contextAC: "",
             // tokenAC can be null if code completion is invalid here
             tokenAC: "" as string | null,
@@ -196,21 +187,60 @@ export default Vue.extend({
 
         spanBackgroundStyle(): Record<string, string> {
             const isStructureSingleSlot = this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelSlotsIndex].slotStructures.fields.length == 1;
-            const isSlotOptional = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex].optionalSlot;
+            let optionalSlot = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex].optionalSlot ?? OptionalSlotType.REQUIRED;
             const isEmptyFunctionCallSlot = (this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall 
                 && this.isFrameEmptyAndAtLabelSlotStart
                 && (this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.operators.length == 0 
                     || isFieldBracketedSlot(this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.fields[1])));
-            return {
-                // Background: if the field has a value, it's set to a semi transparent background when focused, and transparent when not
-                // if the field doesn't have a value, it's always set to a white background unless it is not the only field of the current structure 
-                // and content isn't optional (then it's transparent) - that is to distinguish the fields that are used for cursors placeholders 
-                // to those indicating there is no compulsory value
-                "background-color": ((this.focused) 
-                    ? ((this.getSlotContent().trim().length > 0) ? "rgba(255, 255, 255, 0.6)" : "#FFFFFF") 
-                    : (((isStructureSingleSlot || isEmptyFunctionCallSlot) && !isSlotOptional && this.code.replace(/\u200B/g, "").trim().length == 0) ? "#FFFFFF" : "rgba(255, 255, 255, 0)")) 
-                    + " !important", 
-            };
+            const isDoc = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex].allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION;
+            const frameType = this.appStore.frameObjects[this.frameId].frameType.type;
+            let styles : Record<string, string> = {};
+            // Background: if the field has a value, it's set to a semi transparent background when focused, and transparent when not
+            // if the field doesn't have a value, it's always set to a white background unless it is not the only field of the current structure 
+            // and content isn't optional (then it's transparent) - that is to distinguish the fields that are used for cursors placeholders 
+            // to those indicating there is no compulsory value            
+            let backgroundColor: string;
+            if (this.focused) {
+                if (this.getSlotContent().trim().length > 0) {
+                    // Focused and non-empty, lighten the background through a semi-transparent white:
+                    backgroundColor = "rgba(255, 255, 255, 0.6)";
+                }
+                else {
+                    // Focused and empty, make it solid white:
+                    backgroundColor = "#FFFFFF";
+                }
+            }
+            else {
+                if ((isStructureSingleSlot || isEmptyFunctionCallSlot || this.defaultText?.replace(/\u200B/g, "")?.trim()) && (optionalSlot != OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK) && this.code.replace(/\u200B/g, "").trim().length == 0) {
+                    // Non-focused and empty; white if required, or semi-transparent white if shows prompt
+                    backgroundColor = optionalSlot == OptionalSlotType.REQUIRED ? "#FFFFFF" : "rgba(255, 255, 255, 0.6)";
+                    if (isDoc && frameType == AllFrameTypesIdentifier.funcdef) {
+                        backgroundColor = "rgba(255, 255, 255, 0.35)";
+                        styles["--prompt-color"] = "rgb(255, 255, 255, 0)";
+                        styles["transform"] = "scaleY(0.4)";
+                        styles["transform-origin"] = "center";
+                    }
+                }
+                else {
+                    // Non-focused and non-empty, leave the underlying background as-is by applying fully transparent background: 
+                    backgroundColor = "rgba(255, 255, 255, 0)";
+                }
+            }
+            styles["background-color"] = backgroundColor + " !important";
+            if (isDoc) {
+                // Note: comment frames would be true here but their colour is set for the whole frame.  We need to set
+                // project and function doc colours per slot because project doc has no frame and function doc has other
+                // things in the function frame header that we don't want to colour
+                if (frameType == AllFrameTypesIdentifier.funcdef) {
+                    styles["color"] = "rgb(114, 114, 39) !important";
+                    styles["font-style"] = "italic";
+                }
+                else if (frameType == AllFrameTypesIdentifier.projectDocumentation) {
+                    styles["color"] = "rgb(39, 77, 25) !important";
+                    styles["font-style"] = "italic";
+                }
+            }
+            return styles;
         }, 
 
         getSpanTypeClass(): string {
@@ -248,7 +278,13 @@ export default Vue.extend({
         },
 
         focused(): boolean {
-            return this.appStore.isEditableFocused(this.coreSlotInfo);
+            // We need to keep update of the label slots structure's "isFocused" flag, because using the keyboard to navigate will not
+            // update this flag -- but we always end up here when the focus (for slots) is updated.
+            const isSlotFocused = this.appStore.isEditableFocused(this.coreSlotInfo);
+            if (isSlotFocused || (this.appStore.focusSlotCursorInfos?.slotInfos.frameId != this.coreSlotInfo.frameId || this.appStore.focusSlotCursorInfos?.slotInfos.labelSlotsIndex != this.coreSlotInfo.labelSlotsIndex)) {
+                (this.$parent as InstanceType<typeof LabelSlotsStructure>).isFocused = isSlotFocused;
+            }
+            return isSlotFocused;
         },
 
         UID(): string {
@@ -266,11 +302,7 @@ export default Vue.extend({
         errorHeader(): string{
             return this.appStore.getErrorHeaderForSlot(this.coreSlotInfo);
         },
-
-        debugAC(): boolean{
-            return this.appStore.debugAC;
-        },
-
+        
         isDraggingFrame(): boolean{
             return this.appStore.isDraggingFrame;
         },
@@ -282,9 +314,9 @@ export default Vue.extend({
                 return false;
             }            
             let firstVisibleLabelSlotsIndex = -1;
-            const isEmpty = !(Object.values(this.appStore.frameObjects[this.frameId].labelSlotsDict).some((labelSlotContent, index) => {
+            const isEmpty = !(Object.entries(this.appStore.frameObjects[this.frameId].labelSlotsDict).some(([index, labelSlotContent]) => {
                 if((labelSlotContent.shown??true) && firstVisibleLabelSlotsIndex < 0 ){
-                    firstVisibleLabelSlotsIndex = index;
+                    firstVisibleLabelSlotsIndex = Number(index);
                 }
                 return ((labelSlotContent.shown??true) && isFrameLabelSlotStructWithCodeContent(labelSlotContent.slotStructures));
             })
@@ -422,13 +454,13 @@ export default Vue.extend({
 
             // If we arrive here by a click, and the slot is a bracket, a quote or an operator, we should get the focus to the nearest editable frame.
             // We should have neigbours because brackets, quotes and operators are always surronded by fields, but keep TS happy
-            if(this.slotType != SlotType.code && this.slotType != SlotType.string){
+            if(this.slotType != SlotType.code && this.slotType != SlotType.string && this.slotType != SlotType.comment){
                 const clickXValue = event.x;
                 const slotWidth = document.getElementById(getLabelSlotUID(this.coreSlotInfo))?.offsetWidth??0;
                 const slotXPos = document.getElementById(getLabelSlotUID(this.coreSlotInfo))?.getBoundingClientRect().x??0; 
 
                 // Get the spans of that frame label container
-                const spans = document.querySelectorAll("#"+getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex) + " span");
+                const spans = document.querySelectorAll("#"+getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex) + " span." + scssVars.labelSlotInputClassName);
                 let indexOfCurrentSpan = 0;
                 spans.forEach((element, index) => {
                     if(element.id == getLabelSlotUID(this.coreSlotInfo)){
@@ -509,7 +541,11 @@ export default Vue.extend({
             // see https://stackoverflow.com/questions/21680363/prevent-drag-event-to-interfere-with-input-elements-in-firefox-using-html5-drag
             let frameId = this.frameId;
             do{
-                (document.getElementById(getFrameUID(frameId)) as HTMLDivElement).draggable = this.isDisabled || (!isEntering && !this.isDisabled);
+                const frameElement = document.getElementById(getFrameUID(frameId)) as HTMLDivElement;
+                // Possible to not have a frame, e.g. for project doc header:
+                if (frameElement) {
+                    frameElement.draggable = this.isDisabled || (!isEntering && !this.isDisabled);
+                }
                 frameId = this.appStore.frameObjects[frameId].parentId;
             } 
             while(frameId > 0);
@@ -543,7 +579,6 @@ export default Vue.extend({
                     if (this.tokenAC.includes(",")) {
                         this.tokenAC = this.tokenAC.substring(this.tokenAC.lastIndexOf(",") + 1); 
                     }
-                    this.showAC = true;
                     this.contextAC = "";
                     this.$nextTick(() => {
                         const ac = this.$refs.AC as InstanceType<typeof AutoCompletion>;
@@ -562,7 +597,6 @@ export default Vue.extend({
                 }
                 else {
                     const resultsAC = getCandidatesForAC(frame.labelSlotsDict[this.labelSlotsIndex].slotStructures, new RegExp("[0-9,]+$").exec(this.slotId)?.[0]?.trim()?.split(",")?.map((x) => parseInt(x)) ?? []);
-                    this.showAC = true;
                     this.contextAC = resultsAC.contextAC;
                     this.tokenAC = resultsAC.tokenAC;
   
@@ -587,105 +621,55 @@ export default Vue.extend({
             // and that our slot still exists.  If we shouldn't exist any more, we should
             // just do nothing and exit quietly:
             if(this.appStore.frameObjects[this.frameId] != undefined && retrieveSlotFromSlotInfos(this.coreSlotInfo)){
-                if(!this.debugAC) {
-                    this.showAC = false;
-                    this.acRequested = false;
-                    if((this.appStore.bypassEditableSlotBlurErrorCheck && !keepIgnoreKeyEventFlagOn) || this.appStore.isSelectingMultiSlots){
-                        this.appStore.setEditableFocus(
-                            {
-                                ...this.coreSlotInfo,
-                                focused: false,
-                            }
-                        );
-                    }
-                    else{
-                        this.appStore.validateSlot(
-                            {
-                                ...this.coreSlotInfo,
-                                code: this.getSlotContent().replace(/\u200B/g, "").trim(),
-                                initCode: this.initCode,
-                                isFirstChange: this.isFirstChange,
-                            }   
-                        );
-                    }
-                    //reset the flag for first code change
-                    this.isFirstChange = true;
-
-                    // As we leave a slot, we reset the slot cursor infos EXCEPT when the keyboard event is ignored
-                    // or when we are doing multislot selection
-                    if(!this.appStore.ignoreKeyEvent && !this.appStore.isSelectingMultiSlots){
-                        this.appStore.setSlotTextCursors(undefined, undefined);
-                    }
-                    
-                    if(!keepIgnoreKeyEventFlagOn){
-                        this.appStore.ignoreKeyEvent = false;
-                    }
-
-                    // And we hide the error popover. Note that we do it programmatically as it seems the focus trigger on popover isn't working in our configuration
-                    (this.$refs.errorPopover as InstanceType<typeof BPopover>)?.$emit("close");
+                this.showAC = false;
+                if((this.appStore.bypassEditableSlotBlurErrorCheck && !keepIgnoreKeyEventFlagOn) || this.appStore.isSelectingMultiSlots){
+                    this.appStore.setEditableFocus(
+                        {
+                            ...this.coreSlotInfo,
+                            focused: false,
+                        }
+                    );
                 }
+                else{
+                    this.appStore.validateSlot(
+                        {
+                            ...this.coreSlotInfo,
+                            code: this.getSlotContent().replace(/\u200B/g, "").trim(),
+                            initCode: this.initCode,
+                            isFirstChange: this.isFirstChange,
+                        }   
+                    );
+                }
+                //reset the flag for first code change
+                this.isFirstChange = true;
+
+                // As we leave a slot, we reset the slot cursor infos EXCEPT when the keyboard event is ignored
+                // or when we are doing multislot selection
+                if(!this.appStore.ignoreKeyEvent && !this.appStore.isSelectingMultiSlots){
+                    this.appStore.setSlotTextCursors(undefined, undefined);
+                }
+                
+                if(!keepIgnoreKeyEventFlagOn){
+                    this.appStore.ignoreKeyEvent = false;
+                }
+
+                // And we hide the error popover. Note that we do it programmatically as it seems the focus trigger on popover isn't working in our configuration
+                (this.$refs.errorPopover as InstanceType<typeof BPopover>)?.$emit("close");
+            
             }
         },
-
-        onUDKeyDown(event: KeyboardEvent) {
-            // We may still have the focus even when not logically editing, so we want to
-            // avoid handling the keypress in this case; let the code in Commands handle it
-            // which moves the frame cursor up and down:
-            if (!this.appStore.isEditing) {
-                return;
+        
+        // Returns true if we are focused and AC is showing => we have handled keypress
+        handleUpDown(event: KeyboardEvent): boolean {
+            const focus = this.appStore.focusSlotCursorInfos;
+            if (!this.appStore.isEditing || !focus || !areSlotCoreInfosEqual(this.coreSlotInfo, focus.slotInfos)) {
+                return false;
             }
-            
-            this.appStore.isSelectingMultiSlots = false; // reset the flag
-            const isArrowUp = (event.key == "ArrowUp");
-           
-            // Check if we can reach another VISUAL line in a comment (this method returns false if we're not in a comment frame)
-            const canReachAnotherCommentLine = checkCanReachAnotherCommentLine((this.frameType == AllFrameTypesIdentifier.comment), isArrowUp, document.getElementById(getLabelSlotUID(this.coreSlotInfo)) as HTMLSpanElement); /*&& isCommentFrame && ((isArrowUp && slotContentToCursor.includes("\n")) || (!isArrowUp && slotContentAfterCursor.includes("\n")))*/
-           
-            // When no key modifier is hit, we either navigate in A/C or leave the frame or move to another line of text for comments, depending on the context
-            // Everything is handled manually except when navigating within a comment.
-            if(!(event.ctrlKey || event.shiftKey || event.metaKey)){
-                // If the AutoCompletion is on we just browse through it's contents
-                // The `results` check, prevents `changeSelection()` when there are no results matching this token
-                // And instead, since there is no AC list to show, moves to the next slot
-                if(this.showAC && this.acRequested && (this.$refs.AC as any)?.areResultsToShow()) {
-                    event.stopImmediatePropagation();
-                    event.stopPropagation();
-                    event.preventDefault();
-                    (this.$refs.AC as any).changeSelection((isArrowUp)?-1:1);
-                }
-                else if(canReachAnotherCommentLine){
-                    // We are in a comment, and in a line that is VISUALLY (in the browser) not the first (if we go up) or not the last (if we go down):
-                    // we let the browser handle the selection change nativately
-                    return;
-                }
-                // Else we move the caret
-                else {  
-                    event.stopImmediatePropagation();
-                    event.stopPropagation();
-                    event.preventDefault();
-                    // In any case the focus is lost, and the caret is shown (visually below by default)
-                    this.onLoseCaret();
-                    //If the up arrow is pressed you need to move the caret as well.
-                    if(isArrowUp) {
-                        this.appStore.changeCaretPosition(event.key);
-                    }
-                    else{
-                        // Restore the caret visibility
-                        this.appStore.frameObjects[this.appStore.currentFrame.id].caretVisibility = this.appStore.currentFrame.caretPosition;
-                    }
-
-                    // And check for precompiled errors on the frame, and TP errors on the whole code
-                    checkCodeErrors(this.frameId);
-
-                    // Make sure there is no longer a selection
-                    this.appStore.setSlotTextCursors(undefined, undefined);
-                    document.getSelection()?.removeAllRanges();
-                }
+            if(this.showAC && (this.$refs.AC as any)?.areResultsToShow()) {
+                (this.$refs.AC as any).changeSelection((event.key == "ArrowUp")?-1:1);
+                return true;
             }
-            else if(event.shiftKey && canReachAnotherCommentLine){
-                // We are in a comment and do a selection using up or down keys that won't lead outside the comment, we leave the browser handle it natively
-                return;
-            }
+            return false;
         },
         
         onEscKeyUp(event: KeyboardEvent) {
@@ -695,11 +679,10 @@ export default Vue.extend({
             }
 
             // If the AC is loaded we want to close it with an ESC and stay focused on the editableSlot
-            if(this.showAC && this.acRequested) {
+            if(this.showAC) {
                 event.preventDefault();
                 event.stopPropagation();
-                this.showAC = this.debugAC;
-                this.acRequested = false;
+                this.showAC = false;
                 return;
             }
 
@@ -718,7 +701,7 @@ export default Vue.extend({
         onTabKeyDown(event: KeyboardEvent){
             // We replicate the default browser behaviour when tab is pressed AND we're not having AC on, otherwise just do nothing
             // (the default behaviour doesn't work at least on Windows+Chrome)
-            if(!(this.showAC && this.acRequested && this.getSelectedACItem())) {
+            if(!(this.showAC && this.getSelectedACItem())) {
                 // First move the cursor to the correct end of the slot
                 const goToNextSlot = !event.shiftKey;
                 const newCursorPosition = (goToNextSlot) ? this.code.length : 0;
@@ -737,15 +720,15 @@ export default Vue.extend({
         },
 
         onEnterOrTabKeyUp(event: KeyboardEvent){
-            // Ignore tab events
-            if(event.key === "Tab") {
+            // Ignore tab events except when a/c is showing and there is a selection
+            if(event.key === "Tab" && !(this.showAC && this.getSelectedACItem())) {
                 event.preventDefault();
                 event.stopPropagation();
                 return;
             }
 
             // If the AC is loaded we want to select the AC suggestion the user chose and stay focused on the editableSlot
-            if(this.showAC && this.acRequested && this.getSelectedACItem()) {
+            if(this.showAC && this.getSelectedACItem()) {
                 event.preventDefault();
                 event.stopPropagation();
                 // We set the code to what it was up to the point before the token, and we replace the token with the selected Item
@@ -753,8 +736,8 @@ export default Vue.extend({
             }
             // For Enter, if AC is not loaded or no selection is available, we want to take the focus out the slot,
             // except for comment frame that will generate a line return when Control/Shift is combined with Enter
-            else {
-                if(this.frameType == AllFrameTypesIdentifier.comment && (event.shiftKey || event.ctrlKey)){
+            else if(event.key === "Enter"){
+                if(this.slotType == SlotType.comment && (event.shiftKey || event.ctrlKey)){
                     const isAnchorBeforeFocus = (getSelectionCursorsComparisonValue()??0) <= 0;
                     const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos as SlotCursorInfos;
                     const startSlotCursorInfos = (isAnchorBeforeFocus) ? this.appStore.anchorSlotCursorInfos as SlotCursorInfos : focusSlotCursorInfos;
@@ -763,9 +746,9 @@ export default Vue.extend({
                     // When we add the line return, we check that if we are adding it at the end of the comment, we double that line return:
                     // span do not render a line break that isn't followed by something. So we use this workaround to visually show a line return.
                     // (The text cursor will never be able to be past that terminating line feed so it doesn't offset the navigation from the user's point of view)
-                    const inputSpanFieldContent = (inputSpanField.textContent ?? "").substring(0, startSlotCursorInfos.cursorPos)
+                    const inputSpanFieldContent = ((inputSpanField.textContent?.replaceAll("\u200B", "")) ?? "").substring(0, startSlotCursorInfos.cursorPos)
                         + "\n" 
-                        + ((endSlotCursorInfos.cursorPos == (inputSpanField.textContent??"").length) ? "\n" : (inputSpanField.textContent ?? "").substring(endSlotCursorInfos.cursorPos));
+                        + ((endSlotCursorInfos.cursorPos == ((inputSpanField.textContent?.replaceAll("\u200B", ""))??"").length) ? "\n" : ((inputSpanField.textContent?.replaceAll("\u200B", "")) ?? "").substring(endSlotCursorInfos.cursorPos));
                     this.appStore.setFrameEditableSlotContent(
                         {
                             ...focusSlotCursorInfos.slotInfos,
@@ -779,18 +762,17 @@ export default Vue.extend({
                     }); 
                 }
                 else{
-                    // Same as hitting arrow down
-                    const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: this.code.length};
-                    this.appStore.setSlotTextCursors(slotCursorInfo, slotCursorInfo);
+                    // Same as hitting ctrl/alt + arrow down
                     document.getElementById(getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
                         new KeyboardEvent("keydown", {
                             key: "ArrowDown",
+                            altKey: true,
+                            ctrlKey: true,
                         })
                     );
                 }
             }
-            this.showAC = this.debugAC;
-            this.acRequested = false;
+            this.showAC = false;
         },
 
         onKeyDown(event: KeyboardEvent){
@@ -801,7 +783,7 @@ export default Vue.extend({
 
             // We capture the key shortcut for opening the a/c
             if((event.metaKey || event.ctrlKey) && event.key == " "){
-                this.acRequested = true;
+                this.showAC = true;
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
@@ -816,8 +798,8 @@ export default Vue.extend({
             // We already handle some keys separately, so no need to process any further (i.e. deletion)
             // We can just discard any keys with length > 0
             if(event.key.length > 1 || event.ctrlKey || event.metaKey || event.altKey){
-                // Do not updated the a/c if arrows up/down, escape and enter keys are hit because it will mess with navigation of the a/c
-                if(!["ArrowUp", "ArrowDown","Enter","Escape"].includes(event.key)) {
+                // Do not updated the a/c if arrows up/down, escape, enter and tab keys are hit because it will mess with navigation of the a/c
+                if(!["ArrowUp", "ArrowDown","Enter","Escape", "Tab"].includes(event.key)) {
                     this.$nextTick(() => {
                         this.updateAC();
                     });
@@ -900,7 +882,10 @@ export default Vue.extend({
             // to selectionEnd, below.
             const hasTextSelection = !!this.appStore.mostRecentSelectedText;
             let refactorFocusSpanUID = this.UID; // by default the focus stays where we are
-            const cursorPos = (getTextStartCursorPositionOfHTMLElement(inputSpanField) ?? inputString.length) - inputString.length;
+            let fieldPos = getTextStartCursorPositionOfHTMLElement(inputSpanField);
+            // Account for any zero width spaces:
+            fieldPos -= (inputSpanFieldContent.substring(0, fieldPos).match(/\u200B/g) || []).length; 
+            const cursorPos = fieldPos - inputString.length;
             
             // Our position will no longer have a selection, it's just us at the given cursor pos:
             this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: cursorPos + inputString.length}, {slotInfos: this.coreSlotInfo, cursorPos: cursorPos + inputString.length});
@@ -1156,13 +1141,15 @@ export default Vue.extend({
                 // Find which bounds we should target (which bound in the current level based on the key, and also the bound based on current text cursor position)
                 const moveToHome = (event.key === "Home");
                 const isSelecting = event.shiftKey;
+                const isInString = isFieldStringSlot(retrieveSlotFromSlotInfos(this.coreSlotInfo));
                 const parentSlotId = getSlotParentIdAndIndexSplit(this.coreSlotInfo.slotId).parentId;
                 // First focus: it will change to one end of the current level depending on the direction we're going
                 const newFocusSlotId = (moveToHome) 
-                    ? ((parentSlotId.length > 0) ? (parentSlotId + ",0") : "0")
-                    : ((parentSlotId.length > 0) ? (parentSlotId + "," + ((retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: parentSlotId}) as SlotsStructure).fields.length -1)) : ("" + (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.coreSlotInfo.labelSlotsIndex].slotStructures.fields.length - 1)));
-                const newFocusSlotType = evaluateSlotType(retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: newFocusSlotId}));
-                const newFocusSlotCoreInfo =  {...this.coreSlotInfo, slotId: newFocusSlotId, slotType: newFocusSlotType};
+                    ? (isInString ? this.slotId : ((parentSlotId.length > 0) ? (parentSlotId + ",0") : "0"))
+                    : (isInString ? this.slotId : ((parentSlotId.length > 0) ? (parentSlotId + "," + ((retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: parentSlotId}) as SlotsStructure).fields.length -1)) : ("" + (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.coreSlotInfo.labelSlotsIndex].slotStructures.fields.length - 1))));
+                // We only look for the new type and slot core infos for non-string current location to save unnecessary function calls
+                const newFocusSlotType = (isInString) ? this.slotType : evaluateSlotType(getSlotDefFromInfos(this.coreSlotInfo), retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: newFocusSlotId}));
+                const newFocusSlotCoreInfo = (isInString) ? this.coreSlotInfo : {...this.coreSlotInfo, slotId: newFocusSlotId, slotType: newFocusSlotType};
                 const newFocusCursorPos = (moveToHome) ? 0 : (retrieveSlotFromSlotInfos(newFocusSlotCoreInfo) as BaseSlot).code.length;
                 // Then anchor: it will either keep the same if we are doing a selection, or change to the same as focus if we are not.
                 const newAnchorSlotCursorInfo: SlotCursorInfos = (isSelecting) ? this.appStore.anchorSlotCursorInfos as SlotCursorInfos: {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos}; 
@@ -1226,7 +1213,7 @@ export default Vue.extend({
             // 3) set the text cursor at the right location       
             // 4) check if the slots need to be refactorised
             // (note: we do not make text treatment for comment frames, except for transforming \r\n to \n)
-            const isCommentFrame = (this.frameType == AllFrameTypesIdentifier.comment);
+            const isCommentSlot = this.slotType === SlotType.comment;
             const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
             const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UID);
             if (type.startsWith("image") || type.startsWith("audio")) {
@@ -1247,7 +1234,7 @@ export default Vue.extend({
                 // and if the line returns are line returns or coming from the UI (slots). For the moment, do as if we can only work from the UI.
                 let cursorOffset = 0;
                 let correctedPastedCode = "";
-                if(isCommentFrame){
+                if(isCommentSlot){
                     correctedPastedCode = content.replaceAll(/(\r\n)/g, "\n");
                 }
                 else{
@@ -1273,7 +1260,7 @@ export default Vue.extend({
                         const specifyFromImportFrame = (this.frameType == AllFrameTypesIdentifier.fromimport) ? AllFrameTypesIdentifier.fromimport : undefined;
                         const {slots: tempSlots, cursorOffset: tempcursorOffset} = parseCodeLiteral(content, {frameType: specifyFromImportFrame});
                         const parser = new Parser();
-                        correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0, false, AllowedSlotContent.TERMINAL_EXPRESSION).code;
+                        correctedPastedCode = parser.getSlotStartsLengthsAndCodeForFrameLabel(tempSlots, 0, OptionalSlotType.REQUIRED, AllowedSlotContent.TERMINAL_EXPRESSION).code;
                         cursorOffset = tempcursorOffset;
 
                         // We do a small check here to avoid as much as we can invalid pasted code inside imports.
@@ -1368,7 +1355,7 @@ export default Vue.extend({
                         // Restore the text cursor position (need to wait for reactive changes)
                         this.$nextTick(() => {
                             const newCurrentSlotInfoNoType = {...this.coreSlotInfo, slotId: newSlotId};
-                            const newCurrentSlotType = evaluateSlotType(retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
+                            const newCurrentSlotType = evaluateSlotType(getSlotDefFromInfos(newCurrentSlotInfoNoType), retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
                             let newSlotInfos = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
                             const slotUID = getLabelSlotUID(newSlotInfos); 
                             const inputSpanField = document.getElementById(slotUID) as HTMLSpanElement;
@@ -1415,7 +1402,7 @@ export default Vue.extend({
                             // Restore the text cursor position (need to wait for reactive changes)
                             this.$nextTick(() => {
                                 const newCurrentSlotInfoNoType = {...this.coreSlotInfo, slotId: newSlotId};
-                                const newCurrentSlotType = evaluateSlotType(retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
+                                const newCurrentSlotType = evaluateSlotType(getSlotDefFromInfos(newCurrentSlotInfoNoType), retrieveSlotFromSlotInfos(newCurrentSlotInfoNoType));
                                 const newCurrentSlotInfoWithType = {...newCurrentSlotInfoNoType, slotType: newCurrentSlotType};
                                 const slotCursorInfos: SlotCursorInfos = {slotInfos: newCurrentSlotInfoWithType, cursorPos: newCursorPosition};
                                 resultingSlotUID = getLabelSlotUID(newCurrentSlotInfoWithType);
@@ -1479,7 +1466,9 @@ export default Vue.extend({
             // To avoid unwanted deletion, we "force" a delay before removing the frame.
             const anchor = this.appStore.anchorSlotCursorInfos;
             const focus = this.appStore.focusSlotCursorInfos;
-            if(this.isFrameEmptyAndAtLabelSlotStart && (!anchor || !focus || areSlotCoreInfosEqual(anchor.slotInfos, focus.slotInfos))){
+            if(this.isFrameEmptyAndAtLabelSlotStart && (!anchor || !focus || areSlotCoreInfosEqual(anchor.slotInfos, focus.slotInfos))
+                // Backspace can't delete from documentation slots in other frames (e.g. project doc, funcdef doc), only from comment frames themselves:
+                && (this.coreSlotInfo.slotType != SlotType.comment || this.frameType == AllFrameTypesIdentifier.comment)){
                 event.stopPropagation();
                 event.stopImmediatePropagation();
                 event.preventDefault();
@@ -1517,7 +1506,7 @@ export default Vue.extend({
 
         acItemClicked(item: string) {
             // Get the content of the <li> element through the child node to avoid getting nested text elements (like the version)
-            const selectedItem = (document.getElementById(item) as HTMLLIElement)?.firstChild?.nodeValue?.trim()??"";
+            const selectedItem = (document.getElementById(item) as HTMLLIElement)?.getAttribute("data-item")?.trim()??"";
             if(selectedItem === undefined) {
                 return;
             }
@@ -1609,8 +1598,7 @@ export default Vue.extend({
                 }
             }        
             
-            this.showAC = this.debugAC;
-            this.acRequested = false;
+            this.showAC = false;
         },
    
         isImportFrame(): boolean {
@@ -1698,10 +1686,10 @@ export default Vue.extend({
 
 // We can't use :empty because we use a zero-width space for the content
 // when it is empty (at which point :empty is not applied).  So we use our own version:
-    .#{$strype-classname-label-slot-input}[empty-content="true"]::after {
+.#{$strype-classname-label-slot-input}[empty-content="true"]::after {
     content: attr(placeholder);
     font-style: italic;
-    color: #bbb;
+    color: var(--prompt-color, #bbb);
 }
 
 .#{$strype-classname-label-slot-input}.readonly {

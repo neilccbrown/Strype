@@ -270,12 +270,17 @@ export default Vue.extend({
         doLoadFile() {
             if(this.oauthToken != null){
                 // When we load for the very first time, we may not have a Drive location to look for. In that case, we look for a Strype folder existence 
-                // (however we do not create it here, we would do this on a save action). If a location is already set, we make sure it still exists. 
+                // (however we do not create it here, we would do this on a save action). If a location is already set*, we make sure it still exists. 
                 // If it doesn't exist anymore, we set the default location to the Strype folder (if available) or just the Drive itself if not.
                 // NOTE: we do not need to check a folder when opening a shared project
+                // (*) so the logic is like so we always check a folder location in Google Drive - if the strypeProjectLocation is a non-empty string 
+                // then we check that folder name; if it's an empty string, or not a string (i.e. when we were on a project opened on the File System)
+                // then we check for "Strype", because it is our default location.
+
+                
                 if(this.openSharedProjectFileId.length == 0){
-                    this.checkDriveStrypeFolder(false, (strypeFolderId) => {
-                        if(this.appStore.strypeProjectLocation && (this.appStore.strypeProjectLocation instanceof String)){
+                    this.checkDriveStrypeOrOtherFolder(false, !(this.appStore.strypeProjectLocation) || (typeof this.appStore.strypeProjectLocation != "string"), (strypeFolderId) => {
+                        if(this.appStore.strypeProjectLocation && (typeof this.appStore.strypeProjectLocation == "string")){
                             gapi.client.request({
                                 path: "https://www.googleapis.com/drive/v3/files/" + this.appStore.strypeProjectLocation,
                                 method: "GET",
@@ -384,7 +389,7 @@ export default Vue.extend({
             // In any other case, we only save a file if there is a save file id set
             if(saveReason == SaveRequestReason.saveProjectAtLocation || saveReason == SaveRequestReason.saveProjectAtOtherLocation){
                 // For this case, we ask for the location (with /Strype as the default location -- which is created if non existant)
-                this.checkDriveStrypeFolder(true, (strypeFolderId: string | null)=> {
+                this.checkDriveStrypeOrOtherFolder(true, true, (strypeFolderId: string | null)=> {
                     // Show the file picker to select a folder (with default location) if the location specified doesn't exist, or if the user asked for changing it
                     if(strypeFolderId != null && this.appStore.strypeProjectLocation == undefined){
                         // No location is set, we set the Strype folder
@@ -430,7 +435,7 @@ export default Vue.extend({
             // while when do autosave etc, we use th PROJECT saved name in the store.
             const fullFileName = newProjectName + "." + strypeFileExtension;        
             // Using this example: https://stackoverflow.com/a/38475303/412908
-            // Arbitrary long string:
+            // Arbitrary long string (delimiter for the multipart upload):
             const boundary = "2db8c22f75474a58cd13fa2d3425017015d392ce0";
             const body : string[] = [];
             // Prepare the request body parameters. Note that we only set the parent ID for explicit save
@@ -651,52 +656,57 @@ export default Vue.extend({
             this.$root.$emit("bv::show::modal", this.unsupportedByStrypeFilePickedModalDlgId);
         },
 
-        checkDriveStrypeFolder(createIfNone: boolean, checkFolderDoneCallBack: (strypeFolderId: string | null) => void, failedConnectionCallBack?: () => void) {
-            // Check if the Strype folder exists on the Drive. If not, we create it if createIfNone is set to true.
+        checkDriveStrypeOrOtherFolder(createIfNone: boolean, checkStrypeFolder: boolean, checkFolderDoneCallBack: (strypeFolderId: string | null) => void, failedConnectionCallBack?: () => void) {
+            // Check if the Strype folder (when checkStrypeFolder is true) or the state's folder (otherwise) exists on the Drive. If not, we create it if createIfNone is set to true.
             // Returns the file ID or null if the file couldn't be found/created.
             // Note that we need to specify the parent folder of the search (root folder) otherwise we would also get subfolders; and don't get trashed folders 
             // (that will also discard shared folders, so we don't need to check the writing rights...)
             let strypeFolderId: string | null = null;
             gapi.client.request({
-                path: "https://www.googleapis.com/drive/v3/files",
-                params: {"q": "mimeType='application/vnd.google-apps.folder' and name='Strype' and parents='root' and trashed=false"},
+                path: "https://www.googleapis.com/drive/v3/files/" + (checkStrypeFolder ? "" : this.appStore.strypeProjectLocation),
+                params: checkStrypeFolder ? {"q": "mimeType='application/vnd.google-apps.folder' and name='Strype' and parents='root' and trashed=false"} : {},
             }).then((response) => {
-                // Check if the response returns a folder. As Google Drive allows entries with same name, it is possible that several "Strype" folder exists; we will use the first one.
-                const filesArray: {id: string}[] = JSON.parse(response.body).files;
-                if(filesArray.length > 0){
-                    // If the Strype root folder exists, then we make it the location reference if none is defined yet.
-                    strypeFolderId = filesArray[0].id;
-                    // Continue with callback method after check is done
-                    checkFolderDoneCallBack(strypeFolderId);
-                }
-                else if(createIfNone){
-                    // If the Strype root folder doesn't exist in the user's Drive, we create one when requested
-                    const body = JSON.stringify({
-                        "name": "Strype",
-                        "mimeType": "application/vnd.google-apps.folder",
-                    });
-                    gapi.client.request({
-                        path: "https://www.googleapis.com/drive/v3/files",
-                        method: "POST",
-                        params: {"uploadType": "media"},
-                        body: body,
-                    }).then((resp) => {
-                        strypeFolderId = JSON.parse(resp.body).id; 
+                if(checkStrypeFolder){
+                    // Check if the response returns a folder. As Google Drive allows entries with same name, it is possible that several "Strype" folder exists; we will use the first one.
+                    const filesArray: {id: string}[] = JSON.parse(response.body).files;
+                    if(filesArray.length > 0){
+                        // If the Strype root folder exists, then we make it the location reference if none is defined yet.
+                        strypeFolderId = filesArray[0].id;
                         // Continue with callback method after check is done
                         checkFolderDoneCallBack(strypeFolderId);
-                    },
-                    (reason) => {
-                        // If the Strype folder cound't be created, we alert the user (temporary message banner) but we proceed with the save file workflow1
-                        this.appStore.showMessage(MessageDefinitions.GDriveCantCreateStrypeFolder, 3000);  
+                    }
+                    else if(createIfNone){
+                        // If the Strype root folder doesn't exist in the user's Drive, we create one when requested
+                        const body = JSON.stringify({
+                            "name": "Strype",
+                            "mimeType": "application/vnd.google-apps.folder",
+                        });
+                        gapi.client.request({
+                            path: "https://www.googleapis.com/drive/v3/files",
+                            method: "POST",
+                            params: {"uploadType": "media"},
+                            body: body,
+                        }).then((resp) => {
+                            strypeFolderId = JSON.parse(resp.body).id; 
+                            // Continue with callback method after check is done
+                            checkFolderDoneCallBack(strypeFolderId);
+                        },
+                        (reason) => {
+                            // If the Strype folder cound't be created, we alert the user (temporary message banner) but we proceed with the save file workflow1
+                            this.appStore.showMessage(MessageDefinitions.GDriveCantCreateStrypeFolder, 3000);  
+                            // Continue with callback method after check is done
+                            checkFolderDoneCallBack(strypeFolderId);
+                        });
+                    }
+                    else{
                         // Continue with callback method after check is done
                         checkFolderDoneCallBack(strypeFolderId);
-                    });
+                    }
                 }
                 else{
-                    // Continue with callback method after check is done
-                    checkFolderDoneCallBack(strypeFolderId);
+                    // We made a standard query to check the folder by ID, so it can be returned.
+                    checkFolderDoneCallBack(this.appStore.strypeProjectLocation as string);
                 }
-
             },(reason) => {
                 // If the login to the Google failed (or the user wasn't logged in), handle it via the callback
                 if(failedConnectionCallBack && (reason.status == 401 || reason.status == 403)){
@@ -705,46 +715,55 @@ export default Vue.extend({
             });
         },
 
+        searchGoogleDriveElement(query: string, options?: {orderBy?: string, fileFields?: string}): gapi.client.HttpRequest<any>{
+            // Make a search query on Google Drive, with the provided query parameter.
+            // Returns the HTTPRequest object obtained with the call to gapi.client.request(). 
+            const orderByParam = (options?.orderBy) ? {orderBy: options.orderBy} : {};
+            const fileFieldsParam = (options?.fileFields) ? {fields: options?.fileFields} : {};
+            return gapi.client.request({
+                path: "https://www.googleapis.com/drive/v3/files",
+                params: {...orderByParam, ...fileFieldsParam, "q": query},
+            });
+        },
+
         lookForAvailableProjectFileName(onSuccessCallback: () => void){
             // We check if the currently suggested file name is not already used in the location we save the file.
             // (note: it seems that searching against regex isn't supported. cf https://developers.google.com/drive/api/guides/ref-search-terms,
             // the matching works in a very strange way, on a prefix and word basis, but yet I get results I didn't expect, so better double check on the results to make sure).
-            gapi.client.request({
-                path: "https://www.googleapis.com/drive/v3/files",
-                params: {"q": "name contains '*.spy' and parents='" + ((this.appStore.strypeProjectLocation) ? this.appStore.strypeProjectLocation : "root") + "' and trashed=false"},
-            }).then((response) => {
-                let hasAlreadyFile = false, existingFileId = "";
-                this.isFileLocked = false;
-                const filesArray: {name: string, id: string}[] = JSON.parse(response.body).files;
-                filesArray.forEach((file) => {
-                    const listingThisFile = (file.name == (this.saveFileName + "." + strypeFileExtension));
-                    hasAlreadyFile ||= listingThisFile;
-                    if(listingThisFile){
-                        existingFileId = file.id;
-                    }
-                });
-
-                if(hasAlreadyFile){
-                    // Check if the file is locked before we propose to overwrite
-                    this.checkIsFileLocked(existingFileId, () => {
-                        // We show a dialog to the user to make their choice about what to do next
-                        this.$root.$emit("bv::show::modal", this.saveExistingGDProjectModalDlgId);                        
-                    }, () => {
-                        // We shouldn't have an issue at this stage, but if it happens, we just attempt to connect again
-                        this.proceedFailedConnectionCheckOnSave();
+            this.searchGoogleDriveElement("name contains '*.spy' and parents='" + ((this.appStore.strypeProjectLocation) ? this.appStore.strypeProjectLocation : "root") + "' and trashed=false")
+                .then((response) => {
+                    let hasAlreadyFile = false, existingFileId = "";
+                    this.isFileLocked = false;
+                    const filesArray: {name: string, id: string}[] = JSON.parse(response.body).files;
+                    filesArray.forEach((file) => {
+                        const listingThisFile = (file.name == (this.saveFileName + "." + strypeFileExtension));
+                        hasAlreadyFile ||= listingThisFile;
+                        if(listingThisFile){
+                            existingFileId = file.id;
+                        }
                     });
 
-                    // We do not continue the saving process at this stage: we wait for the user action,
-                    // but we save the bits we need for continuing the process later (initiate the request to copy file to false at this stage)
-                    this.saveExistingGDProjectInfos = {existingFileId: existingFileId, existingFileName: this.saveFileName, resumeProcessCallback: onSuccessCallback, isCopyFileRequested: false};                
-                    return;                    
-                }
-                // Keep on with the flow of actions if everything went smooth so far
-                onSuccessCallback();
-            },(reason) => {
+                    if(hasAlreadyFile){
+                    // Check if the file is locked before we propose to overwrite
+                        this.checkIsFileLocked(existingFileId, () => {
+                        // We show a dialog to the user to make their choice about what to do next
+                            this.$root.$emit("bv::show::modal", this.saveExistingGDProjectModalDlgId);                        
+                        }, () => {
+                        // We shouldn't have an issue at this stage, but if it happens, we just attempt to connect again
+                            this.proceedFailedConnectionCheckOnSave();
+                        });
+
+                        // We do not continue the saving process at this stage: we wait for the user action,
+                        // but we save the bits we need for continuing the process later (initiate the request to copy file to false at this stage)
+                        this.saveExistingGDProjectInfos = {existingFileId: existingFileId, existingFileName: this.saveFileName, resumeProcessCallback: onSuccessCallback, isCopyFileRequested: false};                
+                        return;                    
+                    }
+                    // Keep on with the flow of actions if everything went smooth so far
+                    onSuccessCallback();
+                },(reason) => {
                 // We shouldn't have an issue at this stage, but if it happens, we just attempt to connect again
-                this.proceedFailedConnectionCheckOnSave();
-            });
+                    this.proceedFailedConnectionCheckOnSave();
+                });
         },
 
         checkIsFileLocked(fileId: string, onSuccessCallback: () => void, onFailureCallBack: VoidFunction): void {
@@ -815,6 +834,76 @@ export default Vue.extend({
             this.appStore.strypeProjectLocationAlias = "";
             this.appStore.projectLastSaveDate = -1;
             this.saveFileId = undefined;
+        },
+
+        readFileContentForIO(fileId: string, isBinaryMode: boolean, filePath: string): Promise<string | Uint8Array | {success: boolean, errorMsg: string}> {
+            // This method is used by FileIO to get a file string content.
+            // It relies on the Google File Id passed as argument, and the callback method for handling succes or failure is also passed as arguments.
+            // The argument "filePath" is only used for error message.
+            // The nature of the answer depends on the reading mode: a string in normal text case, an array of bytes in binary mode.
+            // Because we want to be able to read raw data, we use the fetch API to query Google Drive.
+            return fetch("https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media", {
+                headers: { Authorization: "Bearer "+ this.oauthToken },
+            }).then((resp) => {
+                // Fetch returns a fulfilled promise even if the response is not 200.
+                if(resp.status != 200){
+                    return Promise.reject({success: false, errorMsg: this.$i18n.t("errorMessage.fileIO.fetchFileError", {filename: filePath, error: resp.status}) as string}); 
+                }
+                return (isBinaryMode) 
+                    ? resp.arrayBuffer().then((buffer) => {
+                        return new Uint8Array(buffer);
+                    }) 
+                    : resp.text().then((text) => {
+                        return text;
+                    });
+            },
+            // Case of errors
+            (resp) => {
+                return {success: false, errorMsg: this.$i18n.t("errorMessage.fileIO.fetchFileError", {filename: filePath, error: (resp?.status?.toString()??"unknown")}) as string}; 
+            });
+        },
+
+        writeFileContentForIO(fileContent: string|Uint8Array, fileInfos: {filePath: string, fileName?: string, fileId?: string, folderId?: string}): Promise<string> {
+            // Write file supports 2 modes: normal writing that only relies on the content and fileId,
+            // and file creation which relies on the folderId, fileName and returns the generated fileId.
+            // The fileName is always set because it may be used inside the error message.
+            // The method returns a string promise: the file ID on success, the error message on failure.
+            const isCreatingFile = !!(fileInfos.folderId);
+            
+            // The gapi.client.request() we have used for writing Strype projects in Drive isn't working for binary data.
+            // So we use fetch() for binary files to be supported.
+            // Arbitrary long string (delimiter for the multipart upload)
+            const boundary = "2db8c22f75474a58cd13fa2d3425017015d392ce0";
+            const bodyReqParams: {name?: string, parents?: [string]} = {};
+            if(isCreatingFile){
+                bodyReqParams.name = fileInfos.fileName??""; // the file name must be set by the caller!
+                bodyReqParams.parents = [fileInfos.folderId??""]; // the containing folder id must be set by the caller!
+            }
+
+            // Construct the multipart body
+            const body = `--${boundary}\nContent-Type: application/json; charset=UTF-8\n\n${JSON.stringify(bodyReqParams)}\n--${boundary}\n\n`;
+            // Convert binary data to Blob
+            const blob = new Blob([body, fileContent, `\n--${boundary}--`], { type: "multipart/related; boundary=" + boundary });
+            return new Promise<string>((resolve, reject) => {
+                fetch(`https://www.googleapis.com/upload/drive/v3/files${(isCreatingFile) ? "" : "/" + (fileInfos.fileId??"")}?uploadType=multipart`, {
+                    method: isCreatingFile ?  "POST" : "PATCH",
+                    headers: {
+                        "Authorization": "Bearer " + this.oauthToken,
+                        "Content-Type": "multipart/related; boundary=" + boundary,
+                    },
+                    body: blob,
+                })
+                    .then((response) => response.json())
+                    .then((respJson) => {
+                        if(respJson.id){                        
+                            resolve(respJson.id);
+                        }
+                        else{
+                            reject(i18n.t("errorMessage.fileIO.writingFileFailed", {filename: fileInfos.filePath, error: respJson.error.message??respJson.error.code}));            
+                        }
+                    })
+                    .catch((error) => reject(i18n.t("errorMessage.fileIO.writingFileFailed", {filename: fileInfos.filePath, error: error})));          
+            });     
         },
     },
 });

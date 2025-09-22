@@ -1,15 +1,18 @@
 <template>
     <!-- @mousedown must be kept to avoid the click to move the focus from input text field -->
     <li
-        v-show="item"
-        :class="{[scssVars.acItemClassName]: true, [scssVars.acItemSelectedClassName]: selected}"
+        v-show="item || itemHTML"
+        :class="{[scssVars.acItemClassName]: true, [scssVars.acItemSelectedClassName]: selected, 'ac-indent-wrapped': indentWrapped}"
         :id="id"
+        :data-item="item"
         @mouseover="onHover"
         @mousedown.prevent.stop
         @mouseup.self="$emit('acItemClicked',id)"
     >
-        {{item}}
-        <span v-if="version > 1" class="api-item-version" :title="$t('apidiscovery.v2InfoMsg')">v{{version}}</span>
+        <!-- One or the other: -->
+        <span v-if="itemHTML" v-html="itemHTML" @mousedown.prevent.stop @mouseup.self="$emit('acItemClicked',id)"></span>
+        <span v-else @mousedown.prevent.stop @mouseup.self="$emit('acItemClicked',id)">{{ item }}</span>
+        <span v-if="version > 1" class="api-item-version ac-item-version" :title="$t('apidiscovery.v2InfoMsg')">v{{version}}</span>
     </li>
 </template>
 
@@ -25,10 +28,15 @@ export default Vue.extend({
 
     props: {
         item: String,
+        itemHTML: {
+            type: String,
+            default: "",
+        },
         id: String,
         index: Number,
         selected: Boolean,
         isSelectable: Boolean,
+        indentWrapped: Boolean,
         version: Number,
     },
 
@@ -58,5 +66,15 @@ export default Vue.extend({
 }
 
 // Style related to the context menu are in App.vue
+
+// Indent lines after the first:
+.ac-indent-wrapped {
+    padding-left: 20px !important;
+    text-indent: -15px;
+}
+
+.ac-item-version {
+    float: none !important;
+}
 </style>
 

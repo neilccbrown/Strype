@@ -23,7 +23,7 @@ describe("Built-ins", () => {
             checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
             checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
             // We had a previous bug with multiple sum items in microbit:
-            checkExactlyOneItem(acIDSel, BUILTIN, "sum(iterable)");
+            checkExactlyOneItem(acIDSel, BUILTIN, "sum(iterable, start)");
             checkExactlyOneItem(acIDSel, BUILTIN, "ZeroDivisionError()");
             checkExactlyOneItem(acIDSel, BUILTIN, "zip()");
             checkNoItems(acIDSel, "__name__");
@@ -57,14 +57,14 @@ describe("Built-ins", () => {
     it("Shows text when no documentation available", () => {
         focusEditorAC();
         // Add a function frame and trigger auto-complete:
-        const targetNoDocs = Cypress.env("mode") === "microbit" ? "ellipsis" : "buffer";
+        const targetNoDocs = Cypress.env("mode") === "microbit" ? "function" : "buffer";
         cy.get("body").type(" " + targetNoDocs);
         cy.wait(500);
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel).should("be.visible");
             // buffer is a Skulpt-only function with no documentation available:
-            // ellipsis is a type with no docs
+            // function is a type with no docs (note: used "ellipsis" before, but with new API it has 2 entries)
             
             checkExactlyOneItem(acIDSel, BUILTIN, targetNoDocs + (Cypress.env("mode") === "microbit" ? "()" : ""));
             cy.get("body").type("{downarrow}");
@@ -100,7 +100,7 @@ describe("Behaviour with operators, brackets and complex expressions", () => {
                 checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
                 checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
                 // We had a previous bug with multiple sum items in microbit:
-                checkExactlyOneItem(acIDSel, BUILTIN, "sum(iterable)");
+                checkExactlyOneItem(acIDSel, BUILTIN, "sum(iterable, start)");
                 checkExactlyOneItem(acIDSel, BUILTIN, "ZeroDivisionError()");
                 checkExactlyOneItem(acIDSel, BUILTIN, "zip()");
                 checkNoItems(acIDSel, "__name__");

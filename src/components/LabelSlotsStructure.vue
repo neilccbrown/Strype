@@ -5,6 +5,8 @@
         contenteditable="true"
         @keydown.left="onLRKeyDown($event)"
         @keydown.right="onLRKeyDown($event)"
+        @keydown.up="slotUpDown($event)"
+        @keydown.down="slotUpDown($event)"
         @beforeinput="beforeInput"
         @keydown="forwardKeyEvent($event)"
         @keyup="forwardKeyEvent($event)"
@@ -13,12 +15,13 @@
         @paste.prevent.stop="forwardPaste"
         @input="onInput"
         @compositionend="onCompositionEnd"
-        :class="{'next-to-eachother label-slot-structure':true, 'prepend-self-only': prependText === 'self', 'prepend-self-comma': prependText === 'self,'}"
+        :class="{'next-to-eachother '+scssVars.labelSlotStructClassName:true, 'prepend-self-only': prependText === 'self', 'prepend-self-comma': prependText === 'self,'}"
     >
             <!-- Note: the default text is only showing for new slots (1 subslot), we also use unicode zero width space character for empty slots for UI -->
             <LabelSlot
                 v-for="(slotItem, slotIndex) in subSlots"
                 :key="frameId + '_'  + labelIndex + '_' + slotIndex + '_' + refactorCount"
+                ref="labelSlots"
                 :labelSlotsIndex="labelIndex"
                 :slotId="slotItem.id"
                 :slotType="slotItem.type"
@@ -35,19 +38,19 @@
 </template>
 
 <script lang="ts">
-import { AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, DefIdentifiers, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
+import {AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType} from "@/types/types";
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
-import {CustomEventTypes, getFrameLabelSlotsStructureUID, getLabelSlotUID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, getFunctionCallDefaultText, getEditableSelectionText, openBracketCharacters, stringQuoteCharacters, getMatchingBracket, UIDoubleQuotesCharacters, STRING_DOUBLEQUOTE_PLACERHOLDER, UISingleQuotesCharacters, STRING_SINGLEQUOTE_PLACERHOLDER} from "@/helpers/editor";
-import {checkCodeErrors, getParentId, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
+import {CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters} from "@/helpers/editor";
+import {checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import {calculateParamPrompt} from "@/autocompletion/acManager";
 import scssVars from "@/assets/style/_export.module.scss";
-import {readFileAsyncAsData, readImageSizeFromDataURI, splitByRegexMatches} from "@/helpers/common";
+import {isMacOSPlatform, readFileAsyncAsData, readImageSizeFromDataURI, splitByRegexMatches} from "@/helpers/common";
 import {detectBrowser} from "@/helpers/browser";
-import { isMacOSPlatform } from "@/helpers/common";
+import {handleVerticalCaretMove} from "@/helpers/spans";
 
 export default Vue.extend({
     name: "LabelSlotsStructure",
@@ -91,6 +94,11 @@ export default Vue.extend({
     computed:{
         ...mapStores(useStore),
 
+        scssVars() {
+            // just to be able to use in template
+            return scssVars;
+        },
+
         labelSlotsStructDivId(): string {
             return getFrameLabelSlotsStructureUID(this.frameId, this.labelIndex);
         },
@@ -110,7 +118,7 @@ export default Vue.extend({
             const isFuncCallFrame = this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall;
             if (this.subSlots.length == 1) {
                 // If we are on an optional label slots structure that doesn't contain anything yet, we only show the placeholder if we're focused
-                const isOptionalEmpty = (this.appStore.frameObjects[this.frameId].frameType.labels[this.labelIndex].optionalSlot??false) && this.subSlots.length == 1 && this.subSlots[0].code.length == 0;
+                const isOptionalEmpty = (this.appStore.frameObjects[this.frameId].frameType.labels[this.labelIndex].optionalSlot??OptionalSlotType.REQUIRED) == OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK && this.subSlots.length == 1 && this.subSlots[0].code.length == 0;
                 if(isOptionalEmpty && !this.isFocused()){
                     return Promise.resolve([" "]);
                 }
@@ -118,7 +126,7 @@ export default Vue.extend({
             }
             else {
                 return Promise.all(this.subSlots.map((slotItem, index) => slotItem.placeholderSource !== undefined 
-                    ? calculateParamPrompt(this.frameId, slotItem.placeholderSource.context, slotItem.placeholderSource.token, slotItem.placeholderSource.paramIndex, slotItem.placeholderSource.lastParam) 
+                    ? calculateParamPrompt(this.frameId, slotItem.placeholderSource, slotItem.focused ?? false) 
                     : Promise.resolve((this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && index == 0) 
                         ? getFunctionCallDefaultText(this.frameId)
                         : "\u200b")));
@@ -287,8 +295,9 @@ export default Vue.extend({
         },
 
         majorChange(before: SlotsStructure, after: SlotsStructure) : boolean {
-            const beforeFlat = generateFlatSlotBases(before);
-            const afterFlat = generateFlatSlotBases(after);
+            const slotDef = getSlotDefFromInfos({frameId: this.frameId, labelSlotsIndex: this.labelIndex});
+            const beforeFlat = generateFlatSlotBases(slotDef, before);
+            const afterFlat = generateFlatSlotBases(slotDef, after);
             // Our default behaviour is to discard all AC.  We only keep it if:
             //  - the flat length is the same, AND
             //  - at most one slot has changed
@@ -320,11 +329,13 @@ export default Vue.extend({
         checkSlotRefactoring(slotUID: string, stateBeforeChanges: any, options?: {doAfterCursorSet?: VoidFunction, useFlatMediaDataCode?: boolean}) {
             // Comments do not need to be checked, so we do nothing special for them, but just enforce the caret to be placed at the right place and the code value to be updated
             const currentFocusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
-            if((this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment || this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.library) && currentFocusSlotCursorInfos){
+            const allowed = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelIndex].allowedSlotContent;
+            if (allowed !== undefined && [AllowedSlotContent.FREE_TEXT_DOCUMENTATION, AllowedSlotContent.LIBRARY_ADDRESS].includes(allowed) && currentFocusSlotCursorInfos) {
                 (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields[0] as BaseSlot).code = (document.getElementById(getLabelSlotUID(currentFocusSlotCursorInfos.slotInfos))?.textContent??"").replace(/\u200B/g, "");
                 this.$nextTick(() => {
                     setDocumentSelection(currentFocusSlotCursorInfos, currentFocusSlotCursorInfos);
-                    options?.doAfterCursorSet?.();
+                    options?.doAfterCursorSet?.();                    
+                    this.appStore.saveStateChanges(stateBeforeChanges);
                 });
                 return;
             }
@@ -456,8 +467,9 @@ export default Vue.extend({
         forwardKeyEvent(event: KeyboardEvent) {
             // The container div of this LabelSlotsStructure is editable. Editable divs capture the key events. 
             // We need to forward the event to the currently "focused" (editable) slot.
-            // ** LEFT/RIGHT ARROWS ARE TREATED SEPARATELY BY THIS COMPONENT, we don't forward related events **
-            if(event.key == "ArrowLeft" || event.key == "ArrowRight"){
+            // ** LEFT/RIGHT AND UP/DOWN ARROWS ARE TREATED SEPARATELY BY THIS COMPONENT, we don't forward related events **
+            if(event.key == "ArrowLeft" || event.key == "ArrowRight"
+                || event.key == "ArrowUp" || event.key == "ArrowDown"){
                 return;
             }
 
@@ -516,7 +528,18 @@ export default Vue.extend({
                         ctrlKey: event.ctrlKey,
                         metaKey: event.metaKey,
                     }));
-                if (event.key.toLowerCase() == "backspace"
+                
+                // We want to prevent some events to be handled wrongly twice or at all by the browser and our code.
+                // However, for comments, we need to let some navigation event go through otherwise they're blocked as we rely on the browser for them.
+                if(this.appStore.allowsKeyEventThroughInLabelSlotStructure || 
+                    (["PageUp", "PageDown", "Home", "End"].includes(event.key) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment)){
+                    // A few events need to be handled by the brower solely.
+                    // That is, for comments: "PageUp", "PageDown", "Home", "End" 
+                    // and anytime we set allowsKeyUpThroughInLabelSlotStructure (which we need to reset):
+                    this.appStore.allowsKeyEventThroughInLabelSlotStructure = false;
+                    return;
+                }
+                else if (event.key.toLowerCase() == "backspace"
                     || event.key.toLowerCase() == "delete"
                     || event.key.toLowerCase() == "enter"
                     || event.key == "ArrowUp"
@@ -617,13 +640,13 @@ export default Vue.extend({
                 const {slotInfos, cursorPos} = this.appStore.focusSlotCursorInfos;
                 const spanInput = document.getElementById(getLabelSlotUID(slotInfos)) as HTMLSpanElement;
                 const spanInputContent = spanInput.textContent ?? "";
-                const isCommentFrame = (this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment);
+                const allowed = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelIndex].allowedSlotContent;
 
                 // If we're trying to go off the bounds of this slot
                 // For comments, if there is a terminating line return, we do not allow the cursor to be past it (cf LabelSlot.vue onEnterOrTabKeyUp() for why)
                 // We can "push" one half a bracket pair only with "Alt" (or Ctrl on macOS) + arrow within the same level.                
                 if((cursorPos == 0 && event.key==="ArrowLeft") 
-                        || (((cursorPos >= spanInputContent.replace(/\u200B/, "").length) || (isCommentFrame && spanInputContent.endsWith("\n") && cursorPos == spanInputContent.length - 1)) && event.key==="ArrowRight")) {
+                        || (((cursorPos >= spanInputContent.replaceAll(/\u200B/g, "").length) || (allowed == AllowedSlotContent.FREE_TEXT_DOCUMENTATION && spanInputContent.endsWith("\n") && cursorPos == spanInputContent.length - 1)) && event.key==="ArrowRight")) {
                     // DO NOT request a loss of focus here, because we need to be able to know which element of the UI has focus to find the neighbour in this.appStore.leftRightKey()
                     if((event.altKey && !isMacOSPlatform()) || (event.ctrlKey && isMacOSPlatform())){
                         this.checkAndDoPushBracket(this.appStore.focusSlotCursorInfos, event.key==="ArrowLeft");
@@ -659,6 +682,77 @@ export default Vue.extend({
                 event.stopImmediatePropagation();  
             }                      
         },
+        
+        slotUpDown(event: KeyboardEvent) {
+            if (!this.isFocused || !this.appStore.isEditing) {
+                return;
+            }
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            event.preventDefault();
+            
+            if (!(event.shiftKey || event.metaKey || event.altKey || event.ctrlKey)) {
+                const subSlots = this.$refs.labelSlots as InstanceType<typeof LabelSlot>[];
+                for (const subSlot of subSlots) {
+                    if (subSlot.handleUpDown(event)) {
+                        // Consumed by focused slot which is showing autocomplete:
+                        return;
+                    }
+                }
+            }
+            
+            if (!(event.metaKey || event.altKey || event.ctrlKey)) {
+                // Try to move up/down within this item, if we have wrapped:
+                const spans = document.getElementById(this.labelSlotsStructDivId)?.querySelectorAll("span." + scssVars.labelSlotInputClassName + "[contenteditable=\"true\"]") as NodeListOf<HTMLSpanElement>;
+                if (spans.length > 0) {
+                    const dest = handleVerticalCaretMove(Array.from(spans), event.key == "ArrowUp" ? "up" : "down");
+                    if (dest) {
+                        const infos = {slotInfos: parseLabelSlotUID(dest.span.id), cursorPos: dest.offset};
+                        const anchor = (event.shiftKey ? this.appStore.anchorSlotCursorInfos : undefined) ?? infos; 
+                        this.appStore.setSlotTextCursors(anchor, infos);
+                        setDocumentSelection(anchor, infos);
+                        this.appStore.setFocusEditableSlot({
+                            frameSlotInfos: infos.slotInfos,
+                            caretPosition: (this.appStore.getAllowedChildren(this.frameId)) ? CaretPosition.body : CaretPosition.below,
+                        });
+                        return;
+                    }
+                }
+                
+                if (event.shiftKey) {
+                    // If shift is pressed, we don't leave for a frame cursor:
+                    return;
+                }
+            }
+            // Otherwise we move to an adjacent frame cursor.
+            // Special case: if we are the project doc frame, up doesn't do anything and down has to not go beneath us, but rather into the imports
+            let isProjectDoc = this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.projectDocumentation;
+            if (isProjectDoc && event.key == "ArrowUp") {
+                // Do nothing further; up can't go anywhere:
+                return;
+            }
+            
+            this.appStore.isEditing = false;
+            this.blurEditableSlot(true);
+            document.getSelection()?.removeAllRanges();
+            
+            //If the up arrow is pressed you need to move the caret as well.
+            if(event.key == "ArrowUp") {
+                this.appStore.changeCaretPosition(event.key);
+            }
+            else{
+                if (isProjectDoc) {
+                    // We want the section after the project doc:
+                    const newCaretId = this.appStore.frameObjects[0].childrenIds[1];
+                    const newCaretPosition = CaretPosition.body;
+                    this.appStore.toggleCaret({id: newCaretId, caretPosition: newCaretPosition});
+                }
+                else {
+                    // Restore the caret visibility
+                    Vue.set(this.appStore.frameObjects[this.appStore.currentFrame.id], "caretVisibility", this.appStore.currentFrame.caretPosition);
+                }
+            }
+        },
 
         checkAndDoPushBracket(focusSlotCursorInfos: SlotCursorInfos, isToPushLeft: boolean): void {
             // We can "push" only one half a bracket pair with "Alt" (or Ctrl on macOS) + arrow 
@@ -681,7 +775,7 @@ export default Vue.extend({
             // 1.b) are we after an opening bracket [resp. before a closing bracket] ? (i.e. we are in the first [resp. last] slot of a bracketed structure)
             const immediatePrevNeighbourSlotInfo = getFlatNeighbourFieldSlotInfos(slotInfos, !isToPushLeft, true);
             const isNextToExternalStructBracket = (immediatePrevNeighbourSlotInfo != null && immediatePrevNeighbourSlotInfo.slotType == SlotType.bracket);
-            const isNextToInternalStructBracket =  !isNextToExternalStructBracket && slotInfos.slotId.includes(",") && evaluateSlotType(parentSlot) == SlotType.bracket && ((isToPushLeft) ? slotIndex == 0 : slotIndex == (parentSlot as SlotsStructure).fields.length - 1);
+            const isNextToInternalStructBracket =  !isNextToExternalStructBracket && slotInfos.slotId.includes(",") && evaluateSlotType(getSlotDefFromInfos(slotInfos), parentSlot) == SlotType.bracket && ((isToPushLeft) ? slotIndex == 0 : slotIndex == (parentSlot as SlotsStructure).fields.length - 1);
             isNextToBracket = isNextToExternalStructBracket || isNextToInternalStructBracket;
             if(isNextToBracket) {
                 // Set the slot infos of the neighbour slot to check: that is the slot just preceding [resp. following] the bracketed structure we are in now
@@ -826,7 +920,8 @@ export default Vue.extend({
             this.appStore.ignoreFocusRequest = false;
         },
 
-        blurEditableSlot(){
+        blurEditableSlot(force?: boolean){
+            this.isFocused = false;
             this.updatePrependText();
             // If a flag to ignore editable slot focus is set, we just revert it and do nothing else
             if(this.appStore.bypassEditableSlotBlurErrorCheck){
@@ -836,7 +931,7 @@ export default Vue.extend({
                    
             // When the div containing the slots loses focus, we need to also notify the currently focused slot inside *this* container
             // that the caret has been "lost" (since a contenteditable div won't let its children having/loosing focus)
-            if(document.activeElement?.id === this.labelSlotsStructDivId){
+            if(!force && document.activeElement?.id === this.labelSlotsStructDivId){
                 // We don't lose focus that's from an outside event (like when the browser itself loses focus)
                 // cf https://stackoverflow.com/questions/24638129/javascript-dom-how-to-prevent-blur-event-if-focus-is-lost-to-another-window
                 this.appStore.ignoreFocusRequest = true;
@@ -909,7 +1004,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.label-slot-structure{
+.#{$strype-classname-label-slot-struct} {
     outline: none;
     max-width: 100%;
     flex-wrap: wrap;

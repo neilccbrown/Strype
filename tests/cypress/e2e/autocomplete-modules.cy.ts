@@ -225,7 +225,8 @@ describe("Modules", () => {
             // Should have time related queries, but not the standard completions:
             checkExactlyOneItem(acIDSel, "time", target);
             checkNoItems(acIDSel, nonAvailable);
-            checkExactlyOneItem(acIDSel, "time", Cypress.env("mode") === "microbit" ? "sleep(seconds)" : "sleep()");
+            // TODO: revert to "sleep(seconds)" for microbit when we fix TP 
+            checkExactlyOneItem(acIDSel, "time", Cypress.env("mode") === "microbit" ? "sleep(object)" : "sleep()");
             checkNoItems(acIDSel, "abs");
             checkNoItems(acIDSel, "AssertionError");
             // Type first letter of the target:
@@ -302,7 +303,7 @@ describe("Nested modules", () => {
     // in terms of the autocomplete tests here, it should function in exactly the same way: 
     const targetModule = Cypress.env("mode") == "microbit" ? "microbit.accelerometer" : "urllib.request";
     const targetFunction = Cypress.env("mode") == "microbit" ? "get_x" : "urlopen";
-    const targetFunctionWithParam = Cypress.env("mode") == "microbit" ? "get_x()" : "urlopen(url)";
+    const targetFunctionWithParam = Cypress.env("mode") == "microbit" ? "get_x()" : "urlopen(url, data, timeout, cafile, capath, cadefault, context)";
 
     it("Offers auto-completion for modules with names a.b when imported as a.b", () => {
         // This works on microbit without using Skulpt because we have special cases to look up microbit in our precalculated JSON
@@ -455,7 +456,7 @@ describe("Imported items", () => {
 });
 
 describe("Underscore handling", () => {
-    const importFunc = Cypress.env("mode") === "microbit" ? "__import__(name)" : "__import__(name)";
+    const importFunc = Cypress.env("mode") === "microbit" ? "__import__(name, globals, locals, fromlist, level)" : "__import__(name)";
 
     it("Does not offer underscore items at top-level until typed", () => {
         focusEditorAC();

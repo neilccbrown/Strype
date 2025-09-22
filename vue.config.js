@@ -1,5 +1,4 @@
 /* eslint @typescript-eslint/no-var-requires: "off" */
-const MoveAssetsPlugin = require("move-assets-webpack-plugin");
 const RemoveFilePlugin = require("remove-files-webpack-plugin");
 
 // Application environment variable for the built date/hash.
@@ -12,25 +11,17 @@ process.env.VUE_APP_BUILD_GIT_HASH = require("child_process").execSync("git rev-
 
 const configureWebpackExtraProps = 
     {
-        plugins: [(process.env.npm_config_microbit) ?
-            new MoveAssetsPlugin({
-                clean: true,
-                patterns: [
-                    {
-                        from: "dist/pythonLib",
-                        // files in `to` will be deleted
-                        // unless `clean` is set to `false`
-                        to: "dist/",
-                    },
-                ],
-            }) 
-            :new RemoveFilePlugin({
-                after: {
-                    // Do not include at all the folder containing the microbit python files
-                    include: ["./dist/pythonLib"],
-                    trash: true,
+        plugins: [
+            // We don't need our Strype librairies and standard examples for micro:bit
+            // Conversely, we don't need micro:bit-specific libraries and examples for the standard version
+            new RemoveFilePlugin({
+                after: {                    
+                    include: (process.env.npm_config_microbit)
+                        ? ["./dist/demos/console", "./dist/demos/graphics", "./dist/demos/turtle", "./dist/graphics_images", "./dist/sounds", "./dist/public_libraries/strype", "./dist/pyi"]
+                        : ["./dist/demos/microbit", "./dist/public_libraries/microbit"],
+                    trash: false,
                 },
-            }) ,
+            }),
         ],
     };
 
@@ -38,7 +29,7 @@ module.exports = {
     configureWebpack: {
         devtool: "source-map",
         resolve: {
-            extensions: [ ".ts", ".js", ".py" ],
+            extensions: [ ".ts", ".js", ".py", ".pyi" ],
         },
         ...configureWebpackExtraProps,
         // allows pinia to compile fine (https://github.com/vuejs/pinia/issues/675)
@@ -50,7 +41,7 @@ module.exports = {
                     type: "javascript/auto",
                 },
                 {
-                    test: /\.py$/,
+                    test: /\.pyi?$/,
                     use: "raw-loader",
                 },
             ],

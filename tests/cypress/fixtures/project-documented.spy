@@ -1,0 +1,11 @@
+#(=> Strype:1:std
+'''This project has a description attached.'''
+#(=> Section:Imports
+#(=> Section:Definitions
+def foo ( ) :
+    '''This is the function foo.'''
+    return 42 
+#(=> Section:Main
+msg  = "Hello" 
+print(foo(msg)) 
+#(=> Section:End

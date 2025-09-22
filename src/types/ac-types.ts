@@ -1,5 +1,26 @@
 // Types for the autocomplete.  These are in a separate file because they are imported
 // by the process-skulpt-api.ts script, which cannot import the full types.ts file.
+
+interface SignatureArg {
+    name: string;
+    defaultValue: string | null;
+    argType: string | null;
+}
+
+interface SignatureVarArg {
+    name: string;
+    argType: string | null;
+}
+
+interface Signature {
+    positionalOnlyArgs: SignatureArg[];      // before /
+    positionalOrKeywordArgs: SignatureArg[]; // after / before *
+    varArgs: SignatureVarArg | null;         // *args
+    keywordOnlyArgs: SignatureArg[];         // after *
+    varKwargs: SignatureVarArg | null;       // **kwargs
+    firstParamIsSelfOrCls: boolean;
+}
+
 export interface AcResultType {
     // The text of the result, like "len" or "upper" or "time:
     acResult: string;
@@ -12,7 +33,8 @@ export interface AcResultType {
     // Only there if a function, and even then it may be missing if we can't look up the info:
     // hide means we should hide this parameter (e.g. self, type) from all completion
     params?: {name: string, defaultValue?: string, hide?: boolean}[];
-    // The version.  Only used on microbit to distinguish v2 and v3:
+    signature?: Signature;
+    // The version.  Only used on microbit to distinguish v1 and v2:
     version: number;
 }
 
@@ -30,3 +52,9 @@ export interface IndexedAcResultWithCategory {
 export interface AcResultsWithCategory {
     [category: string]: AcResultType[];
 }
+
+/* IFTRUE_isMicrobit */
+export interface AcMicrobitResultType extends AcResultType {
+    mbVarType?: string;
+}
+/* FITRUE_isMicrobit */

@@ -64,7 +64,7 @@
             </pane>
         </Splitpanes>
         FITRUE_isPython */
-        /* IFTRUE_isMicrobit      
+        /* IFTRUE_isMicrobit 
         <div :class="scssVars.peaContainerClassName">  
             <div v-if="showProgress" class="progress cmd-progress-container">
                 <div 
@@ -78,17 +78,21 @@
                     <span v-t="'action.uploadingToMicrobit'" class="progress-bar-text"></span>
                 </div>
             </div>
-            <div class="commands-container">
+            <div class="commands-container">    
+                <iframe id="mbSimulatorIframe" src="https://python-simulator.usermbit.org/v/0.1/simulator.html?color=%2300FF00" frameborder="0" scrolling="no" sandbox="allow-scripts allow-same-origin"></iframe>
+                <br>
                 <button type="button" @click="runToMicrobit" v-t="'buttonLabel.runOnMicrobit'" class="btn btn-secondary cmd-button"/>
+                <button v-if="isMBSimulatorRunning" type="button" @click="stopMBSimulator" v-t="'buttonLabel.stopMBSimulator'" class="btn btn-secondary cmd-button stop-mb-sim-btn "/>
             </div>
         </div>
+        <SimpleMsgModalDlg :dlgId="startMBSimulatorlDlgId" />
         FITRUE_isMicrobit */
     </div>
 </template>
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getMenuLeftPaneUID, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
+import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getFrameUID, getMenuLeftPaneUID, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, defaultEmptyStrypeLayoutDividerSettings, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -98,6 +102,7 @@ import { mapStores } from "pinia";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import scssVars  from "@/assets/style/_export.module.scss";
 import { isMacOSPlatform } from "@/helpers/common";
+import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
 /* IFTRUE_isPython */
 import {Splitpanes, Pane, PaneData} from "splitpanes";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
@@ -106,7 +111,8 @@ import {getPEAConsoleId, getPEAGraphicsDivId, getPEATabContentContainerDivId, ge
 /* IFTRUE_isMicrobit */
 import APIDiscovery from "@/components/APIDiscovery.vue";
 import { flash } from "@/helpers/webUSB";
-import { downloadHex } from "@/helpers/download";
+import { downloadHex, getPythonContent } from "@/helpers/download";
+import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 /* FITRUE_isMicrobit */
 
 export default Vue.extend({
@@ -116,6 +122,7 @@ export default Vue.extend({
         AddFrameCommand,
         /* IFTRUE_isMicrobit */
         APIDiscovery,
+        SimpleMsgModalDlg,
         /* FITRUE_isMicrobit */
         /* IFTRUE_isPython */
         Splitpanes, Pane,
@@ -140,6 +147,9 @@ export default Vue.extend({
             commandsSplitterPane2Size: 0, // to be adjused after the component is mounted
             isCommandsSplitterChanged: false,
             /* FITRUE_isPython */
+            /* IFTRUE_isMicrobit */
+            mbSimulator: null as Window | null,
+            /* FITRUE_isMicrobit */
         };
     },
 
@@ -190,7 +200,17 @@ export default Vue.extend({
                 this.appStore.commandsTabIndex = index;
             },
         },
+
+        startMBSimulatorlDlgId(): string {
+            return "startMBSimulatorlDlg";
+        },
+
+        isMBSimulatorRunning(): boolean {
+            // Indicates when the users triggered the simulator
+            return this.appStore.pythonExecRunningState == PythonExecRunningState.Running; 
+        },
         /* FITRUE_isMicrobit */
+
         commandsContainerUID(): string {
             return getCommandsContainerUID();
         },
@@ -366,13 +386,31 @@ export default Vue.extend({
                     }
                 }
                 
-                /* IFTRUE_isPython */
                 // If ctrl-enter/cmd-enter is pressed, make sure we quit the editing (if that's the case) and run the code
-                if((event.ctrlKey || event.metaKey) && eventKeyLowCase === "enter" && this.$refs[getPEAComponentRefId()]) {
+                if((event.ctrlKey || event.metaKey) && eventKeyLowCase === "enter" 
+                /* IFTRUE_isPython && this.$refs[getPEAComponentRefId()] FITRUE_isPython *//* IFTRUE_isMicrobit && this.mbSimulator FITRUE_isMicrobit */) {
+                    /* IFTRUE_isPython */
                     ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).focus();
                     ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).click();
                     // Need to unfocus to avoid keyboard focus non-obviously remaining with the run button:
                     ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).blur();
+                    /* FITRUE_isPython */
+
+                    /* IFTRUE_isMicrobit */
+                    // If the run Python shortcut is triggered with the micro:bit version, we start/stop the simulator.
+                        
+                    if(event.ctrlKey){
+                        if(this.isMBSimulatorRunning) {
+                            this.stopMBSimulator();
+                        } 
+                        else {
+                            // The micro:bit simulator do not support non-user interaction for a flash request.
+                            // So we just tell the user here what to do...
+                            this.appStore.simpleModalDlgMsg = this.$i18n.t("appMessage.startMBSimulatorNeedUserAction") as string;
+                            this.$root.$emit("bv::show::modal", this.startMBSimulatorlDlgId);                            
+                        }
+                    }
+                    /* FITRUE_isMicrobit */
                     
                     // Don't then process the keypress for other purposes:
                     event.preventDefault();
@@ -380,7 +418,6 @@ export default Vue.extend({
                     event.stopImmediatePropagation();
                     return;
                 }
-                /* FITRUE_isPython */
 
                 // If a context menu is currently displayed, we handle the menu keyboard interaction here
                 // (note that preventing the event here also prevents the keyboard scrolling of the page)
@@ -478,9 +515,12 @@ export default Vue.extend({
                             }
                         }
                         else if(event.key == " " && this.appStore.selectedFrames.length == 0){
-                            // If ctrl/meta + space is activated on caret, we add a new functional call frame and trigger the a/c
-                            this.appStore.addFrameWithCommand(this.addFrameCommands[eventKeyLowCase][0].type);
-                            this.$nextTick(() => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true})));
+                            const currentStrypeLocation = findCurrentStrypeLocation();
+                            if(currentStrypeLocation == STRYPE_LOCATION.MAIN_CODE_SECTION || currentStrypeLocation == STRYPE_LOCATION.IN_FUNCDEF){
+                                // If ctrl/meta + space is activated on caret (in a function/class definition or in the main section), we add a new functional call frame and trigger the a/c
+                                this.appStore.addFrameWithCommand(this.addFrameCommands[eventKeyLowCase][0].type);
+                                this.$nextTick(() => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true})));
+                            }
                         }
                     }
                     /* IFTRUE_isPython */
@@ -552,6 +592,12 @@ export default Vue.extend({
             this.handleAppScroll,
             false
         );
+        
+        /* IFTRUE_isMicrobit */
+        this.mbSimulator = (document.querySelector("#mbSimulatorIframe") as HTMLIFrameElement)?.contentWindow;
+        window.addEventListener("blur", this.handleMBSimulatorTakesFocus);        
+        window.addEventListener("message", this.onMicrobitSimulatorMsgReceived);
+        /* FITRUE_isMicrobit */
     },
 
     methods: {
@@ -631,6 +677,52 @@ export default Vue.extend({
             else{
                 downloadHex(true);
             }
+        },
+
+        onMicrobitSimulatorMsgReceived(e: MessageEvent<Record<string, any>>){
+            // Example reference: https://github.com/micropython-microbit-v2-simulator/micropython-microbit-v2-simulator/blob/main/src/demo.html
+            const { data } = e;
+            const simulator = this.mbSimulator;
+            // Actions on the simulator will loose the focus on Strype, so we save where we were.
+            if (simulator && e.source === simulator) {
+                switch (data.kind) {                            
+                case "request_flash":
+                    // We can send the current code to the microbit simulator
+                    getPythonContent()
+                        .then((pyContent) => {                            
+                            this.appStore.pythonExecRunningState = PythonExecRunningState.Running;
+                            this.mbSimulator?.postMessage({
+                                "kind": "flash",
+                                "filesystem": {
+                                    "main.py": new TextEncoder()
+                                        .encode(pyContent),
+                                },
+                            },"*");                                                     
+                        })
+                        // Error from code parsing is handled in getPythonContent()
+                        .catch((_) => {});                    
+                    break;
+                default:
+                    // Do nothing                    
+                    break;
+                }                
+            }
+        },
+
+        handleMBSimulatorTakesFocus(){
+            // Importantly, interactions with the simulator will give it focus.
+            // We need to make sure the focus gets back to Strype so we can still have control...
+            setTimeout(() => {
+                if(this.appStore.pythonExecRunningState){
+                    document.getElementById(getFrameUID(this.appStore.currentFrame.id))?.focus(); 
+                }
+            },500);
+        },
+
+        stopMBSimulator() {
+            // Send a stop message to the simulator
+            this.mbSimulator?.postMessage({"kind": "stop"}, "*");
+            this.appStore.pythonExecRunningState = PythonExecRunningState.NotRunning;
         },
         
         getTabClasses(tabIndex: number): string[] {
@@ -867,10 +959,6 @@ export default Vue.extend({
     font-weight: bold;
 }
 
-.commands-container {
-    display: inline-block;
-}
-
 #keystrokeSpan {
     bottom:2px;
     left: 50%;
@@ -897,19 +985,15 @@ export default Vue.extend({
     margin: 0px $strype-python-exec-area-margin $strype-python-exec-area-margin $strype-python-exec-area-margin;
     /* FITRUE_isPython */
     /* IFTRUE_isMicrobit */
-    margin-bottom: 90px;
+    margin-bottom: 40px;
     overflow: hidden; // that is used to keep the margin https://stackoverflow.com/questions/44165725/flexbox-preventing-margins-from-being-respected
     flex-grow: 3;
+    flex-shrink: 0;
     /* FITRUE_isMicrobit */
     display: flex;
     flex-direction: column;    
     align-items: flex-start;
     justify-content: flex-end;
-}
-
-.cmd-button {
-    padding: 1px 6px 1px 6px !important;
-    margin-top: 5px;
 }
 
 .commands-tab {
@@ -936,4 +1020,31 @@ export default Vue.extend({
 .nav-item{
     cursor: no-drop;
 }
+//ends bootstrap overriding
+
+/* IFTRUE_isMicrobit */
+.commands-container {
+    display: inline-block;
+}
+
+.commands-container > button:first-of-type{
+    margin-right: 5px;
+}
+
+.stop-mb-sim-btn {
+   background-color: red !important;
+}
+
+#mbSimulatorIframe {      
+    width: 304px;
+    height: 240px;
+    min-width: 304px;
+    min-height: 240px; 
+    margin-left: -8px; // We can't access the iframe's content styling for security reasons, this is retrieved from observation.
+}
+
+.cmd-button {
+    padding: 1px 6px 1px 6px !important;
+}
+/* FITRUE_isMicrobit */
 </style>
