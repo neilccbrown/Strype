@@ -4,6 +4,7 @@ import { useStore } from "@/store/store";
 import scssVars from "@/assets/style/_export.module.scss";
 import quoteCircleProject from "@/assets/images/quote-circle-project.png";
 import quoteCircleFuncdef from "@/assets/images/quote-circle-funcdef.png";
+import quoteCircleClass from "@/assets/images/quote-circle-class.png";
 
 // Re-export types from ac-types:
 // Note, important to use * here rather than individual imports, to avoid this issue with Babel:
@@ -699,6 +700,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         labels: [
             { label: "class ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false},
             { label: " :", showSlots: false, defaultText: ""},
+            { label: `<img src='${quoteCircleClass}'>`, newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.t("frame.defaultText.classDescription") as string, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],
         colour: "#baded3",
         forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)

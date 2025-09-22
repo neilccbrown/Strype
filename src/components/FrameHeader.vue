@@ -161,12 +161,7 @@ export default Vue.extend({
 .runtime-past-err-icon {
     color:#706e6e;
 }
-.frame-header-label:has(svg) {
-    display: flex;
-    align-items: center;
-    justify-content: center; /* optional */
-}
-.frame-header-label-projectDocumentation > img, .frame-header-label-funcdef > img {
+.frame-header-label-projectDocumentation > img, .frame-header-label-funcdef > img, .frame-header-label-classdef > img {
     height: 0.9em;
     align-self: center;
 }

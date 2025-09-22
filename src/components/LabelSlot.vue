@@ -214,7 +214,7 @@ export default Vue.extend({
                 if ((isStructureSingleSlot || isEmptyFunctionCallSlot || this.defaultText?.replace(/\u200B/g, "")?.trim()) && (optionalSlot != OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK) && this.code.replace(/\u200B/g, "").trim().length == 0) {
                     // Non-focused and empty; white if required, or semi-transparent white if shows prompt
                     backgroundColor = optionalSlot == OptionalSlotType.REQUIRED ? "#FFFFFF" : "rgba(255, 255, 255, 0.6)";
-                    if (isDoc && frameType == AllFrameTypesIdentifier.funcdef) {
+                    if (isDoc && (frameType == AllFrameTypesIdentifier.funcdef || frameType == AllFrameTypesIdentifier.classdef)) {
                         backgroundColor = "rgba(255, 255, 255, 0.35)";
                         styles["--prompt-color"] = "rgb(255, 255, 255, 0)";
                         styles["transform"] = "scaleY(0.4)";

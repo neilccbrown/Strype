@@ -21,7 +21,8 @@
       "libraryAddress": "location",
       "comment": "comment ",
       "projectDescription": "project description",
-      "funcDescription": "function description"
+      "funcDescription": "function description",
+      "classDescription": "class description"
     },
     "classdef_desc": "class definition",
     "funcdef_desc": "function definition",
