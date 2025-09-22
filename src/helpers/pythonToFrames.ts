@@ -875,7 +875,7 @@ function getRealLineNo(p: ParsedConcreteTree) : number | undefined {
 }
 
 // the given index for the body, and call addFrame on it.
-function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, keywordIndexForLineno: number, childrenIndicesForSlots: (number | number[])[], childIndexForBody: number, s : CopyState, transformTopComment?: (content: SlotsStructure, frame: FrameObject) => void) : {s: CopyState, frame: FrameObject} {
+function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, keywordIndexForLineno: number, childrenIndicesForSlots: (number | number[])[] | { [index: number]: LabelSlotsContent}, childIndexForBody: number, s : CopyState, transformTopComment?: (content: SlotsStructure, frame: FrameObject) => void) : {s: CopyState, frame: FrameObject} {
     let slots : { [index: number]: LabelSlotsContent} = {};
     if (Array.isArray(childrenIndicesForSlots)) {
         for (let slotIndex = 0; slotIndex < childrenIndicesForSlots.length; slotIndex++) {
@@ -1138,7 +1138,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         if (s.parent?.frameType.type == AllFrameTypesIdentifier.classdef) {
             // We remove the first param from the start of function params,
             // assuming it is the self parameter that we add automatically.
-            const params = f.labelSlotsDict[1];
+            const params = r.frame.labelSlotsDict[1];
 
             if (params && params.slotStructures.fields.length == 1) {
                 // We need to keep a field, but we blank the content:
@@ -1194,7 +1194,7 @@ export function findCurrentStrypeLocation(): STRYPE_LOCATION {
             // Two possible cases: we are at the body of a function definition or at the bottom:
             // in the first case, we are inside a function definition,
             // in the second case, we are inside the definitions section.
-            return (navigFrameCaretPos == CaretPosition.body) ? STRYPE_LOCATION.IN_FUNCDEF : STRYPE_LOCATION.FUNCDEF_SECTION;
+            return (navigFrameCaretPos == CaretPosition.body) ? STRYPE_LOCATION.IN_FUNCDEF : STRYPE_LOCATION.DEFS_SECTION;
         case ContainerTypesIdentifiers.defsContainer:
             return STRYPE_LOCATION.DEFS_SECTION;
         case ContainerTypesIdentifiers.importsContainer:
@@ -1451,7 +1451,7 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
         // The logic for pasting is: every frame that are allowed at the current cursor's position are added.
         // Frames that are related to another section where the caret is not present are added in that section.
         const curLocation = findCurrentStrypeLocation();
-        const isCurLocationInImportsSection = curLocation == STRYPE_LOCATION.IMPORTS_SECTION, isCurLocationInDefsSection = curLocation == STRYPE_LOCATION.FUNCDEF_SECTION, 
+        const isCurLocationInImportsSection = curLocation == STRYPE_LOCATION.IMPORTS_SECTION, isCurLocationInDefsSection = curLocation == STRYPE_LOCATION.DEFS_SECTION, 
             isCurLocationInMainCodeSection = curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION, isCurLocationInAFuncDefFrame = curLocation == STRYPE_LOCATION.IN_FUNCDEF;
 
         copyFramesFromParsedPython(s.projectDoc, STRYPE_LOCATION.PROJECT_DOC_SECTION, s.format);

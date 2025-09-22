@@ -278,13 +278,7 @@ export default Vue.extend({
         },
 
         focused(): boolean {
-            // We need to keep update of the label slots structure's "isFocused" flag, because using the keyboard to navigate will not
-            // update this flag -- but we always end up here when the focus (for slots) is updated.
-            const isSlotFocused = this.appStore.isEditableFocused(this.coreSlotInfo);
-            if (isSlotFocused || (this.appStore.focusSlotCursorInfos?.slotInfos.frameId != this.coreSlotInfo.frameId || this.appStore.focusSlotCursorInfos?.slotInfos.labelSlotsIndex != this.coreSlotInfo.labelSlotsIndex)) {
-                (this.$parent as InstanceType<typeof LabelSlotsStructure>).isFocused = isSlotFocused;
-            }
-            return isSlotFocused;
+            return this.appStore.isEditableFocused(this.coreSlotInfo);
         },
 
         UID(): string {

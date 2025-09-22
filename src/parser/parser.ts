@@ -440,7 +440,7 @@ export default class Parser {
                 }
             }
             
-            const insideAClass = parentInsideAClass || frame.frameType.type == DefIdentifiers.classdef;
+            const insideAClass = parentInsideAClass || frame.frameType.type == AllFrameTypesIdentifier.classdef;
 
             lineCode = frame.frameType.allowChildren ?
                 // frame with children

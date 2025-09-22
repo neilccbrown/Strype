@@ -15,7 +15,7 @@
         @paste.prevent.stop="forwardPaste"
         @input="onInput"
         @compositionend="onCompositionEnd"
-        :class="{'next-to-eachother '+scssVars.labelSlotStructClassName:true, 'prepend-self-only': prependText === 'self', 'prepend-self-comma': prependText === 'self,'}"
+        :class="{'next-to-eachother': true, [scssVars.labelSlotStructClassName]:true, 'prepend-self-only': prependText === 'self', 'prepend-self-comma': prependText === 'self,'}"
     >
             <!-- Note: the default text is only showing for new slots (1 subslot), we also use unicode zero width space character for empty slots for UI -->
             <LabelSlot
@@ -44,7 +44,7 @@ import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
 import {CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters} from "@/helpers/editor";
-import {checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
+import {checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import {calculateParamPrompt} from "@/autocompletion/acManager";
 import scssVars from "@/assets/style/_export.module.scss";
@@ -921,7 +921,6 @@ export default Vue.extend({
         },
 
         blurEditableSlot(force?: boolean){
-            this.isFocused = false;
             this.updatePrependText();
             // If a flag to ignore editable slot focus is set, we just revert it and do nothing else
             if(this.appStore.bypassEditableSlotBlurErrorCheck){
@@ -986,7 +985,7 @@ export default Vue.extend({
         
         updatePrependText() {
             if (this.prependSelfWhenInClass) {
-                const isInClass = useStore().frameObjects[getParentId(useStore().frameObjects[this.frameId])]?.frameType.type == DefIdentifiers.classdef;
+                const isInClass = useStore().frameObjects[getParentId(useStore().frameObjects[this.frameId])]?.frameType.type == AllFrameTypesIdentifier.classdef;
                 if (!isInClass) {
                     this.prependText = "";
                 }
