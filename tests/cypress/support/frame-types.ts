@@ -1,8 +1,6 @@
 // Copied from src/types/types.ts
 // Bit annoying that this must be copied, but it's a pain to try to share the original:
 
-import quoteCircleClass from "@/assets/images/quote-circle-class.png";
-
 const i18n = { t: ((x : string) => x)};
 
 export enum AllowedSlotContent {
@@ -407,7 +405,7 @@ export function generateAllFrameDefinitionTypes(): void{
         labels: [
             { label: "class ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false},
             { label: " :", showSlots: false, defaultText: ""},
-            { label: `<img src='${quoteCircleClass}'>`, newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.t("frame.defaultText.classDescription") as string, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
+            { label: "'''", newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.t("frame.defaultText.classDescription") as string, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],
         colour: "#baded3",
         forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
