@@ -270,6 +270,10 @@ describe("Tests loading/saving classes", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/oop-crab-no-images.spy");
     });
     it("Loads/saves classes", () => {
+        if (Cypress.env("mode") == "microbit") {
+            // No image literals in microbit mode:
+            return;
+        }
         testRoundTripImportAndDownload("tests/cypress/fixtures/oop-crab.spy");
     });
 });
