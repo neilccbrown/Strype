@@ -74,11 +74,12 @@ function checkDownloadedFileEquals(fullContent: string, filename: string, firstS
 function adjustIfMicrobit(filepath: string) {
     if (Cypress.env("mode") === "microbit") {
         const dest = "cypress/downloads/temp.spy";
-        cy.readFile(filepath).then((content) => {
+        cy.readFile(filepath).then((content : string) => {
             const lines = content.split(/\r?\n/);
             // Replace std with mb on the top line:
             lines[0] = lines[0].replace(/std/g, "mb");
-            const updated = lines.join("\n");
+            // Microbit doesn't store any PythonExecutionArea layout info (which is prefixed pea) because it doesn't have it:
+            const updated = lines.filter((line : string) => !line.includes("#(=> pea")).join("\n");
             cy.writeFile(dest, updated);
         });
         filepath = dest;
