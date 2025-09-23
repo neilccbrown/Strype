@@ -1427,7 +1427,6 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
         allLines.pop();
     }
     const s = splitLinesToSections(allLines);
-    console.log("Split to: " + JSON.stringify(s));
     
     // Bit awkward but we first attempt to copy each to check for errors because
     // if there are any errors we don't want to paste any:
