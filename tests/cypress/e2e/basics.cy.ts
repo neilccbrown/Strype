@@ -309,7 +309,7 @@ describe("Classes", () => {
     it("Lets you add a class frame", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
         cy.get("body").type("{uparrow}cFoo");
-        cy.get("body").type("{rightarrow}{downarrow} foo()");
+        cy.get("body").type("{rightarrow}{rightarrow}{downarrow} foo()");
         checkCodeEquals(defaultImports.concat([
             {h: /class\s+Foo\s*:/, b: [
                 {h: /def\s+__init__\s*\((self,?)?\s*\)\s*:/, b: [
@@ -321,7 +321,7 @@ describe("Classes", () => {
     it("Lets you add a class frame with a parent class", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
         cy.get("body").type("{uparrow}cFoo(Bar");
-        cy.get("body").type("{rightarrow}{rightarrow}{downarrow} foo()");
+        cy.get("body").type("{rightarrow}{rightarrow}{rightarrow}{downarrow} foo()");
         checkCodeEquals(defaultImports.concat([
             {h: /class\s+Foo\(Bar\)\s*:/, b: [
                 {h: /def\s+__init__\s*\((self,?)?\s*\)\s*:/, b: [
@@ -336,7 +336,7 @@ describe("Classes", () => {
         // Class header:
         cy.get("body").type("{uparrow}cFoo");
         // Constructor body:
-        cy.get("body").type("{rightarrow}{downarrow} foo()");
+        cy.get("body").type("{rightarrow}{rightarrow}{downarrow} foo()");
         // Attribute:
         cy.get("body").type("{rightarrow}{downarrow}=myattr=5");
         // Methods:
