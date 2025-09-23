@@ -486,6 +486,13 @@ describe("Python classes", () => {
         return 6
 `);
     });
+    it("Allows pasting class with a class comment", () => {
+        test(`class Foo:
+    '''This is a class comment.'''
+    def bar (self):
+        return 6
+`);
+    });
     it("Allows pasting class with fields and methods", () => {
         test(`class Foo:
     x = 5

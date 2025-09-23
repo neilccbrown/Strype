@@ -1173,7 +1173,14 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
             name.operators.push({code: ""}, {code: ""});
             slots[0] = {slotStructures: name};
         }
-        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.classdef, 0, slots, numChildren - 1, s).s;
+        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.classdef, 0, slots, numChildren - 1, s, (comment : SlotsStructure, frame : FrameObject) => {
+            frame.labelSlotsDict[2] = {slotStructures: comment};
+        });
+        s = r.s;
+        // If we didn't find a top comment, add blank:
+        if (!(2 in r.frame.labelSlotsDict)) {
+            r.frame.labelSlotsDict[2] = {slotStructures: {operators: [], fields: [{code: ""}]}};
+        }
         break;
     }
     }
