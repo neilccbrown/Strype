@@ -39,7 +39,7 @@ import Vue from "vue";
 import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
-import { CaretPosition, FrameObject, DefaultFramesDefinition, FramesDefinitions, FrameContainersDefinitions, getFrameDefType, AllFrameTypesIdentifier, PythonExecRunningState } from "@/types/types";
+import { CaretPosition, CollapsedState, FrameObject, DefaultFramesDefinition, FramesDefinitions, FrameContainersDefinitions, getFrameDefType, AllFrameTypesIdentifier, PythonExecRunningState } from "@/types/types";
 import { mapStores } from "pinia";
 import { CustomEventTypes, getCaretContainerRef, getCaretUID, getFrameUID} from "@/helpers/editor";
 import scssVars from "@/assets/style/_export.module.scss";
@@ -163,7 +163,7 @@ export default Vue.extend({
         containerStyle(): Record<string, string> {
             return {
                 "display": (this.isCollapsed) ? "none" : "block",
-                "backgroundColor": `${(this.frameType.type === FrameContainersDefinitions.ImportsContainerDefinition.type || this.frameType.type == FrameContainersDefinitions.FuncDefContainerDefinition.type) 
+                "backgroundColor": `${(this.frameType.type === FrameContainersDefinitions.ImportsContainerDefinition.type || this.frameType.type == FrameContainersDefinitions.DefsContainerDefinition.type) 
                     ? getFrameDefType(AllFrameTypesIdentifier.import).colour
                     : getFrameDefType(AllFrameTypesIdentifier.return).colour}`,
             };
@@ -190,7 +190,7 @@ export default Vue.extend({
                     const nextFrameContainerIndex = this.appStore.frameObjects[this.appStore.getRootFrameContainerId].childrenIds.indexOf(this.frameId) + 1;
                     const nextFrameContainerId = this.appStore.frameObjects[this.appStore.getRootFrameContainerId].childrenIds.at(nextFrameContainerIndex);
                     // As we have only 3 sections, if the next section is collapsed we automatically get to "My code", as this one is never collapsed.
-                    const targetFrameContainerId = (nextFrameContainerId && !this.appStore.frameObjects[nextFrameContainerId].isCollapsed)
+                    const targetFrameContainerId = (nextFrameContainerId && this.appStore.frameObjects[nextFrameContainerId].collapsedState == CollapsedState.FULLY_VISIBLE)
                         ? nextFrameContainerId
                         : this.appStore.getMainCodeFrameContainerId;
                     this.appStore.setCurrentFrame({id: targetFrameContainerId, caretPosition: CaretPosition.body});
@@ -236,7 +236,7 @@ export default Vue.extend({
             }
 
             // Make sure the container is expanded.
-            this.appStore.frameObjects[this.frameId].isCollapsed = false;
+            this.appStore.frameObjects[this.frameId].collapsedState = CollapsedState.FULLY_VISIBLE;
         },
 
         onFrameContainerHover(isHovered: boolean): void {
@@ -256,7 +256,7 @@ export default Vue.extend({
                 this.currentDragAndDropHoverTimeoutHandle = window.setTimeout(() => {
                     // Check if we are still hovering and dragging                
                     if(this.isHovered && this.appStore.isDraggingFrame){
-                        this.appStore.frameObjects[this.frameId].isCollapsed = false;
+                        this.appStore.frameObjects[this.frameId].collapsedState = CollapsedState.FULLY_VISIBLE;
                         document.dispatchEvent(new CustomEvent(CustomEventTypes.dropFramePositionsUpdated));
                     }
                 }, timeout);
