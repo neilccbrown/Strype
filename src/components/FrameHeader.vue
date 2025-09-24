@@ -25,7 +25,16 @@
                 />
                 <!-- ^^ Note: append to frame label is same as prepend to slot -->
             </div>
+            <div ref="foldingControl" :class="{'folding-control': true, 'fold-doc': isFoldDoc, 'fold-header': isFoldHeader, 'fold-full': isFoldFull }" @click.stop.prevent="cycleFold" v-if="canCycleFold && groupIndex == 0">
+                <img class="folding-header" src="@/assets/images/quote-circle-funcdef-empty.png" v-if="isFuncDef">
+                <img class="folding-doc" src="@/assets/images/quote-circle-funcdef.png" v-if="isFuncDef">
+                <img class="folding-full" src="@/assets/images/quote-circle-funcdef-filled.png" v-if="isFuncDef">
+                <img class="folding-header" src="@/assets/images/quote-circle-class-empty.png" v-if="isClassDef">
+                <img class="folding-doc" src="@/assets/images/quote-circle-class.png" v-if="isClassDef">
+                <img class="folding-full" src="@/assets/images/quote-circle-class-filled.png" v-if="isClassDef">
+            </div>
             <i v-if="wasLastRuntimeError && groupIndex == splitLabels.length - 1" :class="{'fas fa-exclamation-triangle fa-xs runtime-err-icon': true, 'runtime-past-err-icon': !erroneous}"></i>
+            
         </div>
     </div>
 </template>
@@ -36,14 +45,15 @@
 //////////////////////
 import Vue from "vue";
 import LabelSlotsStructure from "@/components/LabelSlotsStructure.vue";
-import { useStore } from "@/store/store";
-import {AllFrameTypesIdentifier, FrameLabel} from "@/types/types";
-import { mapStores } from "pinia";
+import {useStore} from "@/store/store";
+import {AllFrameTypesIdentifier, CollapsedState, FrameLabel} from "@/types/types";
+import {mapStores} from "pinia";
 import scssVars from "@/assets/style/_export.module.scss";
 
 // Splits into a list of lists (each outer list is a line, with 1 or more items on it)
 // by looking at the newLine flag in the FrameLabel.
-function splitAtNewLines(labels : FrameLabel[]) : {item: FrameLabel, originalIndex: number}[][] {
+// If the collapsed state is header only, only the first line is returned
+function splitAtNewLines(labels : FrameLabel[], state: CollapsedState) : {item: FrameLabel, originalIndex: number}[][] {
     const result : {item: FrameLabel, originalIndex: number}[][] = [];
     let currentGroup : {item: FrameLabel, originalIndex: number}[] = [];
     labels.forEach((item, index) => {
@@ -55,6 +65,10 @@ function splitAtNewLines(labels : FrameLabel[]) : {item: FrameLabel, originalInd
     });
     if (currentGroup.length > 0) {
         result.push(currentGroup);
+    }
+    if (state == CollapsedState.ONLY_HEADER_VISIBLE) {
+        // Only keep the first item:
+        result.length = Math.min(result.length, 1);
     }
     return result;
 }
@@ -77,6 +91,8 @@ export default Vue.extend({
         frameType: String,
         isDisabled: Boolean,
         frameAllowChildren: Boolean,
+        frameCollapsedState: Number, // Index in the enum CollapsedState
+        frameAllowedCollapsedStates: Array,
         erroneous: Boolean,
         wasLastRuntimeError: Boolean,
         onFocus: Function, // Handler for focus/blur the header (see Frame.vue)
@@ -95,7 +111,31 @@ export default Vue.extend({
         },
         
         splitLabels() {
-            return splitAtNewLines(this.labels as FrameLabel[]);
+            return splitAtNewLines(this.labels as FrameLabel[], this.frameCollapsedState as CollapsedState);
+        },
+        
+        canCycleFold() {
+            return this.frameAllowedCollapsedStates.length > 1;
+        },
+        
+        isFuncDef() {
+            return this.frameType===AllFrameTypesIdentifier.funcdef;
+        },
+
+        isClassDef() {
+            return this.frameType===AllFrameTypesIdentifier.classdef;
+        },
+        
+        isFoldDoc() {
+            return (this.frameCollapsedState as CollapsedState) == CollapsedState.HEADER_AND_DOC_VISIBLE;
+        },
+
+        isFoldHeader() {
+            return (this.frameCollapsedState as CollapsedState) == CollapsedState.ONLY_HEADER_VISIBLE;
+        },
+
+        isFoldFull() {
+            return (this.frameCollapsedState as CollapsedState) == CollapsedState.FULLY_VISIBLE;
         },
     },
 
@@ -106,6 +146,9 @@ export default Vue.extend({
 
         areSlotsShown(labelDetails: FrameLabel): boolean {
             return labelDetails.showSlots??true;
+        },
+        cycleFold(): void {
+            this.appStore.cycleFrameCollapsedState(this.frameId);
         },
     },
 });
@@ -157,12 +200,42 @@ export default Vue.extend({
     margin-left: auto;
     color:#d66;
 }
-
 .runtime-past-err-icon {
     color:#706e6e;
 }
 .frame-header-label-projectDocumentation > img, .frame-header-label-funcdef > img, .frame-header-label-classdef > img {
     height: 0.9em;
     align-self: center;
+}
+
+.folding-control {
+    margin-left: auto;
+    margin-right: 7px;
+    margin-top: 5px;
+    position: relative;
+    overflow: hidden;
+    width: 0.9em;
+    height: 0.9em;
+    cursor: pointer;
+}
+.folding-control > img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity 0.25s ease-in-out;
+    opacity: 0;
+}
+// Note: important the hover is on the folding control not the img, because
+// the imgs are on top of each other so only the top one gets hover
+.folding-control:hover > img {
+    filter: brightness(1.25);
+}
+.folding-control.fold-header > img.folding-header,
+.folding-control.fold-doc > img.folding-doc,
+.folding-control.fold-full > img.folding-full {
+    opacity: 0.5;
 }
 </style>
