@@ -1,7 +1,10 @@
 import i18n from "@/i18n";
 import Compiler from "@/compiler/compiler";
 import { useStore } from "@/store/store";
-import scssVars  from "@/assets/style/_export.module.scss";
+import scssVars from "@/assets/style/_export.module.scss";
+import quoteCircleProject from "@/assets/images/quote-circle-project.png";
+import quoteCircleFuncdef from "@/assets/images/quote-circle-funcdef.png";
+import quoteCircleClass from "@/assets/images/quote-circle-class.png";
 
 // Re-export types from ac-types:
 // Note, important to use * here rather than individual imports, to avoid this issue with Babel:
@@ -26,7 +29,7 @@ export interface LabelSlotsContent {
     slotStructures: SlotsStructure; // the root slot for that label
 }
 
-export type FieldSlot = (BaseSlot | SlotsStructure | StringSlot);
+export type FieldSlot = (BaseSlot | SlotsStructure | StringSlot | MediaSlot);
 export interface SlotsStructure {
     operators: BaseSlot[];
     fields: FieldSlot[];
@@ -37,8 +40,8 @@ export interface BaseSlot {
     code: string;
     // Details for working out the prompt for this slot.  Absent if not a parameter to a function.
     // If a parameter, records the context and token for autocomplete purposes, plus the index and whether
-    // we are the last parameter.
-    placeholderSource?: {context: string, token: string, paramIndex: number, lastParam: boolean};
+    // we are the last parameter, and which keyword params are already given.
+    placeholderSource?: { context: string, token: string, paramIndex: number, lastParam: boolean, prevKeywordNames: string[] };
     focused?: boolean; // default false
     error?: string; // default ""
     errorTitle?: string; // default ""
@@ -46,10 +49,20 @@ export interface BaseSlot {
 }
 
 export interface StringSlot extends BaseSlot {
-    quote: string;    
+    quote: string;
 }
 
-export interface FlatSlotBase extends BaseSlot{    
+// For MediaSlot, code contains: load_image("data:image/png;base64,......")
+// This will be the code generated if converted to Python or copied as text
+// The mediaType is for convenience here e.g. "image/png".
+// and we can infer the function is "load_image" from the media type.
+// None of this can be edited after the image is initially inserted into the code
+// so there are no problems with keeping the different parts in sync
+export interface MediaSlot extends BaseSlot {
+    mediaType: string;
+}
+
+export interface FlatSlotBase extends BaseSlot {
     id: string;
     type: SlotType;
 }
@@ -62,14 +75,18 @@ export function isFieldBracketedSlot(field: FieldSlot): field is SlotsStructure 
     return (field as SlotsStructure).openingBracketValue !== undefined;
 }
 
+export function isFieldMediaSlot(field: FieldSlot): field is SlotsStructure {
+    return (field as MediaSlot).mediaType !== undefined;
+}
+
 export function isFieldBaseSlot(field: FieldSlot): field is BaseSlot {
-    return (!isFieldBracketedSlot(field) && !isFieldStringSlot(field));
+    return (!isFieldBracketedSlot(field) && !isFieldStringSlot(field) && !isFieldMediaSlot(field));
 }
 
 // Used by the UI and in the code-behind mechanisms
 // The types have "meta" categories and detailed categories, valued so we can easily
 // get the meta category from a detailed category.
-export enum SlotType{
+export enum SlotType {
     // code types
     code = 0o0007, // meta category
     string = 0o0001, // detail: a string
@@ -84,7 +101,10 @@ export enum SlotType{
     // operator type
     operator = 0o7000, // meta category
     // "no type", which can be used for undo/redo difference marking
-    none = 0,    
+    // media type
+    media = 0o70000, // meta category
+    comment = 0o700000, // meta category
+    none = 0,
 }
 
 export function isSlotCodeType(type: SlotType): boolean {
@@ -123,9 +143,26 @@ export interface FrameObject {
     jointParentId: number; //this is the ID of the first sibling of a joint frame (example: the if frame of a elif frame under that if), value can be -1 if none, 1+ otherwise
     jointFrameIds: number[]; //this contains the IDs of the joint frames
     caretVisibility: CaretPosition;
-    labelSlotsDict: { [index: number]: LabelSlotsContent}; //this contains the label input slots data listed as a key value pairs array (key = index of the slot)
-    atParsingError ?: string //this contains the error message for a parsing error (from TigerPython) that can't be associated to a slot (e.g. wrong try structure)
+    labelSlotsDict: { [index: number]: LabelSlotsContent }; //this contains the label input slots data listed as a key value pairs array (key = index of the slot)
+    atParsingError?: string //this contains the error message for a parsing error (from TigerPython) that can't be associated to a slot (e.g. wrong try structure)
     runTimeError?: string; //this contains the error message for a runtime error, as the granularity of the Skulpt doesn't go beyond the line number
+}
+
+export enum AllowedSlotContent {
+    ONLY_NAMES,
+    ONLY_NAMES_OR_STAR,
+    TERMINAL_EXPRESSION,
+    FREE_TEXT_DOCUMENTATION,
+    LIBRARY_ADDRESS
+}
+
+// REQUIRED means it must have a value, and slot will always show regardless of content or focus
+// HIDDEN_WHEN_UNFOCUSED_AND_BLANK means if empty and unfocused the whole slot will be hidden
+// PROMPT_WHEN_UNFOCUSED_AND_BLANK means if empty and unfocused it will show the slot, and show some prompt text 
+export enum OptionalSlotType {
+    REQUIRED,
+    HIDDEN_WHEN_UNFOCUSED_AND_BLANK,
+    PROMPT_WHEN_UNFOCUSED_AND_BLANK
 }
 
 export interface FrameLabel {
@@ -134,10 +171,11 @@ export interface FrameLabel {
     showLabel?: boolean; // default true, indicates if the label is showned (ex method call frame has no label text)
     showSlots?: boolean; // default true, false indicates that the label has no slot to be associated with it (for example label ":" in "if <xxx> :")
     defaultText: string;
-    optionalSlot?: boolean; //default false (indicate that this label does not require at least 1 slot value)
+    optionalSlot?: OptionalSlotType; //default REQUIRED (indicates whether this label requires a value, and its hiding behaviour when empty; see OptionalSlotType)
     acceptAC?: boolean; //default true
+    allowedSlotContent?: AllowedSlotContent; // default TERMINAL_EXPRESSION; what the slot accepts
+    newLine?: boolean; //default false; this item starts a new line
     appendSelfWhenInClass?: boolean, // default false.  For the opening bracket in function definitions (which show "self" if inside a class)
-
 }
 
 export enum CaretPosition {
@@ -169,10 +207,10 @@ export enum FrameContextMenuActionName {
 }
 
 export enum ModifierKeyCode {
-     ctrl = "ctrl",
-     meta = "meta",
-     shift = "shift",
-     alt = "alt",
+    ctrl = "ctrl",
+    meta = "meta",
+    shift = "shift",
+    alt = "alt",
 }
 export interface FrameContextMenuShortcut {
     // This interface represent a keyboard shortcut key for our frame context menus.
@@ -206,8 +244,9 @@ export interface LabelSlotPositionsAndCode extends LabelSlotsPositions {
 export interface LineAndSlotPositions {
     // Index is the line number, and for each labels, we hold the slot starts and lengths
     [line: number]: {
-        frameId: number ; 
-        labelSlotStartLengths: {[labelIndex: number]: LabelSlotsPositions}};
+        frameId: number;
+        labelSlotStartLengths: { [labelIndex: number]: LabelSlotsPositions }
+    };
 }
 
 export interface SlotCoreInfos {
@@ -235,7 +274,12 @@ export interface SlotInfos extends SlotCoreInfos {
     errorTitle?: string;
 }
 
-export interface SlotCursorInfos{
+// Like SlotInfos but may contain a MediaType (if it's a media slot)
+export interface SlotInfosOptionalMedia extends SlotInfos {
+    mediaType?: string;
+}
+
+export interface SlotCursorInfos {
     slotInfos: SlotCoreInfos;
     cursorPos: number;
 }
@@ -251,12 +295,14 @@ export interface NavigationPosition {
     labelSlotsIndex?: number;
     slotId?: string;
     slotType?: SlotType;
+    isInCollapsedFrameContainer?: boolean;
 }
 export interface AddFrameCommandDef {
     type: FramesDefinitions;
     description: string; // The label that shown next to the key shortcut button
     shortcuts: [string, string?]; // The keyboard key shortcuts to be used to add a frame (eg "i" for an if frame), usually that's a single value array, but we can have 1 hidden shortcut as well
-    symbol?: string; // The symbol to show in the key shortcut button when the key it's not easily reprenstable (e.g. "⌴" for space)
+    symbol?: string; // The SVGIcon name for a symbol OR a string representation of the symbol to show in the key shortcut button when the key it's not easily representable
+    isSVGIconSymbol?: boolean; // To differenciate between the two situations mentioned above
     index?: number; // the index of frame type when a shortcut matches more than 1 context-distinct frames
 }
 
@@ -294,6 +340,10 @@ export const ContainerTypesIdentifiers = {
     framesMainContainer: "mainContainer",
 };
 
+const SpecialTypesIdentifiers = {
+    projectDocumentation: "projectDocumentation",
+};
+
 const CommentFrameTypesIdentifier = {
     comment: "comment",
 };
@@ -301,6 +351,7 @@ const CommentFrameTypesIdentifier = {
 const ImportFrameTypesIdentifiers = {
     import: "import",
     fromimport: "from-import",
+    library: "library",
 };
 
 export const DefIdentifiers = {
@@ -334,6 +385,7 @@ const StandardFrameTypesIdentifiers = {
 };
 
 export const AllFrameTypesIdentifier = {
+    ...SpecialTypesIdentifiers,
     ...ImportFrameTypesIdentifiers,
     ...DefIdentifiers,
     ...StandardFrameTypesIdentifiers,
@@ -374,7 +426,7 @@ export const ImportsContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.importsContainer,
     labels: [
-        { label: (i18n.t("appMessage.importsContainer") as string), showSlots: false, defaultText: ""},
+        { label: (i18n.t("appMessage.importsContainer") as string), showSlots: false, defaultText: "" },
     ],
     isCollapsed: false,
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
@@ -386,7 +438,7 @@ export const DefsContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.defsContainer,
     labels: [
-        { label: (i18n.t("appMessage.defsContainer") as string), showSlots: false, defaultText: ""},
+        { label: (i18n.t("appMessage.defsContainer") as string), showSlots: false, defaultText: "" },
     ],
     isCollapsed: false,
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
@@ -398,7 +450,7 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.framesMainContainer,
     labels: [
-        { label: (i18n.t("appMessage.mainContainer") as string), showSlots: false, defaultText: ""},
+        { label: (i18n.t("appMessage.mainContainer") as string), showSlots: false, defaultText: "" },
     ],
     isCollapsed: false,
     forbiddenChildrenTypes: BlockDefinition.forbiddenChildrenTypes.concat(Object.values(AllFrameTypesIdentifier)
@@ -414,16 +466,26 @@ export const FrameContainersDefinitions = {
     MainFramesContainerDefinition,
 };
 
+export const ProjectDocumentationDefinition: FramesDefinitions = {
+    ...StatementDefinition,
+    type: AllFrameTypesIdentifier.projectDocumentation,
+    labels: [
+        { label: `<img src='${quoteCircleProject}'>`, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.t("frame.defaultText.projectDescription") as string, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
+    ],
+    colour: "#A00000",
+};
+
+
 let Definitions = {};
 
 // Entry point for generating the frame definition types -- only doing so to allow dynamic localisation bits...
-export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boolean): void{
+export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boolean): void {
     /*1) prepare all the frame definition types */
     // Statements
     const FuncCallDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.funccall,
-        labels: [{ label: "", defaultText: i18n.t("frame.defaultText.funcCall") as string, showLabel: false}],
+        labels: [{ label: "", defaultText: i18n.t("frame.defaultText.funcCall") as string, showLabel: false }],
         colour: scssVars.mainCodeContainerBackground,
     };
 
@@ -437,14 +499,14 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
     const ReturnDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.return,
-        labels: [{ label: "return ", defaultText: i18n.t("frame.defaultText.expression") as string, optionalSlot: true}],
+        labels: [{ label: "return ", defaultText: i18n.t("frame.defaultText.expression") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK }],
         colour: scssVars.mainCodeContainerBackground,
     };
 
     const GlobalDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.global,
-        labels: [{ label: "global ", defaultText: i18n.t("frame.defaultText.variable") as string}],
+        labels: [{ label: "global ", defaultText: i18n.t("frame.defaultText.variable") as string, allowedSlotContent: AllowedSlotContent.ONLY_NAMES }],
         colour: scssVars.mainCodeContainerBackground,
     };
 
@@ -452,8 +514,8 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.varassign,
         labels: [
-            { label: "", defaultText: i18n.t("frame.defaultText.identifier") as string},
-            { label: " &#x21D0; ", defaultText: i18n.t("frame.defaultText.value") as string},
+            { label: "", defaultText: i18n.t("frame.defaultText.identifier") as string },
+            { label: " &#x21D0; ", defaultText: i18n.t("frame.defaultText.value") as string },
         ],
         colour: scssVars.mainCodeContainerBackground,
     };
@@ -480,7 +542,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.raise,
         labels: [
-            { label: "raise ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: true },
+            { label: "raise ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK },
         ],
         colour: scssVars.mainCodeContainerBackground,
     };
@@ -489,12 +551,12 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...StatementDefinition,
         type: ImportFrameTypesIdentifiers.import,
         labels: [
-            { label: "import ", defaultText: i18n.t("frame.defaultText.modulePart") as string},
+            { label: "import ", defaultText: i18n.t("frame.defaultText.modulePart") as string, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
             // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
             // and thus not giving us back any AC results on the shortcut
             //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
-        ],    
-        colour: scssVars.nonMainCodeContainerBackground,        
+        ],
+        colour: scssVars.nonMainCodeContainerBackground,
         isImportFrame: true,
     };
 
@@ -502,20 +564,29 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...StatementDefinition,
         type: ImportFrameTypesIdentifiers.fromimport,
         labels: [
-            { label: "from ", defaultText: i18n.t("frame.defaultText.module") as string},
-            { label: "import ", defaultText: i18n.t("frame.defaultText.modulePart") as string},
+            { label: "from ", defaultText: i18n.t("frame.defaultText.module") as string, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
+            { label: "import ", defaultText: i18n.t("frame.defaultText.modulePart") as string, allowedSlotContent: AllowedSlotContent.ONLY_NAMES_OR_STAR },
             // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
             // and thus not giving us back any AC results on the shortcut
             //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
-        ],    
-        colour: scssVars.nonMainCodeContainerBackground,        
+        ],
+        colour: scssVars.nonMainCodeContainerBackground,
         isImportFrame: true,
+    };
+
+    const LibraryDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: ImportFrameTypesIdentifiers.library,
+        labels: [
+            { label: "library ", defaultText: i18n.t("frame.defaultText.libraryAddress") as string, acceptAC: false, allowedSlotContent: AllowedSlotContent.LIBRARY_ADDRESS},
+        ],
+        colour: "#B4C8DC",
     };
 
     const CommentDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.comment,
-        labels: [{ label: "# ", defaultText: i18n.t("frame.defaultText.comment") as string, optionalSlot: true, acceptAC: false}],
+        labels: [{ label: "# ", defaultText: i18n.t("frame.defaultText.comment") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION}],
         colour: scssVars.mainCodeContainerBackground,
     };
 
@@ -524,24 +595,24 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.if,
         labels: [
-            { label: "if ", defaultText: i18n.t("frame.defaultText.condition") as string},
-            { label: " :", showSlots: false, defaultText: ""},
+            { label: "if ", defaultText: i18n.t("frame.defaultText.condition") as string },
+            { label: " :", showSlots: false, defaultText: "" },
         ],
         allowJointChildren: true,
         jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
         colour: "#E0DFE4",
         forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
             .concat(Object.values(DefIdentifiers))
-            .concat([ StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
+            .concat([StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
     };
 
     const ElifDefinition: FramesDefinitions = {
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.elif,
         labels: [
-            { label: "elif ", defaultText: i18n.t("frame.defaultText.condition") as string},
-            { label: " :", showSlots: false, defaultText: ""},
-        ],        
+            { label: "elif ", defaultText: i18n.t("frame.defaultText.condition") as string },
+            { label: " :", showSlots: false, defaultText: "" },
+        ],
         isJointFrame: true,
         jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
     };
@@ -549,7 +620,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
     const ElseDefinition: FramesDefinitions = {
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.else,
-        labels: [{ label: "else :", showSlots: false, defaultText: ""}],        
+        labels: [{ label: "else :", showSlots: false, defaultText: "" }],
         isJointFrame: true,
         jointFrameTypes: [StandardFrameTypesIdentifiers.finally],
     };
@@ -558,12 +629,12 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.for,
         labels: [
-            { label: "for ", defaultText: i18n.t("frame.defaultText.identifier") as string, acceptAC: false},
-            { label: " in ", defaultText: i18n.t("frame.defaultText.list") as string},
-            { label: " :", showSlots: false, defaultText: ""},
+            { label: "for ", defaultText: i18n.t("frame.defaultText.identifier") as string, acceptAC: false },
+            { label: " in ", defaultText: i18n.t("frame.defaultText.list") as string },
+            { label: " :", showSlots: false, defaultText: "" },
         ],
         allowJointChildren: true,
-        jointFrameTypes:[StandardFrameTypesIdentifiers.else],
+        jointFrameTypes: [StandardFrameTypesIdentifiers.else],
         colour: "#E4D6CE",
     };
 
@@ -571,9 +642,11 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.while,
         labels: [
-            { label: "while ", defaultText: i18n.t("frame.defaultText.condition") as string},
-            { label: " :", showSlots: false, defaultText: ""},
+            { label: "while ", defaultText: i18n.t("frame.defaultText.condition") as string },
+            { label: " :", showSlots: false, defaultText: "" },
         ],
+        allowJointChildren: true,
+        jointFrameTypes: [StandardFrameTypesIdentifiers.else],
         colour: "#E4D5D5",
     };
 
@@ -581,31 +654,31 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.except,
         labels: [
-            { label: "except ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: true},
-            { label: " :", showSlots: false, defaultText: ""},
+            { label: "except ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
+            { label: " :", showSlots: false, defaultText: "" },
         ],
         jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
         colour: "",
-        isJointFrame: true,        
+        isJointFrame: true,
     };
 
     const FinallyDefinition: FramesDefinitions = {
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.finally,
         labels: [
-            { label: "finally :", showSlots: false, defaultText: ""},
+            { label: "finally :", showSlots: false, defaultText: "" },
         ],
         colour: "",
-        isJointFrame: true,        
+        isJointFrame: true,
     };
 
     const TryDefinition: FramesDefinitions = {
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.try,
-        labels: [{ label: "try :", showSlots: false, defaultText: ""}],
+        labels: [{ label: "try :", showSlots: false, defaultText: "" }],
         allowJointChildren: true,
         jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
-        defaultJointTypes: [{...EmptyFrameObject, frameType: ExceptDefinition, labelSlotsDict: {0: {slotStructures:{fields:[{code:""}], operators: []}}}}],
+        defaultJointTypes: [{ ...EmptyFrameObject, frameType: ExceptDefinition, labelSlotsDict: { 0: { slotStructures: { fields: [{ code: "" }], operators: [] } } } }],
         colour: "#C7D9DC",
     };
 
@@ -613,9 +686,10 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: DefIdentifiers.funcdef,
         labels: [
-            { label: "def ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false},
-            { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: true, acceptAC: false, appendSelfWhenInClass: true},
-            { label: ") :", showSlots: false, defaultText: ""},
+            { label: "def ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
+            { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES, appendSelfWhenInClass: true },
+            { label: ") :", showSlots: false, defaultText: "" },
+            { label: `<img src='${quoteCircleFuncdef}'>`, newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.t("frame.defaultText.funcDescription") as string, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],
         colour: "#ECECC8",
     };
@@ -626,12 +700,13 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         labels: [
             { label: "class ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false},
             { label: " :", showSlots: false, defaultText: ""},
+            { label: `<img src='${quoteCircleClass}'>`, newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.t("frame.defaultText.classDescription") as string, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],
         colour: "#baded3",
         forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
             .concat(Object.values(StandardFrameTypesIdentifiers).filter((f) => f != CommentFrameTypesIdentifier.comment && f != StandardFrameTypesIdentifiers.varassign))
             .concat([DefIdentifiers.classdef]),
-        defaultChildrenTypes: [{...EmptyFrameObject, frameType: FuncDefDefinition, labelSlotsDict: {0: {slotStructures:{fields:[{code:"__init__"}], operators: []}}, 1: {slotStructures:{fields:[{code:""}], operators: []}}}}],
+        defaultChildrenTypes: [{...EmptyFrameObject, frameType: FuncDefDefinition, labelSlotsDict: {0: {slotStructures:{fields:[{code:"__init__"}], operators: []}}, 1: {slotStructures:{fields:[{code:""}], operators: []}}, 3: {slotStructures:{fields:[{code:""}], operators: []}}}}],
 
     };
 
@@ -639,9 +714,9 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.with,
         labels: [
-            { label: "with ", defaultText: i18n.t("frame.defaultText.expression") as string},
-            { label: " as ", defaultText: i18n.t("frame.defaultText.identifier") as string},
-            { label: " :", showSlots: false, defaultText: ""},
+            { label: "with ", defaultText: i18n.t("frame.defaultText.expression") as string },
+            { label: " as ", defaultText: i18n.t("frame.defaultText.identifier") as string, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
+            { label: " :", showSlots: false, defaultText: "" },
         ],
         colour: "#ede8f2",
     };
@@ -668,25 +743,32 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         VarAssignDefinition,
         ImportDefinition,
         FromImportDefinition,
+        LibraryDefinition,
         CommentDefinition,
         GlobalDefinition,
+        ProjectDocumentationDefinition,
         // also add the frame containers as we might need to retrieve them too
         ...FrameContainersDefinitions,
     };
 
     /*3) if required, update the types in all the frames existing in the editor (needed to update default texts and frame container labels) */
-    if(regenerateExistingFrames){
+    if (regenerateExistingFrames) {
         Object.values(useStore().frameObjects).forEach((frameObject: FrameObject) => {
-            // For containers, we just assign the label manually again here
-            switch(frameObject.frameType.type){
+            // For containers, we just assign the label manually again here and change the definitons
+            switch (frameObject.frameType.type) {
             case ImportsContainerDefinition.type:
                 frameObject.frameType.labels[0].label = i18n.t("appMessage.importsContainer") as string;
+                ImportsContainerDefinition.labels[0].label = i18n.t("appMessage.importsContainer") as string;
                 break;
             case DefsContainerDefinition.type:
                 frameObject.frameType.labels[0].label = i18n.t("appMessage.defsContainer") as string;
+                DefsContainerDefinition.labels[0].label = i18n.t("appMessage.defsContainer") as string;
                 break;
             case MainFramesContainerDefinition.type:
                 frameObject.frameType.labels[0].label = i18n.t("appMessage.mainContainer") as string;
+                MainFramesContainerDefinition.labels[0].label = i18n.t("appMessage.mainContainer") as string;
+                break;
+            case ProjectDocumentationDefinition.type:
                 break;
             default:
                 // For all normal frames, we rely on the frame definition type                
@@ -700,8 +782,8 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
 }
 
 // Methods to access the dynamic frame definition types
-export function getFrameDefType(key: string): FramesDefinitions{
-    if(Object.values(Definitions).length == 0){
+export function getFrameDefType(key: string): FramesDefinitions {
+    if (Object.values(Definitions).length == 0) {
         generateAllFrameDefinitionTypes();
     }
 
@@ -723,12 +805,12 @@ export const EmptyFrameObject: FrameObject = {
     jointParentId: -101, //default non-meaningful value - this will be overriden when frames are created
     jointFrameIds: [], //this contains the IDs of the joint frames
     caretVisibility: CaretPosition.none,
-    labelSlotsDict: { },
+    labelSlotsDict: {},
 };
 
 /**
  * Types for Bootstrap related stuff
- **/ 
+ **/
 export type BootstrapDlgSize = ("sm" | "lg" | "xl");
 
 export type BootstrapDlgAutoFocusButton = ("ok" | "cancel");
@@ -747,15 +829,15 @@ export interface FormattedMessageArgKeyValuePlaceholder {
     placeholderName: string;
 }
 
-export const FormattedMessageArgKeyValuePlaceholders: {[id: string]: FormattedMessageArgKeyValuePlaceholder} = {
-    error: {key:"errorMsg", placeholderName : "{error_placeholder}"},
-    list: {key:"list", placeholderName : "{list_placeholder}"},
-    file: {key: "file", placeholderName: "{file_name}"},
+export const FormattedMessageArgKeyValuePlaceholders: { [id: string]: FormattedMessageArgKeyValuePlaceholder } = {
+    error: { key: "errorMsg", placeholderName: "{error_placeholder}" },
+    list: { key: "list", placeholderName: "{list_placeholder}" },
+    file: { key: "file", placeholderName: "{file_name}" },
 };
 
 export interface FormattedMessage {
     path: string;
-    args: { [id: string]: string};
+    args: { [id: string]: string };
 }
 
 export const DefaultFormattedMessage: FormattedMessage = {
@@ -783,7 +865,7 @@ export interface MessageDefinition {
 export const MessageTypes = {
     noMessage: "none",
     imageDisplay: "imageDisplay",
-    uploadSuccessMicrobit:"uploadSuccessMicrobit",
+    uploadSuccessMicrobit: "uploadSuccessMicrobit",
     noUndo: "noUndo",
     noRedo: "noRedo",
     uploadEditorFileError: "uploadEditorFileError",
@@ -791,7 +873,7 @@ export const MessageTypes = {
     forbiddenFramePaste: "forbiddenFramePaste",
     functionFrameCantDelete: "functionFrameCantDelete",
     gdriveConnectToSaveFailed: "gdriveConnectToSaveFailed",
-    gdriveCantCreateStrypeFolder:"gdriveCantCreateStrypeFolder",
+    gdriveCantCreateStrypeFolder: "gdriveCantCreateStrypeFolder",
     gdriveFileAlreadyExists: "gdriveFileAlreadyExists",
     invalidPythonParseImport: "invalidPythonParseImport",
     invalidPythonParsePaste: "invalidPythonParsePaste",
@@ -853,7 +935,7 @@ const UploadEditorFileError: MessageDefinition = {
             [FormattedMessageArgKeyValuePlaceholders.error.key]: FormattedMessageArgKeyValuePlaceholders.error.placeholderName,
         },
     },
-    buttons:[{label: "buttonLabel.ok", action:MessageDefinedActions.closeBanner}],
+    buttons: [{ label: "buttonLabel.ok", action: MessageDefinedActions.closeBanner }],
     path: imagePaths.empty,
 };
 
@@ -865,7 +947,7 @@ const UploadEditorFileNotSupported: MessageDefinition = {
             [FormattedMessageArgKeyValuePlaceholders.list.key]: FormattedMessageArgKeyValuePlaceholders.list.placeholderName,
         },
     },
-    buttons:[{label: "buttonLabel.ok", action:MessageDefinedActions.closeBanner}],
+    buttons: [{ label: "buttonLabel.ok", action: MessageDefinedActions.closeBanner }],
     path: imagePaths.empty,
 };
 
@@ -884,8 +966,8 @@ const FunctionFrameCantDelete: MessageDefinition = {
 const GDriveConnectToSaveFailed: MessageDefinition = {
     type: MessageTypes.gdriveConnectToSaveFailed,
     message: "messageBannerMessage.gdriveConnectToSaveFailed",
-    buttons:[{label: "buttonLabel.ok", action:MessageDefinedActions.closeBanner}],
-    path: imagePaths.empty,    
+    buttons: [{ label: "buttonLabel.ok", action: MessageDefinedActions.closeBanner }],
+    path: imagePaths.empty,
 };
 
 const GDriveCantCreateStrypeFolder: MessageDefinition = {
@@ -937,9 +1019,9 @@ export const MessageDefinitions = {
 //WebUSB listener
 export interface WebUSBListener {
     //Callback functions called on the listener by the webUSB.ts file
-    onUploadProgressHandler: {(percent: number): void};
+    onUploadProgressHandler: { (percent: number): void };
     onUploadSuccessHandler: VoidFunction;
-    onUploadFailureHandler: {(errorMsg: string): void};
+    onUploadFailureHandler: { (errorMsg: string): void };
 }
 
 //Object difference
@@ -977,7 +1059,7 @@ export interface LanguageDef {
 export interface AliasesPath {
     //return a hash of alias name / path in modules definitions
     [alias: string]: string;
-     //light = module_moduleA.module_moduleB.moduleC.methodA
+    //light = module_moduleA.module_moduleB.moduleC.methodA
 }
 export interface ElementDef {
     name: string;
@@ -998,23 +1080,6 @@ export interface LibraryPath {
     aliasFor: string;
 }
 
-export interface CursorPosition {
-    top: number;
-    left: number;
-    height: number;
-}
-
-export const DefaultCursorPosition: CursorPosition = {
-    top: 0,
-    left: 0,
-    height: 0,
-};
-
-export interface EditableSlotReachInfos {
-    isKeyboard: boolean;
-    direction: -1 | 1;
-}
-
 export interface StateAppObject {
     debugging: boolean;
     initialState: EditorFrameObjects;
@@ -1031,7 +1096,7 @@ export enum StrypePlatform {
     microbit = "mb",
 }
 
-// This enum represents the different possible states the user code Python execution can take
+// This enum represents the different possible states the user code Python execution can take (including the micro:bit simulator)
 export enum PythonExecRunningState {
     NotRunning,
     Running,
@@ -1044,6 +1109,17 @@ export enum StrypeSyncTarget {
     gd, // Google Drive
 }
 
+export enum GAPIState {
+    unloaded, // default state : the Google API hasn't been loaded yet
+    loaded, // when the Google API has been loaded
+    failed, // when the Google API failed to load
+}
+
+export enum ShareProjectMode {
+    public, // A public sharing (generic cases)
+    withinGD, // A share within Google Drive access rights
+}
+
 export enum SaveRequestReason {
     autosave,
     saveProjectAtLocation, // explicit save at the given location in the dialog
@@ -1052,6 +1128,7 @@ export enum SaveRequestReason {
     loadProject,
     unloadPage,
     reloadBrowser, // for Google Drive: when a project was previously saved in GD and the browser is reloaded and the user requested to save the local changes to GD.
+    saveSettings, // for saving Strype settings
 }
 
 export interface SaveExistingGDProjectInfos {
@@ -1101,7 +1178,7 @@ export interface APIItemTextualDescription {
 
 //Object containing the different elements produced when parsing the code, to be used by parsing callers
 export interface ParserElements {
-    parsedOutput : string, //the python code generated by the parser
+    parsedOutput: string, //the python code generated by the parser
     hasErrors: boolean, //indicates the the code contains errors (precompiled & TigerPython errors)
     compiler: Compiler, //the compiler associated with this parser, that allow access to more complex objects generated after parsing code (i.e. blob, hex...)
 }
@@ -1109,7 +1186,7 @@ export interface ParserElements {
 // utility types
 export interface MIMEDesc {
     description: string,
-    accept: {[MIME: string]: string[]}
+    accept: { [MIME: string]: string[] }
 }
 
 export type ProjectLocation = (undefined | string | FileSystemFileHandle);
@@ -1118,4 +1195,40 @@ export interface Locale {
     code: string, // a 2 letter code idenitifying the locale (e.g.: "en")
     name: string, // the user-friendly locale's name (e.g.: "English")
 }
+
+export enum StrypePEALayoutMode {
+    tabsCollapsed = "tabsCollapsed", // the default layout mode where PEA is collapsed and using tabs for console/graphics (and selected mode for the micro:bit version)
+    tabsExpanded = "tabsExpanded", // the layout mode where PEA is expanded and using tabs for console/graphics
+    splitCollapsed = "splitCollapsed", // the layout mode where PEA is collapsed and console/graphics windows are (horizontally) split
+    splitExpanded = "splitExpanded", // the layout mode where PEA is expanded and console/graphics windows are (vertically) split
+}
+export interface StrypePEALayoutData {
+    mode: StrypePEALayoutMode, // The layout view for the PEA in Strype, see related enum
+    iconName: string, // the name of the icon to be retrieved from our SVG icons + localisation key name (makes it simpler to have one property!)
+}
+
+// Typescript doesn't allow to declare types with an index signature parameter being something else than number or string or symbol.
+// So to be able to still use types, we can use this trick that will use the values of the enum we want to use for the index signature type.
+// This type however requires all values of the enum to be used as indexes - so we need to also allow undefined values for the indexes.
+export type StrypeLayoutDividerSettings = {
+    [layout in StrypePEALayoutMode]: number | undefined;
+};
+
+export const defaultEmptyStrypeLayoutDividerSettings: StrypeLayoutDividerSettings = {
+    [StrypePEALayoutMode.tabsCollapsed]: undefined,
+    [StrypePEALayoutMode.tabsExpanded]: undefined,
+    [StrypePEALayoutMode.splitCollapsed]: undefined,
+    [StrypePEALayoutMode.splitExpanded]: undefined,
+};
+
+export interface LoadedMedia {
+    mediaType: string,
+    // Both sounds and images have an imageDataURL which acts as the preview:
+    imageDataURL: string,
+    // But only sounds have this item:
+    audioBuffer?: AudioBuffer,
+}
+
+export type EditImageInDialogFunction = (imageDataURL: string, showPreview: (dataURL: string) => void, callback: (replacement: { code: string, mediaType: string }) => void) => void;
+export type EditSoundInDialogFunction = (sound: AudioBuffer, callback: (replacement: { code: string, mediaType: string }) => void) => void;
 

@@ -1,7 +1,12 @@
 import { defineConfig } from "cypress";
 import {rimraf} from "rimraf";
+import fs from "fs";
+// https://github.com/bahmutov/cypress-split
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const cypressSplit = require("cypress-split");
 
 export default defineConfig({
+    retries: 2,
     downloadsFolder: "tests/cypress/downloads",
     fixturesFolder:	"tests/cypress/fixtures",
     screenshotsFolder: "tests/cypress/screenshots",
@@ -29,6 +34,10 @@ export default defineConfig({
                         });
                     });
                 },
+                renameFile(args: {srcPath: string, destPath: string}) {
+                    fs.renameSync(args.srcPath, args.destPath);
+                    return null;
+                },
             });
             // Allow logging to console (although only the first message seems to get logged?)
             on("task", {
@@ -37,6 +46,28 @@ export default defineConfig({
                     return null;
                 },
             });
+
+            // downloads is a task which lists all the files in the Cypress downloads directory:
+            on("task", {
+                downloads:  () => {
+                    return new Promise((resolve, reject) => {
+                        fs.readdir("tests/cypress/downloads", (err, files) => {
+                            if (err) {
+                                return reject(err);
+                            }
+
+                            resolve(files);
+                        });
+                    });
+                },
+            });
+
+            const specFromEnv = process.env.SPEC;
+            if (specFromEnv) {
+                config.specPattern = "tests/cypress/e2e/" + specFromEnv;
+            }
+            
+            cypressSplit(on, config);
             
             config.baseUrl = config.env.mode == "microbit" ? "http://localhost:8081/microbit/" : "http://localhost:8081/editor/";
             return config;

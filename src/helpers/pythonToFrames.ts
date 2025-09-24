@@ -1,29 +1,48 @@
-import {CaretPosition, AllFrameTypesIdentifier, FrameObject, LabelSlotsContent, getFrameDefType, SlotsStructure, StringSlot, BaseSlot, ContainerTypesIdentifiers} from "@/types/types";
+import {AllFrameTypesIdentifier, BaseSlot, CaretPosition, ContainerTypesIdentifiers, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, StringSlot, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders} from "@/types/types";
 import {useStore} from "@/store/store";
-import {operators, trimmedKeywordOperators} from "@/helpers/editor";
+import {getCaretContainerComponent, getFrameComponent, operators, trimmedKeywordOperators} from "@/helpers/editor";
 import i18n from "@/i18n";
+import {cloneDeep, escapeRegExp} from "lodash";
+import {AppName, AppSPYPrefix} from "@/main";
+import {toUnicodeEscapes} from "@/parser/parser";
+import FrameContainer from "@/components/FrameContainer.vue";
 
 const TOP_LEVEL_TEMP_ID = -999;
+
+// These regexes are used to find triple single quotes strings within Strype's slots.
+// Once parsed to frames, such strings will be created as single or double quoted literals in Strype,
+// and the 2 remaining single or double quotes are included at the start and the end of the literal.
+// Therefore, we look for the string content starting with '' or "" and finishing with '' or "".
+const parsedTripleSingleQuotesStrRegex = /^''.*''$/s, parsedTripleDoubleQuotesStrRegex = /^"".*""$/s;
+
+// Enum for the type of triple quote strings token (used for flagging)
+enum QuoteStringTokenType {
+    NO_PARSING, // when no triple quote string is parsed yet
+    SINGLE, // when the string is being parsed, and the token is '''
+    DOUBLE,// when the string is being parsed, and the token is """"
+}
 
 // Type for the things we get from the Skulpt parser:
 export interface ParsedConcreteTree {
     type: number;
     value: null | string;
     lineno? : number;
-    col_offset?: number;
+    //col_offset?: number;  -- Don't use this as it seems to have surprising values
     children: null | ParsedConcreteTree[];
-}
-// A comment or blank line, plus a line number location in the original Python:
-interface LocatedCommentOrBlankLine {
-    lineNumber: number;
-    content: string | null; // If null, it's a blank line (not a blank comment!)
 }
 // The state passed around while copying from Python code into frames
 interface CopyState {
     nextId: number; // The next ID to use for a new frame
-    addTo: number[]; // List to add frames to
+    lastLineProcessed: number | undefined; // The number of the last line we processed
+    addToJoint: number[] | undefined; // List to add frames to
+    addToNonJoint: number[]; // List to add frames to
+    loadedFrames: EditorFrameObjects; // Map to put all loaded frames into
     parent: FrameObject | null; // The parent, if any, for borrowing the parent ID
-    pendingComments: LocatedCommentOrBlankLine[]; // Modified in-place
+    jointParent: FrameObject | null; // The joint parent, if any, for borrowing the parent ID
+    disabledLines: number[]; // The line numbers which had a Disabled: prefix
+    lineNumberToIndentation: Map<number, string>; // Maps a line number to a string of indentation
+    transformTopComment: ((content: SlotsStructure) => void) | undefined; // If defined, consumes the top docstring-style comment rather than adding it as a frame.
+    isSPY: boolean;
 }
 
 // Declare Skulpt:
@@ -32,10 +51,17 @@ declare const Sk: any;
 // The different "locations" in Strype 
 export enum STRYPE_LOCATION {
     UNKNOWN,
+    PROJECT_DOC_SECTION,
     MAIN_CODE_SECTION,
     IN_FUNCDEF,
     DEFS_SECTION,
     IMPORTS_SECTION
+}
+
+// Copies nextId and lastLineProcessed from src to dest
+function updateFrom(dest : CopyState, src : CopyState) {
+    dest.nextId = src.nextId;
+    dest.lastLineProcessed = src.lastLineProcessed;
 }
 
 // Simplifies a tree (by collapsing all single-child nodes into the child) in order to make
@@ -59,12 +85,13 @@ function debugToString(p : ParsedConcreteTree, curIndent: string) : string {
 
 // Given a frame, assigns it a new ID and adds it to the list specified in the CopyState
 // If it is not a joint frame, set its parent.
-function addFrame(frame: FrameObject, s: CopyState) : CopyState {
+function addFrame(frame: FrameObject, lineno: number | undefined, s: CopyState) : CopyState {
     const id = s.nextId;
     frame.id = id;
-    useStore().copiedFrames[id] = frame;
-    s.addTo.push(id);
+    s.loadedFrames[id] = frame;
+    frame.isDisabled = lineno != undefined && s.disabledLines.includes(lineno);
     if (!frame.frameType.isJointFrame) {
+        s.addToNonJoint?.push(id);
         if (s.parent != null) {
             frame.parentId = s.parent.id;
             // Don't need to add to children because that will already be the addTo array
@@ -75,11 +102,42 @@ function addFrame(frame: FrameObject, s: CopyState) : CopyState {
             frame.parentId = TOP_LEVEL_TEMP_ID;
         }
     }
-    return {...s, nextId: s.nextId + 1};
+    else {
+        s.addToJoint?.push(id);
+        if (s.jointParent) {
+            frame.jointParentId = s.jointParent.id;
+        }
+    }
+    return {...s, nextId: s.nextId + 1, lastLineProcessed: lineno};
 }
 
 // Makes a basic frame object with the given type and slots, and dummy/default values for all other fields
-function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}) : FrameObject {
+function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}, isSPY: boolean) : FrameObject {
+    // We have one special case to consider before "pushing" the frame: we left all triple quotes string
+    // being parsed as is by Skulpt. That means that all of them will be put inside a string slot, 
+    // either wrappped by a single quote token with literal content starting and ending by <''>, 
+    // or wrapped by a double quote token with literal content starting and ending by <"">.
+    // If such slot is found in SPY or, for Python, is inside a function call frame that ONLY contains it
+    // (i.e. empty slots on the sides and empty operators between) then we transform the frame to a multi lines comment frame.
+    // Otherwise, for Python only since SPY wouldn't have that situation, we fix the quotes by removing the extra quotes inside
+    // the literal, and replace all line breaks by explicit line break indications ("\\n").
+    if(type == AllFrameTypesIdentifier.funccall && slots[0].slotStructures.fields.length == 3 
+        && isFieldStringSlot(slots[0].slotStructures.fields[1]) 
+        && ((slots[0].slotStructures.fields[1].quote == "'" && parsedTripleSingleQuotesStrRegex.test(slots[0].slotStructures.fields[1].code))
+            || (slots[0].slotStructures.fields[1].quote == "\"" && parsedTripleDoubleQuotesStrRegex.test(slots[0].slotStructures.fields[1].code)))
+        && isFieldBaseSlot(slots[0].slotStructures.fields[0]) && isFieldBaseSlot(slots[0].slotStructures.fields[2])
+        && (slots[0].slotStructures.fields[0] as BaseSlot).code.length == 0 && (slots[0].slotStructures.fields[2] as BaseSlot).code.length == 0
+    ){
+        // A multilines comment is detected, we transform the frame.
+        const stringFieldContent = (slots[0].slotStructures.fields[1] as BaseSlot).code;
+        slots[0].slotStructures.fields.splice(0, 3, {code: stringFieldContent.slice(2,-2)});
+        slots[0].slotStructures.operators.splice(0);
+        type = AllFrameTypesIdentifier.comment;
+    }
+    else if(!isSPY){
+        // Replace any potential triple quotes strings to single quote strings (and replaced line breaks)
+        transformTripleQuotesStrings(slots);
+    }
     return {
         frameType : getFrameDefType(type),
         caretVisibility: CaretPosition.none,
@@ -97,48 +155,7 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}) :
     };
 }
 
-// The main entry point to this module.  Given a string of Python code that the user
-// has pasted in, copy it to the store's copiedFrames/copiedSelectionFrameIds fields,
-// ready to be pasted immediately afterwards.
-// If successful, returns null.  If unsuccessful, returns a string with some info about
-// where the Python parse failed.
-export function copyFramesFromParsedPython(code: string, currentStrypeLocation: STRYPE_LOCATION, linenoMapping?: Record<number, number>) : string | null {
-    const mapLineno = (lineno : number) : number => linenoMapping ? linenoMapping[lineno] : lineno;
-    
-    // Preprocess; first take off trailing whitespace:
-    code = code.trimEnd();
-
-    const codeLines = code.split(/\r?\n/);
-    // Then find the common amount of indentation on non-blank lines and remove it:
-    // This way if the user parses in something like this from the middle of some Python:
-    // "    if x > 8:"
-    // "      x = 10"
-    // "    else:"
-    // "      x = 12"
-    // (which is invalid in Python because you can't have a leading indent on the first line),
-    // we interpret it as :
-    // "if x > 8:"
-    // "  x = 10"
-    // "else:"
-    // "  x = 12"
-    // (note that just removing indent on first line wouldn't make the else line up correctly)
-    let lowestIndent = 999999;
-    for (const codeLine of codeLines) {
-        if (codeLine.trim() != "") {
-            // Is bound to match because even the empty line matches:
-            const indent = (codeLine.match(/^\s*/) as RegExpMatchArray)[0].length;
-            if (indent < lowestIndent) {
-                lowestIndent = indent;
-            }
-        }
-    }
-    // Now remove that indent if it exists:
-    if (lowestIndent > 0) {
-        for (let i = 0; i < codeLines.length; i++) {
-            codeLines[i] = codeLines[i].slice(lowestIndent);
-        }
-    }
-
+function parseWithSkulpt(codeLines: string[], mapErrorLineno : (lineno : number) => number) : string | { parseTree: any, addedFakeJoinParent: number } {
     // Special case: things beginning with joint frames (else, elif, except, finally) are
     // not parsed by Skulpt as-is (because they lack the main construct before), but we
     // would like to support parsing them.  So we look for them and try gluing on
@@ -152,7 +169,7 @@ export function copyFramesFromParsedPython(code: string, currentStrypeLocation: 
     const firstNonBlank = codeLines.find((l) => l.trim() != "");
     if (firstNonBlank) {
         const leadingIndent = firstNonBlank.replace(/[^ ].*/, "");
-        const firstWord = firstNonBlank.replace(/[^a-z].*/, "");
+        const firstWord = firstNonBlank.replace(/[^a-z].*/, "").trim();
         switch(firstWord) {
         case "elif":
             // We glue an if on:
@@ -181,31 +198,340 @@ export function copyFramesFromParsedPython(code: string, currentStrypeLocation: 
         parsed = Sk.parse("pasted_content.py", codeLines.join("\n"));
     }
     catch (e) {
-        return ((e as any).$offset?.v?.[2]?.$mangled ?? (e as any).$msg?.$mangled) + " line: " + mapLineno((e as any).traceback?.[0].lineno);
+        return ((e as any).$offset?.v?.[2]?.$mangled ?? (e as any).$msg?.$mangled) + " line: " + mapErrorLineno((e as any).traceback?.[0].lineno);
     }
-    const parsedBySkulpt = parsed["cst"];
-    
-    // Skulpt doesn't preserve blanks or comments so we must find them then later reinsert them
-    // ourselves at the right points:
-    // Find all comments.  This isn't quite perfect (with respect to # in strings) but it will do:
-    const comments : LocatedCommentOrBlankLine[] = [];
+    return {parseTree: parsed["cst"], addedFakeJoinParent: addedFakeJoinParent};
+}
+
+// Gets the leading indent of a string
+function getIndent(codeLine: string) {
+    return (codeLine.match(/^\s*/) as RegExpMatchArray)[0];
+}
+
+const STRYPE_COMMENT_PREFIX = "___strype_comment_";
+const STRYPE_LIBRARY_PREFIX = "___strype_library_";
+
+const STRYPE_WHOLE_LINE_BLANK = "___strype_whole_line_blank";
+
+export const STRYPE_DUMMY_FIELD = "___strype_dummy";
+
+// Special things in expressions:
+export const STRYPE_EXPRESSION_BLANK = "___strype_blank";
+// Followed by unicode escapes:
+export const STRYPE_INVALID_SLOT = "___strype_invalid_";
+
+export const STRYPE_INVALID_OPS_WRAPPER = "___strype_opsinvalid";
+export const STRYPE_INVALID_OP = "___strype_operator_";
+
+function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") : {disabledLines : number[], transformedLines : string[], strypeDirectives: Map<string, string>} { 
+    codeLines = [...codeLines];
+    const disabledLines : number[] = [];
+    const transformedLines : string[] = [];
+    const strypeDirectives: Map<string, string> = new Map<string, string>();
+
+    // A reference to the lines containing a comment block (that is, consecutive comment lines), see inline-method below for details.
+    const aCommentBlockLines: number[] = [];
+    const checkRearrangeCommentsIdent = () => {
+        // When the parser have reached a line that is past a block of comments, we need to see if the comments of this block
+        // are indented "properly": in Python, comments can be indented anyhow, but since we transform them for Skulpt, any indentation that is not
+        // following the Python indentation rule would be seen as an error by Skulpt.
+        // The logic is: 
+        // - if there is no line before the comments (they are at the start of the code) the indent is 0.
+        // - if there is no line after the comments (they are at then end of the code), we indent the block as before or leave it to 0 if it was (and all others).
+        // - if lines before and after the comments are with the same indentation: we change the comments' indentation for the same
+        // - if the line before the comments has a different indent than the line after, we indent the block as after.
+        if(aCommentBlockLines.length == 0){
+            // There is no comment to check, we can just return
+            return;
+        }
+        if (format == "spy") {
+            // SPYs are assumed to have the comments exactly where they should be, so we don't rearrange:
+            return;
+        }
+
+        const commentBlockStartLineIndex = aCommentBlockLines[0], commentBlockEndLineIndex = aCommentBlockLines[aCommentBlockLines.length - 1];
+        let hasZeroIndent = false;     
+        const subrange = transformedLines.slice(commentBlockStartLineIndex, commentBlockEndLineIndex + 1).map((line) => {
+            if(commentBlockStartLineIndex == 0){
+                return line.trimStart();
+            }
+            else{
+                const indentBefore = /^(\s*).*$/.exec(transformedLines[commentBlockStartLineIndex - 1])?.[1]??"";
+                if(commentBlockEndLineIndex == transformedLines.length - 1){
+                    hasZeroIndent ||= (/^\s.*$/.exec(line)==null);
+                    return (hasZeroIndent ? "" : indentBefore) + line.trimStart();
+                }
+                else{
+                    const indentAfter = /^(\s*).*$/.exec(transformedLines[commentBlockEndLineIndex + 1])?.[1]??"";
+                    return indentAfter + line.trimStart();
+                }
+            }
+        });
+        transformedLines.splice(commentBlockStartLineIndex, subrange.length , ...subrange);
+
+        // Clear the comment block reference
+        aCommentBlockLines.splice(0);
+    };
+
+    // Skulpt doesn't preserve blanks or comments so we must find them and transform
+    // them into something that does parse.
+    // Note that we do not worry about blank spaces inside triple quotes strings: Skulpt won't remove them, 
+    // we need to preserve them, so we also need to know when we are inside a triple quotes string.
+    // Find all comments.  This isn't quite perfect (with respect to # in strings and triple quotes tokens) but it will do:
+    let mostRecentIndent = "", singleIndentLength = 0, isParsingTripleQuotesStr = false, currentTripleQuoteTokenStyle = QuoteStringTokenType.NO_PARSING;
     for (let i = 0; i < codeLines.length; i++) {
-        // Look for # with only space before them, or a # with no quote after:
-        const match = /^ +#(.*)$/.exec(codeLines[i]) ?? /#([^"]+)$/.exec(codeLines[i]);
-        if (match) {
-            comments.push({lineNumber: i + 1, content: match[1]});
+        // Look for # with only space before them, or a # with no quote after (if we are not in the context of a multlines comment):
+        const match = /^( *)#(.*)$/.exec(codeLines[i]) ?? /^([^#]*)#([^"]+)$/.exec(codeLines[i]);
+        if (match && !isParsingTripleQuotesStr) {
+            const directiveMatch = new RegExp("^ *#" + escapeRegExp(AppSPYPrefix) + "([^:]+):(.*)$").exec(codeLines[i]);
+            if (directiveMatch) {
+                // By default, directives are just added to the map:
+                // Note we trim() keys but not values; space may well be important in values:
+                const key = directiveMatch[1].trim();
+                const value = directiveMatch[2];
+                if (key == "Disabled") {
+                    // Process line again:
+                    codeLines[i] = match[1] + value;
+                    disabledLines.push(i+1);
+                    i -= 1;
+                    continue;
+                }
+                else if (key == "Library" || key == "LibraryDisabled") {
+                    transformedLines.push(match[1] + STRYPE_LIBRARY_PREFIX + toUnicodeEscapes(value));
+                    // We know this is only whitespace because directiveMatch also matched:
+                    mostRecentIndent = match[1];
+                    if (key == "LibraryDisabled") {
+                        disabledLines.push(i+1);
+                    }
+                }
+                else {
+                    strypeDirectives.set(key, value);
+                    // Push a blank to make line numbers match:
+                    transformedLines.push("");
+                    mostRecentIndent = "";
+                }
+            }
+            else {
+                if (match[1].trim() == "") {
+                    // Just a single line comment:
+                    transformedLines.push(match[1] + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(match[2]));
+                    mostRecentIndent = match[1];
+                    aCommentBlockLines.push(transformedLines.length-1);
+                }
+                else {
+                    // Code followed by comment, put comment on next line:
+                    mostRecentIndent = getIndent(match[1]);
+                    transformedLines.push(match[1]);
+                    checkRearrangeCommentsIdent();
+                    transformedLines.push(mostRecentIndent + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(match[2]));
+                }
+            }
         }
-        else if (codeLines[i].trim() === "") {
+        else if (codeLines[i].trim() === "" && !isParsingTripleQuotesStr) {
             // Blank line:
-            comments.push({lineNumber: i + 1, content: null});
+            // We indent this to the largest of its indent,
+            // and the (smallest of the indent before us and the indent after us).
+            let nextIndent = "";
+            for (let j = i + 1; j < codeLines.length; j++) {
+                if (codeLines[j].trim() != "") {
+                    nextIndent = getIndent(codeLines[j]);
+                    break;
+                }
+            }
+            const smallestAdjIndent = mostRecentIndent.length <= nextIndent.length ? mostRecentIndent : nextIndent;
+            if (codeLines[i].length > smallestAdjIndent.length) {
+                transformedLines.push(codeLines[i] + STRYPE_WHOLE_LINE_BLANK);
+            }
+            else {
+                transformedLines.push(smallestAdjIndent + STRYPE_WHOLE_LINE_BLANK);
+            }
+            checkRearrangeCommentsIdent();
+        }
+        else if((currentTripleQuoteTokenStyle != QuoteStringTokenType.DOUBLE && codeLines[i].trim().includes("'''")) || (currentTripleQuoteTokenStyle != QuoteStringTokenType.SINGLE && codeLines[i].trim().includes("\"\"\""))){
+            // At least 1 triple quotes string is in the line, we don't know if it is actually a 
+            // "normal" string or a comment, but we care about that later when we put things in frames.
+            // For the moment we just try to see if the current line "hangs" a triple quotes string
+            // literal "started", so we can flag it out; and we arrange the indentation as such:
+            // 1) if the line doesn't start with ''' or """ we align the comment at the current mostRecentIndent 
+            // or 2) if it's a multiple of the indent unit length we keep it and update the most recent indent,
+            // otherwise we take a guess where to start the string literal to the closest indentation.
+            let transformedLine = "";
+            let hasFinishedFindingTripleQuotesString = false, lookUpTripleQuoteTokenFromIndex = 0, foundOneTripleQuoteStartToken = false;
+            const stringStartDetectorIndexes: {stringToken: QuoteStringTokenType, stringStartIndex: number}[] = [];
+            while(!hasFinishedFindingTripleQuotesString){
+                // We "scan" the line to find the triple quotes strings: the point is to 
+                // 1) know what token (''' or """) opens a string literal and discard inner """ or ''' from the search
+                // 2) find out when a triple quote string literal is fully contained in the line and can be ignored for parsing.                
+                if(!isParsingTripleQuotesStr){
+                    // We look for normal strings too, just to avoid the case of bumping to a triple quote token as literal inside,
+                    // like in "this is a triple quote: ''', yes.". We just find them and go beyond them if they come first.
+                    // Because JS limitations with regex, we can't directly find the normal string in the line.
+                    // So instead, we look for a normal string start, record the start index to see what comes first.
+                    // If a normal string comes first, we process it.
+                    // Note: the index of the string is (lookUpTripleQuoteTokenFromIndex (where we started) + match index + (1 if match length is 2, 0 otherwise -, because the match index counts the non grouping part)
+                    const normalSingleQuoteStringStartRegexRes = /(?:^|[^\\'])(')(?!')/.exec(codeLines[i].slice(lookUpTripleQuoteTokenFromIndex));
+                    if(normalSingleQuoteStringStartRegexRes){
+                        stringStartDetectorIndexes.push({stringToken: QuoteStringTokenType.SINGLE, stringStartIndex: lookUpTripleQuoteTokenFromIndex + (normalSingleQuoteStringStartRegexRes.index + normalSingleQuoteStringStartRegexRes[0].length - 1)});
+                    }
+                    const normalDoubleQuoteStringStartRegexRes = /(?:^|[^\\"])(")(?!")/.exec(codeLines[i].slice(lookUpTripleQuoteTokenFromIndex));
+                    if(normalDoubleQuoteStringStartRegexRes){
+                        stringStartDetectorIndexes.push({stringToken: QuoteStringTokenType.DOUBLE, stringStartIndex: lookUpTripleQuoteTokenFromIndex + (normalDoubleQuoteStringStartRegexRes.index + normalDoubleQuoteStringStartRegexRes[0].length - 1)});         
+                    }           
+                }
+                const lookUpTripleQuoteTokenRegex: RegExp = (currentTripleQuoteTokenStyle == QuoteStringTokenType.NO_PARSING) 
+                    ? /(?<!\\)('''|""")/ 
+                    : ((currentTripleQuoteTokenStyle == QuoteStringTokenType.SINGLE) 
+                        ? /(?<!\\)'''/ 
+                        : /(?<!\\)"""/);
+                const regexExecRes = lookUpTripleQuoteTokenRegex.exec(codeLines[i].slice(lookUpTripleQuoteTokenFromIndex));
+                if(regexExecRes){
+                    // We found a triple quote string token, if it's a starting token, we set the flags and then look up for the ending token;
+                    // if it's a closing token, we reset the flags and look for other strings that may still follow.
+                    isParsingTripleQuotesStr = !isParsingTripleQuotesStr;
+                    if(isParsingTripleQuotesStr){
+                        // Check that no normal string is found before this triple quote token: if not, we don't proceed but move past that normal string.
+                        // (only keep first found strings)
+                        const filteredStringStartDetectorIndexes = stringStartDetectorIndexes.reduce((acc, curr) => {
+                            if(curr.stringStartIndex > -1 && curr.stringStartIndex > acc.stringStartIndex ){                                
+                                return curr;                                
+                            }
+                            else{ 
+                                return acc;
+                            }
+                        }, {stringToken: QuoteStringTokenType.NO_PARSING, stringStartIndex: -1});
+                        if(filteredStringStartDetectorIndexes.stringStartIndex > -1 && (lookUpTripleQuoteTokenFromIndex + regexExecRes.index) > filteredStringStartDetectorIndexes.stringStartIndex){
+                            // Reset stringStartDetectorIndexes
+                            stringStartDetectorIndexes.splice(0);
+                            // Look up the end of the normal string, then just reset the lookup index flag and the parsing state and break the loop 
+                            const normalStringEndTokenRegexRes = ((filteredStringStartDetectorIndexes.stringToken == QuoteStringTokenType.SINGLE) 
+                                ? /(?:^|[^\\'])(')/ : /(?:^|[^\\"])(")/)
+                                .exec(codeLines[i].slice(filteredStringStartDetectorIndexes.stringStartIndex + 1));
+                            if(normalStringEndTokenRegexRes){
+                                // The new index to look up is filteredStringStartDetectorIndexes.stringStartIndex + 1 (since we start looking here)
+                                // + index of the match + length of the match (can be 1 or 2)
+                                // + 1 for the passing the match itself (passing the ending token)
+                                lookUpTripleQuoteTokenFromIndex = filteredStringStartDetectorIndexes.stringStartIndex  + (normalStringEndTokenRegexRes.index + normalStringEndTokenRegexRes[0].length + 2);
+                                isParsingTripleQuotesStr = !isParsingTripleQuotesStr;
+                                break;
+                            }
+                        }
+
+                    }
+                    currentTripleQuoteTokenStyle = (isParsingTripleQuotesStr) 
+                        ? ((regexExecRes[0] == "'''") ? QuoteStringTokenType.SINGLE: QuoteStringTokenType.DOUBLE)
+                        : QuoteStringTokenType.NO_PARSING;
+                    lookUpTripleQuoteTokenFromIndex += regexExecRes.index + 3; // pass the opening/closing token
+                    if(!foundOneTripleQuoteStartToken && isParsingTripleQuotesStr){
+                        foundOneTripleQuoteStartToken = true;
+                        // A string literal may start on that line, we check what indentation to use as mentioned above.
+                        const tripleQuoteToken = (currentTripleQuoteTokenStyle == QuoteStringTokenType.SINGLE) ? "'''" : "\"\"\"";
+                        if(codeLines[i].trimStart().startsWith(tripleQuoteToken)) {
+                            const blanksAtStart = codeLines[i].slice(0, codeLines[i].indexOf(tripleQuoteToken));
+                            if(singleIndentLength == 0 || (blanksAtStart.length % singleIndentLength) == 0) {
+                                mostRecentIndent = blanksAtStart;
+                                transformedLine = codeLines[i];    
+                            }                    
+                            else{
+                                mostRecentIndent = mostRecentIndent.charAt(0).repeat(Math.round(blanksAtStart.length / singleIndentLength) * singleIndentLength);
+                                transformedLine = mostRecentIndent + codeLines[i].trimStart();
+                            }
+                        }
+                        else{
+                            // we can leave at it is as we don't know the context.
+                            transformedLine = codeLines[i];
+                        }
+                    }
+                }
+                else{
+                    // All the triple quotes strings tokens in the line have been detected.
+                    hasFinishedFindingTripleQuotesString = true;
+                }
+            }
+
+            // Only trim the end of the line if we are not in a "hanging" situation
+            if(!isParsingTripleQuotesStr){                
+                transformedLine = ((foundOneTripleQuoteStartToken) ? transformedLine : codeLines[i]).trimEnd();
+            }            
+            transformedLines.push(transformedLine);
+        }
+        else {
+            // Any other valid code, except if we are in the context of triple quotes strings: we keep the line as is.
+            if(isParsingTripleQuotesStr){
+                transformedLines.push(codeLines[i]);
+            }
+            else {
+                transformedLines.push(codeLines[i].trimEnd());
+                mostRecentIndent = getIndent(codeLines[i].trimEnd());
+                checkRearrangeCommentsIdent();            
+            }
+        }
+
+        // Update the indentation "unit" length: that is the length of 1 indentation (like 4 for "   ").
+        if(singleIndentLength == 0 && mostRecentIndent.length > 0) {
+            singleIndentLength = mostRecentIndent.length;
         }
     }
+    // We might have comments at the end of the code, so we need to check their indentation:
+    checkRearrangeCommentsIdent();
+
+    return { disabledLines, transformedLines, strypeDirectives };
+}
+
+// The main entry point to this module.  Given a string of Python code that the user
+// has pasted in, copy it to the store's copiedFrames/copiedSelectionFrameIds fields,
+// ready to be pasted immediately afterwards.
+// If successful, returns a map with key-value Strype directives.  If unsuccessful, returns a string with some info about
+// where the Python parse failed.
+export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, format: "py" | "spy", linenoMapping?: Record<number, number>, dryrun?: "dryrun" | undefined) : string | null | Map<string, string> {
+    const mapLineno = (lineno : number) : number => linenoMapping ? linenoMapping[lineno] : lineno;
+    const indents = new Map<number, string>();
     
+    // Then find the common amount of indentation on non-blank lines and remove it:
+    // This way if the user parses in something like this from the middle of some Python:
+    // "    if x > 8:"
+    // "      x = 10"
+    // "    else:"
+    // "      x = 12"
+    // (which is invalid in Python because you can't have a leading indent on the first line),
+    // we interpret it as :
+    // "if x > 8:"
+    // "  x = 10"
+    // "else:"
+    // "  x = 12"
+    // (note that just removing indent on first line wouldn't make the else line up correctly)
+    let lowestIndent = 999999;
+    for (const codeLine of codeLines) {
+        if (codeLine.trim() != "") {
+            // Is bound to match because even the empty line matches:
+            const indent = getIndent(codeLine).length;
+            if (indent < lowestIndent) {
+                lowestIndent = indent;
+            }
+        }
+    }
+    // Now remove that indent if it exists, and record remaining indent:
+    for (let i = 0; i < codeLines.length; i++) {
+        codeLines[i] = codeLines[i].slice(lowestIndent);
+        indents.set(i + 1, getIndent(codeLines[i]));
+    }
+
+    const transformed = transformCommentsAndBlanks(codeLines, format);
+    const parsedBySkulpt = parseWithSkulpt(transformed.transformedLines, mapLineno);
+    if (typeof parsedBySkulpt === "string") {
+        return parsedBySkulpt;
+    }
+    const addedFakeJoinParent = parsedBySkulpt.addedFakeJoinParent;
+
     useStore().copiedFrames = {};
     useStore().copiedSelectionFrameIds = [];
     try {
         // Use the next available ID to avoid clashing with any existing IDs:
-        copyFramesFromPython(parsedBySkulpt, {nextId: useStore().nextAvailableId, addTo: useStore().copiedSelectionFrameIds, pendingComments: comments, parent: null});
+        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: useStore().nextAvailableId, addToNonJoint: useStore().copiedSelectionFrameIds, addToJoint: undefined, loadedFrames: useStore().copiedFrames, disabledLines: transformed.disabledLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0, transformTopComment: (c) => {
+            if (!dryrun) {
+                const docFrame = useStore().frameObjects[-10] as FrameObject;
+                docFrame.labelSlotsDict[0].slotStructures = c;
+            }
+        }});
         // At this stage, we can make a sanity check that we can copy the given Python code in the current position in Strype (for example, no "import" in a function definition section)
         if(!canPastePythonAtStrypeLocation(currentStrypeLocation)){
             useStore().copiedFrames = {};
@@ -245,7 +571,7 @@ function concatSlots(lhs: SlotsStructure, operator: string, rhs: SlotsStructure)
     for (let i = 0; i < joined.operators.length; i++) {
         if (joined.operators[i].code === "") {
             // Check LHS and RHS:
-            if (!(joined.fields[i] as SlotsStructure)?.openingBracketValue && !(joined.fields[i] as StringSlot)?.quote && !(joined.fields[i+1] as SlotsStructure)?.openingBracketValue && !(joined.fields[i+1] as StringSlot)?.quote) {
+            if (isFieldBaseSlot(joined.fields[i])  && isFieldBaseSlot(joined.fields[i+1])) {
                 // We can join the two:
                 joined.fields[i] = {code: (joined.fields[i] as BaseSlot).code + (joined.fields[i+1] as BaseSlot).code};
                 joined.fields.splice(i + 1, 1);
@@ -317,15 +643,134 @@ function parseNextTerm(ps : ParseState) : SlotsStructure {
     return toSlots(term);
 }
 
+function replaceMediaLiteralsAndInvalidOps(s : SlotsStructure) : SlotsStructure {
+    // We descend the tree, looking for the pattern:
+    // <ident>(<string>)
+    // and then check the ident and string
+    
+    // Note: we don't bother with last field because it can't be followed by brackets
+    for (let i = 0; i < s.fields.length - 1; i++) {
+        const curField = s.fields[i];
+        const sub = s.fields[i + 1];
+        if (isFieldBaseSlot(curField)
+            && s.operators[i].code === ""
+            && isFieldBracketedSlot(sub)) {
+            const funcCall = curField.code;
+            let replaced = false;
+            if (["load_image", "load_sound"].includes(funcCall)) {
+                // Check the bracket is just a string literal, which will have two blanks either side:
+                if (sub.fields.length == 3
+                    && sub.openingBracketValue == "("
+                    && isFieldBaseSlot(sub.fields[0]) && !(sub.fields[0] as BaseSlot).code
+                    && !sub.operators[0].code
+                    && isFieldStringSlot(sub.fields[1])
+                    && !sub.operators[1].code
+                    && isFieldBaseSlot(sub.fields[2]) && !(sub.fields[2] as BaseSlot).code) {
+
+                    // Need to check ident and content of the bracket:
+                    const stringArg = (sub.fields[1] as StringSlot).code;
+                    
+                    if (funcCall == "load_image"
+                        && stringArg.startsWith("data:image/")) {
+                        s.fields[i] = {
+                            code: "load_image(\"" + stringArg + "\")",
+                            mediaType: /data:([^;]+)/.exec(stringArg)?.[1] ?? "image",
+                        };
+                        replaced = true;
+                    }
+                    else if (funcCall == "load_sound"
+                        && stringArg.startsWith("data:audio/")) {
+                        s.fields[i] = {
+                            code: "load_sound(\"" + stringArg + "\")",
+                            mediaType: /data:([^;]+)/.exec(stringArg)?.[1] ?? "audio",
+                        };
+                        replaced = true;
+                    }
+                    // Otherwise don't substitute
+                }
+            }
+            else if (curField.code === STRYPE_INVALID_OPS_WRAPPER) {
+                if (sub.openingBracketValue == "("
+                    // Check all ops are commas or blank:
+                    && !sub.operators.some((op) => op.code != "," && op.code != "")) {
+                    const fields = [];
+                    const ops = [];
+                    // Process all items as alternate fields and ops:
+                    for (let i = 0; i < sub.fields.length; i+= 2) {
+                        fields.push(sub.fields[i]);
+                        if (i + 1 < sub.fields.length) {
+                            const opField = sub.fields[i + 1];
+                            if (isFieldBaseSlot(opField) && opField.code.startsWith(STRYPE_INVALID_OP)) {
+                                ops.push({code: fromUnicodeEscapes(opField.code.slice(STRYPE_INVALID_OP.length))});
+                            }
+                            else {
+                                ops.push({code: ""});
+                                i -= 1;
+                            }
+                        }
+                    }
+                    // If there are any adjacent blank fields with blank operators
+                    // (which can occur in various arrangements involving bracket-adjacency),
+                    // trim them:
+                    for (let i = 0; i < fields.length - 1; i++) {
+                        const cur = fields[i];
+                        const next = fields[i + 1];
+                        if (isFieldBaseSlot(cur) && cur.code === ""
+                            && isFieldBaseSlot(next) && next.code === ""
+                            && ops[i].code === "") {
+                            fields.splice(i, 1);
+                            ops.splice(i, 1);
+                            // Process this index again:
+                            i -= 1;
+                        }
+                    }
+                    
+                    return {fields: fields, operators: ops, openingBracketValue: s.openingBracketValue};
+                }
+            }
+
+            // But if we did, tidy up surrounding slots:
+            if (replaced) {
+                // First delete the bracketed arg that we don't need:
+                s.fields.splice(i + 1, 1);
+                s.operators.splice(i, 1);
+                // Then check we have blank operators either side:
+                if (s.operators[i].code) {
+                    // Check RHS first so we don't need to adjust index:
+                    s.operators.splice(i, 0, {code: ""});
+                    s.fields.splice(i + 1, 0, {code: ""});
+                }
+                if (i == 0 || s.operators[i - 1].code) {
+                    s.operators.splice(i - 1, 0, {code: ""});
+                    s.fields.splice(i, 0, {code: ""});
+                }
+            }
+        }
+        // We don't descend because toSlots already calls us on any compound slot
+    }
+    return s;
+}
+
+export function fromUnicodeEscapes(input: string): string {
+    const regex = /u([0-9a-fA-F]{4})/g;
+    return input.replace(regex, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+}
+
 function toSlots(p: ParsedConcreteTree) : SlotsStructure {
     // Handle terminal nodes by just plonking them into a single-field slot:
     if (p.children == null || p.children.length == 0) {
-        const val = p.value ?? "";
+        let val = p.value ?? "";
         if (val.startsWith("\"") || val.startsWith("'")) {
             const str : StringSlot = {code: val.slice(1, val.length - 1), quote: val.slice(0, 1)};
             return {fields: [{code: ""}, str, {code: ""}], operators: [{code: ""}, {code: ""}]};
         }
         else {
+            if (val == STRYPE_EXPRESSION_BLANK) {
+                val = "";
+            }
+            else if (val.startsWith(STRYPE_INVALID_SLOT)) {
+                val = fromUnicodeEscapes(val.slice(STRYPE_INVALID_SLOT.length));
+            }
             return {fields: [{code: val}], operators: []};
         }
     }
@@ -378,6 +823,9 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
                 // Can be blank on RHS of colon
                 latest = concatSlots(latest, op, {fields: [{code: ""}], operators: []});
             }
+            else if (op == "," && ps.nextIndex == ps.seq.length) {
+                // Can have a trailing comma with nothing following; ignore
+            }
             else {
                 latest = concatSlots(latest, op, parseNextTerm(ps));
             }
@@ -386,7 +834,7 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
             throw new Sk.builtin.SyntaxError("Unknown operator: " + child.type + " \"" + op + "\"", null, p.lineno);
         }
     }
-    return latest;
+    return replaceMediaLiteralsAndInvalidOps(latest);
 }
 
 // Get the children of the node, and throw an error if they are null.  This
@@ -413,45 +861,43 @@ function applyIndex(p : ParsedConcreteTree, index: number | number[]) : ParsedCo
 }
 
 // Make a frame using the given frame type, the given index/indices of p's children for the slots,
+function getRealLineNo(p: ParsedConcreteTree) : number | undefined {
+    if (p.type == Sk.ParseTables.sym.suite) {
+        // I don't really understand what this item is (it seems to have the raw content as extra children),
+        // but it seems if we ignore these extra children we can proceed and it will all work:
+        for (const child of children(p)) {
+            if (child.type > 250) { // Only count the non-expression nodes
+                return child.lineno;
+            }
+        }
+    }
+    return p.lineno;
+}
+
 // the given index for the body, and call addFrame on it.
-function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, childrenIndicesForSlots: (number | number[])[], childIndexForBody: number, s : CopyState, afterwards? : ((f : FrameObject) => void)) : CopyState {
-    const slots : { [index: number]: LabelSlotsContent} = {};
-    for (let slotIndex = 0; slotIndex < childrenIndicesForSlots.length; slotIndex++) {
-        slots[slotIndex] = {slotStructures : toSlots(applyIndex(p, childrenIndicesForSlots[slotIndex]))};
+function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, keywordIndexForLineno: number, childrenIndicesForSlots: (number | number[])[] | { [index: number]: LabelSlotsContent}, childIndexForBody: number, s : CopyState, transformTopComment?: (content: SlotsStructure, frame: FrameObject) => void) : {s: CopyState, frame: FrameObject} {
+    let slots : { [index: number]: LabelSlotsContent} = {};
+    if (Array.isArray(childrenIndicesForSlots)) {
+        for (let slotIndex = 0; slotIndex < childrenIndicesForSlots.length; slotIndex++) {
+            slots[slotIndex] = {slotStructures : toSlots(applyIndex(p, childrenIndicesForSlots[slotIndex]))};
+        }
     }
-    const frame = makeFrame(frameType, slots);
-    s = addFrame(frame, s);
-    const nextId = copyFramesFromPython(children(p)[childIndexForBody], {...s, addTo: frame.childrenIds, parent: frame}).nextId;
-    if (afterwards !== undefined) {
-        afterwards(frame);
+    else {
+        slots = childrenIndicesForSlots;
     }
-    return {...s, nextId: nextId};
+    const frame = makeFrame(frameType, slots, s.isSPY);    
+    s = addFrame(frame, applyIndex(p, keywordIndexForLineno).lineno, s);
+    const frameChildren = children(p);
+    const afterChild = copyFramesFromPython(frameChildren[childIndexForBody], {...s, addToNonJoint: frame.childrenIds, addToJoint: undefined, parent: frame, transformTopComment: transformTopComment ? ((s) => transformTopComment(s, frame)) : undefined});
+    s = {...s, nextId: afterChild.nextId, lastLineProcessed: afterChild.lastLineProcessed};
+    return {s: s, frame: frame};
 }
 
-// Check if there any comments/blanks in s.pendingComments that appear at or before the given line number,
-// and insert them as blanks/comment frames at the given point 
-function flushComments(lineno: number, s: CopyState) {
-    while (s.pendingComments.length > 0 && s.pendingComments[0].lineNumber <= lineno) {
-        if (s.pendingComments[0].content === null) {
-            s = addFrame(makeFrame(AllFrameTypesIdentifier.blank, {}), s);
-        }
-        else {
-            s = addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: s.pendingComments[0].content}], operators: []}}}), s);
-        }
-        // Remove first item:
-        s.pendingComments.splice(0, 1);
-    }
-    return s;
-}
-
-// Process the given node in the tree at the current point designed by CopyState 
+// Process the given node in the tree at the current point designed by CopyState
 // Returns a copy state, including the frame ID of the next insertion point for any following statements
 function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState {
     //console.log("Processing type: " + (Sk.ParseTables.number2symbol[p.type] || ("#" + p.type)));
-    if (p.lineno) {
-        s = flushComments(p.lineno, s);
-    }
-    
+        
     switch (p.type) {
     case Sk.ParseTables.sym.file_input:
         // The outer wrapper for the whole file, just dig in:
@@ -468,6 +914,8 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         // Wrappers where we just skip to the children:
         for (const child of children(p)) {
             s = copyFramesFromPython(child, s);
+            // After the first, it's no longer the top comment:
+            s.transformTopComment = undefined;
         }
         break;
     case Sk.ParseTables.sym.expr_stmt:
@@ -477,81 +925,135 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
                 // An assignment
                 const lhs = toSlots({...p, children: p.children.slice(0, index)});
                 const rhs = toSlots({...p, children: p.children.slice(index + 1)});
-                s = addFrame(makeFrame(AllFrameTypesIdentifier.varassign, {0: {slotStructures: lhs}, 1: {slotStructures: rhs}}), s);
+                s = addFrame(makeFrame(AllFrameTypesIdentifier.varassign, {0: {slotStructures: lhs}, 1: {slotStructures: rhs}}, s.isSPY), p.lineno, s);
             }
             else {
-                // Everything else goes in method call:
-                s = addFrame(makeFrame(AllFrameTypesIdentifier.funccall, {0: {slotStructures: toSlots(p)}}), s);
+                const slots = toSlots(p);
+                if (slots.fields.length == 1 && (slots.fields[0] as BaseSlot)?.code && (slots.fields[0] as BaseSlot).code.startsWith(STRYPE_COMMENT_PREFIX)) {
+                    // A single line comment: we retrieve and decode the comment part following the STRYPE_COMMENT_PREFIX placeholder.
+                    const comment = fromUnicodeEscapes((slots.fields[0] as BaseSlot).code.slice(STRYPE_COMMENT_PREFIX.length));
+                    s = addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: comment}], operators: []}}}, s.isSPY), p.lineno, s);    
+                }
+                else if (slots.fields.length == 1 && (slots.fields[0] as BaseSlot)?.code && (slots.fields[0] as BaseSlot).code.startsWith(STRYPE_LIBRARY_PREFIX)) {
+                    const library = fromUnicodeEscapes((slots.fields[0] as BaseSlot).code.slice(STRYPE_LIBRARY_PREFIX.length));
+                    s = addFrame(makeFrame(AllFrameTypesIdentifier.library, {0: {slotStructures: {fields: [{code: library}], operators: []}}}, s.isSPY), p.lineno, s);
+                }
+                else if (slots.fields.length == 1 && (slots.fields[0] as BaseSlot)?.code && (slots.fields[0] as BaseSlot).code === STRYPE_WHOLE_LINE_BLANK) {
+                    s = addFrame(makeFrame(AllFrameTypesIdentifier.blank, {}, s.isSPY), p.lineno, s);
+                }
+                else {
+                    // Everything else goes in method call:
+                    const misc = makeFrame(AllFrameTypesIdentifier.funccall, {0: {slotStructures: slots}}, s.isSPY);
+                    if (misc.frameType.type == AllFrameTypesIdentifier.comment && s.transformTopComment) {
+                        s.transformTopComment(misc.labelSlotsDict[0].slotStructures);
+                        s = {...s, transformTopComment: undefined};
+                    }
+                    else {
+                        s = addFrame(misc, p.lineno, s);
+                    }
+                }
             }
         }
         break;
     case Sk.ParseTables.sym.pass_stmt:
-        // We do not insert pass frames
+        // We do not insert pass frames.  But we do record the line number
+        // because it may matter for processing following comments:
+        s = {...s, lastLineProcessed: p.lineno};
         break;
     case Sk.ParseTables.sym.break_stmt:
-        s = addFrame(makeFrame(AllFrameTypesIdentifier.break, {}), s);
+        s = addFrame(makeFrame(AllFrameTypesIdentifier.break, {}, s.isSPY), p.lineno, s);
         break;
     case Sk.ParseTables.sym.continue_stmt:
-        s = addFrame(makeFrame(AllFrameTypesIdentifier.continue, {}), s);
+        s = addFrame(makeFrame(AllFrameTypesIdentifier.continue, {}, s.isSPY), p.lineno, s);
         break;
     case Sk.ParseTables.sym.global_stmt:
-        s = addFrame(makeFrame(AllFrameTypesIdentifier.global, {0: {slotStructures: toSlots(children(p)[1])}}), s);
+        s = addFrame(makeFrame(AllFrameTypesIdentifier.global, {0: {slotStructures: toSlots(children(p)[1])}}, s.isSPY), p.lineno, s);
         break;
     case Sk.ParseTables.sym.import_name:
-        s = addFrame(makeFrame(AllFrameTypesIdentifier.import, {0: {slotStructures: toSlots(children(p)[1])}}), s);
+        s = addFrame(makeFrame(AllFrameTypesIdentifier.import, {0: {slotStructures: toSlots(children(p)[1])}}, s.isSPY), p.lineno, s);
         break;
     case Sk.ParseTables.sym.import_from:
-        s = addFrame(makeFrame(AllFrameTypesIdentifier.fromimport, {0: {slotStructures: toSlots(children(p)[1])}, 1: {slotStructures: toSlots(children(p)[3])}}), s);
+        s = addFrame(makeFrame(AllFrameTypesIdentifier.fromimport, {0: {slotStructures: toSlots(children(p)[1])}, 1: {slotStructures: toSlots(children(p)[3])}}, s.isSPY), p.lineno, s);
         break;
     case Sk.ParseTables.sym.raise_stmt:
-        s = addFrame(makeFrame(AllFrameTypesIdentifier.raise, {0: {slotStructures: toSlots(children(p)[1])}}), s);
+        // Raise may or may not have an expression child after it:
+        if (children(p).length >= 2) {
+            s = addFrame(makeFrame(AllFrameTypesIdentifier.raise, {0: {slotStructures: toSlots(children(p)[1])}}, s.isSPY), p.lineno, s);
+        }
+        else {
+            s = addFrame(makeFrame(AllFrameTypesIdentifier.raise, {0: {slotStructures: {fields: [{code: ""}], operators: []}}}, s.isSPY), p.lineno, s);
+        }
         break;
     case Sk.ParseTables.sym.return_stmt:
         // Return may or may not have an expression child after it:
         if (children(p).length >= 2) {
-            s = addFrame(makeFrame(AllFrameTypesIdentifier.return, {0: {slotStructures: toSlots(children(p)[1])}}), s);
+            s = addFrame(makeFrame(AllFrameTypesIdentifier.return, {0: {slotStructures: toSlots(children(p)[1])}}, s.isSPY), p.lineno, s);
         }
         else {
-            s = addFrame(makeFrame(AllFrameTypesIdentifier.return, {0: {slotStructures: {fields: [{code: ""}], operators: []}}}), s);
+            s = addFrame(makeFrame(AllFrameTypesIdentifier.return, {0: {slotStructures: {fields: [{code: ""}], operators: []}}}, s.isSPY), p.lineno, s);
         }
         break;
     case Sk.ParseTables.sym.if_stmt: {
         // First child is keyword, second is the condition, third is colon, fourth is body
-        const ifFrame: FrameObject[] = [];
-        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.if, [1], 3, s, (f : FrameObject) => ifFrame.push(f));
+        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.if, 0,[1], 3, s);
+        s = r.s;
+        const ifFrame = r.frame;
+        
         // If can have elif, else, so keep going to check for that:
         for (let i = 4; i < children(p).length; i++) {
             if (children(p)[i].value === "else") {
                 // Skip the else and the colon, which are separate tokens:
                 i += 2;
-                s.nextId = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.else, [], i, {...s, addTo: ifFrame[0].jointFrameIds, parent: null}, (f) => {
-                    f.jointParentId = ifFrame[0].id;
-                }).nextId;
+                updateFrom(s, makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.else, i - 2,[], i, {...s, addToJoint: ifFrame.jointFrameIds, jointParent: ifFrame}).s);
             }
             else if (children(p)[i].value === "elif") {
                 // Skip the elif:
                 i += 1;
-                s.nextId = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.elif, [i], i + 2, {...s, addTo: ifFrame[0].jointFrameIds, parent: null}, (f) => {
-                    f.jointParentId = ifFrame[0].id;
-                }).nextId;
+                updateFrom(s, makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.elif, i - 1,[i], i + 2, {...s, addToJoint: ifFrame.jointFrameIds, jointParent: ifFrame}).s);
                 // Skip the condition and the colon:
                 i += 2;
             }
         }
         break;
     }
-    case Sk.ParseTables.sym.while_stmt:
+    case Sk.ParseTables.sym.while_stmt: {
         // First child is keyword, second is the condition, third is colon, fourth is body
-        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.while, [1], 3, s);
+        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.while, 0, [1], 3, s);
+        s = r.s;
+        let i = 3;
+        if (children(p).length >= 5 && children(p)[4].value === "else") {
+            // Skip the else and the colon, which are separate tokens:
+            i += 3;
+            updateFrom(s, makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.else, 4,[], i, {
+                ...s,
+                addToJoint: r.frame.jointFrameIds,
+                jointParent: r.frame,
+            }).s);
+        }
         break;
-    case Sk.ParseTables.sym.for_stmt:
+    }
+    case Sk.ParseTables.sym.for_stmt: {
         // First child is keyword, second is the loop var, third is keyword, fourth is collection, fifth is colon, sixth is body
-        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.for, [1, 3], 5, s);
+        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.for, 0, [1, 3], 5, s);
+        s = r.s;
+        let i = 5;
+        if (children(p).length >= 7 && children(p)[6].value === "else") {
+            // Skip the else and the colon, which are separate tokens:
+            i += 3;
+            updateFrom(s, makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.else, 6,[], i, {
+                ...s,
+                addToJoint: r.frame.jointFrameIds,
+                jointParent: r.frame,
+            }).s);
+        }
         break;
+    }
     case Sk.ParseTables.sym.try_stmt: {
         // First is keyword, second is colon, third is body
-        const tryFrame : FrameObject[] = [];
-        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.try, [], 2, s, (f) => tryFrame.push(f));
+        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.try, 0, [], 2, s);
+        const tryFrame = r.frame;
+        s = r.s;
+        
         // The except clauses are descendants of the try block, so we must iterate through later children:
         for (let i = 3; i < children(p).length; i++) {
             const child = children(p)[i];
@@ -566,40 +1068,53 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
                     // except ErrorType as varName:
                     exceptFrame = makeFrame(AllFrameTypesIdentifier.except, {0: {slotStructures:
                                 concatSlots(toSlots(grandchildren[1]), "as", toSlots(grandchildren[3])),
-                    }});
+                    }}, s.isSPY);
                 }
                 else if (grandchildren.length == 2) {
                     // except varName:
-                    exceptFrame = makeFrame(AllFrameTypesIdentifier.except, {0: {slotStructures: toSlots(grandchildren[1])}});
+                    const asSlots = toSlots(grandchildren[1]);
+                    if (asSlots.fields.length == 1 && (asSlots.fields[0] as BaseSlot)?.code == STRYPE_DUMMY_FIELD) {
+                        exceptFrame = null;
+                    }
+                    else {
+                        exceptFrame = makeFrame(AllFrameTypesIdentifier.except, {0: {slotStructures: asSlots}}, s.isSPY);
+                    }
                 }
                 else if (grandchildren.length == 1) {
                     // Just the except keyword, i.e. blank except:
-                    exceptFrame = makeFrame(AllFrameTypesIdentifier.except, {0: {slotStructures: {fields: [{code: ""}], operators: []}}});
+                    exceptFrame = makeFrame(AllFrameTypesIdentifier.except, {0: {slotStructures: {fields: [{code: ""}], operators: []}}}, s.isSPY);
                 }
                 else {
                     // Shouldn't happen, but skip if so:
                     continue;
                 }
-                exceptFrame.jointParentId = tryFrame[0].id;
-                s.nextId = addFrame(exceptFrame, {...s, addTo: tryFrame[0].jointFrameIds, parent: null}).nextId;
-                // The children of the except actually follow as a sibling of the clause, after the colon (hence i + 2):
-                s.nextId = copyFramesFromPython(children(p)[i+2], {...s, parent: exceptFrame, addTo: exceptFrame.childrenIds}).nextId;
+                if (exceptFrame) {
+                    updateFrom(s, addFrame(exceptFrame, getRealLineNo(child), {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame}));
+                    // The children of the except actually follow as a sibling of the clause, after the colon (hence i + 2):
+                    if (s.lastLineProcessed != undefined) {
+                        updateFrom(s, copyFramesFromPython(children(p)[i + 2], {...s, addToNonJoint: exceptFrame.childrenIds, parent: exceptFrame}));
+                    }
+                }
+                else if (s.lastLineProcessed) {
+                    // We know it's dummy header + pass body, so just add two:
+                    s.lastLineProcessed += 2;
+                }
             }
             else if (child.value === "finally") {
                 // Weirdly, finally doesn't seem to have a proper node type, it's just a normal child
                 // followed by a colon followed by a body
-                s.nextId = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.finally, [], i + 2, {...s, addTo: tryFrame[0].jointFrameIds, parent: null}, (f) => f.jointParentId = tryFrame[0].id).nextId;
+                updateFrom(s, makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.finally, i, [], i + 2, {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame}).s);
             }
             else if (child.value === "else") {
                 // else is the same as finally, a normal child then colon then body:
-                s.nextId = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.else, [], i + 2, {...s, addTo: tryFrame[0].jointFrameIds, parent: null}, (f) => f.jointParentId = tryFrame[0].id).nextId;
+                updateFrom(s, makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.else, i, [], i + 2, {...s, addToJoint: tryFrame.jointFrameIds, jointParent: tryFrame}).s);
             }
         }
         break;
     }
     case Sk.ParseTables.sym.with_stmt:
         // First child is keyword, second is with_item that has [LHS, "as", RHS] as children, third is colon, fourth is body
-        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.with, [[1, 0], [1, 2]], 3, s);
+        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.with, 0, [[1, 0], [1, 2]], 3, s).s;
         break;
     case Sk.ParseTables.sym.suite:
         // I don't really understand what this item is (it seems to have the raw content as extra children),
@@ -610,26 +1125,33 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
             }
         }
         break;
-    case Sk.ParseTables.sym.funcdef:
+    case Sk.ParseTables.sym.funcdef: {
         // First child is keyword, second is the name, third is params, fourth is colon, fifth is body
-        s = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.funcdef, [1, 2], 4, s, (f) => {
-            if (s.parent?.frameType.type == AllFrameTypesIdentifier.classdef) {
-                // We remove the first param from the start of function params,
-                // assuming it is the self parameter that we add automatically.
-                const params = f.labelSlotsDict[1];
-                
-                if (params && params.slotStructures.fields.length == 1) {
-                    // We need to keep a field, but we blank the content:
-                    (params.slotStructures.fields[0] as BaseSlot).code = "";
-                }
-                else if (params && params.slotStructures.fields.length > 1) {
-                    // We can just delete the first item and first operator, and rest can stay:
-                    params.slotStructures.fields.splice(0, 1);
-                    params.slotStructures.operators.splice(0, 1);
-                }
-            }
+        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.funcdef, 0, [1, 2], 4, s, (comment : SlotsStructure, frame : FrameObject) => {
+            frame.labelSlotsDict[3] = {slotStructures: comment};
         });
+        s = r.s;
+        // If we didn't find a top comment, add blank:
+        if (!(3 in r.frame.labelSlotsDict)) {
+            r.frame.labelSlotsDict[3] = {slotStructures: {operators: [], fields: [{code: ""}]}};
+        }
+        if (s.parent?.frameType.type == AllFrameTypesIdentifier.classdef) {
+            // We remove the first param from the start of function params,
+            // assuming it is the self parameter that we add automatically.
+            const params = r.frame.labelSlotsDict[1];
+
+            if (params && params.slotStructures.fields.length == 1) {
+                // We need to keep a field, but we blank the content:
+                (params.slotStructures.fields[0] as BaseSlot).code = "";
+            }
+            else if (params && params.slotStructures.fields.length > 1) {
+                // We can just delete the first item and first operator, and rest can stay:
+                params.slotStructures.fields.splice(0, 1);
+                params.slotStructures.operators.splice(0, 1);
+            }
+        }
         break;
+    }
     case Sk.ParseTables.sym.classdef: {
         // First child is keyword, second is the name, penultimate is colon, last is body.
         // If there are parent classes, third is open-bracket, fourth is content, fifth is close bracket
@@ -651,10 +1173,14 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
             name.operators.push({code: ""}, {code: ""});
             slots[0] = {slotStructures: name};
         }
-        const frame = makeFrame(AllFrameTypesIdentifier.classdef, slots);
-        s = addFrame(frame, s);
-        const nextId = copyFramesFromPython(children(p)[numChildren - 1], {...s, addTo: frame.childrenIds, parent: frame}).nextId;
-        s = {...s, nextId: nextId};
+        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.classdef, 0, slots, numChildren - 1, s, (comment : SlotsStructure, frame : FrameObject) => {
+            frame.labelSlotsDict[2] = {slotStructures: comment};
+        });
+        s = r.s;
+        // If we didn't find a top comment, add blank:
+        if (!(2 in r.frame.labelSlotsDict)) {
+            r.frame.labelSlotsDict[2] = {slotStructures: {operators: [], fields: [{code: ""}]}};
+        }
         break;
     }
     }
@@ -664,15 +1190,18 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
 // Function to check the current position in Strype 
 export function findCurrentStrypeLocation(): STRYPE_LOCATION {
     // We detect the location by nativagating to the parents of the current Strype location (blue cursor) until we reach a significant parent type (see enum STRYPE_LOCATION)
-    // If are below a frame, we look for its parent right away, otheriwse we can use that fraome
-    let navigFrameId = useStore().currentFrame.id;
+    // If are below a frame, we look for its parent right away, otheriwse we can use that frame.
+    let {id: navigFrameId, caretPosition: navigFrameCaretPos} = useStore().currentFrame;
     do{
         const frameType = useStore().frameObjects[navigFrameId].frameType;
         switch(frameType.type){
         case ContainerTypesIdentifiers.framesMainContainer:
             return STRYPE_LOCATION.MAIN_CODE_SECTION;
         case AllFrameTypesIdentifier.funcdef:
-            return STRYPE_LOCATION.IN_FUNCDEF;
+            // Two possible cases: we are at the body of a function definition or at the bottom:
+            // in the first case, we are inside a function definition,
+            // in the second case, we are inside the definitions section.
+            return (navigFrameCaretPos == CaretPosition.body) ? STRYPE_LOCATION.IN_FUNCDEF : STRYPE_LOCATION.DEFS_SECTION;
         case ContainerTypesIdentifiers.defsContainer:
             return STRYPE_LOCATION.DEFS_SECTION;
         case ContainerTypesIdentifiers.importsContainer:
@@ -684,6 +1213,7 @@ export function findCurrentStrypeLocation(): STRYPE_LOCATION {
             else {
                 navigFrameId = useStore().frameObjects[navigFrameId].parentId;
             }
+            navigFrameCaretPos = CaretPosition.body; // since the frame is contained in something else.
             break;
         }
     }while(navigFrameId != 0);
@@ -711,11 +1241,29 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION)
         return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type));
     case  STRYPE_LOCATION.DEFS_SECTION:
         removeTopLevelBlankFrames();
+        // We are checking if we can paste; the not at the beginning means everything here is actually the cases
+        // where we *cannot* paste.
         return !(topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type))
-            || copiedPythonToFrames.some((frame) => !topLevelCopiedFrameIds.includes(frame.id) && [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef].includes(frame.frameType.type)));
+            || copiedPythonToFrames.some((frame) =>
+                // Look only at non-top-level (i.e. child) frames    
+                !topLevelCopiedFrameIds.includes(frame.id) &&
+                // Look for frames which are outright banned as children: 
+                ([AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef].includes(frame.frameType.type)
+                // Funcdefs are a special case; they can be children, but only inside classes:
+                ||
+                (frame.frameType.type === AllFrameTypesIdentifier.funcdef
+                    // Forbidden if either their parent is not top-level,
+                    && (!topLevelCopiedFrameIds.includes(frame.parentId)
+                        // Or if that parent is not a class:
+                        || !topLevelCopiedFrames.some((p) => p.id == frame.parentId && p.frameType.type == AllFrameTypesIdentifier.classdef)))
+                )));
     case  STRYPE_LOCATION.IMPORTS_SECTION:
         removeTopLevelBlankFrames();
-        return !topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type));
+        return !topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.library, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type));
+    case STRYPE_LOCATION.PROJECT_DOC_SECTION:
+        removeTopLevelBlankFrames();
+        // Given we transform top comment, shouldn't be anything left:
+        return topLevelCopiedFrames.length == 0;
     default:
         // We shouldn't reach this but for safety we return false
         return false;
@@ -752,52 +1300,207 @@ function makeMapping(section: NumberedLine[]) : Record<number, number> {
 // Each line of the original will end up in exactly one of the three parts of the return.
 // With Python's indentation rules, this operation is actually easier at line level than it is post-parse.
 // The mappings map line numbers in the returned sections to line numbers in the original
-export function splitLinesToSections(allLines : string[]) : {imports: string[]; defs: string[]; main: string[], importsMapping: Record<number, number>, defsMapping: Record<number, number>, mainMapping: Record<number, number>} {
+export function splitLinesToSections(allLines : string[]) : {projectDoc: string[], imports: string[]; defs: string[]; main: string[], importsMapping: Record<number, number>, defsMapping: Record<number, number>, mainMapping: Record<number, number>, headers: Record<string, string>, format: "py" | "spy"} {
+    // There's two possibilities:
+    //  - we're loading a .spy with section headings, or
+    //  - we're loading a .py where we must infer it.
+    // Easy way to find out: check if the first line is a .spy header:
+    if (allLines[0].match(new RegExp("^#" + escapeRegExp(AppSPYPrefix) + " *" + AppName + " *:"))) {
+        // It's a .spy!  Easy street, let's find the headings:
+        let line = 1;
+        const r = {
+            projectDoc: [] as string[],
+            imports: [] as string[],
+            defs: [] as string[],
+            main: [] as string[],
+            importsMapping: {} as Record<number, number>,
+            defsMapping: {} as Record<number, number>,
+            mainMapping: {} as Record<number, number>,
+            headers: {} as Record<string, string>,
+            format: "spy" as "py" | "spy",
+        };
+        while (line < allLines.length && !allLines[line].match(new RegExp("^#" + escapeRegExp(AppSPYPrefix) + " *Section *:Imports"))) {
+            // Everything here should be metadata, add it to headers:
+            const m = allLines[line].match(new RegExp("^#" + escapeRegExp(AppSPYPrefix) + "([^:]+):(.*)"));
+            if (m) {
+                // Note: we only trim left-hand side, right-hand side is as-is:
+                r.headers[m[1].trim()] = m[2];
+            }
+            else {
+                r.projectDoc.push(allLines[line]);
+            }
+            line += 1;
+        }
+        line += 1;
+        const firstImportLine = line;
+        while (line < allLines.length && !allLines[line].match(new RegExp("^#" + escapeRegExp(AppSPYPrefix) + " *Section *:Definitions"))) {
+            r.imports.push(allLines[line]);
+            r.importsMapping[line - firstImportLine] = line;
+            line += 1;
+        }
+        line += 1;
+        const firstDefsLine = line;
+        while (line < allLines.length && !allLines[line].match(new RegExp("^#" + escapeRegExp(AppSPYPrefix) + " *Section *:Main"))) {
+            r.defs.push(allLines[line]);
+            r.defsMapping[line - firstDefsLine] = line;
+            line += 1;
+        }
+        line += 1;
+        const firstMainLine = line;
+        while (line < allLines.length && !allLines[line].match(new RegExp("^#" + escapeRegExp(AppSPYPrefix) + " *Section *:Main"))) {
+            r.main.push(allLines[line]);
+            r.mainMapping[line - firstMainLine] = line;
+            line += 1;
+        }
+
+        return r;
+    }
+    
     // We associate comments with the line immediately following them, so we keep a list of the most recent comments:
     let latestComments: NumberedLine[] = [];
+    const projectDoc: NumberedLine[] = [];
     const imports: NumberedLine[] = [];
     const defs: NumberedLine[] = [];
     const main: NumberedLine[] = [];
-    let addingToDef = false;
+    // -1 if we're not in a def
+    let outermostDefIndentLevel = -1;
     allLines.forEach((line : string, zeroBasedLine : number) => {
         const lineWithNum : NumberedLine = {text: line, lineno: zeroBasedLine + 1};
-        if (line.match(/^(import|from)\s+/)) {
+        const indentLevel = line.length - line.trimStart().length;
+        if (line.trim() != "" && indentLevel <= outermostDefIndentLevel) {
+            outermostDefIndentLevel = -1;
+        }
+        if (line.match(/^\s*["'].*/) && imports.length + defs.length + main.length == 0) {
+            projectDoc.push(lineWithNum);
+        }
+        else if (line.match(/^\s*(import|from)\s+/)) {
             // Import:
             imports.push(...latestComments);
             latestComments = [];
             imports.push(lineWithNum);
-            addingToDef = false;
         }
-        else if (line.match(/^(def|class)\s+/)) {
-            defs.push(...latestComments);
+        // We're only the new outermost if there is no current outermost:
+        else if (line.match(/^\s*(def|class)\s+/) && outermostDefIndentLevel == -1) {
+            defs.push(...latestComments.map((l) => ({...l, text: l.text.trimStart() + " ".repeat(indentLevel)})));
             latestComments = [];
-            defs.push(lineWithNum);
-            addingToDef = true;
+            defs.push({...lineWithNum, text: line.trimStart()});
+            outermostDefIndentLevel = indentLevel;
         }
         else if (line.match(/^\s*#/)) {
             latestComments.push(lineWithNum);
         }
-        else if (addingToDef && !line.match(/^\S/)) {
-            // Keep adding to defs until we see a non-comment line with zero indent:
+        else if (outermostDefIndentLevel >= 0) {
+            // Keep adding to defs until we see a non-comment non-blank line with less or equal indent:
             defs.push(...latestComments);
             latestComments = [];
-            defs.push(lineWithNum);
+            defs.push({...lineWithNum, text: line.slice(outermostDefIndentLevel)});
         }
         else {
-            addingToDef = false;
             main.push(...latestComments);
             latestComments = [];
-            main.push(lineWithNum);
+            // We don't push leading blanks to main (i.e. blank lines while main is empty), otherwise all the blanks before/between imports and defs end up there:
+            if (line.trim() != "" || main.length > 0) {
+                main.push(lineWithNum);
+            }
         }
     });
     // Add any trailing comments:
     main.push(...latestComments);
     return {
+        projectDoc: projectDoc.map((l) => l.text), 
         imports: imports.map((l) => l.text),
         defs: defs.map((l) => l.text),
         main: main.map((l) => l.text),
         importsMapping : makeMapping(imports),
         defsMapping : makeMapping(defs),
         mainMapping : makeMapping(main),
+        headers: {} as Record<string, string>,
+        format: "py",
     };
 }
+
+// Returns headers if successful, or null if there was an error (which will already have been shown in the UI)
+export function pasteMixedPython(completeSource: string, clearExisting: boolean) : { headers: Record<string, string> } | null {
+    const allLines = completeSource.split(/\r?\n/);
+    // Split can make an extra blank line at the end which we don't want:
+    if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
+        allLines.pop();
+    }
+    const s = splitLinesToSections(allLines);
+    
+    // Bit awkward but we first attempt to copy each to check for errors because
+    // if there are any errors we don't want to paste any:
+    let err = copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.format, s.importsMapping, "dryrun");
+    if (typeof err != "string") {
+        err = copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.DEFS_SECTION, s.format, s.defsMapping, "dryrun");
+    }
+    if (typeof err != "string") {
+        err = copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION, s.format, s.mainMapping, "dryrun");
+    }
+    if (typeof err != "string") {
+        err = copyFramesFromParsedPython(s.projectDoc, STRYPE_LOCATION.PROJECT_DOC_SECTION, s.format, s.mainMapping, "dryrun");
+    }
+    if (typeof err == "string") {
+        const msg = cloneDeep(MessageDefinitions.InvalidPythonParseImport);
+        const msgObj = msg.message as FormattedMessage;
+        msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, err);
+
+        useStore().showMessage(msg, 10000);
+        return null;
+    }
+    else {
+        if (clearExisting) {
+            // Clear the current existing code (i.e. frames) of the editor
+            useStore().clearAllFrames();
+        }
+        
+        // The logic for pasting is: every frame that are allowed at the current cursor's position are added.
+        // Frames that are related to another section where the caret is not present are added in that section.
+        const curLocation = findCurrentStrypeLocation();
+        const isCurLocationInImportsSection = curLocation == STRYPE_LOCATION.IMPORTS_SECTION, isCurLocationInDefsSection = curLocation == STRYPE_LOCATION.DEFS_SECTION, 
+            isCurLocationInMainCodeSection = curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION, isCurLocationInAFuncDefFrame = curLocation == STRYPE_LOCATION.IN_FUNCDEF;
+
+        copyFramesFromParsedPython(s.projectDoc, STRYPE_LOCATION.PROJECT_DOC_SECTION, s.format);
+        copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.format);
+        if (useStore().copiedSelectionFrameIds.length > 0) {
+            getCaretContainerComponent(getFrameComponent((isCurLocationInImportsSection) ? useStore().currentFrame.id : useStore().getImportsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(isCurLocationInImportsSection ? "caret" : "end");
+        }
+        copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.DEFS_SECTION, s.format);
+        if (useStore().copiedSelectionFrameIds.length > 0) {
+            getCaretContainerComponent(getFrameComponent((isCurLocationInDefsSection) ? useStore().currentFrame.id : useStore().getDefsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(isCurLocationInDefsSection ? "caret" : "end");
+        }
+        if (s.main.length > 0) {
+            copyFramesFromParsedPython(s.main, (isCurLocationInAFuncDefFrame) ? STRYPE_LOCATION.IN_FUNCDEF : STRYPE_LOCATION.MAIN_CODE_SECTION, s.format);
+            if (useStore().copiedSelectionFrameIds.length > 0) {
+                getCaretContainerComponent(getFrameComponent((isCurLocationInAFuncDefFrame || isCurLocationInMainCodeSection) ? useStore().currentFrame.id : useStore().getMainCodeFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste((isCurLocationInAFuncDefFrame || isCurLocationInMainCodeSection) ? "caret" : "start");
+            }
+        }
+        return s;
+    }
+}
+
+
+const transformTripleQuotesStrings = (slots: {[index: number]: LabelSlotsContent}): void => {
+    // This helper function replaces all strings content in slots that came up from parsing triple quotes strings literals.
+    // It keeps the single or double quote string token (resulting from the parsing) and deletes the remaining 2 extra quotes on each ends
+    // of the string literal. It also replaces line breaks by literal "\n".
+    const doTransformTripleQuotesStringsOnSlotStructs = (slotsStruct: SlotsStructure) => {
+        slotsStruct.fields.forEach((fieldSlot) => {
+            if(isFieldBracketedSlot(fieldSlot)){
+                // Bracket slots have a deeper level, we need to check inside
+                doTransformTripleQuotesStringsOnSlotStructs(fieldSlot);
+            }
+            else if(isFieldStringSlot(fieldSlot)){
+                // A string: we check if it has been generated from a triple quotes string parsing
+                const stringSlotLiteralValue = fieldSlot.code;
+                if((fieldSlot.quote == "'" && parsedTripleSingleQuotesStrRegex.test(stringSlotLiteralValue)) 
+                    || (fieldSlot.quote == "\"" && parsedTripleDoubleQuotesStrRegex.test(stringSlotLiteralValue))){
+                    fieldSlot.code = stringSlotLiteralValue.slice(2, -2).replaceAll(/\r?\n/g, "\\n");
+                }
+            }
+            // Else, there is nothing to transform
+        });
+        
+    };
+    Object.values(slots).forEach((slotsStruct) => doTransformTripleQuotesStringsOnSlotStructs(slotsStruct.slotStructures));
+};

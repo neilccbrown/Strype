@@ -22,11 +22,45 @@ import {
     getPythonCodeForTypeAndDocumentation, OUR_PUBLIC_LIBRARY_MODULES,
 } from "../src/autocompletion/ac-skulpt";
 import {AcResultsWithCategory, AcResultType} from "../src/types/ac-types";
+import {getAvailablePyPyiFromLibrary, getTextFileFromLibraries} from "../src/helpers/libraryManager";
+import {extractPYI, parsePyiForPreprocess} from "../src/helpers/python-pyi";
 
 declare const Sk: any;
 declare const window: any;
 
-const modules : string[] = Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k].type === "module").concat(OUR_PUBLIC_LIBRARY_MODULES);
+interface Module {
+    name: string;
+    pyiContent?: string;
+}
+let library: string | undefined;
+let modulesPromise : Promise<Module[]>;
+declare const library_arg: string | undefined;
+if (library_arg) {
+    library = library_arg;
+    modulesPromise = getAvailablePyPyiFromLibrary(library).then(async (files) => {
+        const modules = files
+            .map((file) => file.replace(/\.pyi?$/, "").replaceAll("/", "."));
+        const r = [];
+        for (const mod of modules) {
+            let pyiContent : string;
+            // Check for a .pyi file:
+            const pyFilename = mod.replace(".", "/") + ".py";
+            const pyiFilename = mod.replace(".", "/") + ".pyi";
+            if (files.includes(pyiFilename)) {
+                pyiContent = await getTextFileFromLibraries([library], pyiFilename);
+            }
+            else if (files.includes(pyFilename)) {
+                pyiContent = extractPYI(await getTextFileFromLibraries([library], pyFilename));
+            }
+            r.push({name: mod, pyiContent: pyiContent});
+        }
+        return r;
+    });
+}
+else {
+    library = undefined;
+    modulesPromise = Promise.resolve(Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k].type === "module").concat(OUR_PUBLIC_LIBRARY_MODULES).map((m) => ({name: m})));
+}
 
 // The challenge with Skulpt is that everything is in a Promise, but we have to be careful that we pull out
 // the global acs variable before running the next Skulpt.  We can't await the Promise because the "browser-run"
@@ -61,7 +95,9 @@ function getDetailsForListOfItems(module: string | null, items: AcResultType[], 
         return Sk.importMainWithBody("<stdin>", false, codeToRun, true);
     }, {}).then(() => {
         items[next].type = Sk.ffi.remapToJs(Sk.globals["itemTypes"]) as AcResultType["type"];
-        items[next].documentation = Sk.ffi.remapToJs(Sk.globals["itemDocumentation"]) as string;
+        // Skulpt's documentation is so patchy we don't use it.
+        // If we want it back, it's this code: (Sk.ffi.remapToJs(Sk.globals["itemDocumentation"]) as string).replace(/\r\n/g, "\n");
+        items[next].documentation = "";
         // Sanity check the returns.  type can be the empty list and documentation can be the empty string,
         // so we can't do e.g. !items[next].type, we must explicitly compare to null and undefined:
         if (items[next].type === null || items[next].type === undefined || items[next].documentation === null || items[next].documentation === undefined) {
@@ -85,7 +121,21 @@ function getDetailsForListOfItems(module: string | null, items: AcResultType[], 
     });
 }
 
-function getModuleMembersOneByOne(next : number, soFar : AcResultsWithCategory, atEnd: () => void) {
+function addParamsFromPYI(items: AcResultType[], pyiContent: string) {
+    const params = parsePyiForPreprocess(pyiContent);
+    for (const item of items) {
+        if (!item.signature) {
+            if (item.acResult in params) {
+                item.signature = params[item.acResult];
+            }
+            else if ((item.acResult + ".__init__") in params) {
+                item.signature = params[item.acResult + ".__init__"];
+            }
+        }
+    }
+}
+
+function getModuleMembersOneByOne(modules: Module[], next : number, soFar : AcResultsWithCategory, atEnd: () => void) {
     if (next >= modules.length) {
         // Done everything, so execute last bit instead:
         atEnd();
@@ -93,14 +143,17 @@ function getModuleMembersOneByOne(next : number, soFar : AcResultsWithCategory, 
     }
     
     // Ask Skulpt about the module's contents:
-    const codeToRun = getPythonCodeForNamesInContext("import " + modules[next] + "\n", modules[next]);
+    const codeToRun = getPythonCodeForNamesInContext("import " + modules[next].name + "\n", modules[next].name);
     Sk.misceval.asyncToPromise(function() {
         return Sk.importMainWithBody("<stdin>", false, codeToRun, true);
     }, {}).then(() => {
         const items : AcResultType[] = (Sk.ffi.remapToJs(Sk.globals["acs"]) as string[]).map((s) => ({acResult: s, documentation: "", type: [], version: 0}));
-        getDetailsForListOfItems(modules[next], items, 0, () => {
-            soFar[modules[next]] = items;
-            getModuleMembersOneByOne(next + 1, soFar, atEnd);
+        getDetailsForListOfItems(modules[next].name, items, 0, () => {
+            if (modules[next].pyiContent) {
+                addParamsFromPYI(items, modules[next].pyiContent);
+            }
+            soFar[modules[next].name] = items;
+            getModuleMembersOneByOne(modules, next + 1, soFar, atEnd);
         });
     },
     (err: any) => {
@@ -108,16 +161,22 @@ function getModuleMembersOneByOne(next : number, soFar : AcResultsWithCategory, 
     });
 }
 
-const allContent : AcResultsWithCategory = {"": Object.keys(Sk.builtins).map((n) => n.endsWith("_$rw$") ? n.replace("_$rw$", ""): n).filter((func) => !func.includes("$")).map((s) => ({acResult: s, documentation: "", type: [], version: 0}))};
-configureSkulptForAutoComplete();
+const allContent : AcResultsWithCategory = library ? {} : {"": Object.keys(Sk.builtins).map((n) => n.endsWith("_$rw$") ? n.replace("_$rw$", ""): n).filter((func) => !func.includes("$")).map((s) => ({acResult: s, documentation: "", type: [], version: 0}))};
+configureSkulptForAutoComplete(library ? [library] : []);
 // Add Skulpt's builtin functions to the default module:
-getDetailsForListOfItems(null, allContent[""], 0, () => {
-    getModuleMembersOneByOne(0, allContent, () => {
+const fetchForModules = () => {
+    modulesPromise.then((modules) => getModuleMembersOneByOne(modules, 0, allContent, () => {
         // Outputting the results to console actually goes to stdout, which the surrounding
         // task redirects to the API file:
         console.log(JSON.stringify(allContent, null, 4));
         // This tells browser-run to exit, without it the browser stays open and the process never terminates.
         // However, if we do it immediately it seems the console is not flushed to stdout, so we put it on a timer:
         setTimeout(() => window.close(), 2000);
-    });
-});
+    }));
+};
+if (library) {
+    fetchForModules();
+}
+else {
+    getDetailsForListOfItems(null, allContent[""], 0, fetchForModules);
+}

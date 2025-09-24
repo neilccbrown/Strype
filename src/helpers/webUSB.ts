@@ -14,7 +14,7 @@ export function flash(callerData: Record<string, any>) : void {
     let proceed = true;
             
     //before we actually try to check webUSB, we make sure the code doesn't have any other errors (tigerpython)
-    const parserElements = parseCodeAndGetParseElements(true);
+    const parserElements = parseCodeAndGetParseElements(true, "py");
     if (parserElements.hasErrors) {
         proceed = false;
         // Notify the user of any detected errors in the code

@@ -1,15 +1,18 @@
 <template>
     <!-- @mousedown must be kept to avoid the click to move the focus from input text field -->
     <li
-        v-show="this.item"
-        :class="{acItem: true, acItemSelected: selected}"
+        v-show="item || itemHTML"
+        :class="{[scssVars.acItemClassName]: true, [scssVars.acItemSelectedClassName]: selected, 'ac-indent-wrapped': indentWrapped}"
         :id="id"
+        :data-item="item"
         @mouseover="onHover"
         @mousedown.prevent.stop
         @mouseup.self="$emit('acItemClicked',id)"
     >
-        {{item}}
-        <span v-if="version > 1" class="api-item-version" :title="$t('apidiscovery.v2InfoMsg')">v{{version}}</span>
+        <!-- One or the other: -->
+        <span v-if="itemHTML" v-html="itemHTML" @mousedown.prevent.stop @mouseup.self="$emit('acItemClicked',id)"></span>
+        <span v-else @mousedown.prevent.stop @mouseup.self="$emit('acItemClicked',id)">{{ item }}</span>
+        <span v-if="version > 1" class="api-item-version ac-item-version" :title="$t('apidiscovery.v2InfoMsg')">v{{version}}</span>
     </li>
 </template>
 
@@ -17,7 +20,7 @@
 //////////////////////
 import { CustomEventTypes } from "@/helpers/editor";
 import Vue from "vue";
-
+import scssVars from "@/assets/style/_export.module.scss";
 //////////////////////
 
 export default Vue.extend({
@@ -25,11 +28,22 @@ export default Vue.extend({
 
     props: {
         item: String,
+        itemHTML: {
+            type: String,
+            default: "",
+        },
         id: String,
         index: Number,
         selected: Boolean,
         isSelectable: Boolean,
+        indentWrapped: Boolean,
         version: Number,
+    },
+
+    data: function () {
+        return {
+            scssVars, // just to be able to use in template
+        };
     },
 
     methods: {
@@ -52,5 +66,15 @@ export default Vue.extend({
 }
 
 // Style related to the context menu are in App.vue
+
+// Indent lines after the first:
+.ac-indent-wrapped {
+    padding-left: 20px !important;
+    text-indent: -15px;
+}
+
+.ac-item-version {
+    float: none !important;
+}
 </style>
 

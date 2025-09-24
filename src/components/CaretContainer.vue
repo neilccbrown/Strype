@@ -1,6 +1,6 @@
 <template>
     <div 
-        :class="{'caret-container': true, 'static-caret-container': isStaticCaretContainer, 'dragging-frames': areFramesDraggedOver}"
+        :class="{[scssVars.caretContainerClassName]: true, 'static-caret-container': isStaticCaretContainer, [scssVars.draggingFrameClassName]: areFramesDraggedOver}"
         @click.exact.prevent.stop="toggleCaret()"
         @contextmenu.prevent.stop="handleClick($event)"
         :key="UID"
@@ -21,7 +21,7 @@
             </li>
         </vue-context>
         <Caret
-            class="navigationPosition caret"
+            :class="scssVars.navigationPositionClassName + ' ' + scssVars.caretClassName"
             :id="caretUID"
             :isInvisible="isInvisible"
             v-blur="isCaretBlurred"
@@ -41,12 +41,13 @@ import Vue, { PropType } from "vue";
 import VueContext, { VueContextConstructor } from "vue-context";
 import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
-import {AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, PythonExecRunningState, FrameContextMenuActionName, CurrentFrame} from "@/types/types";
-import { getCaretUID, adjustContextMenuPosition, setContextMenuEventClientXY, getAddFrameCmdElementUID, CustomEventTypes } from "@/helpers/editor";
+import {AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, PythonExecRunningState, FrameContextMenuActionName, CurrentFrame} from "@/types/types";
+import { getCaretUID, adjustContextMenuPosition, setContextMenuEventClientXY, getAddFrameCmdElementUID, CustomEventTypes, getCaretContainerUID } from "@/helpers/editor";
 import { mapStores } from "pinia";
-import {copyFramesFromParsedPython, findCurrentStrypeLocation} from "@/helpers/pythonToFrames";
 import { cloneDeep } from "lodash";
-import { getAboveFrameCaretPosition } from "@/helpers/storeMethods";
+import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
+import { pasteMixedPython } from "@/helpers/pythonToFrames";
+import scssVars  from "@/assets/style/_export.module.scss";
 
 //////////////////////
 //     Component    //
@@ -97,7 +98,7 @@ export default Vue.extend({
         },
 
         UID(): string {
-            return "caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId;
+            return getCaretContainerUID(this.caretAssignedPosition,this.frameId);
         },
 
         caretUID(): string {
@@ -124,6 +125,7 @@ export default Vue.extend({
 
     data: function () {
         return {
+            scssVars, // just to be able to use in template
             showPasteMenuItem: false,
             insertFrameMenuItems: [] as {name: string, method: VoidFunction, actionName ?: FrameContextMenuActionName}[],
             areFramesDraggedOver: false,
@@ -156,7 +158,7 @@ export default Vue.extend({
     methods: {
         putCaretContainerInView(){
             if(this.caretVisibility !== CaretPosition.none && this.caretVisibility === this.caretAssignedPosition) {
-                const caretContainerElement = document.getElementById("caret_"+this.caretAssignedPosition+"_of_frame_"+this.frameId);
+                const caretContainerElement = document.getElementById(getCaretContainerUID(this.caretAssignedPosition, this.frameId));
                 const caretContainerEltRect = caretContainerElement?.getBoundingClientRect();
                 //is caret outside the viewport? if so, scroll into view (we need to wait a bit for the UI to be ready before we can perform the scroll)
                 if(caretContainerEltRect && (caretContainerEltRect.bottom + caretContainerEltRect.height < 0 || caretContainerEltRect.top + caretContainerEltRect.height > document.documentElement.clientHeight)){
@@ -187,19 +189,8 @@ export default Vue.extend({
                 else {
                     // Note we don't permanently trim the code because we need to preserve leading indent.
                     // But we trim for the purposes of checking if there's any content at all:
-                    if (pythonCode?.trim()) {
-                        const error = copyFramesFromParsedPython(pythonCode, findCurrentStrypeLocation());
-                        if (error) {
-                            const msg = cloneDeep(MessageDefinitions.InvalidPythonParsePaste);
-                            const msgObj = msg.message as FormattedMessage;
-                            msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, error);
-
-                            //don't leave the message for ever
-                            useStore().showMessage(msg, 5000);
-                        }
-                        else {
-                            this.doPaste();
-                        }
+                    if (pythonCode != undefined && pythonCode?.trim()) {
+                        pasteMixedPython(pythonCode.trimEnd(), false);
                     }
                     // Must take ourselves off the clipboard after:
                     useStore().copiedFrames = {};
@@ -270,9 +261,26 @@ export default Vue.extend({
             }
         },
 
-        doPaste(skipDisableCheck?: boolean) : void {
-            let pasteDestination: CurrentFrame = {id: this.frameId, caretPosition: this.caretAssignedPosition};            
+        doPaste(pasteAt: "start" | "end" | "caret" = "start") : void {
+            let pasteDestination: CurrentFrame;
+            let restoreCaretTo: CurrentFrame | null = {... useStore().currentFrame};
             const stateBeforeChanges = cloneDeep(this.appStore.$state);
+            
+            const sectionId = getFrameSectionIdFromFrameId(this.frameId);
+            const isSectionEmpty = (this.appStore.frameObjects[sectionId].childrenIds.length == 0);
+            
+            if (pasteAt == "end" && !isSectionEmpty) {
+                const newCaretId = this.appStore.frameObjects[sectionId].childrenIds.at(-1) as number;
+                pasteDestination = {id: newCaretId, caretPosition: CaretPosition.below};
+            }
+            else if (pasteAt == "caret") {
+                pasteDestination = {... useStore().currentFrame};
+                // Don't restore caret:
+                restoreCaretTo = null;
+            }
+            else {
+                pasteDestination = {id: this.frameId, caretPosition: this.caretAssignedPosition};
+            }
 
             // If we currently have a selection of frames, the pasted frame should replace the selection, so we delete that selection.
             // (it should be fine regarding the grammar check because the caret will be at the same level whether it's before or after the selection)
@@ -295,8 +303,7 @@ export default Vue.extend({
                         clickedFrameId: pasteDestination.id,
                         caretPosition: pasteDestination.caretPosition,
                         ignoreStateBackup: true,
-                    },
-                    skipDisableCheck
+                    }
                 );
             }
             else {
@@ -305,9 +312,12 @@ export default Vue.extend({
                         clickedFrameId: pasteDestination.id,
                         caretPosition: pasteDestination.caretPosition,
                         ignoreStateBackup: true,
-                    },
-                    skipDisableCheck
+                    }                
                 );
+            }
+
+            if (restoreCaretTo != null && (this.appStore.currentFrame?.id != restoreCaretTo.id || this.appStore.currentFrame?.caretPosition != restoreCaretTo.caretPosition)) {
+                this.appStore.setCurrentFrame(restoreCaretTo);
             }
 
             this.appStore.saveStateChanges(stateBeforeChanges);
@@ -332,7 +342,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.caret-container {
+.#{$strype-classname-caret-container} {
     padding-top: 0px;
     padding-bottom: 0px;
 }
@@ -341,7 +351,7 @@ export default Vue.extend({
     height: $caret-height-value + px;
 }
 
-.caret-container:not(.dragging-frames):hover{
+.#{$strype-classname-caret-container}:not(.#{$strype-classname-dragging-frame}):hover{
     cursor: pointer;
 }
 </style>

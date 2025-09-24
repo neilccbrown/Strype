@@ -7,8 +7,9 @@
         <!-- keep the tabIndex attribute, it is necessary to handle focus with Safari -->
         <div 
             :style="frameStyle" 
-            :class="{frameDiv: true, blockFrameDiv: isBlockFrame && !isJointFrame, statementFrameDiv: !isBlockFrame && !isJointFrame, error: hasParsingError, disabled: isDisabled}"
+            :class="{[scssVars.frameDivClassName]: true, blockFrameDiv: isBlockFrame && !isJointFrame, statementFrameDiv: !isBlockFrame && !isJointFrame, [scssVars.errorClassName]: hasParsingError, disabled: isDisabled}"
             :id="UID"
+            :data-frameType="frameType.type"
             @click="toggleCaret($event)"
             @contextmenu="handleClick($event)"
             tabindex="-1"
@@ -32,7 +33,7 @@
                 :frameId="frameId"
                 :frameType="frameType.type"
                 :labels="frameType.labels"
-                :class="{'frame-header': true, error: hasRuntimeError}"
+                :class="{[scssVars.frameHeaderClassName]: true, [scssVars.errorClassName]: hasRuntimeError}"
                 :style="frameMarginStyle['header']"
                 :frameAllowChildren="allowChildren"
                 :erroneous="hasRuntimeError"
@@ -97,7 +98,7 @@ import { mapStores } from "pinia";
 import { BPopover } from "bootstrap-vue";
 import html2canvas from "html2canvas";
 import { saveAs } from "file-saver";
-import scssVars  from "@/assets/style/_export.module.scss";
+import scssVars from "@/assets/style/_export.module.scss";
 import { getDateTimeFormatted } from "@/helpers/common";
 
 //////////////////////
@@ -139,6 +140,7 @@ export default Vue.extend({
 
     data: function () {
         return {
+            scssVars, // just to be able to use in template
             // Prepare an empty version of the menu: it will be updated as required in handleClick()
             frameContextMenuItems: [] as {name: string; method: VoidFunction; type?: "divider", actionName?: FrameContextMenuActionName}[],
             // Flag to indicate a frame is selected via the context menu (differs from a user selection)
@@ -497,7 +499,7 @@ export default Vue.extend({
 
             // Similarly to duplication, not all frames can be pasted at a specifc location.
             // We show the paste entries depending on the possiblity to paste the clipboard. 
-            let canPasteAboveFrame: boolean, canPasteBelowFrame: boolean;
+            let canPasteAboveFrame = false, canPasteBelowFrame = false;
             if(!this.appStore.isCopiedAvailable || this.isPartOfSelection){
                 // If there are no frame to copy, or the click is part of a selection of frames
                 // we just remove all paste menu entries (and the divider following them)
@@ -521,10 +523,35 @@ export default Vue.extend({
                 const isAllowedForJointBelow = !this.isJointFrame
                         || (this.isJointFrame && isCopyJointFrame && !isLastInParent(this.frameId))
                         || (this.isJointFrame && isLastInParent(this.frameId));
-                const caretNavigationPositionAbove = getAboveFrameCaretPosition(this.frameId);
+                // We look for the position above. The reference however depends whether the currently clicked frame is disabled: inside a disabled structure, a frame won't
+                // be always be listed in available positions because the disabled structure is like an unit. In that case, we need to find what is the next available frame.
+                // We first find the outmost disabled frame of the disabled structure (call it MO). If that frame MO is joint frame, the next available frame is inside the next enabled sibling
+                // (that is, its body) OR the joint root frame when there is no next enabled sibling.
+                // If the frame MO is not a joint frame, the next available frame is MO itself.
+                let frameIdToLookAbove = this.frameId;
+                if(this.isDisabled){
+                    const outmostDisabledFrameId = getOutmostDisabledAncestorFrameId(this.frameId);
+                    if(this.appStore.frameObjects[outmostDisabledFrameId].frameType.isJointFrame){
+                        const rootFrameId = this.appStore.frameObjects[outmostDisabledFrameId].jointParentId;
+                        const jointFrameIndex = this.appStore.frameObjects[rootFrameId].jointFrameIds.indexOf(outmostDisabledFrameId);
+                        const nextEnabledSiblingId = this.appStore.frameObjects[rootFrameId].jointFrameIds.find((aJointFrameId, index) => index > jointFrameIndex && !this.appStore.frameObjects[aJointFrameId].isDisabled)??-1;
+                        if(nextEnabledSiblingId > -1){
+                            frameIdToLookAbove = nextEnabledSiblingId; 
+                        }
+                        else{
+                            frameIdToLookAbove = rootFrameId;                            
+                        }
+                    }
+                    else{
+                        frameIdToLookAbove = outmostDisabledFrameId;
+                    }
+                }
+                const caretNavigationPositionAbove = getAboveFrameCaretPosition(frameIdToLookAbove);
                 const targetPasteBelow = this.getTargetPasteBelow();
-                canPasteAboveFrame = isAllowedForJointAbove && (this.appStore.isPasteAllowedAtFrame(caretNavigationPositionAbove.frameId, caretNavigationPositionAbove.caretPosition as CaretPosition));
-                canPasteBelowFrame = isAllowedForJointBelow && (this.appStore.isPasteAllowedAtFrame(targetPasteBelow.id, targetPasteBelow.caretPosition));
+                if(caretNavigationPositionAbove != undefined && targetPasteBelow){
+                    canPasteAboveFrame = isAllowedForJointAbove && (this.appStore.isPasteAllowedAtFrame(caretNavigationPositionAbove.frameId, caretNavigationPositionAbove.caretPosition as CaretPosition));
+                    canPasteBelowFrame = isAllowedForJointBelow && (this.appStore.isPasteAllowedAtFrame(targetPasteBelow.id, targetPasteBelow.caretPosition));
+                }                
                 const sliceNumber = (!canPasteAboveFrame && !canPasteBelowFrame)
                     ? 3 // both paste menu entries and divider
                     : 1; // one of the paste menu entries
@@ -713,7 +740,7 @@ export default Vue.extend({
 
             const clickedDiv: HTMLDivElement = event.target as HTMLDivElement;
 
-            // This checks the propagated click events, and prevents the parent frame to handle the event as well, EXCEPt in the case of disabled frames:
+            // This checks the propagated click events, and prevents the parent frame to handle the event as well, EXCEPT in the case of disabled frames:
             // if the clicked frame is disabled AND it is inside a disabled ancestor, we want to consider that ancestor instead, as the disabled block works as an unit.
             // Stop and Prevent do not work in this case, as the event needs to be propagated 
             // (for the context menu to close) but it does not need to trigger always a caret change.
@@ -741,7 +768,7 @@ export default Vue.extend({
             // Disabled frames behaves as "unit": if a frame is disabled all inner positions aren't accessible (no caret),
             // therefore, a click inside a disabled block frame should place the frame caret either before or after, but not inside.
             const frameRect = (this.isDisabled) ? document.getElementById(this.UID)?.getBoundingClientRect() : frameClickedDiv.getBoundingClientRect();
-            const headerRect = document.querySelector("#"+this.UID+ " .frame-header")?.getBoundingClientRect();
+            const headerRect = document.querySelector("#" + this.UID + " ." + scssVars.frameHeaderClassName)?.getBoundingClientRect();
             if(frameRect && headerRect){            
                 let newCaretPosition: NavigationPosition = {frameId: this.frameId, caretPosition: CaretPosition.none, isSlotNavigationPosition: false}; 
                 // The following logic applies to select a caret position based on the frame and the location of the click:
@@ -753,7 +780,24 @@ export default Vue.extend({
                 //    --> get the cursor below the frame (if statement or disabled frame) or at the nearest above/below position (if block)
                 //Note: joint frames overlap their root parent, they get the click as a standalone frame
                 if(clickY <= (frameRect.top + ((this.isDisabled) ? frameRect.height : headerRect.height)/2)){
-                    newCaretPosition = getAboveFrameCaretPosition(this.frameId);
+                    // For disabled joint frames: we won't be able to get the caret position above directly using getAboveFrameCaretPosition(), because disabled
+                    // joint frame do not have any available position for the frame cursor, so we need to look for it manually.
+                    const jointParentId = this.appStore.frameObjects[this.frameId].jointParentId;
+                    if(jointParentId > 0 && this.isDisabled){
+                        // We need to find the nearest enabled sibling of this joint frame. 
+                        // If we found one, we place the caret below the last of that sibling's children, or inside its body if it has no child,
+                        // if we didn't find, we place the caret below the last of the root's children, or inside its body if it has no child.
+                        const thisJointChildPos = this.appStore.frameObjects[jointParentId].jointFrameIds.indexOf(this.frameId);
+                        const lastEnabledJointPrecedingSibling = this.appStore.frameObjects[jointParentId].jointFrameIds
+                            .find((jointFrameId, index) => (index < thisJointChildPos && !this.appStore.frameObjects[jointFrameId].isDisabled));
+                        const previousFrameSiblingOrRoot = lastEnabledJointPrecedingSibling ?? jointParentId;         
+                        const prevFrameSiblingLastChildFrameId = this.appStore.frameObjects[previousFrameSiblingOrRoot].childrenIds.at(-1);
+                        newCaretPosition.caretPosition = (prevFrameSiblingLastChildFrameId) ? CaretPosition.below : CaretPosition.body;
+                        newCaretPosition.frameId = prevFrameSiblingLastChildFrameId ?? previousFrameSiblingOrRoot;
+                    }
+                    else{
+                        newCaretPosition = getAboveFrameCaretPosition(this.frameId);
+                    }
                 }
                 else{
                     if(!this.isDisabled && this.isBlockFrame){
@@ -803,7 +847,19 @@ export default Vue.extend({
                         }
                     }
                     else{
-                        newCaretPosition.caretPosition = CaretPosition.below;
+                        // If we have clicked a disabled joint frame, we need to get "below", which does not exist for joint frames.
+                        // Therefore, it will be either in the body of the next enabled joint frame of this structure, or below the root.
+                        const jointParentId = this.appStore.frameObjects[this.frameId].jointParentId;
+                        if(jointParentId > 0) {
+                            const thisJointChildPos = this.appStore.frameObjects[jointParentId].jointFrameIds.indexOf(this.frameId);
+                            const firstEnabledJointFollowingSibling = this.appStore.frameObjects[jointParentId].jointFrameIds
+                                .find((jointFrameId, index) => (index > thisJointChildPos && !this.appStore.frameObjects[jointFrameId].isDisabled));
+                            newCaretPosition.caretPosition = (firstEnabledJointFollowingSibling) ? CaretPosition.body : CaretPosition.below;
+                            newCaretPosition.frameId = firstEnabledJointFollowingSibling ?? jointParentId;
+                        }
+                        else{
+                            newCaretPosition.caretPosition = CaretPosition.below;
+                        }
                     }
                 }
 
@@ -998,7 +1054,30 @@ export default Vue.extend({
 
         pasteAbove(): void {
             // Perform a paste above this frame
-            const caretNavigationPositionAbove = getAboveFrameCaretPosition(this.frameId);
+            // We look for the position above. The reference however depends whether the currently clicked frame is disabled: inside a disabled structure, a frame won't
+            // be always be listed in available positions because the disabled structure is like an unit. In that case, we need to find what is the next available frame.
+            // We first find the outmost disabled frame of the disabled structure (call it MO). If that frame MO is joint frame, the next available frame is inside the next enabled sibling
+            // (that is, its body) OR the joint root frame when there is no next enabled sibling.
+            // If the frame MO is not a joint frame, the next available frame is MO itself.
+            let frameIdToLookAbove = this.frameId;
+            if(this.isDisabled){
+                const outmostDisabledFrameId = getOutmostDisabledAncestorFrameId(this.frameId);
+                if(this.appStore.frameObjects[outmostDisabledFrameId].frameType.isJointFrame){
+                    const rootFrameId = this.appStore.frameObjects[outmostDisabledFrameId].jointParentId;
+                    const jointFrameIndex = this.appStore.frameObjects[rootFrameId].jointFrameIds.indexOf(outmostDisabledFrameId);
+                    const nextEnabledSiblingId = this.appStore.frameObjects[rootFrameId].jointFrameIds.find((aJointFrameId, index) => index > jointFrameIndex && !this.appStore.frameObjects[aJointFrameId].isDisabled)??-1;
+                    if(nextEnabledSiblingId > -1){
+                        frameIdToLookAbove = nextEnabledSiblingId; 
+                    }
+                    else{
+                        frameIdToLookAbove = rootFrameId;                            
+                    }
+                }
+                else{
+                    frameIdToLookAbove = outmostDisabledFrameId;
+                }
+            }
+            const caretNavigationPositionAbove = getAboveFrameCaretPosition(frameIdToLookAbove);
             if(this.appStore.isSelectionCopied){
                 this.appStore.pasteSelection(
                     {
@@ -1124,7 +1203,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-.frameDiv {    
+.#{$strype-classname-frame-div} {    
     padding-top: 1px;
     padding-bottom: 1px;
     border-radius: 8px;
@@ -1133,9 +1212,8 @@ export default Vue.extend({
     outline: none;
 }
 
-.frame-header {
+.#{$strype-classname-frame-header} {
     border-radius: 5px;
-    display: flex; 
     justify-content: space-between;
 }
 

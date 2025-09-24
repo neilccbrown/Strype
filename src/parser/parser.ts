@@ -1,22 +1,30 @@
 import Compiler from "@/compiler/compiler";
-import { actOnTurtleImport, hasEditorCodeErrors, trimmedKeywordOperators } from "@/helpers/editor";
-import { generateFlatSlotBases, retrieveSlotByPredicate } from "@/helpers/storeMethods";
+import {hasEditorCodeErrors, trimmedKeywordOperators} from "@/helpers/editor";
+import {generateFlatSlotBases, retrieveSlotByPredicate} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
-import { useStore } from "@/store/store";
-import { AllFrameTypesIdentifier, BaseSlot, DefIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, ParserElements, SlotsStructure, SlotType } from "@/types/types";
-import { ErrorInfo, TPyParser } from "tigerpython-parser";
+import {useStore} from "@/store/store";
+import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
+import {ErrorInfo, TPyParser} from "tigerpython-parser";
+import {AppSPYPrefix} from "@/main";
+/*IFTRUE_isPython */
+import { actOnTurtleImport } from "@/helpers/editor";
+/*FITRUE_isPython */
+import {STRYPE_DUMMY_FIELD, STRYPE_EXPRESSION_BLANK, STRYPE_INVALID_OP, STRYPE_INVALID_OPS_WRAPPER, STRYPE_INVALID_SLOT} from "@/helpers/pythonToFrames";
 
 const INDENT = "    ";
 const DISABLEDFRAMES_FLAG =  "\"\"\""; 
 
 // Parse the code contained in the editor, and generate a compiler for this code if no error are found.
 // The method returns an object containing the output code and the compiler.
-export function parseCodeAndGetParseElements(requireCompilation: boolean): ParserElements{
+// The destination is .spy, or two types of .py.  The plain "py" omits the docstrings from methods and project
+// which can upset the line numbers, for ease of processing during execution, autocomplete, etc.
+// The "py-export" is for user-visible Python when we export to Python, and we should include the doc strings.
+export function parseCodeAndGetParseElements(requireCompilation: boolean, destination: "spy" | "py-export" | "py"): ParserElements{
     // Errors in the code (precompiled errors and TigerPython errors) are looked up at code edition.
     // Therefore, we expect the errors to already be found out when this method is called, and we don't need
     // to retrieve them again.
-    const parser = new Parser();
-    const out = parser.parse();
+    const parser = new Parser(false, destination);
+    const out = parser.parse({});
 
     const hasErrors = hasEditorCodeErrors();
     const compiler = new Compiler();
@@ -25,6 +33,165 @@ export function parseCodeAndGetParseElements(requireCompilation: boolean): Parse
     }
 
     return {parsedOutput: out, hasErrors: hasErrors, compiler: compiler};
+}
+
+function isValidPythonName(name: string): boolean {
+    // Match Unicode identifiers: start with a Unicode letter or _, then letters/digits/underscores
+    // \p{ID_Start} and \p{ID_Continue} are Unicode property escapes (ECMAScript 2018+)
+    const identifierRegex = /^[\p{ID_Start}_][\p{ID_Continue}_]*$/u;
+
+    const pythonKeywords = new Set([
+        "False", "None", "True", "and", "as", "assert", "async", "await",
+        "break", "class", "continue", "def", "del", "elif", "else", "except",
+        "finally", "for", "from", "global", "if", "import", "in", "is", "lambda",
+        "nonlocal", "not", "or", "pass", "raise", "return", "try", "while", "with", "yield",
+    ]);
+
+    return identifierRegex.test(name) && !pythonKeywords.has(name);
+}
+
+function isValidPythonNumber(str: string): boolean {
+    const trimmed = str.trim();
+
+    // Regex patterns for Python-style numbers
+
+    const decimalInt = /^[+-]?(0|[1-9][0-9_]*)$/;
+    const binaryInt = /^[+-]?0[bB][01_]+$/;
+    const octalInt = /^[+-]?0[oO][0-7_]+$/;
+    const hexInt = /^[+-]?0[xX][0-9a-fA-F_]+$/;
+
+    const floatNum = /^[+-]?((\d+(_\d+)*\.\d*(_\d+)*)|(\.\d+(_\d+)*)|(\d+(_\d+)*([eE][+-]?\d+(_\d+)*)))$/;
+
+    const complexNum = /^[+-]?((\d+(\.\d*)?)|(\.\d+))?[jJ]$/;
+
+    return (
+        decimalInt.test(trimmed) ||
+        binaryInt.test(trimmed) ||
+        octalInt.test(trimmed) ||
+        hexInt.test(trimmed) ||
+        floatNum.test(trimmed) ||
+        complexNum.test(trimmed)
+    ) && !trimmed.endsWith("_");
+}
+
+export function toUnicodeEscapes(input: string): string {
+    return Array.from(input)
+        .map((char) => {
+            const code = char.codePointAt(0) ?? 0;
+            return "u" + code.toString(16).padStart(4, "0");
+        })
+        .join("");
+}
+
+function interleave<T>(a: T[], b: T[]): T[] {
+    const result: T[] = [];
+    const maxLength = Math.max(a.length, b.length);
+
+    for (let i = 0; i < maxLength; i++) {
+        if (i < a.length) {
+            result.push(a[i]);
+        }
+        if (i < b.length) {
+            result.push(b[i]);
+        }
+    }
+
+    return result;
+}
+
+// Checks if the level will parse as-is given the arrangement of operators and operands
+// If not, it transforms it into a special call ___strype_invalid_ops([]) where each
+// item in the list is an operand, or a ___strype_operator_uXXXX escaped operator.
+function transformSlotLevel(slots: SlotsStructure, topLevel?: {frameType: string, slotIndex: number}): SlotsStructure {
+    // Here's what prevents parsing:
+    // - A unary operator (like "not", "~") with something non-blank before it.
+    // - Commas at the top-level of most constructs (only assignments, return, for allow it)
+    // - Anything with a blank operator between two adjacent non-blank items, except
+    //     if the right-hand item is a round or square bracket (function call and list index, respectively)
+    let valid = true;
+    for (let i = 0; i < slots.operators.length; i++) {
+        if (slots.operators[i].code.trim() === "not" || slots.operators[i].code.trim() === "~") {
+            // Unary operators only valid at start of bracketed expression:
+            if (i != 0) {
+                valid = false;
+                break;
+            }
+            
+            const preceding = slots.fields[i];
+            if (!(isFieldBaseSlot(preceding) && preceding.code.trim() === "")) {
+                // Something besides a plain blank before it; not valid unary operator:
+                valid = false;
+                break;
+            }
+        }
+        // A blank operator is only valid if the right-hand side is:
+        // - blank itself,
+        // - a round bracket (method call)
+        // - a square bracket (list indexing)
+        // OR the left-hand side is blank
+        if (slots.operators[i].code.trim() === "") {
+            const before = slots.fields[i];
+            const blankBefore = isFieldBaseSlot(before) && before.code.trim() === "";
+            if (!blankBefore) {
+                if (i + 1 < slots.fields.length) {
+                    const after = slots.fields[i + 1];
+                    if (!(isFieldBaseSlot(after) && after.code == "") && !(isFieldBracketedSlot(after) && (after.openingBracketValue == "(" || after.openingBracketValue == "["))) {
+                        valid = false;
+                        break;
+                    }
+                }
+            }
+            else {
+                // As a further case, it is not valid to have two blank operators around a blank
+                // slot because that indicates that there are two adjacent brackets/quotes, unless
+                // the right-hand item is a square bracket (which can be parsed as a subscript)
+                if (i > 0 && slots.operators[i - 1].code.trim() === "" && i + 1 < slots.fields.length) {
+                    const nextField = slots.fields[i + 1];
+                    if (!(isFieldBracketedSlot(nextField) && nextField.openingBracketValue == "[")) {
+                        valid = false;
+                        break;
+                    }
+                }
+            }
+        }
+        if (slots.operators[i].code.trim() === ",") {
+            if (topLevel) {
+                // We invert where commas are allowed:
+                if (!([AllFrameTypesIdentifier.varassign,
+                    AllFrameTypesIdentifier.for,
+                    AllFrameTypesIdentifier.return].includes(topLevel.frameType)
+                    || (topLevel.frameType === AllFrameTypesIdentifier.funcdef && topLevel.slotIndex == 1)
+                    || (topLevel.frameType === AllFrameTypesIdentifier.fromimport && topLevel.slotIndex == 1)
+                    || (topLevel.frameType === AllFrameTypesIdentifier.import && topLevel.slotIndex == 0))) {
+                    valid = false;
+                }
+            }
+        }
+    }
+    if (valid) {
+        return slots;
+    }
+    else {
+        return {operators: [{code: ""}, {code: ""}], fields: [
+            {code: STRYPE_INVALID_OPS_WRAPPER},
+            {openingBracketValue: "(",
+                operators: Array.from({length: slots.operators.length + slots.fields.length -1 }, () => {
+                    return {code: ","};
+                }),
+                fields: interleave<(BaseSlot | SlotsStructure | StringSlot | MediaSlot)>(slots.fields.map((f) => {
+                    if (isFieldBaseSlot(f) && f.code.trim() === "") {
+                        return {code: STRYPE_EXPRESSION_BLANK};
+                    }
+                    else {
+                        return f;
+                    }
+                }), slots.operators.map((op) => {
+                    return {code: STRYPE_INVALID_OP + toUnicodeEscapes(op.code)};
+                })),
+            },
+            {code: ""},
+        ]};
+    }
 }
 
 export default class Parser {
@@ -37,23 +204,30 @@ export default class Parser {
     private disabledBlockIndent = "";
     private excludeLoopsAndCommentsAndCloseTry = false;
     private ignoreCheckErrors = false;
+    private saveAsSPY = false;
+    private outputProjectDoc = false;
     private stoppedIndentation = ""; // The indentation level when we encountered the stop frame.
-
-    constructor(ignoreCheckErrors?: boolean){
-        if(ignoreCheckErrors != undefined){
-            this.ignoreCheckErrors = ignoreCheckErrors;
-        }
+    private libraries : string[] = [];
+    
+    constructor(ignoreCheckErrors = false, destination: "spy" | "py-export" | "py" = "py") {
+        this.ignoreCheckErrors = ignoreCheckErrors;
+        this.saveAsSPY = destination == "spy";
+        this.outputProjectDoc = destination == "spy" || destination == "py-export";
     }
     
     public getStoppedIndentation() : string {
         return this.stoppedIndentation;
+    }
+    
+    public getLibraries() : string[] {
+        return [...this.libraries];
     }
 
     private parseBlock(block: FrameObject, insideAClass : boolean, indentation: string): string {
         let output = "";
         const children = useStore().getFramesForParentId(block.id);
 
-        if(this.checkIfFrameHasError(block)) {
+        if(this.checkIfFrameHasError(block) && !this.saveAsSPY) {
             return "";
         }
 
@@ -62,13 +236,17 @@ export default class Parser {
         const conditionalIndent = (passBlock) ? "" : INDENT;
 
         output += 
-            ((!passBlock)? this.parseStatement(block, insideAClass, indentation) : "") + 
+            ((!passBlock)? this.parseStatement(block, insideAClass, indentation) : "") +
+            ((this.saveAsSPY && children.length > 0 &&
+                ((!block.isDisabled && children.filter((c) => !c.isDisabled && c.frameType.type != AllFrameTypesIdentifier.blank && c.frameType.type != AllFrameTypesIdentifier.comment).length == 0)
+                    || (block.isDisabled && children.filter((c) => c.frameType.type != AllFrameTypesIdentifier.blank && c.frameType.type != AllFrameTypesIdentifier.comment).length == 0)))
+                ? indentation + conditionalIndent +"pass" + "\n" : "") +
             // We replace an empty block frame content by "pass". We also replace the frame's content if
             // the children are ALL blank or simple comment frames, because Python will see it as a problem. 
             // Any disabled frame (and multi lines comments which are actually transformed to multiple line comments) 
             // won't make an issue when executed, so we parse them normally.
             ((block.frameType.allowChildren && children.length > 0 && 
-                children.some((childFrame) =>  childFrame.isDisabled 
+                children.some((childFrame) => childFrame.isDisabled 
                     || (childFrame.frameType.type != AllFrameTypesIdentifier.blank && (childFrame.frameType.type != AllFrameTypesIdentifier.comment 
                         || (childFrame.frameType.type == AllFrameTypesIdentifier.comment && (childFrame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.includes("\n"))))))
                 ?
@@ -83,7 +261,9 @@ export default class Parser {
                     this.parsePseudoEmptyBlockContent(children, indentation, conditionalIndent)
                     : indentation + conditionalIndent +"pass" + "\n")
             ) 
-            + 
+            +
+            ((block.frameType.type == AllFrameTypesIdentifier.try && (useStore().getJointFramesForFrameId(block.id)?.filter((f) => !f.isDisabled).length ?? 0) == 0)
+                ? indentation + "except " + STRYPE_DUMMY_FIELD + ":\n" + indentation + "    pass\n" : "") +
             this.parseFrames(
                 useStore().getJointFramesForFrameId(block.id),
                 insideAClass,
@@ -97,40 +277,79 @@ export default class Parser {
         // This method is called when parsing the content of a block frame that only contains simple comments or blank frames,
         // effectively making the block content empty. However, we need to 1) allow "passing" the content for Python to 
         // compile properly, and 2) make sure we keep the slots/lines mapping for proper errors handling.
-        this.parseFrames(children);
-        return (indentation + conditionalIndent +"pass" + "\n").repeat(children.length);
+        const emptyContent = this.parseFrames(children, false, indentation + conditionalIndent);
+        const passLine = indentation + conditionalIndent + "pass" + "\n";
+        return this.saveAsSPY ? emptyContent : passLine.repeat(children.length);
     }
     
     private parseStatement(statement: FrameObject, insideAClass : boolean, indentation = ""): string {
         let output = indentation;
         const labelSlotsPositionLengths: {[labelSlotsIndex: number]: LabelSlotsPositions} = {};
         
-        if(this.checkIfFrameHasError(statement)){
+        if(this.checkIfFrameHasError(statement) && !this.saveAsSPY){
             return "";
         }
 
         // Comments are treated separately for 2 reasons: 1) when we are parsing for a/c we don't want to parse the comments because they mess up with the try block surrounding the lines of code,
         // and 2) we need to check if the comment is multilines for setting the right comment indicator (''' instead of #). A comment is always a single slot so there is no extra logic to consider.
-        if((statement.frameType.type === AllFrameTypesIdentifier.comment) 
-        || (statement.frameType.type === AllFrameTypesIdentifier.funccall && isFieldBaseSlot(statement.labelSlotsDict[0].slotStructures.fields[0]) && (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.startsWith("#"))){
+        if((statement.frameType.type === AllFrameTypesIdentifier.comment)
+        || (statement.frameType.type === AllFrameTypesIdentifier.library)
+        || (statement.frameType.type === AllFrameTypesIdentifier.projectDocumentation)
+        || (!this.saveAsSPY && statement.frameType.type === AllFrameTypesIdentifier.funccall && isFieldBaseSlot(statement.labelSlotsDict[0].slotStructures.fields[0]) && (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.startsWith("#"))){
             const commentContent = (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code;
+
+
+            // The project doc is optional so if it's blank omit it, and we don't mind about line numbers for SPY:
+            if (statement.frameType.type === AllFrameTypesIdentifier.projectDocumentation && (!this.outputProjectDoc || commentContent.trim().length == 0)) {
+                return "";
+            }
+            
             // Before returning, we update the line counter used for the frame mapping in the parser:
             // +1 except if we are in a multiline comment (and not excluding them) when we then return the number of lines-1 + 2 for the multi quotes
             // (for UI purpose our multiline comments content always terminates with an extra line return so we need to discard it)
             this.line += ((this.excludeLoopsAndCommentsAndCloseTry) ? 1 : ((commentContent.includes("\n")) ? 1 + commentContent.split("\n").length : 1));
+
+            const passLine = indentation + "pass" + "\n";
+            
+            if (statement.frameType.type === AllFrameTypesIdentifier.library) {
+                if (!statement.isDisabled) {
+                    this.libraries.push(commentContent);
+                }
+                if (this.saveAsSPY) {
+                    return indentation + "#" + AppSPYPrefix + " " + (statement.isDisabled ? "LibraryDisabled" : "Library") + ":" + commentContent + "\n";
+                }
+                else {
+                    return passLine; // Make sure we don't mess up the line numbers
+                }
+            }
+            
             return (this.excludeLoopsAndCommentsAndCloseTry)
-                ? "pass" // This will just be an empty code placeholder, so it shouldn't be a problem for the code
-                : ((commentContent.includes("\n")) ? (indentation+"'''\n" + indentation + commentContent.replaceAll("\n", ("\n"+indentation)).replaceAll("'''","\\'\\'\\'") + "'''\n") : (indentation + "#" + commentContent + "\n"));
+                ? passLine // This will just be an empty code placeholder, so it shouldn't be a problem for the code
+                : ((commentContent.includes("\n") || statement.frameType.type === AllFrameTypesIdentifier.projectDocumentation) ? (indentation+"'''" + commentContent.replaceAll("\n", ("\n"+indentation)).replaceAll("'''","\\'\\'\\'") + "'''\n") : (indentation + "#" + commentContent + "\n"));
         }
             
         statement.frameType.labels.forEach((label, labelSlotsIndex) => {
+            let hasDocContent = false;
             // For varassign frames, the symbolic assignment on the UI should be replaced by the Python "=" symbol
             if(label.showLabel??true){
-                output += ((label.label.length > 0 && statement.frameType.type === AllFrameTypesIdentifier.varassign) ? " = " : label.label);
-                if (label.appendSelfWhenInClass && insideAClass) {
-                    // In Python it's okay to have a trailing comma on the params, so we don't need to check
-                    // whether any actual params follow:
-                    output += "self,";
+                if (label.allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
+                    if (useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields.length > 1 || (useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields[0] as BaseSlot).code.trim().length > 0) {
+                        if (label.newLine ?? false) {
+                            this.line += 1;
+                            // Newlines indent below, e.g. comments in funcdef frames:
+                            output += "\n" + indentation + "    ";
+                        }
+                        output += "'''";
+                        hasDocContent = true;
+                    }
+                }
+                else {
+                    output += ((label.label.length > 0 && statement.frameType.type === AllFrameTypesIdentifier.varassign) ? " = " : label.label);
+                    if (label.appendSelfWhenInClass && insideAClass) {
+                        // In Python it's okay to have a trailing comma on the params, so we don't need to check
+                        // whether any actual params follow:
+                        output += "self,";
+                    }
                 }
             }
             
@@ -138,7 +357,7 @@ export default class Parser {
             if(label.showSlots??true){
                 // Record each slots' vertical positions for that label.
                 const currentPosition = output.length;
-                const slotStartsLengthsAndCode = this.getSlotStartsLengthsAndCodeForFrameLabel(useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures, currentPosition);
+                const slotStartsLengthsAndCode = this.getSlotStartsLengthsAndCodeForFrameLabel(useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures, currentPosition, label.optionalSlot ?? OptionalSlotType.REQUIRED, label.allowedSlotContent ?? AllowedSlotContent.TERMINAL_EXPRESSION, {frameType: statement.frameType.type, slotIndex: labelSlotsIndex});
                 labelSlotsPositionLengths[labelSlotsIndex] = {
                     slotStarts: slotStartsLengthsAndCode.slotStarts, 
                     slotLengths: slotStartsLengthsAndCode.slotLengths,
@@ -146,7 +365,14 @@ export default class Parser {
                     slotTypes: slotStartsLengthsAndCode.slotTypes,
                 };
                 // add their code to the output
-                output += slotStartsLengthsAndCode.code + " ";
+                output += slotStartsLengthsAndCode.code.trimStart() + " ";
+
+                if (hasDocContent) {
+                    output = output.trimEnd() + "'''";
+                }
+                else if (label.allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
+                    output = output.trimEnd();
+                }
             }            
         });
         
@@ -176,21 +402,45 @@ export default class Parser {
                 }
                 break;
             }
+            
+            if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.framesMainContainer) {
+                output += "#" + AppSPYPrefix + " Section:Main\n";
+                this.line += 1;
+            }
+            else if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.defsContainer) {
+                output += "#" + AppSPYPrefix + " Section:Definitions\n";
+                this.line += 1;
+            }
+            else if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.importsContainer) {
+                output += "#" + AppSPYPrefix + " Section:Imports\n";
+                this.line += 1;
+            }
+            
             //if the frame is disabled and we were not in a disabled group of frames, add the comments flag
             //(to avoid weird Python code, if that first disabled frame is a joint frame (like "else") then we align the comment with the other joint/root bodies)
             let disabledFrameBlockFlag = "";
-            if(frame.isDisabled ? !this.isDisabledFramesTriggered : this.isDisabledFramesTriggered) {
+            let thisIndentation = indentation;
+            if(!this.saveAsSPY && (frame.isDisabled ? !this.isDisabledFramesTriggered : this.isDisabledFramesTriggered)) {
                 this.isDisabledFramesTriggered = !this.isDisabledFramesTriggered;
                 if(frame.isDisabled) {
                     this.disabledBlockIndent = (indentation + ((frame.frameType.isJointFrame) ? INDENT : ""));
                 }
-                disabledFrameBlockFlag = this.disabledBlockIndent + DISABLEDFRAMES_FLAG +"\n";
+                disabledFrameBlockFlag = this.saveAsSPY ? "" : (this.disabledBlockIndent + DISABLEDFRAMES_FLAG + "\n");
+                
                 //and also increment the line number that we use for mapping frames and code lines (even if the disabled frames don't map exactly, 
                 //it doesn't matter since we will not have errors to show in those anyway)
                 this.line += 1;
             }
+            else if (this.saveAsSPY && frame.isDisabled && frame.frameType.type != AllFrameTypesIdentifier.library) {
+                // Disabled libraries are treated differently because they already aren't real code.
+                disabledFrameBlockFlag = "";
+                // Don't add the disabled prefix twice:
+                if (!indentation.match(/^ *#/)) {
+                    thisIndentation = indentation + "#" + AppSPYPrefix + " Disabled:";
+                }
+            }
             
-            const insideAClass = parentInsideAClass || frame.frameType.type == DefIdentifiers.classdef;
+            const insideAClass = parentInsideAClass || frame.frameType.type == AllFrameTypesIdentifier.classdef;
 
             lineCode = frame.frameType.allowChildren ?
                 // frame with children
@@ -199,23 +449,31 @@ export default class Parser {
                     this.parseFrames(useStore().getFramesForParentId(frame.id), insideAClass, "") 
                     :
                     // for simple block frames (i.e. if) call parseBlock
-                    this.parseBlock(frame, insideAClass, indentation) 
+                    this.parseBlock(frame, insideAClass, thisIndentation) 
                 : 
                 // single line frame
-                this.parseStatement(frame, insideAClass, indentation);
+                this.parseStatement(frame, insideAClass, thisIndentation);
 
             output += disabledFrameBlockFlag + lineCode;
             
             if (this.exitFlag && frame.frameType.type == AllFrameTypesIdentifier.try) {
                 // We need to add an extra except to finish the try frame off and make it valid:
-                output += indentation + "except:\n" + indentation + "    pass\n"; 
+                output += thisIndentation + "except:\n" + thisIndentation + "    pass\n"; 
             }
+
+            if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.framesMainContainer) {
+                output += "#" + AppSPYPrefix + " Section:End\n";
+            }            
         }
 
         return output;
     }
+    
+    public parseJustImports() : string {
+        return this.parse({startAtFrameId: useStore().getImportsFrameContainerId, stopAtFrameId: useStore().getDefsFrameContainerId});
+    }
 
-    public parse(startAtFrameId?: number, stopAtFrameId?: number, excludeLoopsAndCommentsAndCloseTry?: boolean): string {
+    public parse({startAtFrameId, stopAtFrameId, excludeLoopsAndCommentsAndCloseTry, defsLast}: {startAtFrameId?: number, stopAtFrameId?: number, excludeLoopsAndCommentsAndCloseTry?: boolean, defsLast?: boolean}): string {
         let output = "";
         if(startAtFrameId){
             this.startAtFrameId = startAtFrameId;
@@ -228,16 +486,30 @@ export default class Parser {
             this.excludeLoopsAndCommentsAndCloseTry = excludeLoopsAndCommentsAndCloseTry;
         }
 
+        /* IFTRUE_isPython */
         // We look if Turtle has been imported to notify the editor UI
         actOnTurtleImport();
+        /* FITRUE_isPython */
 
         //console.time();
-        output += this.parseFrames((this.startAtFrameId > -100) ? [useStore().frameObjects[this.startAtFrameId]] : useStore().getFramesForParentId(0));
+        let codeUnits: FrameObject[];
+        if (this.startAtFrameId > -100) {
+            codeUnits = [useStore().frameObjects[this.startAtFrameId]];
+        }
+        else {            
+            codeUnits = useStore().getFramesForParentId(0);
+            if (defsLast) {
+                codeUnits = codeUnits
+                    .filter((item) => item.frameType.type !== ContainerTypesIdentifiers.defsContainer)
+                    .concat(codeUnits.filter((item) => item.frameType.type === ContainerTypesIdentifiers.defsContainer));
+            }
+        }
+        output += this.parseFrames(codeUnits, false, "");
         // We could have disabled frame(s) just at the end of the code. 
         // Since no further frame would be used in the parse to close the ongoing comment block we need to check
         // if there are disabled frames being rendered when reaching the end of the editor's code.
         let disabledFrameBlockFlag = "";
-        if(this.isDisabledFramesTriggered) {
+        if(this.isDisabledFramesTriggered && !this.saveAsSPY) {
             this.isDisabledFramesTriggered = !this.isDisabledFramesTriggered;
             disabledFrameBlockFlag = this.disabledBlockIndent + DISABLEDFRAMES_FLAG ;
         }
@@ -253,10 +525,15 @@ export default class Parser {
         TPyParser.warningAsErrors = false;
         let code: string = inputCode;
         if (!inputCode) {
-            code = this.parse();
+            code = this.parse({});
         }
 
-        return TPyParser.findAllErrors(code);
+        try {
+            return TPyParser.findAllErrors(code);
+        }
+        catch (e) {
+            return [{line:1, offset: 0, msg: "Unknown TigerPython error", code: ""}];
+        }
     }
 
     public getErrorsFormatted(inputCode = ""): string {
@@ -327,8 +604,8 @@ export default class Parser {
         return errorString;
     }
 
-    public getCodeWithoutErrors(endFrameId: number): string {
-        const code = this.parse(undefined, endFrameId, true);
+    public getCodeWithoutErrors(endFrameId: number, defsLast: boolean): string {
+        const code = this.parse({stopAtFrameId: endFrameId, excludeLoopsAndCommentsAndCloseTry: true, defsLast});
 
         const errors = this.getErrors(code);
 
@@ -382,7 +659,7 @@ export default class Parser {
     }
 
     public getFullCode(): string {
-        return this.parse(undefined, undefined, false);
+        return this.parse({excludeLoopsAndCommentsAndCloseTry: false});
     }
 
     private checkIfFrameHasError(frame: FrameObject): boolean {
@@ -390,37 +667,11 @@ export default class Parser {
             (slot: FieldSlot) => ((slot as BaseSlot).error?.length??0) > 0) != undefined;
     }
 
-    private isCompoundStatement(line: string, spaces: string[]): boolean {
-        // it's a compound statement if
-        return line.startsWith(spaces+"elif ") ||  // it's an elif statement OR
-               line.startsWith(spaces+"else ") ||  // it's an else statement OR
-               line.startsWith(spaces+"finally "); // it's a finally statement
-        
-        // We do not have to check try and except here as they are checked by getCodeWithoutErrors       
-    }
-
-    private isTryOrExcept(line: string, spaces: string[]): boolean {
-        return this.isTry(line,spaces) || this.isExcept(line,spaces);
-    }
-
-    private isTry(line: string, spaces: string[]): boolean {
-        return line.startsWith(spaces+"try:");  // it's a try statement
-    }
-
-    private isExcept(line: string, spaces: string[]): boolean {
-        return line.startsWith(spaces+"except ") || line.startsWith(spaces+"except:"); // it's an except statement
-    }
-
-    private isFunctionDef(line: string, spaces: string[]): boolean {
-        // it's not a function definition  if
-        return line.startsWith(spaces+"def ");  // it starts with a def
-    }
-
     public getFramePositionMap(): LineAndSlotPositions {
         return this.framePositionMap;
     }
 
-    public getSlotStartsLengthsAndCodeForFrameLabel(slotStructures: SlotsStructure, currentOutputPosition: number): LabelSlotPositionsAndCode {
+    public getSlotStartsLengthsAndCodeForFrameLabel(slotStructures: SlotsStructure, currentOutputPosition: number, optionalSlot: OptionalSlotType, allowed: AllowedSlotContent, topLevel?: {frameType: string, slotIndex: number}): LabelSlotPositionsAndCode {
         // To retrieve this information, we procede with the following: 
         // we get the flat map of the slots and operate a consumer at each iteration to retrieve the infos we need
         let code = "";
@@ -436,8 +687,8 @@ export default class Parser {
             slotTypes.push(type);
         };
 
-        generateFlatSlotBases(slotStructures, "", (flatSlot: FlatSlotBase) => {
-            if(isSlotQuoteType(flatSlot.type) || isSlotBracketType(flatSlot.type)){
+        generateFlatSlotBases({allowedSlotContent: allowed }, slotStructures, "", (flatSlot: FlatSlotBase, besidesOp: boolean, opAfter: undefined | string) => {
+            if(isSlotQuoteType(flatSlot.type) || isSlotBracketType(flatSlot.type) || flatSlot.type === SlotType.media){
                 // a quote or a bracket is a 1 character token, shown in the code
                 // but it's not editable so we don't include it in the slot positions
                 code += flatSlot.code;
@@ -454,10 +705,47 @@ export default class Parser {
             else{        
                 // that's an editable (code) slot, we get the position and length for that slot
                 // we trim the field's code when we are not in a string literal
-                const flatSlotCode = (isSlotStringLiteralType(flatSlot.type) ? flatSlot.code : flatSlot.code.trim());
+                let flatSlotCode = (isSlotStringLiteralType(flatSlot.type) ? flatSlot.code : flatSlot.code.trim());
+                if (flatSlot.type != SlotType.string) {
+                    if (besidesOp && this.saveAsSPY && flatSlotCode === "" && allowed != AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
+                        flatSlotCode = STRYPE_EXPRESSION_BLANK;
+                    }
+                    if (this.saveAsSPY && flatSlotCode != "") {
+                        let valid = true;
+                        switch (allowed) {
+                        case AllowedSlotContent.ONLY_NAMES:
+                            valid = isValidPythonName(flatSlotCode);
+                            break;
+                        case AllowedSlotContent.ONLY_NAMES_OR_STAR:
+                            valid = flatSlotCode.trim() == "*" || isValidPythonName(flatSlotCode);
+                            break;
+                        case AllowedSlotContent.TERMINAL_EXPRESSION:
+                            valid = ["False", "None", "True"].includes(flatSlotCode.trim()) ||
+                                isValidPythonName(flatSlotCode) ||
+                                isValidPythonNumber(flatSlotCode);
+                            // There is one very specific case that confuses the Python parser
+                            // If there is a valid number followed by dot operator followed by something
+                            // else (which won't be a valid number; if it was, we would have already made it one slot).
+                            // So if we are a number followed by dot operator, we are considered invalid:
+                            if (opAfter === "." && isValidPythonNumber(flatSlotCode)) {
+                                valid = false;
+                            }
+                            break;
+                        }
+                        if (!valid) {
+                            flatSlotCode = STRYPE_INVALID_SLOT + toUnicodeEscapes(flatSlotCode);
+                        }
+                    }
+                }
                 addSlotInPositionLengths(flatSlotCode.length, flatSlot.id, flatSlotCode, flatSlot.type);
             }
-        });
+        }, this.saveAsSPY && allowed != AllowedSlotContent.FREE_TEXT_DOCUMENTATION ? transformSlotLevel : ((s) => s), topLevel);
+
+        // There are a few fields which are permitted to be blank:
+        if (this.saveAsSPY && code == "" && optionalSlot == OptionalSlotType.REQUIRED && allowed != AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
+            code = STRYPE_EXPRESSION_BLANK;
+        }
+        
         return {code: code, slotLengths: slotLengths, slotStarts: slotStarts, slotIds: slotIds, slotTypes: slotTypes}; 
     }
 }

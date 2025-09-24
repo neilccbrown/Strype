@@ -5,7 +5,8 @@ import { useStore } from "@/store/store";
 import { skulptReadPythonLib } from "@/autocompletion/ac-skulpt";
 import i18n from "@/i18n";
 import Vue from "vue";
-import { CustomEventTypes, setPythonExecAreaExpandButtonPos } from "./editor";
+import { CustomEventTypes, setPythonExecAreaLayoutButtonPos } from "./editor";
+import { clearFileIOCaches, skulptCloseFileIO, skulptInteralFileWrite, skulptOpenFileIO } from "./skulptFileIO";
 
 const STRYPE_RUN_ACTION_MSG = "StrypeRunActionCalled";
 const STRYPE_INPUT_INTERRUPT_ERR_MSG = "ExternalError: " + STRYPE_RUN_ACTION_MSG;
@@ -129,13 +130,13 @@ function sInput(prompt: string) {
         }, 1000);
 
         // We check if the expand/collapse button needs to be repositioned.
-        setPythonExecAreaExpandButtonPos();
+        setPythonExecAreaLayoutButtonPos();
     });
 }
 
 // Entry point function for running Python code with Skulpt - the UI is responsible for calling it,
 // and providing the code (usually, user defined code) and the text area to display the output
-export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv: HTMLDivElement|null, userCode: string, lineFrameMapping: LineAndSlotPositions, keepRunning: () => boolean,
+export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv: HTMLDivElement|null, userCode: string, lineFrameMapping: LineAndSlotPositions, libraryAddresses: string[], keepRunning: () => boolean,
                                executionFinished: (finishedWithError: boolean, isListeningKeyEvents: boolean, isListeningMouseEvents: boolean, isListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => any): void{
     consoleTextArea = aConsoleTextArea;
     codeExecStateRunningCheckFn = keepRunning;
@@ -173,7 +174,29 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         executionFinished(finishedWithError, isTurtleListeningKB, isTurtleListeningMouse, isTurtleListeningTimer, stopTurtleListeners);
     }
     
-    Sk.configure({output:outf, read:skulptReadPythonLib, inputfun:sInput, inputfunTakesPrompt: true, yieldLimit:100,  killableWhile: true, killableFor: true});
+    // Clear the cloud FileIO map and directories references before running anything
+    clearFileIOCaches();
+
+    Sk.configure({
+        output:outf, 
+        read:skulptReadPythonLib(libraryAddresses),
+        fileopen: skulptOpenFileIO,
+        fileclose: skulptCloseFileIO, // This is an added property in Skulpt for fileIO
+        fileNotWritableErr: i18n.t("errorMessage.fileIO.fileNotWritableErr"), // This is an added property in Skulpt for fileIO
+        fileNotReadableErr: i18n.t("errorMessage.fileIO.fileNotReadableErr"), // This is an added property in Skulpt for fileIO
+        fileClosedErr: i18n.t("errorMessage.fileIO.fileClosedErr"), // This is an added property in Skulpt for fileIO
+        fileModeErr: i18n.t("errorMessage.fileIO.fileModeErr"), // This is an added property in Skulpt for fileIO
+        fileWriteNotStrErr: i18n.t("errorMessage.fileIO.fileWriteNotStrErr"), // This is an added property in Skulpt for fileIO
+        fileWriteNotBytesErr: i18n.t("errorMessage.fileIO.fileWriteNotBytesErr"), // This is an added property in Skulpt for fileIO
+        fileWriteLinesNotArrayErr: i18n.t("errorMessage.fileIO.fileWriteLinesNotArrayErr"), // This is an added property in Skulpt for fileIO
+        nonreadopen: true,
+        filewrite: skulptInteralFileWrite, // see skulptFileIO.ts
+        inputfun:sInput,
+        inputfunTakesPrompt: true,
+        yieldLimit:100, 
+        killableWhile: true,
+        killableFor: false});
+    Sk.inBrowser=false;
     
     const myPromise = Sk.misceval.asyncToPromise(function() {
         return Sk.importMainWithBody("<stdin>", false, userCode, true);
@@ -195,6 +218,12 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         // what line of code maps with what frame in case of an execution error.
         // We need to extract the line from the error message sent by Skulpt.
         const skulptErrStr: string = err.toString();
+        if (skulptErrStr.startsWith("SystemExit")) {
+            // SystemExit is an error, but not one we print out because it is a deliberate
+            // exit from the program (e.g. from strype.graphics.stop()).  So we just silently stop for that one:
+            handleExecutionFinished(false);
+            return;
+        }
         let moreInfo = "";
         let errorLine = -1;
         if (err.traceback) {
@@ -209,7 +238,7 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
                     // Turn the filename into a module name:
                     const modulename = filename.replace(".py", "").replace("./", "").replace("/", ".");
                     if (index == 0) {
-                        moreInfo += "\n  Error raised in module " + modulename;
+                        moreInfo += "\n  Error raised in module " + modulename + " (line " + entry.lineno + ")";
                     }
                     else if (modulename != lastmodule) {
                         // Only tell them the module if it's different to adjacent item in the traceback:

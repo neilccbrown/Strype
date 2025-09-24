@@ -71,7 +71,7 @@
 
 <script lang="ts">
 import Vue from "vue";
-import {AllFrameTypesIdentifier, APIItemTextualDescription, getFrameDefType, SlotCursorInfos, SlotType} from "@/types/types";
+import {AllFrameTypesIdentifier, APIItemTextualDescription, getFrameDefType, PythonExecRunningState, SlotCursorInfos, SlotType} from "@/types/types";
 import { useStore } from "@/store/store";
 import { getFocusedEditableSlotTextSelectionStartEnd, getFrameLabelSlotsStructureUID, getLabelSlotUID, setDocumentSelection } from "@/helpers/editor";
 import { mapStores } from "pinia";
@@ -114,11 +114,11 @@ export default Vue.extend({
 
     methods:{
         isSelectedIntermediateItem(): boolean {
-            return (!this.flatAPIDesc.find((item) => item.name === this.selectedAPIItemName)?.isFinal)??true;
+            return (!this.flatAPIDesc.find((item) => item.name === this.selectedAPIItemName)?.isFinal);
         },
 
         disabledAPI(): boolean{
-            return !this.showCodeGeneratorPart || this.isSelectedIntermediateItem();
+            return !this.showCodeGeneratorPart || this.isSelectedIntermediateItem() || (this.appStore.pythonExecRunningState == PythonExecRunningState.Running);
         },
 
         isItemShowable(item: APIItemTextualDescription): boolean {

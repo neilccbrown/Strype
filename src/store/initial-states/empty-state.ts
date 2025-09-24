@@ -1,4 +1,4 @@
-import {CaretPosition, EditorFrameObjects, RootContainerFrameDefinition, ImportsContainerDefinition, DefsContainerDefinition, MainFramesContainerDefinition} from "@/types/types";
+import {CaretPosition, EditorFrameObjects, RootContainerFrameDefinition, ImportsContainerDefinition, DefsContainerDefinition, MainFramesContainerDefinition, getFrameDefType, AllFrameTypesIdentifier} from "@/types/types";
 const emptyState: EditorFrameObjects = {
     0: {
         id: 0,
@@ -7,10 +7,24 @@ const emptyState: EditorFrameObjects = {
         isSelected: false,
         isVisible: true,
         parentId: 0,
-        childrenIds: [-1, -2, -3],
+        childrenIds: [-10, -1, -2, -3],
         jointParentId: 0,
         jointFrameIds: [],
         labelSlotsDict: { },
+        caretVisibility: CaretPosition.none,
+    },
+    "-10": {
+        id: -10,
+        frameType : getFrameDefType(AllFrameTypesIdentifier.projectDocumentation),
+        isDisabled: false,
+        isSelected: false,
+        isVisible: true,
+        parentId: 0,
+        childrenIds: [],
+        jointParentId: 0,
+        jointFrameIds: [],
+        labelSlotsDict: {0: {slotStructures: {fields: [{code: ""}], operators: []}}},
+        isCollapsed: false,
         caretVisibility: CaretPosition.none,
     },
     "-1": {

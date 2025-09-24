@@ -1,0 +1,166 @@
+{
+    "mediacomp": [
+        {
+            "acResult": "Pixel",
+            "documentation": "",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0,
+            "signature": {
+                "positionalOnlyArgs": [
+                    {
+                        "name": "self",
+                        "defaultValue": null,
+                        "argType": "type"
+                    }
+                ],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "picture",
+                        "defaultValue": null,
+                        "argType": "type"
+                    },
+                    {
+                        "name": "x",
+                        "defaultValue": null,
+                        "argType": "type"
+                    },
+                    {
+                        "name": "y",
+                        "defaultValue": null,
+                        "argType": "type"
+                    },
+                    {
+                        "name": "index",
+                        "defaultValue": null,
+                        "argType": "type"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": true
+            }
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__file__",
+            "documentation": "str(object='') -> str\nstr(bytes_or_buffer[, encoding[, errors]]) -> str\n\nCreate a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__loader__",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "str(object='') -> str\nstr(bytes_or_buffer[, encoding[, errors]]) -> str\n\nCreate a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to sys.getdefaultencoding().\nerrors defaults to 'strict'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__spec__",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "_graphics",
+            "documentation": "",
+            "type": [
+                "module"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "_sound",
+            "documentation": "",
+            "type": [
+                "module"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "makeEmptySoundBySeconds",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "duration",
+                        "defaultValue": null,
+                        "argType": "type"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            }
+        },
+        {
+            "acResult": "makePicture",
+            "documentation": "\n    Takes a filename as input, reads the file, and creates a picture from it. Returns the picture.\n    :param path: the name of the file you want to open as a picture\n    :return: a picture object made from the file\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "path",
+                        "defaultValue": null,
+                        "argType": "type"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            }
+        },
+        {
+            "acResult": "makeSound",
+            "documentation": "\n    :param path: a string path of a wav file\n    :returns: the sound created from the file at the given path\n    Takes a filename as input, reads the file, and creates a sound from it. Returns the sound.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0,
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "path",
+                        "defaultValue": null,
+                        "argType": "type"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            }
+        }
+    ]
+}

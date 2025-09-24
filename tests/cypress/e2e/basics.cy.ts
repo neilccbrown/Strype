@@ -2,9 +2,12 @@ import * as path from "path";
 import {expect} from "chai";
 import i18n from "@/i18n";
 import failOnConsoleError from "cypress-fail-on-console-error";
+import {cleanFromHTML} from "../support/test-support";
 failOnConsoleError();
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
+
+import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
 
 /**
  * A CodeMatch can be an exact string to match a single line frame,
@@ -52,14 +55,14 @@ function body(match: CodeMatch, usePassForEmptyBody? : boolean) : CodeMatch[] {
  * Then gets all the body items and matches them against the body of the CodeMatch.
  */
 function matchFrameText(item : JQuery<HTMLElement>, match : CodeMatch) : void {
-    cy.get(".frame-header").first().within((h) => cy.get(".labelSlot-input,.frame-keyword").should((parts) => {
+    cy.get("." + scssVars.frameHeaderClassName).first().within((h) => cy.get("."  + scssVars.labelSlotInputClassName + ",." + scssVars.framePythonTokenClassName).should((parts) => {
         let s = "";
         for (let i = 0; i < parts.length; i++) {
             const p : any = parts[i];
 
-            const text = p.value || p.textContent || "";
+            const text = cleanFromHTML(p.value || p.textContent || "");
             
-            if (text.match(/[a-zA-Z0-9]/) && !p.classList.contains("string-slot")) {
+            if (text.match(/[a-zA-Z0-9]/) && !p.classList.contains(scssVars.frameStringSlotClassName)) {
                 // Only add spaces if it has some non-punctuation characters and isn't a string:
                 s = s + text + " ";
             }
@@ -72,7 +75,9 @@ function matchFrameText(item : JQuery<HTMLElement>, match : CodeMatch) : void {
     
     // We used to look for .frameDiv for body items, but this can also pick up items in the body of joint frames
     // So we use the ID to find our own body, then look in there:
-    const bodySelector = "#" + item.attr("id")?.replace("frame_id_", "frameBodyId_") + " .frameDiv";
+    const frameIdStart = strypeElIds.getFrameUID(0).replace("0","");
+    const frameBodyIdStart = strypeElIds.getFrameBodyUID(0).replace("0","");
+    const bodySelector = "#" + item.attr("id")?.replace(frameIdStart, frameBodyIdStart) + " ." + scssVars.frameDivClassName;
     
     // .get().filter() fails if there are no items but the body is permitted to be empty for us.  So we must check
     // if we expect an empty body and act accordingly:
@@ -109,7 +114,7 @@ function noFrameDivBetween(parent: Element, descendent: Element) : boolean {
     let e : Element | null = descendent;
     let countBetween = -1; // Start at -1 since we will count descendent immediately
     while (e != parent && e != null) {
-        if (e.classList.contains("frameDiv")) {
+        if (e.classList.contains(scssVars.frameDivClassName)) {
             countBetween += 1;
         }
         e = e.parentElement;
@@ -120,14 +125,16 @@ function noFrameDivBetween(parent: Element, descendent: Element) : boolean {
 /**
  * Sanity check the state of the editor (e.g. only one caret visible)
  */
-function sanityCheck() : void {
+function sanityCheck(): Cypress.Chainable<JQuery<HTMLElement>> {
     // Check exactly one caret visible or focused input field:
-    if (document?.getSelection()?.focusNode == null) {
-        cy.get(".caret:not(.invisible)").should("have.length.at.most", 1);
-    }
-    else {
-        cy.get(".caret:not(.invisible)").should("have.length", 0);
-    }
+    return cy.document().then((doc) => {
+        if (doc?.getSelection()?.focusNode == null) {
+            return cy.get("."+ scssVars.caretClassName + ":not(." + scssVars.invisibleClassName +")").should("have.length", 1);
+        }
+        else {
+            return cy.get("." + scssVars.caretClassName + ":not(." + scssVars.invisibleClassName + ")").should("not.exist");
+        }
+    });
 }
 
 /**
@@ -181,22 +188,23 @@ function flatten(codeLines: CodeMatch[]) : (string | RegExp)[] {
  * conversion.  If any visuals or spacing differs from code, you must use a RegExp to account for this
  * (e.g. equality should be [⇐=] in a regex).
  */
-function checkCodeEquals(codeLines : CodeMatch[]) : void {
-    sanityCheck();
-    cy.root().then((r) => cy.get(".frameDiv").filter((i, e) => noFrameDivBetween(r.get()[0], e)).each((f, i) => cy.wrap(f).within((f2) => {
-        expect(i).lessThan(codeLines.length, "Found line #" + (i + 1) + " but only expected " + codeLines.length + " lines");
-        matchFrameText(f2, codeLines[i]);
-    })));
-    const downloadsFolder = Cypress.config("downloadsFolder");
-    cy.task("deleteFile", path.join(downloadsFolder, "main.py"));
-    // Conversion to Python is located in the menu, so we need to open it first, then find the link and click on it
-    // Force these because sometimes cypress gives false alarm about webpack overlay being on top:
-    cy.get("button#showHideMenu").click({force: true}); 
-    cy.contains(i18n.t("appMenu.downloadPython") as string).click({force: true});
-    
-    cy.readFile(path.join(downloadsFolder, "main.py")).then((p : string) => {
-        expectMatchRegex(p.split("\n").map((l) => l.trimEnd()),
-            flatten(codeLines).concat([/\s*/]));
+function checkCodeEquals(codeLines : CodeMatch[]) : Cypress.Chainable<JQuery<HTMLElement>> {
+    return sanityCheck().then(() => {
+        cy.root().then((r) => cy.get("." + scssVars.frameDivClassName).filter((i, e) => noFrameDivBetween(r.get()[0], e)).each((f, i) => cy.wrap(f).within((f2) => {
+            expect(i).lessThan(codeLines.length, "Found line #" + (i + 1) + " but only expected " + codeLines.length + " lines");
+            matchFrameText(f2, codeLines[i]);
+        })));
+        const downloadsFolder = Cypress.config("downloadsFolder");
+        cy.task("deleteFile", path.join(downloadsFolder, "main.py"));
+        // Conversion to Python is located in the menu, so we need to open it first, then find the link and click on it
+        // Force these because sometimes cypress gives false alarm about webpack overlay being on top:
+        cy.get("button#" + strypeElIds.getEditorMenuUID()).click({force: true}); 
+        cy.contains(i18n.t("appMenu.downloadPython") as string).click({force: true});
+            
+        cy.readFile(path.join(downloadsFolder, "main.py")).then((p : string) => {
+            expectMatchRegex(p.split("\n").map((l) => l.trimEnd()),
+                flatten(codeLines).concat([/\s*/]));
+        });
     });
 }
 
@@ -233,52 +241,67 @@ Cypress.on("uncaught:exception", (err, runnable) => {
     return false;
 });
 
-// Must clear all local storage between tests to reset the state:
+// Must clear all local storage between tests to reset the state,
+// and also retrieve the shared CSS and HTML elements IDs exposed
+// by Strype via the Window object of the app.
+let scssVars: {[varName: string]: string};
+let strypeElIds: {[varName: string]: (...args: any[]) => string};
 beforeEach(() => {
     cy.clearLocalStorage();
     cy.visit("/",  {onBeforeLoad: (win) => {
         win.localStorage.clear();
         win.sessionStorage.clear();
-    }});
+    }}).then(() => {       
+        // Only need to get the global variables if we haven't done so
+        if(scssVars == undefined){
+            cy.window().then((win) => {
+                scssVars = (win as any)[WINDOW_STRYPE_SCSSVARS_PROPNAME];
+                strypeElIds = (win as any)[WINDOW_STRYPE_HTMLIDS_PROPNAME];
+            });
+        }        
+    });
 });
 
 // Test that adding frames by typing keys works properly:
 describe("Adding frames", () => {
     it("Lets you add a frame", () => {
-        checkCodeEquals(defaultImports.concat(defaultMyCode));
-        cy.get("body").type(" foo(");
-        checkCodeEquals(defaultImports.concat([
-            "foo()",
-        ]).concat(defaultMyCode));
+        checkCodeEquals(defaultImports.concat(defaultMyCode)).then(() => {
+            cy.get("body").type(" foo(");
+            checkCodeEquals(defaultImports.concat([
+                "foo()",
+            ]).concat(defaultMyCode));
+        });        
     });
     it("Lets you add multiple frames", () => {
-        checkCodeEquals(defaultImports.concat(defaultMyCode));
-        cy.get("body").type(" foo({rightArrow}{enter} bar(3");
-        checkCodeEquals(defaultImports.concat([
-            "foo()",
-            "bar(3)",
-        ]).concat(defaultMyCode));
+        checkCodeEquals(defaultImports.concat(defaultMyCode)).then(() => {
+            cy.get("body").type(" foo({rightArrow}{enter} bar(3");
+            checkCodeEquals(defaultImports.concat([
+                "foo()",
+                "bar(3)",
+            ]).concat(defaultMyCode));
+        });     
     });
     it("Lets you add nested frames", () => {
-        checkCodeEquals(defaultImports.concat(defaultMyCode));
-        // i adds an if; add an if True with an if False inside:
-        cy.get("body").type("iTrue{rightArrow}");
-        cy.get("body").type("iFalse{rightArrow}");
-        // Put a foo() in the inner body:
-        cy.get("body").type(" foo({rightArrow}{rightArrow}");
-        // Put a bar(3) in the outer if, just after the inner if:
-        cy.get("body").type("{downArrow} bar(3{rightArrow}{rightArrow}");
-        // And add baz(5) after the ifs:
-        cy.get("body").type("{downArrow} baz(5");
-        checkCodeEquals(defaultImports.concat([
-            {h: /if\s+True\s+:/, b:[
-                {h: /if\s+False\s+:/, b:[
-                    "foo()",
+        checkCodeEquals(defaultImports.concat(defaultMyCode)).then(() => {
+            // i adds an if; add an if True with an if False inside:
+            cy.get("body").type("iTrue{rightArrow}");
+            cy.get("body").type("iFalse{rightArrow}");
+            // Put a foo() in the inner body:
+            cy.get("body").type(" foo({rightArrow}{rightArrow}");
+            // Put a bar(3) in the outer if, just after the inner if:
+            cy.get("body").type("{downArrow} bar(3{rightArrow}{rightArrow}");
+            // And add baz(5) after the ifs:
+            cy.get("body").type("{downArrow} baz(5");
+            checkCodeEquals(defaultImports.concat([
+                {h: /if\s+True\s+:/, b:[
+                    {h: /if\s+False\s+:/, b:[
+                        "foo()",
+                    ]},
+                    "bar(3)",
                 ]},
-                "bar(3)",
-            ]},
-            "baz(5)",
-        ]).concat(defaultMyCode));
+                "baz(5)",
+            ]).concat(defaultMyCode));
+        });
     });
 });
 
@@ -286,7 +309,7 @@ describe("Classes", () => {
     it("Lets you add a class frame", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
         cy.get("body").type("{uparrow}cFoo");
-        cy.get("body").type("{rightarrow}{downarrow} foo()");
+        cy.get("body").type("{rightarrow}{rightarrow}{downarrow} foo()");
         checkCodeEquals(defaultImports.concat([
             {h: /class\s+Foo\s*:/, b: [
                 {h: /def\s+__init__\s*\((self,?)?\s*\)\s*:/, b: [
@@ -298,7 +321,7 @@ describe("Classes", () => {
     it("Lets you add a class frame with a parent class", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
         cy.get("body").type("{uparrow}cFoo(Bar");
-        cy.get("body").type("{rightarrow}{rightarrow}{downarrow} foo()");
+        cy.get("body").type("{rightarrow}{rightarrow}{rightarrow}{downarrow} foo()");
         checkCodeEquals(defaultImports.concat([
             {h: /class\s+Foo\(Bar\)\s*:/, b: [
                 {h: /def\s+__init__\s*\((self,?)?\s*\)\s*:/, b: [
@@ -313,7 +336,7 @@ describe("Classes", () => {
         // Class header:
         cy.get("body").type("{uparrow}cFoo");
         // Constructor body:
-        cy.get("body").type("{rightarrow}{downarrow} foo()");
+        cy.get("body").type("{rightarrow}{rightarrow}{downarrow} foo()");
         // Attribute:
         cy.get("body").type("{rightarrow}{downarrow}=myattr=5");
         // Methods:
@@ -372,37 +395,43 @@ describe("Deleting frames", () => {
             {h: /else\s*:/, b:[
                 "foo()",
             ]},
-        ]));
-        cy.get("body").type("{end}{backspace}");
-        checkCodeEquals(defaultImports.concat([
-            {h: /if\s+True\s*:/, b:[]},
-            {h: /elif\s+x\s*==\s*0\s*:/, b:[]},
-            {h: /elif\s+x\s*==\s*1\s*:/, b:[/x\s*=\s*0/]},
-        ]));
-        cy.get("body").type("{end}{backspace}");
-        checkCodeEquals(defaultImports.concat([
-            {h: /if\s+True\s*:/, b:[]},
-            {h: /elif\s+x\s*==\s*0\s*:/, b:[]},
-        ]));
-        cy.get("body").type("{end}{backspace}");
-        checkCodeEquals(defaultImports.concat([
-            {h: /if\s+True\s+:/, b:[]},
-        ]));
-        // Now undo three times and check:
-        cy.get("body").type("{ctrl}zzz");
-        checkCodeEquals(defaultImports.concat([
-            {h: /if\s+True\s+:/, b:[]},
-            {h: /elif\s+x\s*==\s*0\s*:/, b:[]},
-            {h: /elif\s+x\s*==\s*1\s*:/, b:[/x\s*=\s*0/]},
-            {h: /else\s*:/, b:[
-                "foo()",
-            ]},
-        ]));
-        // Now delete all in one go (helps check cursor placement after delete):
-        cy.get("body").type("{end}{backspace}{backspace}{backspace}");
-        checkCodeEquals(defaultImports.concat([
-            {h: /if\s+True\s+:/, b:[]},
-        ]));
+        ])).then(() => {
+            cy.get("body").type("{end}{backspace}");
+            checkCodeEquals(defaultImports.concat([
+                {h: /if\s+True\s*:/, b:[]},
+                {h: /elif\s+x\s*==\s*0\s*:/, b:[]},
+                {h: /elif\s+x\s*==\s*1\s*:/, b:[/x\s*=\s*0/]},
+            ])).then(() => {
+                cy.get("body").type("{end}{backspace}");
+                checkCodeEquals(defaultImports.concat([
+                    {h: /if\s+True\s*:/, b:[]},
+                    {h: /elif\s+x\s*==\s*0\s*:/, b:[]},
+                ])).then(() => {
+                    cy.get("body").type("{end}{backspace}");
+                    checkCodeEquals(defaultImports.concat([
+                        {h: /if\s+True\s+:/, b:[]},
+                    ])).then(() => {
+                    // Now undo three times and check:
+                        cy.get("body").type("{ctrl}zzz");
+                        checkCodeEquals(defaultImports.concat([
+                            {h: /if\s+True\s+:/, b:[]},
+                            {h: /elif\s+x\s*==\s*0\s*:/, b:[]},
+                            {h: /elif\s+x\s*==\s*1\s*:/, b:[/x\s*=\s*0/]},
+                            {h: /else\s*:/, b:[
+                                "foo()",
+                            ]},
+                        ])).then(() => {
+                            // Now delete all in one go (helps check cursor placement after delete):
+                            cy.get("body").type("{end}{backspace}{backspace}{backspace}");
+                            checkCodeEquals(defaultImports.concat([
+                                {h: /if\s+True\s+:/, b:[]},
+                            ]));
+                        });        
+                    }); 
+                });      
+            });
+        });
+        
     });
 });
 

@@ -1,6 +1,10 @@
-{  
+{
+  "appMessage":{
+    "startMBSimulatorNeedUserAction":"Démarrez le simulateur de micro:bit à l'aide du bouton \"lecture\" du simulateur."
+  }, 
   "buttonLabel": {
     "runOnMicrobit": "Exécuter sur micro:bit",
+    "stopMBSimulator":"Arrêter le simulateur",
     "sendToMicrobit": "Envoyer vers micro:bit",
     "addCodeExtract": "Ajouter au code",
     "showMore": "montrer plus",

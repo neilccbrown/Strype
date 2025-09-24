@@ -1,6 +1,6 @@
 <template>
     <div>
-        <div class="popupContainer" spellcheck="false">
+        <div :class="scssVars.acPopupContainerClassName" spellcheck="false">
             <div
                 :style="popupPosition"
                 class="popup"
@@ -12,19 +12,21 @@
                         :data-title="module"
                     >
                         <div 
-                            class="module"
+                            class="ac-module-header"
                             v-show="module !== ''"
                             @mousedown.prevent.stop
                             @mouseup.prevent.stop
                         >
-                            <em>{{module}}</em>
+                            {{module}}
                         </div>
                         <PopUpItem
                             v-for="(item) in resultsToShow[module]"
-                            class="popUpItems"
+                            :class="scssVars.acPopupItemClassName"
                             :id="UID+'_'+item.index"
                             :index="item.index"
-                            :item="textForAC(item)"
+                            :item="codeForAC(item)"
+                            :itemHTML="htmlForAC(item)"
+                            :indent-wrapped="true"
                             :key="UID+'_'+item.index"
                             :selected="item.index==selected"
                             v-on="$listeners"
@@ -37,7 +39,7 @@
                 </ul>
                 <div v-show="!areResultsToShow()">
                     <div 
-                        class="module empty-results"
+                        :class="'ac-module-header ' + scssVars.acEmptyResultsContainerClassName"
                         @mousedown.prevent.stop
                         @mouseup.prevent.stop
                     >
@@ -54,7 +56,9 @@
                     <PopUpItem
                         class="newlines"
                         :id="UID+'documentation'"
-                        :item="currentDocumentation"
+                        item=""
+                        :itemHTML="currentDocumentation"
+                        :indent-wrapped="false"
                         :key="UID+'documentation'"
                         :isSelectable="false"
                         ref="documentations"
@@ -72,15 +76,19 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import PopUpItem from "@/components/PopUpItem.vue";
-import {DefaultCursorPosition, IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWithCategory, BaseSlot} from "@/types/types";
+import {IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWithCategory, BaseSlot, AllFrameTypesIdentifier, AcMicrobitResultType} from "@/types/types";
 import _ from "lodash";
 import { mapStores } from "pinia";
-import microbitModuleDescription from "@/autocompletion/microbit.json";
-import { getAllEnabledUserDefinedFunctions } from "@/helpers/storeMethods";
-import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, extractCommaSeparatedNames} from "@/autocompletion/acManager";
-import Parser from "@/parser/parser";
+import {getAllEnabledUserDefinedFunctions, getFrameContainer} from "@/helpers/storeMethods";
+import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, tpyDefineLibraries, getUserDefinedSignature} from "@/autocompletion/acManager";
+import Parser from "@/parser/parser"; 
 import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
-import {TPyParser} from "tigerpython-parser";
+import {Completion, Signature, SignatureArg, TPyParser} from "tigerpython-parser";
+import scssVars from "@/assets/style/_export.module.scss";
+/* IFTRUE_isMicrobit */
+import microbitDescriptions from "@/autocompletion/microbit.json";
+import microbitAPI from "@/autocompletion/microbit-api.json";
+/* FITRUE_isMicrobit */
 
 //////////////////////
 export default Vue.extend({
@@ -93,14 +101,11 @@ export default Vue.extend({
     props: {
         list: [String],
         slotId: String,
-        cursorPosition: {
-            type: Object,
-            default: () => DefaultCursorPosition,
-        },
     },
 
     data: function() {
         return {
+            scssVars, // just to be able to use in template 
             acResults: {} as AcResultsWithCategory,
             resultsToShow: {} as IndexedAcResultWithCategory,
             documentation: [] as string[],
@@ -123,42 +128,82 @@ export default Vue.extend({
             return "popupAC" + this.slotId;
         },
 
-        acVersions(): Record<string, any> {
-            return microbitModuleDescription.versions;
-        },
-
         popupPosition(): Record<string, string> {
             return {
                 "float" : "left",
-                "left": (this.cursorPosition.left+25)+"px",
+                "left": "25px",
             }; 
         },
 
         popupDocumentationPosition(): Record<string, string> {
             return {
                 "float" : "right",
-                "right": -(this.cursorPosition.left+25)+"px",
+                "right": "-25px",
                 //this is needed to avoid showing an empty documentation pane
                 "min-width":((this.documentation[this.selected]?.length>0)?"200px":"0px"),
             }; 
         },
+
+        /* IFTRUE_isMicrobit */
+        allMicrobitAnnotatedVariables(): AcMicrobitResultType[] {
+            // We retrieve the micro:bit annoted variables only once, as this won't change.
+            // See updateAC() why.
+            const res: AcMicrobitResultType[] = [];
+            Object.values(microbitAPI).forEach((elementDetailsArray) => {
+                elementDetailsArray.forEach((elementDetails) => {
+                    if(elementDetails.type.includes("variable") && (elementDetails as AcMicrobitResultType).mbVarType){
+                        res.push(elementDetails as AcMicrobitResultType);
+                    }
+                });
+            });
+            return res;
+        },
+        /* FITRUE_isMicrobit */
     },
 
     methods: {
-        textForAC(item : AcResultType) : string {
-            return item.acResult + ((this.showFunctionBrackets && item.type.includes("function")) ? "(" + (item.params?.filter((p) => !p.hide && p.defaultValue === undefined)?.map((p) => p.name)?.join(", ") || "") + ")" : "");
+        codeForAC(item: AcResultType) : string {
+            return item.acResult + ((this.showFunctionBrackets && item.type.includes("function")) ? "()" : "");
+        },
+        htmlForAC(item : AcResultType) : string {
+            // Note: the autocomplete info can be third-party if libraries are involved, or just from
+            // the user's own code, so we should HTML escape it to avoid any Javascript injection, etc.
+            const spanStart = "<span class='ac-optional-param'>";
+            function argText(arg: SignatureArg) : string {
+                if (arg.defaultValue != null) {
+                    return spanStart + _.escape(arg.name) + "</span>";
+                }
+                else {
+                    return _.escape(arg.name);
+                }
+            }
+            function paramsText(sig: Signature) : string{
+                const posOnly = sig.positionalOnlyArgs.slice(sig.firstParamIsSelfOrCls ? 1 : 0);
+                // Note that the comma needs to be formatted differently between grey optional params, hence the odd map and join at the end:
+                return [
+                    ...posOnly.map(argText),
+                    ...(posOnly.length > 0 ? ["/"] : []),
+                    ...sig.positionalOrKeywordArgs.map(argText),
+                    ...(sig.varArgs != null ? [spanStart + "*" + _.escape(sig.varArgs.name) + "</span>"] : []),
+                    ...sig.keywordOnlyArgs.map(argText),
+                    ...(sig.varKwargs != null ? [spanStart + "**" + _.escape(sig.varKwargs.name) + "</span>"] : []),
+                ].map((p, i) => (i > 0 ? (p.startsWith(spanStart) ? spanStart + ",</span> " : ", ") : "") + p).join("");
+            }
+            // &#8203; is a zero-width space that allows line breaking, for things like Actor(image_or_filename where you'd like to break after the bracket but without showing a space
+            return _.escape(item.acResult) + ((this.showFunctionBrackets && item.type.includes("function")) ? "(&#8203;" + (item.signature ? paramsText(item.signature) : item.params?.filter((p) => !p.hide && p.defaultValue === undefined)?.map((p) => _.escape(p.name))?.join(", ") || "") + ")" : "");
         },
 
         sortCategories(categories : string[]) : string[] {
             // Other items (like the names of variables when you do var.) will come out as -1,
             // which works nicely because they should be first:
+            const isInsideFuncCallFrame = this.appStore.frameObjects[(parseLabelSlotUID(this.slotId).frameId)].frameType.type === AllFrameTypesIdentifier.funccall;
             const getOrder = (cat : string) => {
-                // First is my variables and my functions
+                // First is my variables and my functions (in that order, except when we are inside a function call frame.)
                 if (cat === this.$i18n.t("autoCompletion.myVariables")) {
-                    return 0;
+                    return (isInsideFuncCallFrame) ? 1 : 0;
                 }
                 else if (cat === this.$i18n.t("autoCompletion.myFunctions")) {
-                    return 1;
+                    return (isInsideFuncCallFrame) ? 0 : 1;
                 }
                 else if (cat === this.$i18n.t("autoCompletion.importedModules")) {
                     return 2;
@@ -187,8 +232,8 @@ export default Vue.extend({
             return sortedCategories;
         },
       
-        updateACForModuleImport(token: string) : void {
-            this.acResults = getAvailableModulesForImport();
+        async updateACForModuleImport(token: string) : Promise<void> {
+            this.acResults = await getAvailableModulesForImport();
             this.showFunctionBrackets = false;
             // Only show imports if the slot isn't following "as" (so we need to check the operator)
             const {frameId, slotId} = parseLabelSlotUID(this.slotId);
@@ -198,9 +243,11 @@ export default Vue.extend({
         },
 
         updateACForImportFrom(token: string, module: string) : void {
-            this.acResults = {"": getAvailableItemsForImportFromModule(module)};
-            this.showFunctionBrackets = false;
-            this.showSuggestionsAC(token);
+            getAvailableItemsForImportFromModule(module).then((items) => {
+                this.acResults = {"": items.filter((ac) => !ac.acResult.startsWith("_"))};
+                this.showFunctionBrackets = false;
+                this.showSuggestionsAC(token);
+            });
         },
       
         // frameId is which frame we're in.
@@ -209,7 +256,10 @@ export default Vue.extend({
         async updateAC(frameId: number, token : string | null, context: string): Promise<void> {
             const tokenStartsWithUnderscore = (token ?? "").startsWith("_");
             const parser = new Parser();
-            const userCode = parser.getCodeWithoutErrors(frameId);
+            const inFuncDef = getFrameContainer(frameId) == useStore().getDefsFrameContainerId;
+            const userCode = parser.getCodeWithoutErrors(frameId, inFuncDef);
+            
+            await tpyDefineLibraries(parser);
             
             // If nothing relevant changed, no need to recalculate, just update based on latest token:
             if (this.lastTokenStartedUnderscore == tokenStartsWithUnderscore &&
@@ -227,7 +277,7 @@ export default Vue.extend({
             }
             
             this.showFunctionBrackets = true;
-            const imported = getAllExplicitlyImportedItems(context);
+            const imported = await getAllExplicitlyImportedItems(context);
             this.acResults = {};
             if (token === null) {
                 this.showSuggestionsAC("");
@@ -245,18 +295,77 @@ export default Vue.extend({
                 //
                 // To give TigerPython's autocomplete a place to examine to do the autocompletion
                 // we actually generate a dummy extra line of code with the context that we want
-                // plus a dot, then ask TigerPython to complete at the very end: 
-                let totalCode = userCode + "\n" + parser.getStoppedIndentation() + context + ".";
+                // plus a dot, then ask TigerPython to complete at the very end (and for microbit,
+                // we add a dummy "from builtins import *" to allow builtins a/c): 
+                const preamble = "" /* IFTRUE_isMicrobit + "from builtins import *\n" FITRUE_isMicrobit */;
+                let totalCode = preamble + userCode + "\n" + parser.getStoppedIndentation() + context + ".";
                 let tppCompletions = TPyParser.autoCompleteExt(totalCode, totalCode.length);
                 if (tppCompletions == null) {
-                    tppCompletions = [];
+                    tppCompletions = [];                    
                 }
+                /* IFTRUE_isMicrobit */
+                // TODO 
+                // TPP, at least now, doesn't interpret module annotated-only variable in PYI properly,
+                // like for "button_a: Button" for the microbit init file :
+                // it will bring up the class instead of the variable for a/c suggestions.
+                // Also, something like "button_a = Button()" does work better and brings something "<any>".
+                // So we use autoComplete() and compare the results to find mismatched.
+                // NOTE that TPP complete for the (wrong) code "button_a()." (with parenthesis).
+                try{
+                    const tppCompletions2 = TPyParser.autoComplete(totalCode, totalCode.length, false);
+                    if(tppCompletions.filter((s) => !s.acResult.startsWith("_")).length != tppCompletions2.length){
+                        console.log("There is a mismatch between autoCompleteEx and autoComplete");
+                        throw new Error();
+                    }
+                    else {
+                        tppCompletions2.forEach((completionItem, index) => {
+                            if((tppCompletions as Completion[])[index].acResult != completionItem){
+                                (tppCompletions as Completion[])[index].acResult = completionItem;
+                                (tppCompletions as Completion[])[index].type = "variable";
+                            }
+                        });
+                    }
+                }
+                catch{
+                    // We couldn't get the completions with autoComplete(), just give up...
+                }
+                
+
+                if(tppCompletions.length == 0){
+                    // TODO 
+                    // TPP, at least now, doesn't interpret module annotated-only variable in PYI properly,
+                    // like for "button_a: Button" for the microbit init file :
+                    // If the context text is a variable, we don't get its type content in a/c.
+                    // So we use very rudimentary way to get it the type content (if any) by looking up
+                    // the variable name, replacing it in a fake code and use TPP again.
+                    // Note: we can't know for sure the context will be the variable name as we want it: 
+                    // for example if the code contains "a = button_a" and next line "a.", the variable
+                    // name at the context is "a", not "button_a". So we (again very rudimentary) look up
+                    // every variables...
+                    this.allMicrobitAnnotatedVariables.forEach((varAcEntry) => {
+                        // Replace the variable name by an instance of its type in the user code
+                        totalCode = totalCode.replaceAll(new RegExp(`^.*?[^\\w](${varAcEntry.acResult})\\b`,"gm"), (matchInLine) => {
+                            const constructorCallerStr = (matchInLine.startsWith ("from ")) ? "" : "()";
+                            return matchInLine.replace(varAcEntry.acResult, varAcEntry.mbVarType + constructorCallerStr);
+                        });
+                    });
+                    
+                    // And run TPP again.
+                    tppCompletions = TPyParser.autoCompleteExt(totalCode, totalCode.length);
+                    if (tppCompletions == null) {
+                        tppCompletions = [];
+                    }                       
+                }                
+                /* FITRUE_isMicrobit */
+                
+
+                let version0 = 0;                
                 const items =  tppCompletions.filter((s) => !s.acResult.startsWith("_") || token.startsWith("_")).map((s) => ({
                     acResult: s.acResult,
                     documentation: s.documentation,
                     params: s.params == null ? [] : s.params.map((p) => ({name: p})),
-                    type: ["function", "module", "variable", "type"].includes(s.type) ? [s.type] : [],
-                    version: 0,
+                    type: ["function", "module", "variable", "type"].includes(s.type ?? "") ? [s.type] : [],
+                    version: version0 /* IFTRUE_isMicrobit + this.getMicrobitVersionFor(context + "." + token) FITRUE_isMicrobit */, //for micro:bit we can get the version from the version reference JSON
                 } as AcResultType));
                 this.acResults = {[context]: items};
                 this.showSuggestionsAC(token);
@@ -272,7 +381,7 @@ export default Vue.extend({
                     acResult: (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code,
                     documentation: "",
                     type: ["function"],
-                    params: extractCommaSeparatedNames(f.labelSlotsDict[1].slotStructures).map((p) => ({name: p})),
+                    signature: getUserDefinedSignature(f),
                     version: 0,
                 }));
                 
@@ -315,13 +424,11 @@ export default Vue.extend({
                     continue;
                 }
                 
-                // Add the indices and the versions
-                // (the version is retrieved from the version json object (for microbit), if no version is found, we set 1)
+                // Add the indices and the versions              
                 this.resultsToShow[module] = filteredResults
                     .sort((a, b) => a.acResult.localeCompare(b.acResult))
-                    .map((e,i) => {
-                        let contextPath = module + "." + e.acResult;
-                        return {index: lastIndex+i, acResult: e.acResult, documentation: e.documentation, type: e.type??"", params: e.params, version: this.getACEntryVersion(_.get(this.acVersions, contextPath))};
+                    .map((e,i) => {                        
+                        return {index: lastIndex+i, acResult: e.acResult, documentation: e.documentation, type: e.type??"", params: e.params, signature: e.signature, version: e.version};
                     });
                 lastIndex += filteredResults.length;    
             }
@@ -347,7 +454,7 @@ export default Vue.extend({
                 this.allowHoverSelection = true;
                 this.$nextTick(() => {
                     // Select the item immediately manually, because otherwise we need to wait that another item is selected for hover to work
-                    const selectedItem = document.querySelector(".acItem:hover");
+                    const selectedItem = document.querySelector("." + scssVars.acItemClassName + ":hover");
                     if(selectedItem){
                         const indexOfSelected = parseInt(selectedItem.id.replace(this.UID + "_",""));
                         this.handleACItemHover(indexOfSelected);
@@ -383,7 +490,7 @@ export default Vue.extend({
             this.currentDocumentation = this.getCurrentDocumentation();
 
             // now scroll to the selected view
-            const items = this.$el.querySelectorAll(".popUpItems");
+            const items = this.$el.querySelectorAll("."+scssVars.acPopupItemClassName);            
             // we want to get the selected item to the end of the scrolling area (so inline set to "end", the other properties are used
             // to avoid the whole page to scroll down (bug #279), see https://stackoverflow.com/questions/11039885/scrollintoview-causing-the-whole-page-to-move).
             items[this.selected].scrollIntoView({block:"nearest", inline:"end"});
@@ -427,7 +534,7 @@ export default Vue.extend({
                 // With CSS, we simply look up the parent of the *hovered* item (one of the LIs) and retrieve its data-title attribute.
                 // There SHOULD be a selection, but in case something is messed up and we don't retrieve, we'll return the current module.
                 // (we use "hover" because when this method is called, the new selection isn't yet reflected in the change of styling);
-                const selectedLIElementParent = document.querySelector("li.acItem:hover")?.parentElement;
+                const selectedLIElementParent = document.querySelector("li." + scssVars.acItemClassName +":hover")?.parentElement;
                 return (selectedLIElementParent?.getAttribute("data-title")) ?? this.currentModule;
             }
         },
@@ -435,7 +542,31 @@ export default Vue.extend({
         getCurrentDocumentation(): string {
             const curAC = this.resultsToShow[this.currentModule].find((e) => e.index === this.selected) as AcResultType;
             if (curAC) {
-                return curAC.documentation || (this.$i18n.t("autoCompletion.noDocumentation") as string); 
+                let doc = curAC.documentation;
+                // eslint-disable-next-line no-inner-declarations
+                function argText(arg: SignatureArg) : string {
+                    if (arg.defaultValue != null) {
+                        return _.escape(arg.name) + " = " + _.escape(arg.defaultValue);
+                    }
+                    else {
+                        return _.escape(arg.name);
+                    }
+                }
+                // eslint-disable-next-line no-inner-declarations
+                function paramsText(sig: Signature) : string{
+                    const posOnly = sig.positionalOnlyArgs.slice(sig.firstParamIsSelfOrCls ? 1 : 0);
+                    return [
+                        ...posOnly.map(argText),
+                        ...(posOnly.length > 0 ? ["/"] : []),
+                        ...sig.positionalOrKeywordArgs.map(argText),
+                        ...(sig.varArgs != null ? ["*" + _.escape(sig.varArgs.name)] : (sig.keywordOnlyArgs.length > 0 ? ["*"] : [])),
+                        ...sig.keywordOnlyArgs.map(argText),
+                        ...(sig.varKwargs != null ? ["**" + _.escape(sig.varKwargs.name)] : []),
+                    ].join(", ");
+                }
+                // &#8203; is a zero-width space that allows line breaking, for things like Actor(image_or_filename where you'd like to break after the bracket but without showing a space
+                return `<span class='ac-doc-header'>${_.escape(curAC.acResult) + (curAC.type.includes("function") ? "(&#8203;" + (curAC.signature ? paramsText(curAC.signature) : (curAC.params ?? []).filter((p) => !p.hide).map((p) => p.name + (p.defaultValue !== undefined ? " = " + p.defaultValue : "")).join(", ")) + ")" : "")}</span>`
+                    + (doc?.trimStart() || (this.$i18n.t("autoCompletion.noDocumentation") as string));
             }
             else {
                 return "";
@@ -444,15 +575,32 @@ export default Vue.extend({
 
         areResultsToShow(): boolean {
             return Object.values(this.resultsToShow)?.length > 0;
-        },
+        },  
 
-        getACEntryVersion(entry: any): number {
-            if (entry && typeof entry === "number"){
-                return entry as number;
+        /* IFTRUE_isMicrobit */
+        getMicrobitVersionFor(elementPath: string): number {
+            // Get through the version definitions to find the version.
+            // The version is listed for things v2+.
+            // If an intermediate level is found, we don't need to get deeper.
+            // Version 1 is returned as default.
+            let versionsData = microbitDescriptions.versions;
+            const keys = elementPath.split(".");
+            let resVersion = 1;
+            for (const key of keys) {
+                if (Object.keys(versionsData).includes(key)){
+                    versionsData = (versionsData as Record<string, any>)[key];
+                    if(typeof versionsData == "number"){
+                        resVersion = versionsData;
+                        break;
+                    }
+                }
+                else{
+                    break;
+                }       
             }
-            // If nothing matches at all, then we return the default value: 1.
-            return 1;
+            return resVersion;
         },        
+        /* FITRUE_isMicrobit */
     }, 
 
 });
@@ -460,22 +608,23 @@ export default Vue.extend({
 
 <style lang="scss">
 
-.module{
-    color: #919191;
+.ac-module-header{
+    color: #555;
     border-top: 1px;
     border-bottom: 1px;
     border-color:#919191;
+    background-color: #edf6f9;
 }
-.module:hover{
+.ac-module-header:hover{
     cursor: default;
 }
 
-.empty-results {
+.#{$strype-classname-ac-empty-results-container} {
     white-space: nowrap;
     padding-right: 3px;
 }
 
-.popupContainer {
+.#{$strype-classname-ac-popup-container} {
     display: flex;
 }
 
@@ -494,12 +643,26 @@ export default Vue.extend({
     list-style: none;
     padding-left: 0;
     width: max-content;
+    max-width: 25vw;
     cursor: pointer;
 }
 
 .popup li {
     padding-left: 5px;
     padding-right: 25px;
+}
+
+.popup .ac-optional-param {
+    font-style: italic;
+    color: #aaaaaa;
+}
+.#{$strype-classname-ac-item}.#{$strype-classname-ac-item-selected} .ac-optional-param {
+    color: #ddd !important;
+}
+.popup .ac-doc-header {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
 }
 
 </style>
