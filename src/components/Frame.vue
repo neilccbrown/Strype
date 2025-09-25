@@ -588,8 +588,8 @@ export default Vue.extend({
             const canDeleteOuter = (this.isPartOfSelection) 
                 ? this.appStore
                     .selectedFrames
-                    .every((frameId) => this.appStore.frameObjects[frameId].frameType.allowChildren && this.appStore.frameObjects[frameId].frameType.type != AllFrameTypesIdentifier.funcdef)
-                : this.isBlockFrame && this.frameType.type != AllFrameTypesIdentifier.funcdef;
+                    .every((frameId) => this.appStore.frameObjects[frameId].frameType.allowChildren && this.appStore.frameObjects[frameId].frameType.type != AllFrameTypesIdentifier.funcdef && this.frameType.type != AllFrameTypesIdentifier.classdef)
+                : this.isBlockFrame && this.frameType.type != AllFrameTypesIdentifier.funcdef && this.frameType.type != AllFrameTypesIdentifier.classdef;
             if(!canDeleteOuter){
                 const deleteOuterOptionContextMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.method === this.deleteOuter);
                 // We don't need the delete outer option: remove it from the menu options if not present
