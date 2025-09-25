@@ -229,7 +229,6 @@ export default Vue.extend({
     width: 100%;
     height: 100%;
     object-fit: cover;
-    //transition: opacity 0.25s ease-in-out;
     opacity: 0;
 }
 // Note: important the hover is on the folding control not the img, because
