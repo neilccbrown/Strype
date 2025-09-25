@@ -205,7 +205,7 @@ export default Vue.extend({
 }
 .frame-header-label-projectDocumentation > img, .frame-header-label-funcdef > img, .frame-header-label-classdef > img {
     height: 0.9em;
-    align-self: center;
+    margin-top: 0.3em;
 }
 
 .folding-control {
