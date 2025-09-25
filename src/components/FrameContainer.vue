@@ -1,8 +1,9 @@
 <template>
     <div class="frame-container" :style="frameStyle" @click.self="onOuterContainerClick" @mouseenter="onFrameContainerHover(true)" @mouseleave="onFrameContainerHover(false)">
         <div class="frame-container-header">
-            <button v-if="!isMainCodeFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
-            <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer}" @click.self="toggleCollapse">{{containerLabel}}</span>
+            <button v-if="!isMainCodeFrameContainer && !isDefsFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
+            <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer}" @click.self="toggleCollapse">{{containerLabel}}</span>
+
         </div>
 
         <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
@@ -103,6 +104,10 @@ export default Vue.extend({
         isMainCodeFrameContainer(): boolean {
             return this.frameId == this.appStore.getMainCodeFrameContainerId;
         },
+
+        isDefsFrameContainer(): boolean {
+            return this.frameId == this.appStore.getDefsFrameContainerId;
+        },
         
         frames: {
             get(): FrameObject[] {
@@ -143,8 +148,8 @@ export default Vue.extend({
 
         isCollapsed: {
             get(): boolean {
-                // Ignore the value for "My code" container for compatibility with saved project having collapsable "My code" container.
-                return (this.isMainCodeFrameContainer)? false : this.appStore.isContainerCollapsed(this.frameId);
+                // Ignore the value for "My code" or Defs container for compatibility with saved project having collapsable "My code" container.
+                return (this.isMainCodeFrameContainer || this.isDefsFrameContainer) ? false : this.appStore.isContainerCollapsed(this.frameId);
             },
             set(value: boolean){
                 this.appStore.setCollapseStatusContainer(
