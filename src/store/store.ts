@@ -1,5 +1,5 @@
 import Vue from "vue";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia } from "@/types/types";
+import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import {checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
@@ -679,7 +679,7 @@ export const useStore = defineStore("app", {
         },
 
         isContainerCollapsed: (state) => (frameId: number) => {
-            return state.frameObjects[frameId].isCollapsed ?? false;
+            return (state.frameObjects[frameId].collapsedState ?? CollapsedState.FULLY_VISIBLE) != CollapsedState.FULLY_VISIBLE;
         },
     },
     
@@ -858,7 +858,7 @@ export const useStore = defineStore("app", {
             // Only frame containers (sections) are collapsable, so we don't need to check if a destination frame itself is collapsed,
             // but we do need to check if the target container is - and expand it if needed.
             const containerId = getFrameSectionIdFromFrameId(nextCaret.id);
-            this.frameObjects[containerId].isCollapsed = false;
+            this.frameObjects[containerId].collapsedState = CollapsedState.FULLY_VISIBLE;
         },
 
         setCurrentFrame(newCurrentFrame: CurrentFrame) {
@@ -1292,7 +1292,7 @@ export const useStore = defineStore("app", {
             // however, for compatibility with project saved under the old behaviour (which allowed the situation),
             // we explicitly check the frame container (section) containing the current frame cursor is expanded
             const currentPositionFrameContainerId = getFrameSectionIdFromFrameId(this.currentFrame.id);
-            this.frameObjects[currentPositionFrameContainerId].isCollapsed = false;
+            this.frameObjects[currentPositionFrameContainerId].collapsedState = CollapsedState.FULLY_VISIBLE;
 
             this.clearNoneFrameRelatedState();
         },
@@ -1555,7 +1555,7 @@ export const useStore = defineStore("app", {
 
                 // As we will show the frame cursor that is potentiallly inside a collapsed frame container, 
                 // we make sure we set that frame container expanded to ensure the changes visibility
-                this.frameObjects[getFrameSectionIdFromFrameId(this.currentFrame.id)].isCollapsed = false;
+                this.frameObjects[getFrameSectionIdFromFrameId(this.currentFrame.id)].collapsedState = CollapsedState.FULLY_VISIBLE;
 
                 // Just like for saveStateChanges(), we need to simulate some dummy changes so that differences between
                 // the stateBeforeChanges and the current state regarding positioning and editing are all reflected properly
@@ -1648,12 +1648,19 @@ export const useStore = defineStore("app", {
             );
         },
         
-        setCollapseStatusContainer(payload: {frameId: number; isCollapsed: boolean}) {
+        setCollapseStatusContainer(payload: {frameId: number; collapsed: CollapsedState}) {
             Vue.set(
                 this.frameObjects[payload.frameId],
-                "isCollapsed",
-                payload.isCollapsed
+                "collapsedState",
+                payload.collapsed
             );
+        },
+
+        cycleFrameCollapsedState(frameId: number) {
+            const curState = this.frameObjects[frameId].collapsedState ?? CollapsedState.FULLY_VISIBLE;
+            const curIndex = this.frameObjects[frameId].frameType.allowedCollapsedStates.indexOf(curState);
+            const newState = this.frameObjects[frameId].frameType.allowedCollapsedStates[(curIndex + 1) % this.frameObjects[frameId].frameType.allowedCollapsedStates.length];
+            this.setCollapseStatusContainer({frameId, collapsed: newState});
         },
 
 
@@ -2370,7 +2377,7 @@ export const useStore = defineStore("app", {
                 // Only frame containers (sections) are collapsable, so we don't need to check if a destination frame itself is collapsed,
                 // but we do need to check if the target container is - and expand it if needed.
                 const containerId = getFrameSectionIdFromFrameId(nextPosition.frameId);
-                this.frameObjects[containerId].isCollapsed = false;
+                this.frameObjects[containerId].collapsedState = CollapsedState.FULLY_VISIBLE;
                 
                 // And since we just left a frame, we check errors
                 checkCodeErrors();             

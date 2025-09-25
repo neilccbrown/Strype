@@ -235,6 +235,10 @@ export default Vue.extend({
                     styles["color"] = "rgb(114, 114, 39) !important";
                     styles["font-style"] = "italic";
                 }
+                else if (frameType == AllFrameTypesIdentifier.classdef) {
+                    styles["color"] = "rgb(51, 71, 65) !important";
+                    styles["font-style"] = "italic";
+                }
                 else if (frameType == AllFrameTypesIdentifier.projectDocumentation) {
                     styles["color"] = "rgb(39, 77, 25) !important";
                     styles["font-style"] = "italic";

@@ -57,6 +57,7 @@
                                         :frameAllowChildren="false"
                                         :erroneous="false"
                                         :wasLastRuntimeError="false"
+                                        :frameAllowedCollapsedStates="[]"
                                         :onFocus="() => {}"/>
                                     <FrameContainer
                                         v-for="container in containerFrames"

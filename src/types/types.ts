@@ -127,6 +127,12 @@ export interface EditorFrameObjects {
     [id: number]: FrameObject;
 }
 
+export enum CollapsedState {
+    ONLY_HEADER_VISIBLE,
+    HEADER_AND_DOC_VISIBLE,
+    FULLY_VISIBLE,
+}
+
 // Frame related interace, the highest level to describe a frame
 // Note the labelSlotsDict property is an array inline with each label of the frame
 // and slots are always related to 1 label (for example "for" (label 0) and "in" (label 1) in a for frame)
@@ -136,7 +142,7 @@ export interface FrameObject {
     isDisabled: boolean;
     isSelected: boolean;
     isVisible: boolean;
-    isCollapsed?: boolean;
+    collapsedState?: CollapsedState; // default is FULLY_VISIBLE
     isBeingDragged?: boolean; //this flag is used mainly for UI purposes, so we can distinguish specific things that happens during dragging from intrisic properties of the frame
     parentId: number; //this is the ID of a parent frame (example: the if frame of a inner while frame). Value can be 0 (root), 1+ (in a level), -1 for a joint frame
     childrenIds: number[]; //this contains the IDs of the children frames
@@ -324,8 +330,8 @@ export interface FramesDefinitions {
     isJointFrame: boolean;
     jointFrameTypes: string[];
     colour: string;
-    isCollapsed?: boolean;
     isImportFrame: boolean;
+    allowedCollapsedStates: CollapsedState[];
     // Optional default children or joint frames (we use frame rather than definitions as we may want to have child or joint frame with content!)
     // BE SURE TO SET THE SLOT STRUCTURE AS EXPECTED BY THE FRAME DEFINITION (example: for a if, there should be 1 slot defined, even if empty)
     defaultChildrenTypes?: FrameObject[];
@@ -401,6 +407,7 @@ export const DefaultFramesDefinition: FramesDefinitions = {
     jointFrameTypes: [],
     colour: "",
     isImportFrame: false,
+    allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE], // Default is to not allow folding
 };
 
 export const BlockDefinition: FramesDefinitions = {
@@ -428,7 +435,7 @@ export const ImportsContainerDefinition: FramesDefinitions = {
     labels: [
         { label: (i18n.t("appMessage.importsContainer") as string), showSlots: false, defaultText: "" },
     ],
-    isCollapsed: false,
+    allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(ImportFrameTypesIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
     colour: "#BBC6B6",
@@ -440,7 +447,7 @@ export const DefsContainerDefinition: FramesDefinitions = {
     labels: [
         { label: (i18n.t("appMessage.defsContainer") as string), showSlots: false, defaultText: "" },
     ],
-    isCollapsed: false,
+    allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(DefIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment && frameTypeDef != AllFrameTypesIdentifier.varassign),
     colour: "#BBC6B6",
@@ -452,7 +459,7 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
     labels: [
         { label: (i18n.t("appMessage.mainContainer") as string), showSlots: false, defaultText: "" },
     ],
-    isCollapsed: false,
+    allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
     forbiddenChildrenTypes: BlockDefinition.forbiddenChildrenTypes.concat(Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(StandardFrameTypesIdentifiers).includes(frameTypeDef))),
     colour: "#BBC6B6",
@@ -462,7 +469,7 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
 export const FrameContainersDefinitions = {
     RootContainerFrameDefinition,
     ImportsContainerDefinition,
-    FuncDefContainerDefinition: DefsContainerDefinition,
+    DefsContainerDefinition,
     MainFramesContainerDefinition,
 };
 
@@ -691,6 +698,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             { label: ") :", showSlots: false, defaultText: "" },
             { label: `<img src='${quoteCircleFuncdef}'>`, newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.t("frame.defaultText.funcDescription") as string, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],
+        allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.HEADER_AND_DOC_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
         colour: "#ECECC8",
     };
     
@@ -702,6 +710,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             { label: " :", showSlots: false, defaultText: ""},
             { label: `<img src='${quoteCircleClass}'>`, newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.t("frame.defaultText.classDescription") as string, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],
+        allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
         colour: "#baded3",
         forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
             .concat(Object.values(StandardFrameTypesIdentifiers).filter((f) => f != CommentFrameTypesIdentifier.comment && f != StandardFrameTypesIdentifiers.varassign))

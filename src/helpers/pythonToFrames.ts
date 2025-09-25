@@ -1,4 +1,4 @@
-import {AllFrameTypesIdentifier, BaseSlot, CaretPosition, ContainerTypesIdentifiers, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, StringSlot, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders} from "@/types/types";
+import {AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, StringSlot, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders} from "@/types/types";
 import {useStore} from "@/store/store";
 import {getCaretContainerComponent, getFrameComponent, operators, trimmedKeywordOperators} from "@/helpers/editor";
 import i18n from "@/i18n";
@@ -143,7 +143,7 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}, i
         caretVisibility: CaretPosition.none,
         childrenIds: [],
         id: -100, // Will be set during addFrame
-        isCollapsed: false,
+        collapsedState: CollapsedState.FULLY_VISIBLE,
         isDisabled: false,
         isSelected: false,
         isVisible: true,

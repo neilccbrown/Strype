@@ -3,6 +3,12 @@
 
 const i18n = { t: ((x : string) => x)};
 
+export enum CollapsedState {
+    ONLY_HEADER_VISIBLE,
+    HEADER_AND_DOC_VISIBLE,
+    FULLY_VISIBLE,
+}
+
 export enum AllowedSlotContent {
     ONLY_NAMES,
     ONLY_NAMES_OR_STAR,
@@ -29,7 +35,8 @@ export interface FrameLabel {
     optionalSlot?: OptionalSlotType; //default REQUIRED (indicates whether this label requires a value, and its hiding behaviour when empty; see OptionalSlotType)
     acceptAC?: boolean; //default true
     allowedSlotContent?: AllowedSlotContent; // default TERMINAL_EXPRESSION; what the slot accepts
-    newLine?: boolean;
+    newLine?: boolean; //default false; this item starts a new line
+    appendSelfWhenInClass?: boolean, // default false.  For the opening bracket in function definitions (which show "self" if inside a class)
 }
 
 export interface FramesDefinitions {
@@ -41,8 +48,8 @@ export interface FramesDefinitions {
     isJointFrame: boolean;
     jointFrameTypes: string[];
     colour: string;
-    isCollapsed?: boolean;
     isImportFrame: boolean;
+    allowedCollapsedStates: CollapsedState[];
     // Optional default children or joint frames (we use frame rather than definitions as we may want to have child or joint frame with content!)
     // BE SURE TO SET THE SLOT STRUCTURE AS EXPECTED BY THE FRAME DEFINITION (example: for a if, there should be 1 slot defined, even if empty)
     //defaultChildrenTypes?: FrameObject[];
@@ -119,6 +126,7 @@ export const DefaultFramesDefinition: FramesDefinitions = {
     jointFrameTypes: [],
     colour: "",
     isImportFrame: false,
+    allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE],
 };
 
 export const BlockDefinition: FramesDefinitions = {
@@ -146,7 +154,7 @@ export const ImportsContainerDefinition: FramesDefinitions = {
     labels: [
         { label: (i18n.t("appMessage.importsContainer") as string), showSlots: false, defaultText: ""},
     ],
-    isCollapsed: false,
+    allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(ImportFrameTypesIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
     colour: "#BBC6B6",
@@ -158,7 +166,7 @@ export const DefsContainerDefinition: FramesDefinitions = {
     labels: [
         { label: (i18n.t("appMessage.defsContainer") as string), showSlots: false, defaultText: ""},
     ],
-    isCollapsed: false,
+    allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(DefIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment && frameTypeDef != AllFrameTypesIdentifier.varassign),
     colour: "#BBC6B6",
@@ -170,7 +178,7 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
     labels: [
         { label: (i18n.t("appMessage.mainContainer") as string), showSlots: false, defaultText: ""},
     ],
-    isCollapsed: false,
+    allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
     forbiddenChildrenTypes: BlockDefinition.forbiddenChildrenTypes.concat(Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(StandardFrameTypesIdentifiers).includes(frameTypeDef))),
     colour: "#BBC6B6",

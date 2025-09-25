@@ -24,7 +24,6 @@ const emptyState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         labelSlotsDict: {0: {slotStructures: {fields: [{code: ""}], operators: []}}},
-        isCollapsed: false,
         caretVisibility: CaretPosition.none,
     },
     "-1": {
@@ -38,7 +37,6 @@ const emptyState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         labelSlotsDict: {},
-        isCollapsed: false,
         caretVisibility: CaretPosition.none,
     },
     "-2": {
@@ -52,7 +50,6 @@ const emptyState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         labelSlotsDict: { },
-        isCollapsed: false,
         caretVisibility: CaretPosition.none,
     },
     "-3": {
@@ -66,7 +63,6 @@ const emptyState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         labelSlotsDict: {},
-        isCollapsed: false,
         caretVisibility: CaretPosition.body,
     },
 };

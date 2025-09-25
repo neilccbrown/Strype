@@ -193,7 +193,7 @@
 import Vue from "vue";
 import { useStore, settingsStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
-import { AppEvent, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, ShareProjectMode, SlotCoreInfos, SlotCursorInfos, SlotType, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
+import { AppEvent, CaretPosition, CollapsedState, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, ShareProjectMode, SlotCoreInfos, SlotCursorInfos, SlotType, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import {countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppLangSelectId, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getGoogleDriveComponentRefId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNearestErrorIndex, getSaveAsProjectModalDlg, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey, getSaveProjectLinkId, getNewProjectLinkId, getImportFileInputId} from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
@@ -1248,7 +1248,7 @@ export default Vue.extend({
                         : ((isElementEditableLabelSlotInput(errorElement)) 
                             ? parseLabelSlotUID(errorElement.id).frameId
                             : parseFrameHeaderUID(errorElement.id));
-                    this.appStore.frameObjects[getFrameSectionIdFromFrameId(erroneousFrameId)].isCollapsed = false;
+                    this.appStore.frameObjects[getFrameSectionIdFromFrameId(erroneousFrameId)].collapsedState = CollapsedState.FULLY_VISIBLE;
                      
                     // The error can be in a slot or it can be for a whole frame. By convention, the location for a frame error is the caret above it.
                     // For errors in a slot: we focus on the slot of the error -- if the erroneous HTML is a slot, we just give it focus. If the error is at the frame scope

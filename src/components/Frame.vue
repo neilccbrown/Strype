@@ -36,6 +36,8 @@
                 :class="{[scssVars.frameHeaderClassName]: true, [scssVars.errorClassName]: hasRuntimeError}"
                 :style="frameMarginStyle['header']"
                 :frameAllowChildren="allowChildren"
+                :frameAllowedCollapsedStates="frameType.allowedCollapsedStates"
+                :frameCollapsedState="collapsedState"
                 :erroneous="hasRuntimeError"
                 :wasLastRuntimeError="wasLastRuntimeError"
                 :onFocus="showFrameParseErrorPopupOnHeaderFocus"
@@ -52,7 +54,7 @@
             >
             </b-popover>
             <FrameBody
-                v-if="allowChildren"
+                v-if="allowChildren && bodyVisible"
                 :ref="getFrameBodyRef"
                 :frameId="frameId"
                 :isDisabled="isDisabled"
@@ -90,7 +92,7 @@ import Vue from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
-import { DefaultFramesDefinition, CaretPosition, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName } from "@/types/types";
+import { DefaultFramesDefinition, CaretPosition, CollapsedState, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
 import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getCaretUID, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID } from "@/helpers/editor";
@@ -165,6 +167,14 @@ export default Vue.extend({
 
         allowsJointChildren(): boolean {
             return this.appStore.getAllowedJointChildren(this.frameId);
+        },
+
+        collapsedState(): number {
+            return Number(this.appStore.frameObjects[this.frameId].collapsedState ?? CollapsedState.FULLY_VISIBLE);
+        },
+        
+        bodyVisible(): boolean {
+            return (this.appStore.frameObjects[this.frameId].collapsedState ?? CollapsedState.FULLY_VISIBLE) == CollapsedState.FULLY_VISIBLE;
         },
 
         frameStyle(): Record<string, string> {
@@ -578,8 +588,8 @@ export default Vue.extend({
             const canDeleteOuter = (this.isPartOfSelection) 
                 ? this.appStore
                     .selectedFrames
-                    .every((frameId) => this.appStore.frameObjects[frameId].frameType.allowChildren && this.appStore.frameObjects[frameId].frameType.type != AllFrameTypesIdentifier.funcdef)
-                : this.isBlockFrame && this.frameType.type != AllFrameTypesIdentifier.funcdef;
+                    .every((frameId) => this.appStore.frameObjects[frameId].frameType.allowChildren && this.appStore.frameObjects[frameId].frameType.type != AllFrameTypesIdentifier.funcdef && this.frameType.type != AllFrameTypesIdentifier.classdef)
+                : this.isBlockFrame && this.frameType.type != AllFrameTypesIdentifier.funcdef && this.frameType.type != AllFrameTypesIdentifier.classdef;
             if(!canDeleteOuter){
                 const deleteOuterOptionContextMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.method === this.deleteOuter);
                 // We don't need the delete outer option: remove it from the menu options if not present
