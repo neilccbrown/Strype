@@ -1648,11 +1648,11 @@ export const useStore = defineStore("app", {
             );
         },
         
-        setCollapseStatusContainer(payload: {frameId: number; isCollapsed: boolean | CollapsedState}) {
+        setCollapseStatusContainer(payload: {frameId: number; collapsed: CollapsedState}) {
             Vue.set(
                 this.frameObjects[payload.frameId],
                 "collapsedState",
-                typeof payload.isCollapsed === "boolean" ? (payload.isCollapsed ? CollapsedState.FULLY_VISIBLE : CollapsedState.ONLY_HEADER_VISIBLE) : payload.isCollapsed
+                payload.collapsed
             );
         },
 
@@ -1660,7 +1660,7 @@ export const useStore = defineStore("app", {
             const curState = this.frameObjects[frameId].collapsedState ?? CollapsedState.FULLY_VISIBLE;
             const curIndex = this.frameObjects[frameId].frameType.allowedCollapsedStates.indexOf(curState);
             const newState = this.frameObjects[frameId].frameType.allowedCollapsedStates[(curIndex + 1) % this.frameObjects[frameId].frameType.allowedCollapsedStates.length];
-            this.setCollapseStatusContainer({frameId, isCollapsed: newState});
+            this.setCollapseStatusContainer({frameId, collapsed: newState});
         },
 
 

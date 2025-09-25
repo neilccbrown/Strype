@@ -150,7 +150,7 @@ export default Vue.extend({
                 this.appStore.setCollapseStatusContainer(
                     {
                         frameId: this.frameId,
-                        isCollapsed: value,
+                        collapsed: value ? CollapsedState.ONLY_HEADER_VISIBLE : CollapsedState.FULLY_VISIBLE,
                     }
                 );
             },
