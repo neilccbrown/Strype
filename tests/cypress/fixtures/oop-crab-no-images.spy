@@ -1,14 +1,17 @@
 #(=> Strype:1:std
 #(=> peaCommandsSplitterPane2Size:{"tabsCollapsed":51.99}
+'''Classic crab and lobster game.'''
 #(=> Section:Imports
 from strype.graphics import * 
 from strype.sound import * 
 from random import randint,choice 
 #(=> Section:Definitions
 class Crab(Actor)  :
+    '''The crab is the main player character in the game.'''
     def __init__ (self, ) :
         super().__init__(load_image("crab.png"),0,0,"player") 
     def act (self, ) :
+        '''The actions the crab takes each animation frame.'''
         if key_pressed("left")  :
             self.turn(5) 
         if key_pressed("right")  :
@@ -18,6 +21,7 @@ class Crab(Actor)  :
             self.remove_touching("food") 
             load_sound("slurp.wav").play() 
 class Lobster(Actor)  :
+    '''The lobster is the enemy in the scenario.'''
     def __init__ (self, ) :
         super().__init__(load_image("lobster.png")) 
         self.set_location(choice([randint(-350,-200),randint(200,350)]),choice([randint(-250,-100),randint(100,250)])) 
