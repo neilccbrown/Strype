@@ -1,6 +1,6 @@
 <template>
     <div class="frame-container" :style="frameStyle" @click.self="onOuterContainerClick" @mouseenter="onFrameContainerHover(true)" @mouseleave="onFrameContainerHover(false)">
-        <div class="frame-container-header">
+        <div class="frame-container-header" @click.self="onOuterContainerClick">
             <button v-if="!isMainCodeFrameContainer && !isDefsFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
             <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer}" @click.self="toggleCollapse">{{containerLabel}}</span>
 
@@ -317,11 +317,10 @@ export default Vue.extend({
     min-height: $frame-container-min-height;
 }
 .frame-container-header {
-    // Stop it taking up full width, to allow click to select top frame cursor instead of folding:
-    display: inline-block;
+    display: flex;
     padding-right: 5px;
 }
-.frame-container-header * {
+.frame-container-header > .frame-container-btn-collapse, .frame-container-header > span:not(.no-toggle-frame-container-span) {
     cursor: pointer;
 }
 </style>
