@@ -225,7 +225,7 @@ export default Vue.extend({
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: opacity 0.25s ease-in-out;
+    //transition: opacity 0.25s ease-in-out;
     opacity: 0;
 }
 // Note: important the hover is on the folding control not the img, because
@@ -235,7 +235,11 @@ export default Vue.extend({
 }
 .folding-control.fold-header > img.folding-header,
 .folding-control.fold-doc > img.folding-doc,
-.folding-control.fold-full > img.folding-full {
+.frame-div:hover > .frame-header .folding-control.fold-full > img.folding-full {
     opacity: 0.5;
+}
+.frame-div:hover:has(.caret-container:hover) > .frame-header .folding-control.fold-full > img.folding-full,
+.frame-div:hover:has(.frame-div:hover) > .frame-header .folding-control.fold-full > img.folding-full{
+    opacity: 0;
 }
 </style>
