@@ -685,15 +685,13 @@ export default Vue.extend({
                 this.appStore.currentCloudSaveFileId = undefined;
                 this.appStore.strypeProjectLocationAlias = "";
             }
-            // If we have swapped target, we should remove the other target in the list of saving functions.
-            // (It doesn't really matter if there is one or not, the remove method will take care of that.)
-            const targetsToRemove = [];
-            if(target == StrypeSyncTarget.fs || target == StrypeSyncTarget.none) {
-                targetsToRemove.push("GD");
-            }
-            if(target == StrypeSyncTarget.gd || target == StrypeSyncTarget.none) {
-                targetsToRemove.push("FS");
-            }
+            // If we have swapped target, we should remove the other targets in the list of saving functions.
+            // (It doesn't really matter if there is one or not, the remove method will take care of that,
+            // and if None is added inside the targets to remove, it will just don't do anything as it's never used 
+            // for a saving function - so it makes the code below simpler.)
+            const targetsToRemove = Object.values(StrypeSyncTarget)
+                .filter((t) => typeof t === "number") // filter out string keys from enum
+                .filter((t) => t !== target && t !== StrypeSyncTarget.ws); // Discard every other sync targets but "target" and WS
             targetsToRemove.forEach((targetToRemove) =>  this.$root.$emit(CustomEventTypes.removeFunctionToEditorProjectSave, targetToRemove));
         },
 
