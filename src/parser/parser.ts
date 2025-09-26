@@ -5,7 +5,7 @@ import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
-import {AppSPYPrefix} from "@/main";
+import {AppSPYFullPrefix} from "@/main";
 /*IFTRUE_isPython */
 import { actOnTurtleImport } from "@/helpers/editor";
 /*FITRUE_isPython */
@@ -290,7 +290,7 @@ export default class Parser {
                     this.libraries.push(commentContent);
                 }
                 if (this.saveAsSPY) {
-                    return indentation + "#" + AppSPYPrefix + " " + (statement.isDisabled ? "LibraryDisabled" : "Library") + ":" + commentContent + "\n";
+                    return indentation + AppSPYFullPrefix + " " + (statement.isDisabled ? "LibraryDisabled" : "Library") + ":" + commentContent + "\n";
                 }
                 else {
                     return passLine; // Make sure we don't mess up the line numbers
@@ -352,15 +352,15 @@ export default class Parser {
             }
             
             if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.framesMainContainer) {
-                output += "#" + AppSPYPrefix + " Section:Main\n";
+                output += AppSPYFullPrefix + " Section:Main\n";
                 this.line += 1;
             }
             else if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.funcDefsContainer) {
-                output += "#" + AppSPYPrefix + " Section:Definitions\n";
+                output += AppSPYFullPrefix + " Section:Definitions\n";
                 this.line += 1;
             }
             else if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.importsContainer) {
-                output += "#" + AppSPYPrefix + " Section:Imports\n";
+                output += AppSPYFullPrefix + " Section:Imports\n";
                 this.line += 1;
             }
             
@@ -384,7 +384,7 @@ export default class Parser {
                 disabledFrameBlockFlag = "";
                 // Don't add the disabled prefix twice:
                 if (!indentation.match(/^ *#/)) {
-                    thisIndentation = indentation + "#" + AppSPYPrefix + " Disabled:";
+                    thisIndentation = indentation + AppSPYFullPrefix + " Disabled:";
                 }
             }
 
@@ -408,7 +408,7 @@ export default class Parser {
             }
 
             if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.framesMainContainer) {
-                output += "#" + AppSPYPrefix + " Section:End\n";
+                output += AppSPYFullPrefix + " Section:End\n";
             }            
         }
 

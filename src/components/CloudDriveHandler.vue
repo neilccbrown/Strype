@@ -34,6 +34,8 @@ import { BootstrapDlgSize, SaveRequestReason, StrypeSyncTarget } from "@/types/t
 import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, SaveExistingCloudProjectInfos } from "@/types/cloud-drive-types";
 import GoogleDriveComponent from "@/components/GoogleDriveComponent.vue";
 import OneDriveComponent from "@/components/OneDriveComponent.vue";
+import { generateSPYFileContent } from "@/helpers/load-save";
+import { AppSPYFullPrefix } from "@/main";
 
 // This enum is used for flaging the action taken when a request to save a file on Google Drive
 // has been done, and a file of the same name already exists on the Drive
@@ -190,8 +192,8 @@ export default Vue.extend({
             this.currentAction = "load";
             const cloudDriveComponent = this.getSpecificCloudDriveComponent(cloudTarget);
             if(cloudDriveComponent){
-            // This method is the entry point to load a file from a Drive. We check or request to sign-in to a specific Drive here.
-            // (that is redundant with the previous "save" action if we were already syncing, but this method can be called when we were not syncing so it has to be done.)
+                // This method is the entry point to load a file from a Drive. We check or request to sign-in to a specific Drive here.
+                // (that is redundant with the previous "save" action if we were already syncing, but this method can be called when we were not syncing so it has to be done.)
                 if(cloudDriveComponent.isOAuthTokenNotSet()){
                     this.signInFn();
                 // We wait for the signing checks are done, the loading mechanism will continue later in doLoadFile()
@@ -338,7 +340,7 @@ export default Vue.extend({
             // We need to set the name properly by what the user set in the save dialog (if applicable)
             const newProjectName = (isExplictSave || this.saveReason == SaveRequestReason.overwriteExistingProject) ? this.saveFileName  : this.appStore.projectName;
             this.appStore.projectName = newProjectName;
-            const fileContent = this.appStore.generateStateJSONStrWithCheckpoint();   
+            const fileContent = generateSPYFileContent(); 
             // The file name depends on the context: normal save, we use the filed this.saveName that is in line with what the user provided in the input field
             // while when do autosave etc, we use th PROJECT saved name in the store.
             const fullFileName = newProjectName + "." + strypeFileExtension;
@@ -417,9 +419,13 @@ export default Vue.extend({
                 // The date conversion works fine for a date set as *RFC 3339 date format*
                 lastSaveDate = Date.parse(fileModifiedDateTime);
             }, (fileContent: string) => {
-                if(otherParams.fileName?.endsWith(`.${pythonFileExtension}`)){
+                // SPY file shouldn't be based on the state anymore. But just for keeping them working, we can support both situations:
+                // we check if the file is an object like (old format SPY) or starts with our special comments (new format SPY).
+                const isPurePython = otherParams.fileName?.endsWith(`.${pythonFileExtension}`)??false;
+                const isSpyNewFormat = (otherParams.fileName?.endsWith(`.${strypeFileExtension}`)??false) && fileContent.startsWith(AppSPYFullPrefix);
+                if(isPurePython){
                     // The loading mechanisms for a Python file differs from a Strype file AND it doens't maintain a "link" to Google Drive.
-                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(fileContent, otherParams.fileName, lastSaveDate).then(() => {
+                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(fileContent, otherParams.fileName as string, lastSaveDate, false).then(() => {
                         this.saveFileId = undefined;
                         this.updateSignInStatus(cloudTarget, false);
                         this.appStore.strypeProjectLocation = undefined;
@@ -439,14 +445,12 @@ export default Vue.extend({
                     const strypeLocationAlias = this.appStore.strypeProjectLocationAlias;
                     // Load the file content in the editor
                     const isOpenedSharedProject = (this.openSharedProjectFileId.length > 0);
-                    this.appStore.setStateFromJSONStr(
-                        {
-                            stateJSONStr: fileContent,
-                            showMessage: !isOpenedSharedProject,
-                        }                    
-                    ).then(() => {
+                    const fileLoadFn = (isSpyNewFormat) 
+                        ? (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(fileContent, otherParams.fileName as string, lastSaveDate, false)
+                        : this.appStore.setStateFromJSONStr({stateJSONStr: fileContent, showMessage: !isOpenedSharedProject});
+                    fileLoadFn.then(() => {
                         // Give focus to the current (focusable) frame element so interaction can happen
-                        document.getElementById(getFrameUID(this.appStore.currentFrame.id))?.focus();
+                        document.getElementById(getFrameUID((isSpyNewFormat) ? this.appStore.getImportsFrameContainerId : this.appStore.currentFrame.id))?.click();
                         // Only update things if we could set the new state
                         if(isOpenedSharedProject){
                             this.cleanCloudDriveRelatedInfosInState();

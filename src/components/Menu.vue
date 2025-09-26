@@ -203,14 +203,14 @@
 import Vue from "vue";
 import { useStore, settingsStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
-import { AppEvent, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, ShareProjectMode, SlotCoreInfos, SlotCursorInfos, SlotType, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
+import { AppEvent, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, ShareProjectMode, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
 import {countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppLangSelectId, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getCloudDriveHandlerComponentRefId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNearestErrorIndex, getSaveAsProjectModalDlg, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey, getSaveProjectLinkId, getNewProjectLinkId, getImportFileInputId} from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
 import CloudDriveHandler from "@/components/CloudDriveHandler.vue";
 import { downloadHex, downloadPython } from "@/helpers/download";
 import { canBrowserOpenFilePicker, canBrowserSaveFilePicker, openFile, saveFile } from "@/helpers/filePicker";
-import { saveDivider } from "@/helpers/load-save";
+import { generateSPYFileContent } from "@/helpers/load-save";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { BvModalEvent } from "bootstrap-vue";
 import { watch } from "@vue/composition-api";
@@ -218,9 +218,8 @@ import { cloneDeep } from "lodash";
 import App from "@/App.vue";
 import appPackageJson from "@/../package.json";
 import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
-import { AppName, AppPlatform, AppSPYPrefix, AppSPYSaveVersion, getLocaleBuildDate } from "@/main";
+import { getLocaleBuildDate } from "@/main";
 import scssVars from "@/assets/style/_export.module.scss";
-import {parseCodeAndGetParseElements} from "@/parser/parser";
 import OpenDemoDlg from "@/components/OpenDemoDlg.vue";
 
 //////////////////////
@@ -923,18 +922,7 @@ export default Vue.extend({
                             return;
                         }
                         // Save the .spy file of the state, we try to use the file picker if the browser allows it, otherwise, download to the default download repertory of the browser.
-                        let saveContent = parseCodeAndGetParseElements(false, true).parsedOutput;
-                        // We add the initial headers:
-                        const headers = new Map<string, string | undefined>();
-                        headers.set(AppName, AppSPYSaveVersion + ":" + AppPlatform);
-                        headers.set("editorCommandsSplitterPane2Size", saveDivider(this.appStore.editorCommandsSplitterPane2Size));
-                        /* IFTRUE_isPython */
-                        headers.set("peaLayoutMode", this.appStore.peaLayoutMode === undefined ? undefined : StrypePEALayoutMode[this.appStore.peaLayoutMode]);
-                        headers.set("peaCommandsSplitterPane2Size", saveDivider(this.appStore.peaCommandsSplitterPane2Size));
-                        headers.set("peaSplitViewSplitterPane1Size", saveDivider(this.appStore.peaSplitViewSplitterPane1Size));
-                        headers.set("peaExpandedSplitterPane2Size", saveDivider(this.appStore.peaExpandedSplitterPane2Size));
-                        /* FITRUE_isPython */
-                        saveContent = Array.from(headers.entries()).filter(([k, v]) => v !== undefined).map((e) => "#" + AppSPYPrefix + " " + e[0] + ":" + e[1] + "\n").join("") + saveContent;
+                        const saveContent = generateSPYFileContent();
                         if(canBrowserSaveFilePicker()){
                             saveFile(saveFileName, this.strypeProjMIMEDescArray, this.appStore.strypeProjectLocation, saveContent, (fileHandle: FileSystemFileHandle) => {
                                 this.appStore.strypeProjectLocation = fileHandle;
@@ -985,7 +973,7 @@ export default Vue.extend({
                     if (selectedDemo) {
                         selectedDemo.demoFile.then((content) => {
                             if (content) {
-                                (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content, selectedDemo.name ?? "Demo", 0)
+                                (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content, selectedDemo.name ?? "Demo", 0, false)
                                     .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
                             }
                         });
@@ -1026,7 +1014,7 @@ export default Vue.extend({
                                 // name is not always available so we also check if content starts with a {,
                                 // which it will do for spy files:
                                 if (file.name.endsWith(".py") || !(reader.result as string).trimStart().startsWith("{")) {
-                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(reader.result as string, fileHandles[0].name, file.lastModified, fileHandles[0]);
+                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(reader.result as string, fileHandles[0].name, file.lastModified, true, fileHandles[0]);
                                 }
                                 else {
                                     this.appStore.setStateFromJSONStr(
@@ -1066,7 +1054,7 @@ export default Vue.extend({
                                 // name is not always available so we also check if content starts with a {,
                                 // which it will do for spy files:
                                 if (fileName.endsWith(".py") || !content.trimStart().startsWith("{")) {
-                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content, fileName, lastModified);
+                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content, fileName, lastModified, true);
                                 }
                                 else {
                                     this.appStore.setStateFromJSONStr(

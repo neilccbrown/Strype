@@ -640,7 +640,7 @@ export default Vue.extend({
                                         stateJSONStr: resp.data,
                                         showMessage: false,
                                     }) :
-                                    this.setStateFromPythonFile(resp.data, filename, 0)
+                                    this.setStateFromPythonFile(resp.data, filename, 0, false)
                                 ).then(() => {
                                     alertMsgKey = "appMessage.retrievedSharedGenericProject";
                                     alertParams = this.appStore.projectName;
@@ -1290,7 +1290,7 @@ export default Vue.extend({
             /* FITRUE_isPython */
         },
         
-        setStateFromPythonFile(completeSource: string, fileName: string, lastSaveDate: number, fileLocation?: FileSystemFileHandle) : Promise<void> {
+        setStateFromPythonFile(completeSource: string, fileName: string, lastSaveDate: number, requestFSFileLoadedNotification: boolean, fileLocation?: FileSystemFileHandle) : Promise<void> {
             return new Promise((resolve) => {
                 const s = pasteMixedPython(completeSource, true);
 
@@ -1314,8 +1314,10 @@ export default Vue.extend({
                         loadDivider(s.headers["peaSplitViewSplitterPane1Size"]),
                         loadDivider(s.headers["peaExpandedSplitterPane2Size"]),
                         () => {
-                            // Finally, we can trigger the notifcation a file has been loaded.
-                            (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, lastSaveDate, fileLocation);
+                            // Finally, we can trigger the notifcation a file from FS has been loaded.
+                            if(requestFSFileLoadedNotification){
+                                (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, lastSaveDate, fileLocation);
+                            }
                             resolve();
                         }
                     );

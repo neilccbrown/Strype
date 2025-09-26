@@ -20,6 +20,7 @@ import { MessageDefinitions, StrypeSyncTarget } from "@/types/types";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker.vue";
 import { PropType } from "@vue/composition-api";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
+import { AppSPYFullPrefix } from "@/main";
 
 //////////////////////
 //     Component    //
@@ -240,7 +241,8 @@ export default Vue.extend({
                 }).then((resp) => {
                     // The response from Google Drive would be encoded in UTF-8, so we need to decode it.
                     // cf https://stackoverflow.com/questions/13356493/decode-utf-8-with-javascript
-                    onGettingFileContentSuccess((otherParams.fileName?.endsWith(`.${pythonFileExtension}`)) ? resp.body : decodeURIComponent(escape(JSON.stringify(resp.result))));
+                    const isPythonLikeFormat = (otherParams.fileName && (otherParams.fileName.endsWith(`.${pythonFileExtension}`) || (otherParams.fileName.endsWith(`.${strypeFileExtension}`) && resp.body && resp.body.startsWith(AppSPYFullPrefix))));
+                    onGettingFileContentSuccess(decodeURIComponent(escape((isPythonLikeFormat) ? resp.body : JSON.stringify(resp.result))));
                 }, (resp) => onGettingFileContentFailure(resp.status??400));
             });
         },
