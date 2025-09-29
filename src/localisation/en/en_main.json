@@ -249,5 +249,9 @@
     "builtinConsole": "Console",
     "builtinTurtle": "Turtle",
     "builtinMicrobit": "micro:bit"
+  },
+  "shortcut": {
+    "delete": "Delete",
+    "ctrlPlus": "Ctrl+"
   }
 }

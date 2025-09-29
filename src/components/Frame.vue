@@ -469,8 +469,8 @@ export default Vue.extend({
 
             // If there's a windows and Mac shortcut they are put in an array:
             this.frameContextMenuItems = [
-                {name: this.$i18n.t("contextMenu.cut") as string, method: this.cut, actionName: FrameContextMenuActionName.cut, shortcut: ["Ctrl-X", "⌘X"]},
-                {name: this.$i18n.t("contextMenu.copy") as string, method: this.copy, actionName: FrameContextMenuActionName.copy, shortcut: ["Ctrl-C", "⌘C"]},
+                {name: this.$i18n.t("contextMenu.cut") as string, method: this.cut, actionName: FrameContextMenuActionName.cut, shortcut: [(this.$i18n.t("shortcut.ctrlPlus") as string) + "X", "⌘X"]},
+                {name: this.$i18n.t("contextMenu.copy") as string, method: this.copy, actionName: FrameContextMenuActionName.copy, shortcut: [(this.$i18n.t("shortcut.ctrlPlus") as string) + "C", "⌘C"]},
                 {name: this.$i18n.t("contextMenu.downloadAsImg") as string, method: this.downloadAsImg},
                 {name: this.$i18n.t("contextMenu.duplicate") as string, method: this.duplicate},
                 {name: "", method: () => {}, type: "divider"},
@@ -479,7 +479,7 @@ export default Vue.extend({
                 {name: "", method: () => {}, type: "divider"},
                 {name: this.$i18n.t("contextMenu.disable") as string, method: this.disable},
                 {name: "", method: () => {}, type: "divider"},
-                {name: this.$i18n.t("contextMenu.delete") as string, method: this.delete, actionName: FrameContextMenuActionName.delete, shortcut: "Delete"},
+                {name: this.$i18n.t("contextMenu.delete") as string, method: this.delete, actionName: FrameContextMenuActionName.delete, shortcut: this.$i18n.t("shortcut.delete") as string},
                 {name: this.$i18n.t("contextMenu.deleteOuter") as string, method: this.deleteOuter}];
 
             // Not all frames should be duplicated (e.g. Else)
