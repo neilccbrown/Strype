@@ -84,7 +84,7 @@
     "driveFileReadOnly": "This {drivename} project is read-only.",
     "gdriveWrongFile": "Please select a file supported by Strype (extension \".spy\" or \".py\").",
     "driveNoFile": "The project does not exist in {drivename}.",
-    "gdriveError": "An error occured when attempting to load your Google Drive project (error: {error}).",
+    "cloudDriveError": "An error occured when attempting to load your {drivename} project (error: {error}).",
     "cloudDrivePublicShareFailed":"The project could not be shared publicly.<br>(Error: {error})",
     "unexpectedCharsPython": "unexpected character(s)",
     "fileIO": {
