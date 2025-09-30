@@ -151,6 +151,9 @@ describe("Loads and re-saves fixture files", () => {
     it("Loads a basic trisection project", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic-trisection.spy");
     });
+    it("Loads a project with docs", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-documented.spy");
+    });
     it("Outputs a dummy for solo try", () => {
         // Make an empty try, which should save with a placeholder:
         testEntryDisableAndSave("tpmsg{enter}{downarrow}{backspace}", [], "tests/cypress/fixtures/project-try-solo.spy");

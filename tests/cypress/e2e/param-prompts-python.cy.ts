@@ -14,8 +14,6 @@ describe("Parameter prompts Python only", () => {
     if (Cypress.env("mode") !== "microbit") {
         rawFuncs.push(["urllib.request", "urlopen", ["url", "data=None", "timeout=...", "*", "cafile=None", "capath=None", "cadefault=False", "context=None"]]);
         rawFuncs.push(["datetime", "date.fromtimestamp", ["timestamp"]]);
-        rawFuncs.push([["http://localhost:8089/test-library/", "mediacomp"], "makePicture", ["path"]]);
-        rawFuncs.push([["http://localhost:8089/test-library/", "mediacomp"], "Pixel", ["picture", "x", "y", "index"]]);
     }
     testRawFuncs(rawFuncs);
 });

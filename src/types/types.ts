@@ -2,6 +2,8 @@ import i18n from "@/i18n";
 import Compiler from "@/compiler/compiler";
 import { useStore } from "@/store/store";
 import scssVars from "@/assets/style/_export.module.scss";
+import quoteCircleProject from "@/assets/images/quote-circle-project.png";
+import quoteCircleFuncdef from "@/assets/images/quote-circle-funcdef.png";
 
 // Re-export types from ac-types:
 // Note, important to use * here rather than individual imports, to avoid this issue with Babel:
@@ -100,6 +102,7 @@ export enum SlotType {
     // "no type", which can be used for undo/redo difference marking
     // media type
     media = 0o70000, // meta category
+    comment = 0o700000, // meta category
     none = 0,
 }
 
@@ -147,7 +150,18 @@ export interface FrameObject {
 export enum AllowedSlotContent {
     ONLY_NAMES,
     ONLY_NAMES_OR_STAR,
-    TERMINAL_EXPRESSION
+    TERMINAL_EXPRESSION,
+    FREE_TEXT_DOCUMENTATION,
+    LIBRARY_ADDRESS
+}
+
+// REQUIRED means it must have a value, and slot will always show regardless of content or focus
+// HIDDEN_WHEN_UNFOCUSED_AND_BLANK means if empty and unfocused the whole slot will be hidden
+// PROMPT_WHEN_UNFOCUSED_AND_BLANK means if empty and unfocused it will show the slot, and show some prompt text 
+export enum OptionalSlotType {
+    REQUIRED,
+    HIDDEN_WHEN_UNFOCUSED_AND_BLANK,
+    PROMPT_WHEN_UNFOCUSED_AND_BLANK
 }
 
 export interface FrameLabel {
@@ -156,9 +170,10 @@ export interface FrameLabel {
     showLabel?: boolean; // default true, indicates if the label is showned (ex method call frame has no label text)
     showSlots?: boolean; // default true, false indicates that the label has no slot to be associated with it (for example label ":" in "if <xxx> :")
     defaultText: string;
-    optionalSlot?: boolean; //default false (indicate that this label does not require at least 1 slot value)
+    optionalSlot?: OptionalSlotType; //default REQUIRED (indicates whether this label requires a value, and its hiding behaviour when empty; see OptionalSlotType)
     acceptAC?: boolean; //default true
     allowedSlotContent?: AllowedSlotContent; // default TERMINAL_EXPRESSION; what the slot accepts
+    newLine?: boolean; //default false; this item starts a new line
 }
 
 export enum CaretPosition {
@@ -323,6 +338,10 @@ export const ContainerTypesIdentifiers = {
     framesMainContainer: "mainContainer",
 };
 
+const SpecialTypesIdentifiers = {
+    projectDocumentation: "projectDocumentation",
+};
+
 const CommentFrameTypesIdentifier = {
     comment: "comment",
 };
@@ -363,6 +382,7 @@ const StandardFrameTypesIdentifiers = {
 };
 
 export const AllFrameTypesIdentifier = {
+    ...SpecialTypesIdentifiers,
     ...ImportFrameTypesIdentifiers,
     ...FuncDefIdentifiers,
     ...StandardFrameTypesIdentifiers,
@@ -443,6 +463,16 @@ export const FrameContainersDefinitions = {
     MainFramesContainerDefinition,
 };
 
+export const ProjectDocumentationDefinition: FramesDefinitions = {
+    ...StatementDefinition,
+    type: AllFrameTypesIdentifier.projectDocumentation,
+    labels: [
+        { label: `<img src='${quoteCircleProject}'>`, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.t("frame.defaultText.projectDescription") as string, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
+    ],
+    colour: "#A00000",
+};
+
+
 let Definitions = {};
 
 // Entry point for generating the frame definition types -- only doing so to allow dynamic localisation bits...
@@ -466,7 +496,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
     const ReturnDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.return,
-        labels: [{ label: "return ", defaultText: i18n.t("frame.defaultText.expression") as string, optionalSlot: true }],
+        labels: [{ label: "return ", defaultText: i18n.t("frame.defaultText.expression") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK }],
         colour: scssVars.mainCodeContainerBackground,
     };
 
@@ -509,7 +539,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.raise,
         labels: [
-            { label: "raise ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: true },
+            { label: "raise ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK },
         ],
         colour: scssVars.mainCodeContainerBackground,
     };
@@ -545,7 +575,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...StatementDefinition,
         type: ImportFrameTypesIdentifiers.library,
         labels: [
-            { label: "library ", defaultText: i18n.t("frame.defaultText.libraryAddress") as string, acceptAC: false },
+            { label: "library ", defaultText: i18n.t("frame.defaultText.libraryAddress") as string, acceptAC: false, allowedSlotContent: AllowedSlotContent.LIBRARY_ADDRESS},
         ],
         colour: "#B4C8DC",
     };
@@ -553,7 +583,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
     const CommentDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.comment,
-        labels: [{ label: "# ", defaultText: i18n.t("frame.defaultText.comment") as string, optionalSlot: true, acceptAC: false }],
+        labels: [{ label: "# ", defaultText: i18n.t("frame.defaultText.comment") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION}],
         colour: scssVars.mainCodeContainerBackground,
     };
 
@@ -612,6 +642,8 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             { label: "while ", defaultText: i18n.t("frame.defaultText.condition") as string },
             { label: " :", showSlots: false, defaultText: "" },
         ],
+        allowJointChildren: true,
+        jointFrameTypes: [StandardFrameTypesIdentifiers.else],
         colour: "#E4D5D5",
     };
 
@@ -619,7 +651,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.except,
         labels: [
-            { label: "except ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: true, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
+            { label: "except ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
             { label: " :", showSlots: false, defaultText: "" },
         ],
         jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
@@ -652,8 +684,9 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         type: FuncDefIdentifiers.funcdef,
         labels: [
             { label: "def ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
-            { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: true, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
+            { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
             { label: ") :", showSlots: false, defaultText: "" },
+            { label: `<img src='${quoteCircleFuncdef}'>`, newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.t("frame.defaultText.funcDescription") as string, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],
         colour: "#ECECC8",
     };
@@ -693,6 +726,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         LibraryDefinition,
         CommentDefinition,
         GlobalDefinition,
+        ProjectDocumentationDefinition,
         // also add the frame containers as we might need to retrieve them too
         ...FrameContainersDefinitions,
     };
@@ -713,6 +747,8 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             case MainFramesContainerDefinition.type:
                 frameObject.frameType.labels[0].label = i18n.t("appMessage.mainContainer") as string;
                 MainFramesContainerDefinition.labels[0].label = i18n.t("appMessage.mainContainer") as string;
+                break;
+            case ProjectDocumentationDefinition.type:
                 break;
             default:
                 // For all normal frames, we rely on the frame definition type                
@@ -1040,7 +1076,7 @@ export enum StrypePlatform {
     microbit = "mb",
 }
 
-// This enum represents the different possible states the user code Python execution can take
+// This enum represents the different possible states the user code Python execution can take (including the micro:bit simulator)
 export enum PythonExecRunningState {
     NotRunning,
     Running,

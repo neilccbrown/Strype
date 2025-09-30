@@ -69,7 +69,7 @@ describe("User-defined items", () => {
         focusEditorAC();
         // Make an assignment frame that says "myVar=<string>", then make a function definition:
         cy.get("body").type("=myVar=\"hello\"{enter}");
-        cy.get("body").type("{uparrow}{uparrow}ffoo{rightarrow}{rightarrow} ");
+        cy.get("body").type("{uparrow}{uparrow}ffoo{rightarrow}{rightarrow}{rightarrow} ");
         cy.wait(500);
         // Trigger auto-completion:
         cy.get("body").type("{ctrl} ");
@@ -110,7 +110,7 @@ describe("User-defined items", () => {
         focusEditorAC();
         // Make a function frame with "foo(myParam)" 
         // then make a function call frame inside:
-        cy.get("body").type("{uparrow}ffoo(myParam{rightarrow} ");
+        cy.get("body").type("{uparrow}ffoo(myParam{rightarrow}{rightarrow} ");
         // Trigger auto-completion:
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {

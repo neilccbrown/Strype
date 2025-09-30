@@ -8,7 +8,7 @@ import { getAppSimpleMsgDlgId } from "./editor";
 import i18n from "@/i18n";
 
 export function downloadHex(showImagePopup?: boolean): void {
-    const parserElements = parseCodeAndGetParseElements(true);
+    const parserElements = parseCodeAndGetParseElements(true, "py");
     let succeeded = !parserElements.hasErrors;
     if(succeeded){
         const blob = compileBlob(parserElements.compiler);
@@ -31,21 +31,29 @@ export function downloadHex(showImagePopup?: boolean): void {
     }
 }
 
-export function downloadPython() : void {
-    const parserElements = parseCodeAndGetParseElements(false);
+export function getPythonContent(): Promise<string> {
+    const parserElements = parseCodeAndGetParseElements(false, "py-export");
     if (parserElements.hasErrors) {
         // Notify the user of any detected errors in the code
         useStore().simpleModalDlgMsg = i18n.t("appMessage.preCompiledErrorNeedFix") as string;
         vm.$emit("bv::show::modal", getAppSimpleMsgDlgId());
-        return;
+        return Promise.reject("");
     }
+    return Promise.resolve(parserElements.parsedOutput);
+}
 
-    const blob = new Blob(
-        [parserElements.parsedOutput],
-        { type: "application/octet-stream" }
-    );
-    saveAs(
-        blob,
-        "main.py"
-    );
+export function downloadPython(): void {
+    getPythonContent()
+        .then((pyContent) => {
+            const blob = new Blob(
+                [pyContent],
+                { type: "application/octet-stream" }
+            );
+            saveAs(
+                blob,
+                "main.py"
+            );
+        })
+        // Do nothing on error, we already show a message in getPythonContent()
+        .catch((_) => {});
 }

@@ -32,7 +32,7 @@ export function loadDivider(json: string | undefined): StrypeLayoutDividerSettin
 }
 
 export function generateSPYFileContent(): string {
-    let saveContent = parseCodeAndGetParseElements(false, true).parsedOutput;
+    let saveContent = parseCodeAndGetParseElements(false, "spy").parsedOutput;
     // We add the initial headers:
     const headers = new Map<string, string | undefined>();
     headers.set(AppName, AppSPYSaveVersion + ":" + AppPlatform);

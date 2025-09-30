@@ -132,7 +132,7 @@ export function parseFrameUID(frameUID: string): number {
     return (frameUIDMatch) ? parseInt(frameUIDMatch[1]) : -100;
 }
 
-const labelSlotUIDRegex = /^input_frame_(\d+)_label_(\d+)_slot_([0-7]{4})_(\d+(,\d+)*)$/;
+const labelSlotUIDRegex = /^input_frame_(-?\d+)_label_(\d+)_slot_([0-7]{4})_(\d+(,\d+)*)$/;
 export function getLabelSlotUID(slotCoreInfos: SlotCoreInfos): string {
     // If a change is done in this method, also update isElementLabelSlotInput() and parseLabelSlotUID()
     // For explanation about the slotID format, see generateFlatSlotBases() in storeMethods.ts
@@ -169,7 +169,7 @@ export function isElementEditableLabelSlotInput(element: EventTarget | null): bo
         return false;
     }
     // Cf. getLabelSlotUID() for the format
-    const regexMatch = (element as HTMLSpanElement).id.match("^input_frame_\\d+_label_\\d+_slot_000(\\d)_\\d+(,\\d+)*$");
+    const regexMatch = (element as HTMLSpanElement).id.match("^input_frame_-?\\d+_label_\\d+_slot_000(\\d)_\\d+(,\\d+)*$");
     return regexMatch != null && parseInt(regexMatch[1]) < 8;
 }
 

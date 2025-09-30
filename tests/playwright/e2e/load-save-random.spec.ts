@@ -2,7 +2,7 @@
 // and fill the slots with blanks or random content then see if it
 // saves or not.
 
-import {allFrameCommandsDefs, FuncDefIdentifiers, getFrameDefType, CommentFrameTypesIdentifier, JointFrameIdentifiers, ImportFrameTypesIdentifiers, StandardFrameTypesIdentifiers} from "../../cypress/support/frame-types";
+import {allFrameCommandsDefs, AllowedSlotContent, CommentFrameTypesIdentifier, FuncDefIdentifiers, getFrameDefType, ImportFrameTypesIdentifiers, JointFrameIdentifiers, StandardFrameTypesIdentifiers} from "../../cypress/support/frame-types";
 import seedrandom from "seedrandom";
 import en from "../../../src/localisation/en/en_main.json";
 
@@ -149,7 +149,7 @@ function genRandomFrame(fromFrames: string[], level : number): FrameEntry {
             }
             else {
                 const expr = genRandomExpression();
-                return id == "comment" ? expr.trim() : expr;
+                return id == "comment" || id == "library" ? expr.trim() : expr;
             }
         }),
         ...(children !== undefined ? { body: disable ? disableAll(children) : children } : {}),
@@ -210,10 +210,12 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
         await page.waitForTimeout(100);
     }
     
-    for (const s of frame.slotContent) {
+    for (let i = 0; i < frame.slotContent.length; i++){
+        const slotType = getFrameDefType(frame.frameType).labels.filter((l) => l.showSlots ?? true)[i].allowedSlotContent ?? AllowedSlotContent.TERMINAL_EXPRESSION;
+        const s = frame.slotContent[i];
         console.log("Entering slot:   <<<" + s + ">>> into " + frame.frameType);
         await checkFrameXorTextCursor(page, false, "Slot of frame " + frame.frameType);
-        const enterable = frame.frameType === "comment" ? s : s.replaceAll(/[“”]/g, "\"").replaceAll(/[‘’]/g, "'");
+        const enterable = slotType == AllowedSlotContent.FREE_TEXT_DOCUMENTATION || slotType == AllowedSlotContent.LIBRARY_ADDRESS ? s : s.replaceAll(/[“”]/g, "\"").replaceAll(/[‘’]/g, "'");
         await typeIndividually(page, enterable, 200);
         await page.keyboard.press("ArrowRight");
         await page.waitForTimeout(100);
@@ -339,7 +341,7 @@ async function getAllFrames(container : ElementHandle<HTMLElement>) : Promise<Fr
         const disabled = await el.evaluate((el) => el.classList.contains("disabled"));
         frameEntries.push({
             frameType: frameType ?? "<unknown>",
-            slotContent: slots.map((s) => s.trim().replace(/\u200B/g, "") ?? ""),
+            slotContent: slots.map((s) => s.replace(/\u200B/g, "") ?? ""),
             ...(disabled ? {disabled: true} : {}),
             ...(body !== undefined ? { body } : {}),
             ...(joint !== undefined ? { joint } : {}),
@@ -361,11 +363,26 @@ async function newProject(page: Page) : Promise<void> {
     await page.waitForTimeout(2000);
 }
 
-async function testSpecific(page: Page, sections: FrameEntry[][]) : Promise<void> {
+async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: string) : Promise<void> {
     await page.keyboard.press("Delete");
     await page.keyboard.press("Delete");
     await page.keyboard.press("ArrowUp");
     await page.keyboard.press("ArrowUp");
+    
+    if (projectDoc) {
+        await page.keyboard.press("ArrowLeft");
+        await page.waitForTimeout(100);
+        const lines = projectDoc.split("\n");
+        for (let i = 0; i < lines.length; i++) {
+            if (i > 0) {
+                await page.keyboard.press("Shift+Enter");
+            }
+            await page.keyboard.type(lines[i]);
+        }
+        await page.waitForTimeout(100);
+        await page.keyboard.press("ArrowRight");
+        await page.waitForTimeout(500);
+    }
 
     for (let section = 0; section < 3; section++) {
         for (let j = 0; j < sections[section].length; j++) {
@@ -414,7 +431,16 @@ test.describe("Enters, saves and loads random frame", () => {
 
             const seed = Math.random().toString();
             console.log(`Seed: "${seed}"`);
-            rng = seedrandom(seed).int32;
+            const prng = seedrandom(seed);
+            rng = prng.int32.bind(prng);
+            if (genRandomInt(3) == 1) {
+                await page.keyboard.press("ArrowLeft");
+                await page.waitForTimeout(100);
+                await page.keyboard.type("Doc " + rng());
+                await page.keyboard.press("ArrowRight");
+                await page.waitForTimeout(100);
+            }
+            
             const frames = [[], [], []] as FrameEntry[][];
             for (let section = 0; section < 3; section++) {
                 const numFrames = 5;
@@ -467,6 +493,22 @@ test.describe("Enters, saves and loads specific frames", () => {
             {frameType: "comment", slotContent: [""]},
         ]]);
     });
+    test("Project documentation #1", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "funccall", slotContent: ["foo()"]},
+        ]], "This is the project docs");
+    });
+    test("Project documentation #2", async ({page}) => {
+        await testSpecific(page, [[
+            {frameType: "comment", slotContent: ["This is an import comment"]}], [], [
+            {frameType: "funccall", slotContent: ["foo()"]},
+        ]]);
+    });
+    test("Project documentation #3", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "funccall", slotContent: ["foo()"]},
+        ]], "This is the project docs\nwith newlines in it\nand a trailing newline\n");
+    });
     test("Tests trailing blank line", async ({page}) => {
         await testSpecific(page, [[], [], [
             {frameType: "blank", slotContent: []},
@@ -476,7 +518,7 @@ test.describe("Enters, saves and loads specific frames", () => {
     });
     test("Tests blank between while and if", async ({page}) => {
         await testSpecific(page, [[], [], [
-            {frameType: "while", slotContent: ["foo"], body: []},
+            {frameType: "while", slotContent: ["foo"], body: [], joint: []},
             {frameType: "blank", slotContent: []},
             {frameType: "if", slotContent: ["foo"], body: [], joint: []},
         ]]);
@@ -485,7 +527,7 @@ test.describe("Enters, saves and loads specific frames", () => {
         await testSpecific(page, [[], [], [
             {frameType: "while", slotContent: ["foo"], body: [
                 {frameType: "blank", slotContent: []},
-            ]},
+            ], joint: []},
             {frameType: "if", slotContent: ["foo"], body: [], joint: []},
         ]]);
     });
@@ -502,25 +544,25 @@ test.describe("Enters, saves and loads specific frames", () => {
 
     test("Blanks at the end of funcdef", async ({page}) => {
         await testSpecific(page, [[], [
-            {frameType: "funcdef", slotContent: ["foo", ""], body: [
+            {frameType: "funcdef", slotContent: ["foo", "", ""], body: [
                 {frameType: "blank", slotContent: []},
                 {frameType: "while", slotContent: ["foo"], body: [
                     {frameType: "comment", slotContent: ["Inside def"]},
-                ]},
+                ], joint: []},
                 {frameType: "blank", slotContent: []},
             ]},
         ], [
             {frameType: "blank", slotContent: []},
             {frameType: "while", slotContent: ["foo"], body: [
                 {frameType: "comment", slotContent: ["Inside while"]},
-            ]},
+            ], joint: []},
             {frameType: "comment", slotContent: ["Outside while"]},
         ]]);
     });
 
     test("Blanks at the end of funcdef #2", async ({page}) => {
         await testSpecific(page, [[], [
-            {frameType: "funcdef", slotContent: ["foo", ""], body: [
+            {frameType: "funcdef", slotContent: ["foo", "", ""], body: [
                 {frameType: "blank", slotContent: []},
                 {frameType: "blank", slotContent: []},
                 {frameType: "blank", slotContent: []},
@@ -544,9 +586,9 @@ test.describe("Enters, saves and loads specific frames", () => {
 
     test("Comments at the end of funcdefs", async ({page}) => {
         await testSpecific(page, [[], [
-            {frameType: "funcdef", slotContent: ["foo", ""], body: [
+            {frameType: "funcdef", slotContent: ["foo", "", ""], body: [
                 {frameType: "varassign", slotContent: ["1_", "#!0"]},
-                {frameType: "while", slotContent: ["foo"], body: []},
+                {frameType: "while", slotContent: ["foo"], body: [], joint: []},
                 {frameType: "comment", slotContent: ["Inside def"]},
             ]},
             {frameType: "comment", slotContent: ["Outside def"]},
@@ -554,7 +596,7 @@ test.describe("Enters, saves and loads specific frames", () => {
             {frameType: "blank", slotContent: []},
             {frameType: "while", slotContent: ["foo"], body: [
                 {frameType: "comment", slotContent: ["Inside while"]},
-            ]},
+            ], joint: []},
             {frameType: "comment", slotContent: ["Outside while"]},
         ]]);
     });
@@ -563,7 +605,7 @@ test.describe("Enters, saves and loads specific frames", () => {
         await testSpecific(page, [[], [], [
             {frameType: "while", slotContent: ["foo"], body: [
                 {frameType: "comment", slotContent: ["Only comment in body"]},
-            ]},
+            ], joint: []},
             {frameType: "raise", slotContent: ["foo"]},
         ]]);
     });
@@ -643,6 +685,19 @@ test.describe("Enters, saves and loads specific frames", () => {
         ]);
     });
 
+    test("While with else", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "while", slotContent: ["True"], body: [
+                {frameType: "raise", slotContent: ["baz"]},
+            ], joint: [
+                {frameType: "else", slotContent: [], body: [
+                    {frameType: "raise", slotContent: ["abc"]},
+                ]},
+            ]},
+            {frameType: "raise", slotContent: ["foo"]},
+        ]]);
+    });
+
     test("Blanks in try", async ({page}) => {
         test.slow();
         await testSpecific(page, [[], [],
@@ -687,6 +742,7 @@ test.describe("Enters, saves and loads specific frames", () => {
                             "joint": [],
                         },
                     ],
+                    "joint": [],
                 },
                 {
                     "frameType": "blank",
@@ -968,6 +1024,17 @@ test.describe("Enters, saves and loads specific frames", () => {
         ]]);
     });
 
+    test("Invalid expressions #2", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "if", slotContent: ["+“”{‘’}"], body: [], joint: []},
+        ]]);
+    });
+    test("Invalid expressions #3", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "varassign", slotContent: ["1_0B", "[1‘ foo bar ’aBü0]‘a’"]},
+        ]]);
+    });
+
     test("Valid nots", async ({page}) => {
         await testSpecific(page, [[], [], [
             {frameType: "funccall", slotContent: [" not foo( not bar)"]},
@@ -997,10 +1064,19 @@ test.describe("Enters, saves and loads specific frames", () => {
     test("Invalid commas", async ({page}) => {
         await testSpecific(page, [[], [], [
             {frameType: "if", slotContent: ["a,b,c==d"], body: [], joint: []},
-            {frameType: "while", slotContent: ["a,b,c==d"], body: []},
+            {frameType: "while", slotContent: ["a,b,c==d"], body: [], joint: []},
             {frameType: "with", slotContent: ["a,b,c==d", "x,y,z"], body: []},
             {frameType: "for", slotContent: ["a,b,c", "x,y,z==d"], body: [], joint: []},
             {frameType: "varassign", slotContent: ["a,b,c", "x,y,z+5"]},
         ]]);
+    });
+
+    test("Libraries with quotes", async ({page}) => {
+        await testSpecific(page, [[
+            {frameType: "library", slotContent: ["\"a\"+\"\""]},
+            {frameType: "library", slotContent: ["(+6.7){\" and \"[]} is not \"\"1"]},
+            {frameType: "library", slotContent: ["(+6.7){“ and ”[]} is not “”1"]},
+            {frameType: "library", slotContent: ["(#‘+’_$\\\\) not in "]},
+        ], [], []]);
     });
 });
