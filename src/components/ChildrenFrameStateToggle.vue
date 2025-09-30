@@ -1,5 +1,5 @@
 <template>
-    <div :class="{'fold-children-control': true, 'fold-doc': isFoldDoc, 'fold-header': isFoldHeader, 'fold-full': isFoldFull, 'fold-mixed': isFoldMixed }" @click="cycleFoldChildren">
+    <div :class="{'fold-children-control': true, 'fold-doc': isFoldDoc, 'fold-header': isFoldHeader, 'fold-full': isFoldFull, 'fold-mixed': isFoldMixed }" @click.prevent.stop="cycleFoldChildren">
         <img class="fold-children-full" src="@/assets/images/quote-circle-container-filled-echoed.png">
         <img class="fold-children-doc" src="@/assets/images/quote-circle-container-echoed.png">
         <img class="fold-children-header" src="@/assets/images/quote-circle-container-empty-echoed.png">
@@ -45,7 +45,7 @@ export default Vue.extend({
             return this.childrenCollapsedState === CollapsedState.FULLY_VISIBLE;
         },
         isFoldMixed(): boolean {
-            return this.childrenCollapsedState === undefined;
+            return this.childrenCollapsedState === undefined && this.frames.length > 0;
         },
     },
     
@@ -105,16 +105,15 @@ export default Vue.extend({
     margin-right: 15px;
     margin-bottom: 3px;
     position: relative;
-    overflow: hidden;
     width: 0.9em;
-    cursor: pointer;
 }
 .fold-children-control > img {
     position: absolute;
-    top: 0;
+    bottom: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    width: 0.9em;
+    height: auto;
+    max-height: none;
     object-fit: cover;
     opacity: 0;
 }
@@ -127,7 +126,9 @@ export default Vue.extend({
 .fold-children-control.fold-header > img.fold-children-header,
 .fold-children-control.fold-doc > img.fold-children-doc,
 .fold-children-control.fold-mixed > img.fold-children-full,
-.frame-container-header:hover .fold-children-control.fold-full > img.fold-children-full {
+.frame-container-header:hover .fold-children-control.fold-full > img.fold-children-full,
+.frame-header-div-line:hover .fold-children-control.fold-full > img.fold-children-full {
     opacity: 0.5;
+    cursor: pointer;
 }
 </style>
