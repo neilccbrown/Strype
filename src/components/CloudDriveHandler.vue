@@ -269,7 +269,7 @@ export default Vue.extend({
             const cloudDriveComponent = this.getSpecificCloudDriveComponent(cloudTarget);
             // In any case, we check that the given location (if provided) still exists. We set the alias (name of the folder) here.
             // If the folder doesn't exist, for all reasons for saving, we reset the Strype project location flags in the store (subsequent code will handle what to do)
-            if(this.appStore.strypeProjectLocation){
+            if(this.appStore.strypeProjectLocation && this.appStore.syncTarget == cloudTarget){
                 cloudDriveComponent?.getFolderNameFromId(this.appStore.strypeProjectLocation as string)
                     .then((folderName) => {
                         // Folder is found, we get the name
@@ -311,7 +311,7 @@ export default Vue.extend({
                         // Save will be done after the file has been picked.   
                     }
                     else{
-                        this.lookForAvailableProjectFileName(cloudTarget);
+                        this.lookForAvailableProjectFileName(cloudTarget, strypeFolderId??"");
                     }
                     return Promise.resolve();
                 }, () => {
@@ -321,7 +321,7 @@ export default Vue.extend({
             }
             else {
                 if(this.saveFileId){
-                    this.doSaveFile(cloudTarget);
+                    this.doSaveFile(cloudTarget, this.appStore.strypeProjectLocation as string);
                 }
                 else{
                     // Notify the application that if we were saving for loading now we are done
@@ -332,7 +332,7 @@ export default Vue.extend({
             }
         },
 
-        doSaveFile(cloudTarget: StrypeSyncTarget){
+        doSaveFile(cloudTarget: StrypeSyncTarget, strypeProjectLocation: string){
             const isExplictSave = (this.saveReason == SaveRequestReason.saveProjectAtLocation || this.saveReason == SaveRequestReason.saveProjectAtOtherLocation);
             if(isExplictSave){
                 this.saveFileId = undefined;
@@ -345,7 +345,7 @@ export default Vue.extend({
             // while when do autosave etc, we use th PROJECT saved name in the store.
             const fullFileName = newProjectName + "." + strypeFileExtension;
             const cloudDriveComponent = this.getSpecificCloudDriveComponent(cloudTarget);
-            cloudDriveComponent?.doSaveFile(this.saveFileId, this.appStore.strypeProjectLocation as string, fullFileName, fileContent, isExplictSave, (savedFileId: string) => {
+            cloudDriveComponent?.doSaveFile(this.saveFileId, strypeProjectLocation, fullFileName, fileContent, isExplictSave, (savedFileId: string) => {
                 // Save the save file ID 
                 this.saveFileId = savedFileId;
                 // Set the sync target 
@@ -515,7 +515,7 @@ export default Vue.extend({
         savePickedFolder(cloudTarget: StrypeSyncTarget){
             // Doesn't matter the extact nature of the reason for saving, as long as we specify one of the 2 values for explicit saving.
             this.saveReason = SaveRequestReason.saveProjectAtLocation;
-            this.lookForAvailableProjectFileName(cloudTarget);
+            this.lookForAvailableProjectFileName(cloudTarget, this.appStore.strypeProjectLocation as string);
         },
 
         onUnsupportedByStrypeFilePicked(){
@@ -524,10 +524,10 @@ export default Vue.extend({
             this.$root.$emit("bv::show::modal", this.unsupportedByStrypeFilePickedModalDlgId);
         },
 
-        lookForAvailableProjectFileName(cloudTarget: StrypeSyncTarget){
+        lookForAvailableProjectFileName(cloudTarget: StrypeSyncTarget, strypeProjectLocation: string){
             const cloudDriveComponent = this.getSpecificCloudDriveComponent(cloudTarget);
-            const onSuccessCallback = () => this.doSaveFile(cloudTarget);
-            cloudDriveComponent?.lookForAvailableProjectFileName(this.appStore.strypeProjectLocation as string | undefined, this.saveFileName, (existingFileId) => {
+            const onSuccessCallback = () => this.doSaveFile(cloudTarget, strypeProjectLocation);
+            cloudDriveComponent?.lookForAvailableProjectFileName(strypeProjectLocation, this.saveFileName, (existingFileId) => {
                 // Check if the file is locked before we propose to overwrite
                 cloudDriveComponent.checkIsFileLocked(existingFileId, () => {
                     // We show a dialog to the user to make their choice about what to do next

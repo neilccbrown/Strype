@@ -221,6 +221,7 @@ import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/help
 import { getLocaleBuildDate } from "@/main";
 import scssVars from "@/assets/style/_export.module.scss";
 import OpenDemoDlg from "@/components/OpenDemoDlg.vue";
+import { isSyncTargetCloudStorage } from "@/types/cloud-drive-types";
 
 //////////////////////
 //     Component    //
@@ -911,7 +912,7 @@ export default Vue.extend({
                     const selectValue = this.getTargetSelectVal();
                     // Reset the temporary sync file flag
                     this.tempSyncTarget = this.appStore.syncTarget;
-                    if(selectValue != StrypeSyncTarget.gd){
+                    if(!isSyncTargetCloudStorage(selectValue)){
                         if(!canBrowserSaveFilePicker() && saveFileName.trim().match(fileNameRegex) == null){
                             // Show an error message and do nothing special
                             this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.fileNameError") as string;
@@ -947,8 +948,8 @@ export default Vue.extend({
                         }
                     }
                     else {          
-                        // If we were already syncing to Google Drive, we save the current file now.
-                        if(this.isSyncingToGoogleDrive){
+                        // If we were already syncing to a Drive, we save the current file now.
+                        if(isSyncTargetCloudStorage(this.appStore.syncTarget)){
                             this.$root.$emit(CustomEventTypes.requestEditorProjectSaveNow, SaveRequestReason.autosave);
                         }
                         // When the project name is enforced, user as clicked on "save", so we don't need to trigger the usual saving mechanism to select the location/filename
@@ -958,7 +959,7 @@ export default Vue.extend({
                         }
                         const saveReason = (this.saveAtOtherLocation) ? SaveRequestReason.saveProjectAtOtherLocation : SaveRequestReason.saveProjectAtLocation; 
                         (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).saveFileName = saveFileName;
-                        (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).saveFile(StrypeSyncTarget.gd,saveReason);
+                        (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).saveFile(selectValue,saveReason);
                     }
                     this.currentModalButtonGroupIDInAction = "";
                 }
