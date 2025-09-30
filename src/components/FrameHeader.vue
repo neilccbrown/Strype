@@ -26,12 +26,12 @@
                 <!-- ^^ Note: append to frame label is same as prepend to slot -->
             </div>
             <div ref="foldingControl" :class="{'folding-control': true, 'fold-doc': isFoldDoc, 'fold-header': isFoldHeader, 'fold-full': isFoldFull }" @click.stop.prevent="cycleFold" v-if="canCycleFold && groupIndex == 0">
-                <img class="folding-header" src="@/assets/images/quote-circle-funcdef-empty.png" v-if="isFuncDef">
-                <img class="folding-doc" src="@/assets/images/quote-circle-funcdef.png" v-if="isFuncDef">
-                <img class="folding-full" src="@/assets/images/quote-circle-funcdef-filled.png" v-if="isFuncDef">
-                <img class="folding-header" src="@/assets/images/quote-circle-class-empty.png" v-if="isClassDef">
-                <img class="folding-doc" src="@/assets/images/quote-circle-class.png" v-if="isClassDef">
-                <img class="folding-full" src="@/assets/images/quote-circle-class-filled.png" v-if="isClassDef">
+                <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-funcdef-empty.png" v-if="isFuncDef">
+                <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-funcdef.png" v-if="isFuncDef">
+                <img class="folding-full" src="@/assets/images/quote-circle/quote-circle-funcdef-filled.png" v-if="isFuncDef">
+                <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-class-empty.png" v-if="isClassDef">
+                <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-class.png" v-if="isClassDef">
+                <img class="folding-full" src="@/assets/images/quote-circle/quote-circle-class-filled.png" v-if="isClassDef">
             </div>
             <ChildrenFrameStateToggle v-if="isClassDef && groupIndex === splitLabels.length - 1" :frames="children"/>
             <i v-if="wasLastRuntimeError && groupIndex == splitLabels.length - 1" :class="{'fas fa-exclamation-triangle fa-xs runtime-err-icon': true, 'runtime-past-err-icon': !erroneous}"></i>

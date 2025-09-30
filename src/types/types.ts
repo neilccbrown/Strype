@@ -2,9 +2,9 @@ import i18n from "@/i18n";
 import Compiler from "@/compiler/compiler";
 import { useStore } from "@/store/store";
 import scssVars from "@/assets/style/_export.module.scss";
-import quoteCircleProject from "@/assets/images/quote-circle-project.png";
-import quoteCircleFuncdef from "@/assets/images/quote-circle-funcdef.png";
-import quoteCircleClass from "@/assets/images/quote-circle-class.png";
+import quoteCircleProject from "@/assets/images/quote-circle/quote-circle-project.png";
+import quoteCircleFuncdef from "@/assets/images/quote-circle/quote-circle-funcdef.png";
+import quoteCircleClass from "@/assets/images/quote-circle/quote-circle-class.png";
 
 // Re-export types from ac-types:
 // Note, important to use * here rather than individual imports, to avoid this issue with Babel:

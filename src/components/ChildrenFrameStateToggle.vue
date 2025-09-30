@@ -1,8 +1,8 @@
 <template>
     <div :class="{'fold-children-control': true, 'fold-doc': isFoldDoc, 'fold-header': isFoldHeader, 'fold-full': isFoldFull, 'fold-mixed': isFoldMixed }" @click.prevent.stop="cycleFoldChildren">
-        <img class="fold-children-full" src="@/assets/images/quote-circle-container-filled-echoed.png">
-        <img class="fold-children-doc" src="@/assets/images/quote-circle-container-echoed.png">
-        <img class="fold-children-header" src="@/assets/images/quote-circle-container-empty-echoed.png">
+        <img class="fold-children-full" src="@/assets/images/quote-circle/quote-circle-container-filled-echoed.png">
+        <img class="fold-children-doc" src="@/assets/images/quote-circle/quote-circle-container-echoed.png">
+        <img class="fold-children-header" src="@/assets/images/quote-circle/quote-circle-container-empty-echoed.png">
     </div>
 </template>
 
