@@ -19,12 +19,14 @@ import { useStore } from "@/store/store";
 import { StrypeSyncTarget } from "@/types/types";
 import { mapStores } from "pinia";
 import Vue, { PropType } from "vue";
-import { PublicClientApplication  } from "@azure/msal-browser";
-import { IAuthenticateCommand, OneDrivePickConfigurationOptions } from "@/types/cloud-drive-types";
+import { AccountInfo, Configuration, PublicClientApplication  } from "@azure/msal-browser";
+import { OneDrivePickConfigurationOptions, OneDriveTokenPurpose } from "@/types/cloud-drive-types";
 import { uniqueId } from "lodash";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { CloudDriveAPIState } from "@/types/cloud-drive-types";
 import { CloudDriveFile } from "@/types/cloud-drive-types";
+import { BaseItem, UploadSession } from "@microsoft/microsoft-graph-types";
+import CloudDriveHandlerComponent from "@/components/CloudDriveHandler.vue";
 
 //////////////////////
 //     Component    //
@@ -52,17 +54,64 @@ export default Vue.extend({
             isFileLocked: false,
             // Specific to OneDrive:
             oauthToken: null as string | null,
+            isPersonalAccount: false,
             app: null as PublicClientApplication | null,
-            baseUrl: "https://onedrive.live.com/picker",
+            baseUrl: "https://onedrive.live.com/picker", // default value for personal accounts
             pickerPopup: null as WindowProxy | null,
             pickerOptions: null as OneDrivePickConfigurationOptions | null,
+            pickerPort: null as MessagePort | null,
+            isPickingFile: true, // flag to indicate whether the picker is in file or folder picking mode
+            currentFileLastModifiedDate: "",
+            currentFileName: "",
         };
     },
 
     computed:{
         ...mapStores(useStore),
 
+        siteOrigin(): string {
+            return (process.env.NODE_ENV === "production") ? "https://www.strype.org" : "http://localhost:8081";
+        },
+
+        redirectURI(): string {
+            const redirectServerEditorPath = "" /*IFTRUE_isPython +"editor" FITRUE_isPython*//*IFTRUE_isMicrobit +"microbit" FITRUE_isMicrobit*/;
+            return `${this.siteOrigin}/${redirectServerEditorPath}/`;
+        },
+
         // These are specific to the OneDrive component.
+        clientId(): string {
+            return "ee29b56f-8714-472f-a1c8-37e8551e3ec5";
+        },
+
+        msalParamsInit(): Configuration {
+            return {
+                auth: {
+                    authority: "https://login.microsoftonline.com/common",
+                    clientId: this.clientId,
+                    redirectUri: this.redirectURI,
+                },
+            };
+        },
+
+        msalParamsConsumerPicker(): Configuration {
+            return {
+                auth: {
+                    authority: "https://login.microsoftonline.com/consumers",
+                    clientId: this.clientId,
+                    redirectUri: this.redirectURI,
+                },
+            };
+        },
+
+        msalParamsWorkPicker(): Configuration {
+            return {
+                auth: {
+                    authority: "https://login.microsoftonline.com/organizations",
+                    clientId: this.clientId,
+                    redirectUri: this.redirectURI,
+                },
+            };
+        },
     },
 
 
@@ -71,17 +120,29 @@ export default Vue.extend({
          * Implements CloudDriveComponent
          **/ 
         async signIn(callback: (cloudTarget: StrypeSyncTarget) => void) {
-            // We need to get an authentication token to use in the form below (more information in auth section)             
-            this.oauthToken = await this.getToken({
-                resource: this.baseUrl,
-                command: "authenticate",
-                type: "OneDrive",
-            }).catch((_) => {
+            // We just get a request a token for authenticating the users (we don't use it for something else)         
+            this.oauthToken = await this.getToken(OneDriveTokenPurpose.INIT_AUTH).catch((_) => {
                 return null;
             });
 
             if(this.oauthToken){
+                (this.$parent as InstanceType<typeof CloudDriveHandlerComponent>).updateSignInStatus(StrypeSyncTarget.od, true);
+
+                // test: check if we can do something more clever to handle the accounts here:
+                // If have a work/school account and we are doing the initial authentication, we need to retrieve the baseUrl too.
+                if(!this.isPersonalAccount){
+                    console.log("requesting Graph query to the drive");
+                    const token = await this.getToken(OneDriveTokenPurpose.PICKER_BASE_URL);
+                    const resp = await fetch("https://graph.microsoft.com/v1.0/me/drive", {method: "GET", headers: {"Authorization": `Bearer ${token}`,"Accept": "application/json"}});
+                    if (!resp.ok) {
+                        throw new Error(`Graph API request failed: ${resp.status} ${resp.statusText}`);
+                    }
+
+                    const data = await resp.json();
+                    this.baseUrl = data.webUrl;
+                }
                 callback(StrypeSyncTarget.od);                
+
             }
         },   
 
@@ -96,7 +157,6 @@ export default Vue.extend({
 
         testCloudConnection(onSuccessCallback: () => void, onFailureCallBack: () => void){
             //TODO
-            console.log("am I herreeeee?");
             const xhr = new XMLHttpRequest();
             xhr.open("GET",
                 "https://www.googleapis.com/drive/v3/about?fields=user&" +
@@ -147,39 +207,43 @@ export default Vue.extend({
             onGettingReadonlyStatus(false);
         },
 
-        pickFolderForSave(){
-            //TODO
-            //(this.$refs[this.googleDriveFilePickerComponentId] as InstanceType<typeof GoogleDriveFilePicker>).startPicking(true);
-        },
+        async pickFolderForSave(){
+            // We call the picker again, but only allow folders this time.
+            const pickerAccessToken = await this.getToken(OneDriveTokenPurpose.PICKER_OPEN).catch((_) => {
+                console.error("Something happened while trying to access OneDrive Picker FOR SAVING.");
+                return "";
+            });
 
-        loadPickedFileId(id: string, otherParams: {fileName?: string}, onGettingFileMetadataSucces: (fileNameFromDrive: string, fileModifiedDateTime: string)=>void
-            , onGettingFileContentSuccess: (fileContent: string) => void, onGettingFileContentFailure: (errorRespStatus: number) => void){
-            // TODO
-            console.log("am I here...");
+            if(pickerAccessToken.length == 0){
+                return;
+            }
+            
             // create a new window. The Picker's recommended maximum size is 1080x680, but it can scale down to
             // a minimum size of 250x230 for very small screens or very large zoom.
             this.pickerPopup = window.open("", "Picker", "width=1080,height=680");
+            this.isPickingFile = false;
         
-            // now we need to construct our query string
             // options: These are the picker configuration, see the schema link for a full explaination of the available options
             this.pickerOptions = {
                 sdk: "8.0", 
                 authentication:{},
                 messaging: {
                     channelId: uniqueId(),
-                    origin: "https://strype.org",
+                    origin: this.siteOrigin,
                 },
+                //TODO : see if the folder default value to start the picker works for work accounts, it doesn't for personal
                 entry: {oneDrive: {files: {folder: "Strype",fallbackToRoot: true}}},
-                selection: {mode: "single"/*or pick? who knows! */},
-                typesAndSources: {filters: [`.${pythonFileExtension}`,`.${strypeFileExtension}`]},
+                typesAndSources: {mode: "folders", pivots: {oneDrive: true, recent: true}, filters: ["folder"]},
             };
+            
+            // now we need to construct our query string
             const queryString = new URLSearchParams({
                 filePicker: JSON.stringify(this.pickerOptions),
                 locale:  this.$i18n.t("localeOneDrive") as string,
             });
 
             // we create the absolute url by combining the base url, appending the _layouts path, and including the query string
-            const url = `${this.baseUrl}/_layouts/15/FilePicker.aspx?${queryString}`;
+            const url = `${this.baseUrl}?${queryString}`;
             // create a form
             const form = this.pickerPopup?.document.createElement("form");
             if(this.pickerPopup && form){
@@ -195,7 +259,7 @@ export default Vue.extend({
                 const tokenInput = this.pickerPopup.document.createElement("input");
                 tokenInput.setAttribute("type", "hidden");
                 tokenInput.setAttribute("name", "access_token");
-                tokenInput.setAttribute("value", this.oauthToken??"dummy");
+                tokenInput.setAttribute("value", pickerAccessToken);
                 form.appendChild(tokenInput);
 
                 // append the form to the body
@@ -203,16 +267,114 @@ export default Vue.extend({
 
                 // submit the form, this will load the picker page
                 form.submit();
-            }               
+            }    
+        },
+
+        async loadPickedFileId(id: string, otherParams: {fileName?: string}, onGettingFileMetadataSucces: (fileNameFromDrive: string, fileModifiedDateTime: string)=>void
+            , onGettingFileContentSuccess: (fileContent: string) => void, onGettingFileContentFailure: (errorRespStatus: number) => void){
+            // We don't need to query some meta information again against OneDrive because we get them as soon as we pick a file.
+            // However, we only kept them in this component internal data and now use them.
+            // The file content is retrieve via a new query.               
+            onGettingFileMetadataSucces(this.currentFileName, this.currentFileLastModifiedDate);
+
+            // We try to retrieve the folder name via the Graph API.
+            // Note: we don't need to claim the token again when getting the content, the same token is fine.
+            const token = await this.getToken(OneDriveTokenPurpose.GRAPH_GET_FILE_DETAILS);
+            const requestURL = `https://graph.microsoft.com/v1.0/drive/items/${id}`;
+            let resp = await fetch(requestURL, 
+                {method: "GET", headers: {"Authorization": `Bearer ${token}`, "Accept": "application/json"}});
+            if (!resp.ok){
+                onGettingFileContentFailure(resp.status);
+            }
+            else{
+                const jsonProps = await resp.json() as BaseItem;                
+                if(jsonProps.parentReference?.id && jsonProps.parentReference.name){                                    
+                    this.appStore.strypeProjectLocation = jsonProps.parentReference.id;
+                    this.appStore.strypeProjectLocationAlias = jsonProps.parentReference.name;                    
+                }
+            }          
+            
+            // Now get the file content
+            const requestContentURL = `https://graph.microsoft.com/v1.0/drive/items/${id}/content`;
+            resp = await fetch(requestContentURL, 
+                {method: "GET", headers: {"Authorization": `Bearer ${token}`}});
+            if (!resp.ok){
+                onGettingFileContentFailure(resp.status);
+                alert(`Graph API request failed: ${resp.status} ${resp.statusText}`);
+            }
+            else{
+                const fileContent = await resp.text();                
+                onGettingFileContentSuccess(fileContent);
+            }          
         },
         
-        doLoadFile(openSharedProjectFileId: string): Promise<void> {
+        async doLoadFile(openSharedProjectFileId: string): Promise<void> {
             //TODO
             if(this.oauthToken != null){
                 // When we load for the very first time, we may not have a Drive location to look for. In that case, we look for a Strype folder existence 
                 // (however we do not create it here, we would do this on a save action). If a location is already set, we make sure it still exists. 
                 // If it doesn't exist anymore, we set the default location to the Strype folder (if available) or just the Drive itself if not.
                 // NOTE: we do not need to check a folder when opening a shared project
+                const pickerAccessToken = await this.getToken(OneDriveTokenPurpose.PICKER_OPEN).catch((_) => {
+                    return Promise.reject("Something happened while trying to access OneDrive Picker.");
+                });
+                if(pickerAccessToken.length == 0){
+                    return Promise.reject();
+                }
+                
+                // create a new window. The Picker's recommended maximum size is 1080x680, but it can scale down to
+                // a minimum size of 250x230 for very small screens or very large zoom.
+                this.pickerPopup = window.open("", "Picker", "width=1080,height=680");
+                this.isPickingFile = true;
+            
+                // options: These are the picker configuration, see the schema link for a full explaination of the available options
+                this.pickerOptions = {
+                    sdk: "8.0", 
+                    authentication:{},
+                    messaging: {
+                        channelId: uniqueId(),
+                        origin: this.siteOrigin,
+                    },
+                    //TODO : see if the folder selection works for work accounts, it doesn't for personal
+                    entry: {oneDrive: {files: {folder: "Strype",fallbackToRoot: true}}},
+                    typesAndSources: {mode: "files", pivots: {oneDrive: true, recent: true}, filters: [`.${pythonFileExtension}`,`.${strypeFileExtension}`]},
+                };
+              
+                // now we need to construct our query string
+                const queryString = new URLSearchParams({
+                    filePicker: JSON.stringify(this.pickerOptions),
+                    locale:  this.$i18n.t("localeOneDrive") as string,
+                });
+
+                // we create the absolute url by combining the base url, appending the _layouts path, and including the query string
+                const url = `${this.baseUrl}?${queryString}`;
+                // create a form
+                const form = this.pickerPopup?.document.createElement("form");
+                if(this.pickerPopup && form){
+                    // set the action of the form to the url defined above
+                    // This will include the query string options for the picker.
+                    form.setAttribute("action", url);
+
+                    // must be a post request
+                    form.setAttribute("method", "POST");
+
+                    // Create a hidden input element to send the OAuth token to the Picker.
+                    // This optional when using a popup window but required when using an iframe.
+                    const tokenInput = this.pickerPopup.document.createElement("input");
+                    tokenInput.setAttribute("type", "hidden");
+                    tokenInput.setAttribute("name", "access_token");
+                    tokenInput.setAttribute("value", pickerAccessToken);
+                    form.appendChild(tokenInput);
+
+                    // append the form to the body
+                    this.pickerPopup.document.body.append(form);
+
+                    // submit the form, this will load the picker page
+                    form.submit();
+                }    
+                
+                
+                //TODO REMOVE LATER (just added during dev exploration phase)
                 return Promise.resolve();
             }
             else{
@@ -221,22 +383,81 @@ export default Vue.extend({
             }
         },
 
-        doSaveFile(saveFileId: string|undefined, projetLocation: string, fullFileName: string, fileContent: string, isExplictSave: boolean, onSuccess: (savedFileId: string) => void, onFailure: (errRespStatus: number) => void){                 
-            //TODO
+        async doSaveFile(saveFileId: string|undefined, projetLocation: string, fullFileName: string, fileContent: string, isExplictSave: boolean, onSuccess: (savedFileId: string) => void, onFailure: (errRespStatus: number) => void){                 
+            // We use the Graph API to retrieve an upload session URL upon which we can save the file content (either creating a new file or changing an existing file).
+            // It doesn't seem possible to give OneDrive a thumbnail for our files nor actually setting the MIME type (so it it prevails over the extension of the file).
+            const token = await this.getToken(OneDriveTokenPurpose.GRAPH_SAVE_FILE).catch((_) => onFailure(404));
+            const requestUrl = (saveFileId)
+                ? `https://graph.microsoft.com/v1.0/me/drive/items/${saveFileId}/createUploadSession`
+                : `https://graph.microsoft.com/v1.0/me/drive/items/${projetLocation}:/${encodeURI(fullFileName)}:/createUploadSession`;
+
+            const resp = await fetch(requestUrl, 
+                {method: "POST", headers: {"Authorization": `Bearer ${token}`,"Content-Type": "application/json"}});
+
+            if (!resp.ok){
+                onFailure(resp.status);
+            }
+            else{
+                const data = await resp.json() as UploadSession;
+                const uploadSessionURL = data.uploadUrl;
+                // We upload chunks of 5 MB
+                const rawFileContent = new TextEncoder().encode(fileContent);
+                const CHUNK_SIZE = 5*1024*1024;
+                for (let offset = 0; offset < rawFileContent.length; offset += CHUNK_SIZE) {
+                    const chunk = rawFileContent.subarray(offset, offset + CHUNK_SIZE);
+                    const resp = await fetch(uploadSessionURL as string, {
+                        method: "PUT", 
+                        headers: {"Content-Length": chunk.length.toString(), "Content-Range": `bytes ${offset}-${offset + chunk.length - 1}/${rawFileContent.length}`, "Content-Type": "text/x-python"},
+                        body: chunk,
+                    });
+                    const jsonProps = await resp.json();
+                    // On the last chunk, Graph should return the meta data about the created file, so we can get the ID from there.
+                    if(jsonProps.parentReference){
+                        onSuccess((jsonProps as BaseItem).id??"");
+                    }
+                }                
+            }          
         },
 
-        checkDriveStrypeOrOtherFolder(createIfNone: boolean, checkStrypeFolder: boolean, checkFolderDoneCallBack: (strypeFolderId: string | null) => Promise<void>, failedConnectionCallBack?: () => Promise<void>): Promise<void> {
-            //TODO
+        async checkDriveStrypeOrOtherFolder(createIfNone: boolean, checkStrypeFolder: boolean, checkFolderDoneCallBack: (strypeFolderId: string | null) => Promise<void>, failedConnectionCallBack?: () => Promise<void>): Promise<void> {
             // Check if the Strype folder (when checkStrypeFolder is true) or the state's folder (otherwise) exists on the Drive. If not, we create it if createIfNone is set to true.
             // Returns the file ID or null if the file couldn't be found/created.
             // Note that we need to specify the parent folder of the search (root folder) otherwise we would also get subfolders; and don't get trashed folders 
             // (that will also discard shared folders, so we don't need to check the writing rights...)
-            return Promise.resolve();
+            if(!this.oauthToken){
+                // If the user hasn't yet authenticated with our intial authentication step, then we trigger an authentication first.
+                if(failedConnectionCallBack){
+                    failedConnectionCallBack();
+                }
+                return;
+            }
+            const token = await this.getToken(OneDriveTokenPurpose.GRAPH_CHECK_FOLDER);
+            const locationPathToSearch = (checkStrypeFolder) ? "/root:/Strype" : "/items/"+this.appStore.strypeProjectLocation?.toString();
+            const resp = await fetch("https://graph.microsoft.com/v1.0/me/drive/" + locationPathToSearch,
+                {method: "GET", headers: {"Authorization": `Bearer ${token}`,"Accept": "application/json"}});
+            if (resp.ok) {
+                const data = await resp.json() as BaseItem;
+                return checkFolderDoneCallBack(data.id??"");
+            }
+            else if(resp.status == 404 && checkStrypeFolder && createIfNone){
+                // The Strype folder doesn't exist: we create it if requested (we would not create another folder but Strype)
+                const token = await this.getToken(OneDriveTokenPurpose.GRAPH_CREATE_FOLDER);
+                const resp = await fetch("https://graph.microsoft.com/v1.0/me/drive/root/children",
+                    {
+                        method: "POST",
+                        headers: {"Authorization": `Bearer ${token}`,"Content-Type": "application/json"},
+                        body: "{name: 'Strype', 'folder':{}}",
+                    });
+                if (resp.ok) {
+                    const data = await resp.json() as BaseItem;
+                    return checkFolderDoneCallBack(data.id??"");
+                }
+            }
         },
 
         lookForAvailableProjectFileName(fileLocation: string|undefined, fileName: string, onFileAlreadyExists: (existingFileId: string) => void, onSuccessCallback: VoidFunction, onFailureCallBack: VoidFunction){
             // We check if the currently suggested file name is not already used in the location we save the file.
-            this.searchCloudDriveElements("", ((fileLocation) ? fileLocation : "root"), true, {})
+            this.searchCloudDriveElements("", ((fileLocation) ? fileLocation : ""), true, {})
                 .then((filesArray) => {
                     let hasAlreadyFile = false, existingFileId = "";
                     this.isFileLocked = false;                    
@@ -271,10 +492,32 @@ export default Vue.extend({
             onSuccess();
         },
 
-        searchCloudDriveElements(elementName: string, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]>{
+        async searchCloudDriveElements(elementName: string, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]>{
             //TODO
             // Make a search query on OneDrive, with the provided query parameter.
-            // Returns the elements found in the Drive listed by the HTTPRequest object obtained with ------------
+            // Returns the elements found in the Drive listed by the HTTPRequest object obtained with the Graph API.
+            // Note: we do not use the "search()" tool because it retrieves all entries AT ROOT LEVEL - instead we use "children"
+            // and manually filter out results here.
+     
+            const token = await this.getToken(OneDriveTokenPurpose.GRAPH_SEARCH).catch((_) => {
+                return Promise.reject([]);
+            });
+            const requestURL = `https://graph.microsoft.com/v1.0/me/drive/items/${elementLocationId}/children`;
+            const resp = await fetch(requestURL,
+                {method: "GET", headers: {"Authorization": `Bearer ${token}`,"Accept": "application/json"}});
+            if (!resp.ok) {
+                throw new Error(`Graph API request failed: ${resp.status} ${resp.statusText}`);
+            }
+
+            const data = await resp.json();
+            if(searchAllSPYFiles){
+                // We just make sure all the results are SPY files...
+                return Promise.resolve(data.value.filter((entry: BaseItem) => (entry.name??"").endsWith("."+strypeFileExtension))
+                    .map((strypeFileItem: BaseItem) => ({name: strypeFileItem.name, id: strypeFileItem.id} as CloudDriveFile)));
+            }
+            else{
+                alert("//TODO");
+            }
             return Promise.resolve([]);
         },
 
@@ -295,48 +538,93 @@ export default Vue.extend({
         /**
          * Specific to OneDrive
          **/ 
-        async getToken(command: IAuthenticateCommand): Promise<string> {
-            const redirectServerHost = (process.env.NODE_ENV === "production") ? "www.strype.org" : "localhost:8081";
-            const redirectServerEditorPath = "" /*IFTRUE_isPython +"editor" FITRUE_isPython*//*IFTRUE_microbit +"microbit" FITRUE_isMicrobit*/;
-            const redirectUri = `http:${(process.env.NODE_ENV === "production") ? "s" : ""}//${redirectServerHost}/${redirectServerEditorPath}/`;
-            this.app = new PublicClientApplication({auth: {
-                clientId: "ee29b56f-8714-472f-a1c8-37e8551e3ec5", 
-                authority: "https://login.microsoftonline.com/consumers",
-                redirectUri: redirectUri,
-            }});
+        async getToken(purpose: OneDriveTokenPurpose): Promise<string> {
+            console.log("requesting token for purpose = " + OneDriveTokenPurpose[purpose]);
+            this.app = new PublicClientApplication((purpose == OneDriveTokenPurpose.INIT_AUTH) 
+                ? this.msalParamsInit 
+                : ((this.isPersonalAccount) ? this.msalParamsConsumerPicker : this.msalParamsWorkPicker));
+           
             // Next line mentioned by AI and is crucial
             await this.app.initialize();
 
-            let accessToken = "";
-            //const authParams = { scopes: [`${combine(command.resource, ".default")}`] };
-            const authParams = { scopes: ["Files.ReadWrite", "Files.ReadWrite.All", "Files.ReadWrite.AppFolder", "User.Read", "openid", "offline_access"] };
-            try {
-                // see if we have already the idtoken saved
-                const resp = await this.app.acquireTokenSilent(authParams);
-                accessToken = resp.accessToken;
+            let accessToken = ""; let account = null as null | AccountInfo;
+            // Logic for the scopes:
+            // if we are only authenticating, we get to access the account details personal+work/school(?) accounts --> "openid".
+            // if we are getting a token for the picker: personal --> "OneDrive.ReadWrite"
+            // if we are getting a token for the picker base url: work --> "Files.Read"? (no need for personal)
+            // if we are getting a token for retrieving the file details, doing a search or checking folders: personal --> "Files.Read"+"offline_access"+"User.Read"
+            let scopes = [];
+            switch(purpose){
+            case OneDriveTokenPurpose.INIT_AUTH:
+                scopes.push("openid");
+                break;
+            case OneDriveTokenPurpose.PICKER_BASE_URL:
+            case OneDriveTokenPurpose.GRAPH_GET_FILE_DETAILS:
+            case OneDriveTokenPurpose.GRAPH_CHECK_FOLDER:
+            case OneDriveTokenPurpose.GRAPH_SEARCH:
+                scopes.push(...["Files.Read", "offline_access", "User.Read"]);
+                break;
+            case OneDriveTokenPurpose.PICKER_OPEN:
+            case OneDriveTokenPurpose.PICKER_ACTIVITY:            
+                scopes.push((this.isPersonalAccount) ? "OneDrive.ReadWrite" :"??");
+                break;
+            case OneDriveTokenPurpose.GRAPH_CREATE_FOLDER:
+            case OneDriveTokenPurpose.GRAPH_SAVE_FILE:
+                scopes.push("Files.ReadWrite.All");
+                break;
+            default:
+                break;
             }
-            catch (e) {
-                // Per examples we fall back to popup
-                // We specifically request to provide credentials for the account again in the prompt property 
-                // to make MSAL doesn't use a saved account profile automatically.
+            const authParams = {scopes: scopes};     
+            console.log("requesting tokens for:");
+            console.log(authParams); 
+
+            if(purpose == OneDriveTokenPurpose.INIT_AUTH ){
                 // NOTE: there is a very tricky behaviour with MSAL: it seems that Azure will try its best to keep users
                 // logged in, for example with SSO. We request a login, but if the user has used MFA with email to log in
                 // before, next time the popup will show a prompt to give that email address again to very that same account.
                 // The only way to change user is to click on "use your password" and then the user can use another account. 
-                const resp = await this.app.loginPopup({...authParams, prompt: "login"});
+                const resp = await this.app.loginPopup((purpose != OneDriveTokenPurpose.INIT_AUTH) ? authParams : {...authParams, prompt: "login"});
                 this.app.setActiveAccount(resp.account);
+                account = resp.account;
 
                 if (resp.idToken) {
                     const resp2 = await this.app.acquireTokenSilent(authParams);
                     accessToken = resp2.accessToken;
-
                 }
-                else {
-
-                    // throw the error that brought us here
-                    throw e;
-                }
+                // If we got the token we can we look up the type of account.
+                if(accessToken && account){
+                    // According to copilot we can tesk this like that (partly, sustainable?)
+                    this.isPersonalAccount = (account.idTokenClaims?.tid === "9188040d-6c67-4c5b-b112-36a304b66dad");                    
+                }                
             }
+            else{
+                try {
+                    // see if we have already the idtoken saved
+                    const resp = await this.app.acquireTokenSilent(authParams);
+                    accessToken = resp.accessToken;
+                    account = resp.account;
+                }
+                catch (e) {
+                    // Per examples we fall back to popup
+                    
+                    // We specifically request to provide credentials for the account again in the prompt property 
+                    // to make MSAL doesn't use a saved account profile automatically.
+                    const resp = await this.app.loginPopup(authParams);
+                    this.app.setActiveAccount(resp.account);
+                    account = resp.account;
+
+                    if (resp.idToken) {
+                        const resp2 = await this.app.acquireTokenSilent(authParams);
+                        accessToken = resp2.accessToken;
+                    }
+                    else {
+                        // throw the error that brought us here
+                        throw e;
+                    }
+                }
+            }       
+            console.log(">>>> got a token");
             return accessToken;
         },
 
@@ -348,122 +636,20 @@ export default Vue.extend({
                 // On initial load and if it ever refreshes in its window, the Picker will send an 'initialize' message.
                 // Communication with the picker should subsequently take place using a `MessageChannel`.
                 if (message.channelId === this.pickerOptions?.messaging.channelId) {
-                    console.log("here :)");
-                    let port = undefined as MessagePort|undefined;
                     //TODO : check that channel still applies for later messages
                     switch(message.type){
-                    case "inialize":
+                    case "initialize":
                         // grab the port from the event
-                        port = event.ports[0];
-
+                        this.pickerPort = event.ports[0];
                         // add an event listener to the port (example implementation is in the next section)
-                        port.addEventListener("message", this.onPickerMsg);
-
+                        this.pickerPort.addEventListener("message", this.onPickerMsgChannelMsg);
                         // start ("open") the port
-                        port.start();
-
+                        this.pickerPort.start();
                         // tell the picker to activate
-                        port.postMessage({
+                        this.pickerPort.postMessage({
                             type: "activate",
                         });
                         break;
-                    case "notification":
-                        if (message.data.notification === "page-loaded") {
-                            // here we know that the picker page is loaded and ready for user interaction
-                        }
-
-                        console.log(message.data);
-                        break;
-
-                    case "command":
-                        // all commands must be acknowledged
-                        port?.postMessage({
-                            type: "acknowledge",
-                            id: message.data.id,
-                        });
-
-                        // this is the actual command specific data from the message
-                        switch (message.data.command) {
-                        case "authenticate":
-                            // the first command to handle is authenticate. This command will be issued any time the picker requires a token
-                            // 'getToken' represents a method that can take a command and return a valid auth token for the requested resource
-                            try {
-                                this.oauthToken = await this.getToken(message.data.command);
-
-                                if (!this.oauthToken) {
-                                    throw new Error("Unable to obtain a token.");
-                                }
-
-                                // we report a result for the authentication via the previously established port
-                                port?.postMessage({
-                                    type: "result",
-                                    id: message.data.id,
-                                    data: {
-                                        result: "token",
-                                        token: this.oauthToken,
-                                    },
-                                });
-                            }
-                            catch (error: any) {
-                                port?.postMessage({
-                                    type: "result",
-                                    id: message.data.id,
-                                    data: {
-                                        result: "error",
-                                        error: {
-                                            code: "unableToObtainToken",
-                                            message: error.message,
-                                        },
-                                    },
-                                });
-                            }
-                            break;
-                        case "close":
-                            this.pickerPopup.close();
-                            break;
-                        case "pick":
-                            try {
-                                /*await*/ this.pickFile(message.data.command);
-    
-                                // let the picker know that the pick command was handled (required)
-                                port?.postMessage({
-                                    type: "result",
-                                    id: message.data.id,
-                                    data: {
-                                        result: "success",
-                                    },
-                                });
-                            }
-                            catch (error: any) {
-                                port?.postMessage({
-                                    type: "result",
-                                    id: message.data.id,
-                                    data: {
-                                        result: "error",
-                                        error: {
-                                            code: "unusableItem",
-                                            message: error.message,
-                                        },
-                                    },
-                                });
-                            }
-                            break;                    
-                        default:
-                            // Always send a reply, if if that reply is that the command is not supported.
-                            port?.postMessage({
-                                type: "result",
-                                id: message.data.id,
-                                data: {
-                                    result: "error",
-                                    error: {
-                                        code: "unsupportedCommand",
-                                        message: message.data.command,
-                                    },
-                                },
-                            });
-                            break;
-                        }
-                        break;                    
                     default:
                         console.log("unknown message type from OneDrive Picker: "+message.type);
                         break;
@@ -471,29 +657,76 @@ export default Vue.extend({
                 }
             }
         },    
-        
-        pickFile(command: any): Promise<void> {
-            // what do we do now...
-            console.log(JSON.stringify(command));
-            // extract the file and get the webDavUrl property to download the file
-            const fileURL = "";
-            return fetch(fileURL).then((resp) => {
-                if(resp.status == 200){
-                    console.log("we got a file content:");
-                    console.log(resp.body);
-                    return Promise.resolve();
-                }
-                else{
-                    console.log("problem getting file content: " + resp.status);
-                    return Promise.reject();
-                }
-            }).catch((reason) => {
-                return Promise.reject(reason);
-            });
-        },
 
-        closePicker(command: any){
-            //????????
+        async onPickerMsgChannelMsg(message: MessageEvent) {
+            switch (message.data.type) {
+            case "notification":
+                break;
+            case "command":
+                this.pickerPort?.postMessage({
+                    type: "acknowledge",
+                    id: message.data.id,
+                });                
+                switch (message.data.data.command) {
+                case "authenticate":{
+                    // We should not need that because we do the authentication in a previous step, but...
+                    const token = await this.getToken(OneDriveTokenPurpose.PICKER_ACTIVITY);
+                    if (typeof token !== "undefined" && token !== null) {
+                        this.pickerPort?.postMessage({
+                            type: "result",
+                            id: message.data.id,
+                            data: {
+                                result: "token",
+                                token,
+                            },
+                        });
+                    } 
+                    else {
+                        console.error(`Could not get auth token for command: ${JSON.stringify(message.data.data)}`);
+                    }}
+                    break;
+                case "close":
+                    this.pickerPopup?.close();
+                    break;
+                case "pick":
+                {
+                    this.pickerPort?.postMessage({
+                        type: "result",
+                        id: message.data.id,
+                        data: {
+                            result: "success",
+                        },
+                    });
+                    this.pickerPopup?.close();
+                    // Trigger the actual retrieval of the file (if we had selected a file) or get the folder details (if we had selected a folder)
+                    const strypeFileItem = message.data.data.items[0] as BaseItem;
+                    const fileId = strypeFileItem.id??"";
+                    if(this.isPickingFile){
+                        this.currentFileName = strypeFileItem.name as string;                    
+                        this.currentFileLastModifiedDate = strypeFileItem.lastModifiedDateTime as string;
+                        this.onFileToLoadPicked(StrypeSyncTarget.od, fileId, this.currentFileName);
+                    }
+                    else{
+                        this.appStore.strypeProjectLocation = fileId;
+                        this.appStore.strypeProjectLocationAlias = strypeFileItem.name as string;
+                        this.onFolderToSaveFilePicked(StrypeSyncTarget.od);
+                    }
+                    break;
+                }
+                default:
+                    console.warn(`Unsupported command: ${JSON.stringify(message.data.data)}`, 2);
+                    this.pickerPort?.postMessage({
+                        result: "error",
+                        error: {
+                            code: "unsupportedCommand",
+                            message: message.data.data.command,
+                        },
+                        isExpected: true,
+                    });
+                    break;
+                }
+                break;
+            }
         },
     },   
 });

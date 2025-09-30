@@ -97,7 +97,19 @@ export interface CloudDriveComponent {
     writeFileContentForIO: (fileContent: string | Uint8Array, fileInfos: { filePath: string, fileName?: string, fileId?: string, folderId?: string }) => Promise<string>,
 }
 
-/** Specific to OneDrive */
+/** Specific to OneDrive - the Graph types are imported from https://github.com/microsoftgraph/msgraph-typescript-typings*/
+export enum OneDriveTokenPurpose {
+    INIT_AUTH,
+    PICKER_BASE_URL,
+    PICKER_OPEN,
+    PICKER_ACTIVITY,
+    GRAPH_GET_FILE_DETAILS,
+    GRAPH_CHECK_FOLDER,
+    GRAPH_CREATE_FOLDER,
+    GRAPH_SEARCH,
+    GRAPH_SAVE_FILE,
+}
+
 export interface IAuthenticateCommand {
     resource: string;
     command: "authenticate";

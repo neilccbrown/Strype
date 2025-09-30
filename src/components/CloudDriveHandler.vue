@@ -15,7 +15,7 @@
         <GoogleDriveComponent driveName="Google Drive" apiName="GAPI" ref="googleDriveComponent"
             :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
         <OneDriveComponent drive-name="OneDrive" apiName="OneDrive FilePicker API" ref="oneDriveComponent" 
-            :onFileToLoadPicked="()=> console.log('a')" :onFolderToSaveFilePicked="()=> console.log('a')" :onUnsupportedByStrypeFilePicked="()=> console.log('a')" />
+            :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onUnsupportedByStrypeFilePicked="()=> console.log('a')" />
     </div>
 </template>
 
