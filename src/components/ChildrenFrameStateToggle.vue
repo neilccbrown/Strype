@@ -25,7 +25,7 @@ export default Vue.extend({
         // If all direct children are in the same collapsed state, return it
         // If they are in a mixture of states, return undefined.
         childrenCollapsedState(): CollapsedState | undefined {
-            const states = this.frames.map((f : FrameObject) => f.collapsedState ?? CollapsedState.FULLY_VISIBLE);
+            const states = (this.frames as FrameObject[]).map((f : FrameObject) => f.collapsedState ?? CollapsedState.FULLY_VISIBLE);
             const unique = Array.from(new Set(states));
             if (unique.length == 1) {
                 return unique[0];
@@ -51,7 +51,7 @@ export default Vue.extend({
     
     methods: {
         cycleFoldChildren() {
-            let nextState;
+            let nextState : CollapsedState;
             // If they are in a mixed state we want next state to be fully collapsed, which is always available for defs:
             if (this.childrenCollapsedState === undefined) {
                 nextState = CollapsedState.ONLY_HEADER_VISIBLE;
@@ -62,8 +62,8 @@ export default Vue.extend({
                 // function frames)
 
                 // Step 1: compute remaining states per object
-                const possibleNextStates = this.frames.map((f) => {
-                    const idx = f.frameType.allowedCollapsedStates.indexOf(f.collapsedState);
+                const possibleNextStates = (this.frames as FrameObject[]).map((f) => {
+                    const idx = f.frameType.allowedCollapsedStates.indexOf(f.collapsedState ?? CollapsedState.FULLY_VISIBLE);
                     if (idx < 0) {
                         return []; // safeguard if current not found
                     }
@@ -93,7 +93,7 @@ export default Vue.extend({
                 }
             }
 
-            this.frames.forEach((f) => this.appStore.setCollapseStatusContainer({frameId: f.id, collapsed: nextState}));
+            (this.frames as FrameObject[]).forEach((f) => this.appStore.setCollapseStatusContainer({frameId: f.id, collapsed: nextState}));
         },
     },
 });
