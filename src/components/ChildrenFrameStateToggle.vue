@@ -1,8 +1,11 @@
 <template>
     <div :class="{'fold-children-control': true, 'fold-doc': isFoldDoc, 'fold-header': isFoldHeader, 'fold-full': isFoldFull, 'fold-mixed': isFoldMixed }" @click.prevent.stop="cycleFoldChildren">
-        <img class="fold-children-full" src="@/assets/images/quote-circle/quote-circle-container-filled-echoed.png">
-        <img class="fold-children-doc" src="@/assets/images/quote-circle/quote-circle-container-echoed.png">
-        <img class="fold-children-header" src="@/assets/images/quote-circle/quote-circle-container-empty-echoed.png">
+        <img class="fold-children-full" src="@/assets/images/quote-circle/quote-circle-container-filled-echoed.png" v-if="isContainer">
+        <img class="fold-children-doc" src="@/assets/images/quote-circle/quote-circle-container-echoed.png" v-if="isContainer">
+        <img class="fold-children-header" src="@/assets/images/quote-circle/quote-circle-container-empty-echoed.png" v-if="isContainer">
+        <img class="fold-children-full" src="@/assets/images/quote-circle/quote-circle-class-filled-echoed.png" v-if="!isContainer">
+        <img class="fold-children-doc" src="@/assets/images/quote-circle/quote-circle-class-echoed.png" v-if="!isContainer">
+        <img class="fold-children-header" src="@/assets/images/quote-circle/quote-circle-class-empty-echoed.png" v-if="!isContainer">
     </div>
 </template>
 
@@ -16,7 +19,8 @@ export default Vue.extend({
     name: "ChildrenFrameStateToggle",
     
     props: {
-        frames: Array, 
+        frames: Array,
+        isContainer: Boolean,
     },
     
     computed: {
@@ -102,7 +106,7 @@ export default Vue.extend({
 <style lang="scss">
 .fold-children-control {
     margin-left: auto;
-    margin-right: 15px;
+    margin-right: 13px;
     margin-bottom: 3px;
     position: relative;
     width: 0.9em;
