@@ -1,8 +1,9 @@
 <template>
     <div class="frame-container" :style="frameStyle" @click.self="onOuterContainerClick" @mouseenter="onFrameContainerHover(true)" @mouseleave="onFrameContainerHover(false)">
-        <div class="frame-container-header">
-            <button v-if="!isMainCodeFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
-            <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer}" @click.self="toggleCollapse">{{containerLabel}}</span>
+        <div class="frame-container-header" @click.self="onOuterContainerClick">
+            <button v-if="!isMainCodeFrameContainer && !isDefsFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
+            <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer}" @click.self="toggleCollapse">{{containerLabel}}</span>
+            <ChildrenFrameStateToggle v-if="isDefsFrameContainer" :frames="this.frames"/>
         </div>
 
         <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
@@ -44,6 +45,7 @@ import { mapStores } from "pinia";
 import { CustomEventTypes, getCaretContainerRef, getCaretUID, getFrameUID} from "@/helpers/editor";
 import scssVars from "@/assets/style/_export.module.scss";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
+import ChildrenFrameStateToggle from "@/components/ChildrenFrameStateToggle.vue";
 
 //////////////////////
 //     Component    //
@@ -52,6 +54,7 @@ export default Vue.extend({
     name: "FrameContainer",
 
     components: {
+        ChildrenFrameStateToggle,
         Frame,
         CaretContainer,
     },
@@ -103,6 +106,10 @@ export default Vue.extend({
         isMainCodeFrameContainer(): boolean {
             return this.frameId == this.appStore.getMainCodeFrameContainerId;
         },
+
+        isDefsFrameContainer(): boolean {
+            return this.frameId == this.appStore.getDefsFrameContainerId;
+        },
         
         frames: {
             get(): FrameObject[] {
@@ -143,8 +150,8 @@ export default Vue.extend({
 
         isCollapsed: {
             get(): boolean {
-                // Ignore the value for "My code" container for compatibility with saved project having collapsable "My code" container.
-                return (this.isMainCodeFrameContainer)? false : this.appStore.isContainerCollapsed(this.frameId);
+                // Ignore the value for "My code" or Defs container for compatibility with saved project having collapsable "My code" container.
+                return (this.isMainCodeFrameContainer || this.isDefsFrameContainer) ? false : this.appStore.isContainerCollapsed(this.frameId);
             },
             set(value: boolean){
                 this.appStore.setCollapseStatusContainer(
@@ -171,7 +178,7 @@ export default Vue.extend({
 
         isPythonExecuting(): boolean {
             return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
-        },
+        },        
     },
 
     methods: {
@@ -263,6 +270,8 @@ export default Vue.extend({
             }
 
         },
+        
+
     },
 });
 
@@ -312,11 +321,10 @@ export default Vue.extend({
     min-height: $frame-container-min-height;
 }
 .frame-container-header {
-    // Stop it taking up full width, to allow click to select top frame cursor instead of folding:
-    display: inline-block;
+    display: flex;
     padding-right: 5px;
 }
-.frame-container-header * {
+.frame-container-header > .frame-container-btn-collapse, .frame-container-header > span:not(.no-toggle-frame-container-span) {
     cursor: pointer;
 }
 </style>

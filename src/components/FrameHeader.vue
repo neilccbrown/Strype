@@ -26,13 +26,14 @@
                 <!-- ^^ Note: append to frame label is same as prepend to slot -->
             </div>
             <div ref="foldingControl" :class="{'folding-control': true, 'fold-doc': isFoldDoc, 'fold-header': isFoldHeader, 'fold-full': isFoldFull }" @click.stop.prevent="cycleFold" v-if="canCycleFold && groupIndex == 0">
-                <img class="folding-header" src="@/assets/images/quote-circle-funcdef-empty.png" v-if="isFuncDef">
-                <img class="folding-doc" src="@/assets/images/quote-circle-funcdef.png" v-if="isFuncDef">
-                <img class="folding-full" src="@/assets/images/quote-circle-funcdef-filled.png" v-if="isFuncDef">
-                <img class="folding-header" src="@/assets/images/quote-circle-class-empty.png" v-if="isClassDef">
-                <img class="folding-doc" src="@/assets/images/quote-circle-class.png" v-if="isClassDef">
-                <img class="folding-full" src="@/assets/images/quote-circle-class-filled.png" v-if="isClassDef">
+                <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-funcdef-empty.png" v-if="isFuncDef">
+                <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-funcdef.png" v-if="isFuncDef">
+                <img class="folding-full" src="@/assets/images/quote-circle/quote-circle-funcdef-filled.png" v-if="isFuncDef">
+                <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-class-empty.png" v-if="isClassDef">
+                <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-class.png" v-if="isClassDef">
+                <img class="folding-full" src="@/assets/images/quote-circle/quote-circle-class-filled.png" v-if="isClassDef">
             </div>
+            <ChildrenFrameStateToggle v-if="isClassDef && isFoldFull && groupIndex === splitLabels.length - 1" :frames="children"/>
             <i v-if="wasLastRuntimeError && groupIndex == splitLabels.length - 1" :class="{'fas fa-exclamation-triangle fa-xs runtime-err-icon': true, 'runtime-past-err-icon': !erroneous}"></i>
             
         </div>
@@ -46,9 +47,10 @@
 import Vue from "vue";
 import LabelSlotsStructure from "@/components/LabelSlotsStructure.vue";
 import {useStore} from "@/store/store";
-import {AllFrameTypesIdentifier, CollapsedState, FrameLabel} from "@/types/types";
+import {AllFrameTypesIdentifier, CollapsedState, FrameLabel, FrameObject} from "@/types/types";
 import {mapStores} from "pinia";
 import scssVars from "@/assets/style/_export.module.scss";
+import ChildrenFrameStateToggle from "@/components/ChildrenFrameStateToggle.vue";
 
 // Splits into a list of lists (each outer list is a line, with 1 or more items on it)
 // by looking at the newLine flag in the FrameLabel.
@@ -80,6 +82,7 @@ export default Vue.extend({
     name: "FrameHeader",
 
     components: {
+        ChildrenFrameStateToggle,
         LabelSlotsStructure,
     },
 
@@ -140,6 +143,16 @@ export default Vue.extend({
 
         isFoldFull() {
             return (this.frameCollapsedState as CollapsedState) == CollapsedState.FULLY_VISIBLE;
+        },
+
+        children: {
+            get(): FrameObject[] {
+                // gets the frames objects which are nested in here (i.e. have this frameID as parent)
+                return this.appStore.getFramesForParentId(this.frameId);
+            },
+            set() {
+                return;
+            },
         },
     },
 
@@ -219,7 +232,6 @@ export default Vue.extend({
     position: relative;
     overflow: hidden;
     width: 0.9em;
-    height: 0.9em;
     cursor: pointer;
 }
 .folding-control > img {
@@ -227,9 +239,9 @@ export default Vue.extend({
     top: 0;
     left: 0;
     width: 100%;
-    height: 100%;
+    height: auto;
+    max-height: none;
     object-fit: cover;
-    //transition: opacity 0.25s ease-in-out;
     opacity: 0;
 }
 // Note: important the hover is on the folding control not the img, because
