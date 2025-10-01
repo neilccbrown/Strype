@@ -2096,6 +2096,11 @@ export function getCurrentFrameSelectionScope(): SelectAllFramesFuncDefScope {
             && useStore().frameObjects[currentFrameId].childrenIds.length == 0){
             return SelectAllFramesFuncDefScope.wholeFunctionBody;
         }
+        
+        if (useStore().frameObjects[currentFrameId].frameType.type == AllFrameTypesIdentifier.classdef) {
+            // Need to think about how this should work:
+            return SelectAllFramesFuncDefScope.frame;
+        }
 
         return SelectAllFramesFuncDefScope.none;
     }
