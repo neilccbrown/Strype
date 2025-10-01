@@ -88,8 +88,13 @@ export default Vue.extend({
             // for such frames (meaning if there are more than 1 frame, all but last caret container should be static)
             const frameType = this.appStore.frameObjects[this.frameId].frameType.type;
             const parentFrame = this.appStore.frameObjects[this.appStore.frameObjects[this.frameId].parentId];
-            return (frameType == AllFrameTypesIdentifier.funcdef && this.caretAssignedPosition == CaretPosition.below &&
-             parentFrame.childrenIds.length > 1 && parentFrame.childrenIds.at(-1) != this.frameId);
+            return (
+                // We are a class or function:
+                (frameType == AllFrameTypesIdentifier.funcdef || frameType == AllFrameTypesIdentifier.classdef)
+                // We're below a frame (i.e. not the top caret position in the container:
+                && this.caretAssignedPosition == CaretPosition.below
+                // We are one of multiple children, and not the last one:
+                && parentFrame.childrenIds.length > 1 && parentFrame.childrenIds.at(-1) != this.frameId);
         },
 
         // Needed in order to use the `CaretPosition` type in the v-show
