@@ -1094,7 +1094,7 @@ export enum StrypeSyncTarget {
 
 export enum ShareProjectMode {
     public, // A public sharing (generic cases)
-    withinGD, // A share within Google Drive access rights
+    withinCloudDrive, // A share within a Cloud Drive (like Google Drive) access rights
 }
 
 export enum SaveRequestReason {
@@ -1104,7 +1104,7 @@ export enum SaveRequestReason {
     overwriteExistingProject, // explicit save overwerwriting an existing file/project (used for Google Drive only)
     loadProject,
     unloadPage,
-    reloadBrowser, // for Google Drive: when a project was previously saved in GD and the browser is reloaded and the user requested to save the local changes to GD.
+    reloadBrowser, // for Cloud Drive: when a project was previously saved in the drive and the browser is reloaded and the user requested to save the local changes to the drive.
     saveSettings, // for saving Strype settings
 }
 

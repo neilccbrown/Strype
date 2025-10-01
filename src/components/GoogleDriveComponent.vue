@@ -12,7 +12,7 @@
 //      Imports     //
 //////////////////////
 import { useStore } from "@/store/store";
-import { CloudDriveAPIState, CloudDriveFile } from "@/types/cloud-drive-types";
+import { CloudDriveAPIState, CloudDriveFile, CloudFileSharingStatus } from "@/types/cloud-drive-types";
 import { mapStores } from "pinia";
 import Vue from "vue";
 import CloudDriveHandlerComponent from "@/components/CloudDriveHandler.vue";
@@ -45,6 +45,7 @@ export default Vue.extend({
         return {
             // Implements CloudDriveComponent
             isFileLocked: false,
+            previousCloudFileSharingStatus: CloudFileSharingStatus.UNKNOWN,
             // Specific to Google Drive:
             gapiLoadedState: CloudDriveAPIState.UNLOADED,
             client: null as google.accounts.oauth2.TokenClient | null, // The Google Identity client
@@ -169,6 +170,24 @@ export default Vue.extend({
                 });
         },
 
+        getCurrentCloudFileCurrentSharingStatus(saveFileId: string): Promise<CloudFileSharingStatus> {
+            return gapi.client.request({
+                path: "https://www.googleapis.com/drive/v3/files/" + saveFileId,
+                method: "GET",
+                params: {fields: "permissions"},
+            }).then((resp) => {
+                if(resp.status != 200){
+                    return Promise.reject(resp.status??404);
+                }
+                else{
+                    const permissions = JSON.parse(resp.body).permissions;
+                    // It doesn't seem that Google Drive files have a "not shared at all" status: they are either public or internally shared.
+                    const currentFileSharingStatus = (permissions.some((permission: any) =>  permission.type == "anyone")) ? CloudFileSharingStatus.PUBLIC_SHARED : CloudFileSharingStatus.INTERNAL_SHARED;
+                    return Promise.resolve(currentFileSharingStatus);
+                }
+            });
+        },
+
         shareCloudDriveFile(saveFileId: string): Promise<boolean>{
             // When we share a Strype project, we try to set the project on Google Drive with public acccess.
             // The methods returns a Promise, with a boolean flag set at true if we succeeeded.
@@ -184,6 +203,46 @@ export default Vue.extend({
             }, (reason) => {
                 return Promise.reject(reason);
             });
+        },
+
+        restoreCloudDriveFileSharingStatus(saveFileId: string): Promise<void>{
+            // If we were in an internal sharing situation, we remove the sharing for anyone(*).
+            // Any other case we do nothing.
+            // (*) That happens in 2 steps: first we retrieve the permission for anyone, then we delete it.
+            // (that is because a file can have several permissions, for example when it's shared with someone in particular)
+            if(this.previousCloudFileSharingStatus == CloudFileSharingStatus.INTERNAL_SHARED){
+                // It possible that the permission to set is effective a bit after we cancel sharing, so we only check the permission reasonably later.
+                return new Promise((resolve, reject) => {
+                    setTimeout(() => {
+                        gapi.client.request({
+                            path: "https://www.googleapis.com/drive/v3/files/" + saveFileId,
+                            method: "GET",
+                            params: {fields: "permissions"},
+                        }).then((resp) => {
+                            if(resp.status == 200){
+                                const publicSharePermission = JSON.parse(resp.body).permissions.find((permission: any) =>  permission.type == "anyone");
+                                if(publicSharePermission){
+                                    gapi.client.request({
+                                        path: `https://www.googleapis.com/drive/v3/files/${saveFileId}/permissions/${publicSharePermission.id}`,
+                                        method: "DELETE",
+                                    }).then((resp) => {
+                                        if((resp.status??404) < 200 || ((resp.status)??404) >= 300){
+                                            reject(resp.status);
+                                        }
+                                        else{
+                                            resolve();
+                                        }
+                                    });
+                                }
+                            }
+                            else{
+                                reject(resp.result);
+                            }
+                        });
+                    }, 5000);
+                });
+            }
+            return Promise.resolve();
         },
 
         getPublicShareLink(saveFileId: string): Promise<{respStatus: number, webLink: string}> {

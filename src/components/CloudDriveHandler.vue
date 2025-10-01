@@ -31,7 +31,7 @@ import i18n from "@/i18n";
 import { CustomEventTypes, getAppSimpleMsgDlgId, getFrameUID, getSaveAsProjectModalDlg } from "@/helpers/editor";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { BootstrapDlgSize, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
-import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, SaveExistingCloudProjectInfos } from "@/types/cloud-drive-types";
+import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileSharingStatus, SaveExistingCloudProjectInfos } from "@/types/cloud-drive-types";
 import GoogleDriveComponent from "@/components/GoogleDriveComponent.vue";
 import OneDriveComponent from "@/components/OneDriveComponent.vue";
 import { generateSPYFileContent } from "@/helpers/load-save";
@@ -255,6 +255,34 @@ export default Vue.extend({
 
         shareCloudDriveFile(cloudTarget: StrypeSyncTarget): Promise<boolean>{
             return (this.getSpecificCloudDriveComponent(cloudTarget)?.shareCloudDriveFile(this.saveFileId as string))??Promise.reject("No Cloud target!"); // We should never get to the reject clause here, keep TS happy
+        },
+
+        getCurrentCloudFileCurrentSharingStatus(cloudTarget: StrypeSyncTarget): Promise<CloudFileSharingStatus> {
+            return (this.getSpecificCloudDriveComponent(cloudTarget)?.getCurrentCloudFileCurrentSharingStatus(this.saveFileId as string)) ?? Promise.reject("No Drive component is loaded!");
+        },
+
+        backupPreviousCloudFileSharingStatus(cloudTarget: StrypeSyncTarget, prevCloudFileSharingStatus: CloudFileSharingStatus): Promise<void>{
+            const cloudDriveComponent = this.getSpecificCloudDriveComponent(cloudTarget);
+            if(cloudDriveComponent){
+                cloudDriveComponent.previousCloudFileSharingStatus = prevCloudFileSharingStatus;
+                return Promise.resolve();
+            }
+            return Promise.reject("No Cloud component is loaded!");
+        },
+
+        restoreCloudDriveFileSharingStatus(cloudTarget: StrypeSyncTarget) {
+            const cloudDriveComponent = this.getSpecificCloudDriveComponent(cloudTarget);
+            return cloudDriveComponent?.restoreCloudDriveFileSharingStatus(this.saveFileId as string)
+                ?.catch((_) => {
+                    // Something happened, we let the user know
+                    const erroMsg = (typeof _ == "string") ? _ : JSON.stringify(_);
+                    this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.clouldFileRestoreSharingStatus", {drivename: cloudDriveComponent.driveName, errordetails: erroMsg}) as string;
+                    this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                })
+                .finally(() => {
+                    // Reset the flag we kept during the sharing action
+                    this.backupPreviousCloudFileSharingStatus(this.appStore.syncTarget, CloudFileSharingStatus.UNKNOWN);
+                });
         },
 
         getPublicShareLink(cloudTarget: StrypeSyncTarget) {

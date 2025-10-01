@@ -5,7 +5,7 @@
 import { StrypeSyncTarget } from "./types";
 
 // Small helper function to check if a target is a cloud based target
-export const isSyncTargetCloudStorage = (target: StrypeSyncTarget): boolean => {
+export const isSyncTargetCloudDrive = (target: StrypeSyncTarget): boolean => {
     return [StrypeSyncTarget.gd, StrypeSyncTarget.od].includes(target);
 };
 
@@ -23,6 +23,16 @@ export enum CloudDriveAPIState {
     UNLOADED, // default state : the API hasn't been loaded yet
     LOADED, // when the API has been loaded
     FAILED, // when the API failed to load
+}
+
+// Status of a Cloud Drive project when we want to share it:
+// we want to restore the sharing status to its initial state if we change it through Strype
+// but cancel the action (otherwise we could just make the file shared without the user thinking of it)
+export enum CloudFileSharingStatus {
+    PUBLIC_SHARED, // the file was publicly shared on the Drive
+    INTERNAL_SHARED, // the file was internally shared on the Drive (i.e. within the Drive permissions)
+    NOT_SHARED, // the file was not shared on the Drive
+    UNKNOWN, // default case (when we haven't checked anything yet)
 }
 
 /* Types used in FileIO */
@@ -71,6 +81,7 @@ export interface CloudDriveComponent {
 
     // Data
     isFileLocked: boolean;
+    previousCloudFileSharingStatus: CloudFileSharingStatus;
 
     // Methods
     signIn: (signInCalBack: (cloudTarget: StrypeSyncTarget) => void) => void,
@@ -89,7 +100,9 @@ export interface CloudDriveComponent {
     doSaveFile: (saveFileId: string | undefined, projetLocation: string, fullFileName: string, fileContent: string, isExplictSave: boolean, onSuccess: (savedFileId: string) => void, onFailure: (errRespStatus: number) => void) => void,
     getCloudAPIStatusWhenLoadedOrFailed: () => Promise<CloudDriveAPIState>,
     getPublicSharedProjectContent: (sharedFileId: string) => Promise<{ isSuccess: boolean, encodedURIFileContent: string, errorMsg: string }>,
+    getCurrentCloudFileCurrentSharingStatus: (sharedFileId: string) => Promise<CloudFileSharingStatus>,
     shareCloudDriveFile: (saveFileId: string) => Promise<boolean>,
+    restoreCloudDriveFileSharingStatus: (saveFileId: string) => Promise<void>,
     getPublicShareLink: (saveFileId: string) => Promise<{ respStatus: number, webLink: string }>,
     searchCloudDriveElements: (elementName: string, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>) => Promise<CloudDriveFile[]>,
     //FileIO

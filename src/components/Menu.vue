@@ -94,26 +94,26 @@
                FITRUE_isPython */
             <!-- category: export -->
             <!-- share project -->
-            <a :id="shareProjectLinkId" v-show="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !canShareProject}" :title="$t((isSyncingToGoogleDrive)?'':'appMenu.needSaveShareProj')" @click="onShareProjectClick">{{$t('appMenu.shareProject')}}<span class="strype-menu-kb-shortcut">{{shareProjectKBShortcut}}</span></a>
+            <a :id="shareProjectLinkId" v-show="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !canShareProject}" :title="$t((isSyncingToCloud)?'':'appMenu.needSaveShareProj')" @click="onShareProjectClick">{{$t('appMenu.shareProject')}}<span class="strype-menu-kb-shortcut">{{shareProjectKBShortcut}}</span></a>
             <ModalDlg :dlgId="shareProjectModalDlgId" :okCustomTitle="$t('buttonLabel.copyLink')" :okDisabled="isSharingLinkGenerationPending" :useLoadingOK="isSharingLinkGenerationPending" 
-                :dlgTitle="$t('appMessage.createShareProjectLink')" :elementToFocusId="shareGDProjectPublicRadioBtnId">
+                :dlgTitle="$t('appMessage.createShareProjectLink')" :elementToFocusId="shareCloudDriveProjectPublicRadioBtnId">
                         <div>
                             <span class="share-mode-buttons-container-title">{{$i18n.t('appMessage.shareProjectModeLabel')}}</span>
                             <div class="share-mode-buttons-container">
                                 <div class="share-mode-button-group">
-                                    <input type="radio" :id="shareGDProjectPublicRadioBtnId" name="shareGDModeRadioGroup"
+                                    <input type="radio" :id="shareCloudDriveProjectPublicRadioBtnId" name="shareCloudDriveModeRadioGroup"
                                         v-model="shareProjectMode" :value="shareProjectPublicModeValue" />
                                     <div>
-                                        <label :for="shareGDProjectPublicRadioBtnId" >{{$i18n.t("appMessage.shareProjectPublicMode")}}</label>
+                                        <label :for="shareCloudDriveProjectPublicRadioBtnId" >{{$i18n.t("appMessage.shareProjectPublicMode")}}</label>
                                         <span>{{$i18n.t("appMessage.shareProjectPublicModeDetails")}}</span>
                                     </div>
                                 </div>
                                 <div class="share-mode-button-group">
-                                    <input type="radio" id="shareGDProjectWithGDRadioBtn" name="shareGDModeRadioGroup" 
-                                        v-model="shareProjectMode" :value="shareProjectWithinGDModeValue" />
+                                    <input type="radio" id="shareCloudDriveProjectWithGDRadioBtn" name="shareCloudDriveModeRadioGroup" 
+                                        v-model="shareProjectMode" :value="shareProjectWithinCloudDriveModeValue" />
                                     <div>
-                                        <label for="shareGDProjectWithGDRadioBtn" >{{$i18n.t("appMessage.shareProjectWithinGDMode")}}</label>
-                                        <span>{{$i18n.t("appMessage.shareProjectWithinGDModeDetails")}}</span>
+                                        <label for="shareCloudDriveProjectWithGDRadioBtn">{{shareProjectWithinCloudDriveModeLabel}}</label>
+                                        <span>{{shareProjectWithinCloudDriveModeDetailsLabel}}</span>
                                     </div>
                                 </div>
                             </div>
@@ -221,7 +221,7 @@ import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/help
 import { getLocaleBuildDate } from "@/main";
 import scssVars from "@/assets/style/_export.module.scss";
 import OpenDemoDlg from "@/components/OpenDemoDlg.vue";
-import { isSyncTargetCloudStorage } from "@/types/cloud-drive-types";
+import { CloudFileSharingStatus, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
 
 //////////////////////
 //     Component    //
@@ -382,12 +382,8 @@ export default Vue.extend({
             return StrypeSyncTarget.od;
         },
 
-        isSyncingToGoogleDrive(): boolean {
-            return this.appStore.syncTarget == StrypeSyncTarget.gd;
-        },
-
-        isSyncingToOneDrive(): boolean {
-            return this.appStore.syncTarget == StrypeSyncTarget.od;
+        isSyncingToCloud(): boolean {
+            return isSyncTargetCloudDrive(this.appStore.syncTarget);
         },
 
         currentDriveLocation(): string {
@@ -467,21 +463,39 @@ export default Vue.extend({
             return "shareProjectModalDlg";
         },
 
-        shareGDProjectPublicRadioBtnId(): string {
-            return "shareGDProjectPublicRadioBtnId";
+        shareCloudDriveProjectPublicRadioBtnId(): string {
+            return "shareCloudDriveProjectPublicRadioBtnId";
         },
 
         canShareProject(): boolean {
-            return this.isSyncingToGoogleDrive && !this.appStore.isEditorContentModified;
+            return isSyncTargetCloudDrive(this.appStore.syncTarget) && !this.appStore.isEditorContentModified;
         },
 
         shareProjectPublicModeValue() {
             return ShareProjectMode.public;
         },
 
-        shareProjectWithinGDModeValue() {
-            return ShareProjectMode.withinGD;
-        },       
+        shareProjectWithinCloudDriveModeValue() {
+            return ShareProjectMode.withinCloudDrive;
+        }, 
+        
+        shareProjectWithinCloudDriveModeLabel(): string {
+            if(this.isSyncingToCloud){
+                return this.$i18n.t("appMessage.shareProjectWithinCloudDriveMode", {drivename: (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).getDriveName()}) as string;
+            }
+            else{
+                return "";
+            }
+        },
+
+        shareProjectWithinCloudDriveModeDetailsLabel(): string {
+            if(this.isSyncingToCloud){
+                return this.$i18n.t("appMessage.shareProjectWithinCloudDriveModeDetails", {drivename: (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).getDriveName()}) as string;
+            }
+            else{
+                return "";
+            }
+        },
         
         isSharingLinkGenerationPending(): boolean {
             // The link generation is pending (i.e. the link is retrieved) when we are in public mode and there is a link..
@@ -704,11 +718,25 @@ export default Vue.extend({
         },
 
         onShareProjectClick(){
-            // We only share a project that is saved and on Google Drive. Show the user what mode of sharing to use (see details in shareProjectWithMode())
+            // We only share a project that is saved on a Cloud Drive. Show the user what mode of sharing to use (see details in shareProjectWithMode())
             if(this.canShareProject){
                 this.publicModeProjectSharingLink = "";
                 this.shareProjectInitialCall = true;
-                this.$root.$emit("bv::show::modal", this.shareProjectModalDlgId);
+                // First we retrieve the current Cloud File sharing status, as we may need to restore the sharing status later
+                const cloudDriveHandlerComponent = (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>);
+                cloudDriveHandlerComponent.getCurrentCloudFileCurrentSharingStatus(this.appStore.syncTarget)
+                    .then((prevCloudFileSharingStatus: CloudFileSharingStatus) => {
+                        // Save the status and then open the dialog.
+                        cloudDriveHandlerComponent.backupPreviousCloudFileSharingStatus(this.appStore.syncTarget, prevCloudFileSharingStatus).then(() => {
+                            this.$root.$emit("bv::show::modal", this.shareProjectModalDlgId);                             
+                        });                       
+                    })
+                    .catch((_) => {
+                        // Something happened, we let the user know
+                        const erroMsg = (typeof _ == "string") ? _ : JSON.stringify(_);
+                        this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.clouldFileRestoreSharingStatus", {drivename: cloudDriveHandlerComponent.getDriveName(), errordetails: erroMsg}) as string;
+                        this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                    });                
             }
         },
 
@@ -796,14 +824,14 @@ export default Vue.extend({
                     // Before generating a link, we change the file setttings on Google Drive to make it accessible at large.
                     const cloudDriveHandlerComponent = (this.$refs[getCloudDriveHandlerComponentRefId()] as InstanceType<typeof CloudDriveHandler>);
                     let createPermissionSucceeded = false;
-                    cloudDriveHandlerComponent.shareCloudDriveFile(StrypeSyncTarget.gd)
+                    cloudDriveHandlerComponent.shareCloudDriveFile(this.appStore.syncTarget)
                         .then((succeeded) => createPermissionSucceeded = succeeded)
                         .catch((errorMsg) => alertMessage = (errorMsg?.status)??errorMsg)
                         .finally(() => {
                             clearTimeout(noShareActionTimeOutHandle);
                             if(createPermissionSucceeded){
                                 // We have set the file public on the Drive, now we retrieve the sharing link.
-                                cloudDriveHandlerComponent.getPublicShareLink(StrypeSyncTarget.gd)
+                                cloudDriveHandlerComponent.getPublicShareLink(this.appStore.syncTarget)
                                     .then(({respStatus, webLink}) => {
                                         // We got the link or not, but we can only make it useful or show an error *if the user is still expecting this sharing mode from the dialog (if not, we just return)
                                         if(this.areShareProjectActionStillValid(forShareMode)){
@@ -863,6 +891,24 @@ export default Vue.extend({
                     // If the sharing mode is public, we have already stored the sharing link in a flag. If the sharing mode is "within Google Drive",
                     // we set the link value now.
                     navigator.clipboard.writeText((this.shareProjectMode == ShareProjectMode.public) ? this.publicModeProjectSharingLink : `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentCloudSaveFileId}`);
+                    // If we have set the sharing to internal (within the Cloud Drive) then we might need to restore the previous sharing state as it was
+                    if(this.shareProjectMode == ShareProjectMode.withinCloudDrive){
+                        (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>)
+                            .restoreCloudDriveFileSharingStatus(this.appStore.syncTarget)
+                            ?.finally(() => {
+                                // Reset the flag we kept during the sharing action
+                                (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>)?.backupPreviousCloudFileSharingStatus(this.appStore.syncTarget, CloudFileSharingStatus.UNKNOWN);
+                            });
+                    }
+                    else{
+                        // Reset the flag we kept during the sharing action
+                        (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>)?.backupPreviousCloudFileSharingStatus(this.appStore.syncTarget, CloudFileSharingStatus.UNKNOWN);                         
+                    }
+                }
+                else{
+                    // When a sharing is cancelled, we may need to clean after ourselves and restore the sharing status of the file
+                    // to what it was before we intefered with the sharing on the Cloud Drive.
+                    (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).restoreCloudDriveFileSharingStatus(this.appStore.syncTarget);
                 }
                 return;
             }
@@ -912,7 +958,7 @@ export default Vue.extend({
                     const selectValue = this.getTargetSelectVal();
                     // Reset the temporary sync file flag
                     this.tempSyncTarget = this.appStore.syncTarget;
-                    if(!isSyncTargetCloudStorage(selectValue)){
+                    if(!isSyncTargetCloudDrive(selectValue)){
                         if(!canBrowserSaveFilePicker() && saveFileName.trim().match(fileNameRegex) == null){
                             // Show an error message and do nothing special
                             this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.fileNameError") as string;
@@ -949,7 +995,7 @@ export default Vue.extend({
                     }
                     else {          
                         // If we were already syncing to a Drive, we save the current file now.
-                        if(isSyncTargetCloudStorage(this.appStore.syncTarget)){
+                        if(isSyncTargetCloudDrive(this.appStore.syncTarget)){
                             this.$root.$emit(CustomEventTypes.requestEditorProjectSaveNow, SaveRequestReason.autosave);
                         }
                         // When the project name is enforced, user as clicked on "save", so we don't need to trigger the usual saving mechanism to select the location/filename
