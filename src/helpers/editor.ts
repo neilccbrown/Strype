@@ -2073,7 +2073,7 @@ export function getCurrentFrameSelectionScope(): SelectAllFramesFuncDefScope {
     // This method checks the current selection scope that we need to know when doing select-all (for function definitions).
     // If we are not in function definitions, for commodity, we return SelectAllFramesFuncDefScope.frame as it will the same
     // logics for the other sections (selecting all the frames in the section)
-    if(getFrameSectionIdFromFrameId(useStore().currentFrame.id) != useStore().functionDefContainerId){
+    if(getFrameSectionIdFromFrameId(useStore().currentFrame.id) != useStore().defsContainerId){
         return SelectAllFramesFuncDefScope.frame;
     }
 
@@ -2084,7 +2084,7 @@ export function getCurrentFrameSelectionScope(): SelectAllFramesFuncDefScope {
     // (no selection *and inside empty container* doesn't need to be considered, because it won't have any effect in the selection loops)
     if(currentFrameSelection.length == 0) {
         const {id: currentFrameId, caretPosition: currentFrameCaretPos} = useStore().currentFrame;
-        if(currentFrameId == useStore().functionDefContainerId){
+        if(currentFrameId == useStore().defsContainerId){
             return SelectAllFramesFuncDefScope.functionsContainerBody;
         }
     
