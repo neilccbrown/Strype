@@ -41,7 +41,7 @@ import Vue, { PropType } from "vue";
 import VueContext, { VueContextConstructor } from "vue-context";
 import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
-import {AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, PythonExecRunningState, FrameContextMenuActionName, CurrentFrame} from "@/types/types";
+import {AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, PythonExecRunningState, FrameContextMenuActionName, CurrentFrame, CollapsedState } from "@/types/types";
 import { getCaretUID, adjustContextMenuPosition, setContextMenuEventClientXY, getAddFrameCmdElementUID, CustomEventTypes, getCaretContainerUID } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { cloneDeep } from "lodash";
@@ -94,7 +94,12 @@ export default Vue.extend({
                 // We're below a frame (i.e. not the top caret position in the container:
                 && this.caretAssignedPosition == CaretPosition.below
                 // We are one of multiple children, and not the last one:
-                && parentFrame.childrenIds.length > 1 && parentFrame.childrenIds.at(-1) != this.frameId);
+                && parentFrame.childrenIds.length > 1 && parentFrame.childrenIds.at(-1) != this.frameId
+                // And we and are our neighbour are not both folded in (i.e. at least one of us is unfolded)
+                && (((this.appStore.frameObjects[this.frameId].collapsedState ?? CollapsedState.FULLY_VISIBLE) != CollapsedState.ONLY_HEADER_VISIBLE)
+                    // We know there is a frame after us because of the check we just did:
+                    || ((this.appStore.frameObjects[parentFrame.childrenIds[parentFrame.childrenIds.indexOf(this.frameId) + 1]].collapsedState ?? CollapsedState.FULLY_VISIBLE) != CollapsedState.ONLY_HEADER_VISIBLE))
+            );
         },
 
         // Needed in order to use the `CaretPosition` type in the v-show
