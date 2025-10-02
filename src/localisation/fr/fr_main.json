@@ -196,7 +196,8 @@
     "lang": "Langue: ",
     "homepage": "Page d'accueil de Strype",
     "apiDocumentation": "Documentation...",
-    "version": "Version"
+    "version": "Version",
+    "policy": "Politique de confidentialité (anglais)"
   },
   "autoCompletion": {
     "myFunctions": "Mes fonctions",
