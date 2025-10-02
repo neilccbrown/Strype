@@ -79,7 +79,7 @@
     "fileNameError": "Project / File name can only contain letters, numbers, spaces, hyphens or parentheses",
     "shareProjectFailed": "Your project's sharing link could not be generated.<br>(Error: {error})",
     "sharingLinkTimedout": "Preparing the sharing link took too long.",
-    "retrievedSharedGenericProject": "The shared project could not be opened.<br>Error: {error}",
+    "retrievedSharedGenericProject": "The shared project could not be opened.<br>Error: {param1}",
     "gdriveConnectionSaveToLoadProjFailed": "Could not connect to Google Drive when trying to save the current project. Try to sign-in again to open another project.",
     "gdriveConnectionSaveToUnloadPageFailed": "Could not connect to Google Drive when trying to save the current project. Try to sign-in again to save the current project before leaving Strype.",
     "gdrivePermissionsNotMet": "Strype requires at least one access permission to use Google Drive.",

@@ -31,7 +31,6 @@ export enum CloudDriveAPIState {
 export enum CloudFileSharingStatus {
     PUBLIC_SHARED, // the file was publicly shared on the Drive
     INTERNAL_SHARED, // the file was internally shared on the Drive (i.e. within the Drive permissions)
-    NOT_SHARED, // the file was not shared on the Drive
     UNKNOWN, // default case (when we haven't checked anything yet)
 }
 
@@ -100,7 +99,7 @@ export interface CloudDriveComponent {
     doSaveFile: (saveFileId: string | undefined, projetLocation: string, fullFileName: string, fileContent: string, isExplictSave: boolean, onSuccess: (savedFileId: string) => void, onFailure: (errRespStatus: number) => void) => void,
     getCloudAPIStatusWhenLoadedOrFailed: () => Promise<CloudDriveAPIState>,
     getPublicSharedProjectContent: (sharedFileId: string) => Promise<{ isSuccess: boolean, encodedURIFileContent: string, errorMsg: string }>,
-    getCurrentCloudFileCurrentSharingStatus: (sharedFileId: string) => Promise<CloudFileSharingStatus>,
+    getCurrentCloudFileCurrentSharingStatus: (saveFileId: string) => Promise<CloudFileSharingStatus>,
     shareCloudDriveFile: (saveFileId: string) => Promise<boolean>,
     restoreCloudDriveFileSharingStatus: (saveFileId: string) => Promise<void>,
     getPublicShareLink: (saveFileId: string) => Promise<{ respStatus: number, webLink: string }>,
