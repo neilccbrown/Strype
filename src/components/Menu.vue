@@ -105,7 +105,7 @@
                                         v-model="shareProjectMode" :value="shareProjectPublicModeValue" />
                                     <div>
                                         <label :for="shareCloudDriveProjectPublicRadioBtnId" >{{$i18n.t("appMessage.shareProjectPublicMode")}}</label>
-                                        <span>{{$i18n.t("appMessage.shareProjectPublicModeDetails")}}</span>
+                                        <span>{{$i18n.t("appMessage.shareProjectPublicModeDetails") + ((isSharingPublicNotDirectDownload) ? " " + shareProjectPublicCloudDriveNotDirectDownloadLabel : "")}}</span>
                                     </div>
                                 </div>
                                 <div class="share-mode-button-group">
@@ -471,6 +471,10 @@ export default Vue.extend({
             return isSyncTargetCloudDrive(this.appStore.syncTarget) && !this.appStore.isEditorContentModified;
         },
 
+        isSharingPublicNotDirectDownload(): boolean {
+            return this.appStore.syncTarget == StrypeSyncTarget.od;
+        },
+
         shareProjectPublicModeValue() {
             return ShareProjectMode.public;
         },
@@ -496,10 +500,19 @@ export default Vue.extend({
                 return "";
             }
         },
+
+        shareProjectPublicCloudDriveNotDirectDownloadLabel(): string {
+            if(this.isSyncingToCloud){
+                return this.$i18n.t("appMessage.shareProjectPublicModeDetailsNoDirectDownload", {drivename: (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).getDriveName()}) as string;
+            }
+            else{
+                return "";
+            }
+        },
         
         isSharingLinkGenerationPending(): boolean {
-            // The link generation is pending (i.e. the link is retrieved) when we are in public mode and there is a link..
-            // When we are in "within Google Drive" mode, the link is instantly ready.
+            // The link generation is pending (i.e. the link is retrieved) when we are in public mode and there is no link..
+            // When we are in "within Cloud Drive" mode, the link is instantly ready.
             return (this.publicModeProjectSharingLink.length == 0 && this.shareProjectMode == ShareProjectMode.public);
         },
 

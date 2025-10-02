@@ -679,7 +679,10 @@ export default Vue.extend({
                         })
                         .catch((error) => {
                             alertMsgKey = "errorMessage.retrievedSharedGenericProject";
-                            alertParams = error;
+                            alertParams = `${error?.message??error.toString()}<br/><br/><b>${this.$i18n.t("appMessage.publicSharedProjectUserDownloadAttempt")}`;
+                            setTimeout(() => {
+                                window.open(shareProjectId, "_blank");
+                            }, 3000);                            
                         })
                         .finally(() => {
                             this.finaliseOpenShareProject(alertMsgKey, alertParams);
