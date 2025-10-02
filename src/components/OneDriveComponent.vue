@@ -20,12 +20,12 @@ import { StrypeSyncTarget } from "@/types/types";
 import { mapStores } from "pinia";
 import Vue, { PropType } from "vue";
 import { AccountInfo, Configuration, PublicClientApplication  } from "@azure/msal-browser";
-import { OneDrivePickConfigurationOptions, OneDriveTokenPurpose } from "@/types/cloud-drive-types";
+import { CloudFileSharingStatus, OneDrivePickConfigurationOptions, OneDriveTokenPurpose } from "@/types/cloud-drive-types";
 import { uniqueId } from "lodash";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { CloudDriveAPIState } from "@/types/cloud-drive-types";
 import { CloudDriveFile } from "@/types/cloud-drive-types";
-import { BaseItem, UploadSession } from "@microsoft/microsoft-graph-types";
+import { BaseItem, Permission, UploadSession } from "@microsoft/microsoft-graph-types";
 import CloudDriveHandlerComponent from "@/components/CloudDriveHandler.vue";
 
 //////////////////////
@@ -52,6 +52,7 @@ export default Vue.extend({
         return {
             // Implements CloudDriveComponent
             isFileLocked: false,
+            previousCloudFileSharingStatus: CloudFileSharingStatus.UNKNOWN,
             // Specific to OneDrive:
             oauthToken: null as string | null,
             isPersonalAccount: false,
@@ -63,6 +64,7 @@ export default Vue.extend({
             isPickingFile: true, // flag to indicate whether the picker is in file or folder picking mode
             currentFileLastModifiedDate: "",
             currentFileName: "",
+            publicShareByStrypeWebLink: "", // We keep the link URL when Strype sets a file for public share so we don't need to query that again
         };
     },
 
@@ -179,22 +181,92 @@ export default Vue.extend({
             return Promise.resolve(CloudDriveAPIState.LOADED);           
         },
 
+        async getCurrentCloudFileCurrentSharingStatus(saveFileId: string): Promise<CloudFileSharingStatus> {
+            // Reset the shared link we might have saved in a previous call
+            this.publicShareByStrypeWebLink = "";
+
+            // Get the permissions
+            const permission = await this.getCloudFileAnonymousLinkPermission(saveFileId);
+           
+            // We only look for the permissions containing a link property with scope "anonymous"
+            return Promise.resolve((permission) ? CloudFileSharingStatus.PUBLIC_SHARED : CloudFileSharingStatus.INTERNAL_SHARED);
+        },
+
+        async restoreCloudDriveFileSharingStatus(saveFileId: string): Promise<void>{
+            // We use the same token purpose than sharing the file: in the end, it is still a sharing request...
+            // Note that we only remove the first permission we have having an anonymous scope: it is unlikely another
+            // permission had been set by the time the user has cancelled the sharing in Strype (or chose internal sharing).
+            if(this.previousCloudFileSharingStatus == CloudFileSharingStatus.INTERNAL_SHARED){
+                // First we get the permissions to retrieve the right one
+                const permission =  await this.getCloudFileAnonymousLinkPermission(saveFileId);
+                
+                // Then we revoke the permission
+                const token = await this.getToken(OneDriveTokenPurpose.GRAPH_SHARE_FILE).catch((_) => {
+                    return Promise.reject(_);
+                });
+
+                const resp = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${saveFileId}/permissions/${permission?.id}`, {
+                    method: "DELETE",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+
+                if(!resp.ok){
+                    return Promise.reject(resp.status);
+                }
+                return Promise.resolve();
+            }
+            return Promise.resolve();
+        },
         
         getPublicSharedProjectContent(sharedFileID: string): Promise<{isSuccess: boolean, encodedURIFileContent: string, errorMsg: string}> {            
-            //TODO
-            return Promise.resolve({isSuccess: false, encodedURIFileContent: "", errorMsg: "Not implemented yet."});
+            // With OneDrive, it seems we can't generate a permanent raw file link, so we won't get here.
+            return Promise.resolve({isSuccess: false, encodedURIFileContent: "", errorMsg: "Not supported."});
         },
 
-        shareCloudDriveFile(saveFileId: string): Promise<boolean>{
-            //TODO
-            // When we share a Strype project, we try to set the project on OneDrive with public acccess.
-            // The methods returns a Promise, with a boolean flag set at true if we succeeeded.
-            return Promise.resolve(false);
+        async shareCloudDriveFile(saveFileId: string): Promise<boolean>{
+            // If the file was already public shared we don't need to check anything again
+            if(this.previousCloudFileSharingStatus == CloudFileSharingStatus.PUBLIC_SHARED){
+                return true;
+            }
+            
+            // Otherwise, we set the file shared on OneDrive
+            try{
+                const token = await this.getToken(OneDriveTokenPurpose.GRAPH_SHARE_FILE).catch((reason) => {
+                    return Promise.reject(reason);
+                });
+                const resp = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${saveFileId}/createLink`,
+                    {
+                        method: "POST",
+                        headers: {"Authorization": `Bearer ${token}`, "Content-Type": "application/json"},
+                        body: "{type: 'view', scope:'anonymous'}",
+                    });
+
+                if(!resp.ok){
+                    return Promise.reject(resp.status+" "+resp.statusText);
+                }
+
+                // Save the share link for later so we don't have to query again to fetch it...
+                const jsonProps = await resp.json() as Permission;
+                this.publicShareByStrypeWebLink = jsonProps.link?.webUrl??"";
+
+                return true;
+            } 
+            catch(err) {
+                return false;
+            }
         },
 
-        getPublicShareLink(saveFileId: string): Promise<{respStatus: number, webLink: string}> {
-            //TODO
-            return Promise.resolve({respStatus: 500, webLink:""});
+        async getPublicShareLink(saveFileId: string): Promise<{respStatus: number, webLink: string}> {
+            // Get the link: if we had a public share link that we got when setting the file publicly shared ourself.
+            if(this.publicShareByStrypeWebLink.length > 0){
+                return Promise.resolve({respStatus: 200, webLink: this.publicShareByStrypeWebLink});
+            }
+
+            // ... otherwise we query it
+            const permission = await this.getCloudFileAnonymousLinkPermission(saveFileId);
+            return Promise.resolve({respStatus: 200, webLink: permission?.link?.webUrl??""});                        
         },
 
         getFolderNameFromId(folderId: string): Promise<string> {
@@ -272,11 +344,10 @@ export default Vue.extend({
 
         async loadPickedFileId(id: string, otherParams: {fileName?: string}, onGettingFileMetadataSucces: (fileNameFromDrive: string, fileModifiedDateTime: string)=>void
             , onGettingFileContentSuccess: (fileContent: string) => void, onGettingFileContentFailure: (errorRespStatus: number) => void){
-            // We don't need to query some meta information again against OneDrive because we get them as soon as we pick a file.
+            // We don't need to query some meta information again against OneDrive because we get them as soon as we pick a file (via the picker).
             // However, we only kept them in this component internal data and now use them.
-            // The file content is retrieve via a new query.               
-            onGettingFileMetadataSucces(this.currentFileName, this.currentFileLastModifiedDate);
-
+            // The file content is retrieve via a new query.                  
+            
             // We try to retrieve the folder name via the Graph API.
             // Note: we don't need to claim the token again when getting the content, the same token is fine.
             const token = await this.getToken(OneDriveTokenPurpose.GRAPH_GET_FILE_DETAILS);
@@ -292,6 +363,9 @@ export default Vue.extend({
                     this.appStore.strypeProjectLocation = jsonProps.parentReference.id;
                     this.appStore.strypeProjectLocationAlias = jsonProps.parentReference.name;                    
                 }
+                // If we opened the file via the picker, we have the meta information,
+                // if we opened a shared file (internal share) then we retrieve the meta now
+                onGettingFileMetadataSucces((otherParams.fileName) ? this.currentFileName : jsonProps.name??"", (otherParams.fileName) ? this.currentFileLastModifiedDate : jsonProps.lastModifiedDateTime??"");
             }          
             
             // Now get the file content
@@ -309,73 +383,75 @@ export default Vue.extend({
         },
         
         async doLoadFile(openSharedProjectFileId: string): Promise<void> {
-            //TODO
             if(this.oauthToken != null){
                 // When we load for the very first time, we may not have a Drive location to look for. In that case, we look for a Strype folder existence 
                 // (however we do not create it here, we would do this on a save action). If a location is already set, we make sure it still exists. 
                 // If it doesn't exist anymore, we set the default location to the Strype folder (if available) or just the Drive itself if not.
                 // NOTE: we do not need to check a folder when opening a shared project
-                const pickerAccessToken = await this.getToken(OneDriveTokenPurpose.PICKER_OPEN).catch((_) => {
-                    return Promise.reject("Something happened while trying to access OneDrive Picker.");
-                });
-                if(pickerAccessToken.length == 0){
-                    return Promise.reject();
+                if(openSharedProjectFileId.length == 0){
+                    const pickerAccessToken = await this.getToken(OneDriveTokenPurpose.PICKER_OPEN).catch((_) => {
+                        return Promise.reject("Something happened while trying to access OneDrive Picker.");
+                    });
+                    if(pickerAccessToken.length == 0){
+                        return Promise.reject();
+                    }
+                    
+                    // create a new window. The Picker's recommended maximum size is 1080x680, but it can scale down to
+                    // a minimum size of 250x230 for very small screens or very large zoom.
+                    this.pickerPopup = window.open("", "Picker", "width=1080,height=680");
+                    this.isPickingFile = true;
+                
+                    // options: These are the picker configuration, see the schema link for a full explaination of the available options
+                    this.pickerOptions = {
+                        sdk: "8.0", 
+                        authentication:{},
+                        messaging: {
+                            channelId: uniqueId(),
+                            origin: this.siteOrigin,
+                        },
+                        //TODO : see if the folder selection works for work accounts, it doesn't for personal
+                        entry: {oneDrive: {files: {folder: "Strype",fallbackToRoot: true}}},
+                        typesAndSources: {mode: "files", pivots: {oneDrive: true, recent: true}, filters: [`.${pythonFileExtension}`,`.${strypeFileExtension}`]},
+                    };
+                
+                    // now we need to construct our query string
+                    const queryString = new URLSearchParams({
+                        filePicker: JSON.stringify(this.pickerOptions),
+                        locale:  this.$i18n.t("localeOneDrive") as string,
+                    });
+
+                    // we create the absolute url by combining the base url, appending the _layouts path, and including the query string
+                    const url = `${this.baseUrl}?${queryString}`;
+                    // create a form
+                    const form = this.pickerPopup?.document.createElement("form");
+                    if(this.pickerPopup && form){
+                        // set the action of the form to the url defined above
+                        // This will include the query string options for the picker.
+                        form.setAttribute("action", url);
+
+                        // must be a post request
+                        form.setAttribute("method", "POST");
+
+                        // Create a hidden input element to send the OAuth token to the Picker.
+                        // This optional when using a popup window but required when using an iframe.
+                        const tokenInput = this.pickerPopup.document.createElement("input");
+                        tokenInput.setAttribute("type", "hidden");
+                        tokenInput.setAttribute("name", "access_token");
+                        tokenInput.setAttribute("value", pickerAccessToken);
+                        form.appendChild(tokenInput);
+
+                        // append the form to the body
+                        this.pickerPopup.document.body.append(form);
+
+                        // submit the form, this will load the picker page
+                        form.submit();
+                    }
+                    return Promise.resolve();
                 }
-                
-                // create a new window. The Picker's recommended maximum size is 1080x680, but it can scale down to
-                // a minimum size of 250x230 for very small screens or very large zoom.
-                this.pickerPopup = window.open("", "Picker", "width=1080,height=680");
-                this.isPickingFile = true;
-            
-                // options: These are the picker configuration, see the schema link for a full explaination of the available options
-                this.pickerOptions = {
-                    sdk: "8.0", 
-                    authentication:{},
-                    messaging: {
-                        channelId: uniqueId(),
-                        origin: this.siteOrigin,
-                    },
-                    //TODO : see if the folder selection works for work accounts, it doesn't for personal
-                    entry: {oneDrive: {files: {folder: "Strype",fallbackToRoot: true}}},
-                    typesAndSources: {mode: "files", pivots: {oneDrive: true, recent: true}, filters: [`.${pythonFileExtension}`,`.${strypeFileExtension}`]},
-                };
-              
-                // now we need to construct our query string
-                const queryString = new URLSearchParams({
-                    filePicker: JSON.stringify(this.pickerOptions),
-                    locale:  this.$i18n.t("localeOneDrive") as string,
-                });
-
-                // we create the absolute url by combining the base url, appending the _layouts path, and including the query string
-                const url = `${this.baseUrl}?${queryString}`;
-                // create a form
-                const form = this.pickerPopup?.document.createElement("form");
-                if(this.pickerPopup && form){
-                    // set the action of the form to the url defined above
-                    // This will include the query string options for the picker.
-                    form.setAttribute("action", url);
-
-                    // must be a post request
-                    form.setAttribute("method", "POST");
-
-                    // Create a hidden input element to send the OAuth token to the Picker.
-                    // This optional when using a popup window but required when using an iframe.
-                    const tokenInput = this.pickerPopup.document.createElement("input");
-                    tokenInput.setAttribute("type", "hidden");
-                    tokenInput.setAttribute("name", "access_token");
-                    tokenInput.setAttribute("value", pickerAccessToken);
-                    form.appendChild(tokenInput);
-
-                    // append the form to the body
-                    this.pickerPopup.document.body.append(form);
-
-                    // submit the form, this will load the picker page
-                    form.submit();
-                }    
-                
-                
-                //TODO REMOVE LATER (just added during dev exploration phase)
-                return Promise.resolve();
+                else{
+                    // Opening a shared file (internally shared)
+                    return this.onFileToLoadPicked(StrypeSyncTarget.od, openSharedProjectFileId);
+                }
             }
             else{
                 // Nothing to do..
@@ -553,6 +629,9 @@ export default Vue.extend({
             // if we are getting a token for the picker: personal --> "OneDrive.ReadWrite"
             // if we are getting a token for the picker base url: work --> "Files.Read"? (no need for personal)
             // if we are getting a token for retrieving the file details, doing a search or checking folders: personal --> "Files.Read"+"offline_access"+"User.Read"
+            // if we are getting a token for creating a folder or saving the file: personal --> Files.ReadWrite
+            // if we are getting a token for checking the sharing status of a file: personal --> Files.Read
+            // if we are getting a token for sharing the file: personal --> Files.ReadWrite
             let scopes = [];
             switch(purpose){
             case OneDriveTokenPurpose.INIT_AUTH:
@@ -564,13 +643,17 @@ export default Vue.extend({
             case OneDriveTokenPurpose.GRAPH_SEARCH:
                 scopes.push(...["Files.Read", "offline_access", "User.Read"]);
                 break;
+            case OneDriveTokenPurpose.GRAPH_CHECK_SHARING:
+                scopes.push("Files.Read");
+                break;
             case OneDriveTokenPurpose.PICKER_OPEN:
             case OneDriveTokenPurpose.PICKER_ACTIVITY:            
                 scopes.push((this.isPersonalAccount) ? "OneDrive.ReadWrite" :"??");
                 break;
             case OneDriveTokenPurpose.GRAPH_CREATE_FOLDER:
             case OneDriveTokenPurpose.GRAPH_SAVE_FILE:
-                scopes.push("Files.ReadWrite.All");
+            case OneDriveTokenPurpose.GRAPH_SHARE_FILE:
+                scopes.push("Files.ReadWrite");
                 break;
             default:
                 break;
@@ -727,6 +810,29 @@ export default Vue.extend({
                 }
                 break;
             }
+        },
+
+        async getCloudFileAnonymousLinkPermission(saveFileId: string): Promise<Permission|undefined> {
+            // We use Graph to query the file's permissions, which in turn informs us about the sharing status.
+            const token = await this.getToken(OneDriveTokenPurpose.GRAPH_CHECK_SHARING).catch((_) => {
+                return Promise.reject(_);
+            });
+
+            const resp = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${saveFileId}/permissions`, {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+            });
+
+            if(!resp.ok){
+                return Promise.reject(resp.status);
+            }
+
+            const jsonProps = await resp.json(); //as Permi
+            const permissions = jsonProps.value as Permission[];
+            return permissions.find((perm) => perm.link?.scope == "anonymous" && perm.link.type == "view");
         },
     },   
 });

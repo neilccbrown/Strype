@@ -120,6 +120,8 @@ export enum OneDriveTokenPurpose {
     GRAPH_CREATE_FOLDER,
     GRAPH_SEARCH,
     GRAPH_SAVE_FILE,
+    GRAPH_CHECK_SHARING,
+    GRAPH_SHARE_FILE,
 }
 
 export interface IAuthenticateCommand {

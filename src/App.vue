@@ -114,7 +114,7 @@ import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane, PaneData} from "splitpanes";
 import { useStore, settingsStore } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition } from "@/types/types";
-import { CloudDriveAPIState } from "@/types/cloud-drive-types";
+import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
 import { getFrameContainerUID, getCloudDriveHandlerComponentRefId, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
 /* IFTRUE_isPython */
@@ -594,41 +594,53 @@ export default Vue.extend({
     mounted() {
         // When the App is ready, we want to either open a project present in the local storage,
         // or open a shared project that is given by the URL (this takes priority over local storage).
-        // If we need to open a shared project, we may need to wait for the Google API (GAPI) to be loaded before doing anything.
+        // If we need to open a shared project, when Google Drive is deteced, we may need to wait for the Google API (GAPI) to be loaded before doing anything.
 
         // Check whether Strype is opening a shared project.
-        // We check the type of sharing (for now it's only Google Drive and generic) and get the retrieve path from the query parameters.
+        // We check the type of sharing (for now it's only a Cloud Drive we support or generic) and get the retrieve path from the query parameters.
         const queryParams = new URLSearchParams(window.location.search);
-        const sharedProjectTarget= queryParams.get(sharedStrypeProjectTargetKey);
+        const sharedProjectTarget= queryParams.get(sharedStrypeProjectTargetKey); // if provided, appears like the numbered value of the SyncTarget enum
         const shareProjectId = queryParams.get(sharedStrypeProjectIdKey);
-        if(shareProjectId && sharedProjectTarget == StrypeSyncTarget.gd.toString()) {
-            // When there is a shared project, we do like if we were opening a Google Drive project BUT we use a special
-            // mode that does not ask for the target selection (which shows with "open" in the menu) and breaks links to Google Drive
-            // (it's only a retrieval of the code)
-            const loadGDSharedProject = () => {
-                (this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).openSharedProjectTarget = StrypeSyncTarget.gd;
+        // When there is a shared project shared within a Cloud Drive, we do like if we were opening that Cloud Drive project BUT we use a special
+        // mode that does not ask for the target selection (which shows with "open" in the menu) and breaks links to the Cloud Drive
+        // (it's only a retrieval of the code)
+        if(shareProjectId && sharedProjectTarget && isSyncTargetCloudDrive(parseInt(sharedProjectTarget))) {
+            const loadCloudSharedProject = () => {
+                const cloudTarget = parseInt(sharedProjectTarget) as StrypeSyncTarget;
+                (this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).openSharedProjectTarget = cloudTarget;
                 (this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).openSharedProjectId = shareProjectId;
-                // Wait a bit, Google API must have been loaded first.
-                const googleDriveCloudComponent = (this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getCloudDriveHandlerComponentRefId()] as InstanceType<typeof CloudDriveHandlerComponent>;
-                googleDriveCloudComponent.getCloudAPIStatusWhenLoadedOrFailed(StrypeSyncTarget.gd)
-                    ?.then((gapiState) =>{
-                        // Only open the project is the GAPI is loaded, and show a message of error if it hasn't.
-                        if(gapiState == CloudDriveAPIState.LOADED){
-                            document.getElementById(getLoadProjectLinkId())?.click();
-                        }
-                        else{
-                            this.finaliseOpenShareProject("errorMessage.retrievedSharedGenericProject", this.$i18n.t("errorMessage.cloudAPIFailed",{apiname: googleDriveCloudComponent.$props.apiName}) as string);
-                        }
-                    });
+                const afterAPILoaded = () => {
+                    document.getElementById(getLoadProjectLinkId())?.click();
+                };
+                const cloudDriveHandlerComponent = (this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getCloudDriveHandlerComponentRefId()] as InstanceType<typeof CloudDriveHandlerComponent>;
+                // For Google API, we wait a bit as it must have been loaded first.
+                const specifcDriveComponent = cloudDriveHandlerComponent.getSpecificCloudDriveComponent(cloudTarget);
+                if(cloudTarget == StrypeSyncTarget.gd){                    
+                    cloudDriveHandlerComponent.getCloudAPIStatusWhenLoadedOrFailed(StrypeSyncTarget.gd)
+                        ?.then((gapiState) =>{
+                            // Only open the project is the GAPI is loaded, and show a message of error if it hasn't.
+                            if(gapiState == CloudDriveAPIState.LOADED){
+                                afterAPILoaded();
+                            }
+                            else{
+                                this.finaliseOpenShareProject("errorMessage.retrievedSharedGenericProject", this.$i18n.t("errorMessage.cloudAPIFailed",{apiname: specifcDriveComponent?.apiName}) as string);
+                            }
+                        });
+                }
+                else {
+                    // We don't use a client OneDrive API so we can request the file right away.
+                    afterAPILoaded();
+                }
             };
 
             this.checkLocalStorageHasProject().then(() => {
                 // A project exists in the local storage, we ask the user if they want to keep it (and cancel the load of the shared project)
-                this.confirmResetLSOnShareProjectLoad().then((continueLoadingSharedProject) => (continueLoadingSharedProject) ? loadGDSharedProject() : this.loadLocalStorageProjectOnStart());
+                this.confirmResetLSOnShareProjectLoad().then((continueLoadingSharedProject) => (continueLoadingSharedProject) ? loadCloudSharedProject() : this.loadLocalStorageProjectOnStart());
             },
             // No project in the local storage, we can continue loading the shared project
-            () => loadGDSharedProject());            
-        }
+            () => loadCloudSharedProject());            
+        }        
+        // Generic opening
         else if(shareProjectId && shareProjectId.match(/^https?:\/\/.*$/g) != null){
             // The "fall out" case of a generic share: we don't care about the source target, it is only a URL to get to and retrive the Strype file.
             // We just do a small sanity check that it is a HTTP(S) link.

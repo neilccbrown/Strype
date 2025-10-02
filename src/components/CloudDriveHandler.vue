@@ -196,7 +196,7 @@ export default Vue.extend({
                 // (that is redundant with the previous "save" action if we were already syncing, but this method can be called when we were not syncing so it has to be done.)
                 if(cloudDriveComponent.isOAuthTokenNotSet()){
                     this.signInFn();
-                // We wait for the signing checks are done, the loading mechanism will continue later in doLoadFile()
+                    // We wait for the signing checks are done, the loading mechanism will continue later in doLoadFile()
                 }
                 else{
                 // We test the connection to make sure it's still valid: if so, we continue with the loading, and if not we reset the token and
@@ -443,6 +443,7 @@ export default Vue.extend({
             cloudDriveComponent?.loadPickedFileId(id, otherParams, (fileNameFromDrive: string, fileModifiedDateTime: string) => {
                 if(this.openSharedProjectFileId.length > 0){
                     otherParams.fileName = fileNameFromDrive;
+                    fileName = fileNameFromDrive;
                 }
                 // The date conversion works fine for a date set as *RFC 3339 date format*
                 lastSaveDate = Date.parse(fileModifiedDateTime);
