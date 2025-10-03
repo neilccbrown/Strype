@@ -1544,6 +1544,11 @@ $divider-grey: darken($background-grey, 15%);
     border:0
 }
 
+.v-context > li.v-context-disabled > a,
+.v-context ul > li.v-context-disabled > a {
+    color: grey !important;
+}
+
 .v-context > li > a:focus,
 .v-context ul > li > a:focus,
 .#{$strype-classname-ac-item}.#{$strype-classname-ac-item-selected} {
