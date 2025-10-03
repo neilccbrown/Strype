@@ -348,17 +348,21 @@ export default Vue.extend({
             // However, we only kept them in this component internal data and now use them.
             // The file content is retrieve via a new query.                  
             
-            // We try to retrieve the folder name via the Graph API.
+            // We try to retrieve the folder name via the Graph API against an endpoint that INCLUDES the drive ID,
+            // which allows us to also open internally shared files rather that just files from own Drive.
             // Note: we don't need to claim the token again when getting the content, the same token is fine.
             const token = await this.getToken(OneDriveTokenPurpose.GRAPH_GET_FILE_DETAILS);
-            const requestURL = `https://graph.microsoft.com/v1.0/drive/items/${id}`;
+            // The drive ID is part of the file ID so we can easily extract it...
+            const driveId = id.substring(0, id.indexOf("!"));
+            const requestURL = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${id}`;
             let resp = await fetch(requestURL, 
                 {method: "GET", headers: {"Authorization": `Bearer ${token}`, "Accept": "application/json"}});
             if (!resp.ok){
                 onGettingFileContentFailure(resp.status);
+                return;
             }
             else{
-                const jsonProps = await resp.json() as BaseItem;                
+                const jsonProps = await resp.json() as BaseItem;  
                 if(jsonProps.parentReference?.id && jsonProps.parentReference.name){                                    
                     this.appStore.strypeProjectLocation = jsonProps.parentReference.id;
                     this.appStore.strypeProjectLocationAlias = jsonProps.parentReference.name;                    
@@ -369,12 +373,10 @@ export default Vue.extend({
             }          
             
             // Now get the file content
-            const requestContentURL = `https://graph.microsoft.com/v1.0/drive/items/${id}/content`;
-            resp = await fetch(requestContentURL, 
+            resp = await fetch(requestURL + "/content", 
                 {method: "GET", headers: {"Authorization": `Bearer ${token}`}});
             if (!resp.ok){
                 onGettingFileContentFailure(resp.status);
-                alert(`Graph API request failed: ${resp.status} ${resp.statusText}`);
             }
             else{
                 const fileContent = await resp.text();                
@@ -390,7 +392,7 @@ export default Vue.extend({
                 // NOTE: we do not need to check a folder when opening a shared project
                 if(openSharedProjectFileId.length == 0){
                     const pickerAccessToken = await this.getToken(OneDriveTokenPurpose.PICKER_OPEN).catch((_) => {
-                        return Promise.reject("Something happened while trying to access OneDrive Picker.");
+                        return Promise.reject("Something happened while trying to access OneDrive Picker for loading.");
                     });
                     if(pickerAccessToken.length == 0){
                         return Promise.reject();
