@@ -257,6 +257,7 @@
   },
   "shortcut": {
     "delete": "Delete",
-    "ctrlPlus": "Ctrl+"
+    "ctrlPlus": "Ctrl+",
+    "period": "Dot"
   }
 }

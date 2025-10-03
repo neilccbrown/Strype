@@ -529,7 +529,7 @@ export default Vue.extend({
                 else {
                     someCollapseShowing = true;
                     if (nextWouldBe as number === c) {
-                        this.frameContextMenuItems[c].shortcut = ".";
+                        this.frameContextMenuItems[c].shortcut = this.$i18n.t("shortcut.period") as string;
                     }
                 }
             }
