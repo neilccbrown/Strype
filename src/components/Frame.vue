@@ -345,7 +345,8 @@ export default Vue.extend({
     },
 
     mounted() {
-        window.addEventListener("keydown", this.onKeyDown);
+        this.$root.$on(CustomEventTypes.cutFrameSelection, this.cutIfFirstInSelection);
+        this.$root.$on(CustomEventTypes.copyFrameSelection, this.copyIfFirstInSelection);
 
         // Observe when the context menu when the context menu is closed
         // in order to reset the enforced selection flag
@@ -370,8 +371,6 @@ export default Vue.extend({
     },
 
     destroyed() {
-        window.removeEventListener("keydown", this.onKeyDown);
-
         // Probably not required but for safety, remove the observer set up in mounted()
         this.contextMenuObserver.disconnect();
 
@@ -389,19 +388,20 @@ export default Vue.extend({
 
     methods: {
         isMacOSPlatform,
-        onKeyDown(event: KeyboardEvent) {
+        cutIfFirstInSelection() {
             // Cutting/copying by shortcut is only available for a frame selection*, and if the user's code isn't being executed.
             // To prevent the command to be called on all frames, but only once (first of a selection), we check that the current frame is a first of a selection.
             // * "this.isPartOfSelection" is necessary because it is only set at the right value in a subsequent call. 
-            if(!this.isPythonExecuting && this.isPartOfSelection && (this.appStore.getFrameSelectionPosition(this.frameId) as string).startsWith("first") && (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "c" || event.key.toLowerCase() === "x")) {
-                if(event.key.toLowerCase() === "c"){
-                    this.copy();
-                }
-                else{
-                    this.cut();
-                }
-                event.preventDefault();
-                return;
+            if(!this.isPythonExecuting && this.isPartOfSelection && (this.appStore.getFrameSelectionPosition(this.frameId) as string).startsWith("first")) {
+                this.cut();
+            }
+        },
+        copyIfFirstInSelection() {
+            // Cutting/copying by shortcut is only available for a frame selection*, and if the user's code isn't being executed.
+            // To prevent the command to be called on all frames, but only once (first of a selection), we check that the current frame is a first of a selection.
+            // * "this.isPartOfSelection" is necessary because it is only set at the right value in a subsequent call. 
+            if(!this.isPythonExecuting && this.isPartOfSelection && (this.appStore.getFrameSelectionPosition(this.frameId) as string).startsWith("first")) {
+                this.copy();
             }
         },
 

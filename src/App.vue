@@ -472,6 +472,17 @@ export default Vue.extend({
                 event.stopPropagation();
                 return;
             }
+            
+            // If we are at a frame cursor and they hit ctrl-x/ctrl-c then we do cut/copy:
+            if(!this.appStore.isEditing && !this.isPythonExecuting && (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "c" || event.key.toLowerCase() === "x")) {
+                // We emit an event to be picked up by the first frame in the current selection:
+                // The frames themselves decide whether to act based on whether they are the first frame in the selection:
+                this.$root.$emit(event.key.toLowerCase() === "c" ? CustomEventTypes.copyFrameSelection : CustomEventTypes.cutFrameSelection);
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                event.stopPropagation();
+                return;
+            }
         });
 
         // There are only a few cases when we need to handle key up events

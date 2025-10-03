@@ -101,6 +101,7 @@ export const useStore = defineStore("app", {
             // This is the selected tab index of the Commands' tab panel.
             commandsTabIndex: 0, 
 
+            // Are we editing a text slot?
             isEditing: false,
 
             /* These state properties are for saving the layout of the UI.
