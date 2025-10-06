@@ -173,7 +173,10 @@
     "delete": "Supprimer",
     "deleteOuter": "Supprimer externe(s)",
     "insert": "Insérer",
-    "screenshotGraphics": "Télécharger une capture d'écran"
+    "screenshotGraphics": "Télécharger une capture d'écran",
+    "collapseHeader": "Vue Réduite",
+    "collapseDocumentation": "Vue Interface",
+    "collapseFull": "Vue Dévelopée"      
   },
   "appMenu": {
     "downloadHex": "Convertir vers Hex",
@@ -252,6 +255,7 @@
   },
   "shortcut": {
     "delete": "Suppr",
-    "ctrlPlus": "Ctrl+"
+    "ctrlPlus": "Ctrl+",
+    "period": "Point"
   }
 }
