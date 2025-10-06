@@ -275,9 +275,18 @@ export default Vue.extend({
             return Promise.resolve({respStatus: 200, webLink: permission?.link?.webUrl??""});                        
         },
 
-        getFolderNameFromId(folderId: string): Promise<string> {
-            //TODO
-            return Promise.resolve("DUMMU_FOLDER_NAME");
+        async getFolderNameFromId(folderId: string): Promise<string> {
+            const token = await this.getToken(OneDriveTokenPurpose.GRAPH_GET_FILE_DETAILS);
+            const requestURL = `https://graph.microsoft.com/v1.0/drive/me/items/${folderId}`;
+            let resp = await fetch(requestURL, 
+                {method: "GET", headers: {"Authorization": `Bearer ${token}`, "Accept": "application/json"}});
+            if (!resp.ok){
+                throw Error(resp.status.toString());
+            }
+            else{
+                const jsonProps = await resp.json() as BaseItem;  
+                return jsonProps.name??"";
+            }
         },
 
         checkIsCloudFileReadonly(id: string, onGettingReadonlyStatus: (isReadonly: boolean) => void){
