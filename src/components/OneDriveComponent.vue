@@ -548,6 +548,9 @@ export default Vue.extend({
                     return checkFolderDoneCallBack(data.id??"");
                 }
             }
+            else{
+                return checkFolderDoneCallBack(null);
+            }
         },
 
         lookForAvailableProjectFileName(fileLocation: string|undefined, fileName: string, onFileAlreadyExists: (existingFileId: string) => void, onSuccessCallback: VoidFunction, onFailureCallBack: VoidFunction){

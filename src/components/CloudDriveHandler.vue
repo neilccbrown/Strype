@@ -31,7 +31,7 @@ import i18n from "@/i18n";
 import { CustomEventTypes, getAppSimpleMsgDlgId, getFrameUID, getSaveAsProjectModalDlg } from "@/helpers/editor";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { BootstrapDlgSize, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
-import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileSharingStatus, SaveExistingCloudProjectInfos } from "@/types/cloud-drive-types";
+import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileSharingStatus, isSyncTargetCloudDrive, SaveExistingCloudProjectInfos } from "@/types/cloud-drive-types";
 import GoogleDriveComponent from "@/components/GoogleDriveComponent.vue";
 import OneDriveComponent from "@/components/OneDriveComponent.vue";
 import { generateSPYFileContent } from "@/helpers/load-save";
@@ -323,10 +323,15 @@ export default Vue.extend({
             // In any other case, we only save a file if there is a save file id set
             if(saveReason == SaveRequestReason.saveProjectAtLocation || saveReason == SaveRequestReason.saveProjectAtOtherLocation){
                 // If we don't have a set location, we ask for the location (with /Strype as the default location -- which is created if non existant)
-                const createStrypeFolder = !(this.appStore.strypeProjectLocation) || (typeof this.appStore.strypeProjectLocation != "string");
+                // We detect the need for checking/creating "Strype" when the target is a cloud drive different than the current cloud drive target,
+                // and the folder is "Strype". In the case we know the user didn't explictly request to save a given location so we target "Strype".
+                let isStrypeForNewCloudDriveTargetSave = saveReason == SaveRequestReason.saveProjectAtLocation 
+                    && (cloudTarget != this.appStore.syncTarget) && isSyncTargetCloudDrive(cloudTarget) && isSyncTargetCloudDrive(this.appStore.syncTarget)
+                    && ((this.$parent as InstanceType<typeof Menu>).currentDriveLocation == "Strype");
+                const createStrypeFolder = isStrypeForNewCloudDriveTargetSave || !(this.appStore.strypeProjectLocation) || (typeof this.appStore.strypeProjectLocation != "string");
                 cloudDriveComponent?.checkDriveStrypeOrOtherFolder(createStrypeFolder, createStrypeFolder, (strypeFolderId: string | null) => {
                     // Show the file picker to select a folder (with default location) if the location specified doesn't exist, or if the user asked for changing it
-                    if(strypeFolderId != null && this.appStore.strypeProjectLocation == undefined){
+                    if(strypeFolderId != null && (this.appStore.strypeProjectLocation == undefined || isStrypeForNewCloudDriveTargetSave)){
                         // No location is set, we set the Strype folder
                         this.appStore.strypeProjectLocation = strypeFolderId;
                         this.appStore.strypeProjectLocationAlias = "Strype";
@@ -383,6 +388,9 @@ export default Vue.extend({
                 // Set the project name when we have made an explicit saving
                 if(isExplictSave || this.saveReason == SaveRequestReason.overwriteExistingProject){
                     this.appStore.projectName = this.saveFileName;
+                    // We also make sure the target is clearly set in the menu: since we have several cloud drives,
+                    // it is not possible that a sync target changes between open and save or between saves.
+                    (this.$parent as InstanceType<typeof Menu>).saveTargetChoice(cloudTarget);
                 }               
                 // The saving date is updated in any cases
                 this.appStore.projectLastSaveDate = Date.now();     

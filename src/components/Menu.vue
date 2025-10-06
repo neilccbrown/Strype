@@ -389,8 +389,10 @@ export default Vue.extend({
         },
 
         currentDriveLocation(): string {
-            const currentLocation = this.appStore.strypeProjectLocationAlias??"";
-            return (currentLocation.length > 0) ? currentLocation : "Strype";
+            // The current Drive location (folder of a project) depends on whether we are already
+            // "connected" to a Drive: if there is no Drive or if the user selects a target that is
+            // NOT the current target, then the default destination is "Strype". 
+            return(this.appStore.strypeProjectLocationAlias && (this.appStore.syncTarget == this.tempSyncTarget))? this.appStore.strypeProjectLocationAlias : "Strype";
         },
 
         newProjectLinkId(): string {
@@ -703,7 +705,7 @@ export default Vue.extend({
         },
 
         onSaveTargetChanged(){
-            this.showCloudSaveLocation = (this.getTargetSelectVal() == this.syncGDValue || this.getTargetSelectVal() == this.syncODValue);
+            this.showCloudSaveLocation = isSyncTargetCloudDrive(this.getTargetSelectVal());
         },
 
         saveTargetChoice(target: StrypeSyncTarget){
