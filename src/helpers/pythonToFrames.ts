@@ -92,7 +92,6 @@ function addFrame(frame: FrameObject, lineno: number | undefined, s: CopyState) 
     s.loadedFrames[id] = frame;
     frame.isDisabled = lineno != undefined && s.disabledLines.includes(lineno);
     frame.collapsedState = lineno != undefined ? s.collapsedLines.get(lineno) : undefined;
-    console.log("Collapsed state set to " + frame.collapsedState + " for " + frame.frameType.type + " from " + JSON.stringify([...s.collapsedLines.entries()]) + " and #" + lineno);
     if (!frame.frameType.isJointFrame) {
         s.addToNonJoint?.push(id);
         if (s.parent != null) {

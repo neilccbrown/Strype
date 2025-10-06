@@ -95,7 +95,7 @@ export default Vue.extend({
                 && this.caretAssignedPosition == CaretPosition.below
                 // We are one of multiple children, and not the last one:
                 && parentFrame.childrenIds.length > 1 && parentFrame.childrenIds.at(-1) != this.frameId
-                // And we and are our neighbour are not both folded in (i.e. at least one of us is unfolded)
+                // And we and our neighbour following us are not both folded in (i.e. at least one of us is unfolded)
                 && (((this.appStore.frameObjects[this.frameId].collapsedState ?? CollapsedState.FULLY_VISIBLE) != CollapsedState.ONLY_HEADER_VISIBLE)
                     // We know there is a frame after us because of the check we just did:
                     || ((this.appStore.frameObjects[parentFrame.childrenIds[parentFrame.childrenIds.indexOf(this.frameId) + 1]].collapsedState ?? CollapsedState.FULLY_VISIBLE) != CollapsedState.ONLY_HEADER_VISIBLE))
