@@ -322,8 +322,9 @@ export default Vue.extend({
             // When an explicit save is requested, it acts as a "save as" and we generate a new file in the specified Cloud Drive.
             // In any other case, we only save a file if there is a save file id set
             if(saveReason == SaveRequestReason.saveProjectAtLocation || saveReason == SaveRequestReason.saveProjectAtOtherLocation){
-                // For this case, we ask for the location (with /Strype as the default location -- which is created if non existant)
-                cloudDriveComponent?.checkDriveStrypeOrOtherFolder(true, true, (strypeFolderId: string | null) => {
+                // If we don't have a set location, we ask for the location (with /Strype as the default location -- which is created if non existant)
+                const createStrypeFolder = !(this.appStore.strypeProjectLocation) || (typeof this.appStore.strypeProjectLocation != "string");
+                cloudDriveComponent?.checkDriveStrypeOrOtherFolder(createStrypeFolder, createStrypeFolder, (strypeFolderId: string | null) => {
                     // Show the file picker to select a folder (with default location) if the location specified doesn't exist, or if the user asked for changing it
                     if(strypeFolderId != null && this.appStore.strypeProjectLocation == undefined){
                         // No location is set, we set the Strype folder
