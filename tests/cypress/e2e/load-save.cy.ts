@@ -262,7 +262,7 @@ describe("Tests loading/saving library frames", () => {
     });
 });
 
-describe.only("Tests loading project descriptions", () => {
+describe("Tests loading project descriptions", () => {
     it("Loads a project with docs", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-documented.spy");
     });
