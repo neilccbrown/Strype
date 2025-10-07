@@ -293,6 +293,54 @@ export default Vue.extend({
             // Method called to trigger the file save -- this would be called after the connection to a Cloud Drive is (still) valid
             this.currentAction = "save";
             this.saveReason = saveReason;
+            
+            const continueSavingProcess = () => {
+                // When an explicit save is requested, it acts as a "save as" and we generate a new file in the specified Cloud Drive.
+                // In any other case, we only save a file if there is a save file id set
+                if(saveReason == SaveRequestReason.saveProjectAtLocation || saveReason == SaveRequestReason.saveProjectAtOtherLocation){
+                    // If we don't have a set location, we ask for the location (with /Strype as the default location -- which is created if non existant)
+                    // We detect the need for checking/creating "Strype" when the target is a cloud drive different than the current cloud drive target,
+                    // and the folder is "Strype". In the case we know the user didn't explictly request to save a given location so we target "Strype".
+                    let isStrypeForNewCloudDriveTargetSave = saveReason == SaveRequestReason.saveProjectAtLocation 
+                        && (cloudTarget != this.appStore.syncTarget) && isSyncTargetCloudDrive(cloudTarget) && isSyncTargetCloudDrive(this.appStore.syncTarget)
+                        && ((this.$parent as InstanceType<typeof Menu>).currentDriveLocation == "Strype");
+                    const createStrypeFolder = isStrypeForNewCloudDriveTargetSave || !(this.appStore.strypeProjectLocation) || (typeof this.appStore.strypeProjectLocation != "string");
+                    cloudDriveComponent?.checkDriveStrypeOrOtherFolder(createStrypeFolder, createStrypeFolder, (strypeFolderId: string | null) => {
+                        // Show the file picker to select a folder (with default location) if the location specified doesn't exist, or if the user asked for changing it
+                        if(strypeFolderId != null && (this.appStore.strypeProjectLocation == undefined || isStrypeForNewCloudDriveTargetSave)){
+                            // No location is set, we set the Strype folder
+                            this.appStore.strypeProjectLocation = strypeFolderId;
+                            this.appStore.strypeProjectLocationAlias = "Strype";
+                        }
+
+                        // The project save method may not exist (the case when a user has loaded a read-only Drive project, then wants to save: sync is off, but connection probably still maintained)
+                        this.$root.$emit(CustomEventTypes.addFunctionToEditorProjectSave, {syncTarget: cloudTarget, function: (saveReason: SaveRequestReason) => this.saveFile(cloudTarget, saveReason)});
+
+                        if(saveReason == SaveRequestReason.saveProjectAtOtherLocation){
+                            cloudDriveComponent.pickFolderForSave();
+                            // Save will be done after the file has been picked.   
+                        }
+                        else{
+                            this.lookForAvailableProjectFileName(cloudTarget, strypeFolderId??"");
+                        }
+                        return Promise.resolve();
+                    }, () => {
+                        this.proceedFailedConnectionCheckOnSave(cloudTarget);
+                        return Promise.resolve();
+                    });
+                }
+                else {
+                    if(this.saveFileId){
+                        this.doSaveFile(cloudTarget, this.appStore.strypeProjectLocation as string);
+                    }
+                    else{
+                        // Notify the application that if we were saving for loading now we are done
+                        if(this.saveReason == SaveRequestReason.loadProject) {
+                            this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                        }      
+                    }
+                }
+            };
 
             const cloudDriveComponent = this.getSpecificCloudDriveComponent(cloudTarget);
             // In any case, we check that the given location (if provided) still exists. We set the alias (name of the folder) here.
@@ -302,6 +350,7 @@ export default Vue.extend({
                     .then((folderName) => {
                         // Folder is found, we get the name
                         this.appStore.strypeProjectLocationAlias = folderName;
+                        continueSavingProcess();
                     })
                     .catch((responseStatusCode) => {
                         // Connection issue?
@@ -317,53 +366,10 @@ export default Vue.extend({
                             this.appStore.projectLastSaveDate = -1;
                         }
                     });
-            }            
-
-            // When an explicit save is requested, it acts as a "save as" and we generate a new file in the specified Cloud Drive.
-            // In any other case, we only save a file if there is a save file id set
-            if(saveReason == SaveRequestReason.saveProjectAtLocation || saveReason == SaveRequestReason.saveProjectAtOtherLocation){
-                // If we don't have a set location, we ask for the location (with /Strype as the default location -- which is created if non existant)
-                // We detect the need for checking/creating "Strype" when the target is a cloud drive different than the current cloud drive target,
-                // and the folder is "Strype". In the case we know the user didn't explictly request to save a given location so we target "Strype".
-                let isStrypeForNewCloudDriveTargetSave = saveReason == SaveRequestReason.saveProjectAtLocation 
-                    && (cloudTarget != this.appStore.syncTarget) && isSyncTargetCloudDrive(cloudTarget) && isSyncTargetCloudDrive(this.appStore.syncTarget)
-                    && ((this.$parent as InstanceType<typeof Menu>).currentDriveLocation == "Strype");
-                const createStrypeFolder = isStrypeForNewCloudDriveTargetSave || !(this.appStore.strypeProjectLocation) || (typeof this.appStore.strypeProjectLocation != "string");
-                cloudDriveComponent?.checkDriveStrypeOrOtherFolder(createStrypeFolder, createStrypeFolder, (strypeFolderId: string | null) => {
-                    // Show the file picker to select a folder (with default location) if the location specified doesn't exist, or if the user asked for changing it
-                    if(strypeFolderId != null && (this.appStore.strypeProjectLocation == undefined || isStrypeForNewCloudDriveTargetSave)){
-                        // No location is set, we set the Strype folder
-                        this.appStore.strypeProjectLocation = strypeFolderId;
-                        this.appStore.strypeProjectLocationAlias = "Strype";
-                    }
-
-                    // The project save method may not exist (the case when a user has loaded a read-only Drive project, then wants to save: sync is off, but connection probably still maintained)
-                    this.$root.$emit(CustomEventTypes.addFunctionToEditorProjectSave, {syncTarget: cloudTarget, function: (saveReason: SaveRequestReason) => this.saveFile(cloudTarget, saveReason)});
-
-                    if(saveReason == SaveRequestReason.saveProjectAtOtherLocation){
-                        cloudDriveComponent.pickFolderForSave();
-                        // Save will be done after the file has been picked.   
-                    }
-                    else{
-                        this.lookForAvailableProjectFileName(cloudTarget, strypeFolderId??"");
-                    }
-                    return Promise.resolve();
-                }, () => {
-                    this.proceedFailedConnectionCheckOnSave(cloudTarget);
-                    return Promise.resolve();
-                });
-            }
-            else {
-                if(this.saveFileId){
-                    this.doSaveFile(cloudTarget, this.appStore.strypeProjectLocation as string);
-                }
-                else{
-                    // Notify the application that if we were saving for loading now we are done
-                    if(this.saveReason == SaveRequestReason.loadProject) {
-                        this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
-                    }      
-                }
-            }
+            } 
+            else{
+                continueSavingProcess();
+            }          
         },
 
         doSaveFile(cloudTarget: StrypeSyncTarget, strypeProjectLocation: string){

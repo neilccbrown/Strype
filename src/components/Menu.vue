@@ -1015,14 +1015,18 @@ export default Vue.extend({
                         if(isSyncTargetCloudDrive(this.appStore.syncTarget)){
                             this.$root.$emit(CustomEventTypes.requestEditorProjectSaveNow, SaveRequestReason.autosave);
                         }
-                        // When the project name is enforced, user as clicked on "save", so we don't need to trigger the usual saving mechanism to select the location/filename
-                        if(forcedProjectName){
-                            this.currentModalButtonGroupIDInAction = "";
-                            return;
-                        }
-                        const saveReason = (this.saveAtOtherLocation) ? SaveRequestReason.saveProjectAtOtherLocation : SaveRequestReason.saveProjectAtLocation; 
-                        (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).saveFileName = saveFileName;
-                        (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).saveFile(selectValue,saveReason);
+                        // We postpone saving slight to make sure all autosaving have completed
+                        setTimeout(() => {
+                            // When the project name is enforced, user as clicked on "save", so we don't need to trigger the usual saving mechanism to select the location/filename
+                            if(forcedProjectName){
+                                this.currentModalButtonGroupIDInAction = "";
+                                return;
+                            }
+                            const saveReason = (this.saveAtOtherLocation) ? SaveRequestReason.saveProjectAtOtherLocation : SaveRequestReason.saveProjectAtLocation; 
+                            (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).saveFileName = saveFileName;
+                            (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).saveFile(selectValue,saveReason);
+                        }, 2000);
+                        
                     }
                     this.currentModalButtonGroupIDInAction = "";
                 }
