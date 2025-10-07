@@ -1336,7 +1336,7 @@ export const useStore = defineStore("app", {
             this.ignoreKeyEvent = false;
 
             // If the sync target property did not exist in the saved stated, we set it up to the default value
-            this.syncTarget = StrypeSyncTarget.none;
+            this.syncTarget = this.syncTarget??StrypeSyncTarget.none;
             this.isEditorContentModified = false;
             this.projectLastSaveDate = -1;
 

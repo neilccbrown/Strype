@@ -713,7 +713,7 @@ export default Vue.extend({
             this.localSyncTarget = target;
             this.tempSyncTarget = target;
             // In case there is a Cloud Drive file ID or other Drive related info are handling when we are saving as a file on the FS, we make sure we remove that
-            if(target == StrypeSyncTarget.fs){
+            if(target == StrypeSyncTarget.fs || target == StrypeSyncTarget.none){
                 this.appStore.currentCloudSaveFileId = undefined;
                 this.appStore.strypeProjectLocationAlias = "";
             }

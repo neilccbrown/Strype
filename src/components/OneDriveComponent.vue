@@ -277,7 +277,7 @@ export default Vue.extend({
 
         async getFolderNameFromId(folderId: string): Promise<string> {
             const token = await this.getToken(OneDriveTokenPurpose.GRAPH_GET_FILE_DETAILS);
-            const requestURL = `https://graph.microsoft.com/v1.0/drive/me/items/${folderId}`;
+            const requestURL = `https://graph.microsoft.com/v1.0/drives/me/items/${folderId}`;
             let resp = await fetch(requestURL, 
                 {method: "GET", headers: {"Authorization": `Bearer ${token}`, "Accept": "application/json"}});
             if (!resp.ok){

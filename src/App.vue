@@ -82,8 +82,8 @@
         <ModalDlg :dlgId="importDiffVersionModalDlgId" :useYesNo="true">
             <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
         </ModalDlg>
-        <ModalDlg :dlgId="resyncToCloudAtStartupModalDlgId" :useYesNo="true" :okCustomTitle="$t('buttonLabel.yesSign')" :cancelCustomTitle="$t('buttonLabel.noContinueWithout')">
-            <span style="white-space:pre-wrap" v-html="$t('appMessage.resyncToGDAtStartup')"></span>
+        <ModalDlg :dlgId="resyncToCloudDriveAtStartupModalDlgId" :useYesNo="true" :okCustomTitle="$t('buttonLabel.yesSign')" :cancelCustomTitle="$t('buttonLabel.noContinueWithout')">
+            <span style="white-space:pre-wrap" v-html="resyncToCloudDriveAtStartupDetailsMessage"></span>
         </ModalDlg>
         <MediaPreviewPopup ref="mediaPreviewPopup" />
         <EditImageDlg dlgId="editImageDlg" ref="editImageDlg" :imgToEdit="imgToEditInDialog" :showImgPreview="showImgPreview" />
@@ -172,6 +172,7 @@ export default Vue.extend({
             setAppNotOnTop: false,
             progressbarMessage: "",
             resetStrypeProjectFlag: false,
+            cloudDriveName: "",
             /* IFTRUE_isPython */
             isExpandedPythonExecArea: false,
             /* FITRUE_isPython */
@@ -272,8 +273,12 @@ export default Vue.extend({
             return getImportDiffVersionModalDlgId();
         },
 
-        resyncToCloudAtStartupModalDlgId(): string {
+        resyncToCloudDriveAtStartupModalDlgId(): string {
             return "resyncToCloudAtStartupModalDlg";
+        },
+
+        resyncToCloudDriveAtStartupDetailsMessage(): string {
+            return this.$i18n.t("appMessage.resyncToCloudDriveAtStartup", {drivename: this.cloudDriveName}) as string;
         },
 
         getSkulptBackendTurtleDivId(): string {
@@ -889,19 +894,28 @@ export default Vue.extend({
                         readCompressed: true,
                     }
                 ).then(() => {
-                    // When a file had been reloaded and it was previously synced with Google Drive, we want to ask the user
-                    // about reloading the project from Google Drive again (only if we were not attempting to open a shared project via the URL)
+                    // When a file had been reloaded and it was previously synced with a Cloud Drive, we want to ask the user
+                    // about reloading the project from that Cloud Drive again (only if we were not attempting to open a shared project via the URL)
                     if(this.appStore.currentCloudSaveFileId) {
-                        const execGetGDFileFunction = (event: BvModalEvent, dlgId: string) => {
-                            if((event.trigger == "ok" || event.trigger=="event") && dlgId == this.resyncToCloudAtStartupModalDlgId){
-                                const cloudHandlerVueComponent = ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getCloudDriveHandlerComponentRefId()] as InstanceType<typeof CloudDriveHandlerComponent>);
-                                // Initiate a connection to Google Drive via saving mechanisms (for updating Google Drive with local changes)
-                                cloudHandlerVueComponent.saveFile(StrypeSyncTarget.gd, SaveRequestReason.reloadBrowser);
-                                this.$root.$off("bv::modal::hide", execGetGDFileFunction); 
+                        // We need to have the specific Cloud Drive component loaded for getting its name and register the generic signin callback, so we do that now...
+                        const cloudHandlerVueComponent = ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getCloudDriveHandlerComponentRefId()] as InstanceType<typeof CloudDriveHandlerComponent>);
+                        cloudHandlerVueComponent.setGenericSignInCallBack(this.appStore.syncTarget, () => cloudHandlerVueComponent.saveFile(this.appStore.syncTarget, SaveRequestReason.reloadBrowser));       
+                        this.cloudDriveName = cloudHandlerVueComponent.getDriveName();
+                        const execGetCloudDriveFileFunction = (event: BvModalEvent, dlgId: string) => {
+                            if(dlgId == this.resyncToCloudDriveAtStartupModalDlgId){
+                                if(event.trigger == "ok" || event.trigger=="event"){
+                                    // Initiate a connection to the Cloud Drive (for updating the Cloud Drive with local changes)
+                                    cloudHandlerVueComponent.signInFn();                                
+                                    this.$root.$off("bv::modal::hide", execGetCloudDriveFileFunction); 
+                                }
+                                else{
+                                    // We make sure we do not keep a wrong sync target!
+                                    (this.$refs[this.menuUID] as InstanceType<typeof Menu>).saveTargetChoice(StrypeSyncTarget.none);                      
+                                }
                             }
                         };
-                        this.$root.$on("bv::modal::hide", execGetGDFileFunction); 
-                        this.$root.$emit("bv::show::modal", this.resyncToCloudAtStartupModalDlgId);
+                        this.$root.$on("bv::modal::hide", execGetCloudDriveFileFunction);   
+                        this.$root.$emit("bv::show::modal", this.resyncToCloudDriveAtStartupModalDlgId);
                     }
                 }, () => {});
             }, () => {});

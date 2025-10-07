@@ -1101,7 +1101,7 @@ export enum SaveRequestReason {
     autosave,
     saveProjectAtLocation, // explicit save at the given location in the dialog
     saveProjectAtOtherLocation, // explicit save with a change of the given location in the dialog
-    overwriteExistingProject, // explicit save overwerwriting an existing file/project (used for Google Drive only)
+    overwriteExistingProject, // explicit save overwerwriting an existing file/project (used for Cloud Drives only)
     loadProject,
     unloadPage,
     reloadBrowser, // for Cloud Drive: when a project was previously saved in the drive and the browser is reloaded and the user requested to save the local changes to the drive.

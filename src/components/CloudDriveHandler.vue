@@ -65,7 +65,8 @@ export default Vue.extend({
             getDriveName: (() => "") as () => string, // updated whenever this cloud handler is called for a given Drive           
             checkIsFileLockedProp: (() => false) as () => boolean, // flag to be set by a specific drive's saving actions (updated whenever this cloud handler is called for a given Drive)
             signInFn: () => {}, // the siginin method of the given Cloud Drive (updated whenever this cloud handler is called for a given Drive)
-            currentAction: null as "load" | "save" | null, // flag the request current action for async workflow;
+            genericSignInCallBack: () => {}, // a callback function a caller to this component can set for specific callback after signing in to the Cloud provider
+            currentAction: null as "generic-sign-in" | "load" | "save" | null, // flag the request current action for async workflow;
             saveReason: SaveRequestReason.unloadPage, // flag the reason of the save action
             saveFileName: "", // The file name, will be set via the Menu when a name is provided for saving, or when loading a project            
             Actions, // this is required to be accessible in the template
@@ -155,11 +156,22 @@ export default Vue.extend({
                     else if(this.currentAction == "save"){
                         this.saveFile(cloudTarget, this.saveReason);
                     }
+                    else if(this.currentAction == "generic-sign-in"){
+                        // In a simple signing mechanism we may have callback function, if it's set, we call it.
+                        this.genericSignInCallBack();
+                    }
                 });
             }
             // Update the flag before leaving.
             this.currentCloudTarget = cloudTarget;
             return compoment;
+        },
+
+        setGenericSignInCallBack(cloudTarget: StrypeSyncTarget, callBackFnToSet: () => void){
+            this.currentAction = "generic-sign-in";
+            this.genericSignInCallBack = callBackFnToSet;
+            // Call the instance of the targeted cloud provider to register the callback against it
+            this.getSpecificCloudDriveComponent(cloudTarget);
         },
 
         // After signing in or signed out the Cloud Drive:
