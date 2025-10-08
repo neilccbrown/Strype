@@ -167,23 +167,25 @@ export default Vue.extend({
             return this.oauthToken == null;
         },
 
-        testCloudConnection(onSuccessCallback: () => void, onFailureCallBack: () => void){
-            //TODO
-            const xhr = new XMLHttpRequest();
-            xhr.open("GET",
-                "https://www.googleapis.com/drive/v3/about?fields=user&" +
-                "access_token=" + this.oauthToken);
-            xhr.onreadystatechange = function (e) {                
-                if(xhr.readyState == xhr.DONE) {
-                    if(JSON.parse(xhr.response)["user"]){
-                        onSuccessCallback();
-                    }
-                    else if(JSON.parse(xhr.response)["error"]){
-                        onFailureCallBack();
-                    }
-                }
-            };
-            xhr.send(null);
+        async testCloudConnection(onSuccessCallback: () => void, onFailureCallBack: () => void){
+            const token = await this.getToken(OneDriveTokenPurpose.GRAPH_CHECK_FOLDER).catch((_) => {
+                onFailureCallBack();
+                return;
+            });
+
+            const resp = await fetch("https://graph.microsoft.com/v1.0/me/drive", {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if(!resp.ok){
+                onFailureCallBack();                
+            }
+            else{
+                onSuccessCallback();
+            }
         },
 
         getCloudAPIStatusWhenLoadedOrFailed(): Promise<CloudDriveAPIState> {
