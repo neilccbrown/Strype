@@ -184,6 +184,10 @@ export default Vue.extend({
         frameType(): string{
             return this.appStore.frameObjects[this.frameId].frameType.type;
         },
+        
+        allowedSlotContent() : AllowedSlotContent {
+            return this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex].allowedSlotContent ?? AllowedSlotContent.TERMINAL_EXPRESSION;
+        },
 
         spanBackgroundStyle(): Record<string, string> {
             const isStructureSingleSlot = this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelSlotsIndex].slotStructures.fields.length == 1;
@@ -192,7 +196,7 @@ export default Vue.extend({
                 && this.isFrameEmptyAndAtLabelSlotStart
                 && (this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.operators.length == 0 
                     || isFieldBracketedSlot(this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures.fields[1])));
-            const isDoc = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex].allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION;
+            const isDoc = this.allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION;
             const frameType = this.appStore.frameObjects[this.frameId].frameType.type;
             let styles : Record<string, string> = {};
             // Background: if the field has a value, it's set to a semi transparent background when focused, and transparent when not
@@ -946,7 +950,7 @@ export default Vue.extend({
                 this.removeLastInput(inputString);
             }
             // On comments, we do not need multislots and parsing any code, we just let any key go through
-            else if(this.frameType == AllFrameTypesIdentifier.comment || this.frameType == AllFrameTypesIdentifier.library){
+            else if(this.allowedSlotContent == AllowedSlotContent.LIBRARY_ADDRESS || this.allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION){
                 // Do nothing
             }
             // Finally, we check the case an operator, bracket or quote has been typed and the slots within this frame need update
