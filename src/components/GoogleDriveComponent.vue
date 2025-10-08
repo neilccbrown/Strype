@@ -262,13 +262,13 @@ export default Vue.extend({
 
         },
 
-        getFolderNameFromId(folderId: string): Promise<string> {
+        getFolderNameFromId(folderId: string): Promise<{name: string, path?: string}> {
             return gapi.client.request({
-                path: "https://www.googleapis.com/drive/v3/files/" + this.appStore.strypeProjectLocation,
+                path: "https://www.googleapis.com/drive/v3/files/" + folderId,
                 method: "GET",
             }).then((response) => {
                 // Folder is found, we get the name
-                return JSON.parse(response.body).name as string;
+                return {name: JSON.parse(response.body).name as string};
             });
         },
 

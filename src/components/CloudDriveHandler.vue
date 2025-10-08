@@ -215,6 +215,7 @@ export default Vue.extend({
                             if(!isSwappingCloudDriveTarget && strypeFolderId){
                                 return cloudDriveComponent.getFolderNameFromId(strypeFolderId).then((folderNameAndPath) => {
                                     this.appStore.strypeProjectLocationAlias = folderNameAndPath.name;
+                                    this.appStore.strypeProjectLocationPath = folderNameAndPath.path??"";
                                     return cloudDriveComponent.openFilePicker();
                                 });
                             }
@@ -222,6 +223,7 @@ export default Vue.extend({
                                 // Folder not found, we set Strype as default folder if it exists
                                 this.appStore.strypeProjectLocation = (strypeFolderId) ? strypeFolderId : undefined;
                                 this.appStore.strypeProjectLocationAlias = (strypeFolderId) ? "Strype" : "";
+                                this.appStore.strypeProjectLocationPath = (strypeFolderId) ? "Strype" : "";
                                 return cloudDriveComponent.openFilePicker();
                             }                                    
                         });
@@ -364,6 +366,7 @@ export default Vue.extend({
                             // No location is set, we set the Strype folder
                             this.appStore.strypeProjectLocation = strypeFolderId;
                             this.appStore.strypeProjectLocationAlias = "Strype";
+                            this.appStore.strypeProjectLocationPath = "Strype";
                         }
 
                         // The project save method may not exist (the case when a user has loaded a read-only Drive project, then wants to save: sync is off, but connection probably still maintained)
@@ -400,9 +403,10 @@ export default Vue.extend({
             // If the folder doesn't exist, for all reasons for saving, we reset the Strype project location flags in the store (subsequent code will handle what to do)
             if(this.appStore.strypeProjectLocation && this.appStore.syncTarget == cloudTarget){
                 cloudDriveComponent?.getFolderNameFromId(this.appStore.strypeProjectLocation as string)
-                    .then((folderName) => {
-                        // Folder is found, we get the name
-                        this.appStore.strypeProjectLocationAlias = folderName;
+                    .then((folderNameAndPath) => {
+                        // Folder is found, we get the name and the path if available
+                        this.appStore.strypeProjectLocationAlias = folderNameAndPath.name;
+                        this.appStore.strypeProjectLocationPath = folderNameAndPath.path??"";
                         continueSavingProcess();
                     })
                     .catch((responseStatusCode) => {
@@ -419,6 +423,7 @@ export default Vue.extend({
                         if(responseStatusCode - 400 >= 0){
                             this.appStore.strypeProjectLocation = undefined;
                             this.appStore.strypeProjectLocationAlias = "";
+                            this.appStore.strypeProjectLocationPath = "";
                             this.appStore.projectLastSaveDate = -1;
                         }
                     });
@@ -478,6 +483,7 @@ export default Vue.extend({
                         this.appStore.currentCloudSaveFileId = undefined;
                         this.appStore.strypeProjectLocation = undefined;
                         this.appStore.strypeProjectLocationAlias = "";
+                        this.appStore.strypeProjectLocationPath = "";
                     }
                 }
             });
@@ -530,6 +536,7 @@ export default Vue.extend({
                         this.updateSignInStatus(cloudTarget, false);
                         this.appStore.strypeProjectLocation = undefined;
                         this.appStore.strypeProjectLocationAlias = "";
+                        this.appStore.strypeProjectLocationPath = "";
                         this.appStore.projectLastSaveDate = lastSaveDate;
                         (this.$parent as InstanceType<typeof Menu>).saveTargetChoice(StrypeSyncTarget.none);
                         // Give focus to the current (focusable) frame element so interaction can happen
@@ -543,6 +550,7 @@ export default Vue.extend({
                     // Some flags in the store SHOULD NOT BE lost when we load a file, so we make a backup of those here:
                     const strypeLocation = this.appStore.strypeProjectLocation;
                     const strypeLocationAlias = this.appStore.strypeProjectLocationAlias;
+                    const strypeProjectLocationPath = this.appStore.strypeProjectLocationPath;
                     // Load the file content in the editor
                     const isOpenedSharedProject = (this.openSharedProjectFileId.length > 0);
                     const fileLoadFn = (isSpyNewFormat) 
@@ -560,6 +568,7 @@ export default Vue.extend({
                             // Restore the fields we backed up before loading
                             this.appStore.strypeProjectLocation = strypeLocation;
                             this.appStore.strypeProjectLocationAlias = strypeLocationAlias;
+                            this.appStore.strypeProjectLocationPath = strypeProjectLocationPath;
                             this.appStore.projectLastSaveDate = lastSaveDate;
                         }
                         // Users may have changed the file name directly on Drive, so we make sure at this stage we get the project with that same name
@@ -669,6 +678,7 @@ export default Vue.extend({
             this.appStore.currentCloudSaveFileId = undefined;
             this.appStore.strypeProjectLocation = undefined;
             this.appStore.strypeProjectLocationAlias = "";
+            this.appStore.strypeProjectLocationPath = "";
             this.appStore.projectLastSaveDate = -1;
             this.saveFileId = undefined;
         },

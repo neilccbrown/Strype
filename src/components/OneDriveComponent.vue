@@ -89,6 +89,10 @@ export default Vue.extend({
             return "9188040d-6c67-4c5b-b112-36a304b66dad";
         },
 
+        pathRootIndicator(): string{
+            return "/root:";
+        },
+
         msalParamsInit(): Configuration {
             return {
                 auth: {
@@ -281,7 +285,7 @@ export default Vue.extend({
             return Promise.resolve({respStatus: 200, webLink: permission?.link?.webUrl??""});                        
         },
 
-        async getFolderNameFromId(folderId: string): Promise<string> {
+        async getFolderNameFromId(folderId: string): Promise<{name: string, path?: string}> {
             const token = await this.getToken(OneDriveTokenPurpose.GRAPH_GET_FILE_DETAILS);
             const driveId = folderId.substring(0, folderId.indexOf("!"));
             const requestURL = (driveId) ? `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${folderId}` : ("https://graph.microsoft.com/v1.0/drives/me/items/" + folderId);
@@ -292,7 +296,9 @@ export default Vue.extend({
             }
             else{
                 const jsonProps = await resp.json() as BaseItem;  
-                return jsonProps.name??"";
+                const fullPath = (jsonProps.parentReference?.path) ?? this.pathRootIndicator;
+                const parentPath = fullPath.replace(new RegExp(`^.*${this.pathRootIndicator}($|/)`), "");
+                return {name: jsonProps.name??"", path: ((parentPath) ? parentPath + "/" : "") + jsonProps.name};
             }
         },
 
@@ -385,9 +391,10 @@ export default Vue.extend({
             }
             else{
                 const jsonProps = await resp.json() as BaseItem;  
-                if(jsonProps.parentReference?.id && jsonProps.parentReference.name){                                    
+                if(jsonProps.parentReference?.id && jsonProps.parentReference.name && jsonProps.parentReference.path){                                    
                     this.appStore.strypeProjectLocation = jsonProps.parentReference.id;
-                    this.appStore.strypeProjectLocationAlias = jsonProps.parentReference.name;                    
+                    this.appStore.strypeProjectLocationAlias = jsonProps.parentReference.name; 
+                    this.appStore.strypeProjectLocationPath = jsonProps.parentReference.path.replace(new RegExp(`^.*${this.pathRootIndicator}($|/)`), "");
                 }
                 // If we opened the file via the picker, we have the meta information,
                 // if we opened a shared file (internal share) then we retrieve the meta now
@@ -428,7 +435,7 @@ export default Vue.extend({
                             origin: this.siteOrigin,
                         },
                         // The entry folder is only used by WS accounts
-                        entry: {oneDrive: {files: {folder: "Strype", fallbackToRoot: true}}},
+                        entry: {oneDrive: {files: {folder: this.appStore.strypeProjectLocationPath, fallbackToRoot: true}}},
                         typesAndSources: {mode: "files", pivots: {oneDrive: true, recent: true}, filters: [`.${pythonFileExtension}`,`.${strypeFileExtension}`]},
                     };
                 
@@ -810,7 +817,10 @@ export default Vue.extend({
                     }
                     else{
                         this.appStore.strypeProjectLocation = fileId;
-                        this.appStore.strypeProjectLocationAlias = strypeFileItem.name as string;
+                        this.appStore.strypeProjectLocationAlias = strypeFileItem.name as string;    
+                        const fullPath = strypeFileItem.parentReference?.path??this.pathRootIndicator; 
+                        const parentPath = fullPath.replace(new RegExp(`^.*${this.pathRootIndicator}($|/)`), "");               
+                        this.appStore.strypeProjectLocationPath = ((parentPath) ? parentPath + "/" : "") + (strypeFileItem.name as string);
                         this.onFolderToSaveFilePicked(StrypeSyncTarget.od);
                     }
                     break;

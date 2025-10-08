@@ -195,6 +195,8 @@ export const useStore = defineStore("app", {
 
             strypeProjectLocationAlias: "", // for cloud drives using a folder ID, this saves the name of the location (strypeProjectLocation saves the ID, not the name)
 
+            strypeProjectLocationPath: "", // for cloud drives using a folder path (for example OneDrive)
+
             isProjectUnsaved: true, // flag indicating if we have notified changes that haven't been saved
 
             currentCloudSaveFileId: undefined as undefined|string,

@@ -87,7 +87,7 @@ export interface CloudDriveComponent {
     resetOAuthToken: () => void,
     isOAuthTokenNotSet: () => boolean,
     testCloudConnection: (onSuccessCallBack: VoidFunction, onFailureCallBack: VoidFunction) => void,
-    getFolderNameFromId: (folderId: string) => Promise<string>,
+    getFolderNameFromId: (folderId: string) => Promise<{name: string, path?: string}>,
     checkDriveStrypeOrOtherFolder: (createIfNone: boolean, checkStrypeFolder: boolean, checkFolderDoneCallBack: (strypeFolderId: string | null) => Promise<void>, failedConnectionCallBack?: () => Promise<void>) => Promise<void>,
     checkIsCloudFileReadonly: (id: string, onGettingReadonlyStatus: (isReadonly: boolean) => void) => void,
     pickFolderForSave: VoidFunction,

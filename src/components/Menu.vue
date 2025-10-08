@@ -716,6 +716,7 @@ export default Vue.extend({
             if(target == StrypeSyncTarget.fs || target == StrypeSyncTarget.none){
                 this.appStore.currentCloudSaveFileId = undefined;
                 this.appStore.strypeProjectLocationAlias = "";
+                this.appStore.strypeProjectLocationPath = "";
             }
             // If we have swapped target, we should remove the other targets in the list of saving functions.
             // (It doesn't really matter if there is one or not, the remove method will take care of that,
