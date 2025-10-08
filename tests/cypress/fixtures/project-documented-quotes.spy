@@ -1,0 +1,11 @@
+#(=> Strype:1:std
+'''"This is in double quotes" and \'\'this is in doubled single quotes\'\' and this is an unmatched apostrophe of someone\'s.'''
+#(=> Section:Imports
+#(=> Section:Definitions
+def foo ( ) :
+    '''"This is in double quotes" and \'\'this is in doubled single quotes\'\' and this is also an unmatched apostrophe of someone\'s.'''
+    pass
+#(=> Section:Main
+myString  = "Hello from Python!" 
+print(myString) 
+#(=> Section:End

@@ -6,7 +6,8 @@ import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "@/helpers/sharedIdCssWithTests";
 import {createBrowserProxy} from "../support/proxy";
 import en from "@/localisation/en/en_main.json";
 import {readFileSync} from "node:fs";
-import {save} from "../support/loading-saving";
+import {save, testPlaywrightRoundTripImportAndDownload} from "../support/loading-saving";
+import {testRoundTripImportAndDownload} from "../../cypress/support/paste-test-support";
 
 // The tests in this file can't run in parallel because they download
 // to the same filenames, so need to run one at a time.
@@ -38,7 +39,6 @@ test.describe("Project description selection", () => {
         await checkFrameXorTextCursor(page);
     });
     test("Enter project description by typing", async ({page}, testInfo) => {
-        test.setTimeout(500_000);
         await page.keyboard.press("Home");
         await page.keyboard.press("ArrowUp");
         await page.keyboard.press("ArrowUp");
@@ -59,7 +59,6 @@ print(myString)
     for (const selectAll of [["End", "Shift+Home"], ["Home", "Shift+End"], [process.platform == "darwin" ? "Meta+A" : "Control+A"]]) {
         for (const deleteCommand of [["Backspace"], ["Delete"], [/*no press, just overtype*/]]) {
             test("Replace project description via " + JSON.stringify(selectAll) + " then " + JSON.stringify(deleteCommand), async ({page}, testInfo) => {
-                test.setTimeout(500_000);
                 await page.keyboard.press("Home");
                 await page.keyboard.press("ArrowUp");
                 await page.keyboard.press("ArrowUp");
@@ -87,4 +86,106 @@ print(myString)
             });
         }
     }
+
+    test("Enter project and function description with quotes in it", async ({page}, testInfo) => {
+        await page.keyboard.press("Home");
+        await page.keyboard.press("ArrowUp");
+        await page.keyboard.press("ArrowUp");
+        await page.keyboard.press("ArrowLeft");
+        await page.keyboard.type("\"This is in double quotes\" and ''this is in doubled single quotes'' and this is an unmatched apostrophe of someone's.");
+        await page.keyboard.press("ArrowRight");
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.type("f");
+        await page.keyboard.type("foo");
+        await page.keyboard.press("ArrowRight");
+        await page.keyboard.press("ArrowRight");
+        await page.keyboard.type("\"This is in double quotes\" and ''this is in doubled single quotes'' and this is also an unmatched apostrophe of someone's.");
+        expect(readFileSync(await save(page), "utf-8")).toEqual(`
+#(=> Strype:1:std
+'''"This is in double quotes" and \\'\\'this is in doubled single quotes\\'\\' and this is an unmatched apostrophe of someone\\'s.'''
+#(=> Section:Imports
+#(=> Section:Definitions
+def foo ( ) :
+    '''"This is in double quotes" and \\'\\'this is in doubled single quotes\\'\\' and this is also an unmatched apostrophe of someone\\'s.'''
+    pass
+#(=> Section:Main
+myString  = "Hello from Python!" 
+print(myString) 
+#(=> Section:End
+`.trimStart());
+    });
+
+    test("Enter project and function description with newlines in it", async ({page}, testInfo) => {
+        await page.keyboard.press("Home");
+        await page.keyboard.press("ArrowUp");
+        await page.keyboard.press("ArrowUp");
+        await page.keyboard.press("ArrowLeft");
+        await page.keyboard.type("This has");
+        await page.keyboard.press("Shift+Enter");
+        await page.keyboard.type("three");
+        await page.keyboard.press("Shift+Enter");
+        await page.keyboard.type("lines.");
+        await page.keyboard.press("ArrowRight");
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.type("f");
+        await page.keyboard.type("foo");
+        await page.keyboard.press("ArrowRight");
+        await page.keyboard.press("ArrowRight");
+        await page.keyboard.type("This has");
+        await page.keyboard.press("Shift+Enter");
+        await page.keyboard.type("four");
+        await page.keyboard.press("Shift+Enter");
+        await page.keyboard.type("lines");
+        await page.keyboard.press("Shift+Enter");
+        await page.keyboard.type("in total.");
+        expect(readFileSync(await save(page), "utf-8")).toEqual(`
+#(=> Strype:1:std
+'''This has
+three
+lines.'''
+#(=> Section:Imports
+#(=> Section:Definitions
+def foo ( ) :
+    '''This has
+    four
+    lines
+    in total.'''
+    pass
+#(=> Section:Main
+myString  = "Hello from Python!" 
+print(myString) 
+#(=> Section:End
+`.trimStart());
+    });
+
+    test("Enter project description with triple quotes in it", async ({page}, testInfo) => {
+        await page.keyboard.press("Home");
+        await page.keyboard.press("ArrowUp");
+        await page.keyboard.press("ArrowUp");
+        await page.keyboard.press("ArrowLeft");
+        await page.keyboard.type("This has horrible quotes: \"\"\" ''' \"\"\" ''' and backslashes by quotes \\' and some doubles to end: '' ''");
+        expect(readFileSync(await save(page), "utf-8")).toEqual(`
+#(=> Strype:1:std
+'''This has horrible quotes: """ \\'\\'\\' """ \\'\\'\\' and backslashes by quotes \\\\\\' and some doubles to end: \\'\\' \\'\\''''
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+myString  = "Hello from Python!" 
+print(myString) 
+#(=> Section:End
+`.trimStart());
+    });
+    
+    // Round trip the last two above:
+    test("Round trip awkward quotes #1", async ({page}, testInfo) => {
+        await testPlaywrightRoundTripImportAndDownload(page, "tests/cypress/fixtures/project-documented-quotes.spy");
+    });
+
+    test("Round trip awkward quotes #2", async ({page}, testInfo) => {
+        await testPlaywrightRoundTripImportAndDownload(page, "tests/cypress/fixtures/project-documented-quotes-2.spy");
+    });
+
+    test("Round trip awkward quotes #3", async ({page}, testInfo) => {
+        await testPlaywrightRoundTripImportAndDownload(page, "tests/cypress/fixtures/project-documented-quotes-3.spy");
+    });
 });

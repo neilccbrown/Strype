@@ -1,6 +1,7 @@
 import {strypeElIds} from "./proxy";
-import {Page} from "@playwright/test";
+import {Page, expect} from "@playwright/test";
 import en from "../../../src/localisation/en/en_main.json";
+import {readFileSync} from "node:fs";
 
 
 export async function load(page: Page, filepath: string) : Promise<void> {
@@ -36,4 +37,11 @@ export async function save(page: Page, firstSave = true) : Promise<string> {
     }
     const filePath = await download.path();
     return filePath;
+}
+
+export async function testPlaywrightRoundTripImportAndDownload(page:Page, filepath: string) : Promise<void> {
+    await load(page, filepath);
+    const expected = readFileSync(filepath, "utf8");
+    const output = readFileSync(await save(page, false), "utf8");
+    expect(output).toEqual(expected);
 }
