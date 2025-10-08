@@ -37,7 +37,7 @@ import OneDriveComponent from "@/components/OneDriveComponent.vue";
 import { generateSPYFileContent } from "@/helpers/load-save";
 import { AppSPYFullPrefix } from "@/main";
 
-// This enum is used for flaging the action taken when a request to save a file on Google Drive
+// This enum is used for flaging the action taken when a request to save a file on a Cloud Drive
 // has been done, and a file of the same name already exists on the Drive
 enum Actions{
     overwrite,
@@ -72,14 +72,6 @@ export default Vue.extend({
             Actions, // this is required to be accessible in the template
             saveExistingCloudProjectInfos: {} as SaveExistingCloudProjectInfos,
         };
-    },
-
-    created() {
-        // We do not add the specific Cloud Drive's components via the <template> part, to allow us typing them properly
-        // (see the cloud types file, it's a struggle to work that out).
-        // Anyway, there is no styling require for these components so it's not a loss...
-        // Google Drive
-
     },
 
     computed: {
@@ -188,7 +180,8 @@ export default Vue.extend({
             }            
         },
 
-        // Test the connection is still valid (and allow callbacks for success or failure of the test)
+        // Request the specific cloud drive component to test if the connection is still valid.
+        // We provide the compoent the callbacks methods for success or failure of the test which it will call accordingly.
         testCloudConnection(cloudTarget: StrypeSyncTarget){
             const cloudDriveComponent = this.getSpecificCloudDriveComponent(cloudTarget);
             cloudDriveComponent?.testCloudConnection(() => {
@@ -365,14 +358,17 @@ export default Vue.extend({
                         continueSavingProcess();
                     })
                     .catch((responseStatusCode) => {
+                        // The following error status codes were relevant for Google Drive. 
+                        // We keep them for the general cases, but add a catch up case for other error codes
+                        // that may be sent by other Cloud Drives.
                         // Connection issue?
                         if(responseStatusCode == 401 || responseStatusCode == 403){
                             this.proceedFailedConnectionCheckOnSave(cloudTarget);
                             return;
                         }
                         
-                        // Folder not found
-                        if(responseStatusCode == 404){
+                        // Folder not found and any other error (400+).
+                        if(responseStatusCode - 400 >= 0){
                             this.appStore.strypeProjectLocation = undefined;
                             this.appStore.strypeProjectLocationAlias = "";
                             this.appStore.projectLastSaveDate = -1;
@@ -443,7 +439,7 @@ export default Vue.extend({
             // Do something in case of connection failure depending on the reason for saving
             // normal saving: --> try to reconnect, if failed, then we stop synchronising to Google Drive
             // save to load + unload --> try to reconnect, if failed, stop sync + modal message
-            // Even if the user may signing again, we first make sure everything shows as "not syncing" in case the signing process is not completed
+            // Even if the user may sign-in again, we first make sure everything shows as "not syncing" in case the signing process is not completed
             // (because if the user just drop the signing action, we have no way to get events on that...)
             this.getSpecificCloudDriveComponent(cloudTarget)?.resetOAuthToken(); 
             this.updateSignInStatus(cloudTarget, false);

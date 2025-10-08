@@ -85,6 +85,10 @@ export default Vue.extend({
             return "ee29b56f-8714-472f-a1c8-37e8551e3ec5";
         },
 
+        consumerTenantIdForPersonalAccounts():string {
+            return "9188040d-6c67-4c5b-b112-36a304b66dad";
+        },
+
         msalParamsInit(): Configuration {
             return {
                 auth: {
@@ -549,6 +553,7 @@ export default Vue.extend({
                 }
             }
             else{
+                // Any other error, we return null.
                 return checkFolderDoneCallBack(null);
             }
         },
@@ -700,8 +705,8 @@ export default Vue.extend({
                 }
                 // If we got the token we can we look up the type of account.
                 if(accessToken && account){
-                    // According to copilot we can tesk this like that (partly, sustainable?)
-                    this.isPersonalAccount = (account.idTokenClaims?.tid === "9188040d-6c67-4c5b-b112-36a304b66dad");
+                    // According to copilot we can test if the acccount is a personal account if it uses the "consumer" tenant ID
+                    this.isPersonalAccount = (account.idTokenClaims?.tid === this.consumerTenantIdForPersonalAccounts);                    
                 }                
             }
             else{
