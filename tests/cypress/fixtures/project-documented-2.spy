@@ -3,7 +3,7 @@
 #(=> Section:Imports
 #(=> Section:Definitions
 def foo ( ) :
-    '''This is the function foo, although it's different to the other file.'''
+    '''This is the function foo, although it\'s different to the other file.'''
     return 42 
 #(=> Section:Main
 msg  = "Hello" 
