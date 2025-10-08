@@ -1,20 +1,12 @@
-import {Page, test, expect} from "@playwright/test";
-import path from "path";
-import {checkFrameXorTextCursor, doPagePaste} from "../support/editor";
-import fs from "fs";
-import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "@/helpers/sharedIdCssWithTests";
-import {createBrowserProxy} from "../support/proxy";
-import en from "@/localisation/en/en_main.json";
+import {test, expect} from "@playwright/test";
+import {checkFrameXorTextCursor} from "../support/editor";
 import {readFileSync} from "node:fs";
 import {save, testPlaywrightRoundTripImportAndDownload} from "../support/loading-saving";
-import {testRoundTripImportAndDownload} from "../../cypress/support/paste-test-support";
 
 // The tests in this file can't run in parallel because they download
 // to the same filenames, so need to run one at a time.
 test.describe.configure({ mode: "serial" });
 
-let scssVars: {[varName: string]: string};
-let strypeElIds: {[varName: string]: (...args: any[]) => string};
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && process.platform === "win32") {
         // On Windows+Webkit it just can't seem to load the page for some reason:
@@ -23,8 +15,6 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
-    scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
-    strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
     await page.evaluate(() => {
         (window as any).Playwright = true;
     });

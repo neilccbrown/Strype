@@ -4,7 +4,6 @@ import {checkFrameXorTextCursor, doPagePaste} from "../support/editor";
 import fs from "fs";
 import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "@/helpers/sharedIdCssWithTests";
 import {createBrowserProxy} from "../support/proxy";
-import en from "@/localisation/en/en_main.json";
 import {readFileSync} from "node:fs";
 import {save} from "../support/loading-saving";
 
