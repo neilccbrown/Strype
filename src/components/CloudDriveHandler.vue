@@ -127,23 +127,23 @@ export default Vue.extend({
             // Anyway, there is no styling require for these components so it's not a loss...
             // Each Cloud Drive is created on request (that is, only if such Cloud Drive is needed by the user).
             // (IMPORTANT note: we return a *Promise* because we need to wait for the watcher to perform its actions.)
-            let compoment = null as CloudDriveComponent | null;
+            let component = null as CloudDriveComponent | null;
             if(cloudTarget == StrypeSyncTarget.gd){
                 // Google Drive
-                compoment = this.$refs.googleDriveComponent as InstanceType<typeof GoogleDriveComponent>;
+                component = this.$refs.googleDriveComponent as InstanceType<typeof GoogleDriveComponent>;
             }
             else{
                 // OneDrive
-                compoment = this.$refs.oneDriveComponent as InstanceType<typeof OneDriveComponent>;
+                component = this.$refs.oneDriveComponent as InstanceType<typeof OneDriveComponent>;
             }
             // We only update the specific Drive's method delegates when needed (that is when the cloudTarget changes)
             if(this.currentCloudTarget != cloudTarget){
                 const resetToDefault = (cloudTarget ==  StrypeSyncTarget.none || cloudTarget == StrypeSyncTarget.fs);
-                this.$set(this, "getDriveName", (resetToDefault) ? () => "" : () => (compoment as CloudDriveComponent).driveName);
-                this.$set(this, "checkIsFileLockedProp", (resetToDefault) ? () => false : () => (compoment as CloudDriveComponent).isFileLocked);
-                this.signInFn = (resetToDefault) ? () => {} : () => (compoment as CloudDriveComponent).signIn((cloudTarget: StrypeSyncTarget) => { 
+                this.$set(this, "getDriveName", (resetToDefault) ? () => "" : () => (component as CloudDriveComponent).driveName);
+                this.$set(this, "checkIsFileLockedProp", (resetToDefault) ? () => false : () => (component as CloudDriveComponent).isFileLocked);
+                this.signInFn = (resetToDefault) ? () => {} : () => (component as CloudDriveComponent).signIn((cloudTarget: StrypeSyncTarget) => { 
                     if(this.currentAction == "load"){
-                        compoment?.doLoadFile(this.openSharedProjectFileId);
+                        this.doLoadFile(cloudTarget, this.openSharedProjectFileId, this.isSwappingCloudDriveTarget(cloudTarget));
                     }
                     else if(this.currentAction == "save"){
                         this.saveFile(cloudTarget, this.saveReason);
@@ -156,7 +156,12 @@ export default Vue.extend({
             }
             // Update the flag before leaving.
             this.currentCloudTarget = cloudTarget;
-            return compoment;
+            return component;
+        },
+
+        isSwappingCloudDriveTarget(cloudTarget: StrypeSyncTarget){
+            // We need to handle swapping cloud drive targets to make sure we don't attempt opening a folder which ID is from another cloud or get other things mixed up.
+            return (cloudTarget != this.appStore.syncTarget && isSyncTargetCloudDrive(cloudTarget) && isSyncTargetCloudDrive(this.appStore.syncTarget));                        
         },
 
         setGenericSignInCallBack(cloudTarget: StrypeSyncTarget, callBackFnToSet: () => void){
@@ -186,11 +191,54 @@ export default Vue.extend({
             const cloudDriveComponent = this.getSpecificCloudDriveComponent(cloudTarget);
             cloudDriveComponent?.testCloudConnection(() => {
                 this.$root.$emit(CustomEventTypes.addFunctionToEditorProjectSave, {syncTarget: cloudTarget, function: (saveReason: SaveRequestReason) => this.saveFile(cloudTarget, saveReason)});
-                cloudDriveComponent.doLoadFile(this.openSharedProjectFileId);
+                this.doLoadFile(cloudTarget, this.openSharedProjectFileId, this.isSwappingCloudDriveTarget(cloudTarget));
             }, () => {
                 cloudDriveComponent.resetOAuthToken();
                 this.signInFn();
             });
+        },
+        
+        doLoadFile(cloudTarget: StrypeSyncTarget, openSharedProjectFileId: string, isSwappingCloudDriveTarget: boolean): Promise<void>{
+            // If a user is attempting to open a project explicitly from the cloud (i.e. not via a shared project):
+            // When we load for the very first time, we may not have a Drive location to look for. In that case, we look for a Strype folder existence 
+            // (however we do not create it here, we would do this on a save action). If a location is already set*, we make sure it still exists. 
+            // If it doesn't exist anymore, we set the default location to the Strype folder (if available) or just the Drive itself if not.
+            // NOTE: we do not need to check a folder when opening a shared project
+            // (*) so the logic is like so we always check a folder location in the Drive - if the strypeProjectLocation is a non-empty string 
+            // then we check that folder name; if it's an empty string, or not a string (i.e. when we were on a project opened on the File System)
+            // then we check for "Strype", because it is our default location.
+            const cloudDriveComponent = this.getSpecificCloudDriveComponent(cloudTarget);
+            if(cloudDriveComponent){
+                if(!cloudDriveComponent.isOAuthTokenNotSet()){
+                    if(openSharedProjectFileId.length == 0){
+                        return cloudDriveComponent.checkDriveStrypeOrOtherFolder(false, isSwappingCloudDriveTarget || !(this.appStore.strypeProjectLocation) || (typeof this.appStore.strypeProjectLocation != "string"), (strypeFolderId: string | null) => {
+                            if(!isSwappingCloudDriveTarget && strypeFolderId){
+                                return cloudDriveComponent.getFolderNameFromId(strypeFolderId).then((folderNameAndPath) => {
+                                    this.appStore.strypeProjectLocationAlias = folderNameAndPath.name;
+                                    return cloudDriveComponent.openFilePicker();
+                                });
+                            }
+                            else{
+                                // Folder not found, we set Strype as default folder if it exists
+                                this.appStore.strypeProjectLocation = (strypeFolderId) ? strypeFolderId : undefined;
+                                this.appStore.strypeProjectLocationAlias = (strypeFolderId) ? "Strype" : "";
+                                return cloudDriveComponent.openFilePicker();
+                            }                                    
+                        });
+                    }
+                    else{
+                        // Open the internally shared project
+                        return cloudDriveComponent.onFileToLoadPicked(StrypeSyncTarget.od, openSharedProjectFileId);
+                    }
+                }
+                else{
+                    // Nothing to do..
+                    return Promise.resolve();
+                }
+            }
+            else{
+                return Promise.reject();
+            }
         },
 
         loadFile(cloudTarget: StrypeSyncTarget) {
@@ -307,7 +355,7 @@ export default Vue.extend({
                     // We detect the need for checking/creating "Strype" when the target is a cloud drive different than the current cloud drive target,
                     // and the folder is "Strype". In the case we know the user didn't explictly request to save a given location so we target "Strype".
                     let isStrypeForNewCloudDriveTargetSave = saveReason == SaveRequestReason.saveProjectAtLocation 
-                        && (cloudTarget != this.appStore.syncTarget) && isSyncTargetCloudDrive(cloudTarget) && isSyncTargetCloudDrive(this.appStore.syncTarget)
+                        && this.isSwappingCloudDriveTarget(cloudTarget)
                         && ((this.$parent as InstanceType<typeof Menu>).currentDriveLocation == "Strype");
                     const createStrypeFolder = isStrypeForNewCloudDriveTargetSave || !(this.appStore.strypeProjectLocation) || (typeof this.appStore.strypeProjectLocation != "string");
                     cloudDriveComponent?.checkDriveStrypeOrOtherFolder(createStrypeFolder, createStrypeFolder, (strypeFolderId: string | null) => {
