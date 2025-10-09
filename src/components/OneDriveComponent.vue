@@ -85,8 +85,12 @@ export default Vue.extend({
             return "ee29b56f-8714-472f-a1c8-37e8551e3ec5";
         },
 
-        consumerTenantIdForPersonalAccounts():string {
+        consumerTenantIdForPersonalAccounts(): string {
             return "9188040d-6c67-4c5b-b112-36a304b66dad";
+        },
+
+        pathRootIndicator(): string{
+            return "/root:";
         },
 
         msalParamsInit(): Configuration {
@@ -134,21 +138,27 @@ export default Vue.extend({
             if(this.oauthToken){
                 (this.$parent as InstanceType<typeof CloudDriveHandlerComponent>).updateSignInStatus(StrypeSyncTarget.od, true);
 
-                // test: check if we can do something more clever to handle the accounts here:
                 // If have a work/school account and we are doing the initial authentication, we need to retrieve the baseUrl too.
                 if(!this.isPersonalAccount){
-                    console.log("requesting Graph query to the drive");
                     const token = await this.getToken(OneDriveTokenPurpose.PICKER_BASE_URL);
                     const resp = await fetch("https://graph.microsoft.com/v1.0/me/drive", {method: "GET", headers: {"Authorization": `Bearer ${token}`,"Accept": "application/json"}});
                     if (!resp.ok) {
                         throw new Error(`Graph API request failed: ${resp.status} ${resp.statusText}`);
                     }
 
-                    const data = await resp.json();
-                    this.baseUrl = data.webUrl;
+                    const data = await resp.json() as BaseItem;
+                    // Based on observation and ChatGPT, the URL returned is not a base URL but something pointing at "Documents".
+                    // So, we need to trim it. The usual pattern for WS accounts base URL is 
+                    // "https://{tenant}-my.sharepoint.com/personal/{userPrincipalName with "_" replacing "@"}
+                    if(data.webUrl){
+                        const patternForTrimming = /https:\/\/.+\.sharepoint\.com\/personal\/[^/]+/g;
+                        const matchingRes = data.webUrl.match(patternForTrimming);
+                        if(matchingRes){
+                            this.baseUrl = data.webUrl.substring(0, matchingRes[0].length); 
+                        }
+                    }                    
                 }
                 callback(StrypeSyncTarget.od);                
-
             }
         },   
 
@@ -161,23 +171,25 @@ export default Vue.extend({
             return this.oauthToken == null;
         },
 
-        testCloudConnection(onSuccessCallback: () => void, onFailureCallBack: () => void){
-            //TODO
-            const xhr = new XMLHttpRequest();
-            xhr.open("GET",
-                "https://www.googleapis.com/drive/v3/about?fields=user&" +
-                "access_token=" + this.oauthToken);
-            xhr.onreadystatechange = function (e) {                
-                if(xhr.readyState == xhr.DONE) {
-                    if(JSON.parse(xhr.response)["user"]){
-                        onSuccessCallback();
-                    }
-                    else if(JSON.parse(xhr.response)["error"]){
-                        onFailureCallBack();
-                    }
-                }
-            };
-            xhr.send(null);
+        async testCloudConnection(onSuccessCallback: () => void, onFailureCallBack: () => void){
+            const token = await this.getToken(OneDriveTokenPurpose.GRAPH_CHECK_FOLDER).catch((_) => {
+                onFailureCallBack();
+                return;
+            });
+
+            const resp = await fetch("https://graph.microsoft.com/v1.0/me/drive", {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if(!resp.ok){
+                onFailureCallBack();                
+            }
+            else{
+                onSuccessCallback();
+            }
         },
 
         getCloudAPIStatusWhenLoadedOrFailed(): Promise<CloudDriveAPIState> {
@@ -273,9 +285,21 @@ export default Vue.extend({
             return Promise.resolve({respStatus: 200, webLink: permission?.link?.webUrl??""});                        
         },
 
-        getFolderNameFromId(folderId: string): Promise<string> {
-            //TODO
-            return Promise.resolve("DUMMU_FOLDER_NAME");
+        async getFolderNameFromId(folderId: string): Promise<{name: string, path?: string}> {
+            const token = await this.getToken(OneDriveTokenPurpose.GRAPH_GET_FILE_DETAILS);
+            const driveId = folderId.substring(0, folderId.indexOf("!"));
+            const requestURL = (driveId) ? `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${folderId}` : ("https://graph.microsoft.com/v1.0/drives/me/items/" + folderId);
+            let resp = await fetch(requestURL, 
+                {method: "GET", headers: {"Authorization": `Bearer ${token}`, "Accept": "application/json"}});
+            if (!resp.ok){
+                throw Error(resp.status.toString());
+            }
+            else{
+                const jsonProps = await resp.json() as BaseItem;  
+                const fullPath = (jsonProps.parentReference?.path) ?? this.pathRootIndicator;
+                const parentPath = fullPath.replace(new RegExp(`^.*${this.pathRootIndicator}($|/)`), "");
+                return {name: jsonProps.name??"", path: ((parentPath) ? parentPath + "/" : "") + jsonProps.name};
+            }
         },
 
         checkIsCloudFileReadonly(id: string, onGettingReadonlyStatus: (isReadonly: boolean) => void){
@@ -307,8 +331,8 @@ export default Vue.extend({
                     channelId: uniqueId(),
                     origin: this.siteOrigin,
                 },
-                //TODO : see if the folder default value to start the picker works for work accounts, it doesn't for personal
-                entry: {oneDrive: {files: {folder: "Strype",fallbackToRoot: true}}},
+                // Default opening to "Strype" seems to be ignored in this configuration
+                entry: {oneDrive: {files: {folder: "Strype", fallbackToRoot: true}}},
                 typesAndSources: {mode: "folders", pivots: {oneDrive: true, recent: true}, filters: ["folder"]},
             };
             
@@ -352,20 +376,25 @@ export default Vue.extend({
             // However, we only kept them in this component internal data and now use them.
             // The file content is retrieve via a new query.                  
             
-            // We try to retrieve the folder name via the Graph API.
+            // We try to retrieve the folder name via the Graph API against an endpoint that INCLUDES the drive ID,
+            // which allows us to also open internally shared files rather that just files from own Drive.
             // Note: we don't need to claim the token again when getting the content, the same token is fine.
             const token = await this.getToken(OneDriveTokenPurpose.GRAPH_GET_FILE_DETAILS);
-            const requestURL = `https://graph.microsoft.com/v1.0/drive/items/${id}`;
+            // The drive ID is part of the file ID so we can easily extract it...
+            const driveId = id.substring(0, id.indexOf("!"));
+            const requestURL = (driveId) ? `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${id}` : ("https://graph.microsoft.com/v1.0/drives/me/items/"+id);
             let resp = await fetch(requestURL, 
                 {method: "GET", headers: {"Authorization": `Bearer ${token}`, "Accept": "application/json"}});
             if (!resp.ok){
                 onGettingFileContentFailure(resp.status);
+                return;
             }
             else{
-                const jsonProps = await resp.json() as BaseItem;                
-                if(jsonProps.parentReference?.id && jsonProps.parentReference.name){                                    
+                const jsonProps = await resp.json() as BaseItem;  
+                if(jsonProps.parentReference?.id && jsonProps.parentReference.name && jsonProps.parentReference.path){                                    
                     this.appStore.strypeProjectLocation = jsonProps.parentReference.id;
-                    this.appStore.strypeProjectLocationAlias = jsonProps.parentReference.name;                    
+                    this.appStore.strypeProjectLocationAlias = jsonProps.parentReference.name; 
+                    this.appStore.strypeProjectLocationPath = jsonProps.parentReference.path.replace(new RegExp(`^.*${this.pathRootIndicator}($|/)`), "");
                 }
                 // If we opened the file via the picker, we have the meta information,
                 // if we opened a shared file (internal share) then we retrieve the meta now
@@ -373,12 +402,10 @@ export default Vue.extend({
             }          
             
             // Now get the file content
-            const requestContentURL = `https://graph.microsoft.com/v1.0/drive/items/${id}/content`;
-            resp = await fetch(requestContentURL, 
+            resp = await fetch(requestURL + "/content", 
                 {method: "GET", headers: {"Authorization": `Bearer ${token}`}});
             if (!resp.ok){
                 onGettingFileContentFailure(resp.status);
-                alert(`Graph API request failed: ${resp.status} ${resp.statusText}`);
             }
             else{
                 const fileContent = await resp.text();                
@@ -386,16 +413,10 @@ export default Vue.extend({
             }          
         },
         
-        async doLoadFile(openSharedProjectFileId: string): Promise<void> {
-            if(this.oauthToken != null){
-                // When we load for the very first time, we may not have a Drive location to look for. In that case, we look for a Strype folder existence 
-                // (however we do not create it here, we would do this on a save action). If a location is already set, we make sure it still exists. 
-                // If it doesn't exist anymore, we set the default location to the Strype folder (if available) or just the Drive itself if not.
-                // NOTE: we do not need to check a folder when opening a shared project
-                if(openSharedProjectFileId.length == 0){
-                    const pickerAccessToken = await this.getToken(OneDriveTokenPurpose.PICKER_OPEN).catch((_) => {
-                        return Promise.reject("Something happened while trying to access OneDrive Picker.");
-                    });
+        openFilePicker(): Promise<void> {
+            // Launch the file picker for this cloud drive (this would be called after we made sure the connection to OneDrive is (still) valid)
+            return this.getToken(OneDriveTokenPurpose.PICKER_OPEN)
+                .then((pickerAccessToken) => {
                     if(pickerAccessToken.length == 0){
                         return Promise.reject();
                     }
@@ -413,8 +434,8 @@ export default Vue.extend({
                             channelId: uniqueId(),
                             origin: this.siteOrigin,
                         },
-                        //TODO : see if the folder selection works for work accounts, it doesn't for personal
-                        entry: {oneDrive: {files: {folder: "Strype",fallbackToRoot: true}}},
+                        // The entry folder is only used by WS accounts
+                        entry: {oneDrive: {files: {folder: this.appStore.strypeProjectLocationPath, fallbackToRoot: true}}},
                         typesAndSources: {mode: "files", pivots: {oneDrive: true, recent: true}, filters: [`.${pythonFileExtension}`,`.${strypeFileExtension}`]},
                     };
                 
@@ -424,8 +445,11 @@ export default Vue.extend({
                         locale:  this.$i18n.t("localeOneDrive") as string,
                     });
 
-                    // we create the absolute url by combining the base url, appending the _layouts path, and including the query string
-                    const url = `${this.baseUrl}?${queryString}`;
+                    // We create the absolute url by combining the base url, appending the _layouts path, and including the query string
+                    // (the layout path is only required for the WS accounts).
+                    const layoutPath = (this.isPersonalAccount) ? "" : "/_layouts/15/FilePicker.aspx";
+                    const url = `${this.baseUrl + layoutPath}?${queryString}`;
+                    console.log("going to query the picker @ " + url);
                     // create a form
                     const form = this.pickerPopup?.document.createElement("form");
                     if(this.pickerPopup && form){
@@ -451,16 +475,10 @@ export default Vue.extend({
                         form.submit();
                     }
                     return Promise.resolve();
-                }
-                else{
-                    // Opening a shared file (internally shared)
-                    return this.onFileToLoadPicked(StrypeSyncTarget.od, openSharedProjectFileId);
-                }
-            }
-            else{
-                // Nothing to do..
-                return Promise.resolve();
-            }
+                })
+                .catch((_) => {
+                    return Promise.reject("Something happened while trying to access OneDrive Picker for loading.");
+                });                                        
         },
 
         async doSaveFile(saveFileId: string|undefined, projetLocation: string, fullFileName: string, fileContent: string, isExplictSave: boolean, onSuccess: (savedFileId: string) => void, onFailure: (errRespStatus: number) => void){                 
@@ -534,8 +552,8 @@ export default Vue.extend({
                 }
             }
             else{
-                // Any other error, we rejet the Promise
-                return Promise.reject(resp.status);
+                // Any other error, we return null.
+                return checkFolderDoneCallBack(null);
             }
         },
 
@@ -567,7 +585,7 @@ export default Vue.extend({
 
         checkIsFileLocked(existingFileId: string, onSuccess: VoidFunction, onFailure: VoidFunction) {
             //TODO: is there an equivalent in OneDrive? If not, just return as never locked...
-            // // Following the addition of a locking file settings in Drive (Sept 2023) we need to check if a file is locked when we want to save.
+            // Following the addition of a locking file settings in Drive (Sept 2023) we need to check if a file is locked when we want to save.
             // This method retrieves this property for a given file by its file ID.
             // It is the responsablity of the caller of that method to provide a valid file ID and have passed authentication.
             // However, we still handle potential API access issues in this method, hence this methods expects the methods to run in case of success or failure
@@ -633,13 +651,14 @@ export default Vue.extend({
 
             let accessToken = ""; let account = null as null | AccountInfo;
             // Logic for the scopes:
-            // if we are only authenticating, we get to access the account details personal+work/school(?) accounts --> "openid".
-            // if we are getting a token for the picker: personal --> "OneDrive.ReadWrite"
-            // if we are getting a token for the picker base url: work --> "Files.Read"? (no need for personal)
-            // if we are getting a token for retrieving the file details, doing a search or checking folders: personal --> "Files.Read"+"offline_access"+"User.Read"
-            // if we are getting a token for creating a folder or saving the file: personal --> Files.ReadWrite
-            // if we are getting a token for checking the sharing status of a file: personal --> Files.Read
-            // if we are getting a token for sharing the file: personal --> Files.ReadWrite
+            // if we are only authenticating, we get to access the account details personal+work/school (WS) accounts --> "openid".
+            // if we are getting a token for using the picker: personal --> "OneDrive.ReadWrite", WS --> default scope for SharePoint
+            // if we are getting a token for the picker base url: WS --> "Files.Read"
+            // if we are getting a token for retrieving the file details, doing a search or checking folders: personal+WS --> "Files.Read"+"offline_access"+"User.Read"
+            // if we are getting a token for creating a folder or saving the file: personal+WS --> Files.ReadWrite
+            // if we are getting a token for checking the sharing status of a file: personal+WS --> Files.Read
+            // if we are getting a token for sharing the file: personal+WS --> Files.ReadWrite
+            const sharePointDefaultScope = (this.isPersonalAccount) ? "" : this.baseUrl.replace(/\/personal\/.*/,"") + "/.default";
             let scopes = [];
             switch(purpose){
             case OneDriveTokenPurpose.INIT_AUTH:
@@ -656,7 +675,7 @@ export default Vue.extend({
                 break;
             case OneDriveTokenPurpose.PICKER_OPEN:
             case OneDriveTokenPurpose.PICKER_ACTIVITY:            
-                scopes.push((this.isPersonalAccount) ? "OneDrive.ReadWrite" :"??");
+                scopes.push((this.isPersonalAccount) ? "OneDrive.ReadWrite" : sharePointDefaultScope);
                 break;
             case OneDriveTokenPurpose.GRAPH_CREATE_FOLDER:
             case OneDriveTokenPurpose.GRAPH_SAVE_FILE:
@@ -685,7 +704,7 @@ export default Vue.extend({
                 }
                 // If we got the token we can we look up the type of account.
                 if(accessToken && account){
-                    // According to copilot we can tesk this like that (partly, sustainable?)
+                    // According to copilot we can test if the acccount is a personal account if it uses the "consumer" tenant ID
                     this.isPersonalAccount = (account.idTokenClaims?.tid === this.consumerTenantIdForPersonalAccounts);                    
                 }                
             }
@@ -727,7 +746,6 @@ export default Vue.extend({
                 // On initial load and if it ever refreshes in its window, the Picker will send an 'initialize' message.
                 // Communication with the picker should subsequently take place using a `MessageChannel`.
                 if (message.channelId === this.pickerOptions?.messaging.channelId) {
-                    //TODO : check that channel still applies for later messages
                     switch(message.type){
                     case "initialize":
                         // grab the port from the event
@@ -799,7 +817,10 @@ export default Vue.extend({
                     }
                     else{
                         this.appStore.strypeProjectLocation = fileId;
-                        this.appStore.strypeProjectLocationAlias = strypeFileItem.name as string;
+                        this.appStore.strypeProjectLocationAlias = strypeFileItem.name as string;    
+                        const fullPath = strypeFileItem.parentReference?.path??this.pathRootIndicator; 
+                        const parentPath = fullPath.replace(new RegExp(`^.*${this.pathRootIndicator}($|/)`), "");               
+                        this.appStore.strypeProjectLocationPath = ((parentPath) ? parentPath + "/" : "") + (strypeFileItem.name as string);
                         this.onFolderToSaveFilePicked(StrypeSyncTarget.od);
                     }
                     break;

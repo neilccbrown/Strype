@@ -389,8 +389,10 @@ export default Vue.extend({
         },
 
         currentDriveLocation(): string {
-            const currentLocation = this.appStore.strypeProjectLocationAlias??"";
-            return (currentLocation.length > 0) ? currentLocation : "Strype";
+            // The current Drive location (folder of a project) depends on whether we are already
+            // "connected" to a Drive: if there is no Drive or if the user selects a target that is
+            // NOT the current target, then the default destination is "Strype". 
+            return(this.appStore.strypeProjectLocationAlias && (this.appStore.syncTarget == this.tempSyncTarget))? this.appStore.strypeProjectLocationAlias : "Strype";
         },
 
         newProjectLinkId(): string {
@@ -703,7 +705,7 @@ export default Vue.extend({
         },
 
         onSaveTargetChanged(){
-            this.showCloudSaveLocation = (this.getTargetSelectVal() == this.syncGDValue || this.getTargetSelectVal() == this.syncODValue);
+            this.showCloudSaveLocation = isSyncTargetCloudDrive(this.getTargetSelectVal());
         },
 
         saveTargetChoice(target: StrypeSyncTarget){
@@ -711,9 +713,10 @@ export default Vue.extend({
             this.localSyncTarget = target;
             this.tempSyncTarget = target;
             // In case there is a Cloud Drive file ID or other Drive related info are handling when we are saving as a file on the FS, we make sure we remove that
-            if(target == StrypeSyncTarget.fs){
+            if(target == StrypeSyncTarget.fs || target == StrypeSyncTarget.none){
                 this.appStore.currentCloudSaveFileId = undefined;
                 this.appStore.strypeProjectLocationAlias = "";
+                this.appStore.strypeProjectLocationPath = "";
             }
             // If we have swapped target, we should remove the other targets in the list of saving functions.
             // (It doesn't really matter if there is one or not, the remove method will take care of that,
@@ -1013,14 +1016,18 @@ export default Vue.extend({
                         if(isSyncTargetCloudDrive(this.appStore.syncTarget)){
                             this.$root.$emit(CustomEventTypes.requestEditorProjectSaveNow, SaveRequestReason.autosave);
                         }
-                        // When the project name is enforced, user as clicked on "save", so we don't need to trigger the usual saving mechanism to select the location/filename
-                        if(forcedProjectName){
-                            this.currentModalButtonGroupIDInAction = "";
-                            return;
-                        }
-                        const saveReason = (this.saveAtOtherLocation) ? SaveRequestReason.saveProjectAtOtherLocation : SaveRequestReason.saveProjectAtLocation; 
-                        (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).saveFileName = saveFileName;
-                        (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).saveFile(selectValue,saveReason);
+                        // We postpone saving slight to make sure all autosaving have completed
+                        setTimeout(() => {
+                            // When the project name is enforced, user as clicked on "save", so we don't need to trigger the usual saving mechanism to select the location/filename
+                            if(forcedProjectName){
+                                this.currentModalButtonGroupIDInAction = "";
+                                return;
+                            }
+                            const saveReason = (this.saveAtOtherLocation) ? SaveRequestReason.saveProjectAtOtherLocation : SaveRequestReason.saveProjectAtLocation; 
+                            (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).saveFileName = saveFileName;
+                            (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).saveFile(selectValue,saveReason);
+                        }, 2000);
+                        
                     }
                     this.currentModalButtonGroupIDInAction = "";
                 }
