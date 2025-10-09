@@ -4,8 +4,8 @@ import {checkFrameXorTextCursor, doPagePaste} from "../support/editor";
 import fs from "fs";
 import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "@/helpers/sharedIdCssWithTests";
 import {createBrowserProxy} from "../support/proxy";
-import en from "@/localisation/en/en_main.json";
 import {readFileSync} from "node:fs";
+import {save} from "../support/loading-saving";
 
 let scssVars: {[varName: string]: string};
 let strypeElIds: {[varName: string]: (...args: any[]) => string};
@@ -22,31 +22,6 @@ test.beforeEach(async ({ page }) => {
         console.log("Browser log:", msg.text());
     });
 });
-
-async function save(page: Page, firstSave = true) : Promise<string> {
-    // Save is located in the menu, so we need to open it first, then find the link and click on it:
-    await page.click("#" + await strypeElIds.getEditorMenuUID());
-
-    let download;
-    if (firstSave) {
-        await page.click("#" + await strypeElIds.getSaveProjectLinkId());
-        // For testing, we always want to save to this device:
-        await page.getByText(en.appMessage.targetFS).click();
-        [download] = await Promise.all([
-            page.waitForEvent("download"),
-            page.click("button.btn:has-text('OK')"),
-        ]);
-    }
-    else {
-        [download] = await Promise.all([
-            page.waitForEvent("download"),
-            page.click("#" + await strypeElIds.getSaveProjectLinkId()),
-        ]);
-    }
-    const filePath = await download.path();
-    return filePath;
-}
-
 
 async function clickId(page: Page, getIdClientSide: () => void) {
     const id = await page.evaluate(getIdClientSide);

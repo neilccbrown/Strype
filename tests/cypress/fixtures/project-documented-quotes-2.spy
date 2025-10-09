@@ -1,0 +1,11 @@
+#(=> Strype:1:std
+'''This has horrible quotes: """ \'\'\' """ \'\'\' and backslashes by quotes \\\' and some doubles to end: \'\' \'\''''
+#(=> Section:Imports
+#(=> Section:Definitions
+def foo ( ) :
+    '''This also has horrible quotes: """ \'\'\' """ \'\'\' and backslashes by quotes \\\' and some doubles to end: \'\' \'\''''
+    return 42 
+#(=> Section:Main
+myString  = "Hello from Python!" 
+print(myString) 
+#(=> Section:End

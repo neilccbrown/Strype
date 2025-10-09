@@ -320,15 +320,26 @@ export default class Parser {
                     return passLine; // Make sure we don't mess up the line numbers
                 }
             }
-            
-            return (this.excludeLoopsAndCommentsAndCloseTry)
-                ? passLine // This will just be an empty code placeholder, so it shouldn't be a problem for the code
-                : ((commentContent.includes("\n") || statement.frameType.type === AllFrameTypesIdentifier.projectDocumentation) ? (indentation+"'''" + commentContent.replaceAll("\n", ("\n"+indentation)).replaceAll("'''","\\'\\'\\'") + "'''\n") : (indentation + "#" + commentContent + "\n"));
+
+            if (this.excludeLoopsAndCommentsAndCloseTry) {
+                return passLine;
+            }
+            else {
+                if (commentContent.includes("\n") || statement.frameType.type === AllFrameTypesIdentifier.projectDocumentation) {
+                    // We escape all single quotes because for example if they are at the end of the string it can get confused
+                    // (if user ends with a single quote, there will be four single quotes in a row at the end, and Python will parse it
+                    // as the first three ending the string, and the fourth as left-over outside the string).
+                    // We also need to escape backslashes by doubling them.
+                    return indentation + "'''" + commentContent.replaceAll("\n", ("\n" + indentation)).replaceAll("\\", "\\\\").replaceAll("'", "\\'") + "'''\n";
+                }
+                else {
+                    return indentation + "#" + commentContent + "\n";
+                }
+            }
         }
             
         statement.frameType.labels.forEach((label, labelSlotsIndex) => {
             let hasDocContent = false;
-            // For varassign frames, the symbolic assignment on the UI should be replaced by the Python "=" symbol
             if(label.showLabel??true){
                 if (label.allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
                     if (useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields.length > 1 || (useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields[0] as BaseSlot).code.trim().length > 0) {
@@ -342,6 +353,7 @@ export default class Parser {
                     }
                 }
                 else {
+                    // For varassign frames, the symbolic assignment on the UI should be replaced by the Python "=" symbol
                     output += ((label.label.length > 0 && statement.frameType.type === AllFrameTypesIdentifier.varassign) ? " = " : label.label);
                 }
             }
@@ -358,13 +370,17 @@ export default class Parser {
                     slotTypes: slotStartsLengthsAndCode.slotTypes,
                 };
                 // add their code to the output
-                output += slotStartsLengthsAndCode.code.trimStart() + " ";
+                
 
                 if (hasDocContent) {
-                    output = output.trimEnd() + "'''";
+                    // We escape all single quotes because for example if they are at the end of the string it can get confused
+                    // (if user ends with a single quote, there will be four single quotes in a row at the end, and Python will parse it
+                    // as the first three ending the string, and the fourth as left-over outside the string).
+                    // We also need to escape backslashes by doubling them.
+                    output += slotStartsLengthsAndCode.code.trimStart().replaceAll("\n", ("\n" + indentation + "    ")).replaceAll("\\", "\\\\").replaceAll("'", "\\'") + "'''";
                 }
-                else if (label.allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
-                    output = output.trimEnd();
+                else if (label.allowedSlotContent != AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
+                    output += slotStartsLengthsAndCode.code.trimStart() + " ";
                 }
             }            
         });

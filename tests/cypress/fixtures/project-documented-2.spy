@@ -1,0 +1,11 @@
+#(=> Strype:1:std
+'''This project has a different description to the other fixture file.'''
+#(=> Section:Imports
+#(=> Section:Definitions
+def foo ( ) :
+    '''This is the function foo, although it\'s different to the other file.'''
+    return 42 
+#(=> Section:Main
+msg  = "Hello" 
+print(foo(msg)) 
+#(=> Section:End
