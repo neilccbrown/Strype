@@ -100,6 +100,6 @@ Strype is currently under very active development.  A rough roadmap of some majo
  - Internal backend update for Strype's Python emulation: Q1 2026
  - Add support for data processing and/or charting: Q2 2026
  - Add support for loading/saving Strype projects from/to German Bundesland-specific Cloud Drives: Q1 2026
- - Extant the micro:bit simulator's features: Q3 2026
+ - Extent the micro:bit simulator's features: Q3 2026
 
 The dates and choices may change as we receive more user feedback.
