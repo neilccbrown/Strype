@@ -1,5 +1,8 @@
 <template>
-    <CTree ref="ctree" @select="onSelectItemInternally" @click="onSelectItemByClick" @dblclick="onSelectItemByClick" :emptyText="emptyText" class="strype-ctree" titleField="name" />
+    <div>
+        <div class="strype-cloud-drive-item-picker-refresh-btn" tabindex="-1" @click="refreshContent"><i class="fas fa-sync-alt"></i><span>{{$t("buttonLabel.refresh")}}</span></div>
+        <CTree ref="ctree" @select="onSelectItemInternally" @click="onSelectItemByClick" @dblclick="onSelectItemByClick" :emptyText="emptyText" class="strype-ctree" titleField="name" />
+    </div>
 </template>
 
 
@@ -287,6 +290,11 @@ export default Vue.extend({
                 }, 0);
             }
         },
+
+        refreshContent(){
+            // The request is sent to the caller...
+            this.$emit(CustomEventTypes.requestedCloudDrivePickerRefresh);
+        },
     },
 });
 </script>
@@ -311,5 +319,20 @@ export default Vue.extend({
     max-width: 80vw;
     max-height: 75vh;    
     overflow: auto;
+    clear: both;
+}
+
+.strype-cloud-drive-item-picker-refresh-btn {
+    margin-bottom: 5px;
+    cursor: pointer;
+    border: 1px grey solid;
+    border-radius: 5px;
+    padding: 2px 5px;
+    color: #007bff;
+    float: right;
+}
+
+.strype-cloud-drive-item-picker-refresh-btn > i {
+    margin-right: 5px;
 }
 </style>

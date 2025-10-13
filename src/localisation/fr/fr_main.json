@@ -62,7 +62,8 @@
     "copyLink": "Copier le lien",
     "continue" :"Continuer",
     "cancelLoadSharedProject":"Annuler (charger la sauvegarde)",
-    "select": "Selectionner"
+    "select": "Selectionner",
+    "refresh": "rafraîchir"
   },
   "errorMessage": {
     "wrongDataFormat": "le format de données ne peut pas être lu",

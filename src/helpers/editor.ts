@@ -63,6 +63,7 @@ export enum CustomEventTypes {
     exposedCloudDrivePickerPickedItem = "exposedCloudDrivePickerPickedItem",
     requestedCloudDriveItemChildren = "requestedCloudDriveItemChildren",
     exposedCloudDriveItemChidren = "exposedCloudDriveItemChidren",
+    requestedCloudDrivePickerRefresh = "requestedCloudDrivePickerRefresh",
     /* IFTRUE_isPython */
     pythonExecAreaMounted = "peaMounted",
     pythonExecAreaExpandCollapseChanged = "peaExpandCollapsChanged",

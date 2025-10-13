@@ -13,7 +13,8 @@
     <ModalDlg :dlgId="folderPickerForWSAccountDlgId" showCloseBtn :okCustomTitle="$t('buttonLabel.select')" :okDisabled="disableFolderSelectionForWSAccountSaveModalDlg">
         <CloudDriveItemPicker :mode="folderPickerForWSAccountSettings.pickerMode" v-on:[CustomEventTypes.exposedCloudDrivePickerPickedItem]="onPickedWSAccountFolderForSave" 
             :pathResolutionMode="folderPickerForWSAccountSettings.pathResolutionMode" :initialFolderToSelectPathParts="folderPickerForWSAccountSettings.initialFolderPathPartsToSelect"
-            v-on:[CustomEventTypes.requestedCloudDriveItemChildren]="fetchFolderChildrenForCloudDrivePicker" :rawRootData="folderPickerForWSAccountRawData" :emptyText="folderPickerForWSAccountSettings.emptyPickerText" />
+            @[CustomEventTypes.requestedCloudDriveItemChildren]="fetchFolderChildrenForCloudDrivePicker" :rawRootData="folderPickerForWSAccountRawData" :emptyText="folderPickerForWSAccountSettings.emptyPickerText" 
+            @[CustomEventTypes.requestedCloudDrivePickerRefresh]="pickFolderForSave(true)" />
     </ModalDlg>
 </template>
 
@@ -345,7 +346,7 @@ export default Vue.extend({
             onGettingReadonlyStatus(false);
         },
 
-        async pickFolderForSave(){
+        async pickFolderForSave(doNotOpenPickerModalDlg?: boolean){
             // To date with the File Picker API v8, Microsoft doesn't expose the folder selection in the picker
             // (as well as not filtering on folders only) *for WS account*. Until this is sorted we will use our
             // our own basic folder tree widget.
@@ -357,8 +358,10 @@ export default Vue.extend({
                 });
                 
                 const itemsForPicker = this.transformOneDriveItemsToCloudDriveItemPickerItems(rootLevelDriveItems as DriveItem[]);
-                this.folderPickerForWSAccountRawData = itemsForPicker;                
-                this.$root.$emit("bv::show::modal", this.folderPickerForWSAccountDlgId);  
+                this.folderPickerForWSAccountRawData = itemsForPicker;
+                if(!doNotOpenPickerModalDlg){              
+                    this.$root.$emit("bv::show::modal", this.folderPickerForWSAccountDlgId);
+                }
             }
             else{
                 // We call the picker again, but only allow folders this time.

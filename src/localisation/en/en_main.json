@@ -61,7 +61,8 @@
     "copyLink": "Copy link",
     "continue" :"Continue",
     "cancelLoadSharedProject":"Cancel (load backup)",
-    "select": "Select"
+    "select": "Select",
+    "refresh": "refresh"
   },
   "errorMessage": {
     "wrongDataFormat": "the data format cannot be read",
