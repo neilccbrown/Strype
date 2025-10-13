@@ -103,6 +103,7 @@ var $builtinmodule = function(name)  {
     mod.setBackground = new Sk.builtin.func(function(img) {
         peaComponent.__vue__.getPersistentImageManager().setBackground(img);
     });
+    // Note, assoc parameter may be missing (and thus undefined): 
     mod.addImage = new Sk.builtin.func(function(image, assoc) {
         return peaComponent.__vue__.getPersistentImageManager().addPersistentImage(image, assoc);
     });
