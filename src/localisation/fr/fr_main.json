@@ -61,7 +61,8 @@
     "discardChanges": "Ignorer les modifications",
     "copyLink": "Copier le lien",
     "continue" :"Continuer",
-    "cancelLoadSharedProject":"Annuler (charger la sauvegarde)"
+    "cancelLoadSharedProject":"Annuler (charger la sauvegarde)",
+    "select": "Selectionner"
   },
   "errorMessage": {
     "wrongDataFormat": "le format de données ne peut pas être lu",
@@ -142,6 +143,8 @@
     "cloudLockedFileAlreadyExists": "Ce projet est verrouillé à cet emplacement dans {drivename}.\nIl ne peut pas être enregistré avec ce nom.",
     "savedCloudFile":"Enregistré",
     "modifCloudFile":"Modifié",
+    "emptyCloudDrivePicker": "Votre {drivename} est vide...",
+    "cloudDriveItemPickerLoadingFolderContent": "Chargement du dossier...",
     "lastSavedOn": "Dernier enregistrement : {lastSavedDate}",
     "lastSavedOnNDays": "Dernier enregistrement : il y a {nbLastSave} jours",
     "lastSavedOn1Day": "Dernier enregistrement : hier",

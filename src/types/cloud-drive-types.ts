@@ -64,6 +64,33 @@ export interface CloudFileWithMetaData extends GDFile {
 }
 /* end types for FileIO */
 
+/* Picker related stuff: mainly unused but designed to be as generic as possible for Cloud Drive APIs that don't offer a picker. */
+export enum CloudDriveItemPickerMode {
+    // The mode is either set to show files and folders (default) or folders only
+    FILES,
+    FOLDERS,
+}
+
+export enum CloudDriveItemPickerFolderPathResolutionMode {
+    // The folder path resolution mode indicates whether the picker should resolves paths using item IDs (default) or item names.
+    // This is notably required for looking up a location in the picker.
+    BY_ID,
+    BY_NAME,
+}
+
+export interface CloudDriveItemPickerItem {
+    id: string,
+    name: string,
+    isFolder: boolean, // We need this: an item without children can totally be a folder if that folder is empty
+    parentId?: string // expected to be undefined or empty for root elements
+    hasVisitedFolder?: boolean // this is for the internal behaviour of the Picker, to know if we need to fetch the folder content (see CloudDriveItemPicker.vue)
+}
+
+export interface CTreeItemPickerItem extends CloudDriveItemPickerItem{
+    children: CTreeItemPickerItem[],
+}
+/* end picker related stuff */
+
 /* The template typing of a Cloud Drive component */
 // Ensures some of the specific props, data and methods of the component are included in CloudDriveComponent.
 // I don't know how to work it out so we get errrors for missing parts within each specific drive's component,

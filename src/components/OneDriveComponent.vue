@@ -9,8 +9,14 @@
  * (https://learn.microsoft.com/en-us/onedrive/developer/controls/file-pickers/?view=odsp-graph-online)
  */
 <template>
-    <div></div>
+    <!-- The modal dialog for picking folders from WS accounts (see pickFolderForSave() -->
+    <ModalDlg :dlgId="folderPickerForWSAccountDlgId" showCloseBtn :okCustomTitle="$t('buttonLabel.select')" :okDisabled="disableFolderSelectionForWSAccountSaveModalDlg">
+        <CloudDriveItemPicker :mode="folderPickerForWSAccountSettings.pickerMode" v-on:[CustomEventTypes.exposedCloudDrivePickerPickedItem]="onPickedWSAccountFolderForSave" 
+            :pathResolutionMode="folderPickerForWSAccountSettings.pathResolutionMode" :initialFolderToSelectPathParts="folderPickerForWSAccountSettings.initialFolderPathPartsToSelect"
+            v-on:[CustomEventTypes.requestedCloudDriveItemChildren]="fetchFolderChildrenForCloudDrivePicker" :rawRootData="folderPickerForWSAccountRawData" :emptyText="folderPickerForWSAccountSettings.emptyPickerText" />
+    </ModalDlg>
 </template>
+
 <script lang="ts">
 //////////////////////
 //      Imports     //
@@ -20,19 +26,28 @@ import { StrypeSyncTarget } from "@/types/types";
 import { mapStores } from "pinia";
 import Vue, { PropType } from "vue";
 import { AccountInfo, Configuration, PublicClientApplication  } from "@azure/msal-browser";
-import { CloudFileSharingStatus, OneDrivePickConfigurationOptions, OneDriveTokenPurpose } from "@/types/cloud-drive-types";
+import { CloudDriveItemPickerFolderPathResolutionMode, CloudDriveItemPickerItem, CloudDriveItemPickerMode, CloudFileSharingStatus, OneDrivePickConfigurationOptions, OneDriveTokenPurpose } from "@/types/cloud-drive-types";
 import { uniqueId } from "lodash";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { CloudDriveAPIState } from "@/types/cloud-drive-types";
 import { CloudDriveFile } from "@/types/cloud-drive-types";
-import { BaseItem, Permission, UploadSession } from "@microsoft/microsoft-graph-types";
+import { BaseItem, DriveItem, Permission, UploadSession } from "@microsoft/microsoft-graph-types";
 import CloudDriveHandlerComponent from "@/components/CloudDriveHandler.vue";
+import CloudDriveItemPicker from "@/components/CloudDriveItemPicker.vue";
+import ModalDlg from "@/components/ModalDlg.vue";
+import { BvModalEvent } from "bootstrap-vue";
+import { CustomEventTypes } from "@/helpers/editor";
 
 //////////////////////
 //     Component    //
 //////////////////////
 export default Vue.extend({
     name: "OneDriveComponent",
+
+    components: {
+        ModalDlg,
+        CloudDriveItemPicker,
+    },
     
     props: {
         driveName: { type: String, required: true },
@@ -45,6 +60,9 @@ export default Vue.extend({
     created() {
         // Register the listener of the File Picker's messages
         window.addEventListener("message", this.onPickerMsg);
+
+        // The events from Bootstrap modal are registered to the root app element.
+        this.$root.$on("bv::modal::hide", this.onFolderPickerForWSAccountHideModalDlg); 
     },
 
 
@@ -65,6 +83,9 @@ export default Vue.extend({
             currentFileLastModifiedDate: "",
             currentFileName: "",
             publicShareByStrypeWebLink: "", // We keep the link URL when Strype sets a file for public share so we don't need to query that again
+            // Others
+            CustomEventTypes, // Just to have access to custom event types in template
+            folderPickerForWSAccountRawData: [] as CloudDriveItemPickerItem[],
         };
     },
 
@@ -121,6 +142,23 @@ export default Vue.extend({
                     redirectUri: this.redirectURI,
                 },
             };
+        },
+
+        folderPickerForWSAccountDlgId(): string {
+            return "folderPickerForWSAccountDlg";
+        },
+
+        folderPickerForWSAccountSettings(): {pickerMode: CloudDriveItemPickerMode, pathResolutionMode: CloudDriveItemPickerFolderPathResolutionMode, initialFolderPathPartsToSelect: string[], emptyPickerText: string} {
+            return {
+                pickerMode: CloudDriveItemPickerMode.FOLDERS,
+                pathResolutionMode: CloudDriveItemPickerFolderPathResolutionMode.BY_NAME,
+                initialFolderPathPartsToSelect: this.appStore.strypeProjectLocationPath.split("/"),
+                emptyPickerText: this.$i18n.t("appMessage.emptyCloudDrivePicker", {drivename: this.driveName }) as string,
+            };
+        },
+
+        disableFolderSelectionForWSAccountSaveModalDlg(): boolean {
+            return this.folderPickerForWSAccountRawData.filter((item) =>  item.isFolder).length == 0;
         },
     },
 
@@ -289,7 +327,7 @@ export default Vue.extend({
             const token = await this.getToken(OneDriveTokenPurpose.GRAPH_GET_FILE_DETAILS);
             const driveId = folderId.substring(0, folderId.indexOf("!"));
             const requestURL = (driveId) ? `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${folderId}` : ("https://graph.microsoft.com/v1.0/drives/me/items/" + folderId);
-            let resp = await fetch(requestURL, 
+            const resp = await fetch(requestURL, 
                 {method: "GET", headers: {"Authorization": `Bearer ${token}`, "Accept": "application/json"}});
             if (!resp.ok){
                 throw Error(resp.status.toString());
@@ -308,66 +346,120 @@ export default Vue.extend({
         },
 
         async pickFolderForSave(){
-            // We call the picker again, but only allow folders this time.
-            const pickerAccessToken = await this.getToken(OneDriveTokenPurpose.PICKER_OPEN).catch((_) => {
-                console.error("Something happened while trying to access OneDrive Picker FOR SAVING.");
-                return "";
-            });
-
-            if(pickerAccessToken.length == 0){
-                return;
+            // To date with the File Picker API v8, Microsoft doesn't expose the folder selection in the picker
+            // (as well as not filtering on folders only) *for WS account*. Until this is sorted we will use our
+            // our own basic folder tree widget.
+            if(!this.isPersonalAccount){                
+                // We get the folders in one go first and to set up the picker (raw folder data and initial location)
+                const rootLevelDriveItems = await this.listDriveItemsAtFolder().catch((_) => {
+                    // If we could not get the drive content, we just don't do anything.                    
+                    return;
+                });
+                
+                const itemsForPicker = this.transformOneDriveItemsToCloudDriveItemPickerItems(rootLevelDriveItems as DriveItem[]);
+                this.folderPickerForWSAccountRawData = itemsForPicker;                
+                this.$root.$emit("bv::show::modal", this.folderPickerForWSAccountDlgId);  
             }
+            else{
+                // We call the picker again, but only allow folders this time.
+                const pickerAccessToken = await this.getToken(OneDriveTokenPurpose.PICKER_OPEN).catch((_) => {
+                    console.error("Something happened while trying to access OneDrive Picker FOR SAVING.");
+                    return "";
+                });
+
+                if(pickerAccessToken.length == 0){
+                    return;
+                }
+                
+                // create a new window. The Picker's recommended maximum size is 1080x680, but it can scale down to
+                // a minimum size of 250x230 for very small screens or very large zoom.
+                this.pickerPopup = window.open("", "Picker", "width=1080,height=680");
+                this.isPickingFile = false;
             
-            // create a new window. The Picker's recommended maximum size is 1080x680, but it can scale down to
-            // a minimum size of 250x230 for very small screens or very large zoom.
-            this.pickerPopup = window.open("", "Picker", "width=1080,height=680");
-            this.isPickingFile = false;
-        
-            // options: These are the picker configuration, see the schema link for a full explaination of the available options
-            this.pickerOptions = {
-                sdk: "8.0", 
-                authentication:{},
-                messaging: {
-                    channelId: uniqueId(),
-                    origin: this.siteOrigin,
-                },
-                // Default opening to "Strype" seems to be ignored in this configuration
-                entry: {oneDrive: {files: {folder: "Strype", fallbackToRoot: true}}},
-                typesAndSources: {mode: "folders", pivots: {oneDrive: true, recent: true}, filters: ["folder"]},
-            };
-            
-            // now we need to construct our query string
-            const queryString = new URLSearchParams({
-                filePicker: JSON.stringify(this.pickerOptions),
-                locale:  this.$i18n.t("localeOneDrive") as string,
-            });
+                // options: These are the picker configuration, see the schema link for a full explaination of the available options
+                this.pickerOptions = {
+                    sdk: "8.0", 
+                    authentication:{},
+                    messaging: {
+                        channelId: uniqueId(),
+                        origin: this.siteOrigin,
+                    },
+                    // Default opening to "Strype" seems to be ignored in this configuration
+                    entry: {oneDrive: {files: {folder: "Strype", fallbackToRoot: true}}},
+                    typesAndSources: {mode: "folders", pivots: {oneDrive: true, recent: true}, filters: ["folder"]},
+                };
+                
+                // now we need to construct our query string
+                const queryString = new URLSearchParams({
+                    filePicker: JSON.stringify(this.pickerOptions),
+                    locale:  this.$i18n.t("localeOneDrive") as string,
+                });
 
-            // we create the absolute url by combining the base url, appending the _layouts path, and including the query string
-            const url = `${this.baseUrl}?${queryString}`;
-            // create a form
-            const form = this.pickerPopup?.document.createElement("form");
-            if(this.pickerPopup && form){
-                // set the action of the form to the url defined above
-                // This will include the query string options for the picker.
-                form.setAttribute("action", url);
+                // we create the absolute url by combining the base url, appending the _layouts path, and including the query string
+                const url = `${this.baseUrl}?${queryString}`;
+                // create a form
+                const form = this.pickerPopup?.document.createElement("form");
+                if(this.pickerPopup && form){
+                    // set the action of the form to the url defined above
+                    // This will include the query string options for the picker.
+                    form.setAttribute("action", url);
 
-                // must be a post request
-                form.setAttribute("method", "POST");
+                    // must be a post request
+                    form.setAttribute("method", "POST");
 
-                // Create a hidden input element to send the OAuth token to the Picker.
-                // This optional when using a popup window but required when using an iframe.
-                const tokenInput = this.pickerPopup.document.createElement("input");
-                tokenInput.setAttribute("type", "hidden");
-                tokenInput.setAttribute("name", "access_token");
-                tokenInput.setAttribute("value", pickerAccessToken);
-                form.appendChild(tokenInput);
+                    // Create a hidden input element to send the OAuth token to the Picker.
+                    // This optional when using a popup window but required when using an iframe.
+                    const tokenInput = this.pickerPopup.document.createElement("input");
+                    tokenInput.setAttribute("type", "hidden");
+                    tokenInput.setAttribute("name", "access_token");
+                    tokenInput.setAttribute("value", pickerAccessToken);
+                    form.appendChild(tokenInput);
 
-                // append the form to the body
-                this.pickerPopup.document.body.append(form);
+                    // append the form to the body
+                    this.pickerPopup.document.body.append(form);
 
-                // submit the form, this will load the picker page
-                form.submit();
-            }    
+                    // submit the form, this will load the picker page
+                    form.submit();
+                }
+            }
+                
+        },
+
+        async onPickedWSAccountFolderForSave(pickedItem: CloudDriveItemPickerItem | null){
+            // We received the folder picked by the user in the generic Cloud Drive picker to save at a location.
+            // We need to just a few more things before contuining the normal saving workflow (i.e. with personal accounts):
+            // We need a BaseItem object to pass it to onPickedFolderForSave(), the shared method for both account types, 
+            // so we query Graph to get more details about the file.
+            if(pickedItem){
+                const token = await this.getToken(OneDriveTokenPurpose.GRAPH_GET_FILE_DETAILS);
+                // The drive ID is part of the file ID so we can easily extract it...
+                const driveId = pickedItem.id.substring(0, pickedItem.id.indexOf("!"));
+                const requestURL = (driveId) ? `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${pickedItem.id}` : ("https://graph.microsoft.com/v1.0/drives/me/items/"+pickedItem.id);
+                let resp = await fetch(requestURL, 
+                    {method: "GET", headers: {"Authorization": `Bearer ${token}`, "Accept": "application/json"}});
+                if (resp.ok){
+                    const jsonProps = await resp.json() as BaseItem;  
+                    if(jsonProps.parentReference?.id && jsonProps.parentReference.name && jsonProps.parentReference.path){                                    
+                        this.onPickedFolderForSave(jsonProps);
+                    }
+                }     
+            }      
+        },
+
+        onPickedFolderForSave(pickedFolderItem: BaseItem) {
+            this.appStore.strypeProjectLocation = pickedFolderItem.id;
+            this.appStore.strypeProjectLocationAlias = pickedFolderItem.name as string;    
+            const fullPath = pickedFolderItem.parentReference?.path??this.pathRootIndicator; 
+            const parentPath = fullPath.replace(new RegExp(`^.*${this.pathRootIndicator}($|/)`), "");               
+            this.appStore.strypeProjectLocationPath = ((parentPath) ? parentPath + "/" : "") + (pickedFolderItem.name as string);
+            this.onFolderToSaveFilePicked(StrypeSyncTarget.od);
+        },
+
+        onFolderPickerForWSAccountHideModalDlg(event: BvModalEvent, dlgId: string ){
+            if(event.trigger == "ok" && dlgId == this.folderPickerForWSAccountDlgId){
+                // Trigger the selection's validation
+                document.dispatchEvent(new CustomEvent(CustomEventTypes.requestedCloudDrivePickerPickedItem));
+            }
         },
 
         async loadPickedFileId(id: string, otherParams: {fileName?: string}, onGettingFileMetadataSucces: (fileNameFromDrive: string, fileModifiedDateTime: string)=>void
@@ -816,12 +908,7 @@ export default Vue.extend({
                         this.onFileToLoadPicked(StrypeSyncTarget.od, fileId, this.currentFileName);
                     }
                     else{
-                        this.appStore.strypeProjectLocation = fileId;
-                        this.appStore.strypeProjectLocationAlias = strypeFileItem.name as string;    
-                        const fullPath = strypeFileItem.parentReference?.path??this.pathRootIndicator; 
-                        const parentPath = fullPath.replace(new RegExp(`^.*${this.pathRootIndicator}($|/)`), "");               
-                        this.appStore.strypeProjectLocationPath = ((parentPath) ? parentPath + "/" : "") + (strypeFileItem.name as string);
-                        this.onFolderToSaveFilePicked(StrypeSyncTarget.od);
+                        this.onPickedFolderForSave(strypeFileItem);                        
                     }
                     break;
                 }
@@ -863,7 +950,47 @@ export default Vue.extend({
             const permissions = jsonProps.value as Permission[];
             return permissions.find((perm) => perm.link?.scope == "anonymous" && perm.link.type == "view");
         },
+
+        isDriveItemAFolder(driveItem: DriveItem): boolean {
+            // An item is a folder when it has a folder property AND it doesn't expose a property "remoteItem" nor a property "file" (otherwise we also get shortcuts).
+            // AND also isn't a OneNote package (this is deducted from observing the results in testing...)
+            return !driveItem.file && !!driveItem.folder && !driveItem.remoteItem && driveItem.package?.type != "oneNote";
+        },
+
+        transformOneDriveItemsToCloudDriveItemPickerItems(driveItems: DriveItem[]): CloudDriveItemPickerItem[] {
+            // The transformation is pretty straight forward. We only need to be careful about:
+            // - not setting a parent ID to to root elements,
+            // - detecting when an item is a folder (see function above)
+            return driveItems.map((item) => ({id: item.id, name: item.name, isFolder:  this.isDriveItemAFolder(item), parentId: ((item.parentReference?.path??"/drive/root:")=="/drive/root:") ? "" : item.parentReference?.id} as CloudDriveItemPickerItem));
+        },
+
+        async fetchFolderChildrenForCloudDrivePicker(folderId: string) { 
+            const childrenItems = await this.listDriveItemsAtFolder(folderId);
+            document.dispatchEvent(new CustomEvent(CustomEventTypes.exposedCloudDriveItemChidren, {detail: this.transformOneDriveItemsToCloudDriveItemPickerItems(childrenItems)}));
+        },
+
+        async listDriveItemsAtFolder(folderId?: string): Promise<DriveItem[]>{
+            // This methods lists the content of the Drive at the given (folder) location.
+            // If the folderId isn't provided, then we look for items at the Drive's root.
+            const token = await this.getToken(OneDriveTokenPurpose.GRAPH_SEARCH);
+            const requestURL = (folderId) ? `https://graph.microsoft.com/v1.0/me/drive/items/${folderId}/children` :  "https://graph.microsoft.com/v1.0/me/drive/root/children";
+            const resp = await fetch(requestURL, 
+                {method: "GET", headers: {"Authorization": `Bearer ${token}`, "Accept": "application/json"}});
+            if (!resp.ok){
+                // If we could not get the drive content, we throw an error for the caller to handle that
+                throw new Error(resp.status.toString());
+            }
+            else{
+                const jsonProps = await resp.json(); 
+                if(jsonProps && jsonProps.value){
+                    return jsonProps.value as DriveItem[];
+                }
+                else {
+                    // We shouldn't be in this situation but let's keep TS happy and make sure we return something if we don't get the expected data
+                    return [];
+                }
+            }                
+        },
     },   
 });
 </script>
-
