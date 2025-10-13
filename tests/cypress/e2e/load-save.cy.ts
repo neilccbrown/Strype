@@ -151,9 +151,6 @@ describe("Loads and re-saves fixture files", () => {
     it("Loads a basic trisection project", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic-trisection.spy");
     });
-    it("Loads a project with docs", () => {
-        testRoundTripImportAndDownload("tests/cypress/fixtures/project-documented.spy");
-    });
     it("Outputs a dummy for solo try", () => {
         // Make an empty try, which should save with a placeholder:
         testEntryDisableAndSave("tpmsg{enter}{downarrow}{backspace}", [], "tests/cypress/fixtures/project-try-solo.spy");
@@ -262,5 +259,29 @@ describe("Tests loading/saving library frames", () => {
     });
     it ("Saves and loads disabled libraries", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-libraries-disable.spy");
+    });
+});
+
+describe("Tests loading project descriptions", () => {
+    it("Loads a project with docs", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-documented.spy");
+    });
+    it("Loads a project with docs when there is already a project description", () => {
+        focusEditorPasteAndClear();
+        cy.get("body").type("{uparrow}{uparrow}{leftarrow}Temporary description.");
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-documented.spy");
+    });
+    it("Loads a project description over the top of another", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-documented.spy");
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-documented-2.spy");
+    });
+    it("Loads a project without description over the top of another with description", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-documented.spy");
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic-trisection.spy");
+    });
+    it("Loads a project without docs when there is already a project description", () => {
+        focusEditorPasteAndClear();
+        cy.get("body").type("{uparrow}{uparrow}{leftarrow}Temporary description.");
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic.spy");
     });
 });
