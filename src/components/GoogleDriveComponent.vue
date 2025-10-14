@@ -33,8 +33,6 @@ export default Vue.extend({
     },
 
     props: {
-        driveName: { type: String, required: true },
-        apiName: { type: String, required: true },
         onFileToLoadPicked: {type: Function as PropType<(cloudTarget: StrypeSyncTarget, fileId: string, fileName?: string) => Promise<void>>, required: true},
         onFolderToSaveFilePicked: {type: Function as PropType<(cloudTarget: StrypeSyncTarget) => void>, required: true},
         onUnsupportedByStrypeFilePicked: {type: Function as PropType<() => void>, required: true},
@@ -57,6 +55,14 @@ export default Vue.extend({
 
     computed:{
         ...mapStores(useStore),
+        
+        driveName(): string {
+            return "Google Drive";
+        },
+
+        driveAPIName(): string{
+            return "GAPI";
+        },
 
         // These are specific to the Google Drive component.
         googleDriveScope(): string {

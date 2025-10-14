@@ -628,7 +628,7 @@ export default Vue.extend({
                                 afterAPILoaded();
                             }
                             else{
-                                this.finaliseOpenShareProject("errorMessage.retrievedSharedGenericProject", this.$i18n.t("errorMessage.cloudAPIFailed",{apiname: specifcDriveComponent?.apiName}) as string);
+                                this.finaliseOpenShareProject("errorMessage.retrievedSharedGenericProject", this.$i18n.t("errorMessage.cloudAPIFailed",{apiname: specifcDriveComponent?.driveAPIName}) as string);
                             }
                         });
                 }

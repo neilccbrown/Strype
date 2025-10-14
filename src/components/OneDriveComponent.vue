@@ -51,8 +51,6 @@ export default Vue.extend({
     },
     
     props: {
-        driveName: { type: String, required: true },
-        apiName: { type: String, required: true },
         onFileToLoadPicked: {type: Function as PropType<(cloudTarget: StrypeSyncTarget, fileId: string, fileName?: string) => Promise<void>>, required: true},
         onFolderToSaveFilePicked: {type: Function as PropType<(cloudTarget: StrypeSyncTarget) => void>, required: true},
         onUnsupportedByStrypeFilePicked: {type: Function as PropType<() => void>, required: true},
@@ -92,6 +90,14 @@ export default Vue.extend({
 
     computed:{
         ...mapStores(useStore),
+
+        driveName(): string {
+            return "OneDrive";
+        },
+
+        driveAPIName(): string{
+            return "OneDrive File Picker v8 / Graph REST API";
+        },
 
         siteOrigin(): string {
             return (process.env.NODE_ENV === "production") ? "https://www.strype.org" : "http://localhost:8081";

@@ -99,8 +99,6 @@ export interface CTreeItemPickerItem extends CloudDriveItemPickerItem{
 // It's not ideal but at least it still allow detecting missing parts during development and allow TS working everywhere.
 export interface CloudDriveComponent {
     // Props
-    driveName: string,
-    apiName: string,
     onFileToLoadPicked: (cloudTarget: StrypeSyncTarget, fileId: string, fileName?: string) => Promise<void>,
     onFolderToSaveFilePicked: (cloudTarget: StrypeSyncTarget) => void,
     onUnsupportedByStrypeFilePicked: VoidFunction,
@@ -108,6 +106,10 @@ export interface CloudDriveComponent {
     // Data
     isFileLocked: boolean;
     previousCloudFileSharingStatus: CloudFileSharingStatus;
+
+    // Computed Properties    
+    driveName: string;
+    driveAPIName: string;    
 
     // Methods
     signIn: (signInCalBack: (cloudTarget: StrypeSyncTarget) => void) => void,
