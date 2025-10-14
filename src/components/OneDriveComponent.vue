@@ -686,11 +686,7 @@ export default Vue.extend({
         },
 
         checkIsFileLocked(existingFileId: string, onSuccess: VoidFunction, onFailure: VoidFunction) {
-            //TODO: is there an equivalent in OneDrive? If not, just return as never locked...
-            // Following the addition of a locking file settings in Drive (Sept 2023) we need to check if a file is locked when we want to save.
-            // This method retrieves this property for a given file by its file ID.
-            // It is the responsablity of the caller of that method to provide a valid file ID and have passed authentication.
-            // However, we still handle potential API access issues in this method, hence this methods expects the methods to run in case of success or failure
+            // OneDrive doesn't not seem to have a similar "lock" mechanism than Google Drive, so we ignore that.
             this.isFileLocked = false;
             // Pass on the property value to the success case call back method.
             onSuccess();
