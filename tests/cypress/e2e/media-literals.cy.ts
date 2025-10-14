@@ -183,6 +183,19 @@ describe("Paste image literals", () => {
         });
     });
 
+    it("Paste and show SVG image", () => {
+        cy.readFile("tests/cypress/support/kcl-logo.svg", null).then((svg) => {
+            focusEditorPasteAndClear();
+            enterImports();
+            cy.get("body").type(" Actor(");
+            cy.wait(1000);
+            (cy.focused() as any).paste(svg, "image/svg+xml");
+            cy.wait(1000);
+            executeCode();
+            checkGraphicsCanvasContent("paste-and-show-svg");
+        });
+    });
+
     it("Can call method on pasted image", () => {
         cy.readFile("public/graphics_images/cat-test.jpg", null).then((catJPEG) => {
             focusEditorPasteAndClear();
