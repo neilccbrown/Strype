@@ -159,7 +159,7 @@ export default Vue.extend({
             return {
                 pickerMode: CloudDriveItemPickerMode.FOLDERS,
                 pathResolutionMode: CloudDriveItemPickerFolderPathResolutionMode.BY_NAME,
-                initialFolderPathPartsToSelect: this.appStore.strypeProjectLocationPath.split("/"),
+                initialFolderPathPartsToSelect: (this.appStore.strypeProjectLocationPath??"").split("/"),
                 emptyPickerText: this.$i18n.t("appMessage.emptyCloudDrivePicker", {drivename: this.driveName }) as string,
             };
         },
