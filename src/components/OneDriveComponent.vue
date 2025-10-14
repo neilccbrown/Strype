@@ -175,29 +175,36 @@ export default Vue.extend({
             });
 
             if(this.oauthToken){
-                (this.$parent as InstanceType<typeof CloudDriveHandlerComponent>).updateSignInStatus(StrypeSyncTarget.od, true);
-
                 // If have a work/school account and we are doing the initial authentication, we need to retrieve the baseUrl too.
                 if(!this.isPersonalAccount){
-                    const token = await this.getToken(OneDriveTokenPurpose.PICKER_BASE_URL);
-                    const resp = await fetch("https://graph.microsoft.com/v1.0/me/drive", {method: "GET", headers: {"Authorization": `Bearer ${token}`,"Accept": "application/json"}});
-                    if (!resp.ok) {
-                        throw new Error(`Graph API request failed: ${resp.status} ${resp.statusText}`);
-                    }
-
-                    const data = await resp.json() as BaseItem;
-                    // Based on observation and ChatGPT, the URL returned is not a base URL but something pointing at "Documents".
-                    // So, we need to trim it. The usual pattern for WS accounts base URL is 
-                    // "https://{tenant}-my.sharepoint.com/personal/{userPrincipalName with "_" replacing "@"}
-                    if(data.webUrl){
-                        const patternForTrimming = /https:\/\/.+\.sharepoint\.com\/personal\/[^/]+/g;
-                        const matchingRes = data.webUrl.match(patternForTrimming);
-                        if(matchingRes){
-                            this.baseUrl = data.webUrl.substring(0, matchingRes[0].length); 
+                    const token = await this.getToken(OneDriveTokenPurpose.PICKER_BASE_URL).catch((_) => {
+                        return null;
+                    });
+                    if(token) {
+                        const resp = await fetch("https://graph.microsoft.com/v1.0/me/drive", {method: "GET", headers: {"Authorization": `Bearer ${token}`,"Accept": "application/json"}});
+                        if (!resp.ok) {
+                            throw new Error(`Graph API request failed: ${resp.status} ${resp.statusText}`);
                         }
-                    }                    
+
+                        const data = await resp.json() as BaseItem;
+                        // Based on observation and ChatGPT, the URL returned is not a base URL but something pointing at "Documents".
+                        // So, we need to trim it. The usual pattern for WS accounts base URL is 
+                        // "https://{tenant}-my.sharepoint.com/personal/{userPrincipalName with "_" replacing "@"}
+                        if(data.webUrl){
+                            const patternForTrimming = /https:\/\/.+\.sharepoint\.com\/personal\/[^/]+/g;
+                            const matchingRes = data.webUrl.match(patternForTrimming);
+                            if(matchingRes){
+                                this.baseUrl = data.webUrl.substring(0, matchingRes[0].length); 
+                            }
+                        }
+                    }
+                    else{
+                        return;
+                    }
                 }
-                callback(StrypeSyncTarget.od);                
+            
+                (this.$parent as InstanceType<typeof CloudDriveHandlerComponent>).updateSignInStatus(StrypeSyncTarget.od, true);
+                callback(StrypeSyncTarget.od);
             }
         },   
 
