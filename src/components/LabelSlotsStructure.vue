@@ -470,6 +470,32 @@ export default Vue.extend({
                 return;
             }
 
+            if(this.appStore.focusSlotCursorInfos && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() == "a") {
+                // On Firefox Ctrl-A doesn't work correctly when processed natively in slots.
+                // So we have to manually implement it.  It selects the entire slot, no matter how deep we were in what kind of slot
+                let slotFields = this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields;
+                const newFocusSlotId = ("" + (slotFields.length - 1));
+                // We only look for the new type and slot core infos for non-string current location to save unnecessary function calls
+                const newFocusSlotType = evaluateSlotType(getSlotDefFromInfos({frameId: this.frameId, labelSlotsIndex: this.labelIndex}), slotFields.at(-1) as FieldSlot);
+                const newFocusSlotCoreInfo = {frameId: this.frameId, labelSlotsIndex: this.labelIndex, slotId: newFocusSlotId, slotType: newFocusSlotType};
+                const newFocusCursorPos = (retrieveSlotFromSlotInfos(newFocusSlotCoreInfo) as BaseSlot).code.length;
+                // Then anchor: it will either keep the same if we are doing a selection, or change to the same as focus if we are not.
+                const newAnchorSlotId = "0";
+                const newAnchorSlotCoreInfo = {...newFocusSlotCoreInfo, slotId: newAnchorSlotId, slotType: evaluateSlotType(getSlotDefFromInfos({frameId: this.frameId, labelSlotsIndex: this.labelIndex}), slotFields[0])};
+                const newAnchorSlotCursorInfo: SlotCursorInfos = {slotInfos: newAnchorSlotCoreInfo, cursorPos: 0};
+                // Set the new bounds
+                this.$nextTick(() => {
+                    document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos?.slotInfos as SlotCoreInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotLostCaret));
+                    document.getElementById(getLabelSlotUID(newFocusSlotCoreInfo))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
+                    setDocumentSelection(newAnchorSlotCursorInfo, {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos});
+                    this.appStore.setSlotTextCursors(newAnchorSlotCursorInfo, {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos});
+                });                
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                return;
+            }
+
             // When some text is cut through *a selection*, we need to handle it fully: we want to handle the slot changes in the store to reflect the
             // text change, but also we need to handle the clipboard, as doing events here on keydown results the browser not being able to get the text
             // cut (since the slots have already disappear, and the action for cut seems to be done on the keyup event)

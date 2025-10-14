@@ -60,7 +60,9 @@
     "discardChanges": "Discard changes",
     "copyLink": "Copy link",
     "continue" :"Continue",
-    "cancelLoadSharedProject":"Cancel (load backup)"
+    "cancelLoadSharedProject":"Cancel (load backup)",
+    "select": "Select",
+    "refresh": "refresh"
   },
   "errorMessage": {
     "wrongDataFormat": "the data format cannot be read",
@@ -140,6 +142,8 @@
     "cloudLockedFileAlreadyExists": "This project is locked in the {drivename} location.\nIt cannot be saved with this name.",
     "savedCloudFile": "Saved",
     "modifCloudFile": "Modified",
+    "emptyCloudDrivePicker": "Your {drivename} is empty...",
+    "cloudDriveItemPickerLoadingFolderContent": "Folder loading...",
     "lastSavedOn": "Last saved: {lastSavedDate}",
     "lastSavedOnNDays": "Last saved: {nbLastSave} days ago",
     "lastSavedOn1Day": "Last saved: yesterday",

@@ -96,7 +96,7 @@ describe("Stride TestExpressionSlot.testDeleteBracket()", () => {
         "{$}_({MyWorld})_{getWorld}_({})_{}.{getWidth}_({})_{}"); 
 });
 
-describe.only("Stride TestExpressionSlot.testPushBracket()", () => {
+describe("Stride TestExpressionSlot.testPushBracket()", () => {
     // Simple bracketed expressions (outside of)
     testPushBracket("(test)$",
         // Push to left, and again to see it is not doing anything

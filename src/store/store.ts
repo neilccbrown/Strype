@@ -16,11 +16,11 @@ import { BvModalEvent } from "bootstrap-vue";
 import { nextTick } from "@vue/composition-api";
 import { TPyParser } from "tigerpython-parser";
 import AppComponent from "@/App.vue";
+import emptyState from "@/store/initial-states/empty-state";
 /* IFTRUE_isPython */
 import PEAComponent from "@/components/PythonExecutionArea.vue";
 import CommandsComponent from "@/components/Commands.vue";
 import { actOnTurtleImport, getPEAComponentRefId } from "@/helpers/editor";
-import emptyState from "@/store/initial-states/empty-state";
 /* FITRUE_isPython */
 
 function getState(): StateAppObject {
@@ -715,12 +715,17 @@ export const useStore = defineStore("app", {
             // For safety, the curent frame (frame cursor) is set to the main code section
             this.toggleCaret({id: -3, caretPosition: CaretPosition.body});
             Object.keys(this.frameObjects).forEach((frameId) => {
-                if(parseInt(frameId) > 0) {
+                const frameIdInt = parseInt(frameId);
+                if(frameIdInt > 0) {
                     Vue.delete(this.frameObjects, frameId);
                 }
-                else if(parseInt(frameId) < 0){
+                else if(frameIdInt < 0){
                     // The frame section containers are not cleared, but their children are!
-                    this.frameObjects[parseInt(frameId)].childrenIds.splice(0);
+                    this.frameObjects[frameIdInt].childrenIds.splice(0);
+                    // The project description is a slot on a negative frame which must also be cleared:
+                    if (this.frameObjects[frameIdInt].frameType.type == AllFrameTypesIdentifier.projectDocumentation) {
+                        this.frameObjects[frameIdInt].labelSlotsDict = cloneDeep(emptyState["-10"].labelSlotsDict);
+                    }
                 }
             });
         },
@@ -2471,7 +2476,7 @@ export const useStore = defineStore("app", {
                                 // Check 4) and 5) as 3) is validated
                                     // If missing project doc frame, copy it in from the empty state and add it as first root child:
                                     if (!newStateObj["frameObjects"]["-10"]) {
-                                        newStateObj["frameObjects"]["-10"] = emptyState["-10"];
+                                        newStateObj["frameObjects"]["-10"] = cloneDeep(emptyState["-10"]);
                                         newStateObj["frameObjects"]["0"]["childrenIds"].unshift(-10);
                                     }
                                     

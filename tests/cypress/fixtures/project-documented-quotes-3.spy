@@ -1,0 +1,15 @@
+#(=> Strype:1:std
+'''"This is a multiline doc
+with many
+lines and a user-entered \\n.'''
+#(=> Section:Imports
+#(=> Section:Definitions
+def foo ( ) :
+    '''"This is also a multiline doc
+    with many
+    lines and a user-entered \\n.'''
+    pass
+#(=> Section:Main
+myString  = "Hello from Python!" 
+print(myString) 
+#(=> Section:End

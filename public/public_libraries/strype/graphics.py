@@ -772,8 +772,9 @@ class Actor:
             sayImg.set_stroke("#555555FF")
             sayImg.draw_rounded_rect(2, 2, textDimensions.width + 2 * padding - 4, textDimensions.height + 2 * padding - 4, padding)
             sayImg._draw_part_of_image(textOnlyImg, padding, padding, 0, 0, textDimensions.width, textDimensions.height)
-            # The None for associated object means it won't be collidable:
-            self.__say = _strype_graphics_internal.addImage(sayImg._Image__image, None)
+            # Note: we used to pass None for associated object, but None is a non-null Javascript Skulpt object wrapping a null value
+            # To make this object outside of collisions entirely, we just omit the second parameter:
+            self.__say = _strype_graphics_internal.addImage(sayImg._Image__image)
             self._update_say_position()
             
     def _update_say_position(self):

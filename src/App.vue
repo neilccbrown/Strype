@@ -1470,7 +1470,6 @@ body.#{$strype-classname-dragging-frame} {
     position: absolute;
     left: 0px;
     z-index: 5000;
-
 }
 
 .app-progress-pane {

@@ -59,6 +59,11 @@ export enum CustomEventTypes {
     openSharedFileDone = "openSharedFileDone",
     dropFramePositionsUpdated = "dropFramePositionsUpdated",
     resetLSOnShareProjectLoadConfirmed = "resetLSOnShareProjectLoadConfirmed",
+    requestedCloudDrivePickerPickedItem = "requestedCloudDrivePickerPickedItme",
+    exposedCloudDrivePickerPickedItem = "exposedCloudDrivePickerPickedItem",
+    requestedCloudDriveItemChildren = "requestedCloudDriveItemChildren",
+    exposedCloudDriveItemChidren = "exposedCloudDriveItemChidren",
+    requestedCloudDrivePickerRefresh = "requestedCloudDrivePickerRefresh",
     /* IFTRUE_isPython */
     pythonExecAreaMounted = "peaMounted",
     pythonExecAreaExpandCollapseChanged = "peaExpandCollapsChanged",
