@@ -1256,7 +1256,7 @@ export default Vue.extend({
             const frames = this.isPartOfSelection ? this.appStore.selectedFrames : [this.frameId];
             for (let frame of frames) {
                 if (this.appStore.frameObjects[frame].frameType.allowedCollapsedStates.includes(collapsedState)) {
-                    this.appStore.setCollapseStatusContainer({frameId: frame, collapsed: collapsedState});
+                    this.appStore.setCollapseStatus({frameId: frame, collapsed: collapsedState});
                 }
             }
         },

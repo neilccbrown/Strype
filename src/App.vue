@@ -503,7 +503,7 @@ export default Vue.extend({
                         collapsedStates[0]
                     );
                     const nextState = calculateNextCollapseState(curState, frames);
-                    frameIds.forEach((f) => this.appStore.setCollapseStatusContainer({frameId: f, collapsed: nextState}));
+                    frameIds.forEach((f) => this.appStore.setCollapseStatus({frameId: f, collapsed: nextState}));
                 }
                 event.preventDefault();
                 event.stopImmediatePropagation();
