@@ -40,7 +40,9 @@
                 :style="frameMarginStyle['header']"
                 :frameAllowChildren="allowChildren"
                 :frameAllowedCollapsedStates="frameType.allowedCollapsedStates"
+                :frameAllowedFrozenStates="frameType.allowedFrozenStates"
                 :frameCollapsedState="collapsedState"
+                :frameFrozenState="frozenState"
                 :erroneous="hasRuntimeError"
                 :wasLastRuntimeError="wasLastRuntimeError"
                 :onFocus="showFrameParseErrorPopupOnHeaderFocus"
@@ -95,7 +97,7 @@ import Vue from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
-import { DefaultFramesDefinition, CaretPosition, CollapsedState, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName } from "@/types/types";
+import { DefaultFramesDefinition, CaretPosition, CollapsedState, CurrentFrame, FrozenState, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
 import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getCaretUID, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID, calculateNextCollapseState } from "@/helpers/editor";
@@ -104,7 +106,7 @@ import { BPopover } from "bootstrap-vue";
 import html2canvas from "html2canvas";
 import { saveAs } from "file-saver";
 import scssVars from "@/assets/style/_export.module.scss";
-import {getDateTimeFormatted, isMacOSPlatform} from "@/helpers/common";
+import {getDateTimeFormatted, isMacOSPlatform, removeIf} from "@/helpers/common";
 
 //////////////////////
 //     Component    //
@@ -174,6 +176,10 @@ export default Vue.extend({
 
         collapsedState(): number {
             return Number(this.appStore.frameObjects[this.frameId].collapsedState ?? CollapsedState.FULLY_VISIBLE);
+        },
+
+        frozenState(): number {
+            return Number(this.appStore.frameObjects[this.frameId].frozenState ?? FrozenState.UNFROZEN);
         },
         
         bodyVisible(): boolean {
@@ -483,6 +489,8 @@ export default Vue.extend({
                 {name: this.$i18n.t("contextMenu.collapseHeader") as string, method: this.collapseToHeader, actionName: FrameContextMenuActionName.collapseToHeader},
                 {name: this.$i18n.t("contextMenu.collapseDocumentation") as string, method: this.collapseToDocumentation, actionName: FrameContextMenuActionName.collapseToDocumentation},
                 {name: this.$i18n.t("contextMenu.collapseFull") as string, method: this.collapseToFull, actionName: FrameContextMenuActionName.collapseToFull},
+                {name: this.$i18n.t("contextMenu.freeze") as string, method: this.freeze, actionName: FrameContextMenuActionName.freeze},
+                {name: this.$i18n.t("contextMenu.unfreeze") as string, method: this.unfreeze, actionName: FrameContextMenuActionName.unfreeze},
                 {name: "", method: () => {}, type: "divider"},
                 {name: this.$i18n.t("contextMenu.cut") as string, method: this.cut, actionName: FrameContextMenuActionName.cut, shortcut: [(this.$i18n.t("shortcut.ctrlPlus") as string) + "X", "⌘X"]},
                 {name: this.$i18n.t("contextMenu.copy") as string, method: this.copy, actionName: FrameContextMenuActionName.copy, shortcut: [(this.$i18n.t("shortcut.ctrlPlus") as string) + "C", "⌘C"]},
@@ -533,7 +541,31 @@ export default Vue.extend({
                     }
                 }
             }
-            if (!someCollapseShowing) {
+            // For freezing, we don't show it for bulk operations:
+            let someFrozenShowing = false;
+            if (this.isPartOfSelection) {
+                removeIf(this.frameContextMenuItems, (x) => x.actionName === FrameContextMenuActionName.freeze || x.actionName === FrameContextMenuActionName.unfreeze);
+            }
+            else {
+                // We take it out if the frame doesn't allow it or it's already in that state:
+                removeIf(this.frameContextMenuItems, (x) => {
+                    if (x.actionName === FrameContextMenuActionName.freeze) {
+                        const remove = this.frozenState as FrozenState === FrozenState.FROZEN || !this.frameType.allowedFrozenStates.includes(FrozenState.FROZEN);
+                        someFrozenShowing = someFrozenShowing || !remove;
+                        return remove;
+                    }
+                    else if (x.actionName === FrameContextMenuActionName.unfreeze) {
+                        const remove = this.frozenState as FrozenState === FrozenState.UNFROZEN || !this.frameType.allowedFrozenStates.includes(FrozenState.UNFROZEN);
+                        someFrozenShowing = someFrozenShowing || !remove;
+                        return remove;
+                    }
+                    else {
+                        return false; // Leave everything else untouched
+                    }
+                });
+            }
+            
+            if (!someCollapseShowing && !someFrozenShowing) {
                 // Remove the divider, which will now be position 0:
                 this.frameContextMenuItems.splice(0,1);
             }
@@ -1260,6 +1292,15 @@ export default Vue.extend({
                 }
             }
         },
+
+        setFreeze(frozenState: FrozenState) {
+            const frames = this.isPartOfSelection ? this.appStore.selectedFrames : [this.frameId];
+            for (let frame of frames) {
+                if (this.appStore.frameObjects[frame].frameType.allowedFrozenStates.includes(frozenState)) {
+                    this.appStore.setFrozenStatus({frameId: frame, frozen: frozenState});
+                }
+            }
+        },
         
         collapseToHeader() : void {
             this.setCollapse(CollapsedState.ONLY_HEADER_VISIBLE); 
@@ -1271,6 +1312,14 @@ export default Vue.extend({
 
         collapseToFull() : void {
             this.setCollapse(CollapsedState.FULLY_VISIBLE);
+        },
+        
+        freeze() : void {
+            this.setFreeze(FrozenState.FROZEN);
+        },
+        
+        unfreeze() : void {
+            this.setFreeze(FrozenState.UNFROZEN);
         },
 
         showFrameParseErrorPopupOnHeaderFocus(isFocusing: boolean): void{

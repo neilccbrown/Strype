@@ -177,7 +177,9 @@
     "screenshotGraphics": "Download screenshot",
     "collapseHeader": "Collapsed View",
     "collapseDocumentation": "Interface View",
-    "collapseFull": "Expanded View"
+    "collapseFull": "Expanded View",
+    "freeze": "Freeze",
+    "unfreeze": "Unfreeze"
   },
   "appMenu": {
     "downloadHex": "Convert to Hex file",
