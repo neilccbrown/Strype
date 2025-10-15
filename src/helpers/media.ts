@@ -91,3 +91,41 @@ export function bufferToBase64(buffer: ArrayBuffer): Promise<string> {
         reader.readAsDataURL(blob);
     });
 }
+
+export function svgToPngDataUri(svgText: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        // 1. Create a Blob for the SVG
+        const blob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+
+        // 2. Load into an <img>
+        const img = new Image();
+        img.onload = () => {
+            const w = img.width || 300;
+            const h = img.height || 300;
+
+            // 3. Draw to canvas
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) {
+                return reject("Canvas context missing");
+            }
+
+            ctx.drawImage(img, 0, 0, w, h);
+
+            // 4. Convert canvas to PNG data URI
+            const pngUri = canvas.toDataURL("image/png");
+
+            // 5. Cleanup
+            URL.revokeObjectURL(url);
+            resolve(pngUri);
+        };
+        img.onerror = (e) => {
+            URL.revokeObjectURL(url);
+            reject(e);
+        };
+        img.src = url;
+    });
+}
