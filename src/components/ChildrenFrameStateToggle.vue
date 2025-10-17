@@ -97,6 +97,12 @@ export default Vue.extend({
 .fold-children-control:hover > img {
    filter: brightness(1.25);
 }
+.fold-children-control.fold-header,
+.fold-children-control.fold-doc,
+.fold-children-control.fold-mixed,
+.fold-children-control.fold-full {
+    cursor: pointer;
+}
 
 .fold-children-control.fold-header > img.fold-children-header,
 .fold-children-control.fold-doc > img.fold-children-doc,
@@ -104,6 +110,5 @@ export default Vue.extend({
 .frame-container-header:hover .fold-children-control.fold-full > img.fold-children-full,
 .frame-header-div-line:hover .fold-children-control.fold-full > img.fold-children-full {
     opacity: 0.5;
-    cursor: pointer;
 }
 </style>
