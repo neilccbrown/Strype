@@ -64,7 +64,11 @@ export default Vue.extend({
             
             let nextState = calculateNextCollapseState(this.childrenCollapsedState, this.frames as FrameObject[]);
 
-            (this.frames as FrameObject[]).forEach((f) => this.appStore.setCollapseStatus({frameId: f.id, collapsed: nextState}));
+            (this.frames as FrameObject[]).forEach((f) => {
+                if (f.frameType.allowedCollapsedStates.includes(nextState)) {
+                    this.appStore.setCollapseStatus({frameId: f.id, collapsed: nextState});
+                }
+            });
             
             event.preventDefault();
             event.stopPropagation();
