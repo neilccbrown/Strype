@@ -6,7 +6,7 @@ import foo
 from imaginary import imagined 
 #(=> Disabled:from a.b.c import * 
 #(=> Section:Definitions
-#(=> Collapsed:Documentation
+#(=> FrameState:FoldToDocumentation
 def foo ( ) :
     return 3 
     print() 
@@ -33,12 +33,12 @@ def bar ( ) :
     #(=> Disabled:else :
     #(=> Disabled:    print(msg5) 
     #(=> Disabled:print(msg6) 
-#(=> Disabled:#(=> Collapsed:Header
+#(=> Disabled:#(=> FrameState:FoldToHeader
 #(=> Disabled:def baz ( ) :
 #(=> Disabled:    print(msg) 
-#(=> Disabled:#(=> Collapsed:Header
+#(=> Disabled:#(=> FrameState:FoldToHeader
 #(=> Disabled:class Apple  :
-#(=> Disabled:    #(=> Collapsed:Documentation
+#(=> Disabled:    #(=> FrameState:FoldToDocumentation
 #(=> Disabled:    def baz (self, ) :
 #(=> Disabled:        '''Some method named baz'''
 #(=> Disabled:        print(msg) 
@@ -58,20 +58,20 @@ def whatever ( ) :
         #(=> Disabled:print(7) 
     #(=> Disabled:else :
     #(=> Disabled:    print(9) 
-#(=> Collapsed:Header
+#(=> FrameState:FoldToHeader
 class Foo(Bar)  :
     def __init__ (self,param ) :
         self.x  = param 
-#(=> Collapsed:Header
+#(=> FrameState:FoldToHeader
 class Foo2  :
-    #(=> Collapsed:Documentation
+    #(=> FrameState:FoldToDocumentation
     def __init__ (self,param ) :
         '''Initialises some parameter.'''
         self.x  = param 
     def unfolded (self, ) :
         if True  :
             pass
-    #(=> Collapsed:Header
+    #(=> FrameState:FoldToHeader
     def collapsed (self,x ) :
         return x 
 #(=> Section:Main

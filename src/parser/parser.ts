@@ -195,9 +195,9 @@ function transformSlotLevel(slots: SlotsStructure, topLevel?: {frameType: string
 }
 
 const collapsedToString: Record<CollapsedState, string> = {
-    [CollapsedState.FULLY_VISIBLE]: "Visible", //Note: we never save this one, but Typescript wants the full set of enum values here
-    [CollapsedState.ONLY_HEADER_VISIBLE]: "Header",
-    [CollapsedState.HEADER_AND_DOC_VISIBLE]: "Documentation",
+    [CollapsedState.FULLY_VISIBLE]: "FoldToVisible", //Note: we never save this one, but Typescript wants the full set of enum values here
+    [CollapsedState.ONLY_HEADER_VISIBLE]: "FoldToHeader",
+    [CollapsedState.HEADER_AND_DOC_VISIBLE]: "FoldToDocumentation",
 };
 
 // Reverse mapping:

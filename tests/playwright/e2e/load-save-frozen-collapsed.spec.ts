@@ -98,7 +98,7 @@ test.describe("Saves collapsed state after icon clicks", () => {
         await saveAndCheck(page, `#(=> Strype:1:std
 #(=> Section:Imports
 #(=> Section:Definitions
-#(=> Collapsed:Documentation
+#(=> FrameState:FoldToDocumentation
 def top1 ( ) :
     return 6 
 class Alpha  :
@@ -126,7 +126,7 @@ def top2 ( ) :
         await saveAndCheck(page, `#(=> Strype:1:std
 #(=> Section:Imports
 #(=> Section:Definitions
-#(=> Collapsed:Header
+#(=> FrameState:FoldToHeader
 def top1 ( ) :
     return 6 
 class Alpha  :
@@ -140,7 +140,7 @@ class Beta  :
         return x 
     def set_x (self,x ) :
         self.x  = x 
-#(=> Collapsed:Documentation
+#(=> FrameState:FoldToDocumentation
 def top2 ( ) :
     return 64 
 #(=> Section:Main
@@ -158,7 +158,7 @@ def top2 ( ) :
         await saveAndCheck(page, `#(=> Strype:1:std
 #(=> Section:Imports
 #(=> Section:Definitions
-#(=> Collapsed:Header
+#(=> FrameState:FoldToHeader
 def top1 ( ) :
     return 6 
 class Alpha  :
@@ -168,13 +168,13 @@ class Alpha  :
 class Beta  :
     def __init__ (self,x ) :
         self.x  = x 
-    #(=> Collapsed:Header
+    #(=> FrameState:FoldToHeader
     def get_x (self, ) :
         return x 
-    #(=> Collapsed:Documentation
+    #(=> FrameState:FoldToDocumentation
     def set_x (self,x ) :
         self.x  = x 
-#(=> Collapsed:Documentation
+#(=> FrameState:FoldToDocumentation
 def top2 ( ) :
     return 64 
 #(=> Section:Main
@@ -191,7 +191,7 @@ def top1 ( ) :
     return 6 
 class Alpha  :
     some_constant  = 5 
-    #(=> Collapsed:Documentation
+    #(=> FrameState:FoldToDocumentation
     def __init__ (self, ) :
         self.x  = 7 
 class Beta  :
@@ -220,13 +220,13 @@ class Alpha  :
     def __init__ (self, ) :
         self.x  = 7 
 class Beta  :
-    #(=> Collapsed:Documentation
+    #(=> FrameState:FoldToDocumentation
     def __init__ (self,x ) :
         self.x  = x 
-    #(=> Collapsed:Documentation
+    #(=> FrameState:FoldToDocumentation
     def get_x (self, ) :
         return x 
-    #(=> Collapsed:Documentation
+    #(=> FrameState:FoldToDocumentation
     def set_x (self,x ) :
         self.x  = x 
 def top2 ( ) :
