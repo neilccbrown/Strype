@@ -19,6 +19,10 @@ This guide focuses on translations *directly* handled by the Strype website. Tra
 
 ## How to retrieve or create the translation files
 
+>[!IMPORTANT]
+>A [localisation tool](https://strype.org/localisation-tool/) is available for easing the translation work. \
+>Nevertheless, we strongly recommend translators to read the following documentation to understand how Strype handles localisation.
+
 To retrieve the translation files, you will need to locate them inside the Strype source code repository hosted in GitHub (<a href="https://github.com/k-pet-group/Strype" target="_blank">https://github.com/k-pet-group/Strype</a>).
 
 The translation files for all supported locales are inside the `/src/localisation/` folder, which contains **one subfolder per locale (as a <a href="https://en.wikipedia.org/wiki/List_of_ISO_639_language_codes" target="_blank">2-letter code</a>)**. For example, the translations for English are in <code>/src/localisation/**en**/</code>, those of Spanish are in <code>/src/localisation/**es**/</code> and so on.
@@ -48,6 +52,10 @@ Here is an example of a *key:value* pair for English, where the *key* (i.e.refer
 >Only the **value** text need to be translated.</span>
 
 ## How to do the translations
+
+>[!IMPORTANT]
+>A [localisation tool](https://strype.org/localisation-tool/) is available for translators to easily generate the translations files. \
+Nevertheless, we strongly recommend a thorough reading of the following section before starting using the tool: it contains **important rules to follow regarding the translations**.
 
 The language reference for all translations is the English locale. Therefore, the reference files are the files located in the `/en/` subfolder (see sections [1](#how-to-retrieve-or-create-the-translation-files) and [2](#how-to-understand-the-translations-files) for details about finding the files and understanding their formats).
 
