@@ -543,30 +543,25 @@ export default Vue.extend({
             }
             // For freezing, we don't show it for bulk operations:
             let someFrozenShowing = false;
-            if (this.isPartOfSelection) {
-                removeIf(this.frameContextMenuItems, (x) => x.actionName === FrameContextMenuActionName.freeze || x.actionName === FrameContextMenuActionName.unfreeze);
-            }
-            else {
-                // We take it out if the frame doesn't allow it or it's already in that state:
-                removeIf(this.frameContextMenuItems, (x) => {
-                    if (x.actionName === FrameContextMenuActionName.freeze) {
-                        // We don't allow freezing if it's not at the top-level in the container:
-                        const remove = this.frozenState as FrozenState === FrozenState.FROZEN
-                                            || !this.frameType.allowedFrozenStates.includes(FrozenState.FROZEN)
-                                            || this.appStore.frameObjects[frameParentId].frameType.type != ContainerTypesIdentifiers.defsContainer;
-                        someFrozenShowing = someFrozenShowing || !remove;
-                        return remove;
-                    }
-                    else if (x.actionName === FrameContextMenuActionName.unfreeze) {
-                        const remove = this.frozenState as FrozenState === FrozenState.UNFROZEN || !this.frameType.allowedFrozenStates.includes(FrozenState.UNFROZEN);
-                        someFrozenShowing = someFrozenShowing || !remove;
-                        return remove;
-                    }
-                    else {
-                        return false; // Leave everything else untouched
-                    }
-                });
-            }
+            // We take it out if the frame doesn't allow it or it's already in that state:
+            removeIf(this.frameContextMenuItems, (x) => {
+                if (x.actionName === FrameContextMenuActionName.freeze) {
+                    // We don't allow freezing if it's not at the top-level in the container:
+                    const remove = this.frozenState as FrozenState === FrozenState.FROZEN
+                                        || !this.frameType.allowedFrozenStates.includes(FrozenState.FROZEN)
+                                        || this.appStore.frameObjects[frameParentId].frameType.type != ContainerTypesIdentifiers.defsContainer;
+                    someFrozenShowing = someFrozenShowing || !remove;
+                    return remove;
+                }
+                else if (x.actionName === FrameContextMenuActionName.unfreeze) {
+                    const remove = this.frozenState as FrozenState === FrozenState.UNFROZEN || !this.frameType.allowedFrozenStates.includes(FrozenState.UNFROZEN);
+                    someFrozenShowing = someFrozenShowing || !remove;
+                    return remove;
+                }
+                else {
+                    return false; // Leave everything else untouched
+                }
+            });
             
             if (!someCollapseShowing && !someFrozenShowing) {
                 // Remove the divider, which will now be position 0:
@@ -1298,11 +1293,19 @@ export default Vue.extend({
 
         setFreeze(frozenState: FrozenState) {
             const frames = this.isPartOfSelection ? this.appStore.selectedFrames : [this.frameId];
-            for (let frame of frames) {
-                if (this.appStore.frameObjects[frame].frameType.allowedFrozenStates.includes(frozenState)) {
-                    this.appStore.setFrozenStatus({frameId: frame, frozen: frozenState});
+            for (let frameId of frames) {
+                let frame = this.appStore.frameObjects[frameId];
+                let frameType = frame.frameType;
+                if (frameType.allowedFrozenStates.includes(frozenState)) {
+                    this.appStore.setFrozenStatus({frameId: frameId, frozen: frozenState});
+                    if (frameType.type === AllFrameTypesIdentifier.funcdef) {
+                        // If we freeze a function it can't be fully visible:
+                        if ((frame.collapsedState ?? CollapsedState.FULLY_VISIBLE) == CollapsedState.FULLY_VISIBLE) {
+                            this.appStore.cycleFrameCollapsedState(frameId);
+                        }
+                    }
                     // We also need to adjust all the children to not be fully visible:
-                    for (let childId of this.appStore.frameObjects[frame].childrenIds) {
+                    for (let childId of frame.childrenIds) {
                         const child = this.appStore.frameObjects[childId];
                         if ((child.collapsedState ?? CollapsedState.FULLY_VISIBLE) == CollapsedState.FULLY_VISIBLE && child.frameType.allowedCollapsedStates.length > 1) {
                             // We cycle it to the next one:

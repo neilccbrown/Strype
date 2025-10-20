@@ -271,7 +271,7 @@ def top2 ( ) :
 `);
     });
 
-    test("Freeze Beta unfolded", async ({page}) => {
+    test("Freeze Beta part-folded", async ({page}) => {
         await loadContent(page, testInput);
         await clickFoldFor(page, "set_x");
         await clickFoldFor(page, "set_x");
@@ -297,6 +297,46 @@ class Beta  :
     #(=> FrameState:FoldToHeader
     def set_x (self,x ) :
         self.x  = x 
+def top2 ( ) :
+    return 64 
+#(=> Section:Main
+#(=> Section:End
+`);
+    });
+
+    test("Freeze Alpha and Beta and top_2 in one go", async ({page}) => {
+        await loadContent(page, testInput);
+        // Go to bottom of the definitions:
+        await page.keyboard.press("ArrowUp");
+        // Shift-control-up three times:
+        for (let i = 0; i < 3; i++) {
+            await page.keyboard.press((process.platform == "darwin" ? "Meta" : "Control") + "+Shift+ArrowUp");
+        }
+        // Then do contect menu and freeze:
+        await makeFrozen(page, "Beta"); 
+        await saveAndCheck(page, `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+def top1 ( ) :
+    return 6 
+#(=> FrameState:Frozen
+class Alpha  :
+    some_constant  = 5 
+    #(=> FrameState:FoldToDocumentation
+    def __init__ (self, ) :
+        self.x  = 7 
+#(=> FrameState:Frozen
+class Beta  :
+    #(=> FrameState:FoldToDocumentation
+    def __init__ (self,x ) :
+        self.x  = x 
+    #(=> FrameState:FoldToDocumentation
+    def get_x (self, ) :
+        return x 
+    #(=> FrameState:FoldToDocumentation
+    def set_x (self,x ) :
+        self.x  = x 
+#(=> FrameState:FoldToDocumentation;Frozen
 def top2 ( ) :
     return 64 
 #(=> Section:Main
