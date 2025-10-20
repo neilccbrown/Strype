@@ -1298,6 +1298,14 @@ export default Vue.extend({
             for (let frame of frames) {
                 if (this.appStore.frameObjects[frame].frameType.allowedFrozenStates.includes(frozenState)) {
                     this.appStore.setFrozenStatus({frameId: frame, frozen: frozenState});
+                    // We also need to adjust all the children to not be fully visible:
+                    for (let childId of this.appStore.frameObjects[frame].childrenIds) {
+                        const child = this.appStore.frameObjects[childId];
+                        if ((child.collapsedState ?? CollapsedState.FULLY_VISIBLE) == CollapsedState.FULLY_VISIBLE && child.frameType.allowedCollapsedStates.length > 1) {
+                            // We cycle it to the next one:
+                            this.appStore.cycleFrameCollapsedState(childId);
+                        }
+                    }
                 }
             }
         },

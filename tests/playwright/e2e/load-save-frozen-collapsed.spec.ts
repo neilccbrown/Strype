@@ -254,6 +254,7 @@ def top1 ( ) :
 #(=> FrameState:Frozen
 class Alpha  :
     some_constant  = 5 
+    #(=> FrameState:FoldToDocumentation
     def __init__ (self, ) :
         self.x  = 7 
 class Beta  :
@@ -261,6 +262,39 @@ class Beta  :
         self.x  = x 
     def get_x (self, ) :
         return x 
+    def set_x (self,x ) :
+        self.x  = x 
+def top2 ( ) :
+    return 64 
+#(=> Section:Main
+#(=> Section:End
+`);
+    });
+
+    test("Freeze Beta unfolded", async ({page}) => {
+        await loadContent(page, testInput);
+        await clickFoldFor(page, "set_x");
+        await clickFoldFor(page, "set_x");
+        await makeFrozen(page, "Beta");
+        // Freezing Beta should automatically fold in its children that are not already folded: 
+        await saveAndCheck(page, `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+def top1 ( ) :
+    return 6 
+class Alpha  :
+    some_constant  = 5 
+    def __init__ (self, ) :
+        self.x  = 7 
+#(=> FrameState:Frozen
+class Beta  :
+    #(=> FrameState:FoldToDocumentation
+    def __init__ (self,x ) :
+        self.x  = x 
+    #(=> FrameState:FoldToDocumentation
+    def get_x (self, ) :
+        return x 
+    #(=> FrameState:FoldToHeader
     def set_x (self,x ) :
         self.x  = x 
 def top2 ( ) :
