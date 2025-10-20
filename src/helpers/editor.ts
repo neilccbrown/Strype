@@ -2305,10 +2305,20 @@ export function calculateNextCollapseState(curCommonState : CollapsedState | und
             if (idx < 0) {
                 return []; // safeguard if current not found
             }
+            // If a frame can only be fully visible (e.g. comments and assignments in classes), we ignore it
+            // for the purposes of calculating the next state otherwise we'll never be able to transition:
+            if (f.frameType.allowedCollapsedStates.length == 1) {
+                return [];
+            }
 
             // everything after current + everything before current
             return f.frameType.allowedCollapsedStates.slice(idx + 1).concat(f.frameType.allowedCollapsedStates.slice(0, idx));
-        });
+        }).filter((ns) => ns.length > 0);
+        
+        if (possibleNextStates.length == 0) {
+            // Bail out; make everything fully visible:
+            return CollapsedState.FULLY_VISIBLE;
+        }
 
         // Step 2: intersect them all
         let intersection = new Set(possibleNextStates[0]);

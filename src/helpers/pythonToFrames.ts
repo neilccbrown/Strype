@@ -1,10 +1,10 @@
-import {AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, StringSlot, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders} from "@/types/types";
+import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, StringSlot, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrozenState } from "@/types/types";
 import {useStore} from "@/store/store";
 import {getCaretContainerComponent, getFrameComponent, operators, trimmedKeywordOperators} from "@/helpers/editor";
 import i18n from "@/i18n";
 import {cloneDeep, escapeRegExp} from "lodash";
 import {AppName, AppSPYPrefix} from "@/main";
-import {toUnicodeEscapes, stringToCollapsed} from "@/parser/parser";
+import { toUnicodeEscapes, stringToCollapsed, stringToFrozen } from "@/parser/parser";
 import FrameContainer from "@/components/FrameContainer.vue";
 
 const TOP_LEVEL_TEMP_ID = -999;
@@ -40,7 +40,7 @@ interface CopyState {
     parent: FrameObject | null; // The parent, if any, for borrowing the parent ID
     jointParent: FrameObject | null; // The joint parent, if any, for borrowing the parent ID
     disabledLines: number[]; // The line numbers which had a Disabled: prefix
-    collapsedLines: Map<number, CollapsedState>; // The line numbers which had a Collapsed: prefix
+    frameStateLines: Map<number, SavedFrameState>; // The line numbers which had a Collapsed: prefix
     lineNumberToIndentation: Map<number, string>; // Maps a line number to a string of indentation
     transformTopComment: ((content: SlotsStructure) => void) | undefined; // If defined, consumes the top docstring-style comment rather than adding it as a frame.
     isSPY: boolean;
@@ -91,7 +91,8 @@ function addFrame(frame: FrameObject, lineno: number | undefined, s: CopyState) 
     frame.id = id;
     s.loadedFrames[id] = frame;
     frame.isDisabled = lineno != undefined && s.disabledLines.includes(lineno);
-    frame.collapsedState = lineno != undefined ? s.collapsedLines.get(lineno) : undefined;
+    frame.collapsedState = lineno != undefined ? s.frameStateLines.get(lineno)?.collapsed : undefined;
+    frame.frozenState = lineno != undefined ? s.frameStateLines.get(lineno)?.frozen : undefined;
     if (!frame.frameType.isJointFrame) {
         s.addToNonJoint?.push(id);
         if (s.parent != null) {
@@ -225,10 +226,16 @@ export const STRYPE_INVALID_SLOT = "___strype_invalid_";
 export const STRYPE_INVALID_OPS_WRAPPER = "___strype_opsinvalid";
 export const STRYPE_INVALID_OP = "___strype_operator_";
 
-function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") : {disabledLines : number[], collapsedLines : Map<number, CollapsedState>, transformedLines : string[], strypeDirectives: Map<string, string>} { 
+export interface SavedFrameState {
+    collapsed?: CollapsedState;
+    frozen?: FrozenState;
+    // Could be more in future, potentially
+}
+
+function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") : {disabledLines : number[], frameStateLines : Map<number, SavedFrameState>, transformedLines : string[], strypeDirectives: Map<string, string>} { 
     codeLines = [...codeLines];
     const disabledLines : number[] = [];
-    const collapsedLines : Map<number, CollapsedState> = new Map<number, CollapsedState>();
+    const frameStateLines : Map<number, SavedFrameState> = new Map<number, SavedFrameState>();
     const transformedLines : string[] = [];
     const strypeDirectives: Map<string, string> = new Map<string, string>();
 
@@ -307,13 +314,19 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                         disabledLines.push(i+1);
                     }
                 }
-                else if (key == "Collapsed") {
-                    const col = stringToCollapsed[value.trim()];
-                    if (col != undefined) {
-                        // +1 to move to a 1-based rather than 0-based line number, and +1 more to mean the line after us:
-                        collapsedLines.set(i + 2, col);
-                        console.log("Set to: " + JSON.stringify(collapsedLines));
+                else if (key == "FrameState") {
+                    const states = value.trim().split(";");
+                    const composite = {} as SavedFrameState;
+                    for (const s of states) {
+                        if (s.trim() in stringToCollapsed) {
+                            composite.collapsed = stringToCollapsed[s.trim()];
+                        }
+                        if (s.trim() in stringToFrozen) {
+                            composite.frozen = stringToFrozen[s.trim()];
+                        }
                     }
+                    // +1 to move to a 1-based rather than 0-based line number, and +1 more to mean the line after us:
+                    frameStateLines.set(i + 2, composite);
                     // Push a blank to make line numbers match:
                     transformedLines.push("");
                 }
@@ -509,7 +522,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
     // We might have comments at the end of the code, so we need to check their indentation:
     checkRearrangeCommentsIdent();
 
-    return { disabledLines, collapsedLines, transformedLines, strypeDirectives };
+    return { disabledLines, frameStateLines: frameStateLines, transformedLines, strypeDirectives };
 }
 
 // Get rid of escapes in the project doc string:
@@ -580,7 +593,7 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
     useStore().copiedSelectionFrameIds = [];
     try {
         // Use the next available ID to avoid clashing with any existing IDs:
-        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: useStore().nextAvailableId, addToNonJoint: useStore().copiedSelectionFrameIds, addToJoint: undefined, loadedFrames: useStore().copiedFrames, disabledLines: transformed.disabledLines, collapsedLines: transformed.collapsedLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0, transformTopComment: (c) => {
+        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: useStore().nextAvailableId, addToNonJoint: useStore().copiedSelectionFrameIds, addToJoint: undefined, loadedFrames: useStore().copiedFrames, disabledLines: transformed.disabledLines, frameStateLines: transformed.frameStateLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0, transformTopComment: (c) => {
             if (!dryrun) {
                 const docFrame = useStore().frameObjects[-10] as FrameObject;
                 // The escapes in the loaded project doc were inserted by us on saving, so we should remove them:

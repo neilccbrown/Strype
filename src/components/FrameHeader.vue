@@ -25,6 +25,9 @@
                 />
                 <!-- ^^ Note: append to frame label is same as prepend to slot -->
             </div>
+            <div ref="frozenControl" :class="{'frozen-control': true, 'frozen': isFrozen}" v-if="groupIndex == 0">
+                <img class="frozen-frozen" src="@/assets/images/snowflake.svg" v-if="isFrozen">
+            </div>
             <div ref="foldingControl" :class="{'folding-control': true, 'fold-doc': isFoldDoc, 'fold-header': isFoldHeader, 'fold-full': isFoldFull }" @click.stop.prevent="cycleFold" v-if="canCycleFold && groupIndex == 0">
                 <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-funcdef-empty.png" v-if="isFuncDef">
                 <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-funcdef.png" v-if="isFuncDef">
@@ -47,7 +50,7 @@
 import Vue from "vue";
 import LabelSlotsStructure from "@/components/LabelSlotsStructure.vue";
 import {useStore} from "@/store/store";
-import {AllFrameTypesIdentifier, CollapsedState, FrameLabel, FrameObject} from "@/types/types";
+import {AllFrameTypesIdentifier, CollapsedState, FrameLabel, FrameObject, FrozenState} from "@/types/types";
 import {mapStores} from "pinia";
 import scssVars from "@/assets/style/_export.module.scss";
 import ChildrenFrameStateToggle from "@/components/ChildrenFrameStateToggle.vue";
@@ -95,7 +98,9 @@ export default Vue.extend({
         isDisabled: Boolean,
         frameAllowChildren: Boolean,
         frameCollapsedState: Number, // Index in the enum CollapsedState
+        frameFrozenState: Number,  // Index in the enum FrozenState
         frameAllowedCollapsedStates: Array,
+        frameAllowedFrozenStates: Array,
         erroneous: Boolean,
         wasLastRuntimeError: Boolean,
         onFocus: Function, // Handler for focus/blur the header (see Frame.vue)
@@ -143,6 +148,10 @@ export default Vue.extend({
 
         isFoldFull() {
             return (this.frameCollapsedState as CollapsedState) == CollapsedState.FULLY_VISIBLE;
+        },
+        
+        isFrozen() {
+            return (this.frameFrozenState as FrozenState) == FrozenState.FROZEN;
         },
 
         children: {
@@ -225,7 +234,7 @@ export default Vue.extend({
     margin-top: 0.3em;
 }
 
-.folding-control {
+.folding-control, .frozen-control {
     margin-left: auto;
     margin-right: 7px;
     margin-top: 5px;
@@ -234,7 +243,7 @@ export default Vue.extend({
     width: 0.9em;
     cursor: pointer;
 }
-.folding-control > img {
+.folding-control > img, .frozen-control > img {
     position: absolute;
     top: 0;
     left: 0;
@@ -246,13 +255,16 @@ export default Vue.extend({
 }
 // Note: important the hover is on the folding control not the img, because
 // the imgs are on top of each other so only the top one gets hover
-.folding-control:hover > img {
+.folding-control:hover > img, .frozen-control:hover > img {
     filter: brightness(1.25);
 }
 .folding-control.fold-header > img.folding-header,
 .folding-control.fold-doc > img.folding-doc,
 .frame-div:hover > .frame-header .folding-control.fold-full > img.folding-full {
     opacity: 0.5;
+}
+.frozen-control.frozen > img.frozen-frozen {
+    opacity: 1;
 }
 .frame-div:hover:has(.caret-container:hover) > .frame-header .folding-control.fold-full > img.folding-full,
 .frame-div:hover:has(.frame-div:hover) > .frame-header .folding-control.fold-full > img.folding-full{

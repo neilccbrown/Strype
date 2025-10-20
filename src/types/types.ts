@@ -133,6 +133,13 @@ export enum CollapsedState {
     FULLY_VISIBLE,
 }
 
+export enum FrozenState {
+    UNFROZEN, // Normal, not frozen
+    FROZEN, // Frozen; prevents editing and constrains visibility.
+            // For classes, frozen means member functions cannot be fully visible
+            // For top-level (non-member) functions, cannot be fully visible 
+}
+
 // Frame related interace, the highest level to describe a frame
 // Note the labelSlotsDict property is an array inline with each label of the frame
 // and slots are always related to 1 label (for example "for" (label 0) and "in" (label 1) in a for frame)
@@ -143,6 +150,7 @@ export interface FrameObject {
     isSelected: boolean;
     isVisible: boolean;
     collapsedState?: CollapsedState; // default is FULLY_VISIBLE
+    frozenState?: FrozenState; // default is UNFROZEN
     isBeingDragged?: boolean; //this flag is used mainly for UI purposes, so we can distinguish specific things that happens during dragging from intrisic properties of the frame
     parentId: number; //this is the ID of a parent frame (example: the if frame of a inner while frame). Value can be 0 (root), 1+ (in a level), -1 for a joint frame
     childrenIds: number[]; //this contains the IDs of the children frames
@@ -213,6 +221,8 @@ export enum FrameContextMenuActionName {
     collapseToHeader,
     collapseToDocumentation,
     collapseToFull,
+    freeze,
+    unfreeze,
 }
 
 export enum ModifierKeyCode {
@@ -335,6 +345,7 @@ export interface FramesDefinitions {
     colour: string;
     isImportFrame: boolean;
     allowedCollapsedStates: CollapsedState[];
+    allowedFrozenStates: FrozenState[];
     // Optional default children or joint frames (we use frame rather than definitions as we may want to have child or joint frame with content!)
     // BE SURE TO SET THE SLOT STRUCTURE AS EXPECTED BY THE FRAME DEFINITION (example: for a if, there should be 1 slot defined, even if empty)
     defaultChildrenTypes?: FrameObject[];
@@ -411,6 +422,7 @@ export const DefaultFramesDefinition: FramesDefinitions = {
     colour: "",
     isImportFrame: false,
     allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE], // Default is to not allow folding
+    allowedFrozenStates: [FrozenState.UNFROZEN], // Default is to not allow freezing
 };
 
 export const BlockDefinition: FramesDefinitions = {
@@ -702,6 +714,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             { label: `<img src='${quoteCircleFuncdef}'>`, newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.t("frame.defaultText.funcDescription") as string, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],
         allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.HEADER_AND_DOC_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
+        allowedFrozenStates: [FrozenState.UNFROZEN, FrozenState.FROZEN], // Note: logic elsewhere only allows freezing at the top-level
         colour: "#ECECC8",
     };
     
@@ -714,6 +727,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             { label: `<img src='${quoteCircleClass}'>`, newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.t("frame.defaultText.classDescription") as string, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],
         allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
+        allowedFrozenStates: [FrozenState.UNFROZEN, FrozenState.FROZEN],
         colour: "#baded3",
         forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
             .concat(Object.values(StandardFrameTypesIdentifiers).filter((f) => f != CommentFrameTypesIdentifier.comment && f != StandardFrameTypesIdentifiers.varassign))

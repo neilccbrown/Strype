@@ -2,7 +2,7 @@
 #(=> Section:Imports
 import os 
 #(=> Section:Definitions
-#(=> Collapsed:Documentation
+#(=> FrameState:FoldToDocumentation
 def foo (msg ) :
     print(msg) 
 #(=> Section:Main

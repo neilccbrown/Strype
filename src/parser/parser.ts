@@ -3,7 +3,7 @@ import {hasEditorCodeErrors, trimmedKeywordOperators} from "@/helpers/editor";
 import {generateFlatSlotBases, retrieveSlotByPredicate} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import {useStore} from "@/store/store";
-import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CollapsedState, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
+import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CollapsedState, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, FrozenState, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
 import {ErrorInfo, TPyParser} from "tigerpython-parser";
 import {AppSPYPrefix} from "@/main";
 /*IFTRUE_isPython */
@@ -194,11 +194,10 @@ function transformSlotLevel(slots: SlotsStructure, topLevel?: {frameType: string
     }
 }
 
-// No FULLY_VISIBLE because that's the default so we never explicitly save it:
 const collapsedToString: Record<CollapsedState, string> = {
-    [CollapsedState.FULLY_VISIBLE]: "Visible", //Note: we never save this one, but Typescript wants the full set of enum values here
-    [CollapsedState.ONLY_HEADER_VISIBLE]: "Header",
-    [CollapsedState.HEADER_AND_DOC_VISIBLE]: "Documentation",
+    [CollapsedState.FULLY_VISIBLE]: "FoldToVisible", //Note: we never save this one, but Typescript wants the full set of enum values here
+    [CollapsedState.ONLY_HEADER_VISIBLE]: "FoldToHeader",
+    [CollapsedState.HEADER_AND_DOC_VISIBLE]: "FoldToDocumentation",
 };
 
 // Reverse mapping:
@@ -208,6 +207,20 @@ export const stringToCollapsed: Record<string, CollapsedState> = Object.entries(
         return acc;
     },
     {} as Record<string, CollapsedState>
+);
+
+const frozenToString: Record<FrozenState, string> = {
+    [FrozenState.UNFROZEN]: "Unfrozen", //Note: we never save this one, but Typescript wants the full set of enum values here
+    [FrozenState.FROZEN]: "Frozen",
+};
+
+// Reverse mapping:
+export const stringToFrozen: Record<string, FrozenState> = Object.entries(frozenToString).reduce(
+    (acc, [key, value]) => {
+        acc[value] = Number(key) as FrozenState;
+        return acc;
+    },
+    {} as Record<string, FrozenState>
 );
 
 export default class Parser {
@@ -251,8 +264,17 @@ export default class Parser {
         // on `excludeLoops` the loop frames must not be added to the code and nor should their contents be indented
         const conditionalIndent = (passBlock) ? "" : INDENT;
 
+        // We only add states if there is a non-default value to save:
+        const frameStates : string[] = [];
+        if (block.collapsedState != undefined && block.collapsedState != CollapsedState.FULLY_VISIBLE) {
+            frameStates.push(collapsedToString[block.collapsedState]);
+        }
+        if (block.frozenState != undefined && block.frozenState != FrozenState.UNFROZEN) {
+            frameStates.push(frozenToString[block.frozenState]);
+        }
+        
         output +=
-            ((block.collapsedState != undefined && block.collapsedState != CollapsedState.FULLY_VISIBLE) ? indentation + "#" + AppSPYPrefix + " Collapsed:" + collapsedToString[block.collapsedState] + "\n" : "") +
+            (frameStates.length > 0 ? indentation + "#" + AppSPYPrefix + " FrameState:" + frameStates.join(";") + "\n" : "") +
             ((!passBlock)? this.parseStatement(block, insideAClass, indentation) : "") +
             ((this.saveAsSPY && children.length > 0 &&
                 ((!block.isDisabled && children.filter((c) => !c.isDisabled && c.frameType.type != AllFrameTypesIdentifier.blank && c.frameType.type != AllFrameTypesIdentifier.comment).length == 0)
