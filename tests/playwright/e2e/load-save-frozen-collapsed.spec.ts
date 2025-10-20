@@ -1,6 +1,7 @@
 import {Page, test, expect} from "@playwright/test";
 import {load, save} from "../support/loading-saving";
 import fs from "fs";
+import en from "@/localisation/en/en_main.json";
 
 // The tests in this file can't run in parallel because they download
 // to the same filenames, so need to run one at a time.
@@ -61,6 +62,12 @@ async function clickFoldChildrenFor(page: Page, identifyingText: string) : Promi
     await control.hover();
     expect(await control.evaluate((el) => getComputedStyle(el).cursor)).toEqual("pointer");
     await control.click();
+}
+
+async function makeFrozen(page: Page, identifyingText: string) : Promise<void> {
+    const ancestor = page.locator(".frame-header:has(span:has-text('" + identifyingText + "'))");
+    await ancestor.click({button: "right"});
+    await page.getByRole("menuitem", {name: en.contextMenu.freeze}).click();
 }
 
 // We have some functions and classes:
@@ -227,6 +234,33 @@ class Beta  :
     def get_x (self, ) :
         return x 
     #(=> FrameState:FoldToDocumentation
+    def set_x (self,x ) :
+        self.x  = x 
+def top2 ( ) :
+    return 64 
+#(=> Section:Main
+#(=> Section:End
+`);
+    });
+
+    test("Freeze Alpha unfolded", async ({page}) => {
+        await loadContent(page, testInput);
+        await makeFrozen(page, "Alpha");
+        await saveAndCheck(page, `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+def top1 ( ) :
+    return 6 
+#(=> FrameState:Frozen
+class Alpha  :
+    some_constant  = 5 
+    def __init__ (self, ) :
+        self.x  = 7 
+class Beta  :
+    def __init__ (self,x ) :
+        self.x  = x 
+    def get_x (self, ) :
+        return x 
     def set_x (self,x ) :
         self.x  = x 
 def top2 ( ) :

@@ -4,7 +4,7 @@ import {getCaretContainerComponent, getFrameComponent, operators, trimmedKeyword
 import i18n from "@/i18n";
 import {cloneDeep, escapeRegExp} from "lodash";
 import {AppName, AppSPYPrefix} from "@/main";
-import {toUnicodeEscapes, stringToCollapsed} from "@/parser/parser";
+import { toUnicodeEscapes, stringToCollapsed, stringToFrozen } from "@/parser/parser";
 import FrameContainer from "@/components/FrameContainer.vue";
 
 const TOP_LEVEL_TEMP_ID = -999;
@@ -320,6 +320,9 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                     for (const s of states) {
                         if (s.trim() in stringToCollapsed) {
                             composite.collapsed = stringToCollapsed[s.trim()];
+                        }
+                        if (s.trim() in stringToFrozen) {
+                            composite.frozen = stringToFrozen[s.trim()];
                         }
                     }
                     // +1 to move to a 1-based rather than 0-based line number, and +1 more to mean the line after us:
