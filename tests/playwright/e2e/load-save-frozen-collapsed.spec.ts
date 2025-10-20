@@ -67,7 +67,7 @@ async function clickFoldChildrenFor(page: Page, identifyingText: string) : Promi
 async function makeFrozen(page: Page, identifyingText: string) : Promise<void> {
     const ancestor = page.locator(".frame-header:has(span:has-text('" + identifyingText + "'))");
     await ancestor.click({button: "right"});
-    await page.getByRole("menuitem", {name: en.contextMenu.freeze}).click();
+    await page.getByRole("menuitem", {name: en.contextMenu.freeze}).click({timeout: 2000});
 }
 
 // We have some functions and classes:
@@ -302,6 +302,12 @@ def top2 ( ) :
 #(=> Section:Main
 #(=> Section:End
 `);
+    });
+
+    test("Attempt to freeze member function", async ({page}) => {
+        await loadContent(page, testInput);
+        // Will Timeout when it doesn't find the menu item:
+        await expect(makeFrozen(page, "set_x")).rejects.toThrow(/Timeout/i);
     });
 });
 

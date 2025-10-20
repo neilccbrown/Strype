@@ -97,7 +97,7 @@ import Vue from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
-import { DefaultFramesDefinition, CaretPosition, CollapsedState, CurrentFrame, FrozenState, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName } from "@/types/types";
+import { DefaultFramesDefinition, CaretPosition, CollapsedState, CurrentFrame, FrozenState, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName, ContainerTypesIdentifiers } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
 import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getCaretUID, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID, calculateNextCollapseState } from "@/helpers/editor";
@@ -550,7 +550,10 @@ export default Vue.extend({
                 // We take it out if the frame doesn't allow it or it's already in that state:
                 removeIf(this.frameContextMenuItems, (x) => {
                     if (x.actionName === FrameContextMenuActionName.freeze) {
-                        const remove = this.frozenState as FrozenState === FrozenState.FROZEN || !this.frameType.allowedFrozenStates.includes(FrozenState.FROZEN);
+                        // We don't allow freezing if it's not at the top-level in the container:
+                        const remove = this.frozenState as FrozenState === FrozenState.FROZEN
+                                            || !this.frameType.allowedFrozenStates.includes(FrozenState.FROZEN)
+                                            || this.appStore.frameObjects[frameParentId].frameType.type != ContainerTypesIdentifiers.defsContainer;
                         someFrozenShowing = someFrozenShowing || !remove;
                         return remove;
                     }
