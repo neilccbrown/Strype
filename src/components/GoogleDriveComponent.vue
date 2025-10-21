@@ -12,7 +12,7 @@
 //      Imports     //
 //////////////////////
 import { useStore } from "@/store/store";
-import { CloudDriveAPIState, CloudDriveFile, CloudFileSharingStatus } from "@/types/cloud-drive-types";
+import { CloudDriveAPIState, CloudDriveFile, CloudFileSharingStatus, GDFile } from "@/types/cloud-drive-types";
 import { mapStores } from "pinia";
 import Vue from "vue";
 import CloudDriveHandlerComponent from "@/components/CloudDriveHandler.vue";
@@ -63,6 +63,19 @@ export default Vue.extend({
         driveAPIName(): string{
             return "GAPI";
         },
+
+        modifiedDataSearchOptionName(): string {
+            return "modifiedTime";
+        },
+
+        fileMoreFieldsForIO(): string {
+            return "files(id,name,capabilities,contentRestrictions)";
+        },
+
+        fileBasicFieldsForIO(): string {
+            return "files(id,name)";
+        },
+
 
         // These are specific to the Google Drive component.
         googleDriveScope(): string {
@@ -601,6 +614,12 @@ export default Vue.extend({
         
         savePickedFolder() {
             this.onFolderToSaveFilePicked(StrypeSyncTarget.gd);
+        },
+
+        checkIsCloudDriveFileReadonly(file: CloudDriveFile): boolean {
+            // Used by FileIO to get the readonly status of a file
+            const gdFile = file as GDFile;
+            return !(gdFile.capabilities.canEdit??true) || !(gdFile.capabilities.canModifyContent??true) || !!(gdFile.contentRestrictions?.readOnly);
         },
     },   
 });

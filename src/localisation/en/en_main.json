@@ -108,7 +108,7 @@
       "fileModeErr":"invalid file opening mode: {mode}.",
       "fileNotFound":"the file \"{filename}\" could not be found.",
       "fileFetchError":"the file \"{filename}\" could not be retrieved. (error: {error})",
-      "accessToGDError":"the file \"{filename}\" could not be accessed on Google Drive. (error: {error})",
+      "accessToCloudDriveError":"the file \"{filename}\" could not be accessed on {drivename}. (error: {error})",
       "readonlyFile":"the file \"{filename}\" is read-only.",
       "writingFileFailed":"the file \"{filename}\" could not be written. (error: {error})",
       "fileAlreadyExists":"the file \"{filename}\" already exists (a file opened with the 'exclusive creation' mode cannot exist).",

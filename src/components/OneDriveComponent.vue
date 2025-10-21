@@ -99,6 +99,23 @@ export default Vue.extend({
             return "OneDrive File Picker v8 / Graph REST API";
         },
 
+        modifiedDataSearchOptionName(): string {
+            return "lastModifiedDateTime";
+        },
+
+        fileMoreFieldsForIO(): string {
+            // This property isn't making sense for OneDrive, 
+            // we only have it for keepint TS happy.
+            return "";
+        },
+
+        fileBasicFieldsForIO(): string {
+            // This property isn't making sense for OneDrive, 
+            // we only have it for keepint TS happy.
+            return "";
+        },
+
+        // These are specific to the OneDrive component.
         siteOrigin(): string {
             return (process.env.NODE_ENV === "production") ? "https://www.strype.org" : "http://localhost:8081";
         },
@@ -699,15 +716,16 @@ export default Vue.extend({
         },
 
         async searchCloudDriveElements(elementName: string, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]>{
-            //TODO
             // Make a search query on OneDrive, with the provided query parameter.
             // Returns the elements found in the Drive listed by the HTTPRequest object obtained with the Graph API.
-            // Note: we do not use the "search()" tool because it retrieves all entries AT ROOT LEVEL - instead we use "children"
-            // and manually filter out results here.
-     
+            // Note: we do not use the "search()" tool because it retrieves all entries recursively where called 
+            // - instead we use "children" and manually filter out results here.     
+            // Also, we don't need to order files by date: we use that for finding duplicates on a Cloud for FileIO:
+            // OneDrive doesn't allow duplicated names in a same location.
             const token = await this.getToken(OneDriveTokenPurpose.GRAPH_SEARCH).catch((_) => {
                 return Promise.reject([]);
             });
+            
             const requestURL = `https://graph.microsoft.com/v1.0/me/drive/items/${elementLocationId}/children`;
             const resp = await fetch(requestURL,
                 {method: "GET", headers: {"Authorization": `Bearer ${token}`,"Accept": "application/json"}});
@@ -722,23 +740,105 @@ export default Vue.extend({
                     .map((strypeFileItem: BaseItem) => ({name: strypeFileItem.name, id: strypeFileItem.id} as CloudDriveFile)));
             }
             else{
-                alert("//TODO");
+                // We have requested on single element, we just get it from the results.
+                return Promise.resolve(data.value.filter((entry: BaseItem) => (entry.name??"") == elementName)
+                    .map((strypeFileItem: BaseItem) => ({name: strypeFileItem.name, id: strypeFileItem.id} as CloudDriveFile)));
             }
-            return Promise.resolve([]);
         },
 
-        readFileContentForIO(fileId: string, isBinaryMode: boolean, filePath: string): Promise<string | Uint8Array | {success: boolean, errorMsg: string}> {
-            //TODO
+        async readFileContentForIO(fileId: string, isBinaryMode: boolean, filePath: string): Promise<string | Uint8Array | {success: boolean, errorMsg: string}> {
             // This method is used by FileIO to get a file string content.
             // It relies on the file Id passed as argument, and the callback method for handling succes or failure is also passed as arguments.
             // The argument "filePath" is only used for error message.
             // The nature of the answer depends on the reading mode: a string in normal text case, an array of bytes in binary mode.
-            return Promise.resolve("dummy text content");
+            const token = await this.getToken(OneDriveTokenPurpose.GRAPH_GET_FILE_DETAILS);
+            // The drive ID is part of the file ID so we can easily extract it...
+            const driveId = fileId.substring(0, fileId.indexOf("!"));
+            const requestURL = (driveId) ? `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}` : ("https://graph.microsoft.com/v1.0/drives/me/items/" + fileId);
+            try{
+                const resp = await fetch(requestURL + "/content", 
+                    {method: "GET", headers: {"Authorization": `Bearer ${token}`}});
+                if (!resp.ok){
+                    return Promise.reject(resp.status);
+                }
+                else{
+                    return (isBinaryMode) 
+                        ? resp.arrayBuffer().then((buffer) => {
+                            return new Uint8Array(buffer);
+                        }) 
+                        : resp.text().then((text) => {
+                            return text;
+                        });
+                } 
+            }
+            catch(err){
+                return Promise.reject(((typeof err == "string") ? err : (err as Error).message)??"unknown"); 
+            }
+            
         },
 
-        writeFileContentForIO(fileContent: string|Uint8Array, fileInfos: {filePath: string, fileName?: string, fileId?: string, folderId?: string}): Promise<string> {
-            //TODO
-            return Promise.resolve("a dummy file ID");
+        async writeFileContentForIO(fileContent: string|Uint8Array, fileInfos: {filePath: string, fileName?: string, fileId?: string, folderId?: string}): Promise<string> {
+            let catchErr = null;
+            const token = await this.getToken(OneDriveTokenPurpose.GRAPH_SAVE_FILE).catch((_) => {
+                catchErr = _;
+                return null;
+            });
+
+            if(token == null){
+                return Promise.reject(catchErr);
+            }
+
+            const isCreatingFile = !!(fileInfos.folderId);
+            const isFileContentEmpty = fileContent.length == 0;
+            const requestUrl = (isCreatingFile)
+                ? `https://graph.microsoft.com/v1.0/me/drive/items/${fileInfos.folderId}:/${encodeURI(fileInfos.fileName??"")}:/content` //the file name and the containing folder must be set by the caller!
+                : ((isFileContentEmpty) 
+                    ? `https://graph.microsoft.com/v1.0/me/drive/items/${fileInfos.fileId}/content` // but it may happen the content is empty, in that case we cannot use resumable upload
+                    : `https://graph.microsoft.com/v1.0/me/drive/items/${fileInfos.fileId}/createUploadSession`); // the most common case when we write in the file: the content is not empty, we can use resumable upload
+
+            const baseHeadersContent = {"Authorization": `Bearer ${token}`};
+            const resp = await fetch(requestUrl, 
+                {method: (isFileContentEmpty) ? "PUT" :"POST", headers: (isFileContentEmpty) ? {...baseHeadersContent, "Content-Type": "application/octet-stream", "Content-Length": "0"} : baseHeadersContent});
+
+            if (!resp.ok){
+                return Promise.reject(resp.status);
+            }
+            else if(isFileContentEmpty){
+                // Normal resopnse if the file doesn't exist and we have created it
+                const jsonProps = await resp.json() as BaseItem;
+                return Promise.resolve(jsonProps.id??"");
+            }
+            else{
+                // Resumable upload if the file exists
+                const data = await resp.json() as UploadSession;
+                const uploadSessionURL = data.uploadUrl;
+                // We upload chunks of 5 MB
+                const rawFileContent = (typeof fileContent == "string") ? new TextEncoder().encode(fileContent) : fileContent;
+                const CHUNK_SIZE = 5*1024*1024;
+                // Need to also consider we may write a 0-length file when created the file!
+                for (let offset = 0; (offset == 0 && rawFileContent.length == 0) || offset < rawFileContent.length; offset += CHUNK_SIZE) {
+                    console.log("in here");
+                    const chunk = rawFileContent.subarray(offset, offset + CHUNK_SIZE);
+                    const resp = await fetch(uploadSessionURL as string, {
+                        method: "PUT", 
+                        headers: {"Content-Length": chunk.length.toString(), "Content-Range": `bytes ${offset}-${offset + chunk.length - 1}/${rawFileContent.length}`},
+                        body: chunk,
+                    });
+                    const jsonProps = await resp.json() as BaseItem;
+                    // On the last chunk, Graph should return the meta data about the created file, so we can get the ID from there.
+                    if(jsonProps.id){
+                        return Promise.resolve(jsonProps.id);
+                    }                    
+                }                
+            } 
+            
+            // If we haven't been able to return the ID properly then we are in an error state:
+            return Promise.reject("Could not retrieve the file ID when saving file in OneDrive with FileIO.");
+        },
+
+        checkIsCloudDriveFileReadonly(_: CloudDriveFile): boolean {
+            // Used by FileIO to get the readonly status of a file, OneDrive does not have the same permissions we can find in Google Drive, so we return false
+            return false;
         },
 
         /**
