@@ -148,7 +148,7 @@ export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, error
                                     return cloudDriveHandlerComponent.writeFileContentForIO(StrypeSyncTarget.gd, (skFile.mode.v.includes("b") ? new Uint8Array(0) : ""), {filePath: filePath, fileName: fileName, folderId: fileFolderId})
                                         .then((newFileId) => {
                                             // Since the file has been created we can now keep it's fileId in the map:
-                                            cloudFilesMap.push({name: fileName, content: "", filePath: filePath, id: newFileId, locationId: fileFolderId,
+                                            cloudFilesMap.push({name: fileName, content: (skFile.mode.v.includes("b")) ? new Uint8Array(0) : "", filePath: filePath, id: newFileId, locationId: fileFolderId,
                                                 readOnly: false, capabilities: {canEdit: true, canModifyContent: true}});
                                             return {succeeded: true, errorMsg: ""};
                                         },
