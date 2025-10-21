@@ -125,9 +125,8 @@ export default Vue.extend({
             return `${this.siteOrigin}/${redirectServerEditorPath}/`;
         },
 
-        // These are specific to the OneDrive component.
         clientId(): string {
-            return "ee29b56f-8714-472f-a1c8-37e8551e3ec5";
+            return "a1973135-8146-49d3-b9e2-347ed673d43b";
         },
 
         consumerTenantIdForPersonalAccounts(): string {
