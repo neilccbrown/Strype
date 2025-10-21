@@ -371,7 +371,7 @@ export default Vue.extend({
         },
 
         checkIsCloudFileReadonly(id: string, onGettingReadonlyStatus: (isReadonly: boolean) => void){
-            //TODO
+            // We don't retrieve read only files in OneDrive
             onGettingReadonlyStatus(false);
         },
 
@@ -573,7 +573,6 @@ export default Vue.extend({
                     // (the layout path is only required for the WS accounts).
                     const layoutPath = (this.isPersonalAccount) ? "" : "/_layouts/15/FilePicker.aspx";
                     const url = `${this.baseUrl + layoutPath}?${queryString}`;
-                    console.log("going to query the picker @ " + url);
                     // create a form
                     const form = this.pickerPopup?.document.createElement("form");
                     if(this.pickerPopup && form){
@@ -816,7 +815,6 @@ export default Vue.extend({
                 const CHUNK_SIZE = 5*1024*1024;
                 // Need to also consider we may write a 0-length file when created the file!
                 for (let offset = 0; (offset == 0 && rawFileContent.length == 0) || offset < rawFileContent.length; offset += CHUNK_SIZE) {
-                    console.log("in here");
                     const chunk = rawFileContent.subarray(offset, offset + CHUNK_SIZE);
                     const resp = await fetch(uploadSessionURL as string, {
                         method: "PUT", 
@@ -844,7 +842,6 @@ export default Vue.extend({
          * Specific to OneDrive
          **/ 
         async getToken(purpose: OneDriveTokenPurpose): Promise<string> {
-            console.log("requesting token for purpose = " + OneDriveTokenPurpose[purpose]);
             this.app = new PublicClientApplication((purpose == OneDriveTokenPurpose.INIT_AUTH) 
                 ? this.msalParamsInit 
                 : ((this.isPersonalAccount) ? this.msalParamsConsumerPicker : this.msalParamsWorkPicker));
@@ -888,10 +885,7 @@ export default Vue.extend({
             default:
                 break;
             }
-            const authParams = {scopes: scopes};     
-            console.log("requesting tokens for:");
-            console.log(authParams); 
-
+            const authParams = {scopes: scopes};
             if(purpose == OneDriveTokenPurpose.INIT_AUTH ){
                 // NOTE: there is a very tricky behaviour with MSAL: it seems that Azure will try its best to keep users
                 // logged in, for example with SSO. We request a login, but if the user has used MFA with email to log in
@@ -936,8 +930,7 @@ export default Vue.extend({
                         throw e;
                     }
                 }
-            }       
-            console.log(">>>> got a token");
+            }
             return accessToken;
         },
 
@@ -963,7 +956,7 @@ export default Vue.extend({
                         });
                         break;
                     default:
-                        console.log("unknown message type from OneDrive Picker: "+message.type);
+                        console.error("unknown message type from OneDrive Picker: "+message.type);
                         break;
                     }
                 }
