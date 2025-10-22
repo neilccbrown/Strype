@@ -197,7 +197,7 @@ test.describe("Saves collapsed state after icon clicks", () => {
         await page.keyboard.press("ArrowUp");
         // Shift-control-up three times:
         for (let i = 0; i < 3; i++) {
-            await page.keyboard.press((process.platform == "darwin" ? "Meta" : "Control") + "+Shift+ArrowUp");
+            await page.keyboard.press((process.platform == "darwin" ? "Alt" : "Control") + "+Shift+ArrowUp");
         }
         // Then do contect menu and freeze:
         await makeFrozen(page, "Beta"); 
@@ -237,7 +237,7 @@ test.describe("Saves collapsed state after icon clicks", () => {
         // We should start at top of the body, so we need to go up once into functions, then thrice more to be above Alpha:
         await page.keyboard.press("ArrowUp");
         for (let i = 0; i < 3; i++) {
-            await page.keyboard.press((process.platform == "darwin" ? "Meta" : "Control") + "+ArrowUp");
+            await page.keyboard.press((process.platform == "darwin" ? "Alt" : "Control") + "+ArrowUp");
         }
         // Then we go down to be inside, and down again past the top field:
         await page.keyboard.press("ArrowDown");
