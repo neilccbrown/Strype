@@ -216,7 +216,20 @@ test.describe("Saves collapsed state after icon clicks", () => {
         clickFoldFor(page, "set_x");
         await saveAndCheck(page, testState({"Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
     });
-
+    test("Load frozen Alpha then try to cycle child visibility with key", async ({page}) => {
+        await loadContent(page, testState({"Alpha": "Frozen", "__init__": "FoldToHeader"}));
+        // We should start at top of the body, so we need to go up once into functions, then thrice more to be above Alpha:
+        await page.keyboard.press("ArrowUp");
+        for (let i = 0; i < 3; i++) {
+            await page.keyboard.press((process.platform == "darwin" ? "Meta" : "Control") + "+ArrowUp");
+        }
+        // Then we go down to be inside, and down again past the top field:
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("ArrowDown");
+        // Now we actually press the dot!  Would normally go back to fully visible but it should skip that and go to folded-doc:
+        await page.keyboard.type(".");
+        await saveAndCheck(page, testState({"Alpha": "Frozen", "__init__": "FoldToDocumentation"}));
+    });
 });
 
 

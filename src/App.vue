@@ -503,7 +503,7 @@ export default Vue.extend({
                         (acc, item) => acc === item ? acc : undefined,
                         collapsedStates[0]
                     );
-                    const parentIsFrozen = this.appStore.frameObjects[frameIds[0]].frozenState == FrozenState.FROZEN;
+                    const parentIsFrozen = this.appStore.frameObjects[this.appStore.frameObjects[frameIds[0]].parentId].frozenState == FrozenState.FROZEN;
                     const nextState = calculateNextCollapseState(curState, frames, parentIsFrozen);
                     frameIds.forEach((f) => this.appStore.setCollapseStatus({frameId: f, collapsed: nextState}));
                 }
