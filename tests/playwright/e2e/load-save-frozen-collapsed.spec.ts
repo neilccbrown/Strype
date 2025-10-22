@@ -13,7 +13,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
     }
     // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(90000); // 90 seconds
+    testInfo.setTimeout(120_000); // 120 seconds
 
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
@@ -193,6 +193,30 @@ test.describe("Saves collapsed state after icon clicks", () => {
         // Will Timeout when it doesn't find the menu item:
         await expect(makeFrozen(page, "set_x")).rejects.toThrow(/Timeout/i);
     });
+    
+    test("Freeze Beta then cycle its visibility", async ({page}) => {
+        await loadContent(page, testState());
+        await makeFrozen(page, "Beta");
+        // Freezing Beta should automatically fold in its children that are not already folded:
+        await saveAndCheck(page, testState({"Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
+        // You should be able to freely toggle frozen class visibility between fully visible (although its members are not visible)
+        // and folded:
+        clickFoldFor(page, "Beta");
+        await saveAndCheck(page, testState({"Beta": "FoldToHeader;Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
+        clickFoldFor(page, "Beta");
+        await saveAndCheck(page, testState({"Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
+        // However, you should only be able to toggle the children between the two folded states:
+        clickFoldChildrenFor(page, "Beta");
+        await saveAndCheck(page, testState({"Beta": "Frozen", "set_double": "FoldToHeader", "get_x": "FoldToHeader", "set_x": "FoldToHeader"}));
+        clickFoldChildrenFor(page, "Beta");
+        await saveAndCheck(page, testState({"Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
+        // Ditto when done individually:
+        clickFoldFor(page, "set_x");
+        await saveAndCheck(page, testState({"Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToHeader"}));
+        clickFoldFor(page, "set_x");
+        await saveAndCheck(page, testState({"Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
+    });
+
 });
 
 

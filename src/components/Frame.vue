@@ -516,15 +516,16 @@ export default Vue.extend({
                 },
                 { states: new Set<CollapsedState>(), allowedStates: new Set<CollapsedState>() }
             );
+            const parentIsFrozen = this.appStore.frameObjects[collapseFrames[0].parentId].frozenState == FrozenState.FROZEN;
             let nextWouldBe;
             // Important to do this before next step as we might then remove some:
             if (combinedCollapse.states.size === 1) {
                 const commonState : CollapsedState = combinedCollapse.states.keys().next().value;
                 this.frameContextMenuItems[commonState as number].disabled = true;
-                nextWouldBe = calculateNextCollapseState(commonState, collapseFrames);
+                nextWouldBe = calculateNextCollapseState(commonState, collapseFrames, parentIsFrozen);
             }
             else {
-                nextWouldBe = calculateNextCollapseState(undefined, collapseFrames);
+                nextWouldBe = calculateNextCollapseState(undefined, collapseFrames, parentIsFrozen);
             }
             let someCollapseShowing = false;
             // Loops through all possible enum values, backwards so we can remove without upsetting the later-processed indexes:

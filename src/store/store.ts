@@ -1664,9 +1664,15 @@ export const useStore = defineStore("app", {
         },
 
         cycleFrameCollapsedState(frameId: number) {
+            const parentIsFrozen = this.frameObjects[this.frameObjects[frameId].parentId].frozenState == FrozenState.FROZEN;
             const curState = this.frameObjects[frameId].collapsedState ?? CollapsedState.FULLY_VISIBLE;
             const curIndex = this.frameObjects[frameId].frameType.allowedCollapsedStates.indexOf(curState);
-            const newState = this.frameObjects[frameId].frameType.allowedCollapsedStates[(curIndex + 1) % this.frameObjects[frameId].frameType.allowedCollapsedStates.length];
+            let newState = this.frameObjects[frameId].frameType.allowedCollapsedStates[(curIndex + 1) % this.frameObjects[frameId].frameType.allowedCollapsedStates.length];
+            if (parentIsFrozen && newState == CollapsedState.FULLY_VISIBLE) {
+                // Go one further (+2 instead of +1).  If the only possible state is fully visible, we'll still pick that,
+                // but if there are other states available we'll cycle to them:
+                newState = this.frameObjects[frameId].frameType.allowedCollapsedStates[(curIndex + 2) % this.frameObjects[frameId].frameType.allowedCollapsedStates.length];
+            }
             this.setCollapseStatus({frameId, collapsed: newState});
         },
 
