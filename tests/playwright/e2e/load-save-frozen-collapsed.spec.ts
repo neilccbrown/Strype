@@ -251,6 +251,16 @@ test.describe("Saves collapsed state after icon clicks", () => {
         // Now check the menu item for fully visible is missing:
         await expect(foldViaMenu(page, "__init__", CollapsedState.FULLY_VISIBLE)).rejects.toThrow(/Timeout/i);
     });
+    test("Freeze top1 then cycle its visibility with toggle", async ({page}) => {
+        await loadContent(page, testState());
+        await makeFrozen(page, "top1");
+        await saveAndCheck(page, testState({"top1": "FoldToDocumentation;Frozen"}));
+        // You should be able to freely toggle frozen function visibility between folded to header and folded to doc, but not fully visible:
+        await clickFoldFor(page, "top1");
+        await saveAndCheck(page, testState({"top1": "FoldToHeader;Frozen"}));
+        await clickFoldFor(page, "top1");
+        await saveAndCheck(page, testState({"top1": "FoldToDocumentation;Frozen"}));
+    });
 });
 
 

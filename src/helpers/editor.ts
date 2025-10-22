@@ -1,6 +1,6 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import {AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, FieldSlot, FrameContextMenuActionName, FrameContextMenuShortcut, FrameObject, FramesDefinitions, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesFuncDefScope, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot} from "@/types/types";
+import {AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, FieldSlot, FrameContextMenuActionName, FrameContextMenuShortcut, FrameObject, FramesDefinitions, FrozenState, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesFuncDefScope, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot} from "@/types/types";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameContainer, getFrameSectionIdFromFrameId } from "./storeMethods";
 import { splitByRegexMatches, strypeFileExtension } from "./common";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
@@ -2311,9 +2311,11 @@ export function calculateNextCollapseState(curCommonState : CollapsedState | und
                 return [];
             }
 
-            // everything after current + everything before current, but take out fully visible if parent is frozen:
+            // everything after current + everything before current, but
+            // take out fully visible if: parent is frozen, or we are frozen funcdef frame:
             return f.frameType.allowedCollapsedStates.slice(idx + 1).concat(f.frameType.allowedCollapsedStates.slice(0, idx))
-                .filter((s) => !(s == CollapsedState.FULLY_VISIBLE && parentIsFrozen));
+                .filter((s) => !(s == CollapsedState.FULLY_VISIBLE &&
+                    (parentIsFrozen || (f.frameType.type == AllFrameTypesIdentifier.funcdef && f.frozenState == FrozenState.FROZEN))));
         }).filter((ns) => ns.length > 0);
         
         if (possibleNextStates.length == 0) {
