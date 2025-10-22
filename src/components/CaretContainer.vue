@@ -179,7 +179,7 @@ export default Vue.extend({
                     const isPasteAllowedAtFrame = this.appStore.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition);
                     if(isPasteAllowedAtFrame){
                         this.appStore.contextMenuShownId = this.UID;
-                        this.doPaste();
+                        this.doPaste("caret");
                     }
                     else{
                         this.appStore.showMessage(MessageDefinitions.ForbiddenFramePaste, 3000);
