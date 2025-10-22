@@ -2,6 +2,7 @@ import {Page, test, expect} from "@playwright/test";
 import {load, save} from "../support/loading-saving";
 import fs from "fs";
 import en from "@/localisation/en/en_main.json";
+import { CollapsedState } from "../../cypress/support/frame-types";
 
 // The tests in this file can't run in parallel because they download
 // to the same filenames, so need to run one at a time.
@@ -68,6 +69,24 @@ async function makeFrozen(page: Page, identifyingText: string) : Promise<void> {
     const ancestor = page.locator(".frame-header:has(span:has-text('" + identifyingText + "'))");
     await ancestor.click({button: "right"});
     await page.getByRole("menuitem", {name: en.contextMenu.freeze}).click({timeout: 2000});
+}
+
+async function foldViaMenu(page: Page, identifyingText: string, foldTo: CollapsedState) : Promise<void> {
+    const ancestor = page.locator(".frame-header:has(span:has-text('" + identifyingText + "'))");
+    await ancestor.click({button: "right"});
+    let name : string;
+    switch (foldTo) {
+    case CollapsedState.FULLY_VISIBLE:
+        name = en.contextMenu.collapseFull;
+        break;
+    case CollapsedState.HEADER_AND_DOC_VISIBLE:
+        name = en.contextMenu.collapseDocumentation;
+        break;
+    case CollapsedState.ONLY_HEADER_VISIBLE:
+        name = en.contextMenu.collapseHeader;
+        break;
+    }
+    await page.getByRole("menuitem", {name}).click({timeout: 2000});
 }
 
 // We have some functions and classes, and have a function to allow setting the states for any identifier:
@@ -229,6 +248,11 @@ test.describe("Saves collapsed state after icon clicks", () => {
         // Now we actually press the dot!  Would normally go back to fully visible but it should skip that and go to folded-doc:
         await page.keyboard.type(".");
         await saveAndCheck(page, testState({"Alpha": "Frozen", "__init__": "FoldToDocumentation"}));
+        // Use menu to change to fully folded:
+        await foldViaMenu(page, "__init__", CollapsedState.ONLY_HEADER_VISIBLE);
+        await saveAndCheck(page, testState({"Alpha": "Frozen", "__init__": "FoldToHeader"}));
+        // Now check the menu item for fully visible is missing:
+        await expect(foldViaMenu(page, "__init__", CollapsedState.FULLY_VISIBLE)).rejects.toThrow(/Timeout/i);
     });
 });
 

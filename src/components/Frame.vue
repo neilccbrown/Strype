@@ -532,7 +532,8 @@ export default Vue.extend({
             for (const c of Object.values(CollapsedState).filter((v) => typeof v === "number").map((v) => v as number).sort((a, b) => b - a)) {
                 // If state is impossible for all frames, don't show it in the menu:
                 // Also, if there's only one allowed state for all frames (which would be fully visible), remove all items:
-                if (!combinedCollapse.allowedStates.has(c as CollapsedState) || combinedCollapse.allowedStates.size === 1) {
+                if (!combinedCollapse.allowedStates.has(c as CollapsedState) || combinedCollapse.allowedStates.size === 1
+                    || (c as CollapsedState == CollapsedState.FULLY_VISIBLE && parentIsFrozen)) {
                     this.frameContextMenuItems.splice(c,1);
                 }
                 else {
