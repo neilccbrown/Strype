@@ -3,10 +3,7 @@ import {load, save} from "../support/loading-saving";
 import fs from "fs";
 import en from "@/localisation/en/en_main.json";
 import { CollapsedState } from "../../cypress/support/frame-types";
-
-// The tests in this file can't run in parallel because they download
-// to the same filenames, so need to run one at a time.
-test.describe.configure({ mode: "serial" });
+import { randomUUID } from "node:crypto";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && process.platform === "win32") {
@@ -32,7 +29,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
 async function loadContent(page: Page, spyToLoad: string) : Promise<void> {
     // The recursive option stops it failing if the dir exists:
     fs.mkdirSync("tests/cypress/downloads/", { recursive: true });
-    const path = "tests/cypress/downloads/toload.spy";
+    const path = `tests/cypress/downloads/toload-${randomUUID()}.spy`;
     fs.writeFileSync(path, spyToLoad);
     await load(page, path);
 }
