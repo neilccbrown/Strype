@@ -70,9 +70,10 @@ async function makeFrozen(page: Page, identifyingText: string) : Promise<void> {
     await page.getByRole("menuitem", {name: en.contextMenu.freeze}).click({timeout: 2000});
 }
 
-// We have some functions and classes:
-const testInput =
-`#(=> Strype:1:std
+// We have some functions and classes, and have a function to allow setting the states for any identifier:
+function testState (states: Record<string, string> = {}) {
+    const original =
+        `#(=> Strype:1:std
 #(=> Section:Imports
 #(=> Section:Definitions
 def top1 ( ) :
@@ -82,8 +83,8 @@ class Alpha  :
     def __init__ (self, ) :
         self.x  = 7 
 class Beta  :
-    def __init__ (self,x ) :
-        self.x  = x 
+    def set_double (self,x ) :
+        self.x  = x*2 
     def get_x (self, ) :
         return x 
     def set_x (self,x ) :
@@ -93,219 +94,89 @@ def top2 ( ) :
 #(=> Section:Main
 #(=> Section:End
 `;
+    let lines = original.split(/\r?\n/);
+
+    for (const [key, value] of Object.entries(states)) {
+        let found = false;
+        const newLines: string[] = [];
+
+        for (const line of lines) {
+            if (line.includes(key)) {
+                found = true;
+                const indentMatch = line.match(/^(\s*)/);
+                const indent = indentMatch ? indentMatch[1] : "";
+                newLines.push(indent + "#(=> FrameState:" + value); // insert before the matching line
+                newLines.push(line);
+            }
+            else {
+                newLines.push(line);
+            }
+        }
+
+        if (!found) {
+            throw new Error(`Key "${key}" not found in text.`);
+        }
+
+        lines = newLines;
+    }
+
+    return lines.join("\n");
+}
 
 test.describe("Saves collapsed state after icon clicks", () => {
     test("Basic round trip", async ({page}) => {
-        await loadContent(page, testInput);
-        await saveAndCheck(page, testInput);
+        await loadContent(page, testState());
+        await saveAndCheck(page, testState());
     });
     test("Fold the function once", async ({page}) => {
-        await loadContent(page, testInput);
+        await loadContent(page, testState());
         await clickFoldFor(page, "top1");
-        await saveAndCheck(page, `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> FrameState:FoldToDocumentation
-def top1 ( ) :
-    return 6 
-class Alpha  :
-    some_constant  = 5 
-    def __init__ (self, ) :
-        self.x  = 7 
-class Beta  :
-    def __init__ (self,x ) :
-        self.x  = x 
-    def get_x (self, ) :
-        return x 
-    def set_x (self,x ) :
-        self.x  = x 
-def top2 ( ) :
-    return 64 
-#(=> Section:Main
-#(=> Section:End
-`);
+        await saveAndCheck(page, testState({"top1": "FoldToDocumentation"}));
     });
     test("Fold the function twice and the other once", async ({page}) => {
-        await loadContent(page, testInput);
+        await loadContent(page, testState());
         await clickFoldFor(page, "top1");
         await clickFoldFor(page, "top1");
         await clickFoldFor(page, "top2");
-        await saveAndCheck(page, `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> FrameState:FoldToHeader
-def top1 ( ) :
-    return 6 
-class Alpha  :
-    some_constant  = 5 
-    def __init__ (self, ) :
-        self.x  = 7 
-class Beta  :
-    def __init__ (self,x ) :
-        self.x  = x 
-    def get_x (self, ) :
-        return x 
-    def set_x (self,x ) :
-        self.x  = x 
-#(=> FrameState:FoldToDocumentation
-def top2 ( ) :
-    return 64 
-#(=> Section:Main
-#(=> Section:End
-`);
+        await saveAndCheck(page, testState({"top1": "FoldToHeader", "top2": "FoldToDocumentation"}));
     });
     test("Fold the member functions too", async ({page}) => {
-        await loadContent(page, testInput);
+        await loadContent(page, testState());
         await clickFoldFor(page, "top1");
         await clickFoldFor(page, "top1");
         await clickFoldFor(page, "top2");
         await clickFoldFor(page, "get_x");
         await clickFoldFor(page, "get_x");
         await clickFoldFor(page, "set_x");
-        await saveAndCheck(page, `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> FrameState:FoldToHeader
-def top1 ( ) :
-    return 6 
-class Alpha  :
-    some_constant  = 5 
-    def __init__ (self, ) :
-        self.x  = 7 
-class Beta  :
-    def __init__ (self,x ) :
-        self.x  = x 
-    #(=> FrameState:FoldToHeader
-    def get_x (self, ) :
-        return x 
-    #(=> FrameState:FoldToDocumentation
-    def set_x (self,x ) :
-        self.x  = x 
-#(=> FrameState:FoldToDocumentation
-def top2 ( ) :
-    return 64 
-#(=> Section:Main
-#(=> Section:End
-`);
+        await saveAndCheck(page, testState({"get_x": "FoldToHeader", "set_x": "FoldToDocumentation", "top1": "FoldToHeader", "top2": "FoldToDocumentation"}));
     });
     test("Fold the Alpha member function using joint control", async ({page}) => {
-        await loadContent(page, testInput);
+        await loadContent(page, testState());
         await clickFoldChildrenFor(page, "Alpha");
-        await saveAndCheck(page, `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-def top1 ( ) :
-    return 6 
-class Alpha  :
-    some_constant  = 5 
-    #(=> FrameState:FoldToDocumentation
-    def __init__ (self, ) :
-        self.x  = 7 
-class Beta  :
-    def __init__ (self,x ) :
-        self.x  = x 
-    def get_x (self, ) :
-        return x 
-    def set_x (self,x ) :
-        self.x  = x 
-def top2 ( ) :
-    return 64 
-#(=> Section:Main
-#(=> Section:End
-`);
+        await saveAndCheck(page, testState({"__init__": "FoldToDocumentation"}));
     });
     test("Fold the Beta member functions using joint control", async ({page}) => {
-        await loadContent(page, testInput);
+        await loadContent(page, testState());
         await clickFoldChildrenFor(page, "Beta");
-        await saveAndCheck(page, `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-def top1 ( ) :
-    return 6 
-class Alpha  :
-    some_constant  = 5 
-    def __init__ (self, ) :
-        self.x  = 7 
-class Beta  :
-    #(=> FrameState:FoldToDocumentation
-    def __init__ (self,x ) :
-        self.x  = x 
-    #(=> FrameState:FoldToDocumentation
-    def get_x (self, ) :
-        return x 
-    #(=> FrameState:FoldToDocumentation
-    def set_x (self,x ) :
-        self.x  = x 
-def top2 ( ) :
-    return 64 
-#(=> Section:Main
-#(=> Section:End
-`);
+        await saveAndCheck(page, testState({"set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
     });
-
     test("Freeze Alpha unfolded", async ({page}) => {
-        await loadContent(page, testInput);
+        await loadContent(page, testState());
         await makeFrozen(page, "Alpha");
-        await saveAndCheck(page, `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-def top1 ( ) :
-    return 6 
-#(=> FrameState:Frozen
-class Alpha  :
-    some_constant  = 5 
-    #(=> FrameState:FoldToDocumentation
-    def __init__ (self, ) :
-        self.x  = 7 
-class Beta  :
-    def __init__ (self,x ) :
-        self.x  = x 
-    def get_x (self, ) :
-        return x 
-    def set_x (self,x ) :
-        self.x  = x 
-def top2 ( ) :
-    return 64 
-#(=> Section:Main
-#(=> Section:End
-`);
+        await saveAndCheck(page, testState({"Alpha": "Frozen", "__init__": "FoldToDocumentation"}));
     });
 
     test("Freeze Beta part-folded", async ({page}) => {
-        await loadContent(page, testInput);
+        await loadContent(page, testState());
         await clickFoldFor(page, "set_x");
         await clickFoldFor(page, "set_x");
         await makeFrozen(page, "Beta");
         // Freezing Beta should automatically fold in its children that are not already folded: 
-        await saveAndCheck(page, `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-def top1 ( ) :
-    return 6 
-class Alpha  :
-    some_constant  = 5 
-    def __init__ (self, ) :
-        self.x  = 7 
-#(=> FrameState:Frozen
-class Beta  :
-    #(=> FrameState:FoldToDocumentation
-    def __init__ (self,x ) :
-        self.x  = x 
-    #(=> FrameState:FoldToDocumentation
-    def get_x (self, ) :
-        return x 
-    #(=> FrameState:FoldToHeader
-    def set_x (self,x ) :
-        self.x  = x 
-def top2 ( ) :
-    return 64 
-#(=> Section:Main
-#(=> Section:End
-`);
+        await saveAndCheck(page, testState({"Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToHeader"}));
     });
 
     test("Freeze Alpha and Beta and top_2 in one go", async ({page}) => {
-        await loadContent(page, testInput);
+        await loadContent(page, testState());
         // Go to bottom of the definitions:
         await page.keyboard.press("ArrowUp");
         // Shift-control-up three times:
@@ -314,38 +185,11 @@ def top2 ( ) :
         }
         // Then do contect menu and freeze:
         await makeFrozen(page, "Beta"); 
-        await saveAndCheck(page, `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-def top1 ( ) :
-    return 6 
-#(=> FrameState:Frozen
-class Alpha  :
-    some_constant  = 5 
-    #(=> FrameState:FoldToDocumentation
-    def __init__ (self, ) :
-        self.x  = 7 
-#(=> FrameState:Frozen
-class Beta  :
-    #(=> FrameState:FoldToDocumentation
-    def __init__ (self,x ) :
-        self.x  = x 
-    #(=> FrameState:FoldToDocumentation
-    def get_x (self, ) :
-        return x 
-    #(=> FrameState:FoldToDocumentation
-    def set_x (self,x ) :
-        self.x  = x 
-#(=> FrameState:FoldToDocumentation;Frozen
-def top2 ( ) :
-    return 64 
-#(=> Section:Main
-#(=> Section:End
-`);
+        await saveAndCheck(page, testState({"Alpha": "Frozen", "__init__": "FoldToDocumentation", "Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation", "top2": "FoldToDocumentation;Frozen"}));
     });
 
     test("Attempt to freeze member function", async ({page}) => {
-        await loadContent(page, testInput);
+        await loadContent(page, testState());
         // Will Timeout when it doesn't find the menu item:
         await expect(makeFrozen(page, "set_x")).rejects.toThrow(/Timeout/i);
     });
