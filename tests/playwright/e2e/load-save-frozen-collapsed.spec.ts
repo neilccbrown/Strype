@@ -217,19 +217,19 @@ test.describe("Saves collapsed state after icon clicks", () => {
         await saveAndCheck(page, testState({"Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
         // You should be able to freely toggle frozen class visibility between fully visible (although its members are not visible)
         // and folded:
-        clickFoldFor(page, "Beta");
+        await clickFoldFor(page, "Beta");
         await saveAndCheck(page, testState({"Beta": "FoldToHeader;Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
-        clickFoldFor(page, "Beta");
+        await clickFoldFor(page, "Beta");
         await saveAndCheck(page, testState({"Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
         // However, you should only be able to toggle the children between the two folded states:
-        clickFoldChildrenFor(page, "Beta");
+        await clickFoldChildrenFor(page, "Beta");
         await saveAndCheck(page, testState({"Beta": "Frozen", "set_double": "FoldToHeader", "get_x": "FoldToHeader", "set_x": "FoldToHeader"}));
-        clickFoldChildrenFor(page, "Beta");
+        await clickFoldChildrenFor(page, "Beta");
         await saveAndCheck(page, testState({"Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
         // Ditto when done individually:
-        clickFoldFor(page, "set_x");
+        await clickFoldFor(page, "set_x");
         await saveAndCheck(page, testState({"Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToHeader"}));
-        clickFoldFor(page, "set_x");
+        await clickFoldFor(page, "set_x");
         await saveAndCheck(page, testState({"Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
     });
     test("Load frozen Alpha then try to cycle child visibility with key", async ({page}) => {
