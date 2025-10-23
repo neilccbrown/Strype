@@ -944,6 +944,11 @@ export default Vue.extend({
             // When the selection has changed, we update the cursor infos in the store.
             const docSelection = document.getSelection();
             if(docSelection){
+                // If we have an application overlay (masking the UI) we shouldn't do anything
+                if(docSelection.anchorNode?.nodeName == "DIV" && (docSelection.anchorNode as HTMLDivElement).className.includes("app-overlay-pane")){
+                    return;
+                }
+
                 let anchorSpanElement = docSelection?.anchorNode?.parentElement;
                 let focusSpanElement =  docSelection?.focusNode?.parentElement;
                 // When the editable slots are empty, the span doesn't get the focus, but the container div does.

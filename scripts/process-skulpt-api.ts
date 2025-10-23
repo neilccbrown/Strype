@@ -80,7 +80,7 @@ function getClassMethods(userCode: string, moduleName: string | null, className:
         andThen(names);
     },
     (err: any) => {
-        console.log("Error running static autocomplete code: " + err + "Code was:\n" + codeToRun);
+        console.error("Error running static autocomplete code: " + err + "Code was:\n" + codeToRun);
     });
 }
 
@@ -101,7 +101,7 @@ function getDetailsForListOfItems(module: string | null, items: AcResultType[], 
         // Sanity check the returns.  type can be the empty list and documentation can be the empty string,
         // so we can't do e.g. !items[next].type, we must explicitly compare to null and undefined:
         if (items[next].type === null || items[next].type === undefined || items[next].documentation === null || items[next].documentation === undefined) {
-            console.log("Undefined type or documentation for " + module + "." + items[next].acResult);
+            console.warn("Undefined type or documentation for " + module + "." + items[next].acResult);
         }
         // If the item is a type, get any class methods:
         if (items[next].type.includes("type")) {
@@ -117,7 +117,7 @@ function getDetailsForListOfItems(module: string | null, items: AcResultType[], 
         }
     },
     (err: any) => {
-        console.log("Error running autocomplete code: " + err + "Code was:\n" + codeToRun);
+        console.error("Error running autocomplete code: " + err + "Code was:\n" + codeToRun);
     });
 }
 
@@ -157,7 +157,7 @@ function getModuleMembersOneByOne(modules: Module[], next : number, soFar : AcRe
         });
     },
     (err: any) => {
-        console.log("Error running autocomplete code: " + err + "Code was:\n" + codeToRun);
+        console.error("Error running autocomplete code: " + err + "Code was:\n" + codeToRun);
     });
 }
 

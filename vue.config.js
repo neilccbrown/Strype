@@ -25,6 +25,27 @@ const configureWebpackExtraProps =
         ],
     };
 
+if (process.env.npm_config_microbit){
+    // We have a small issue with the micro:bit file generation: we delete the Strype Media API files in dist/ 
+    // because they are not used by Strype. But the builder looks for it (JS files notably) when showing some stats.
+    // So we make sure the stats ignore them.
+    configureWebpackExtraProps.plugins.push({
+        apply(compiler) {
+            compiler.hooks.done.tap("SkipGzipSizeForDeletedFiles", (stats) => {
+                const compInfo = stats.compilation;
+                const targetPathToIgnore = "public_libraries/strype/";
+                if(compInfo.assetsInfo){          
+                    for (const [name] of compInfo.assetsInfo.entries()) {
+                        if (typeof name == "string" && name.startsWith(targetPathToIgnore)) {
+                            compInfo.deleteAsset(name);
+                        }
+                    }
+                }                
+            });
+        },
+    });
+}
+
 module.exports = {
     configureWebpack: {
         devtool: "source-map",
@@ -74,6 +95,7 @@ module.exports = {
             }
             return [options];
         });
+        
         // From https://stackoverflow.com/questions/61031121/vue-js-with-mocha-and-styles-resources-loader-cant-load-dependency-sass
         if (process.env.NODE_ENV === "test") {
             const scssRule = config.module.rule("scss");

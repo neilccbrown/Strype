@@ -146,10 +146,12 @@ export default Vue.extend({
             gapi.client.init({
             }).then((response) => {
                 this.gapiLoadedState = GAPIState.loaded;
-                console.log("GAPI loaded");
+                // eslint-disable-next-line
+                console.info("GAPI loaded");
             }, (reason) => {
                 this.gapiLoadedState = GAPIState.failed;
-                console.log(reason.result.error.message);
+                // eslint-disable-next-line
+                console.warn(reason.result.error.message);
             });
         },
 

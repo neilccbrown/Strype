@@ -179,7 +179,7 @@ export default Vue.extend({
                     const isPasteAllowedAtFrame = this.appStore.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition);
                     if(isPasteAllowedAtFrame){
                         this.appStore.contextMenuShownId = this.UID;
-                        this.doPaste();
+                        this.doPaste("caret");
                     }
                     else{
                         this.appStore.showMessage(MessageDefinitions.ForbiddenFramePaste, 3000);
@@ -350,8 +350,8 @@ export default Vue.extend({
 .static-caret-container{
     // Put cursor in middle of the reserved gap, and still add height (i.e. use padding not height) to avoid later 
     // sections moving up and down by the caret height as the caret moves in and out of a reserved gap.
-    padding-top: ($caret-height-value/2) + px !important;
-    padding-bottom: ($caret-height-value/2) + px !important;
+    padding-top: calc(#{$caret-height-value}px / 2) !important;
+    padding-bottom: calc(#{$caret-height-value}px / 2) !important;
 }
 
 .#{$strype-classname-caret-container}:not(.#{$strype-classname-dragging-frame}):hover{
