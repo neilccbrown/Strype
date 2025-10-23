@@ -127,7 +127,7 @@ export interface CloudDriveComponent {
     checkIsCloudFileReadonly: (id: string, onGettingReadonlyStatus: (isReadonly: boolean) => void) => void,
     pickFolderForSave: VoidFunction,
     lookForAvailableProjectFileName: (fileLocation: string | undefined, fileName: string, onFileAlreadyExists: (existingFileId: string) => void, onSuccess: VoidFunction, onFailure: VoidFunction) => void,
-    openFilePicker: () => Promise<void>,
+    openFilePicker: (startingFromFolderId: string | undefined) => Promise<void>,
     loadPickedFileId: (id: string, otherParams: { fileName?: string }, onGettingFileMetadataSucces: (fileNameFromDrive: string, fileModifiedDateTime: string) => void,
         onGettingFileContentSuccess: (fileContent: string) => void, onGettingFileContentFailure: (errorRespStatus: number) => void) => void,
     checkIsFileLocked: (existingFileId: string, onSuccess: VoidFunction, onFailure: VoidFunction) => void,

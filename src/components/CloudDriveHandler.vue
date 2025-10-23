@@ -214,7 +214,7 @@ export default Vue.extend({
                                 return cloudDriveComponent.getFolderNameFromId(strypeFolderId).then((folderNameAndPath) => {
                                     this.appStore.strypeProjectLocationAlias = folderNameAndPath.name;
                                     this.appStore.strypeProjectLocationPath = folderNameAndPath.path??"";
-                                    return cloudDriveComponent.openFilePicker();
+                                    return cloudDriveComponent.openFilePicker(strypeFolderId);
                                 });
                             }
                             else{
@@ -222,7 +222,7 @@ export default Vue.extend({
                                 this.appStore.strypeProjectLocation = (strypeFolderId) ? strypeFolderId : undefined;
                                 this.appStore.strypeProjectLocationAlias = (strypeFolderId) ? "Strype" : "";
                                 this.appStore.strypeProjectLocationPath = (strypeFolderId) ? "Strype" : "";
-                                return cloudDriveComponent.openFilePicker();
+                                return cloudDriveComponent.openFilePicker(strypeFolderId??undefined);
                             }                                    
                         });
                     }

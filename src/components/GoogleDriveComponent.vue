@@ -327,9 +327,9 @@ export default Vue.extend({
             });
         },
         
-        openFilePicker(): Promise<void> {
+        openFilePicker(startingFromFolderId: string | undefined): Promise<void> {
             // Launch the file picker for this cloud drive (this would be called after we made sure the connection to OneDrive is (still) valid)
-            (this.$refs[this.googleDriveFilePickerComponentId] as InstanceType<typeof GoogleDriveFilePicker>).startPicking(false);
+            (this.$refs[this.googleDriveFilePickerComponentId] as InstanceType<typeof GoogleDriveFilePicker>).startPicking(false, startingFromFolderId);
             return Promise.resolve();     
         },
 
