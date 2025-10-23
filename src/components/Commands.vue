@@ -226,7 +226,7 @@ export default Vue.extend({
             //We retrieve the add frame commands associated with the current frame 
             //if the frame is enabled, we always check, if it is disabled we return no frame when caret is body, and check when caret is below
             const currentFrame: FrameObject = this.appStore.getCurrentFrameObject;
-            if(currentFrame.isDisabled && ((currentFrame.caretVisibility === CaretPosition.body) ? true : !this.appStore.canAddFrameBelowDisabled(currentFrame.id))){
+            if(!currentFrame || (currentFrame.isDisabled && ((currentFrame.caretVisibility === CaretPosition.body) ? true : !this.appStore.canAddFrameBelowDisabled(currentFrame.id)))){
                 return {};
             }
 
