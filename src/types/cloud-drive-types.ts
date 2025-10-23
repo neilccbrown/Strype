@@ -103,6 +103,7 @@ export interface CloudDriveComponent {
     // Props
     onFileToLoadPicked: (cloudTarget: StrypeSyncTarget, fileId: string, fileName?: string) => Promise<void>,
     onFolderToSaveFilePicked: (cloudTarget: StrypeSyncTarget) => void,
+    onFolderToSavePickCancelled: () => void,
     onUnsupportedByStrypeFilePicked: VoidFunction,
 
     // Data

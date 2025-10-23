@@ -2,7 +2,7 @@
     <div/>
 </template>
 <script lang="ts">
-import Vue from "vue";
+import Vue, { PropType } from "vue";
 import {useStore, settingsStore} from "@/store/store";
 import { mapStores } from "pinia";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
@@ -19,6 +19,7 @@ export default Vue.extend({
             type: [String],
             required: false,
         },
+        pickFolderCancelled: {type: Function as PropType<() => void>, required: true},
     },
 
     computed:{
@@ -150,6 +151,10 @@ export default Vue.extend({
                 }
                 const emitEvent = (this.isSaveAction) ? "picked-folder" : "picked-file";
                 this.$emit(emitEvent, fileId, fileName);
+            }
+            else if(data.action === google.picker.Action.CANCEL && this.isSaveAction){
+                // When the picker is closed for selecting a folder, we do need to bubble up that event
+                this.pickFolderCancelled();
             }
         },
     },

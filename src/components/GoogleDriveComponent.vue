@@ -5,7 +5,8 @@
  *  is used in CloudDriveHandler)
  */
 <template>
-    <GoogleDriveFilePicker :ref="googleDriveFilePickerComponentId" @picked-file="onLoadPickedFile" @picked-folder="savePickedFolder" @unsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" :dev-key="devKey" :oauth-token="oauthToken"/>
+    <GoogleDriveFilePicker :ref="googleDriveFilePickerComponentId" @picked-file="onLoadPickedFile" @picked-folder="savePickedFolder"
+        :pick-folder-cancelled="onPickFolderCancelled" @unsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" :dev-key="devKey" :oauth-token="oauthToken"/>
 </template>
 <script lang="ts">
 //////////////////////
@@ -35,6 +36,7 @@ export default Vue.extend({
     props: {
         onFileToLoadPicked: {type: Function as PropType<(cloudTarget: StrypeSyncTarget, fileId: string, fileName?: string) => Promise<void>>, required: true},
         onFolderToSaveFilePicked: {type: Function as PropType<(cloudTarget: StrypeSyncTarget) => void>, required: true},
+        onFolderToSavePickCancelled: {type: Function as PropType<() => void>, required: true},
         onUnsupportedByStrypeFilePicked: {type: Function as PropType<() => void>, required: true},
     },
 
@@ -614,6 +616,10 @@ export default Vue.extend({
         
         savePickedFolder() {
             this.onFolderToSaveFilePicked(StrypeSyncTarget.gd);
+        },
+
+        onPickFolderCancelled(){
+            this.onFolderToSavePickCancelled();
         },
 
         checkIsCloudDriveFileReadonly(file: CloudDriveFile): boolean {
