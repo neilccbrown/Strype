@@ -1007,6 +1007,12 @@ export default Vue.extend({
                     const strypeFileItem = message.data.data.items[0] as BaseItem;
                     const fileId = strypeFileItem.id??"";
                     if(this.isPickingFile){
+                        // We should never end up with the wrong type of file, since the Picker is already configured to filter files.
+                        // But since we have already a mechanism in place for that situation, let's double check just for safety...
+                        if(!strypeFileItem.name?.endsWith("."+strypeFileExtension) && !strypeFileItem.name?.endsWith("."+pythonFileExtension)){
+                            this.onUnsupportedByStrypeFilePicked();
+                            break;
+                        }
                         this.currentFileName = strypeFileItem.name as string;                    
                         this.currentFileLastModifiedDate = strypeFileItem.lastModifiedDateTime as string;
                         this.onFileToLoadPicked(StrypeSyncTarget.od, fileId, this.currentFileName);
