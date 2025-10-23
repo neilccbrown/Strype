@@ -261,7 +261,7 @@ test.describe("Saves collapsed state after icon clicks", () => {
         await clickFoldFor(page, "top1");
         await saveAndCheck(page, testState({"top1": "FoldToDocumentation;Frozen"}));
     });
-    test.only("Freezing prevents deletion of the whole frame and its member frames", async ({page}) => {
+    test("Freezing prevents deletion of the whole frame and its member frames", async ({page}) => {
         await loadContent(page, testState({"Alpha": "Frozen", "__init__": "FoldToHeader", "top1": "FoldToDocumentation;Frozen"}));
         // We start at the top of the body, so one up to get to bottom of defs:
         await page.keyboard.press("ArrowUp");
@@ -274,10 +274,10 @@ test.describe("Saves collapsed state after icon clicks", () => {
         await page.keyboard.press("ArrowUp"); // Will go past because it's folded
         await page.keyboard.press("Delete");
         await page.keyboard.press("Shift+ArrowUp");
-        // With selection, try deleting, cutting (TODO):
+        // With selection, try deleting, cutting:
         await page.keyboard.press("Delete");
         await page.keyboard.press("Backspace");
-        //await page.keyboard.press((process.platform == "darwin" ? "Meta" : "Control") + "+x");
+        await page.keyboard.press((process.platform == "darwin" ? "Meta" : "Control") + "+x");
         // Break the selection:
         await page.keyboard.press("ArrowUp");
         await page.keyboard.press("ArrowDown");
