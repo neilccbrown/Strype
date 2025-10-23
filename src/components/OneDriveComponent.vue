@@ -126,6 +126,7 @@ export default Vue.extend({
         },
 
         clientId(): string {
+            // Our client ID (identifying Strype as an app in Microsoft Azure)
             return "a1973135-8146-49d3-b9e2-347ed673d43b";
         },
 
