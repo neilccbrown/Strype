@@ -42,7 +42,7 @@
         "@types/splitpanes": "^2.2.6",
         "@vue/composition-api": "^1.4.9",
         "audiobuffer-to-wav": "^1.0.0",
-        "axios": "^0.21.4",
+        "axios": "^0.30.2",
         "bootstrap": "^4.6.1",
         "bootstrap-vue": "^2.16.0",
         "cheerio": "^1.0.0-rc.5",
