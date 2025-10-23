@@ -2,6 +2,7 @@
   "localeName": "Français",
   "defaultProjName": "Mon projet",
   "strypeFileDesc": "Fichier de projet Strype",
+  "pythonFileDesc":"Fichier Python",
   "frame": {
     "defaultText": {
       "condition": "condition ",
@@ -199,7 +200,8 @@
     "myFunctions": "Mes fonctions",
     "myVariables": "Mes variables",
     "importedModules": "Modules importés",
-    "invalidState": "Aucune complétion disponible"
+    "invalidState": "Aucune complétion disponible",
+    "noDocumentation":"Aucune documentation disponible"
   },
   "commandTabs": {
     "0": "Ajoute un cadre"
