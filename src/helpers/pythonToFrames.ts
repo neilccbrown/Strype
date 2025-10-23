@@ -599,7 +599,7 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
     }
     catch (e) {
         // eslint-disable-next-line
-        console.error(e); // + "On:\n" + debugToString(parsedBySkulpt, "  "));
+        console.warn(e); // + "On:\n" + debugToString(parsedBySkulpt, "  "));
         // Don't leave partial content:
         useStore().copiedFrames = {};
         useStore().copiedSelectionFrameIds = [];

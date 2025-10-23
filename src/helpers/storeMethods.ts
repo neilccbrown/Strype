@@ -888,7 +888,7 @@ export function checkCodeErrors(frameIdForPrecompiled?: number): void {
     }
     catch(error){
         // eslint-disable-next-line
-        console.error(error);
+        console.warn(error);
     }
     // We make sure the number of errors shown in the interface is in line with the current state of the code
     // As the UI should update first, we do it in the next tick

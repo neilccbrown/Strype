@@ -151,7 +151,7 @@ export default Vue.extend({
             }, (reason) => {
                 this.gapiLoadedState = GAPIState.failed;
                 // eslint-disable-next-line
-                console.error(reason.result.error.message);
+                console.warn(reason.result.error.message);
             });
         },
 
