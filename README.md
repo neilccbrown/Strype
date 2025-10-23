@@ -94,7 +94,12 @@ Roadmap
 
 Strype is currently under very active development.  A rough roadmap of some major planned features (beyond the general bugfixing and polishing):
 
- - Add class frames (for object-oriented programming): Q3 2025
- - Add support for data processing and/or charting: Q3 2025
+ - Add class frames (for object-oriented programming): Q4 2025
+ - Add support for loading/saving Strype projects from/to OneDrive: Q4 2025
+ - Provide a translation helper tool for localisation: Q4 2025
+ - Internal backend update for Strype's Python emulation: Q1 2026
+ - Add support for data processing and/or charting: Q2 2026
+ - Add support for loading/saving Strype projects from/to German Bundesland-specific Cloud Drives: Q1 2026
+ - Extent the micro:bit simulator's features: Q3 2026
 
 The dates and choices may change as we receive more user feedback.

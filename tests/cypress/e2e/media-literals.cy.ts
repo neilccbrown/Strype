@@ -183,6 +183,48 @@ describe("Paste image literals", () => {
         });
     });
 
+    it("Paste and show SVG image from a file", () => {
+        cy.readFile("tests/cypress/test-http-assets/kcl-logo.svg", null).then((svg) => {
+            focusEditorPasteAndClear();
+            enterImports();
+            cy.get("body").type(" Actor(");
+            cy.wait(1000);
+            (cy.focused() as any).paste(svg, "image/svg+xml");
+            cy.wait(1000);
+            cy.get("body").type(".clone(3)");
+            executeCode();
+            checkGraphicsCanvasContent("paste-and-show-svg");
+        });
+    });
+
+    it("Paste and show SVG image as if from inside browser", () => {
+        cy.readFile("tests/cypress/test-http-assets/kcl-logo.svg", "utf8").then((svg) => {
+            focusEditorPasteAndClear();
+            enterImports();
+            cy.get("body").type(" Actor(");
+            cy.wait(1000);
+            // Browsers take the SVG element and put it as text/html:
+            (cy.focused() as any).paste(svg, "text/html");
+            cy.wait(1000);
+            cy.get("body").type(".clone(3)");
+            executeCode();
+            checkGraphicsCanvasContent("paste-and-show-svg");
+        });
+    });
+
+    it("Paste and show IMG with SVG source as if from inside browser", () => {
+        focusEditorPasteAndClear();
+        enterImports();
+        cy.get("body").type(" Actor(");
+        cy.wait(1000);
+        // Give HTML with an img with the appopriate source
+        (cy.focused() as any).paste("<img width='300px' src='http://localhost:8089/kcl-logo.svg'>", "text/html");
+        cy.wait(1000);
+        cy.get("body").type(".clone(3)");
+        executeCode();
+        checkGraphicsCanvasContent("paste-and-show-svg");
+    });
+
     it("Can call method on pasted image", () => {
         cy.readFile("public/graphics_images/cat-test.jpg", null).then((catJPEG) => {
             focusEditorPasteAndClear();
