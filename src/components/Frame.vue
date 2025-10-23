@@ -97,7 +97,7 @@ import Vue from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
-import { DefaultFramesDefinition, CaretPosition, CollapsedState, CurrentFrame, FrozenState, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName } from "@/types/types";
+import { DefaultFramesDefinition, CaretPosition, CollapsedState, CurrentFrame, FrozenState, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName, ContainerTypesIdentifiers } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
 import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getCaretUID, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID, calculateNextCollapseState } from "@/helpers/editor";
@@ -516,22 +516,24 @@ export default Vue.extend({
                 },
                 { states: new Set<CollapsedState>(), allowedStates: new Set<CollapsedState>() }
             );
+            const parentIsFrozen = this.appStore.frameObjects[collapseFrames[0].parentId].frozenState == FrozenState.FROZEN;
             let nextWouldBe;
             // Important to do this before next step as we might then remove some:
             if (combinedCollapse.states.size === 1) {
                 const commonState : CollapsedState = combinedCollapse.states.keys().next().value;
                 this.frameContextMenuItems[commonState as number].disabled = true;
-                nextWouldBe = calculateNextCollapseState(commonState, collapseFrames);
+                nextWouldBe = calculateNextCollapseState(commonState, collapseFrames, parentIsFrozen);
             }
             else {
-                nextWouldBe = calculateNextCollapseState(undefined, collapseFrames);
+                nextWouldBe = calculateNextCollapseState(undefined, collapseFrames, parentIsFrozen);
             }
             let someCollapseShowing = false;
             // Loops through all possible enum values, backwards so we can remove without upsetting the later-processed indexes:
             for (const c of Object.values(CollapsedState).filter((v) => typeof v === "number").map((v) => v as number).sort((a, b) => b - a)) {
                 // If state is impossible for all frames, don't show it in the menu:
                 // Also, if there's only one allowed state for all frames (which would be fully visible), remove all items:
-                if (!combinedCollapse.allowedStates.has(c as CollapsedState) || combinedCollapse.allowedStates.size === 1) {
+                if (!combinedCollapse.allowedStates.has(c as CollapsedState) || combinedCollapse.allowedStates.size === 1
+                    || (c as CollapsedState == CollapsedState.FULLY_VISIBLE && parentIsFrozen)) {
                     this.frameContextMenuItems.splice(c,1);
                 }
                 else {
@@ -543,27 +545,25 @@ export default Vue.extend({
             }
             // For freezing, we don't show it for bulk operations:
             let someFrozenShowing = false;
-            if (this.isPartOfSelection) {
-                removeIf(this.frameContextMenuItems, (x) => x.actionName === FrameContextMenuActionName.freeze || x.actionName === FrameContextMenuActionName.unfreeze);
-            }
-            else {
-                // We take it out if the frame doesn't allow it or it's already in that state:
-                removeIf(this.frameContextMenuItems, (x) => {
-                    if (x.actionName === FrameContextMenuActionName.freeze) {
-                        const remove = this.frozenState as FrozenState === FrozenState.FROZEN || !this.frameType.allowedFrozenStates.includes(FrozenState.FROZEN);
-                        someFrozenShowing = someFrozenShowing || !remove;
-                        return remove;
-                    }
-                    else if (x.actionName === FrameContextMenuActionName.unfreeze) {
-                        const remove = this.frozenState as FrozenState === FrozenState.UNFROZEN || !this.frameType.allowedFrozenStates.includes(FrozenState.UNFROZEN);
-                        someFrozenShowing = someFrozenShowing || !remove;
-                        return remove;
-                    }
-                    else {
-                        return false; // Leave everything else untouched
-                    }
-                });
-            }
+            // We take it out if the frame doesn't allow it or it's already in that state:
+            removeIf(this.frameContextMenuItems, (x) => {
+                if (x.actionName === FrameContextMenuActionName.freeze) {
+                    // We don't allow freezing if it's not at the top-level in the container:
+                    const remove = this.frozenState as FrozenState === FrozenState.FROZEN
+                                        || !this.frameType.allowedFrozenStates.includes(FrozenState.FROZEN)
+                                        || this.appStore.frameObjects[frameParentId].frameType.type != ContainerTypesIdentifiers.defsContainer;
+                    someFrozenShowing = someFrozenShowing || !remove;
+                    return remove;
+                }
+                else if (x.actionName === FrameContextMenuActionName.unfreeze) {
+                    const remove = this.frozenState as FrozenState === FrozenState.UNFROZEN || !this.frameType.allowedFrozenStates.includes(FrozenState.UNFROZEN);
+                    someFrozenShowing = someFrozenShowing || !remove;
+                    return remove;
+                }
+                else {
+                    return false; // Leave everything else untouched
+                }
+            });
             
             if (!someCollapseShowing && !someFrozenShowing) {
                 // Remove the divider, which will now be position 0:
@@ -1295,9 +1295,25 @@ export default Vue.extend({
 
         setFreeze(frozenState: FrozenState) {
             const frames = this.isPartOfSelection ? this.appStore.selectedFrames : [this.frameId];
-            for (let frame of frames) {
-                if (this.appStore.frameObjects[frame].frameType.allowedFrozenStates.includes(frozenState)) {
-                    this.appStore.setFrozenStatus({frameId: frame, frozen: frozenState});
+            for (let frameId of frames) {
+                let frame = this.appStore.frameObjects[frameId];
+                let frameType = frame.frameType;
+                if (frameType.allowedFrozenStates.includes(frozenState)) {
+                    this.appStore.setFrozenStatus({frameId: frameId, frozen: frozenState});
+                    if (frameType.type === AllFrameTypesIdentifier.funcdef) {
+                        // If we freeze a function it can't be fully visible:
+                        if ((frame.collapsedState ?? CollapsedState.FULLY_VISIBLE) == CollapsedState.FULLY_VISIBLE) {
+                            this.appStore.cycleFrameCollapsedState(frameId);
+                        }
+                    }
+                    // We also need to adjust all the children to not be fully visible:
+                    for (let childId of frame.childrenIds) {
+                        const child = this.appStore.frameObjects[childId];
+                        if ((child.collapsedState ?? CollapsedState.FULLY_VISIBLE) == CollapsedState.FULLY_VISIBLE && child.frameType.allowedCollapsedStates.length > 1) {
+                            // We cycle it to the next one:
+                            this.appStore.cycleFrameCollapsedState(childId);
+                        }
+                    }
                 }
             }
         },

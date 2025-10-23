@@ -3,7 +3,7 @@
         <div class="frame-container-header" @click.self="onOuterContainerClick">
             <button v-if="!isMainCodeFrameContainer && !isDefsFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
             <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer}" @click.self="toggleCollapse">{{containerLabel}}</span>
-            <ChildrenFrameStateToggle v-if="isDefsFrameContainer" :frames="this.frames"/>
+            <ChildrenFrameStateToggle v-if="isDefsFrameContainer" :frames="this.frames" :parentIsFrozen="false"/>
         </div>
 
         <!-- keep the tabindex attribute, it is necessary to handle focus properly -->

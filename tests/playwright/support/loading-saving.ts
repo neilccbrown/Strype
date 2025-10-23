@@ -41,7 +41,7 @@ export async function save(page: Page, firstSave = true) : Promise<string> {
 
 export async function testPlaywrightRoundTripImportAndDownload(page:Page, filepath: string) : Promise<void> {
     await load(page, filepath);
-    const expected = readFileSync(filepath, "utf8");
-    const output = readFileSync(await save(page, false), "utf8");
+    const expected = readFileSync(filepath, "utf8").replace(/\r\n/g, "\n");
+    const output = readFileSync(await save(page, false), "utf8").replace(/\r\n/g, "\n");
     expect(output).toEqual(expected);
 }

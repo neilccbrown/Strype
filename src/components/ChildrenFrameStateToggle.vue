@@ -23,6 +23,7 @@ export default Vue.extend({
     props: {
         frames: Array,
         isContainer: Boolean,
+        parentIsFrozen: Boolean,
     },
     
     computed: {
@@ -57,12 +58,12 @@ export default Vue.extend({
     
     methods: {
         cycleFoldChildren(event: MouseEvent) {
-            // Don't capture the mouse click:
+            // Don't capture the mouse click if there are no children; we are invisible and should let it pass through:
             if (this.frames?.length == 0) {
                 return;
             }
             
-            let nextState = calculateNextCollapseState(this.childrenCollapsedState, this.frames as FrameObject[]);
+            let nextState = calculateNextCollapseState(this.childrenCollapsedState, this.frames as FrameObject[], this.parentIsFrozen);
 
             (this.frames as FrameObject[]).forEach((f) => {
                 if (f.frameType.allowedCollapsedStates.includes(nextState)) {

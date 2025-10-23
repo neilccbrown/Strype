@@ -7,11 +7,10 @@ import {PNG} from "pngjs";
 import fs from "fs";
 import {doPagePaste} from "../support/editor";
 
-// The tests in this file can't run in parallel because they download
-// to the same filenames, so need to run one at a time.
-test.describe.configure({ mode: "serial" });
+let browser = "";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
+    browser = browserName;
     if (browserName === "webkit" && process.platform === "win32") {
         // On Windows+Webkit it just can't seem to load the page for some reason:
         testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
@@ -64,7 +63,7 @@ async function checkImageMatch(expectedImageFileName: string, fetchActual : (wid
         const actual = await fetchActual(expected.width, expected.height);
         // The recursive option stops it failing if the dir exists:
         fs.mkdirSync("tests/cypress/expected-screenshots/comparison/", { recursive: true });
-        fs.writeFileSync(`tests/cypress/expected-screenshots/comparison/${expectedImageFileName}.png`, PNG.sync.write(actual));
+        fs.writeFileSync(`tests/cypress/expected-screenshots/comparison/${browser}-${expectedImageFileName}.png`, PNG.sync.write(actual));
 
         const {width, height} = expected;
         const diff = new PNG({width, height});
@@ -77,7 +76,7 @@ async function checkImageMatch(expectedImageFileName: string, fetchActual : (wid
 
         // The recursive option stops it failing if the dir exists:
         fs.mkdirSync("tests/cypress/expected-screenshots/diff/", { recursive: true });
-        fs.writeFileSync(`tests/cypress/expected-screenshots/diff/${expectedImageFileName}.png`, PNG.sync.write(diff));
+        fs.writeFileSync(`tests/cypress/expected-screenshots/diff/${browser}-${expectedImageFileName}.png`, PNG.sync.write(diff));
 
         // calculating a percent diff
         const diffPercent = (numDiffPixels / (width * height) * 100);

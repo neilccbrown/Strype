@@ -9,7 +9,11 @@ import {save} from "../support/loading-saving";
 
 let scssVars: {[varName: string]: string};
 let strypeElIds: {[varName: string]: (...args: any[]) => string};
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page, browserName }, testInfo) => {
+    if (browserName === "webkit" && process.platform === "win32") {
+        // On Windows+Webkit it just can't seem to load the page for some reason:
+        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
+    }
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
