@@ -2079,13 +2079,13 @@ export const useStore = defineStore("app", {
             //we create a list of frames to delete that is either the elements of a selection OR the current frame's position
             let framesIdToDelete = [this.currentFrame.id];
             
-            let afterDelete = () => {};
+            let beforeDelete = () => {};
 
             //If a selection is deleted, we don't distinguish between "del" and "backspace": 
             //We move the caret at the last element of the selection, and perform "backspace" for each element of the selection
             if(this.selectedFrames.length > 0){
                 if(this.selectedFrames[this.selectedFrames.length-1] !== this.currentFrame.id){
-                    afterDelete = () => this.setCurrentFrame(
+                    beforeDelete = () => this.setCurrentFrame(
                         {
                             id: this.selectedFrames[this.selectedFrames.length-1], 
                             caretPosition: CaretPosition.below,
@@ -2117,6 +2117,8 @@ export const useStore = defineStore("app", {
             if (!canDeleteAll) {
                 return false;
             }
+            
+            beforeDelete();
             
             framesIdToDelete.forEach((currentFrameId) => {
                 //if delete is pressed
@@ -2218,8 +2220,6 @@ export const useStore = defineStore("app", {
                 }
             });
             
-            afterDelete();
-
             //clear the selection of frames
             this.unselectAllFrames();
 
