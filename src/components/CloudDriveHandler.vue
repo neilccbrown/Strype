@@ -12,10 +12,8 @@
             </template>
         </ModalDlg>
         <!-- Each specific drive is created here, but typing inference is done in getSpecificCloudDriveComponent() -->
-        <GoogleDriveComponent driveName="Google Drive" apiName="GAPI" ref="googleDriveComponent"
-            :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
-        <OneDriveComponent drive-name="OneDrive" apiName="OneDrive FilePicker API" ref="oneDriveComponent" 
-            :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onUnsupportedByStrypeFilePicked="()=> console.log('a')" />
+        <GoogleDriveComponent ref="googleDriveComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
+        <OneDriveComponent ref="oneDriveComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
     </div>
 </template>
 
@@ -245,6 +243,13 @@ export default Vue.extend({
 
         loadFile(cloudTarget: StrypeSyncTarget) {
             this.currentAction = "load";
+
+            // We might not have a value in cloudTarget when we reload the picker after a file with unsupported extension has been selected,
+            // in that case we use the current target
+            if(!cloudTarget){
+                cloudTarget = this.currentCloudTarget;
+            }
+
             const cloudDriveComponent = this.getSpecificCloudDriveComponent(cloudTarget);
             if(cloudDriveComponent){
                 // This method is the entry point to load a file from a Drive. We check or request to sign-in to a specific Drive here.
@@ -303,7 +308,7 @@ export default Vue.extend({
                             });
                     }
                     else{
-                        (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject("errorMessage.retrievedSharedGenericProject", this.$i18n.t("errorMessage.cloudAPIFailed", {apiname: cloudDriveComponent.apiName}) as string);
+                        (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject("errorMessage.retrievedSharedGenericProject", this.$i18n.t("errorMessage.cloudAPIFailed", {apiname: cloudDriveComponent.driveAPIName}) as string);
                     }
                 });
         },

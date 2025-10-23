@@ -51,8 +51,6 @@ export default Vue.extend({
     },
     
     props: {
-        driveName: { type: String, required: true },
-        apiName: { type: String, required: true },
         onFileToLoadPicked: {type: Function as PropType<(cloudTarget: StrypeSyncTarget, fileId: string, fileName?: string) => Promise<void>>, required: true},
         onFolderToSaveFilePicked: {type: Function as PropType<(cloudTarget: StrypeSyncTarget) => void>, required: true},
         onUnsupportedByStrypeFilePicked: {type: Function as PropType<() => void>, required: true},
@@ -93,6 +91,31 @@ export default Vue.extend({
     computed:{
         ...mapStores(useStore),
 
+        driveName(): string {
+            return "OneDrive";
+        },
+
+        driveAPIName(): string{
+            return "OneDrive File Picker v8 / Graph REST API";
+        },
+
+        modifiedDataSearchOptionName(): string {
+            return "lastModifiedDateTime";
+        },
+
+        fileMoreFieldsForIO(): string {
+            // This property isn't making sense for OneDrive, 
+            // we only have it for keepint TS happy.
+            return "";
+        },
+
+        fileBasicFieldsForIO(): string {
+            // This property isn't making sense for OneDrive, 
+            // we only have it for keepint TS happy.
+            return "";
+        },
+
+        // These are specific to the OneDrive component.
         siteOrigin(): string {
             return (process.env.NODE_ENV === "production") ? "https://www.strype.org" : "http://localhost:8081";
         },
@@ -102,9 +125,9 @@ export default Vue.extend({
             return `${this.siteOrigin}/${redirectServerEditorPath}/`;
         },
 
-        // These are specific to the OneDrive component.
         clientId(): string {
-            return "ee29b56f-8714-472f-a1c8-37e8551e3ec5";
+            // Our client ID (identifying Strype as an app in Microsoft Azure)
+            return "a1973135-8146-49d3-b9e2-347ed673d43b";
         },
 
         consumerTenantIdForPersonalAccounts(): string {
@@ -153,7 +176,7 @@ export default Vue.extend({
             return {
                 pickerMode: CloudDriveItemPickerMode.FOLDERS,
                 pathResolutionMode: CloudDriveItemPickerFolderPathResolutionMode.BY_NAME,
-                initialFolderPathPartsToSelect: this.appStore.strypeProjectLocationPath.split("/"),
+                initialFolderPathPartsToSelect: (this.appStore.strypeProjectLocationPath??"").split("/"),
                 emptyPickerText: this.$i18n.t("appMessage.emptyCloudDrivePicker", {drivename: this.driveName }) as string,
             };
         },
@@ -175,29 +198,36 @@ export default Vue.extend({
             });
 
             if(this.oauthToken){
-                (this.$parent as InstanceType<typeof CloudDriveHandlerComponent>).updateSignInStatus(StrypeSyncTarget.od, true);
-
                 // If have a work/school account and we are doing the initial authentication, we need to retrieve the baseUrl too.
                 if(!this.isPersonalAccount){
-                    const token = await this.getToken(OneDriveTokenPurpose.PICKER_BASE_URL);
-                    const resp = await fetch("https://graph.microsoft.com/v1.0/me/drive", {method: "GET", headers: {"Authorization": `Bearer ${token}`,"Accept": "application/json"}});
-                    if (!resp.ok) {
-                        throw new Error(`Graph API request failed: ${resp.status} ${resp.statusText}`);
-                    }
-
-                    const data = await resp.json() as BaseItem;
-                    // Based on observation and ChatGPT, the URL returned is not a base URL but something pointing at "Documents".
-                    // So, we need to trim it. The usual pattern for WS accounts base URL is 
-                    // "https://{tenant}-my.sharepoint.com/personal/{userPrincipalName with "_" replacing "@"}
-                    if(data.webUrl){
-                        const patternForTrimming = /https:\/\/.+\.sharepoint\.com\/personal\/[^/]+/g;
-                        const matchingRes = data.webUrl.match(patternForTrimming);
-                        if(matchingRes){
-                            this.baseUrl = data.webUrl.substring(0, matchingRes[0].length); 
+                    const token = await this.getToken(OneDriveTokenPurpose.PICKER_BASE_URL).catch((_) => {
+                        return null;
+                    });
+                    if(token) {
+                        const resp = await fetch("https://graph.microsoft.com/v1.0/me/drive", {method: "GET", headers: {"Authorization": `Bearer ${token}`,"Accept": "application/json"}});
+                        if (!resp.ok) {
+                            throw new Error(`Graph API request failed: ${resp.status} ${resp.statusText}`);
                         }
-                    }                    
+
+                        const data = await resp.json() as BaseItem;
+                        // Based on observation and ChatGPT, the URL returned is not a base URL but something pointing at "Documents".
+                        // So, we need to trim it. The usual pattern for WS accounts base URL is 
+                        // "https://{tenant}-my.sharepoint.com/personal/{userPrincipalName with "_" replacing "@"}
+                        if(data.webUrl){
+                            const patternForTrimming = /https:\/\/.+\.sharepoint\.com\/personal\/[^/]+/g;
+                            const matchingRes = data.webUrl.match(patternForTrimming);
+                            if(matchingRes){
+                                this.baseUrl = data.webUrl.substring(0, matchingRes[0].length); 
+                            }
+                        }
+                    }
+                    else{
+                        return;
+                    }
                 }
-                callback(StrypeSyncTarget.od);                
+            
+                (this.$parent as InstanceType<typeof CloudDriveHandlerComponent>).updateSignInStatus(StrypeSyncTarget.od, true);
+                callback(StrypeSyncTarget.od);
             }
         },   
 
@@ -342,7 +372,7 @@ export default Vue.extend({
         },
 
         checkIsCloudFileReadonly(id: string, onGettingReadonlyStatus: (isReadonly: boolean) => void){
-            //TODO
+            // We don't retrieve read only files in OneDrive
             onGettingReadonlyStatus(false);
         },
 
@@ -544,7 +574,6 @@ export default Vue.extend({
                     // (the layout path is only required for the WS accounts).
                     const layoutPath = (this.isPersonalAccount) ? "" : "/_layouts/15/FilePicker.aspx";
                     const url = `${this.baseUrl + layoutPath}?${queryString}`;
-                    console.log("going to query the picker @ " + url);
                     // create a form
                     const form = this.pickerPopup?.document.createElement("form");
                     if(this.pickerPopup && form){
@@ -679,26 +708,23 @@ export default Vue.extend({
         },
 
         checkIsFileLocked(existingFileId: string, onSuccess: VoidFunction, onFailure: VoidFunction) {
-            //TODO: is there an equivalent in OneDrive? If not, just return as never locked...
-            // Following the addition of a locking file settings in Drive (Sept 2023) we need to check if a file is locked when we want to save.
-            // This method retrieves this property for a given file by its file ID.
-            // It is the responsablity of the caller of that method to provide a valid file ID and have passed authentication.
-            // However, we still handle potential API access issues in this method, hence this methods expects the methods to run in case of success or failure
+            // OneDrive doesn't not seem to have a similar "lock" mechanism than Google Drive, so we ignore that.
             this.isFileLocked = false;
             // Pass on the property value to the success case call back method.
             onSuccess();
         },
 
         async searchCloudDriveElements(elementName: string, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]>{
-            //TODO
             // Make a search query on OneDrive, with the provided query parameter.
             // Returns the elements found in the Drive listed by the HTTPRequest object obtained with the Graph API.
-            // Note: we do not use the "search()" tool because it retrieves all entries AT ROOT LEVEL - instead we use "children"
-            // and manually filter out results here.
-     
+            // Note: we do not use the "search()" tool because it retrieves all entries recursively where called 
+            // - instead we use "children" and manually filter out results here.     
+            // Also, we don't need to order files by date: we use that for finding duplicates on a Cloud for FileIO:
+            // OneDrive doesn't allow duplicated names in a same location.
             const token = await this.getToken(OneDriveTokenPurpose.GRAPH_SEARCH).catch((_) => {
                 return Promise.reject([]);
             });
+            
             const requestURL = `https://graph.microsoft.com/v1.0/me/drive/items/${elementLocationId}/children`;
             const resp = await fetch(requestURL,
                 {method: "GET", headers: {"Authorization": `Bearer ${token}`,"Accept": "application/json"}});
@@ -713,30 +739,110 @@ export default Vue.extend({
                     .map((strypeFileItem: BaseItem) => ({name: strypeFileItem.name, id: strypeFileItem.id} as CloudDriveFile)));
             }
             else{
-                alert("//TODO");
+                // We have requested on single element, we just get it from the results.
+                return Promise.resolve(data.value.filter((entry: BaseItem) => (entry.name??"") == elementName)
+                    .map((strypeFileItem: BaseItem) => ({name: strypeFileItem.name, id: strypeFileItem.id} as CloudDriveFile)));
             }
-            return Promise.resolve([]);
         },
 
-        readFileContentForIO(fileId: string, isBinaryMode: boolean, filePath: string): Promise<string | Uint8Array | {success: boolean, errorMsg: string}> {
-            //TODO
+        async readFileContentForIO(fileId: string, isBinaryMode: boolean, filePath: string): Promise<string | Uint8Array | {success: boolean, errorMsg: string}> {
             // This method is used by FileIO to get a file string content.
             // It relies on the file Id passed as argument, and the callback method for handling succes or failure is also passed as arguments.
             // The argument "filePath" is only used for error message.
             // The nature of the answer depends on the reading mode: a string in normal text case, an array of bytes in binary mode.
-            return Promise.resolve("dummy text content");
+            const token = await this.getToken(OneDriveTokenPurpose.GRAPH_GET_FILE_DETAILS);
+            // The drive ID is part of the file ID so we can easily extract it...
+            const driveId = fileId.substring(0, fileId.indexOf("!"));
+            const requestURL = (driveId) ? `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}` : ("https://graph.microsoft.com/v1.0/drives/me/items/" + fileId);
+            try{
+                const resp = await fetch(requestURL + "/content", 
+                    {method: "GET", headers: {"Authorization": `Bearer ${token}`}});
+                if (!resp.ok){
+                    return Promise.reject(resp.status);
+                }
+                else{
+                    return (isBinaryMode) 
+                        ? resp.arrayBuffer().then((buffer) => {
+                            return new Uint8Array(buffer);
+                        }) 
+                        : resp.text().then((text) => {
+                            return text;
+                        });
+                } 
+            }
+            catch(err){
+                return Promise.reject(((typeof err == "string") ? err : (err as Error).message)??"unknown"); 
+            }
+            
         },
 
-        writeFileContentForIO(fileContent: string|Uint8Array, fileInfos: {filePath: string, fileName?: string, fileId?: string, folderId?: string}): Promise<string> {
-            //TODO
-            return Promise.resolve("a dummy file ID");
+        async writeFileContentForIO(fileContent: string|Uint8Array, fileInfos: {filePath: string, fileName?: string, fileId?: string, folderId?: string}): Promise<string> {
+            let catchErr = null;
+            const token = await this.getToken(OneDriveTokenPurpose.GRAPH_SAVE_FILE).catch((_) => {
+                catchErr = _;
+                return null;
+            });
+
+            if(token == null){
+                return Promise.reject(catchErr);
+            }
+
+            const isCreatingFile = !!(fileInfos.folderId);
+            const isFileContentEmpty = fileContent.length == 0;
+            const requestUrl = (isCreatingFile)
+                ? `https://graph.microsoft.com/v1.0/me/drive/items/${fileInfos.folderId}:/${encodeURI(fileInfos.fileName??"")}:/content` //the file name and the containing folder must be set by the caller!
+                : ((isFileContentEmpty) 
+                    ? `https://graph.microsoft.com/v1.0/me/drive/items/${fileInfos.fileId}/content` // but it may happen the content is empty, in that case we cannot use resumable upload
+                    : `https://graph.microsoft.com/v1.0/me/drive/items/${fileInfos.fileId}/createUploadSession`); // the most common case when we write in the file: the content is not empty, we can use resumable upload
+
+            const baseHeadersContent = {"Authorization": `Bearer ${token}`};
+            const resp = await fetch(requestUrl, 
+                {method: (isFileContentEmpty) ? "PUT" :"POST", headers: (isFileContentEmpty) ? {...baseHeadersContent, "Content-Type": "application/octet-stream", "Content-Length": "0"} : baseHeadersContent});
+
+            if (!resp.ok){
+                return Promise.reject(resp.status);
+            }
+            else if(isFileContentEmpty){
+                // Normal resopnse if the file doesn't exist and we have created it
+                const jsonProps = await resp.json() as BaseItem;
+                return Promise.resolve(jsonProps.id??"");
+            }
+            else{
+                // Resumable upload if the file exists
+                const data = await resp.json() as UploadSession;
+                const uploadSessionURL = data.uploadUrl;
+                // We upload chunks of 5 MB
+                const rawFileContent = (typeof fileContent == "string") ? new TextEncoder().encode(fileContent) : fileContent;
+                const CHUNK_SIZE = 5*1024*1024;
+                // Need to also consider we may write a 0-length file when created the file!
+                for (let offset = 0; (offset == 0 && rawFileContent.length == 0) || offset < rawFileContent.length; offset += CHUNK_SIZE) {
+                    const chunk = rawFileContent.subarray(offset, offset + CHUNK_SIZE);
+                    const resp = await fetch(uploadSessionURL as string, {
+                        method: "PUT", 
+                        headers: {"Content-Length": chunk.length.toString(), "Content-Range": `bytes ${offset}-${offset + chunk.length - 1}/${rawFileContent.length}`},
+                        body: chunk,
+                    });
+                    const jsonProps = await resp.json() as BaseItem;
+                    // On the last chunk, Graph should return the meta data about the created file, so we can get the ID from there.
+                    if(jsonProps.id){
+                        return Promise.resolve(jsonProps.id);
+                    }                    
+                }                
+            } 
+            
+            // If we haven't been able to return the ID properly then we are in an error state:
+            return Promise.reject("Could not retrieve the file ID when saving file in OneDrive with FileIO.");
+        },
+
+        checkIsCloudDriveFileReadonly(_: CloudDriveFile): boolean {
+            // Used by FileIO to get the readonly status of a file, OneDrive does not have the same permissions we can find in Google Drive, so we return false
+            return false;
         },
 
         /**
          * Specific to OneDrive
          **/ 
         async getToken(purpose: OneDriveTokenPurpose): Promise<string> {
-            console.log("requesting token for purpose = " + OneDriveTokenPurpose[purpose]);
             this.app = new PublicClientApplication((purpose == OneDriveTokenPurpose.INIT_AUTH) 
                 ? this.msalParamsInit 
                 : ((this.isPersonalAccount) ? this.msalParamsConsumerPicker : this.msalParamsWorkPicker));
@@ -780,10 +886,7 @@ export default Vue.extend({
             default:
                 break;
             }
-            const authParams = {scopes: scopes};     
-            console.log("requesting tokens for:");
-            console.log(authParams); 
-
+            const authParams = {scopes: scopes};
             if(purpose == OneDriveTokenPurpose.INIT_AUTH ){
                 // NOTE: there is a very tricky behaviour with MSAL: it seems that Azure will try its best to keep users
                 // logged in, for example with SSO. We request a login, but if the user has used MFA with email to log in
@@ -828,8 +931,7 @@ export default Vue.extend({
                         throw e;
                     }
                 }
-            }       
-            console.log(">>>> got a token");
+            }
             return accessToken;
         },
 
@@ -855,7 +957,7 @@ export default Vue.extend({
                         });
                         break;
                     default:
-                        console.log("unknown message type from OneDrive Picker: "+message.type);
+                        console.error("unknown message type from OneDrive Picker: "+message.type);
                         break;
                     }
                 }
@@ -906,6 +1008,12 @@ export default Vue.extend({
                     const strypeFileItem = message.data.data.items[0] as BaseItem;
                     const fileId = strypeFileItem.id??"";
                     if(this.isPickingFile){
+                        // We should never end up with the wrong type of file, since the Picker is already configured to filter files.
+                        // But since we have already a mechanism in place for that situation, let's double check just for safety...
+                        if(!strypeFileItem.name?.endsWith("."+strypeFileExtension) && !strypeFileItem.name?.endsWith("."+pythonFileExtension)){
+                            this.onUnsupportedByStrypeFilePicked();
+                            break;
+                        }
                         this.currentFileName = strypeFileItem.name as string;                    
                         this.currentFileLastModifiedDate = strypeFileItem.lastModifiedDateTime as string;
                         this.onFileToLoadPicked(StrypeSyncTarget.od, fileId, this.currentFileName);

@@ -43,10 +43,11 @@ export interface CloudDriveFile {
     id: string, // The file ID on the Drive
     content: string | Uint8Array, // The file content when opened
 }
-// Specifics for Google Drive
-export interface GDFile extends CloudDriveFile {
-    // Capabilities used to evaluate readonly status
-    capabilities: { canEdit: boolean, canModifyContent: boolean }, contentRestrictions?: { readOnly?: boolean }
+
+export interface CloudFileWithMetaData extends CloudDriveFile {
+    filePath: string, // The file path as specified in the user code, and "visually" represented in the Drive
+    locationId: string, // The file location's Drive folder ID
+    readOnly: boolean, // Readonly status of the file in the Drive
 }
 
 // A simple Drive folder typing for the Strype project's location folder tree structure
@@ -55,13 +56,14 @@ export interface CloudFolder {
     name: string,
     children: CloudFolder[],
 }
-// end specifics for Google Drive
 
-export interface CloudFileWithMetaData extends GDFile {
-    filePath: string, // The file path as specified in the user code, and "visually" represented in the Drive
-    locationId: string, // The file location's Drive folder ID
-    readOnly: boolean, // Readonly status of the file in the Drive
+// Specifics for Google Drive
+export interface GDFile extends CloudDriveFile {
+    // Capabilities used to evaluate readonly status
+    capabilities: { canEdit: boolean, canModifyContent: boolean }, contentRestrictions?: { readOnly?: boolean }
 }
+
+// end specifics for Google Drive
 /* end types for FileIO */
 
 /* Picker related stuff: mainly unused but designed to be as generic as possible for Cloud Drive APIs that don't offer a picker. */
@@ -99,8 +101,6 @@ export interface CTreeItemPickerItem extends CloudDriveItemPickerItem{
 // It's not ideal but at least it still allow detecting missing parts during development and allow TS working everywhere.
 export interface CloudDriveComponent {
     // Props
-    driveName: string,
-    apiName: string,
     onFileToLoadPicked: (cloudTarget: StrypeSyncTarget, fileId: string, fileName?: string) => Promise<void>,
     onFolderToSaveFilePicked: (cloudTarget: StrypeSyncTarget) => void,
     onUnsupportedByStrypeFilePicked: VoidFunction,
@@ -108,6 +108,13 @@ export interface CloudDriveComponent {
     // Data
     isFileLocked: boolean;
     previousCloudFileSharingStatus: CloudFileSharingStatus;
+
+    // Computed Properties    
+    driveName: string;
+    driveAPIName: string;
+    modifiedDataSearchOptionName: string;
+    fileMoreFieldsForIO: string,
+    fileBasicFieldsForIO: string,
 
     // Methods
     signIn: (signInCalBack: (cloudTarget: StrypeSyncTarget) => void) => void,
@@ -132,6 +139,7 @@ export interface CloudDriveComponent {
     getPublicShareLink: (saveFileId: string) => Promise<{ respStatus: number, webLink: string }>,
     searchCloudDriveElements: (elementName: string, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>) => Promise<CloudDriveFile[]>,
     //FileIO
+    checkIsCloudDriveFileReadonly: (file: CloudDriveFile) => boolean,
     readFileContentForIO: (fileId: string, isBinaryMode: boolean, filePath: string) => Promise<string | Uint8Array | { success: boolean, errorMsg: string }>,
     writeFileContentForIO: (fileContent: string | Uint8Array, fileInfos: { filePath: string, fileName?: string, fileId?: string, folderId?: string }) => Promise<string>,
 }

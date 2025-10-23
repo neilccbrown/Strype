@@ -110,7 +110,7 @@
       "fileModeErr":"mode d'ouverture de fichier invalide : {mode}.",
       "fileNotFound":"le fichier \"{filename}\" n'a pas été trouvé.",
       "fileFetchError":"récupération du fichier \"{filename}\" impossible. (erreur : {error})",
-      "accessToGDError":"accès au fichier \"{filename}\" dans Google Drive impossible. (erreur : {error})",
+      "accessToCloudDriveError":"accès au fichier \"{filename}\" dans {drivename} impossible. (erreur : {error})",
       "readonlyFile":"le fichier \"{filename}\" est en lecture seule.",
       "writingFileFailed":"écriture du fichier \"{filename}\" impossible. (erreur : {error})",
       "fileAlreadyExists":"le fichier \"{filename}\" existe déjà (un fichier ouvert avec le mode 'création exclusive' ne peut exister).",
