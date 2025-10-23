@@ -261,6 +261,38 @@ test.describe("Saves collapsed state after icon clicks", () => {
         await clickFoldFor(page, "top1");
         await saveAndCheck(page, testState({"top1": "FoldToDocumentation;Frozen"}));
     });
+    test.only("Freezing prevents deletion of the whole frame and its member frames", async ({page}) => {
+        await loadContent(page, testState({"Alpha": "Frozen", "__init__": "FoldToHeader", "top1": "FoldToDocumentation;Frozen"}));
+        // We start at the top of the body, so one up to get to bottom of defs:
+        await page.keyboard.press("ArrowUp");
+        // Then two more at same level to get below Alpha:
+        for (let i = 0; i < 2; i++) {
+            await page.keyboard.press((process.platform == "darwin" ? "Alt" : "Control") + "+ArrowUp");
+        }
+        // We try backspace and delete and selection; if any of it deletes it will fail the test:
+        await page.keyboard.press("Backspace");
+        await page.keyboard.press("ArrowUp"); // Will go past because it's folded
+        await page.keyboard.press("Delete");
+        await page.keyboard.press("Shift+ArrowUp");
+        // With selection, try deleting, cutting (TODO):
+        await page.keyboard.press("Delete");
+        await page.keyboard.press("Backspace");
+        //await page.keyboard.press((process.platform == "darwin" ? "Meta" : "Control") + "+x");
+        // Break the selection:
+        await page.keyboard.press("ArrowUp");
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("Delete");
+        // Now go into the body and try deletion:
+        await page.keyboard.press("Delete");
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("Backspace");
+        await page.keyboard.press("Delete");
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("Backspace");
+        await page.keyboard.press("Delete");
+        // After all that, should be unaffected:
+        await saveAndCheck(page, testState({"Alpha": "Frozen", "__init__": "FoldToHeader", "top1": "FoldToDocumentation;Frozen"}));
+    });
 });
 
 

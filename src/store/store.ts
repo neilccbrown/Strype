@@ -2067,7 +2067,9 @@ export const useStore = defineStore("app", {
                 );
         },
 
-        deleteFrames(key: string, ignoreBackState?: boolean){
+        // Note: this will not always do the delete, for example if frozen frames are involved
+        // Returns true if the deletion ocurred or false if it did not.
+        deleteFrames(key: string, ignoreBackState?: boolean) : boolean {
             const stateBeforeChanges = cloneDeep(this.$state);
 
             // we remove the editable slots from the available positions
@@ -2076,12 +2078,14 @@ export const useStore = defineStore("app", {
 
             //we create a list of frames to delete that is either the elements of a selection OR the current frame's position
             let framesIdToDelete = [this.currentFrame.id];
+            
+            let afterDelete = () => {};
 
             //If a selection is deleted, we don't distinguish between "del" and "backspace": 
             //We move the caret at the last element of the selection, and perform "backspace" for each element of the selection
             if(this.selectedFrames.length > 0){
                 if(this.selectedFrames[this.selectedFrames.length-1] !== this.currentFrame.id){
-                    this.setCurrentFrame(
+                    afterDelete = () => this.setCurrentFrame(
                         {
                             id: this.selectedFrames[this.selectedFrames.length-1], 
                             caretPosition: CaretPosition.below,
@@ -2095,6 +2099,23 @@ export const useStore = defineStore("app", {
                 // If they backspace after a joint frame structure that has joint frames (e.g. if +else),
                 // delete the last of the joint frames:
                 framesIdToDelete = [this.frameObjects[this.currentFrame.id].jointFrameIds[this.frameObjects[this.currentFrame.id].jointFrameIds.length - 1]];
+            }
+            
+            // Check if we can actually delete all frames.  If we can't, we back out and delete none.
+            const canDeleteAll = framesIdToDelete.every((frameId) => {
+                // A frame can be deleted if it is non-frozen, and all its parents are non-frozen:
+                while (frameId > 0) {
+                    if (this.frameObjects[frameId].frozenState == FrozenState.FROZEN) {
+                        return false;
+                    }
+                    frameId = this.frameObjects[frameId].parentId;
+                }
+                // No frozen frames found, fine to delete:
+                return true;
+            });
+            
+            if (!canDeleteAll) {
+                return false;
             }
             
             framesIdToDelete.forEach((currentFrameId) => {
@@ -2194,8 +2215,10 @@ export const useStore = defineStore("app", {
                             deleteChildren: deleteChildren,
                         }
                     );
-                }  
+                }
             });
+            
+            afterDelete();
 
             //clear the selection of frames
             this.unselectAllFrames();
@@ -2210,6 +2233,8 @@ export const useStore = defineStore("app", {
             if(!ignoreBackState){
                 this.saveStateChanges(stateBeforeChanges);
             }
+            
+            return true;
         },
         
         deleteFrameFromSlot(frameId: number){      
