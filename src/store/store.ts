@@ -17,11 +17,11 @@ import { nextTick } from "@vue/composition-api";
 import { TPyParser } from "tigerpython-parser";
 import AppComponent from "@/App.vue";
 import emptyState from "@/store/initial-states/empty-state";
+import Parser from "@/parser/parser";
 /* IFTRUE_isPython */
 import PEAComponent from "@/components/PythonExecutionArea.vue";
 import CommandsComponent from "@/components/Commands.vue";
 import { actOnTurtleImport, getPEAComponentRefId } from "@/helpers/editor";
-import Parser from "@/parser/parser";
 /* FITRUE_isPython */
 
 function getState(): StateAppObject {
