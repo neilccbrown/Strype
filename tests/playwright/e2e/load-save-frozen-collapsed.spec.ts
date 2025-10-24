@@ -4,6 +4,7 @@ import fs from "fs";
 import en from "@/localisation/en/en_main.json";
 import { CollapsedState } from "../../cypress/support/frame-types";
 import { randomUUID } from "node:crypto";
+import {addFakeClipboard} from "../support/clipboard";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && process.platform === "win32") {
@@ -13,6 +14,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     // These tests can take longer than the default 30 seconds:
     testInfo.setTimeout(120_000); // 120 seconds
 
+    await addFakeClipboard(page);
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
     
@@ -265,7 +267,7 @@ test.describe("Saves collapsed state after icon clicks", () => {
         await loadContent(page, testState({"Alpha": "Frozen", "__init__": "FoldToHeader", "top1": "FoldToDocumentation;Frozen"}));
         // We start at the top of the body, so one up to get to bottom of defs:
         await page.keyboard.press("ArrowUp");
-        // Then two more at same level to get below Alpha:
+        // Then two more at same level to get *below* Alpha:
         for (let i = 0; i < 2; i++) {
             await page.keyboard.press((process.platform == "darwin" ? "Alt" : "Control") + "+ArrowUp");
         }
@@ -292,6 +294,28 @@ test.describe("Saves collapsed state after icon clicks", () => {
         await page.keyboard.press("Delete");
         // After all that, should be unaffected:
         await saveAndCheck(page, testState({"Alpha": "Frozen", "__init__": "FoldToHeader", "top1": "FoldToDocumentation;Frozen"}));
+    });
+
+    test("Freezing prevents focusing the text slots", async ({page}) => {
+        await loadContent(page, testState({"Alpha": "Frozen", "__init__": "FoldToHeader", "top1": "FoldToDocumentation;Frozen"}));
+        // We start at the top of the body, so one up to get to bottom of defs:
+        await page.keyboard.press("ArrowUp");
+        // Then three more at same level to get above Alpha:
+        for (let i = 0; i < 3; i++) {
+            await page.keyboard.press((process.platform == "darwin" ? "Alt" : "Control") + "+ArrowUp");
+        }
+        // Right arrow should go past header and into frame, then right again should go past
+        // the next frame, so right, shift+right, ctrl-c should copy the first frame inside:
+        await page.keyboard.press("ArrowRight");
+        await page.keyboard.press("ArrowRight");
+        await page.keyboard.press("Shift+ArrowDown");
+        await page.keyboard.press((process.platform == "darwin" ? "Meta" : "Control") + "+c");
+        
+        const clipboardContent : string = await page.evaluate("navigator.clipboard.readText()");
+        expect(clipboardContent).toEqual(`#(=> FrameState:FoldToHeader
+def __init__ (self, ) :
+    self.x  = 7 
+`);
     });
 });
 
