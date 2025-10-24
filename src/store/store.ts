@@ -21,6 +21,7 @@ import emptyState from "@/store/initial-states/empty-state";
 import PEAComponent from "@/components/PythonExecutionArea.vue";
 import CommandsComponent from "@/components/Commands.vue";
 import { actOnTurtleImport, getPEAComponentRefId } from "@/helpers/editor";
+import Parser from "@/parser/parser";
 /* FITRUE_isPython */
 
 function getState(): StateAppObject {
@@ -2925,18 +2926,21 @@ export const useStore = defineStore("app", {
         },
 
         copyFrame(frameId: number) {
-            // We do not use the system's clipboard for frames, so we clear any potential text to avoid interference
-            navigator.clipboard.writeText("");
             this.flushCopiedFrames();
+            const text = new Parser(true, "spy").parse({startAtFrameId: frameId, stopAt: {frameId: frameId, includeThisFrame: true}, excludeLoopsAndCommentsAndCloseTry: false, defsLast: false});
             this.doCopyFrame(frameId);
+            navigator.clipboard.writeText(text);
             this.updateNextAvailableId();
         },
 
         copySelection() {
-            // We do not use the system's clipboard for frames, so we clear any potential text to avoid interference
-            navigator.clipboard.writeText("");
+            if (this.selectedFrames.length == 0) {
+                return;
+            }
             this.flushCopiedFrames();
+            const text = this.selectedFrames.length == 0 ? "" : new Parser(true, "spy").parse({startAtFrameId: this.selectedFrames[0], stopAt: {frameId: this.selectedFrames.at(-1) as number, includeThisFrame: true}, excludeLoopsAndCommentsAndCloseTry: false, defsLast: false});
             this.doCopySelection();
+            navigator.clipboard.writeText(text);
             this.updateNextAvailableId();
         },
 
