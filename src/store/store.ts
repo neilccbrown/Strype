@@ -632,6 +632,17 @@ export const useStore = defineStore("app", {
             return state.frameObjects[frameId].isVisible;
         },
 
+        isEffectivelyFrozen: (state) => (frameId: number) => {
+            while (frameId > 0) {
+                if (state.frameObjects[frameId].frozenState == FrozenState.FROZEN) {
+                    return true;
+                }
+                frameId = state.frameObjects[frameId].parentId;
+            }
+            // No frozen frames found in the ancestors:
+            return false;
+        },
+
         retrieveUserDefinedElements:(state) => {
             // Retrieve the user defined functions and variables.
             // We make sure we don't look up the variable/function in the current frame
@@ -2105,14 +2116,7 @@ export const useStore = defineStore("app", {
             // Check if we can actually delete all frames.  If we can't, we back out and delete none.
             const canDeleteAll = framesIdToDelete.every((frameId) => {
                 // A frame can be deleted if it is non-frozen, and all its parents are non-frozen:
-                while (frameId > 0) {
-                    if (this.frameObjects[frameId].frozenState == FrozenState.FROZEN) {
-                        return false;
-                    }
-                    frameId = this.frameObjects[frameId].parentId;
-                }
-                // No frozen frames found, fine to delete:
-                return true;
+                return !this.isEffectivelyFrozen(frameId);
             });
             
             if (!canDeleteAll) {

@@ -982,6 +982,10 @@ export default Vue.extend({
         },
 
         getBodyMidFramePositions(): {caretPos: CurrentFrame, midYThreshold: number}[] {
+            if (this.appStore.frameObjects[this.frameId].frozenState == FrozenState.FROZEN) {
+                return [];
+            }
+            
             // The mid frame positions for the "body" part of a block frames have at least 1 entity:
             // - A) the parent's body position (top of the body) that would be selected 
             //    when the click vertical position is above the middle of the first child (when there are children) or above the middle of the empty body space (if no children)
