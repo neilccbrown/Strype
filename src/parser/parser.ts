@@ -226,6 +226,7 @@ export const stringToFrozen: Record<string, FrozenState> = Object.entries(frozen
 export default class Parser {
     private startAtFrameId = -100; // default value to indicate there is no start
     private stopAtFrameId = -100; // default value to indicate there is no stop
+    private stopAtIncludesLastFrame = false; // what to do with stopAtFrameId; do we include it?
     private exitFlag = false; // becomes true when the stopAtFrameId is reached.
     private framePositionMap: LineAndSlotPositions = {} as LineAndSlotPositions;  // For each line holds the positions the *editable slots* start at
     private line = 0;
@@ -449,13 +450,23 @@ export default class Parser {
 
         //if the current frame is a container, we don't parse it as such
         //but parse directly its children (frames that it contains)
+        let exitNextFrame = false;
         for (const frame of codeUnits) {
+            if (exitNextFrame) {
+                this.exitFlag = true;
+                break;
+            }
             if(frame.id === this.stopAtFrameId || this.exitFlag){
-                this.exitFlag = true; // this is used in case we are inside a recursion
                 if (frame.id === this.stopAtFrameId) {
                     this.stoppedIndentation = indentation;
                 }
-                break;
+                if (frame.id == this.stopAtFrameId && this.stopAtIncludesLastFrame) {
+                    exitNextFrame = true;
+                }
+                else {
+                    this.exitFlag = true; // this is used in case we are inside a recursion
+                    break;
+                }
             }
             
             if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.framesMainContainer) {
@@ -521,20 +532,25 @@ export default class Parser {
             }            
         }
 
+        if (exitNextFrame) {
+            this.exitFlag = true;
+        }
+
         return output;
     }
     
     public parseJustImports() : string {
-        return this.parse({startAtFrameId: useStore().getImportsFrameContainerId, stopAtFrameId: useStore().getDefsFrameContainerId});
+        return this.parse({startAtFrameId: useStore().getImportsFrameContainerId, stopAt: {frameId: useStore().getDefsFrameContainerId, includeThisFrame: false}});
     }
 
-    public parse({startAtFrameId, stopAtFrameId, excludeLoopsAndCommentsAndCloseTry, defsLast}: {startAtFrameId?: number, stopAtFrameId?: number, excludeLoopsAndCommentsAndCloseTry?: boolean, defsLast?: boolean}): string {
+    public parse({startAtFrameId, stopAt, excludeLoopsAndCommentsAndCloseTry, defsLast}: {startAtFrameId?: number, stopAt?: {frameId: number, includeThisFrame: boolean}, excludeLoopsAndCommentsAndCloseTry?: boolean, defsLast?: boolean}): string {
         let output = "";
         if(startAtFrameId){
             this.startAtFrameId = startAtFrameId;
         }
-        if(stopAtFrameId){
-            this.stopAtFrameId = stopAtFrameId;
+        if(stopAt){
+            this.stopAtFrameId = stopAt.frameId;
+            this.stopAtIncludesLastFrame = stopAt.includeThisFrame;
         }
 
         if(excludeLoopsAndCommentsAndCloseTry){
@@ -546,10 +562,11 @@ export default class Parser {
         actOnTurtleImport();
         /* FITRUE_isPython */
 
-        //console.time();
+        let parentInsideAClass = false;
         let codeUnits: FrameObject[];
         if (this.startAtFrameId > -100) {
             codeUnits = [useStore().frameObjects[this.startAtFrameId]];
+            parentInsideAClass = useStore().frameObjects[codeUnits[0].parentId].frameType.type == AllFrameTypesIdentifier.classdef;
         }
         else {            
             codeUnits = useStore().getFramesForParentId(0);
@@ -559,7 +576,7 @@ export default class Parser {
                     .concat(codeUnits.filter((item) => item.frameType.type === ContainerTypesIdentifiers.defsContainer));
             }
         }
-        output += this.parseFrames(codeUnits, false, "");
+        output += this.parseFrames(codeUnits, parentInsideAClass, "");
         // We could have disabled frame(s) just at the end of the code. 
         // Since no further frame would be used in the parse to close the ongoing comment block we need to check
         // if there are disabled frames being rendered when reaching the end of the editor's code.
@@ -660,7 +677,7 @@ export default class Parser {
     }
 
     public getCodeWithoutErrors(endFrameId: number, defsLast: boolean): string {
-        const code = this.parse({stopAtFrameId: endFrameId, excludeLoopsAndCommentsAndCloseTry: true, defsLast});
+        const code = this.parse({stopAt: {frameId: endFrameId, includeThisFrame: false}, excludeLoopsAndCommentsAndCloseTry: true, defsLast});
 
         const errors = this.getErrors(code);
 
