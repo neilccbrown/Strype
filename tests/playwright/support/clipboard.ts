@@ -12,7 +12,8 @@ export async function addFakeClipboard(page: Page) : Promise<void> {
                     try {
                         const b = await item.getType("text/plain");
                         mockTextContent = await b.text();
-                    } catch (e) {
+                    }
+                    catch (e) {
                         // Ignore
                     }
                 }
@@ -26,7 +27,7 @@ export async function addFakeClipboard(page: Page) : Promise<void> {
                     types: ["text/plain"], getType: (type) => {
                         // We use readText so we don't need to return the real content:
                         return Promise.reject("");
-                    }
+                    },
                 }];
             },
             readText: async () => mockTextContent,
