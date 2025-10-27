@@ -991,11 +991,23 @@ export default Vue.extend({
                         }
                     }
                 }
+
                 if(anchorSpanElement && focusSpanElement && isElementLabelSlotInput(anchorSpanElement) && isElementLabelSlotInput(focusSpanElement)){
                     const anchorSlotInfo = parseLabelSlotUID(anchorSpanElement.id);
-                    const focusSlotInfo = parseLabelSlotUID(focusSpanElement.id);
+                    let focusSlotInfo = parseLabelSlotUID(focusSpanElement.id);
+                    let focusOffset= docSelection.focusOffset;
+                    
+                    // Check the weird string literal selection case that brings up the quotes (see inside the if)
+                    if(anchorSlotInfo.slotType != SlotType.closingQuote && focusSlotInfo.slotType == SlotType.closingQuote){
+                        // It seems that when triple clicking a string literal content, the focus also includes the closing quote.
+                        // We don't want to have this as part of the selection, so we make sure that we select the literal until its end and not the quote.
+                        // So we change the focusSlotInfo to make it coherent with the selection and update focusOffset to reflects the string literal length.
+                        focusSlotInfo.slotType = SlotType.string;
+                        focusOffset = anchorSpanElement.textContent?.length??0;
+                    }
+                    
                     this.appStore.setSlotTextCursors({slotInfos: anchorSlotInfo, cursorPos: docSelection.anchorOffset},
-                        {slotInfos: focusSlotInfo, cursorPos: docSelection.focusOffset});
+                        {slotInfos: focusSlotInfo, cursorPos: focusOffset});
                 }
             }
         },
