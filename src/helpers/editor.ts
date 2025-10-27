@@ -59,6 +59,11 @@ export enum CustomEventTypes {
     openSharedFileDone = "openSharedFileDone",
     dropFramePositionsUpdated = "dropFramePositionsUpdated",
     resetLSOnShareProjectLoadConfirmed = "resetLSOnShareProjectLoadConfirmed",
+    requestedCloudDrivePickerPickedItem = "requestedCloudDrivePickerPickedItme",
+    exposedCloudDrivePickerPickedItem = "exposedCloudDrivePickerPickedItem",
+    requestedCloudDriveItemChildren = "requestedCloudDriveItemChildren",
+    exposedCloudDriveItemChidren = "exposedCloudDriveItemChidren",
+    requestedCloudDrivePickerRefresh = "requestedCloudDrivePickerRefresh",
     /* IFTRUE_isPython */
     pythonExecAreaMounted = "peaMounted",
     pythonExecAreaExpandCollapseChanged = "peaExpandCollapsChanged",
@@ -481,8 +486,8 @@ export function getImportFileInputId(): string {
     return "importFileInput";
 }
 
-export function getGoogleDriveComponentRefId(): string {
-    return "googleDriveComponent";
+export function getCloudDriveHandlerComponentRefId(): string {
+    return "cloudDriveHandlerComponent";
 }
 
 export function getLoadFromFSStrypeButtonId(): string {
