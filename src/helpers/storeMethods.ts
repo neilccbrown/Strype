@@ -901,3 +901,18 @@ export function checkCodeErrors(frameIdForPrecompiled?: number): void {
 export function getAllEnabledUserDefinedFunctions() : FrameObject[] {
     return Object.values(useStore().frameObjects).filter((f) => f.frameType.type === AllFrameTypesIdentifier.funcdef && !f.isDisabled && (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.length > 0);
 }
+
+export function frameOrChildHasErrors(frameId : number) : boolean {
+    const frame = useStore().frameObjects[frameId];
+    if (!frame) {
+        // If missing count it as having an error I guess
+        return true;
+    }
+    const hasError = retrieveSlotByPredicate(Object.values(frame.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures),
+        (slot: FieldSlot) => ((slot as BaseSlot).error?.length??0) > 0) != undefined;
+    if (hasError) {
+        return true;
+    }
+    // Check children:
+    return frame.childrenIds.some(frameOrChildHasErrors);
+}

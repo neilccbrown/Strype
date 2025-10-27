@@ -188,7 +188,8 @@
     "collapseDocumentation": "Interface View",
     "collapseFull": "Expanded View",
     "freeze": "Freeze",
-    "unfreeze": "Unfreeze"
+    "unfreeze": "Unfreeze", 
+    "cannotFreezeErrors": "Cannot freeze with errors"
   },
   "appMenu": {
     "downloadHex": "Convert to Hex file",

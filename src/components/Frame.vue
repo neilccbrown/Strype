@@ -99,7 +99,7 @@ import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, CollapsedState, CurrentFrame, FrozenState, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName, ContainerTypesIdentifiers } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
-import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
+import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent, frameOrChildHasErrors } from "@/helpers/storeMethods";
 import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getCaretUID, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID, calculateNextCollapseState } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { BPopover } from "bootstrap-vue";
@@ -553,6 +553,13 @@ export default Vue.extend({
                                         || !this.frameType.allowedFrozenStates.includes(FrozenState.FROZEN)
                                         || this.appStore.frameObjects[frameParentId].frameType.type != ContainerTypesIdentifiers.defsContainer;
                     someFrozenShowing = someFrozenShowing || !remove;
+                    
+                    // Check if there are precompile errors on any of our slots anywhere in the frame:
+                    if (frameOrChildHasErrors(this.frameId)) {
+                        x.name = this.$i18n.t("contextMenu.cannotFreezeErrors") as string;
+                        x.disabled = true;
+                    }
+                    
                     return remove;
                 }
                 else if (x.actionName === FrameContextMenuActionName.unfreeze) {
