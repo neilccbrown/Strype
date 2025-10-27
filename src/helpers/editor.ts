@@ -158,7 +158,7 @@ export function parseLabelSlotUID(UID: string): SlotCoreInfos {
     return res;
 }
 
-export function isElementLabelSlotInput(element: EventTarget | null): boolean{
+export function isElementLabelSlotInput(element: EventTarget | null): element is HTMLSpanElement {
     if(!(element instanceof HTMLSpanElement)){
         return false;
     }

@@ -1,5 +1,5 @@
 <template>
-    <div :id="'div_'+UID" :class="{[scssVars.labelSlotContainerClassName]: true, nohover: isDraggingFrame}" contenteditable="true">
+    <div :id="'div_'+UID" :class="{[scssVars.labelSlotContainerClassName]: true, nohover: isDraggingFrame}" :contenteditable="isEditableSlot && !(isDisabled || isFrozen || isPythonExecuting)">
         <span
             autocomplete="off"
             spellcheck="false"

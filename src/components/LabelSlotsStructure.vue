@@ -2,7 +2,7 @@
     <div 
         :id="labelSlotsStructDivId"
         :key="refactorCount"
-        contenteditable="true"
+        :contenteditable="!isFrozen"
         @keydown.left="onLRKeyDown($event)"
         @keydown.right="onLRKeyDown($event)"
         @keydown.up="slotUpDown($event)"
