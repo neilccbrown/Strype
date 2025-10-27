@@ -598,7 +598,8 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
         return null;
     }
     catch (e) {
-        console.log(e); // + "On:\n" + debugToString(parsedBySkulpt, "  "));
+        // eslint-disable-next-line
+        console.warn(e); // + "On:\n" + debugToString(parsedBySkulpt, "  "));
         // Don't leave partial content:
         useStore().copiedFrames = {};
         useStore().copiedSelectionFrameIds = [];
@@ -931,8 +932,6 @@ function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, keywo
 // Process the given node in the tree at the current point designed by CopyState
 // Returns a copy state, including the frame ID of the next insertion point for any following statements
 function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState {
-    //console.log("Processing type: " + (Sk.ParseTables.number2symbol[p.type] || ("#" + p.type)));
-        
     switch (p.type) {
     case Sk.ParseTables.sym.file_input:
         // The outer wrapper for the whole file, just dig in:

@@ -126,7 +126,8 @@ export function getCandidatesForAC(slotCode: SlotsStructure, location: number[])
         }
     }
     catch (e) {
-        console.log("Exception while constructing code for autocompletion:" + e);
+        // eslint-disable-next-line
+        console.warn("Exception while constructing code for autocompletion:" + e);
     }
     return {tokenAC: null, contextAC: ""};
 }
@@ -592,7 +593,8 @@ export async function tpyDefineLibraries(parser: Parser) : Promise<void> {
                     TPyParser.defineModule(pyPYI.replace(/\.pyi?$/, "").replaceAll("/", "."), pyi, "pyi");
                 }
                 catch (e) {
-                    console.error(e);
+                    // eslint-disable-next-line
+                    console.warn(e);
                 }
             }
         }
