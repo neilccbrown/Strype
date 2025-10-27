@@ -6,7 +6,7 @@
             :disabled="isDisabled"
             :placeholder="defaultText"
             :empty-content="!code || code == '\u200B'"
-            :contenteditable="isEditableSlot && !(isDisabled || isPythonExecuting)"
+            :contenteditable="isEditableSlot && !(isDisabled || isFrozen || isPythonExecuting)"
             @click.stop="onGetCaret"
             @slotGotCaret="onGetCaret"
             @slotLostCaret="onLoseCaret"
@@ -23,7 +23,7 @@
             @keyup.backspace="onBackSpaceKeyUp"
             @keydown="onKeyDown($event)"
             @contentPastedInSlot="onCodePaste"
-            :class="{[scssVars.labelSlotInputClassName]: true, [scssVars.navigationPositionClassName]: isEditableSlot, [scssVars.errorSlotClassName]: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised, readonly: (isPythonExecuting || isDisabled)}"
+            :class="{[scssVars.labelSlotInputClassName]: true, [scssVars.navigationPositionClassName]: isEditableSlot && !isFrozen, [scssVars.errorSlotClassName]: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised, readonly: (isPythonExecuting || isDisabled)}"
             :id="UID"
             :key="UID"
             :style="spanBackgroundStyle"
@@ -110,6 +110,7 @@ export default Vue.extend({
         isDisabled: Boolean,
         isEditableSlot: Boolean,
         isEmphasised: Boolean,
+        isFrozen: Boolean,
     },
     
     inject: ["mediaPreviewPopupInstance", "editImageInDialog"],    
@@ -431,7 +432,7 @@ export default Vue.extend({
             Vue.nextTick(() => parent.updatePrependText());
             
             // If the user's code is being executed, or if the frame is disabled, we don't focus any slot, but we make sure we show the adequate frame cursor instead.
-            if(this.isPythonExecuting || this.isDisabled){
+            if(this.isPythonExecuting || this.isDisabled || this.isFrozen){
                 event.stopImmediatePropagation();
                 event.stopPropagation();
                 event.preventDefault();

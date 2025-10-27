@@ -30,6 +30,7 @@
                 :code="getSlotCode(slotItem)"
                 :frameId="frameId"
                 :isEditableSlot="isEditableSlot(slotItem.type)"
+                :isFrozen="isFrozen"
                 :isEmphasised="isSlotEmphasised(slotItem)"
                 @requestSlotsRefactoring="checkSlotRefactoring"
                 @slotLostCaret="updatePrependText"
@@ -65,6 +66,7 @@ export default Vue.extend({
         labelIndex: Number,
         defaultText: String,
         isDisabled: Boolean,
+        isFrozen: Boolean,
         prependSelfWhenInClass: Boolean,
     },
 

@@ -18,6 +18,7 @@
                 <LabelSlotsStructure 
                     v-if="areSlotsShown(item)"
                     :isDisabled="isDisabled"
+                    :isFrozen="isFrozenOrChildOfFrozen"
                     :default-text="item.defaultText"
                     :frameId="frameId"
                     :labelIndex="originalIndex"
@@ -152,6 +153,9 @@ export default Vue.extend({
         
         isFrozen() {
             return (this.frameFrozenState as FrozenState) == FrozenState.FROZEN;
+        },
+        isFrozenOrChildOfFrozen() {
+            return this.appStore.isEffectivelyFrozen(this.frameId);
         },
 
         children: {

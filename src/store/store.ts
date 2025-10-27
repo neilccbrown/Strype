@@ -17,6 +17,7 @@ import { nextTick } from "@vue/composition-api";
 import { TPyParser } from "tigerpython-parser";
 import AppComponent from "@/App.vue";
 import emptyState from "@/store/initial-states/empty-state";
+import Parser from "@/parser/parser";
 /* IFTRUE_isPython */
 import PEAComponent from "@/components/PythonExecutionArea.vue";
 import CommandsComponent from "@/components/Commands.vue";
@@ -629,6 +630,20 @@ export const useStore = defineStore("app", {
 
         isFrameVisible: (state) => (frameId: number) => {
             return state.frameObjects[frameId].isVisible;
+        },
+
+        // A frame is "effectively frozen" either if its own state is frozen, or any of its ancestors are frozen.  So for
+        // example if you have a frozen class, its member functions are effectively-frozen, as are all frames inside those
+        // functions.  This is useful when deciding whether it is possible to delete or focus items in the inner frames. 
+        isEffectivelyFrozen: (state) => (frameId: number) => {
+            while (frameId > 0) {
+                if (state.frameObjects[frameId].frozenState == FrozenState.FROZEN) {
+                    return true;
+                }
+                frameId = state.frameObjects[frameId].parentId;
+            }
+            // No frozen frames found in the ancestors:
+            return false;
         },
 
         retrieveUserDefinedElements:(state) => {
@@ -2067,7 +2082,9 @@ export const useStore = defineStore("app", {
                 );
         },
 
-        deleteFrames(key: string, ignoreBackState?: boolean){
+        // Note: this will not always do the delete, for example if frozen frames are involved
+        // Returns true if the deletion ocurred or false if it did not.
+        deleteFrames(key: string, ignoreBackState?: boolean) : boolean {
             const stateBeforeChanges = cloneDeep(this.$state);
 
             // we remove the editable slots from the available positions
@@ -2076,12 +2093,14 @@ export const useStore = defineStore("app", {
 
             //we create a list of frames to delete that is either the elements of a selection OR the current frame's position
             let framesIdToDelete = [this.currentFrame.id];
+            
+            let beforeDelete = () => {};
 
             //If a selection is deleted, we don't distinguish between "del" and "backspace": 
             //We move the caret at the last element of the selection, and perform "backspace" for each element of the selection
             if(this.selectedFrames.length > 0){
                 if(this.selectedFrames[this.selectedFrames.length-1] !== this.currentFrame.id){
-                    this.setCurrentFrame(
+                    beforeDelete = () => this.setCurrentFrame(
                         {
                             id: this.selectedFrames[this.selectedFrames.length-1], 
                             caretPosition: CaretPosition.below,
@@ -2096,6 +2115,18 @@ export const useStore = defineStore("app", {
                 // delete the last of the joint frames:
                 framesIdToDelete = [this.frameObjects[this.currentFrame.id].jointFrameIds[this.frameObjects[this.currentFrame.id].jointFrameIds.length - 1]];
             }
+            
+            // Check if we can actually delete all frames.  If we can't, we back out and delete none.
+            const canDeleteAll = framesIdToDelete.every((frameId) => {
+                // A frame can be deleted if it is non-frozen, and all its parents are non-frozen:
+                return !this.isEffectivelyFrozen(frameId);
+            });
+            
+            if (!canDeleteAll) {
+                return false;
+            }
+            
+            beforeDelete();
             
             framesIdToDelete.forEach((currentFrameId) => {
                 //if delete is pressed
@@ -2194,9 +2225,9 @@ export const useStore = defineStore("app", {
                             deleteChildren: deleteChildren,
                         }
                     );
-                }  
+                }
             });
-
+            
             //clear the selection of frames
             this.unselectAllFrames();
 
@@ -2210,6 +2241,8 @@ export const useStore = defineStore("app", {
             if(!ignoreBackState){
                 this.saveStateChanges(stateBeforeChanges);
             }
+            
+            return true;
         },
         
         deleteFrameFromSlot(frameId: number){      
@@ -2900,18 +2933,21 @@ export const useStore = defineStore("app", {
         },
 
         copyFrame(frameId: number) {
-            // We do not use the system's clipboard for frames, so we clear any potential text to avoid interference
-            navigator.clipboard.writeText("");
             this.flushCopiedFrames();
+            const text = new Parser(true, "spy").parse({startAtFrameId: frameId, stopAt: {frameId: frameId, includeThisFrame: true}, excludeLoopsAndCommentsAndCloseTry: false, defsLast: false});
             this.doCopyFrame(frameId);
+            navigator.clipboard.writeText(text);
             this.updateNextAvailableId();
         },
 
         copySelection() {
-            // We do not use the system's clipboard for frames, so we clear any potential text to avoid interference
-            navigator.clipboard.writeText("");
+            if (this.selectedFrames.length == 0) {
+                return;
+            }
             this.flushCopiedFrames();
+            const text = new Parser(true, "spy").parse({startAtFrameId: this.selectedFrames[0], stopAt: {frameId: this.selectedFrames.at(-1) as number, includeThisFrame: true}, excludeLoopsAndCommentsAndCloseTry: false, defsLast: false});
             this.doCopySelection();
+            navigator.clipboard.writeText(text);
             this.updateNextAvailableId();
         },
 
