@@ -457,7 +457,7 @@ export default Vue.extend({
                 // Set the sync target 
                 this.appStore.syncTarget = cloudTarget;
                 this.appStore.isEditorContentModified = false;
-                // Reset the "Save As" flag of the Men
+                // Reset the "Save As" flag of the Menu
                 (this.$parent as InstanceType<typeof Menu>).requestSaveAs = false;
                 // Set the project name when we have made an explicit saving
                 if(isExplictSave || this.saveReason == SaveRequestReason.overwriteExistingProject){
@@ -485,7 +485,7 @@ export default Vue.extend({
                     this.appStore.simpleModalDlgMsg = this.$i18n.t((this.saveReason == SaveRequestReason.reloadBrowser) ? "errorMessage.driveNoFile" :"errorMessage.driveSaveFailed", {drivename: cloudDriveComponent.driveName}) as string;
                     this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
                     this.updateSignInStatus(cloudTarget,false);
-                    // Reset the "Save As" flag of the Men
+                    // Reset the "Save As" flag of the Menu
                     (this.$parent as InstanceType<typeof Menu>).requestSaveAs = false;
                     // When we tried to save a project upon request by the user when the a project was reloaded in the brower, failure to connect clears off the Drive information
                     if(this.saveReason == SaveRequestReason.reloadBrowser){
@@ -637,7 +637,7 @@ export default Vue.extend({
         },
 
         onFolderToSavePickCancelled(){
-            // Reset the "Save As" flag of the Men
+            // Reset the "Save As" flag of the Menu
             (this.$parent as InstanceType<typeof Menu>).requestSaveAs = false;
         },
 
@@ -685,7 +685,7 @@ export default Vue.extend({
                 }); 
             }
             else{
-                // If user chose "cancel": we only reset the "Save As" flag of the Men
+                // If user chose "cancel": we only reset the "Save As" flag of the Menu
                 (this.$parent as InstanceType<typeof Menu>).requestSaveAs = false;
             }
         },
