@@ -318,7 +318,7 @@ def __init__ (self, ) :
 `);
     });
 
-    test.only("Freezing prevents focusing the text slots with clicking", async ({page}) => {
+    test("Freezing prevents focusing the text slots with clicking", async ({page}) => {
         await loadContent(page, testState({"Alpha": "Frozen", "__init__": "FoldToHeader"}));
         await page.locator("span", {hasText: "Alpha"}).click();
         await page.waitForTimeout(3000);
