@@ -632,6 +632,9 @@ export const useStore = defineStore("app", {
             return state.frameObjects[frameId].isVisible;
         },
 
+        // A frame is "effectively frozen" either if its own state is frozen, or any of its ancestors are frozen.  So for
+        // example if you have a frozen class, its member functions are effectively-frozen, as are all frames inside those
+        // functions.  This is useful when deciding whether it is possible to delete or focus items in the inner frames. 
         isEffectivelyFrozen: (state) => (frameId: number) => {
             while (frameId > 0) {
                 if (state.frameObjects[frameId].frozenState == FrozenState.FROZEN) {
@@ -2942,7 +2945,7 @@ export const useStore = defineStore("app", {
                 return;
             }
             this.flushCopiedFrames();
-            const text = this.selectedFrames.length == 0 ? "" : new Parser(true, "spy").parse({startAtFrameId: this.selectedFrames[0], stopAt: {frameId: this.selectedFrames.at(-1) as number, includeThisFrame: true}, excludeLoopsAndCommentsAndCloseTry: false, defsLast: false});
+            const text = new Parser(true, "spy").parse({startAtFrameId: this.selectedFrames[0], stopAt: {frameId: this.selectedFrames.at(-1) as number, includeThisFrame: true}, excludeLoopsAndCommentsAndCloseTry: false, defsLast: false});
             this.doCopySelection();
             navigator.clipboard.writeText(text);
             this.updateNextAvailableId();

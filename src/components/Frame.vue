@@ -982,7 +982,7 @@ export default Vue.extend({
         },
 
         getBodyMidFramePositions(): {caretPos: CurrentFrame, midYThreshold: number}[] {
-            if (this.appStore.frameObjects[this.frameId].frozenState == FrozenState.FROZEN) {
+            if ((this.appStore.frameObjects[this.frameId].collapsedState ?? CollapsedState.FULLY_VISIBLE) != CollapsedState.FULLY_VISIBLE) {
                 return [];
             }
             
