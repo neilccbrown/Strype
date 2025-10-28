@@ -139,6 +139,7 @@ import axios from "axios";
 import scssVars from "@/assets/style/_export.module.scss";
 import {loadDivider} from "@/helpers/load-save";
 import FrameHeader from "@/components/FrameHeader.vue";
+import {inflateRaw} from "pako";
 
 let autoSaveTimerId = -1;
 let projectSaveFunctionsState : ProjectSaveFunction[] = [];
@@ -606,6 +607,8 @@ export default Vue.extend({
         const queryParams = new URLSearchParams(window.location.search);
         const sharedProjectTarget= queryParams.get(sharedStrypeProjectTargetKey); // if provided, appears like the numbered value of the SyncTarget enum
         const shareProjectId = queryParams.get(sharedStrypeProjectIdKey);
+        console.log("Proj ID:", shareProjectId);
+        
         // When there is a shared project shared within a Cloud Drive, we do like if we were opening that Cloud Drive project BUT we use a special
         // mode that does not ask for the target selection (which shows with "open" in the menu) and breaks links to the Cloud Drive
         // (it's only a retrieval of the code)
@@ -712,6 +715,27 @@ export default Vue.extend({
             },
             // No project in the local storage, we can continue loading the shared project
             () => loadPublicSharedProject());
+        }
+        // Load source code encoded in URL:
+        else if(shareProjectId && shareProjectId.match(/^spy:.*$/) != null) {
+            const m = shareProjectId.match(/^spy:(.*)$/);
+            // Must be non-null given the above condition but satisfy Typescript:
+            if (m) {
+                const param = m[1];
+                // Base64 uses A-Za-z0-9+/, but the latter two are meaningful in URLs
+                // so we have to replace them (with - and _ respectively)
+                const binary = Uint8Array.from(atob(param.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+                const spyContent = inflateRaw(binary, { to: "string" });
+
+                const loadSpy = () => this.setStateFromPythonFile(spyContent, this.$i18n.t("en.defaultProjName") as string, 0, false);
+                
+                this.checkLocalStorageHasProject().then(() => {
+                    // A project exists in the local storage, we ask the user if they want to keep it (and cancel the load of the shared project)
+                    this.confirmResetLSOnShareProjectLoad().then((continueLoadingSharedProject) => (continueLoadingSharedProject) ? loadSpy() : this.loadLocalStorageProjectOnStart());
+                },
+                // No project in the local storage, we can continue loading the shared project
+                loadSpy);
+            }
         }
         else{
             // The default opening of Strype (either brand new project or retrieving from local storage -- not opening a shared project)
