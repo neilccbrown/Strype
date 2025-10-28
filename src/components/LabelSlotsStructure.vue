@@ -549,9 +549,9 @@ export default Vue.extend({
                     }));
                 
                 // We want to prevent some events to be handled wrongly twice or at all by the browser and our code.
-                // However, for comments and string literals, we need to let some navigation event go through otherwise they're blocked as we rely on the browser for them.
+                // However, for comments (e.g. frame or documentation slot) and string literals, we need to let some navigation event go through otherwise they're blocked as we rely on the browser for them.
                 if(this.appStore.allowsKeyEventThroughInLabelSlotStructure || 
-                    (["PageUp", "PageDown", "Home", "End"].includes(event.key) && (this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment || this.focusSlotCursorInfos?.slotInfos.slotType == SlotType.string))){
+                    (["PageUp", "PageDown", "Home", "End"].includes(event.key) && (this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment || this.focusSlotCursorInfos?.slotInfos.slotType == SlotType.comment || this.focusSlotCursorInfos?.slotInfos.slotType == SlotType.string))){
                     // A few events need to be handled by the brower solely.
                     // That is, for comments: "PageUp", "PageDown", "Home", "End" 
                     // and anytime we set allowsKeyUpThroughInLabelSlotStructure (which we need to reset):
