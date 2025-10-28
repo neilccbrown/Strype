@@ -1129,11 +1129,11 @@ export default Vue.extend({
         },
 
         handleFastUDNavKeys(event: KeyboardEvent){
-            // If we are in a comment, we let the browser handling the key events.
+            // If we are in a comment or in a string slot, we let the browser handling the key events.
             // Otherwise, the following rules apply:
             // Home/End move the text cursor to the start/end of the label slot
             // PageUp/PageDown: do nothing
-            if(this.frameType == AllFrameTypesIdentifier.comment){
+            if(this.frameType == AllFrameTypesIdentifier.comment || this.slotType == SlotType.string){
                 return;
             }
             else if(event.key == "Home" || event.key == "End"){
