@@ -1132,8 +1132,8 @@ export default Vue.extend({
             // If we are in a comment (e.g. frame or documentation slot) or in a string slot, we let the browser handling the key events.
             // Otherwise, the following rules apply:
             // Home/End move the text cursor to the start/end of the label slot
-            // PageUp/PageDown: do nothing
-            if(this.frameType == AllFrameTypesIdentifier.comment || this.slotType == SlotType.comment || this.slotType == SlotType.string){
+            // PageUp/PageDown: no interaction with the text, acts as hitting up/down to leave the text slot and show the frame cursor
+            if((event.key == "Home" || event.key == "End") && (this.frameType == AllFrameTypesIdentifier.comment || this.slotType == SlotType.comment || this.slotType == SlotType.string)){
                 return;
             }
             else if(event.key == "Home" || event.key == "End"){
@@ -1149,6 +1149,19 @@ export default Vue.extend({
                     setDocumentSelection(newAnchorSlotCursorInfo, {slotInfos: this.coreSlotInfo, cursorPos: newCursorValue});
                     this.appStore.setSlotTextCursors(newAnchorSlotCursorInfo, {slotInfos: this.coreSlotInfo, cursorPos: newCursorValue});
                 });
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+            }
+            else{
+                // The case of PageUp and PageDown
+                document.getElementById(getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
+                    new KeyboardEvent("keydown", {
+                        key: (event.key == "PageUp") ? "ArrowUp" : "ArrowDown",
+                        altKey: true,
+                        ctrlKey: true,
+                    })
+                );
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
