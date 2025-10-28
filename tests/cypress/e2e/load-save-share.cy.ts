@@ -2,13 +2,12 @@
 // into the URL
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-import {deflateRaw} from "pako";
-
 require("cypress-terminal-report/src/installLogsCollector")();
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 
 import i18n from "@/i18n";
+import {deflateRaw} from "pako";
 import "../support/expression-test-support";
 import {checkDownloadedFileEquals} from "../support/load-save-support";
 import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
