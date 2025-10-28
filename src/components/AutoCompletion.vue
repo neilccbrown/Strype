@@ -314,7 +314,8 @@ export default Vue.extend({
                 try{
                     const tppCompletions2 = TPyParser.autoComplete(totalCode, totalCode.length, false);
                     if(tppCompletions.filter((s) => !s.acResult.startsWith("_")).length != tppCompletions2.length){
-                        console.log("There is a mismatch between autoCompleteEx and autoComplete");
+                        // eslint-disable-next-line
+                        console.warn("There is a mismatch between autoCompleteEx and autoComplete");
                         throw new Error();
                     }
                     else {

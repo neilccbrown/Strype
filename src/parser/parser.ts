@@ -2,10 +2,10 @@ import Compiler from "@/compiler/compiler";
 import {hasEditorCodeErrors, trimmedKeywordOperators} from "@/helpers/editor";
 import {generateFlatSlotBases, retrieveSlotByPredicate} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
-import {useStore} from "@/store/store";
+import { useStore } from "@/store/store";
 import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CollapsedState, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, FrozenState, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
-import {ErrorInfo, TPyParser} from "tigerpython-parser";
-import {AppSPYPrefix} from "@/main";
+import { ErrorInfo, TPyParser } from "tigerpython-parser";
+import {AppSPYFullPrefix} from "@/main";
 /*IFTRUE_isPython */
 import { actOnTurtleImport } from "@/helpers/editor";
 /*FITRUE_isPython */
@@ -275,7 +275,7 @@ export default class Parser {
         }
         
         output +=
-            (frameStates.length > 0 ? indentation + "#" + AppSPYPrefix + " FrameState:" + frameStates.sort().join(";") + "\n" : "") +
+            (frameStates.length > 0 ? indentation + AppSPYFullPrefix + " FrameState:" + frameStates.sort().join(";") + "\n" : "") +
             ((!passBlock)? this.parseStatement(block, insideAClass, indentation) : "") +
             ((this.saveAsSPY && children.length > 0 &&
                 ((!block.isDisabled && children.filter((c) => !c.isDisabled && c.frameType.type != AllFrameTypesIdentifier.blank && c.frameType.type != AllFrameTypesIdentifier.comment).length == 0)
@@ -356,7 +356,7 @@ export default class Parser {
                     this.libraries.push(commentContent);
                 }
                 if (this.saveAsSPY) {
-                    return indentation + "#" + AppSPYPrefix + " " + (statement.isDisabled ? "LibraryDisabled" : "Library") + ":" + commentContent + "\n";
+                    return indentation + AppSPYFullPrefix + " " + (statement.isDisabled ? "LibraryDisabled" : "Library") + ":" + commentContent + "\n";
                 }
                 else {
                     return passLine; // Make sure we don't mess up the line numbers
@@ -470,15 +470,15 @@ export default class Parser {
             }
             
             if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.framesMainContainer) {
-                output += "#" + AppSPYPrefix + " Section:Main\n";
+                output += AppSPYFullPrefix + " Section:Main\n";
                 this.line += 1;
             }
             else if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.defsContainer) {
-                output += "#" + AppSPYPrefix + " Section:Definitions\n";
+                output += AppSPYFullPrefix + " Section:Definitions\n";
                 this.line += 1;
             }
             else if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.importsContainer) {
-                output += "#" + AppSPYPrefix + " Section:Imports\n";
+                output += AppSPYFullPrefix + " Section:Imports\n";
                 this.line += 1;
             }
             
@@ -502,7 +502,7 @@ export default class Parser {
                 disabledFrameBlockFlag = "";
                 // Don't add the disabled prefix twice:
                 if (!indentation.match(/^ *#/)) {
-                    thisIndentation = indentation + "#" + AppSPYPrefix + " Disabled:";
+                    thisIndentation = indentation + AppSPYFullPrefix + " Disabled:";
                 }
             }
             
@@ -528,7 +528,7 @@ export default class Parser {
             }
 
             if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.framesMainContainer) {
-                output += "#" + AppSPYPrefix + " Section:End\n";
+                output += AppSPYFullPrefix + " Section:End\n";
             }            
         }
 
