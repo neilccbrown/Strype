@@ -451,14 +451,15 @@ export default Vue.extend({
                     }
                     else if(event.key == "Home" || event.key == "End"){
                         // For the "home" and "end" key, we move the blue caret to the first or last position of the current main section the caret is in.
+                        // If the ctrl key is used together with home/end, we go to the very start/end of the editor (i.e. import section*/below last frame in main)
+                        // (*) the very top of the editor is actually the project documentation slot, but it is not a frame proper and the frame cursor can't go above
                         // This is overriding the natural browser behaviour that scrolls to the top or bottom of the page (at least with Chrome)
-                       
-                        // Look for the section we're in
-                        const sectionId = getFrameSectionIdFromFrameId(this.appStore.currentFrame.id);
-                        // Update the caret to the first/last position within this section
-                        const isMovingHome = (event.key == "Home");
+                        const sectionId = (event.ctrlKey) ? this.appStore.getMainCodeFrameContainerId :  getFrameSectionIdFromFrameId(this.appStore.currentFrame.id);
                         const isSectionEmpty = (this.appStore.frameObjects[sectionId].childrenIds.length == 0);
-                        const newCaretId = (isMovingHome || isSectionEmpty) ? sectionId : this.appStore.frameObjects[sectionId].childrenIds.at(-1) as number;
+                        const isMovingHome = (event.key == "Home");
+                        const newCaretId = (isMovingHome || isSectionEmpty) 
+                            ? ((isMovingHome && event.ctrlKey) ? this.appStore.getImportsFrameContainerId : sectionId) 
+                            : this.appStore.frameObjects[sectionId].childrenIds.at(-1) as number;
                         const newCaretPosition = (isMovingHome || isSectionEmpty) ? CaretPosition.body : CaretPosition.below;
                         this.appStore.toggleCaret({id: newCaretId, caretPosition: newCaretPosition});
                     }    
