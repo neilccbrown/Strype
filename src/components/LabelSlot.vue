@@ -1131,7 +1131,7 @@ export default Vue.extend({
         handleFastUDNavKeys(event: KeyboardEvent){
             // If we are in a comment, we let the browser handling the key events.
             // Otherwise, the following rules apply:
-            // Home/End move the text cursor to the start/end of the "block" unit of the code, for example the start of a slot bracketed structure
+            // Home/End move the text cursor to the start/end of the label slot
             // PageUp/PageDown: do nothing
             if(this.frameType == AllFrameTypesIdentifier.comment){
                 return;
@@ -1140,24 +1140,14 @@ export default Vue.extend({
                 // Find which bounds we should target (which bound in the current level based on the key, and also the bound based on current text cursor position)
                 const moveToHome = (event.key === "Home");
                 const isSelecting = event.shiftKey;
-                const isInString = isFieldStringSlot(retrieveSlotFromSlotInfos(this.coreSlotInfo));
-                const parentSlotId = getSlotParentIdAndIndexSplit(this.coreSlotInfo.slotId).parentId;
-                // First focus: it will change to one end of the current level depending on the direction we're going
-                const newFocusSlotId = (moveToHome) 
-                    ? (isInString ? this.slotId : ((parentSlotId.length > 0) ? (parentSlotId + ",0") : "0"))
-                    : (isInString ? this.slotId : ((parentSlotId.length > 0) ? (parentSlotId + "," + ((retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: parentSlotId}) as SlotsStructure).fields.length -1)) : ("" + (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.coreSlotInfo.labelSlotsIndex].slotStructures.fields.length - 1))));
-                // We only look for the new type and slot core infos for non-string current location to save unnecessary function calls
-                const newFocusSlotType = (isInString) ? this.slotType : evaluateSlotType(getSlotDefFromInfos(this.coreSlotInfo), retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: newFocusSlotId}));
-                const newFocusSlotCoreInfo = (isInString) ? this.coreSlotInfo : {...this.coreSlotInfo, slotId: newFocusSlotId, slotType: newFocusSlotType};
-                const newFocusCursorPos = (moveToHome) ? 0 : (retrieveSlotFromSlotInfos(newFocusSlotCoreInfo) as BaseSlot).code.length;
+                const newCursorValue = (moveToHome) ? 0 : this.code.length;
+                
                 // Then anchor: it will either keep the same if we are doing a selection, or change to the same as focus if we are not.
-                const newAnchorSlotCursorInfo: SlotCursorInfos = (isSelecting) ? this.appStore.anchorSlotCursorInfos as SlotCursorInfos: {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos}; 
+                const newAnchorSlotCursorInfo: SlotCursorInfos = (isSelecting) ? this.appStore.anchorSlotCursorInfos as SlotCursorInfos: {slotInfos: this.coreSlotInfo, cursorPos: newCursorValue}; 
                 // Set the new bounds
                 this.$nextTick(() => {
-                    document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos?.slotInfos as SlotCoreInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotLostCaret));
-                    document.getElementById(getLabelSlotUID(newFocusSlotCoreInfo))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
-                    setDocumentSelection(newAnchorSlotCursorInfo, {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos});
-                    this.appStore.setSlotTextCursors(newAnchorSlotCursorInfo, {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos});
+                    setDocumentSelection(newAnchorSlotCursorInfo, {slotInfos: this.coreSlotInfo, cursorPos: newCursorValue});
+                    this.appStore.setSlotTextCursors(newAnchorSlotCursorInfo, {slotInfos: this.coreSlotInfo, cursorPos: newCursorValue});
                 });
                 event.preventDefault();
                 event.stopPropagation();
