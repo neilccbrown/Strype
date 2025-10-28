@@ -10,10 +10,11 @@ require("cypress-terminal-report/src/installLogsCollector")();
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 
-import path from "path";
 import i18n from "@/i18n";
 import "../support/expression-test-support";
+import {checkDownloadedFileEquals} from "../support/load-save-support";
 import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
+
 
 
 // Must clear all local storage between tests to reset the state,
@@ -51,25 +52,6 @@ function focusEditorPasteAndClear(): void {
     cy.get("body").type("{uparrow}{uparrow}{uparrow}{del}{downarrow}{downarrow}{downarrow}{downarrow}{backspace}{backspace}");
 }
 
-function checkDownloadedFileEquals(fullContent: string, filename: string, firstSave?: boolean) : void {
-    const downloadsFolder = Cypress.config("downloadsFolder");
-    const destFile = path.join(downloadsFolder, filename);
-    cy.task("deleteFile", destFile);
-    // Save is located in the menu, so we need to open it first, then find the link and click on it
-    // Force these because sometimes cypress gives false alarm about webpack overlay being on top:
-    cy.get("button#" + strypeElIds.getEditorMenuUID()).click({force: true});
-    cy.contains(i18n.t("appMenu.saveProject") as string).click({force: true});
-    if (firstSave) {
-        // For testing, we always want to save to this device:
-        cy.contains(i18n.t("appMessage.targetFS") as string).click({force: true});
-        cy.contains(i18n.t("OK") as string).click({force: true});
-    }
-
-    cy.readFile(destFile).then((p : string) => {
-        // Print out full version in message (without escaped \n), to make it easier to diff:
-        expect(p, "Actual unescaped:\n" + p).to.equal(fullContent.replaceAll("\r\n", "\n"));
-    });
-}
 
 function adjustIfMicrobit(filepath: string) {
     if (Cypress.env("mode") === "microbit") {
@@ -122,7 +104,7 @@ function testRoundTripImportAndDownload(filepath: string) {
             expect(matching.length).to.eq(0);
         });
 
-        checkDownloadedFileEquals(spy.replaceAll("\r\n", "\n"), filepath.split("/").pop() ?? "My project.spy");
+        checkDownloadedFileEquals(strypeElIds, spy.replaceAll("\r\n", "\n"), filepath.split("/").pop() ?? "My project.spy");
     });
 }
 
@@ -140,7 +122,7 @@ function testEntryDisableAndSave(commands: string, disableFrames: string[], file
             cy.contains("*", i18n.t("contextMenu.disable") as string).click();
         });
 
-        checkDownloadedFileEquals(spy.replaceAll("\r\n", "\n"), "My project.spy", true);
+        checkDownloadedFileEquals(strypeElIds, spy.replaceAll("\r\n", "\n"), "My project.spy", true);
     });
 } 
 
@@ -226,7 +208,7 @@ describe("Tests saving layout metadata", () => {
         cy.get("#" + strypeElIds.getPEATabContentContainerDivId()).trigger("mouseenter");
         cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-expanded") + "']").click();
 
-        cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded.spy").then((f) => checkDownloadedFileEquals(f, "My project.spy", true));
+        cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded.spy").then((f) => checkDownloadedFileEquals(strypeElIds, f, "My project.spy", true));
     });
     it("Saves changed layout to tabsExpanded and back", () => {
         focusEditorPasteAndClear();
@@ -234,7 +216,7 @@ describe("Tests saving layout metadata", () => {
         cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-expanded") + "']").click();
         cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-collapsed") + "']").click();
 
-        cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded-collapsed.spy").then((f) => checkDownloadedFileEquals(f, "My project.spy", true));
+        cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded-collapsed.spy").then((f) => checkDownloadedFileEquals(strypeElIds, f, "My project.spy", true));
     });
     it("Loads and saves a file with tabsExpanded layout", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-layout-tabs-expanded.spy");
