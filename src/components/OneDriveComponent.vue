@@ -118,7 +118,10 @@ export default Vue.extend({
 
         // These are specific to the OneDrive component.
         siteOrigin(): string {
-            return (process.env.NODE_ENV === "production") ? "https://www.strype.org" : "http://localhost:8081";
+            console.log(process.env.npm_config_githubpages);
+            return (process.env.NODE_ENV === "production") 
+                ? "https://www.strype.org" 
+                : ((process.env.npm_config_githubpages) ? "https://k-pet-group.github.io" : "http://localhost:8081");
         },
 
         redirectURI(): string {
