@@ -1086,7 +1086,7 @@ export default Vue.extend({
                             const reader = new FileReader();
                             reader.addEventListener("load", () => {
                                 // name is not always available so we also check if content starts with a {,
-                                // which it will do for spy files:
+                                // which it will do for old-style spy files:
                                 if (file.name.endsWith(".py") || !(reader.result as string).trimStart().startsWith("{")) {
                                     (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(reader.result as string, fileHandles[0].name, file.lastModified, true, fileHandles[0]);
                                 }

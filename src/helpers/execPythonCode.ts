@@ -283,7 +283,9 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
                 consoleTextArea.value += ("< " + noLineSkulptErrStr + " >" + moreInfo);
                 // Set the error on the frame header -- do not use editable slots here as we can't give a detailed error location
                 Vue.set(useStore().frameObjects[frameId],"runTimeError", noLineSkulptErrStr);   
-                useStore().wasLastRuntimeErrorFrameId = frameId;      
+                useStore().wasLastRuntimeErrorFrameId = frameId;
+                // We now need to force expand that frame and all its ancestors so that it shows up:
+                useStore().forceExpand(frameId);
             }   
         }
         else{

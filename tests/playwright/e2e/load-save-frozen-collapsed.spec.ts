@@ -65,9 +65,9 @@ async function clickFoldChildrenFor(page: Page, identifyingText: string) : Promi
 }
 
 async function makeFrozen(page: Page, identifyingText: string) : Promise<void> {
-    const ancestor = page.locator(".frame-header:has(span:has-text('" + identifyingText + "'))");
+    const ancestor = page.locator(".frame-header:has(span:has-text('" + identifyingText + "'), div:has-text('" + identifyingText + "'))");
     await ancestor.click({button: "right"});
-    await page.getByRole("menuitem", {name: en.contextMenu.freeze}).click({timeout: 2000});
+    await page.getByRole("menuitem", {name: en.contextMenu.freeze, exact: true}).click({timeout: 2000});
 }
 
 async function foldViaMenu(page: Page, identifyingText: string, foldTo: CollapsedState) : Promise<void> {
@@ -88,10 +88,8 @@ async function foldViaMenu(page: Page, identifyingText: string, foldTo: Collapse
     await page.getByRole("menuitem", {name}).click({timeout: 2000});
 }
 
-// We have some functions and classes, and have a function to allow setting the states for any identifier:
-function testState (states: Record<string, string> = {}) {
-    const original =
-        `#(=> Strype:1:std
+const alphaBeta =
+    `#(=> Strype:1:std
 #(=> Section:Imports
 #(=> Section:Definitions
 def top1 ( ) :
@@ -112,6 +110,10 @@ def top2 ( ) :
 #(=> Section:Main
 #(=> Section:End
 `;
+
+
+// We have some functions and classes, and have a function to allow setting the states for any identifier:
+function testState (states: Record<string, string> = {}, original = alphaBeta) {
     let lines = original.split(/\r?\n/);
 
     for (const [key, value] of Object.entries(states)) {
@@ -329,4 +331,65 @@ def __init__ (self, ) :
     });
 });
 
+const inputWithBlank = `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+class Alpha  :
+    some_constant  = 5 
+    def __init__ (self, ) :
+        self.x  = ___strype_blank 
+#(=> Section:Main
+#(=> Section:End
+`;
+
+const inputWhichWillRuntimeError = `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+class Alpha  :
+    some_constant  = 5 
+    def __init__ (self,y ) :
+        self.x  = len(y) 
+#(=> Section:Main
+Alpha(None) 
+#(=> Section:End
+`;
+
+test.describe("Frozen state deals with errors", () => {
+    test("Cannot freeze if there is a syntax error", async ({page}) => {
+        await loadContent(page, inputWithBlank);
+        //await page.getByText("Run").click();
+        // Wait a moment for errors to be checked:
+        await page.waitForTimeout(2000);
+        // Will Timeout when it doesn't find the menu item:
+        await expect(makeFrozen(page, "Alpha")).rejects.toThrow(/Timeout/i);
+        // Menu remains though so we need to dismiss it:
+        await page.keyboard.press("Escape");
+        // We should then not be frozen, so should be unmodified state:
+        await saveAndCheck(page, inputWithBlank);
+    });
+    test("Can freeze if there is a runtime error", async ({page}) => {
+        await loadContent(page, inputWhichWillRuntimeError);
+        // Run to provoke the error, and check it is there:
+        await page.getByText("Run").click();
+        await expect(await page.locator(".fa-exclamation-triangle")).toBeVisible();
+        expect(await page.locator("#peaConsole").inputValue()).toContain("object of type 'NoneType' has no len()");
+        
+        // Then try to freeze:
+        await makeFrozen(page, "class ");
+        // We should then be frozen, despite there being an error because it is a runtime error:
+        await saveAndCheck(page, testState({"class": "Frozen", "__init__": "FoldToDocumentation"}, inputWhichWillRuntimeError));
+    });
+    test("Frozen frame unfolds if there is a runtime error", async ({page}) => {
+        await loadContent(page, inputWhichWillRuntimeError);
+        // Freeze:
+        await makeFrozen(page, "class ");
+        // We should then be frozen, despite there being an error because it is a runtime error:
+        await saveAndCheck(page, testState({"class": "Frozen", "__init__": "FoldToDocumentation"}, inputWhichWillRuntimeError));
+        
+        // Run to provoke the error, and check it is there:
+        await page.getByText("Run").click();
+        await expect(await page.locator(".fa-exclamation-triangle")).toBeVisible();
+        expect(await page.locator("#peaConsole").inputValue()).toContain("object of type 'NoneType' has no len()");
+    });
+});
 

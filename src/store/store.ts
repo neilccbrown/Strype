@@ -3068,6 +3068,14 @@ export const useStore = defineStore("app", {
                 this.selectMultipleFrames(direction);
             } while (previousFramesSelection.length !== this.selectedFrames.length && !this.selectedFrames.includes(stopId));
         },
+        
+        // Forces this frame and all its ancestors to be FULLY_VISIBLE, even if they are frozen
+        forceExpand(frameId: number) {
+            if (frameId != 0 && frameId in this.frameObjects) {
+                this.frameObjects[frameId].collapsedState = CollapsedState.FULLY_VISIBLE;
+                this.forceExpand(this.frameObjects[frameId].parentId);
+            }
+        },
     },
 });
 
