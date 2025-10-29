@@ -379,5 +379,17 @@ test.describe("Frozen state deals with errors", () => {
         // We should then be frozen, despite there being an error because it is a runtime error:
         await saveAndCheck(page, testState({"class": "Frozen", "__init__": "FoldToDocumentation"}, inputWhichWillRuntimeError));
     });
+    test("Frozen frame unfolds if there is a runtime error", async ({page}) => {
+        await loadContent(page, inputWhichWillRuntimeError);
+        // Freeze:
+        await makeFrozen(page, "class ");
+        // We should then be frozen, despite there being an error because it is a runtime error:
+        await saveAndCheck(page, testState({"class": "Frozen", "__init__": "FoldToDocumentation"}, inputWhichWillRuntimeError));
+        
+        // Run to provoke the error, and check it is there:
+        await page.getByText("Run").click();
+        await expect(await page.locator(".fa-exclamation-triangle")).toBeVisible();
+        expect(await page.locator("#peaConsole").inputValue()).toContain("object of type 'NoneType' has no len()");
+    });
 });
 
