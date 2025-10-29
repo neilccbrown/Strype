@@ -20,6 +20,7 @@ import { debounce } from "lodash";
 /* FITRUE_isPython */
 import {toUnicodeEscapes} from "@/parser/parser";
 import {fromUnicodeEscapes} from "@/helpers/pythonToFrames";
+import { $enum } from "ts-enum-util";
 
 export const undoMaxSteps = 200;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
@@ -2293,54 +2294,33 @@ export function slotStructureToString(ss: SlotsStructure) : string {
 // Given the current state of all the frames (or undefined if in a mixed state), gets the next state that would/should be cycled to
 // This is the next state that all frames support.
 export function calculateNextCollapseState(curCommonState : CollapsedState | undefined, frameList: FrameObject[], parentIsFrozen: boolean) : CollapsedState {
-    // The default if anything unexpected happens:
-    let nextState = CollapsedState.FULLY_VISIBLE;
-    // If they are in a mixed state we want next state to be fully collapsed, which is always available for defs:
-    if (curCommonState === undefined) {
-        nextState = CollapsedState.ONLY_HEADER_VISIBLE;
-    }
-    else {
-        // Otherwise, we need to work out the next state.  It should be a state they can all reach, which
-        // depends on the frames present (e.g. the doc state can't be reached if we have a mix of class and
-        // function frames)
+    // Fetch current states from frames:
+    const currentStates = new Set<CollapsedState>(
+        frameList.map((frame) => frame.collapsedState ?? CollapsedState.FULLY_VISIBLE)
+    );
 
-        // Step 1: compute remaining states per object
-        const possibleNextStates = (frameList as FrameObject[]).map((f) => {
-            const idx = f.frameType.allowedCollapsedStates.indexOf(f.collapsedState ?? CollapsedState.FULLY_VISIBLE);
-            if (idx < 0) {
-                return []; // safeguard if current not found
-            }
-            // If a frame can only be fully visible (e.g. comments and assignments in classes), we ignore it
-            // for the purposes of calculating the next state otherwise we'll never be able to transition:
-            if (f.frameType.allowedCollapsedStates.length == 1) {
-                return [];
-            }
-
-            // everything after current + everything before current, but
-            // take out fully visible if: parent is frozen, or we are frozen funcdef frame:
-            return f.frameType.allowedCollapsedStates.slice(idx + 1).concat(f.frameType.allowedCollapsedStates.slice(0, idx))
-                .filter((s) => !(s == CollapsedState.FULLY_VISIBLE &&
-                    (parentIsFrozen || (f.frameType.type == AllFrameTypesIdentifier.funcdef && f.frozenState == FrozenState.FROZEN))));
-        }).filter((ns) => ns.length > 0);
+    // Get all enum values (number values)
+    const allStates : CollapsedState[] = $enum(CollapsedState).getValues().map((v) => v as CollapsedState);
+    // Check states in cyclic order starting after current states
+    for (let offset = 1; offset <= allStates.length; offset++) {
+        const candidateStates = new Set<CollapsedState>();
+        currentStates.forEach((s) => {
+            const candidate = ((s - offset + allStates.length) % allStates.length) as CollapsedState;
+            candidateStates.add(candidate);
+        });
         
-        if (possibleNextStates.length == 0) {
-            // Bail out; make everything fully visible:
-            return CollapsedState.FULLY_VISIBLE;
-        }
-
-        // Step 2: intersect them all
-        let intersection = new Set(possibleNextStates[0]);
-        for (let i = 1; i < possibleNextStates.length; i++) {
-            intersection = new Set(possibleNextStates[i].filter((s) => intersection.has(s)));
-        }
-
-        // Step 3: pick earliest in canonical order (say, the first object’s list)
-        for (const state of possibleNextStates[0]) {
-            if (intersection.has(state)) {
-                nextState = state;
-                break;
+        for (const candidate of candidateStates) {
+            const willChange = frameList.some((frame) =>
+                frame.frameType.allowedCollapsedStates.includes(candidate) &&
+                    !(candidate == CollapsedState.FULLY_VISIBLE && (parentIsFrozen || (frame.frameType.type == AllFrameTypesIdentifier.funcdef && frame.frozenState == FrozenState.FROZEN))) &&
+                    (frame.collapsedState ?? CollapsedState.FULLY_VISIBLE) !== candidate);
+            if (willChange) {
+                return candidate;
             }
         }
     }
-    return nextState;
+
+
+    // No progress possible, so it doesn't matter what we return because nothing will change:
+    return CollapsedState.FULLY_VISIBLE;
 }
