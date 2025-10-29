@@ -1084,42 +1084,32 @@ export enum PythonExecRunningState {
 }
 
 export enum StrypeSyncTarget {
+    /* KEEP ORDER AS THIS TO AVOID COMPATILIBITY ISSUES WITH PREV VERSIONS OF STRYPE */
     none, // Nothing set up (note that auto save is always available on WebStores)
     fs, // The local file system (note that this is only for us to know saving has been requested once, there is NO auto-sync to the local FS)
-    gd, // Google Drive
-}
-
-export enum GAPIState {
-    unloaded, // default state : the Google API hasn't been loaded yet
-    loaded, // when the Google API has been loaded
-    failed, // when the Google API failed to load
+    gd, // Google Drive    
+    od, // Microsoft One Drive
+    ws, // Webstore: only used for default autosaving in the browser
 }
 
 export enum ShareProjectMode {
     public, // A public sharing (generic cases)
-    withinGD, // A share within Google Drive access rights
+    withinCloudDrive, // A share within a Cloud Drive (like Google Drive) access rights
 }
 
 export enum SaveRequestReason {
     autosave,
     saveProjectAtLocation, // explicit save at the given location in the dialog
     saveProjectAtOtherLocation, // explicit save with a change of the given location in the dialog
-    overwriteExistingProject, // explicit save overwerwriting an existing file/project (used for Google Drive only)
+    overwriteExistingProject, // explicit save overwerwriting an existing file/project (used for Cloud Drives only)
     loadProject,
     unloadPage,
-    reloadBrowser, // for Google Drive: when a project was previously saved in GD and the browser is reloaded and the user requested to save the local changes to GD.
+    reloadBrowser, // for Cloud Drive: when a project was previously saved in the drive and the browser is reloaded and the user requested to save the local changes to the drive.
     saveSettings, // for saving Strype settings
 }
 
-export interface SaveExistingGDProjectInfos {
-    existingFileId: string,
-    existingFileName: string
-    isCopyFileRequested: boolean,
-    resumeProcessCallback: VoidFunction,
-}
-
 export interface ProjectSaveFunction {
-    name: "WS" | "FS" | "GD", // The save destination: "WS" for the webstore, "FS" for the file system or "GD" for Google Drive.
+    syncTarget: StrypeSyncTarget,
     function: (saveReason: SaveRequestReason) => void;
 }
 
