@@ -92,17 +92,18 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getFrameUID, getMenuLeftPaneUID, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
+import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getFrameUID, getMenuLeftPaneUID, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, defaultEmptyStrypeLayoutDividerSettings, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
 import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
 import { mapStores } from "pinia";
-import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
+import { getAvailableNavigationPositions, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import scssVars  from "@/assets/style/_export.module.scss";
 import { isMacOSPlatform } from "@/helpers/common";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
+import { clamp } from "lodash";
 /* IFTRUE_isPython */
 import {Splitpanes, Pane, PaneData} from "splitpanes";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
@@ -430,7 +431,7 @@ export default Vue.extend({
 
                 // Prevent default scrolling and navigation in the editor, except if Turtle is currently running and listening for key events
                 // (then we just leave the PEA handling it, see at the end of these conditions for related code)
-                if (!isDraggingFrames && !isEditing && /*IFTRUE_isPython*/ !(isPythonExecuting && ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isTurtleListeningKeyEvents || (this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isRunningStrypeGraphics)) && /*FITRUE_isPython*/ ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"].includes(event.key)) {
+                if (!isDraggingFrames && !isEditing && /*IFTRUE_isPython*/ !(isPythonExecuting && ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isTurtleListeningKeyEvents || (this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isRunningStrypeGraphics)) && /*FITRUE_isPython*/ ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End", "PageUp", "PageDown"].includes(event.key)) {
                     event.stopImmediatePropagation();
                     event.stopPropagation();
                     event.preventDefault();
@@ -462,7 +463,34 @@ export default Vue.extend({
                             : this.appStore.frameObjects[sectionId].childrenIds.at(-1) as number;
                         const newCaretPosition = (isMovingHome || isSectionEmpty) ? CaretPosition.body : CaretPosition.below;
                         this.appStore.toggleCaret({id: newCaretId, caretPosition: newCaretPosition});
-                    }    
+                    }
+                    else if(event.key == "PageUp" || event.key == "PageDown"){
+                        // For the "PageUp" and "PageDown", we "scroll" up/down the frame cursor.
+                        const viewportTop = window.scrollY;
+                        const viewportBottom = viewportTop + window.innerHeight;
+                        const allNotCollapsedFrameCursorPos = getAvailableNavigationPositions(true).filter((navigationPos) => navigationPos.caretPosition);
+                        let ourCurrentPositionIndex = allNotCollapsedFrameCursorPos.findIndex((navigationPos) => navigationPos.caretPosition == this.appStore.currentFrame.caretPosition && navigationPos.frameId == this.appStore.currentFrame.id);
+                        if(ourCurrentPositionIndex > -1){
+                            // We approximate some scroll page number of carets to offset by counting how many carets positions are in the viewport.
+                            const lookCaretBefore = (event.key == "PageUp");
+                            const numberOfCaretPosInViewPort = allNotCollapsedFrameCursorPos
+                                .filter((navigationPos) => {
+                                    const caretHTMLEl = document.getElementById(getCaretContainerUID(navigationPos.caretPosition as CaretPosition, navigationPos.frameId));
+                                    const caretHTMLElBoundingBox = caretHTMLEl?.getBoundingClientRect()??null;
+                                    if(caretHTMLElBoundingBox){
+                                        return caretHTMLElBoundingBox.top >= 0 && (caretHTMLElBoundingBox.top + caretHTMLElBoundingBox.height) <= viewportBottom;                                        
+                                    }
+                                    return false;
+
+                                })
+                                .length;
+
+                            // We clamp the value to the boundary index of allNotCollapsedFrameCursorPos
+                            const caretPosToScrollToIIndex = clamp(ourCurrentPositionIndex + numberOfCaretPosInViewPort * (lookCaretBefore ? -1 : 1), 0, allNotCollapsedFrameCursorPos.length - 1);
+                            const caretPosToScrollTo = allNotCollapsedFrameCursorPos[caretPosToScrollToIIndex];
+                            this.appStore.toggleCaret({id: caretPosToScrollTo.frameId, caretPosition: caretPosToScrollTo.caretPosition as CaretPosition});
+                        }
+                    }
                     else{
                         // At this stage, tab and left/right arrows are handled only if not editing: editing cases are directly handled by LabelSlotsStructure.
                         // We start by getting from the DOM all the available caret and editable slot positions
