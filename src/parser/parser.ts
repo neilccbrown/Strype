@@ -275,7 +275,7 @@ export default class Parser {
         }
         
         output +=
-            (frameStates.length > 0 ? indentation + AppSPYFullPrefix + " FrameState:" + frameStates.sort().join(";") + "\n" : "") +
+            (frameStates.length > 0 && this.saveAsSPY ? indentation + AppSPYFullPrefix + " FrameState:" + frameStates.sort().join(";") + "\n" : "") +
             ((!passBlock)? this.parseStatement(block, insideAClass, indentation) : "") +
             ((this.saveAsSPY && children.length > 0 &&
                 ((!block.isDisabled && children.filter((c) => !c.isDisabled && c.frameType.type != AllFrameTypesIdentifier.blank && c.frameType.type != AllFrameTypesIdentifier.comment).length == 0)
