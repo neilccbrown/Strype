@@ -22,9 +22,10 @@
       "libraryAddress": "emplacement",
       "comment": "commentaire ",
       "projectDescription": "description du projet",
-      "funcDescription": "description de la fonction"
-        
+      "funcDescription": "description de la fonction",
+      "classDescription": "description de la classe"        
     },
+    "classdef_desc": "définition de classe",
     "funcdef_desc": "définition de fonction",
     "varassign_desc": "affectation",
     "funccall_desc": "appel de fonction",
@@ -187,7 +188,10 @@
     "screenshotGraphics": "Télécharger une capture d'écran",
     "collapseHeader": "Vue Réduite",
     "collapseDocumentation": "Vue Interface",
-    "collapseFull": "Vue Dévelopée"      
+    "collapseFull": "Vue Dévelopée",
+    "freeze": "Verrouiller",
+    "unfreeze": "Déverrouiller", 
+    "cannotFreezeErrors": "Verrouillage impossible avec des erreurs"      
   },
   "appMenu": {
     "downloadHex": "Convertir vers Hex",
