@@ -296,7 +296,7 @@ test.describe("Saves collapsed state after icon clicks", () => {
         await saveAndCheck(page, testState({"Alpha": "Frozen", "__init__": "FoldToHeader", "top1": "FoldToDocumentation;Frozen"}));
     });
 
-    test("Freezing prevents focusing the text slots", async ({page}) => {
+    test("Freezing prevents focusing the text slots with right arrow", async ({page}) => {
         await loadContent(page, testState({"Alpha": "Frozen", "__init__": "FoldToHeader", "top1": "FoldToDocumentation;Frozen"}));
         // We start at the top of the body, so one up to get to bottom of defs:
         await page.keyboard.press("ArrowUp");
@@ -316,6 +316,16 @@ test.describe("Saves collapsed state after icon clicks", () => {
 def __init__ (self, ) :
     self.x  = 7 
 `);
+    });
+
+    test("Freezing prevents focusing the text slots with clicking", async ({page}) => {
+        await loadContent(page, testState({"Alpha": "Frozen", "__init__": "FoldToHeader"}));
+        await page.locator("span", {hasText: "Alpha"}).click();
+        await page.waitForTimeout(3000);
+        await page.keyboard.press("Backspace");
+        await page.waitForTimeout(3000);
+        // That should put us before Alpha, then we press backspace it should delete top1 (line indexes 3 and 4):
+        await saveAndCheck(page, testState({"Alpha": "Frozen", "__init__": "FoldToHeader"}).split(/\r?\n/).filter((_, i) => i < 3 || i > 4).join("\n"));
     });
 });
 

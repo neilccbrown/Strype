@@ -1064,7 +1064,8 @@ export default Vue.extend({
                         }
                     }
                 }
-                if(anchorSpanElement && focusSpanElement && isElementLabelSlotInput(anchorSpanElement) && isElementLabelSlotInput(focusSpanElement)){
+                if(anchorSpanElement && focusSpanElement && isElementLabelSlotInput(anchorSpanElement) && isElementLabelSlotInput(focusSpanElement)
+                    && anchorSpanElement.isContentEditable && focusSpanElement.isContentEditable){
                     const anchorSlotInfo = parseLabelSlotUID(anchorSpanElement.id);
                     const focusSlotInfo = parseLabelSlotUID(focusSpanElement.id);
                     this.appStore.setSlotTextCursors({slotInfos: anchorSlotInfo, cursorPos: docSelection.anchorOffset},
