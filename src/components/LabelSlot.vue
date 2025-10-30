@@ -1131,23 +1131,39 @@ export default Vue.extend({
         handleFastUDNavKeys(event: KeyboardEvent){
             // If we are in a comment (e.g. frame or documentation slot) or in a string slot, we let the browser handling the key events.
             // Otherwise, the following rules apply:
-            // Home/End move the text cursor to the start/end of the label slot
+            // Home/End move the text cursor to the start/end of the whole label slots structure, or of the current slot structure level
+            //      (like a bracketed structure) if shit is also held (to avoid selecting code that spans across different levels)
             // PageUp/PageDown: no interaction with the text, acts as hitting up/down to leave the text slot and show the frame cursor
             if((event.key == "Home" || event.key == "End") && (this.frameType == AllFrameTypesIdentifier.comment || this.slotType == SlotType.comment || this.slotType == SlotType.string)){
                 return;
             }
             else if(event.key == "Home" || event.key == "End"){
-                // Find which bounds we should target (which bound in the current level based on the key, and also the bound based on current text cursor position)
+                // Find which bounds we should target (which bound in the current level or on the whole label slots structure based on the keys, and also the bound based on current text cursor position)
                 const moveToHome = (event.key === "Home");
                 const isSelecting = event.shiftKey;
-                const newCursorValue = (moveToHome) ? 0 : this.code.length;
-                
+                const parentSlotId = getSlotParentIdAndIndexSplit(this.coreSlotInfo.slotId).parentId;
+
+                // First focus: it will change to one end of the label slots structure OR current level depending on the direction we're going and if we are selecting
+                const newFocusSlotId = (moveToHome) 
+                    ? ((isSelecting) ? ((parentSlotId.length > 0) ? (parentSlotId + ",0") : "0") : "0" )
+                    : ((isSelecting) 
+                        ? ((parentSlotId.length > 0) ? (parentSlotId + "," + ((retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: parentSlotId}) as SlotsStructure).fields.length -1)) : (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.coreSlotInfo.labelSlotsIndex].slotStructures.fields.length - 1).toString())
+                        : (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.coreSlotInfo.labelSlotsIndex].slotStructures.fields.length - 1).toString());
+                // We only look for the new type and slot core infos for non-string current location to save unnecessary function calls
+                const newFocusSlotType = evaluateSlotType(getSlotDefFromInfos(this.coreSlotInfo), retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: newFocusSlotId}));
+                const newFocusSlotCoreInfo = {...this.coreSlotInfo, slotId: newFocusSlotId, slotType: newFocusSlotType};
+                const newFocusCursorPos = (moveToHome) ? 0 : (retrieveSlotFromSlotInfos(newFocusSlotCoreInfo) as BaseSlot).code.length;
+               
                 // Then anchor: it will either keep the same if we are doing a selection, or change to the same as focus if we are not.
-                const newAnchorSlotCursorInfo: SlotCursorInfos = (isSelecting) ? this.appStore.anchorSlotCursorInfos as SlotCursorInfos: {slotInfos: this.coreSlotInfo, cursorPos: newCursorValue}; 
+                const newAnchorSlotCursorInfo: SlotCursorInfos = (isSelecting) ? this.appStore.anchorSlotCursorInfos as SlotCursorInfos: {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos}; 
+
                 // Set the new bounds
                 this.$nextTick(() => {
-                    setDocumentSelection(newAnchorSlotCursorInfo, {slotInfos: this.coreSlotInfo, cursorPos: newCursorValue});
-                    this.appStore.setSlotTextCursors(newAnchorSlotCursorInfo, {slotInfos: this.coreSlotInfo, cursorPos: newCursorValue});
+                    document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos?.slotInfos as SlotCoreInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotLostCaret));
+                    document.getElementById(getLabelSlotUID(newFocusSlotCoreInfo))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
+                    setDocumentSelection(newAnchorSlotCursorInfo, {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos});
+                    this.appStore.setSlotTextCursors(newAnchorSlotCursorInfo, {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos});
+
                 });
                 event.preventDefault();
                 event.stopPropagation();
