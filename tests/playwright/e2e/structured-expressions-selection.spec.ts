@@ -241,7 +241,7 @@ function pressN(key: string, n : number) : ((page: Page) => Promise<void>) {
     };
 }
 
-test.describe("Home goes to start of current level", () => {
+test.describe("Home goes to start of whole label slots structure", () => {
     testNavigation("123", pressN("Home", 1), "{$123}");
     // Extra presses shouldn't matter:
     testNavigation("456", pressN("Home", 2), "{$456}");
@@ -251,17 +251,13 @@ test.describe("Home goes to start of current level", () => {
     testNavigation("foo(bar", async () => {}, "{foo}_({bar$})_{}");
     // Then test home:
     testNavigation("fax(neighbour1)", pressN("Home", 1), "{$fax}_({neighbour1})_{}");
-    testNavigation("fax(neighbour2", pressN("Home", 1), "{fax}_({$neighbour2})_{}");
+    testNavigation("fax(neighbour2", pressN("Home", 1), "{$fax}_({neighbour2})_{}");
     // Multiple presses ignored:
-    testNavigation("fax(neighbour2b", pressN("Home", 2), "{fax}_({$neighbour2b})_{}");
-    testNavigation("fax(neighbour3", async (page) => {
-        await pressN("Home", 1)(page);
-        await pressN("ArrowLeft", 1)(page);
-        await pressN("Home", 1)(page);
-    }, "{$fax}_({neighbour3})_{}");
+    testNavigation("fax(neighbour2b", pressN("Home", 2), "{$fax}_({neighbour2b})_{}");
+    testNavigation("fax(neighbour3", pressN("Home", 2), "{$fax}_({neighbour3})_{}");
 });
 
-test.describe("Shift-Home selects to the beginning", () => {
+test.describe("Shift-Home selects to the beginning of current level", () => {
     // Note: testSelectionThenDelete needs unique code to make a unique test name
     testSelectionThenDelete("a+b",async (page) => {
         await page.keyboard.press("End");
@@ -281,9 +277,14 @@ test.describe("Shift-Home selects to the beginning", () => {
         await page.keyboard.press("End");
         await page.keyboard.press("Shift+Home");
     }, "{$}");
+    testSelectionThenDelete("a+min(b,c)",async (page) => {
+        await page.keyboard.press("End");
+        await page.keyboard.press("ArrowLeft");
+        await page.keyboard.press("Shift+Home");
+    }, "{a}+{min}_({$})_{}");
 });
 
-test.describe("Shift-End selects to the end", () => {
+test.describe("Shift-End selects to the end of current level", () => {
     // Note: testSelectionThenDelete needs unique code to make a unique test name
     testSelectionThenDelete("a+b",async (page) => {
         await page.keyboard.press("Home");
@@ -316,6 +317,11 @@ test.describe("Shift-End selects to the end", () => {
         await page.keyboard.press("ArrowRight");
         await page.keyboard.press("Shift+End");
     }, "{a$}");
+    testSelectionThenDelete("a+min(b,c)",async (page) => {
+        await page.keyboard.press("Home");
+        await pressN("ArrowRight", 6)(page);
+        await page.keyboard.press("Shift+End");
+    }, "{a}+{min}_({$})_{}");
 });
 
 test.describe("Selecting then typing in one slot", () => {
