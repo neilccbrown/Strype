@@ -54,14 +54,16 @@ print(myString)
                 await page.keyboard.press("ArrowUp");
                 await page.keyboard.press("ArrowLeft");
                 await page.keyboard.type("Initial project description");
+                await page.waitForTimeout(2000);
                 for (const key of selectAll) {
                     await page.keyboard.press(key);
+                    await page.waitForTimeout(2000);
                 }
-                await page.waitForTimeout(200);
+                await page.waitForTimeout(2000);
                 for (const key of deleteCommand) {
                     await page.keyboard.press(key);
                 }
-                await page.waitForTimeout(200);
+                await page.waitForTimeout(2000);
                 await page.keyboard.type("The replacement");
                 expect(readFileSync(await save(page), "utf-8")).toEqual(`
 #(=> Strype:1:std
