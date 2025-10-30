@@ -38,7 +38,7 @@ async function clickFoldFor(page: Page, identifyingText: string) : Promise<void>
     const header = page.locator("span", { hasText: identifyingText });
     // Find its frame header ancestor:
     const ancestor = header.locator("xpath=ancestor::*[contains(@class, \"frame-header-div-line\")]");
-    const control = ancestor.locator(":scope > .folding-control");
+    const control = ancestor.locator(":scope > .frame-controls-container > .folding-control");
     await control.hover();
     expect(await control.evaluate((el) => getComputedStyle(el).cursor)).toEqual("pointer");
     await control.click();
