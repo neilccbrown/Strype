@@ -140,6 +140,7 @@ import scssVars from "@/assets/style/_export.module.scss";
 import {loadDivider} from "@/helpers/load-save";
 import FrameHeader from "@/components/FrameHeader.vue";
 import {inflateRaw} from "pako";
+import { Base64 } from "js-base64";
 
 let autoSaveTimerId = -1;
 let projectSaveFunctionsState : ProjectSaveFunction[] = [];
@@ -723,8 +724,10 @@ export default Vue.extend({
             if (m) {
                 const param = m[1];
                 // Base64 uses A-Za-z0-9+/, but the latter two are meaningful in URLs
-                // so we have to replace them (with - and _ respectively)
-                const binary = Uint8Array.from(atob(param.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+                // so we have to replace them (with - and _ respectively).
+                // That is handled automatically on decode by the js-base64 package: 
+                const decoded = Base64.decode(param);
+                const binary = Uint8Array.from(decoded, (c) => c.charCodeAt(0));
                 const spyContent = inflateRaw(binary, { to: "string" });
 
                 const loadSpy = () => this.setStateFromPythonFile(spyContent, this.$i18n.t("en.defaultProjName") as string, 0, false);

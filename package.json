@@ -53,6 +53,7 @@
         "file-saver": "^2.0.2",
         "html2canvas": "^1.4.1",
         "jquery": "^3.6.3",
+        "js-base64": "^3.7.8",
         "lodash": "^4.17.20",
         "lz-string": "^1.4.4",
         "object-hash": "^2.0.3",
