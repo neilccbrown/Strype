@@ -103,7 +103,7 @@ function testSelection(code : string, startIndex: number, endIndex: number, seco
         await page.waitForTimeout(100);
         await assertState(page, "{$}");
         await typeIndividually(page, code);
-        await doTextHomeEndKeyPress(page, false, false); // To handle the issue with macOS, see the method details.
+        await doTextHomeEndKeyPress(page, false, false); // To handle the issue with macOS, see the method details (equivalent to "home").
         for (let i = 0; i < startIndex; i++) {
             await page.keyboard.press("ArrowRight");
             await page.waitForTimeout(75);

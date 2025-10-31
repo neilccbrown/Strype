@@ -1142,13 +1142,12 @@ export default Vue.extend({
             //      Fn + Left --> "Home"                --> start of document --> we won't get it here
             //    The selection with shift is treated according to the rule above. It seemed that {Fn + Left + Shift} worked
             //    but to make things consistent we'll just drop it. 
-
-            if((event.key == "Home" || event.key == "End" || event.key == "Left" || event.key == "Right") && (this.frameType == AllFrameTypesIdentifier.comment || this.slotType == SlotType.comment || this.slotType == SlotType.string)){
+            if((event.key == "Home" || event.key == "End" || event.key == "ArrowLeft" || event.key == "ArrowRight") && (this.frameType == AllFrameTypesIdentifier.comment || this.slotType == SlotType.comment || this.slotType == SlotType.string)){
                 return;
             }
-            else if(event.key == "Home" || event.key == "End" || event.key == "Left" || event.key == "Right"){
+            else if(event.key == "Home" || event.key == "End" || event.key == "ArrowLeft" || event.key == "ArrowRight"){
                 // Find which bounds we should target (which bound in the current level or on the whole label slots structure based on the keys, and also the bound based on current text cursor position)
-                const moveToHome = (event.key === "Home" || event.key == "Left");
+                const moveToHome = (event.key === "Home" || event.key == "ArrowLeft");
                 const isSelecting = event.shiftKey;
                 const parentSlotId = getSlotParentIdAndIndexSplit(this.coreSlotInfo.slotId).parentId;
 

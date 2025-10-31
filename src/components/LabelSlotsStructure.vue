@@ -460,9 +460,10 @@ export default Vue.extend({
         forwardKeyEvent(event: KeyboardEvent) {
             // The container div of this LabelSlotsStructure is editable. Editable divs capture the key events. 
             // We need to forward the event to the currently "focused" (editable) slot.
-            // ** LEFT/RIGHT AND UP/DOWN ARROWS ARE TREATED SEPARATELY BY THIS COMPONENT, we don't forward related events **
-            if(event.key == "ArrowLeft" || event.key == "ArrowRight"
-                || event.key == "ArrowUp" || event.key == "ArrowDown"){
+            // ** LEFT/RIGHT AND UP/DOWN ARROWS (without the meta key pressed for macOS) ARE TREATED SEPARATELY
+            // BY THIS COMPONENT, we don't forward related events **
+            if(!(isMacOSPlatform() && event.metaKey) && (event.key == "ArrowLeft" || event.key == "ArrowRight"
+                || event.key == "ArrowUp" || event.key == "ArrowDown")){
                 return;
             }
 
@@ -570,6 +571,7 @@ export default Vue.extend({
                     || event.key == "PageUp"
                     || event.key == "PageDown"
                     || event.key == "Tab"
+                    || (isMacOSPlatform() && event.metaKey && textHomeEndBehaviourKeys.includes(event.key))
                     || (event.key == " " && (event.ctrlKey || event.metaKey))) {
                     event.preventDefault();
                     event.stopPropagation();
@@ -695,6 +697,11 @@ export default Vue.extend({
         },        
 
         onLRKeyDown(event: KeyboardEvent) {
+            // We ignore calls from macOS when the meta key is also pressed (we treat this equivalent to home, see LabelSlot.vue handleFastUDNavKeys())
+            if(isMacOSPlatform() && event.metaKey){
+                return;
+            }
+
             // Because the event handling, it is easier to deal with the left/right arrow at this component level.
             if(this.appStore.focusSlotCursorInfos){
                 const {slotInfos, cursorPos} = this.appStore.focusSlotCursorInfos;
