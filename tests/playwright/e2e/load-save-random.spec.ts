@@ -202,6 +202,7 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
         }
     }
     else {
+        console.log("Did not find shortcut for " + frame.frameType);
         return;
     }
     if (frame.frameType == "funccall") {
@@ -224,6 +225,12 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
         await beforeBody();
     }
     if (frame.body !== undefined) {
+        if (frame.frameType == "classdef") {
+            // Need to remove the default constructor:
+            await page.keyboard.press("Delete");
+            await page.waitForTimeout(100);
+        }
+        
         for (const s of frame.body) {
             await checkFrameXorTextCursor(page, true, "Body of frame " + frame.frameType);
             await enterFrame(page, s, frame.disabled ?? false);
@@ -1078,5 +1085,10 @@ test.describe("Enters, saves and loads specific frames", () => {
             {frameType: "library", slotContent: ["(+6.7){“ and ”[]} is not “”1"]},
             {frameType: "library", slotContent: ["(#‘+’_$\\\\) not in "]},
         ], [], []]);
+    });
+    test("Empty classes", async ({page}) => {
+        await testSpecific(page, [[], [
+            {frameType: "classdef", slotContent: ["Foo", ""], body: []},
+        ], []]);
     });
 });
