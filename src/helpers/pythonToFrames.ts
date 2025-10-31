@@ -127,7 +127,7 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}, i
     ){
         // A multilines comment is detected, we transform the frame.
         const stringFieldContent = (slots[0].slotStructures.fields[1] as BaseSlot).code;
-        slots[0].slotStructures.fields.splice(0, 3, {code: stringFieldContent.slice(2,-2).replaceAll("\\n", "\n")});
+        slots[0].slotStructures.fields.splice(0, 3, {code: stringFieldContent.slice(2,-2).replaceAll(STRYPE_DOC_NEWLINE, "\n")});
         slots[0].slotStructures.operators.splice(0);
         type = AllFrameTypesIdentifier.comment;
     }
@@ -208,6 +208,7 @@ function getIndent(codeLine: string) {
 const STRYPE_COMMENT_PREFIX = "___strype_comment_";
 const STRYPE_LIBRARY_PREFIX = "___strype_library_";
 
+const STRYPE_DOC_NEWLINE = "___strype_doc_newline";
 const STRYPE_WHOLE_LINE_BLANK = "___strype_whole_line_blank";
 
 export const STRYPE_DUMMY_FIELD = "___strype_dummy";
@@ -415,7 +416,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                     if (afterEndQuote != -1) {
                         // The end exists on this line, jump to it:
                         charIndex = afterEndQuote;
-                        if (line.startsWith(mostRecentIndent) && currentTripleQuoteString.content.includes("\\n") && format == "spy") {
+                        if (line.startsWith(mostRecentIndent) && currentTripleQuoteString.content.includes(STRYPE_DOC_NEWLINE) && format == "spy") {
                             currentTripleQuoteString.content = currentTripleQuoteString.content + line.substring(mostRecentIndent.length, afterEndQuote);
                         }
                         else {
@@ -428,7 +429,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                     }
                     else {
                         // Whole line is in string, add it to string and remove indent if SPY, indent present, and not first line of string:
-                        if (line.startsWith(mostRecentIndent) && currentTripleQuoteString.content.includes("\\n") && format == "spy") {
+                        if (line.startsWith(mostRecentIndent) && currentTripleQuoteString.content.includes(STRYPE_DOC_NEWLINE) && format == "spy") {
                             currentTripleQuoteString.content = currentTripleQuoteString.content + line.substring(mostRecentIndent.length);
                         }
                         else {
@@ -491,7 +492,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
             }
             else if (currentTripleQuoteString != null) {
                 // Record the newline here, which is an escaped newline:
-                currentTripleQuoteString.content = currentTripleQuoteString.content + "\\n";
+                currentTripleQuoteString.content = currentTripleQuoteString.content + STRYPE_DOC_NEWLINE;
             }
         }
     }
@@ -1541,7 +1542,7 @@ const transformTripleQuotesStrings = (slots: {[index: number]: LabelSlotsContent
                 const stringSlotLiteralValue = fieldSlot.code;
                 if((fieldSlot.quote == "'" && parsedTripleSingleQuotesStrRegex.test(stringSlotLiteralValue)) 
                     || (fieldSlot.quote == "\"" && parsedTripleDoubleQuotesStrRegex.test(stringSlotLiteralValue))){
-                    fieldSlot.code = stringSlotLiteralValue.slice(2, -2).replaceAll(/\r?\n/g, "\\n");
+                    fieldSlot.code = stringSlotLiteralValue.slice(2, -2).replaceAll(/\r?\n/g, STRYPE_DOC_NEWLINE);
                 }
             }
             // Else, there is nothing to transform
