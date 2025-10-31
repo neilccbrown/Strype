@@ -489,8 +489,8 @@ test.describe("Enters, saves and loads specific frames", () => {
     test("Tests funccall beginning with #", async ({page}) => {
         await testSpecific(page, [[], [], [
             {frameType: "funccall", slotContent: ["foo"]},
-            {frameType: "funccall", slotContent: ["#foo"]},
-            {frameType: "funccall", slotContent: ["foo"]},
+            {frameType: "funccall", slotContent: ["#bar"]},
+            {frameType: "funccall", slotContent: ["baz"]},
         ]]);
     });
     test("Empty comments", async ({page}) => {
@@ -1086,9 +1086,31 @@ test.describe("Enters, saves and loads specific frames", () => {
             {frameType: "library", slotContent: ["(#‘+’_$\\\\) not in "]},
         ], [], []]);
     });
+    
     test("Empty classes", async ({page}) => {
         await testSpecific(page, [[], [
             {frameType: "classdef", slotContent: ["Foo", ""], body: []},
         ], []]);
+    });
+    
+    test("Comment character in description fields", async ({page}) => {
+        await testSpecific(page, [[], [
+            {frameType: "classdef", slotContent: ["Foo", "Class doc, this is before # this is after"], body: []},
+            {frameType: "funcdef", slotContent: ["foo", "", "Func doc, this is before # this is after"], body: []},
+        ], []], "Project doc, this is before # this is after");
+    });
+
+    test("Comment character in multi-line description fields", async ({page}) => {
+        await testSpecific(page, [[], [
+            {frameType: "classdef", slotContent: ["Foo", "Class doc, this is before # this is after\nThis is another line with # in it\nThis last one too#"], body: []},
+            {frameType: "funcdef", slotContent: ["foo", "", "Func doc, this is before # this is after\nThis is another line with # in it\nThis last one too#"], body: []},
+        ], []], "Project doc, this is before # this is after\nThis is another line with # in it\nThis last one too#");
+    });
+
+    test("Comment character in disabled multi-line description fields", async ({page}) => {
+        await testSpecific(page, [[], [
+            {frameType: "classdef", slotContent: ["Foo", "Class doc, this is before # this is after\nThis is another line with # in it\nThis last one too#"], body: [], disabled: true},
+            {frameType: "funcdef", slotContent: ["foo", "", "Func doc, this is before # this is after\nThis is another line with # in it\nThis last one too#"], body: [], disabled: true},
+        ], []], "Project doc, this is before # this is after\nThis is another line with # in it\nThis last one too#");
     });
 });

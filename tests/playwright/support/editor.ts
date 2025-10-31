@@ -25,7 +25,12 @@ export async function checkFrameXorTextCursor(page: Page, specificFrameCursor?: 
 
 export async function typeIndividually(page: Page, content: string, timeout = 75) : Promise<void> {
     for (let i = 0; i < content.length; i++) {
-        await page.keyboard.type(content[i]);
+        if (content[i] == "\n") {
+            await page.keyboard.press("Shift+Enter");
+        }
+        else {
+            await page.keyboard.type(content[i]);
+        }
         await page.waitForTimeout(timeout);
     }
 }
