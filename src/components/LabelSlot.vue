@@ -87,6 +87,7 @@ import Frame from "@/components/Frame.vue";
 import scssVars from "@/assets/style/_export.module.scss";
 import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
 import {drawSoundOnCanvas} from "@/helpers/media";
+import { isMacOSPlatform } from "@/helpers/common";
 
 // Default time to keep in cache: 5 minutes.
 const soundPreviewImages = new Cache<LoadedMedia>({ defaultTtl: 5 * 60 * 1000 });
@@ -787,8 +788,9 @@ export default Vue.extend({
                 event.stopImmediatePropagation();
             }
 
-            // Manage the handling of home/end and page up/page down keys
-            if(["PageUp", "PageDown", "Home", "End"].includes(event.key)){
+            // Manage the handling of home/end and page up/page down keys (see macOS case in method details)
+            const textHomeEndBehaviourKeys = (isMacOSPlatform() && event.metaKey) ? ["ArrowLeft", "ArrowRight"] : ["Home", "End"];
+            if(["PageUp", "PageDown", ...textHomeEndBehaviourKeys].includes(event.key)){
                 this.handleFastUDNavKeys(event);
                 return;
             }
@@ -1129,17 +1131,24 @@ export default Vue.extend({
         },
 
         handleFastUDNavKeys(event: KeyboardEvent){
-            // If we are in a comment (e.g. frame or documentation slot) or in a string slot, we let the browser handling the key events.
+            // If we are in a comment (e.g. frame or documentation slot) or in a string slot, we let the browser* handling the key events.
             // Otherwise, the following rules apply:
-            // Home/End move the text cursor to the start/end of the whole label slots structure, or of the current slot structure level
+            // Home/End* move the text cursor to the start/end of the whole label slots structure, or of the current slot structure level
             //      (like a bracketed structure) if shit is also held (to avoid selecting code that spans across different levels)
             // PageUp/PageDown: no interaction with the text, acts as hitting up/down to leave the text slot and show the frame cursor
-            if((event.key == "Home" || event.key == "End") && (this.frameType == AllFrameTypesIdentifier.comment || this.slotType == SlotType.comment || this.slotType == SlotType.string)){
+            //(*) Note that in macOS things are a big tricky because there is no dedicated home/end keys.
+            //    This is their mapping (simplified for one direction only) and natural behaviour and what we will do:
+            //      ⌘ + Left --> "metaKey + ArrowLeft" --> start of line     --> we detect that and let the browser do its job
+            //      Fn + Left --> "Home"                --> start of document --> we won't get it here
+            //    The selection with shift is treated according to the rule above. It seemed that {Fn + Left + Shift} worked
+            //    but to make things consistent we'll just drop it. 
+
+            if((event.key == "Home" || event.key == "End" || event.key == "Left" || event.key == "Right") && (this.frameType == AllFrameTypesIdentifier.comment || this.slotType == SlotType.comment || this.slotType == SlotType.string)){
                 return;
             }
-            else if(event.key == "Home" || event.key == "End"){
+            else if(event.key == "Home" || event.key == "End" || event.key == "Left" || event.key == "Right"){
                 // Find which bounds we should target (which bound in the current level or on the whole label slots structure based on the keys, and also the bound based on current text cursor position)
-                const moveToHome = (event.key === "Home");
+                const moveToHome = (event.key === "Home" || event.key == "Left");
                 const isSelecting = event.shiftKey;
                 const parentSlotId = getSlotParentIdAndIndexSplit(this.coreSlotInfo.slotId).parentId;
 
