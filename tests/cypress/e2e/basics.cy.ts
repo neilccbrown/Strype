@@ -378,8 +378,7 @@ describe("Deleting frames", () => {
         cy.get("body").type("{upArrow}cA{rightArrow}{rightArrow}");
         cy.get("body").type("{del}");
         checkCodeEquals(defaultImports.concat([
-            "class  A :",
-            "    pass",
+            {h:/class +A +:/, b: []},
         ]).concat(defaultMyCode));
     });
     it("Lets you delete a frame with backspace", () => {
