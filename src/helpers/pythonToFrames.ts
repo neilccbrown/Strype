@@ -195,7 +195,7 @@ function parseWithSkulpt(codeLines: string[], mapErrorLineno : (lineno : number)
         parsed = Sk.parse("pasted_content.py", codeLines.join("\n"));
     }
     catch (e) {
-        return ((e as any).$offset?.v?.[2]?.$mangled ?? (e as any).$msg?.$mangled) + " line for parse eerror: " + mapErrorLineno((e as any).traceback?.[0].lineno);
+        return ((e as any).$offset?.v?.[2]?.$mangled ?? (e as any).$msg?.$mangled) + " line: " + mapErrorLineno((e as any).traceback?.[0].lineno);
     }
     return {parseTree: parsed["cst"], addedFakeJoinParent: addedFakeJoinParent};
 }
