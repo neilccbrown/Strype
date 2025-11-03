@@ -125,6 +125,10 @@ export function getImportDiffVersionModalDlgId(): string {
     return "importDiffVersionModalDlg";
 }
 
+export function getCloudLoginErrorModalDlgId(): string {
+    return "cloudLoginErrorModalDlg";
+}
+
 const frameUIDRegex = /^frame_id_(\d+)$/;
 export function isIdAFrameId(id: string): boolean {
     return id.match(frameUIDRegex) !== null;
