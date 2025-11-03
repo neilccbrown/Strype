@@ -356,7 +356,7 @@ export default Vue.extend({
                             this.appStore.unselectAllFrames();
                             switch(currentFrameSelection){
                             case SelectAllFramesFuncDefScope.frame:
-                            case SelectAllFramesFuncDefScope.functionsContainerBody:
+                            case SelectAllFramesFuncDefScope.definitionsContainerBody:
                                 // In imports or main code. Or in function definitions with some functions selected, or inside the function defs container.
                                 // Position the frame cursor inside the body of the frame container
                                 this.appStore.setCurrentFrame({id: frameContainerId, caretPosition: CaretPosition.body});
