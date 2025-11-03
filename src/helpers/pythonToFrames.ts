@@ -15,12 +15,6 @@ const TOP_LEVEL_TEMP_ID = -999;
 // Therefore, we look for the string content starting with '' or "" and finishing with '' or "".
 const parsedTripleSingleQuotesStrRegex = /^''.*''$/s, parsedTripleDoubleQuotesStrRegex = /^"".*""$/s;
 
-// Enum for the type of triple quote strings token (used for flagging)
-enum QuoteStringTokenType {
-    NO_PARSING, // when no triple quote string is parsed yet
-    SINGLE, // when the string is being parsed, and the token is '''
-    DOUBLE,// when the string is being parsed, and the token is """"
-}
 
 // Type for the things we get from the Skulpt parser:
 export interface ParsedConcreteTree {
@@ -133,7 +127,7 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}, i
     ){
         // A multilines comment is detected, we transform the frame.
         const stringFieldContent = (slots[0].slotStructures.fields[1] as BaseSlot).code;
-        slots[0].slotStructures.fields.splice(0, 3, {code: stringFieldContent.slice(2,-2)});
+        slots[0].slotStructures.fields.splice(0, 3, {code: stringFieldContent.slice(2,-2).replaceAll(STRYPE_DOC_NEWLINE, "\n")});
         slots[0].slotStructures.operators.splice(0);
         type = AllFrameTypesIdentifier.comment;
     }
@@ -214,6 +208,7 @@ function getIndent(codeLine: string) {
 const STRYPE_COMMENT_PREFIX = "___strype_comment_";
 const STRYPE_LIBRARY_PREFIX = "___strype_library_";
 
+const STRYPE_DOC_NEWLINE = "___strype_doc_newline";
 const STRYPE_WHOLE_LINE_BLANK = "___strype_whole_line_blank";
 
 export const STRYPE_DUMMY_FIELD = "___strype_dummy";
@@ -232,6 +227,50 @@ export interface SavedFrameState {
     // Could be more in future, potentially
 }
 
+// Given a line and a start index, looks for the given closing quote from startIndex (inclusive) onwards.
+// Ensures that the quote is not escaped by looking at preceding backslashes.  If there's:
+// '     --> 0, not escaped
+// \'    --> 1, escaped
+// \\'   --> 2, not escaped (preceding escaped backslash)
+// \\\'  --> 3, escaped (after a preceding escaped backslash)
+// \\\\' --> 4, not escaped (after two preceding escaped backslashes)
+// General rule: must have even number of backslash before to be not-escaped.
+// Returns -1 if not found, or otherwise the position just after the end of the closing quote
+function findStringEnd(line : string, startIndex : number, quoteType : string) : number {
+    const quoteLen = quoteType.length;
+    let pos = startIndex;
+    while (pos < line.length) {
+        const nextQuoteIndex = line.indexOf(quoteType, pos);
+        if (nextQuoteIndex === -1) {
+            return -1; // Not found
+        }
+        else {
+            // Found, but check if it's escaped.
+
+            // Count backslashes immediately before the quote
+            let backslashes = 0;
+            for (let j = nextQuoteIndex - 1; j >= 0 && line[j] === "\\"; j--) {
+                backslashes++;
+            }
+
+            // Even number of backslashes; quote is not escaped, so it's the real end
+            if (backslashes % 2 === 0) {
+                return nextQuoteIndex + quoteLen;
+            }
+
+            // Otherwise, escaped → skip past and keep looking
+            pos = nextQuoteIndex + 1;
+        }
+    }
+    return -1;
+}
+
+// Takes the original code lines, and specification of py or spy format.
+// Returns a list of transformed lines with recording for frame states for a particular line
+// (and similarly but separatedly, which lines are disabled), any non-line-specific Strype states
+// and a list of transformed lines.  Comments are transformed to identifiers, as are blanks, so that
+// we can see them after Skulpt's parse.
+// Note the disabledLines are one-based, not zero-based
 function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") : {disabledLines : number[], frameStateLines : Map<number, SavedFrameState>, transformedLines : string[], strypeDirectives: Map<string, string>} { 
     codeLines = [...codeLines];
     const disabledLines : number[] = [];
@@ -285,76 +324,67 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
 
     // Skulpt doesn't preserve blanks or comments so we must find them and transform
     // them into something that does parse.
-    // Note that we do not worry about blank spaces inside triple quotes strings: Skulpt won't remove them, 
-    // we need to preserve them, so we also need to know when we are inside a triple quotes string.
-    // Find all comments.  This isn't quite perfect (with respect to # in strings and triple quotes tokens) but it will do:
-    let mostRecentIndent = "", singleIndentLength = 0, isParsingTripleQuotesStr = false, currentTripleQuoteTokenStyle = QuoteStringTokenType.NO_PARSING;
+    
+    // The content here includes the original starting line, opening quote and all string content.
+    // We turn all triple quotes into single lines with \n to avoid issues with indents on subsequent lines:
+    let mostRecentIndent = "", currentTripleQuoteString: {quote: "'''" | "\"\"\"", content: string, disabled: boolean } | null = null;
     for (let i = 0; i < codeLines.length; i++) {
-        // Look for # with only space before them, or a # with no quote after (if we are not in the context of a multlines comment):
-        const match = /^( *)#(.*)$/.exec(codeLines[i]) ?? /^([^#]*)#([^"]+)$/.exec(codeLines[i]);
-        if (match && !isParsingTripleQuotesStr) {
-            const directiveMatch = new RegExp("^ *" + escapeRegExp(AppSPYFullPrefix) + "([^:]+):(.*)$").exec(codeLines[i]);
-            if (directiveMatch) {
-                // By default, directives are just added to the map:
-                // Note we trim() keys but not values; space may well be important in values:
-                const key = directiveMatch[1].trim();
-                const value = directiveMatch[2];
-                if (key == "Disabled") {
-                    // Process line again:
-                    codeLines[i] = match[1] + value;
+        // The #(=> directives are only valid if they appear on a line with only whitespace before them:
+        const directiveMatch = new RegExp("^( *)" + escapeRegExp(AppSPYFullPrefix) + "([^:]+):(.*)$").exec(codeLines[i]);
+        if (directiveMatch && (currentTripleQuoteString == null || (currentTripleQuoteString.disabled && directiveMatch[2].trim() == "Disabled"))) {
+            // By default, directives are just added to the map:
+            const directiveIndent = directiveMatch[1];
+            // Note we trim() keys but not values; space may well be important in values:
+            const key = directiveMatch[2].trim();
+            const value = directiveMatch[3];
+            
+            if (key == "Disabled") {
+                // Process line again:
+                codeLines[i] = directiveIndent + value;
+                disabledLines.push(i+1);
+                i -= 1;
+                continue;
+            }
+            else if (key == "Library" || key == "LibraryDisabled") {
+                transformedLines.push(directiveIndent + STRYPE_LIBRARY_PREFIX + toUnicodeEscapes(value));
+                // We know this is only whitespace because directiveMatch also matched:
+                mostRecentIndent = directiveIndent;
+                if (key == "LibraryDisabled") {
                     disabledLines.push(i+1);
-                    i -= 1;
-                    continue;
                 }
-                else if (key == "Library" || key == "LibraryDisabled") {
-                    transformedLines.push(match[1] + STRYPE_LIBRARY_PREFIX + toUnicodeEscapes(value));
-                    // We know this is only whitespace because directiveMatch also matched:
-                    mostRecentIndent = match[1];
-                    if (key == "LibraryDisabled") {
-                        disabledLines.push(i+1);
+            }
+            else if (key == "FrameState") {
+                const states = value.trim().split(";");
+                const composite = {} as SavedFrameState;
+                for (const s of states) {
+                    if (s.trim() in stringToCollapsed) {
+                        composite.collapsed = stringToCollapsed[s.trim()];
+                    }
+                    if (s.trim() in stringToFrozen) {
+                        composite.frozen = stringToFrozen[s.trim()];
                     }
                 }
-                else if (key == "FrameState") {
-                    const states = value.trim().split(";");
-                    const composite = {} as SavedFrameState;
-                    for (const s of states) {
-                        if (s.trim() in stringToCollapsed) {
-                            composite.collapsed = stringToCollapsed[s.trim()];
-                        }
-                        if (s.trim() in stringToFrozen) {
-                            composite.frozen = stringToFrozen[s.trim()];
-                        }
-                    }
-                    // +1 to move to a 1-based rather than 0-based line number, and +1 more to mean the line after us:
-                    frameStateLines.set(i + 2, composite);
-                    // Push a blank to make line numbers match:
-                    transformedLines.push("");
-                }
-                else {
-                    strypeDirectives.set(key, value);
-                    // Push a blank to make line numbers match:
-                    transformedLines.push("");
-                    mostRecentIndent = "";
-                }
+                // +1 to move to a 1-based rather than 0-based line number, and +1 more to mean the line after us:
+                frameStateLines.set(i + 2, composite);
+                // Push a blank to make line numbers match:
+                transformedLines.push("");
             }
             else {
-                if (match[1].trim() == "") {
-                    // Just a single line comment:
-                    transformedLines.push(match[1] + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(match[2]));
-                    mostRecentIndent = match[1];
-                    aCommentBlockLines.push(transformedLines.length-1);
-                }
-                else {
-                    // Code followed by comment, put comment on next line:
-                    mostRecentIndent = getIndent(match[1]);
-                    transformedLines.push(match[1]);
-                    checkRearrangeCommentsIdent();
-                    transformedLines.push(mostRecentIndent + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(match[2]));
-                }
+                // Not one we have to deal with during parsing, probably a config setting, so record for later processing:
+                strypeDirectives.set(key, value);
+                // Push a blank to make line numbers match:
+                transformedLines.push("");
+                mostRecentIndent = "";
             }
         }
-        else if (codeLines[i].trim() === "" && !isParsingTripleQuotesStr) {
-            // Blank line:
+        /*
+            else {
+                
+            }
+        }
+         */
+        else if (codeLines[i].trim() === "" && currentTripleQuoteString == null) {
+            // Blank line, outside a string:
             // We indent this to the largest of its indent,
             // and the (smallest of the indent before us and the indent after us).
             let nextIndent = "";
@@ -373,150 +403,97 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
             }
             checkRearrangeCommentsIdent();
         }
-        else if((currentTripleQuoteTokenStyle != QuoteStringTokenType.DOUBLE && codeLines[i].trim().includes("'''")) || (currentTripleQuoteTokenStyle != QuoteStringTokenType.SINGLE && codeLines[i].trim().includes("\"\"\""))){
-            // At least 1 triple quotes string is in the line, we don't know if it is actually a 
-            // "normal" string or a comment, but we care about that later when we put things in frames.
-            // For the moment we just try to see if the current line "hangs" a triple quotes string
-            // literal "started", so we can flag it out; and we arrange the indentation as such:
-            // 1) if the line doesn't start with ''' or """ we align the comment at the current mostRecentIndent 
-            // or 2) if it's a multiple of the indent unit length we keep it and update the most recent indent,
-            // otherwise we take a guess where to start the string literal to the closest indentation.
-            let transformedLine = "";
-            let hasFinishedFindingTripleQuotesString = false, lookUpTripleQuoteTokenFromIndex = 0, foundOneTripleQuoteStartToken = false;
-            const stringStartDetectorIndexes: {stringToken: QuoteStringTokenType, stringStartIndex: number}[] = [];
-            while(!hasFinishedFindingTripleQuotesString){
-                // We "scan" the line to find the triple quotes strings: the point is to 
-                // 1) know what token (''' or """) opens a string literal and discard inner """ or ''' from the search
-                // 2) find out when a triple quote string literal is fully contained in the line and can be ignored for parsing.                
-                if(!isParsingTripleQuotesStr){
-                    // We look for normal strings too, just to avoid the case of bumping to a triple quote token as literal inside,
-                    // like in "this is a triple quote: ''', yes.". We just find them and go beyond them if they come first.
-                    // Because JS limitations with regex, we can't directly find the normal string in the line.
-                    // So instead, we look for a normal string start, record the start index to see what comes first.
-                    // If a normal string comes first, we process it.
-                    // Note: the index of the string is (lookUpTripleQuoteTokenFromIndex (where we started) + match index + (1 if match length is 2, 0 otherwise -, because the match index counts the non grouping part)
-                    const normalSingleQuoteStringStartRegexRes = /(?:^|[^\\'])(')(?!')/.exec(codeLines[i].slice(lookUpTripleQuoteTokenFromIndex));
-                    if(normalSingleQuoteStringStartRegexRes){
-                        stringStartDetectorIndexes.push({stringToken: QuoteStringTokenType.SINGLE, stringStartIndex: lookUpTripleQuoteTokenFromIndex + (normalSingleQuoteStringStartRegexRes.index + normalSingleQuoteStringStartRegexRes[0].length - 1)});
-                    }
-                    const normalDoubleQuoteStringStartRegexRes = /(?:^|[^\\"])(")(?!")/.exec(codeLines[i].slice(lookUpTripleQuoteTokenFromIndex));
-                    if(normalDoubleQuoteStringStartRegexRes){
-                        stringStartDetectorIndexes.push({stringToken: QuoteStringTokenType.DOUBLE, stringStartIndex: lookUpTripleQuoteTokenFromIndex + (normalDoubleQuoteStringStartRegexRes.index + normalDoubleQuoteStringStartRegexRes[0].length - 1)});         
-                    }           
-                }
-                const lookUpTripleQuoteTokenRegex: RegExp = (currentTripleQuoteTokenStyle == QuoteStringTokenType.NO_PARSING) 
-                    ? /(?<!\\)('''|""")/ 
-                    : ((currentTripleQuoteTokenStyle == QuoteStringTokenType.SINGLE) 
-                        ? /(?<!\\)'''/ 
-                        : /(?<!\\)"""/);
-                const regexExecRes = lookUpTripleQuoteTokenRegex.exec(codeLines[i].slice(lookUpTripleQuoteTokenFromIndex));
-                if(regexExecRes){
-                    // We found a triple quote string token, if it's a starting token, we set the flags and then look up for the ending token;
-                    // if it's a closing token, we reset the flags and look for other strings that may still follow.
-                    isParsingTripleQuotesStr = !isParsingTripleQuotesStr;
-                    if(isParsingTripleQuotesStr){
-                        // Check that no normal string is found before this triple quote token: if not, we don't proceed but move past that normal string.
-                        // (only keep first found strings)
-                        const filteredStringStartDetectorIndexes = stringStartDetectorIndexes.reduce((acc, curr) => {
-                            if(curr.stringStartIndex > -1 && curr.stringStartIndex > acc.stringStartIndex ){                                
-                                return curr;                                
-                            }
-                            else{ 
-                                return acc;
-                            }
-                        }, {stringToken: QuoteStringTokenType.NO_PARSING, stringStartIndex: -1});
-                        if(filteredStringStartDetectorIndexes.stringStartIndex > -1 && (lookUpTripleQuoteTokenFromIndex + regexExecRes.index) > filteredStringStartDetectorIndexes.stringStartIndex){
-                            // Reset stringStartDetectorIndexes
-                            stringStartDetectorIndexes.splice(0);
-                            // Look up the end of the normal string, then just reset the lookup index flag and the parsing state and break the loop 
-                            const normalStringEndTokenRegexRes = ((filteredStringStartDetectorIndexes.stringToken == QuoteStringTokenType.SINGLE) 
-                                ? /(?:^|[^\\'])(')/ : /(?:^|[^\\"])(")/)
-                                .exec(codeLines[i].slice(filteredStringStartDetectorIndexes.stringStartIndex + 1));
-                            if(normalStringEndTokenRegexRes){
-                                // The new index to look up is filteredStringStartDetectorIndexes.stringStartIndex + 1 (since we start looking here)
-                                // + index of the match + length of the match (can be 1 or 2)
-                                // + 1 for the passing the match itself (passing the ending token)
-                                lookUpTripleQuoteTokenFromIndex = filteredStringStartDetectorIndexes.stringStartIndex  + (normalStringEndTokenRegexRes.index + normalStringEndTokenRegexRes[0].length + 2);
-                                isParsingTripleQuotesStr = !isParsingTripleQuotesStr;
-                                break;
-                            }
-                        }
-
-                    }
-                    currentTripleQuoteTokenStyle = (isParsingTripleQuotesStr) 
-                        ? ((regexExecRes[0] == "'''") ? QuoteStringTokenType.SINGLE: QuoteStringTokenType.DOUBLE)
-                        : QuoteStringTokenType.NO_PARSING;
-                    lookUpTripleQuoteTokenFromIndex += regexExecRes.index + 3; // pass the opening/closing token
-                    if(!foundOneTripleQuoteStartToken && isParsingTripleQuotesStr){
-                        foundOneTripleQuoteStartToken = true;
-                        // A string literal may start on that line, we check what indentation to use as mentioned above.
-                        const tripleQuoteToken = (currentTripleQuoteTokenStyle == QuoteStringTokenType.SINGLE) ? "'''" : "\"\"\"";
-                        if(codeLines[i].trimStart().startsWith(tripleQuoteToken)) {
-                            const blanksAtStart = codeLines[i].slice(0, codeLines[i].indexOf(tripleQuoteToken));
-                            if(singleIndentLength == 0 || (blanksAtStart.length % singleIndentLength) == 0) {
-                                mostRecentIndent = blanksAtStart;
-                                transformedLine = codeLines[i];    
-                            }                    
-                            else{
-                                mostRecentIndent = mostRecentIndent.charAt(0).repeat(Math.round(blanksAtStart.length / singleIndentLength) * singleIndentLength);
-                                transformedLine = mostRecentIndent + codeLines[i].trimStart();
-                            }
+        else {
+            // We have a line which could contain strings, multiline string start/end, comments, some awkward sequence of the set.
+            
+            // We have to go character by character to process it fully:
+            let charIndex = 0;
+            let line = codeLines[i];
+            while (charIndex < line.length) {
+                if (currentTripleQuoteString != null) {
+                    // We're currently in a triple-quoted string looking for the end.  Use indexOf rather than going char-by-char:
+                    const afterEndQuote = findStringEnd(line, charIndex, currentTripleQuoteString.quote);
+                    if (afterEndQuote != -1) {
+                        // The end exists on this line, jump to it:
+                        charIndex = afterEndQuote;
+                        if (line.startsWith(mostRecentIndent) && currentTripleQuoteString.content.includes(STRYPE_DOC_NEWLINE) && format == "spy") {
+                            currentTripleQuoteString.content = currentTripleQuoteString.content + line.substring(mostRecentIndent.length, afterEndQuote);
                         }
                         else {
-                            // We remove the leading indent if it is there:
-                            if (codeLines[i].startsWith(mostRecentIndent)) {
-                                transformedLine = codeLines[i].substring(mostRecentIndent.length);
-                            }
-                            else {
-                                // Better just leave as is:
-                                transformedLine = codeLines[i];
-                            }
+                            currentTripleQuoteString.content = currentTripleQuoteString.content + line.slice(0, afterEndQuote);
                         }
-                    }
-                }
-                else{
-                    // All the triple quotes strings tokens in the line have been detected.
-                    hasFinishedFindingTripleQuotesString = true;
-                }
-            }
-
-            // Only trim the end of the line if we are not in a "hanging" situation
-            if(!isParsingTripleQuotesStr){
-                if (foundOneTripleQuoteStartToken) {
-                    transformedLine = transformedLine.trimEnd();
-                }
-                else {
-                    if (codeLines[i].startsWith(mostRecentIndent)) {
-                        transformedLine = codeLines[i].substring(mostRecentIndent.length).trimEnd();
+                        line = currentTripleQuoteString.content + line.slice(afterEndQuote);
+                        charIndex = currentTripleQuoteString.content.length; 
+                        currentTripleQuoteString = null;
+                        // Continue on line because could be more, e.g. '''a''' + '''b''' is valid.
                     }
                     else {
-                        transformedLine = codeLines[i].trimEnd();
+                        // Whole line is in string, add it to string and remove indent if SPY, indent present, and not first line of string:
+                        if (line.startsWith(mostRecentIndent) && currentTripleQuoteString.content.includes(STRYPE_DOC_NEWLINE) && format == "spy") {
+                            currentTripleQuoteString.content = currentTripleQuoteString.content + line.substring(mostRecentIndent.length);
+                        }
+                        else {
+                            currentTripleQuoteString.content = currentTripleQuoteString.content + line;
+                        }
+                        // New line is pushed after the loop:
+                        break;
                     }
                 }
-            }            
-            transformedLines.push(transformedLine);
-        }
-        else {
-            // Any other valid code, except if we are in the context of triple quotes strings: we keep the line as is.
-            if(isParsingTripleQuotesStr){
-                // We remove the leading indent if it is there:
-                if (codeLines[i].startsWith(mostRecentIndent)) {
-                    transformedLines.push(codeLines[i].substring(mostRecentIndent.length));
-                }
                 else {
-                    transformedLines.push(codeLines[i]);
+                    // Must check triple quote possibility before single quote characters:
+                    const next3 = line.slice(charIndex, charIndex + 3);
+                    if (next3 == "'''" || next3 == "\"\"\"") {
+                        currentTripleQuoteString = {quote: next3, content: line.slice(0, charIndex+3), disabled: disabledLines.includes(i+1)};
+                        mostRecentIndent = getIndent(line);
+                        // Process the rest of the line:
+                        line = line.slice(charIndex + 3);
+                        charIndex = 0;
+                    }
+                    else if (line.slice(charIndex, charIndex+1) == "'" || line.slice(charIndex, charIndex+1) == "\"") {
+                        // This is a standard string so it must finish on this line to be valid.
+                        // We look for end or otherwise proceed as if it finished on this line:
+                        const afterEnd = findStringEnd(line, charIndex+1, line.slice(charIndex, charIndex+1));
+                        if (afterEnd != -1) {
+                            charIndex = afterEnd;
+                        }
+                    }
+                    else if (line.slice(charIndex, charIndex+1) == "#") {
+                        // Start of a comment and we're not in a string, so rest of the line is comment
+                        const before = line.slice(0, charIndex);
+                        const after = line.slice(charIndex+1);
+                        if (before.trim() == "") {
+                            // Just a single line comment by itself:
+                            transformedLines.push(before + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(after));
+                            mostRecentIndent = before;
+                            aCommentBlockLines.push(transformedLines.length-1);
+                        }
+                        else {
+                            // Code followed by comment, put comment on next line:
+                            mostRecentIndent = getIndent(before);
+                            transformedLines.push(before);
+                            checkRearrangeCommentsIdent();
+                            transformedLines.push(mostRecentIndent + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(after));
+                        }
+                        // Make sure we don't push the line again:
+                        charIndex = -1;
+                        break;
+                    }
+                    else {
+                        // Nothing string or comment related, keep going:
+                        charIndex = charIndex + 1;
+                    }
                 }
             }
-            else {
-                transformedLines.push(codeLines[i].trimEnd());
-                mostRecentIndent = getIndent(codeLines[i].trimEnd());
-                checkRearrangeCommentsIdent();            
+            if (charIndex >= 0 && currentTripleQuoteString == null) {
+                // Got to the end without finding a comment, and we're not in a string (processed specially) so preserve it in full:
+                transformedLines.push(line);
+                mostRecentIndent = getIndent(line.trimEnd());
+                checkRearrangeCommentsIdent();
             }
-        }
-
-        // Update the indentation "unit" length: that is the length of 1 indentation (like 4 for "   ").
-        if(singleIndentLength == 0 && mostRecentIndent.length > 0) {
-            singleIndentLength = mostRecentIndent.length;
+            else if (currentTripleQuoteString != null) {
+                // Record the newline here, which is an escaped newline:
+                currentTripleQuoteString.content = currentTripleQuoteString.content + STRYPE_DOC_NEWLINE;
+            }
         }
     }
     // We might have comments at the end of the code, so we need to check their indentation:
@@ -1565,7 +1542,7 @@ const transformTripleQuotesStrings = (slots: {[index: number]: LabelSlotsContent
                 const stringSlotLiteralValue = fieldSlot.code;
                 if((fieldSlot.quote == "'" && parsedTripleSingleQuotesStrRegex.test(stringSlotLiteralValue)) 
                     || (fieldSlot.quote == "\"" && parsedTripleDoubleQuotesStrRegex.test(stringSlotLiteralValue))){
-                    fieldSlot.code = stringSlotLiteralValue.slice(2, -2).replaceAll(/\r?\n/g, "\\n");
+                    fieldSlot.code = stringSlotLiteralValue.slice(2, -2).replaceAll(/\r?\n/g, STRYPE_DOC_NEWLINE);
                 }
             }
             // Else, there is nothing to transform

@@ -2176,10 +2176,9 @@ export const useStore = defineStore("app", {
                         // the "next" position of the current
                         frameToDelete = availablePositions[indexOfCurrentInAvailables+1]??{id:-100, isSlotNavigationPosition: false};
                     }
-                    
                     // The only times to prevent deletion with 'delete' is when we are inside a body that has no children (except in Joint frames)
                     // or when the next position is a joint root's below OR a method declaration below
-                    if((framesIdToDelete.length==1 && this.frameObjects[frameToDelete.frameId]?.frameType.allowChildren && !this.frameObjects[frameToDelete.frameId]?.frameType.isJointFrame 
+                    else if((framesIdToDelete.length==1 && this.frameObjects[frameToDelete.frameId]?.frameType.allowChildren && !this.frameObjects[frameToDelete.frameId]?.frameType.isJointFrame 
                             && this.currentFrame.caretPosition == CaretPosition.body && this.frameObjects[frameToDelete.frameId]?.childrenIds.length == 0)
                         || ((this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren  || this.frameObjects[frameToDelete.frameId]?.frameType.type === AllFrameTypesIdentifier.funcdef)
                             && (frameToDelete.caretPosition??"") === CaretPosition.below)){
