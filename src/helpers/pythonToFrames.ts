@@ -377,12 +377,6 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                 mostRecentIndent = "";
             }
         }
-        /*
-            else {
-                
-            }
-        }
-         */
         else if (codeLines[i].trim() === "" && currentTripleQuoteString == null) {
             // Blank line, outside a string:
             // We indent this to the largest of its indent,
