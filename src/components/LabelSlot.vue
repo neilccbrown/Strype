@@ -314,7 +314,8 @@ export default Vue.extend({
 
         isFrameEmptyAndAtLabelSlotStart(): boolean {
             // This computed property checks that all the (visible) editable slots of a frame, and if applies, its body, are empty
-            // (note that if we have nothing but operators, or empty quotes, that is considered as empty)
+            // (note that if we have nothing but operators, or empty quotes*, that is considered as empty)
+            // Exceptions: comments that contains spaces or string literal values with spaces.
             if(!(this.frameId in this.appStore.frameObjects)){
                 return false;
             }            
@@ -323,7 +324,7 @@ export default Vue.extend({
                 if((labelSlotContent.shown??true) && firstVisibleLabelSlotsIndex < 0 ){
                     firstVisibleLabelSlotsIndex = Number(index);
                 }
-                return ((labelSlotContent.shown??true) && isFrameLabelSlotStructWithCodeContent(labelSlotContent.slotStructures));
+                return ((labelSlotContent.shown??true) && isFrameLabelSlotStructWithCodeContent(labelSlotContent.slotStructures, this.appStore.frameObjects[this.frameId].frameType.type));
             })
                 || this.appStore.frameObjects[this.frameId].childrenIds.length > 0);
             return this.labelSlotsIndex == firstVisibleLabelSlotsIndex && this.slotId == "0" && isEmpty;
