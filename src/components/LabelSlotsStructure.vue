@@ -952,7 +952,7 @@ export default Vue.extend({
                    
             // When the div containing the slots loses focus, we need to also notify the currently focused slot inside *this* container
             // that the caret has been "lost" (since a contenteditable div won't let its children having/loosing focus)
-            if(!force && document.activeElement?.id === this.labelSlotsStructDivId){
+            if(force !== true && document.activeElement?.id === this.labelSlotsStructDivId){
                 // We don't lose focus that's from an outside event (like when the browser itself loses focus)
                 // cf https://stackoverflow.com/questions/24638129/javascript-dom-how-to-prevent-blur-event-if-focus-is-lost-to-another-window
                 this.appStore.ignoreFocusRequest = true;
