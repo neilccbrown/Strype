@@ -1139,10 +1139,10 @@ export default Vue.extend({
             //(*) Note that in macOS things are a big tricky because there is no dedicated home/end keys.
             //    This is their mapping (simplified for one direction only) and natural behaviour and what we will do:
             //      ⌘ + Left --> "metaKey + ArrowLeft" --> start of line     --> we detect that and let the browser do its job
-            //      Fn + Left --> "Home"                --> start of document --> we won't get it here
+            //      Fn + Left --> "Home"                --> start of document --> we detect that and go to the start/end of the whole slot
             //    The selection with shift is treated according to the rule above. It seemed that {Fn + Left + Shift} worked
             //    but to make things consistent we'll just drop it. 
-            if((event.key == "Home" || event.key == "End" || event.key == "ArrowLeft" || event.key == "ArrowRight") && (this.frameType == AllFrameTypesIdentifier.comment || this.slotType == SlotType.comment || this.slotType == SlotType.string)){
+            if(((!isMacOSPlatform() && (event.key == "Home" || event.key == "End")) || event.key == "ArrowLeft" || event.key == "ArrowRight") && (this.frameType == AllFrameTypesIdentifier.comment || this.slotType == SlotType.comment || this.slotType == SlotType.string)){
                 return;
             }
             else if(event.key == "Home" || event.key == "End" || event.key == "ArrowLeft" || event.key == "ArrowRight"){

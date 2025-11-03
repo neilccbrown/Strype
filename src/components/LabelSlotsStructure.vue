@@ -552,11 +552,11 @@ export default Vue.extend({
                 // We want to prevent some events to be handled wrongly twice or at all by the browser and our code.
                 // However, for comments (e.g. frame or documentation slot) and string literals, we need to let some navigation event go through otherwise they're blocked as we rely on the browser for them.
                 // For macOS we have a specific behaviour to consider: see LabelSlot.vue handleFastUDNavKeys for explanations
-                const textHomeEndBehaviourKeys = (isMacOSPlatform() && event.metaKey) ? ["ArrowLeft", "ArrowRight"] : ["Home", "End"];
+                const textHomeEndBehaviourKeys = (isMacOSPlatform() && event.metaKey) ? ["ArrowLeft", "ArrowRight"] : ((!isMacOSPlatform()) ? ["Home", "End"] : []);
                 if(this.appStore.allowsKeyEventThroughInLabelSlotStructure || 
                     (textHomeEndBehaviourKeys.includes(event.key) && (this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment || this.focusSlotCursorInfos?.slotInfos.slotType == SlotType.comment || this.focusSlotCursorInfos?.slotInfos.slotType == SlotType.string))){
                     // A few events need to be handled by the brower solely.
-                    // That is, for comments: "PageUp", "PageDown", "Home", "End" 
+                    // That is, for comments: "PageUp", "PageDown", "Home", "End" (these last 2 for Windows only)
                     // and anytime we set allowsKeyUpThroughInLabelSlotStructure (which we need to reset):
                     this.appStore.allowsKeyEventThroughInLabelSlotStructure = false;
                     return;
