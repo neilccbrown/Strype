@@ -71,4 +71,76 @@ def foo ( ) :
 #(=> Section:End
 `);
     });
+
+    test("Test Ctrl-A once in a function selects whole function content", async ({page}) => {
+        // Transfers content from src to dest: 
+        await testBeforeAfterPaste(page,`def dest():
+   pass
+def src():
+    print('A')
+    if x > 0:
+        print('B')
+    print('C')
+`, /* We get below print('B'): */ ["End", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "Control+a"], "cut", ["Home", "ArrowDown"],`#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+def dest ( ) :
+    print('A') 
+    if x>0  :
+        print('B') 
+    print('C') 
+def src ( ) :
+    pass
+#(=> Section:Main
+#(=> Section:End
+`);
+    });
+
+    test("Test Ctrl-A twice in a function selects function including header", async ({page}) => {
+        // Moves second above first: 
+        await testBeforeAfterPaste(page,`def first():
+   pass
+def second():
+    print('A')
+    if x > 0:
+        print('B')
+    print('C')
+`, /* We get below print('B'): */ ["End", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "Control+a", "Control+a"], "cut", ["Home"],`#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+def second ( ) :
+    print('A') 
+    if x>0  :
+        print('B') 
+    print('C') 
+def first ( ) :
+    pass
+#(=> Section:Main
+#(=> Section:End
+`);
+    });
+
+    test("Test Ctrl-A thrice in a function selects all functions", async ({page}) => {
+        // So the paste will end up cutting all functions and pasting them back, so it looks like no change:
+        await testBeforeAfterPaste(page,`def first():
+   print('0') 
+def second():
+    print('A')
+    if x > 0:
+        print('B')
+    print('C')
+`, /* We get below print('B'): */ ["End", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "Control+a", "Control+a", "Control+a"], "cut", ["Home"],`#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+def first ( ) :
+    print('0') 
+def second ( ) :
+    print('A') 
+    if x>0  :
+        print('B') 
+    print('C') 
+#(=> Section:Main
+#(=> Section:End
+`);
+    });
 });
