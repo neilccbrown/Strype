@@ -1134,7 +1134,7 @@ export default Vue.extend({
             // If we are in a comment (e.g. frame or documentation slot) or in a string slot, we let the browser* handling the key events.
             // Otherwise, the following rules apply:
             // Home/End* move the text cursor to the start/end of the whole label slots structure, or of the current slot structure level
-            //      (like a bracketed structure) if shit is also held (to avoid selecting code that spans across different levels)
+            //      (like a bracketed structure) if shift is also held (to avoid selecting code that spans across different levels)
             // PageUp/PageDown: no interaction with the text, acts as hitting up/down to leave the text slot and show the frame cursor
             //(*) Note that in macOS things are a big tricky because there is no dedicated home/end keys.
             //    This is their mapping (simplified for one direction only) and natural behaviour and what we will do:
@@ -1178,7 +1178,7 @@ export default Vue.extend({
                 event.stopImmediatePropagation();
             }
             else{
-                // The case of PageUp and PageDown
+                // The case of PageUp and PageDown: we leave the text slot so we get back to the previous/next frame cursor
                 document.getElementById(getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
                     new KeyboardEvent("keydown", {
                         key: (event.key == "PageUp") ? "ArrowUp" : "ArrowDown",
