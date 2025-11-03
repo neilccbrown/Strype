@@ -133,12 +133,12 @@ describe("Stride TestExpressionSlot.testPushBracket()", () => {
             "{ab}_({$})_{}+{cd}", "{ab}_({}+{$})_{cd}", "{ab}_({}+{cd$})_{}",
             // Then get to the start of the parentheses content, and push left all the way,
             // and try again to see it is not doing anything (ends up with original bar the cursor position)
-            "{ab}_({$}+{cd})_{}", "{}_({$ab}+{cd})_{}", "{}_({$ab}+{cd})_{}",
+            "{ab}_({}+{c$d})_{}", "{ab}_({}+{$cd})_{}", "{ab}_({$}+{cd})_{}", "{}_({$ab}+{cd})_{}", "{}_({$ab}+{cd})_{}",
         ],
         [
             PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT, 
             PushBracketArrow.RIGHT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT, 
-            PushBracketArrow.HOME, PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT,
+            PushBracketArrow.LEFT, PushBracketArrow.LEFT, PushBracketArrow.LEFT, PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT,
         ]);
     testPushBracket("$(ab+)",
         // Push right all the way, and try again see it is not doing anything
@@ -154,16 +154,16 @@ describe("Stride TestExpressionSlot.testPushBracket()", () => {
         // Push right to see it does nothing, then go to the parentheses' content start,
         // and push left and try again see it is not doing anything
         // (ends up with "($+ab+cd)")
-        ["{}+{}_({ab}+{cd$})_{}", "{}+{}_({$ab}+{cd})_{}", "{}_({$}+{ab}+{cd})_{}", "{}_({$}+{ab}+{cd})_{}"],
-        [PushBracketArrow.MODIF_RIGHT, PushBracketArrow.HOME, PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT]);
+        ["{}+{}_({ab}+{cd$})_{}", "{$}+{}_({ab}+{cd})_{}", "{}+{$}_({ab}+{cd})_{}", "{}+{}_({$ab}+{cd})_{}", "{}_({$}+{ab}+{cd})_{}", "{}_({$}+{ab}+{cd})_{}"],
+        [PushBracketArrow.MODIF_RIGHT, PushBracketArrow.HOME,PushBracketArrow.RIGHT, PushBracketArrow.RIGHT, PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT]);
 
     
     // Simple bracketed expressions (inside of)
     testPushBracket("($test)",
         // Push left to see it does nothing, and then go to parentheses' content end, and push right to see it does nothing
         // ends up with original bar the cursor position
-        ["{}_({$test})_{}", "{}_({test$})_{}", "{}_({test$})_{}"],
-        [PushBracketArrow.MODIF_LEFT, PushBracketArrow.END, PushBracketArrow.MODIF_RIGHT]);
+        ["{}_({$test})_{}", "{}_({test})_{$}", "{}_({test$})_{}", "{}_({test$})_{}"],
+        [PushBracketArrow.MODIF_LEFT, PushBracketArrow.END, PushBracketArrow.LEFT, PushBracketArrow.MODIF_RIGHT]);
     testPushBracket("(ab$)+)",
         // Push right and try again to see it does nothing (ends up with "(ab+$)")
         ["{}_({ab}+{$})_{}", "{}_({ab}+{$})_{}" ],
@@ -176,13 +176,13 @@ describe("Stride TestExpressionSlot.testPushBracket()", () => {
             "{foo}_({bar$})_{}", "{foo}_({bar})_{$}", "{foo}_({})_{$bar}",
             // Then move left and push left to end up with "($foo)bar")
             "{foo}_({$})_{bar}", "{}_({$foo})_{bar}",
-            // Then go to end of partenses content and push right (ends up with "(foobar$)")
-            "{}_({foo$})_{bar}","{}_({foobar$})_{}",
+            // Then go to end of parentheses content and push right (ends up with "(foobar$)")
+            "{}_({f$oo})_{bar}", "{}_({fo$o})_{bar}", "{}_({foo$})_{bar}","{}_({foobar$})_{}",
         ], 
         [
             PushBracketArrow.MODIF_RIGHT, PushBracketArrow.RIGHT, PushBracketArrow.MODIF_LEFT, 
             PushBracketArrow.LEFT, PushBracketArrow.MODIF_LEFT,
-            PushBracketArrow.END, PushBracketArrow.MODIF_RIGHT,
+            PushBracketArrow.RIGHT, PushBracketArrow.RIGHT, PushBracketArrow.RIGHT, PushBracketArrow.MODIF_RIGHT,
         ]); 
 
     testPushBracket("foo(1,$)bar(2)", 
@@ -191,13 +191,13 @@ describe("Stride TestExpressionSlot.testPushBracket()", () => {
             "{foo}_({1},{bar$})_{}_({2})_{}", "{foo}_({1},{bar}_({2})_{$})_{}", "{foo}_({1},{bar}_({})_{$2})_{}",
             // Move left and push left all the way (ends up with "foo(($1,bar)2)"),
             "{foo}_({1},{bar}_({$})_{2})_{}", "{foo}_({1},{}_({$bar})_{2})_{}", "{foo}_({1}_({$},{bar})_{2})_{}", "{foo}_({}_({$1},{bar})_{2})_{}",
-            // Move to end of the expression (end+right*3) and push left all the way (ends up with "foo()$(1,bar)2")
-            "{foo}_({}_({1},{bar$})_{2})_{}", "{foo}_({}_({1},{bar})_{$2})_{}", "{foo}_({}_({1},{bar})_{2$})_{}", "{foo}_({}_({1},{bar})_{2})_{$}", "{foo}_({}_({1},{bar})_{})_{$2}", "{foo}_({})_{$}_({1},{bar})_{2}",
+            // Move to end of the expression and push left all the way (ends up with "foo()$(1,bar)2")
+            "{foo}_({}_({1},{bar})_{2})_{$}", "{foo}_({}_({1},{bar})_{})_{$2}", "{foo}_({})_{$}_({1},{bar})_{2}",
         ], 
         [
             PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_LEFT,
             PushBracketArrow.LEFT, PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT,
-            PushBracketArrow.END, PushBracketArrow.RIGHT, PushBracketArrow.RIGHT, PushBracketArrow.RIGHT, PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT,
+            PushBracketArrow.END, PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT,
         ]); 
 
     testPushBracket("foo(bar($)3) + 4", 
@@ -220,19 +220,19 @@ describe("Stride TestExpressionSlot.testPushBracket()", () => {
             // Push right, and try again see it doesn't do anything (ends up with "foo([1,2$]).bar()")
             "{foo}_({}_[{1},{2$}]_{})_{}.{bar}_({})_{}", "{foo}_({}_[{1},{2$}]_{})_{}.{bar}_({})_{}",
             // Go to start of the square brackets content, try push left see it doesn't do anything ("ends up with "foo([$1,2]).bar()")
-            "{foo}_({}_[{$1},{2}]_{})_{}.{bar}_({})_{}", "{foo}_({}_[{$1},{2}]_{})_{}.{bar}_({})_{}",
+            "{foo}_({}_[{1},{$2}]_{})_{}.{bar}_({})_{}", "{foo}_({}_[{1$},{2}]_{})_{}.{bar}_({})_{}", "{foo}_({}_[{$1},{2}]_{})_{}.{bar}_({})_{}", "{foo}_({}_[{$1},{2}]_{})_{}.{bar}_({})_{}",
             // Move left, push right all the way (ends up with "foo(1,2$[]).bar()")
             "{foo}_({$}_[{1},{2}]_{})_{}.{bar}_({})_{}", "{foo}_({1$}_[{},{2}]_{})_{}.{bar}_({})_{}", "{foo}_({1},{$}_[{2}]_{})_{}.{bar}_({})_{}", "{foo}_({1},{2$}_[{}]_{})_{}.{bar}_({})_{}",
-            // Go inside "bar($)" (end, right, end, left), push left all the way (ends up with "($foo(1,2[]).bar)")
-            "{foo}_({1},{2}_[{}]_{$})_{}.{bar}_({})_{}", "{foo}_({1},{2}_[{}]_{})_{$}.{bar}_({})_{}", "{foo}_({1},{2}_[{}]_{})_{}.{bar}_({})_{$}", "{foo}_({1},{2}_[{}]_{})_{}.{bar}_({$})_{}",
+            // Go inside "bar($)" (end, left), push left all the way (ends up with "($foo(1,2[]).bar)")
+            "{foo}_({1},{2}_[{}]_{})_{}.{bar}_({})_{$}", "{foo}_({1},{2}_[{}]_{})_{}.{bar}_({$})_{}",
             "{foo}_({1},{2}_[{}]_{})_{}.{}_({$bar})_{}", "{foo}_({1},{2}_[{}]_{})_{}_({$}.{bar})_{}", "{foo}_({$}_({1},{2}_[{}]_{})_{}.{bar})_{}", "{}_({$foo}_({1},{2}_[{}]_{})_{}.{bar})_{}",
 
         ],
         [
             PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT,
-            PushBracketArrow.HOME, PushBracketArrow.MODIF_LEFT,
+            PushBracketArrow.LEFT, PushBracketArrow.LEFT, PushBracketArrow.LEFT, PushBracketArrow.MODIF_LEFT,
             PushBracketArrow.LEFT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT,
-            PushBracketArrow.END, PushBracketArrow.RIGHT, PushBracketArrow.END, PushBracketArrow.LEFT, 
+            PushBracketArrow.END, PushBracketArrow.LEFT, 
             PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT,PushBracketArrow.MODIF_LEFT,
         ]);
 
@@ -240,19 +240,19 @@ describe("Stride TestExpressionSlot.testPushBracket()", () => {
         [
             // Push left all the way (ends up with "foo((1+2)*()$3-4)+5")
             "{foo}_(_{}_({1}+{2})_{}*_{}({3}-{})_{$4})_{}+{5}", "{foo}_(_{}_({1}+{2})_{}*_{}({3})_{$}-{4})_{}+{5}", "{foo}_(_{}_({1}+{2})_{}*_{}({})_{$3}-{4})_{}+{5}",
-            // Move after "foo(" (home), push right all the way (ends up with "foo(1+2$()*()3-4)+5")
+            // Move after "foo(" (home then 4x right), push right all the way (ends up with "foo(1+2$()*()3-4)+5")
             // NOTE: here push skip the single "+" when pushing because at some point we have {-2}, unary operator
-            "{foo}_(_{$}_({1}+{2})_{}*_{}({})_{3}-{4})_{}+{5}", "{foo}_(_{1$}_({+2})_{}*_{}({})_{3}-{4})_{}+{5}", "{foo}_(_{1}+{2$}_({})_{}*_{}({})_{3}-{4})_{}+{5}",
-            // Move after "foo" (home, left), push right all the way (7 ends up with "foo1+2()*()3-4$()+5")
-            "{foo}_({$1}+{2}_({})_{}*{}_({})_{3}-{4})_{}+{5}", "{foo$}_(_{1}+{2}_({})_{}*_{}({})_{3}-{4})_{}+{5}",
+            "{$foo}_(_{}_({1}+{2})_{}*_{}({})_{3}-{4})_{}+{5}", "{f$oo}_(_{}_({1}+{2})_{}*_{}({})_{3}-{4})_{}+{5}", "{fo$o}_(_{}_({1}+{2})_{}*_{}({})_{3}-{4})_{}+{5}", "{foo$}_(_{}_({1}+{2})_{}*_{}({})_{3}-{4})_{}+{5}","{foo}_(_{$}_({1}+{2})_{}*_{}({})_{3}-{4})_{}+{5}", "{foo}_(_{1$}_({+2})_{}*_{}({})_{3}-{4})_{}+{5}", "{foo}_(_{1}+{2$}_({})_{}*_{}({})_{3}-{4})_{}+{5}",
+            // Move after "foo" (home, then 3x right), push right all the way (7 ends up with "foo1+2()*()3-4$()+5")
+            "{$foo}_({1}+{2}_({})_{}*{}_({})_{3}-{4})_{}+{5}", "{f$oo}_(_{1}+{2}_({})_{}*_{}({})_{3}-{4})_{}+{5}", "{fo$o}_(_{1}+{2}_({})_{}*_{}({})_{3}-{4})_{}+{5}", "{foo$}_(_{1}+{2}_({})_{}*_{}({})_{3}-{4})_{}+{5}",
             "{foo1$}_(_{+2}_({})_{}*_{}({})_{3}-{4})_{}+{5}", "{foo1}+{2$}_({}_({})_{}*{}_({})_{3}-{4})_{}+{5}", "{foo1}+{2}_({})_{$}_({}*{}_({})_{3}-{4})_{}+{5}",
             "{foo1}+{2}_({})_{}*{$}_({}_({})_{3}-{4})_{}+{5}", "{foo1}+{2}_({})_{}*{}_({})_{$}_({3}-{4})_{}+{5}", 
             "{foo1}+{2}_({})_{}*{}_({})_{3$}_({-4})_{}+{5}", "{foo1}+{2}_({})_{}*_{}_({})_{3}-{4$}_({})_{}+{5}",            
         ],
         [
             PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT,
-            PushBracketArrow.HOME, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT,
-            PushBracketArrow.HOME, PushBracketArrow.LEFT, 
+            PushBracketArrow.HOME, PushBracketArrow.RIGHT, PushBracketArrow.RIGHT, PushBracketArrow.RIGHT, PushBracketArrow.RIGHT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT,
+            PushBracketArrow.HOME, PushBracketArrow.RIGHT, PushBracketArrow.RIGHT, PushBracketArrow.RIGHT,
             PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT,
             PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT,
             PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT,
@@ -280,15 +280,15 @@ describe("Stride TestExpressionSlot.testPushBracket()", () => {
             "{}_“abc”_{$}_({}+{f}_“def”_{})_{}", "{}_“abc”_{}+_{$}_({f}_“def”_{})_{}", "{}_“abc”_{}+{f$}_({}_“def”_{})_{}", "{}_“abc”_{}+{f}_“def”_{$}_({})_{}",
             // Move right inside parentheses, push left all the way (ends up same as orignal bar cursor position)
             "{}_“abc”_{}+{f}_“def”_{}_({$})_{}", "{}_“abc”_{}+{f}_({$}_“def”_{})_{}", "{}_“abc”_{}+{}_({$f}_“def”_{}){}", "{}_“abc”_{}_({$}+{f}_“def”_{})_{}", "{}_({$}_“abc”_{}+{f}_“def”_{}){}",  
-            // Move at then end of expression (end, right), push left all the way (ends up with "()$"abc"+f"def"")
-            "{}_({}_“abc”_{}+{f}_“def”_{$})_{}", "{}_({}_“abc”_{}+{f}_“def”_{})_{$}", "{}_({}_“abc”_{}+{f})_{$}_“def”_{}", "{}_({}_“abc”_{}+{})_{$f}_“def”_{}", "{}_({}_“abc”_{})_{$}+{f}_“def”_{}", "{}_({})_{$}_“abc”_{}+{f}_“def”_{}",
+            // Move at then end of expression (end), push left all the way (ends up with "()$"abc"+f"def"")
+            "{}_({}_“abc”_{}+{f}_“def”_{})_{$}", "{}_({}_“abc”_{}+{f})_{$}_“def”_{}", "{}_({}_“abc”_{}+{})_{$f}_“def”_{}", "{}_({}_“abc”_{})_{$}+{f}_“def”_{}", "{}_({})_{$}_“abc”_{}+{f}_“def”_{}",
             // Move left, push right (ends up with "("abc"$)+f"def"")
             "{}_({$})_{}_“abc”_{}+{f}_“def”_{}", "{}_({}_“abc”_{$})_{}+{f}_“def”_{}",
         ],
         [
             PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT,
             PushBracketArrow.RIGHT, PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT,
-            PushBracketArrow.END, PushBracketArrow.RIGHT, PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT,
+            PushBracketArrow.END, PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT, PushBracketArrow.MODIF_LEFT,
             PushBracketArrow.LEFT, PushBracketArrow.MODIF_RIGHT,
         ]);
 
@@ -302,15 +302,15 @@ describe("Stride TestExpressionSlot.testPushBracket()", () => {
             "{set_background}_({})_{$}_§_{}+{abc}+{2}", "{set_background}_({$})_{}_§_{}+{abc}+{2}", 
             // Push right all the way (ends up with "set_background(§+abc+2$)")
             "{set_background}_({}_§_{$})_{}+{abc}+{2}", "{set_background}_({}_§_{}+{$})_{abc}+{2}", "{set_background}_({}_§_{}+{abc$})_{}+{2}", "{set_background}_({}_§_{}+{abc}+{$})_{2}", "{set_background}_({}_§_{}+{abc}+{2$})_{}",
-            // Move just before the opening bracket of set_background() (home, left) and push right all the way (ends up with "set_background§+abc+2$()")
-            "{set_background}_({$}_§_{}+{abc}+{2})_{}", "{set_background$}_({}_§_{}+{abc}+{2})_{}",
+            // Move just before the opening bracket of set_background() (8x left) and push right all the way (ends up with "set_background§+abc+2$()")
+            "{set_background}_({}_§_{}+{abc}+{$2})_{}", "{set_background}_({}_§_{}+{abc$}+{2})_{}", "{set_background}_({}_§_{}+{ab$c}+{2})_{}", "{set_background}_({}_§_{}+{a$bc}+{2})_{}", "{set_background}_({}_§_{}+{$abc}+{2})_{}", "{set_background}_({}_§_{$}+{abc}+{2})_{}", "{set_background}_({$}_§_{}+{abc}+{2})_{}", "{set_background$}_({}_§_{}+{abc}+{2})_{}",
             "{set_background}_§_{$}_({}+{abc}+{2})_{}", "{set_background}_§_{}+{$}_({abc}+{2})_{}", "{set_background}_§_{}+{abc$}_({+2})_{}", "{set_background}_§_{}+{abc}+{2$}_({})_{}",
         ],
         [
             PushBracketArrow.LEFT, PushBracketArrow.LEFT, PushBracketArrow.LEFT, PushBracketArrow.LEFT, PushBracketArrow.LEFT, PushBracketArrow.LEFT,
             PushBracketArrow.MODIF_LEFT, PushBracketArrow.LEFT,
             PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT,
-            PushBracketArrow.HOME, PushBracketArrow.LEFT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT,
+            PushBracketArrow.LEFT, PushBracketArrow.LEFT, PushBracketArrow.LEFT, PushBracketArrow.LEFT, PushBracketArrow.LEFT, PushBracketArrow.LEFT, PushBracketArrow.LEFT, PushBracketArrow.LEFT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT, PushBracketArrow.MODIF_RIGHT,
         ],
         true);
     
@@ -319,12 +319,12 @@ describe("Stride TestExpressionSlot.testPushBracket()", () => {
         [
             // Push left (stay the same), move right and push right (stay the same),
             "{$}_({abc}+{de})_{}", "{}_({$abc}+{de})_{}", "{}_({$abc}+{de})_{}",
-            // move to end and push left (stay the same), move left and push right (stay the same)
-            "{}_({abc}+{de$})_{}", "{}_({abc}+{de$})_{}", "{}_({abc}+{d$e})_{}", "{}_({abc}+{d$e})_{}",
+            // move to end (end then left) and push left (stay the same), move left and push right (stay the same)
+            "{}_({abc}+{de})_{$}", "{}_({abc}+{de$})_{}", "{}_({abc}+{de$})_{}", "{}_({abc}+{d$e})_{}", "{}_({abc}+{d$e})_{}",
         ],
         [
             PushBracketArrow.MODIF_LEFT, PushBracketArrow.RIGHT, PushBracketArrow.MODIF_RIGHT,
-            PushBracketArrow.END, PushBracketArrow.MODIF_LEFT, PushBracketArrow.LEFT, PushBracketArrow.MODIF_RIGHT,
+            PushBracketArrow.END, PushBracketArrow.LEFT,  PushBracketArrow.MODIF_LEFT, PushBracketArrow.LEFT, PushBracketArrow.MODIF_RIGHT,
         ]);
 });
 

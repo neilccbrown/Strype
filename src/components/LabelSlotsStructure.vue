@@ -460,9 +460,10 @@ export default Vue.extend({
         forwardKeyEvent(event: KeyboardEvent) {
             // The container div of this LabelSlotsStructure is editable. Editable divs capture the key events. 
             // We need to forward the event to the currently "focused" (editable) slot.
-            // ** LEFT/RIGHT AND UP/DOWN ARROWS ARE TREATED SEPARATELY BY THIS COMPONENT, we don't forward related events **
-            if(event.key == "ArrowLeft" || event.key == "ArrowRight"
-                || event.key == "ArrowUp" || event.key == "ArrowDown"){
+            // ** LEFT/RIGHT AND UP/DOWN ARROWS (without the meta key pressed for macOS) ARE TREATED SEPARATELY
+            // BY THIS COMPONENT, we don't forward related events **
+            if(!(isMacOSPlatform() && event.metaKey) && (event.key == "ArrowLeft" || event.key == "ArrowRight"
+                || event.key == "ArrowUp" || event.key == "ArrowDown")){
                 return;
             }
 
@@ -549,11 +550,13 @@ export default Vue.extend({
                     }));
                 
                 // We want to prevent some events to be handled wrongly twice or at all by the browser and our code.
-                // However, for comments, we need to let some navigation event go through otherwise they're blocked as we rely on the browser for them.
+                // However, for comments (e.g. frame or documentation slot) and string literals, we need to let some navigation event go through otherwise they're blocked as we rely on the browser for them.
+                // For macOS we have a specific behaviour to consider: see LabelSlot.vue handleFastUDNavKeys for explanations
+                const textHomeEndBehaviourKeys = (isMacOSPlatform() && event.metaKey) ? ["ArrowLeft", "ArrowRight"] : ((!isMacOSPlatform()) ? ["Home", "End"] : []);
                 if(this.appStore.allowsKeyEventThroughInLabelSlotStructure || 
-                    (["PageUp", "PageDown", "Home", "End"].includes(event.key) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment)){
+                    (textHomeEndBehaviourKeys.includes(event.key) && (this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.comment || this.focusSlotCursorInfos?.slotInfos.slotType == SlotType.comment || this.focusSlotCursorInfos?.slotInfos.slotType == SlotType.string))){
                     // A few events need to be handled by the brower solely.
-                    // That is, for comments: "PageUp", "PageDown", "Home", "End" 
+                    // That is, for comments: "PageUp", "PageDown", "Home", "End" (these last 2 for Windows only)
                     // and anytime we set allowsKeyUpThroughInLabelSlotStructure (which we need to reset):
                     this.appStore.allowsKeyEventThroughInLabelSlotStructure = false;
                     return;
@@ -565,7 +568,10 @@ export default Vue.extend({
                     || event.key == "ArrowDown"
                     || event.key == "Home"
                     || event.key == "End"
+                    || event.key == "PageUp"
+                    || event.key == "PageDown"
                     || event.key == "Tab"
+                    || (isMacOSPlatform() && event.metaKey && textHomeEndBehaviourKeys.includes(event.key))
                     || (event.key == " " && (event.ctrlKey || event.metaKey))) {
                     event.preventDefault();
                     event.stopPropagation();
@@ -691,6 +697,11 @@ export default Vue.extend({
         },        
 
         onLRKeyDown(event: KeyboardEvent) {
+            // We ignore calls from macOS when the meta key is also pressed (we treat this equivalent to home, see LabelSlot.vue handleFastUDNavKeys())
+            if(isMacOSPlatform() && event.metaKey){
+                return;
+            }
+
             // Because the event handling, it is easier to deal with the left/right arrow at this component level.
             if(this.appStore.focusSlotCursorInfos){
                 const {slotInfos, cursorPos} = this.appStore.focusSlotCursorInfos;

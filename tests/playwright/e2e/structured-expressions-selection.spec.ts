@@ -1,5 +1,5 @@
 import {Page, test, expect} from "@playwright/test";
-import {typeIndividually, doPagePaste} from "../support/editor";
+import {typeIndividually, doPagePaste, doTextHomeEndKeyPress} from "../support/editor";
 import fs from "fs";
 
 let scssVars: {[varName: string]: string};
@@ -103,7 +103,7 @@ function testSelection(code : string, startIndex: number, endIndex: number, seco
         await page.waitForTimeout(100);
         await assertState(page, "{$}");
         await typeIndividually(page, code);
-        await page.keyboard.press("Home");
+        await doTextHomeEndKeyPress(page, false, false); // To handle the issue with macOS, see the method details (equivalent to "home").
         for (let i = 0; i < startIndex; i++) {
             await page.keyboard.press("ArrowRight");
             await page.waitForTimeout(75);
@@ -172,7 +172,7 @@ function testCutCopy(code : string, stepsToBegin: number, stepsWhileSelecting: n
         await page.waitForTimeout(100);
         await assertState(page, "{$}");
         await typeIndividually(page, code);
-        await page.keyboard.press("Home");
+        await doTextHomeEndKeyPress(page, false, false); // To handle the issue with macOS, see the method details.
         for (let i = 0; i < stepsToBegin; i++) {
             await page.keyboard.press("ArrowRight");
             await page.waitForTimeout(75);
@@ -236,12 +236,17 @@ function testNavigation(code: string, navigate: (page: Page) => Promise<void>, e
 function pressN(key: string, n : number) : ((page: Page) => Promise<void>) {
     return async (page) => {
         for (let i = 0; i < n; i++) {
+            // Handle the issue with macOS for home/end, see the method details
+            if(process.platform == "darwin" && (key == "Home" || key == "End")){
+                await doTextHomeEndKeyPress(page, (key == "End"), false);
+                return;
+            }            
             await page.keyboard.press(key); 
         }
     };
 }
 
-test.describe("Home goes to start of current level", () => {
+test.describe("Home goes to start of whole label slots structure", () => {
     testNavigation("123", pressN("Home", 1), "{$123}");
     // Extra presses shouldn't matter:
     testNavigation("456", pressN("Home", 2), "{$456}");
@@ -251,71 +256,78 @@ test.describe("Home goes to start of current level", () => {
     testNavigation("foo(bar", async () => {}, "{foo}_({bar$})_{}");
     // Then test home:
     testNavigation("fax(neighbour1)", pressN("Home", 1), "{$fax}_({neighbour1})_{}");
-    testNavigation("fax(neighbour2", pressN("Home", 1), "{fax}_({$neighbour2})_{}");
+    testNavigation("fax(neighbour2", pressN("Home", 1), "{$fax}_({neighbour2})_{}");
     // Multiple presses ignored:
-    testNavigation("fax(neighbour2b", pressN("Home", 2), "{fax}_({$neighbour2b})_{}");
-    testNavigation("fax(neighbour3", async (page) => {
-        await pressN("Home", 1)(page);
-        await pressN("ArrowLeft", 1)(page);
-        await pressN("Home", 1)(page);
-    }, "{$fax}_({neighbour3})_{}");
+    testNavigation("fax(neighbour2b", pressN("Home", 2), "{$fax}_({neighbour2b})_{}");
+    testNavigation("fax(neighbour3", pressN("Home", 2), "{$fax}_({neighbour3})_{}");
 });
 
-test.describe("Shift-Home selects to the beginning", () => {
+test.describe("Shift-Home selects to the beginning of current level", () => {
     // Note: testSelectionThenDelete needs unique code to make a unique test name
     testSelectionThenDelete("a+b",async (page) => {
-        await page.keyboard.press("End");
-        await page.keyboard.press("Shift+Home");
+        await doTextHomeEndKeyPress(page, true, false); // equivalent to End
+        await doTextHomeEndKeyPress(page, false, true); // equivalent to Shift+Home
     }, "{$}");
     testSelectionThenDelete("a+c",async (page) => {
-        await page.keyboard.press("End");
+        await doTextHomeEndKeyPress(page, true, false); // equivalent to End
         await page.keyboard.press("ArrowLeft");
-        await page.keyboard.press("Shift+Home");
+        await doTextHomeEndKeyPress(page, false, true); // equivalent to Shift+Home
     }, "{$c}");
 
     testSelectionThenDelete("a+math.sin(b)",async (page) => {
-        await page.keyboard.press("End");
-        await page.keyboard.press("Shift+Home");
+        await doTextHomeEndKeyPress(page, true, false); // equivalent to End
+        await doTextHomeEndKeyPress(page, false, true); // equivalent to Shift+Home
     }, "{$}");
     testSelectionThenDelete("a+max(b,c)",async (page) => {
-        await page.keyboard.press("End");
-        await page.keyboard.press("Shift+Home");
+        await doTextHomeEndKeyPress(page, true, false); // equivalent to End
+        await doTextHomeEndKeyPress(page, false, true); // equivalent to Shift+Home
     }, "{$}");
+    testSelectionThenDelete("a+min(b,c)",async (page) => {
+        await doTextHomeEndKeyPress(page, true, false); // equivalent to End
+        await page.keyboard.press("ArrowLeft");
+        await doTextHomeEndKeyPress(page, false, true); // equivalent to Shift+Home
+    }, "{a}+{min}_({$})_{}");
 });
 
-test.describe("Shift-End selects to the end", () => {
+test.describe("Shift-End selects to the end of current level", () => {
     // Note: testSelectionThenDelete needs unique code to make a unique test name
+    // To handle the issue with macOS for home/end, we use doTextHomeEndKeyPress(), see the method details
     testSelectionThenDelete("a+b",async (page) => {
-        await page.keyboard.press("Home");
-        await page.keyboard.press("Shift+End");
+        await doTextHomeEndKeyPress(page, false, false); // equivalent to Home
+        await doTextHomeEndKeyPress(page, true, true); // equivalent to Shift+End
     }, "{$}");
     testSelectionThenDelete("a+c",async (page) => {
-        await page.keyboard.press("Home");
+        await doTextHomeEndKeyPress(page, false, false); // equivalent to Home
         await page.keyboard.press("ArrowRight");
-        await page.keyboard.press("Shift+End");
+        await doTextHomeEndKeyPress(page, true, true); // equivalent to Shift+End
     }, "{a$}");
 
     testSelectionThenDelete("abcdef",async (page) => {
-        await page.keyboard.press("Home");
+        await doTextHomeEndKeyPress(page, false, false); // equivalent to Home
         await page.keyboard.press("Shift+ArrowRight");
         await page.keyboard.press("Shift+ArrowRight");
     }, "{$cdef}");
 
     testSelectionThenDelete("a+abs(b)",async (page) => {
-        await page.keyboard.press("Home");
+        await doTextHomeEndKeyPress(page, false, false); // equivalent to Home
         await page.keyboard.press("ArrowRight");
-        await page.keyboard.press("Shift+End");
+        await doTextHomeEndKeyPress(page, true, true); // equivalent to Shift+End
     }, "{a$}");
     testSelectionThenDelete("a+math.sin(b)",async (page) => {
-        await page.keyboard.press("Home");
+        await doTextHomeEndKeyPress(page, false, false); // equivalent to Home
         await page.keyboard.press("ArrowRight");
-        await page.keyboard.press("Shift+End");
+        await doTextHomeEndKeyPress(page, true, true); // equivalent to Shift+End
     }, "{a$}");
     testSelectionThenDelete("a+max(b,c)",async (page) => {
-        await page.keyboard.press("Home");
+        await doTextHomeEndKeyPress(page, false, false); // equivalent to Home
         await page.keyboard.press("ArrowRight");
-        await page.keyboard.press("Shift+End");
+        await doTextHomeEndKeyPress(page, true, true); // equivalent to Shift+End
     }, "{a$}");
+    testSelectionThenDelete("a+min(b,c)",async (page) => {
+        await doTextHomeEndKeyPress(page, false, false); // equivalent to Home
+        await pressN("ArrowRight", 6)(page);
+        await doTextHomeEndKeyPress(page, true, true); // equivalent to Shift+End
+    }, "{a}+{min}_({$})_{}");
 });
 
 test.describe("Selecting then typing in one slot", () => {
@@ -453,7 +465,7 @@ test.describe("Media literal copying", () => {
         await typeIndividually(page, ")");
         let startIndex = 0;
         const endIndex = "set_background(X)".length;
-        await page.keyboard.press("Home");
+        await doTextHomeEndKeyPress(page, false, false); // equivalent to "Home", see method for details
         for (let i = 0; i < startIndex; i++) {
             await page.keyboard.press("ArrowRight");
             await page.waitForTimeout(75);
@@ -483,14 +495,7 @@ test.describe("Media literal copying", () => {
         await typeIndividually(page, ")");
         let startIndex = "set_background(".length;
         const endIndex = startIndex + 1;
-        // Webkit seems to have a focus issue with home, while chromium has an issue with cursor switching (eugh):
-        if (testInfo.project.name === "chromium") {
-            await page.keyboard.press("Home");
-        }
-        else {
-            await page.keyboard.press("ArrowUp");
-            await page.keyboard.press("ArrowRight");
-        }
+        await doTextHomeEndKeyPress(page, false, false); // equivalent to "Home", see method for details
         await page.waitForTimeout(1000);
         for (let i = 0; i < startIndex; i++) {
             await page.keyboard.press("ArrowRight");

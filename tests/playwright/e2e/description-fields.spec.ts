@@ -1,5 +1,5 @@
 import {test, expect} from "@playwright/test";
-import {checkFrameXorTextCursor} from "../support/editor";
+import {checkFrameXorTextCursor, doTextHomeEndKeyPress} from "../support/editor";
 import {readFileSync} from "node:fs";
 import {save, testPlaywrightRoundTripImportAndDownload} from "../support/loading-saving";
 
@@ -46,7 +46,15 @@ print(myString)
 `.trimStart());
     });
     
-    for (const selectAll of [["End", "Shift+Home"], ["Home", "Shift+End"], [process.platform == "darwin" ? "Meta+A" : "Control+A"]]) {
+    // Because of macOS handling home and end differently we used different shortcuts for different platforms (see doTextHomeEndKeyPress()),
+    // therefore, select all is either an object with the boolean properties "isGoingForward" (for home/end) and "isShiftEnabled" (for shift);
+    // OR text key strings when these can be used independently of the plaform
+    const selectAllCombinations = [
+        [{isGoingForward: true, isShiftEnabled: false}, {isGoingForward: false, isShiftEnabled: true}],  // for ["End", "Shift+Home"]
+        [{isGoingForward: false, isShiftEnabled: false}, {isGoingForward: true, isShiftEnabled: true}], // for ["Home", "Shift+End"]
+        [process.platform == "darwin" ? "Meta+A" : "Control+A"],
+    ] as (string | {isGoingForward: boolean, isShiftEnabled: boolean})[][];
+    for (const selectAll of selectAllCombinations) {
         for (const deleteCommand of [["Backspace"], ["Delete"], [/*no press, just overtype*/]]) {
             test("Replace project description via " + JSON.stringify(selectAll) + " then " + JSON.stringify(deleteCommand), async ({page}, testInfo) => {
                 await page.keyboard.press("Home");
@@ -54,14 +62,21 @@ print(myString)
                 await page.keyboard.press("ArrowUp");
                 await page.keyboard.press("ArrowLeft");
                 await page.keyboard.type("Initial project description");
+                await page.waitForTimeout(2000);
                 for (const key of selectAll) {
-                    await page.keyboard.press(key);
+                    if(typeof key == "string"){
+                        await page.keyboard.press(key);
+                    }
+                    else{
+                        await doTextHomeEndKeyPress(page, key.isGoingForward, key.isShiftEnabled);
+                    }
+                    await page.waitForTimeout(2000);
                 }
-                await page.waitForTimeout(200);
+                await page.waitForTimeout(2000);
                 for (const key of deleteCommand) {
                     await page.keyboard.press(key);
                 }
-                await page.waitForTimeout(200);
+                await page.waitForTimeout(2000);
                 await page.keyboard.type("The replacement");
                 expect(readFileSync(await save(page), "utf-8")).toEqual(`
 #(=> Strype:1:std
