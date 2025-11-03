@@ -1216,8 +1216,9 @@ export default Vue.extend({
             else {
                 // If the user pastes a large image (>= 1000 pixels in either dimension)
                 // we figure they probably want to trim it down before pasting, so we
-                // show the image editing dialog:
+                // show the image editing dialog (and make sure we don't lose focus in the slot):
                 if (event.detail.type.startsWith("image/") && (event.detail.width >= 1000 || event.detail.height >= 1000)) {
+                    this.appStore.ignoreBlurEditableSlot = true;
                     this.doEditImageInDialog(/"([^"]+)"/.exec(event.detail.content)?.[1] ?? "", () => {}, (replacement : {code: string, mediaType: string}) => {
                         this.onCodePasteImpl(replacement.code, replacement.mediaType);
                     });

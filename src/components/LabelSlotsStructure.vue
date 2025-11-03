@@ -937,6 +937,12 @@ export default Vue.extend({
         },
 
         blurEditableSlot(force?: boolean){
+            // If a request to ignore the loss of focus has been made, we return right away but reset the flag
+            if(this.appStore.ignoreBlurEditableSlot) {
+                this.appStore.ignoreBlurEditableSlot = false;
+                return;
+            }
+            
             this.isFocused = false;
             // If a flag to ignore editable slot focus is set, we just revert it and do nothing else
             if(this.appStore.bypassEditableSlotBlurErrorCheck){

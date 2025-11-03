@@ -132,6 +132,9 @@ export const useStore = defineStore("app", {
             // This flag is to avoid a loss of focus when we are leaving the application
             ignoreFocusRequest: false,
 
+            // This flag is used to ignore the loss of focus on a text slot (rarely required but may happen)
+            ignoreBlurEditableSlot: false,
+
             // This flag is used to cancel the undo/redo saving mechanisms in some actions.
             // It must be used with care to avoid breaking the whole undo/redo actions (always make sure it's ultimately reverted to false),
             // but it is useful when combining several actions that need to activate the saving mechanisms only once...
