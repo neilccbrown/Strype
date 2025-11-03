@@ -1,9 +1,8 @@
 import {Page, test, expect} from "@playwright/test";
-import {load, save} from "../support/loading-saving";
+import {loadContent, save} from "../support/loading-saving";
 import fs from "fs";
 import en from "@/localisation/en/en_main.json";
 import { CollapsedState } from "../../cypress/support/frame-types";
-import { randomUUID } from "node:crypto";
 import {addFakeClipboard} from "../support/clipboard";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
@@ -26,15 +25,6 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         console.log("Browser log:", msg.text());
     });
 });
-
-
-async function loadContent(page: Page, spyToLoad: string) : Promise<void> {
-    // The recursive option stops it failing if the dir exists:
-    fs.mkdirSync("tests/cypress/downloads/", { recursive: true });
-    const path = `tests/cypress/downloads/toload-${randomUUID()}.spy`;
-    fs.writeFileSync(path, spyToLoad);
-    await load(page, path);
-}
 
 async function saveAndCheck(page: Page, expectedSPY: string) {
     const path = await save(page, false);
