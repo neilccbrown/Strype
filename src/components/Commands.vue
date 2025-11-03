@@ -366,11 +366,14 @@ export default Vue.extend({
                                 });     
                                 break;
                             case SelectAllFramesFuncDefScope.none:
+                            case SelectAllFramesFuncDefScope.partClassBody:
                                 // In a function definition with no frame selected or some frames inside a function body (not all).
                                 // We select all the frames of the function's body.
                                 {
                                     let functionDefFrameId = 0, currentFrameId = this.appStore.currentFrame.id, foundFunctionDefFrame = false;
-                                    if(this.appStore.frameObjects[currentFrameId].frameType.type == AllFrameTypesIdentifier.funcdef){
+                                    if(currentFrameSelection == SelectAllFramesFuncDefScope.none ?
+                                        this.appStore.frameObjects[currentFrameId].frameType.type == AllFrameTypesIdentifier.funcdef
+                                        : this.appStore.frameObjects[currentFrameId].frameType.type == AllFrameTypesIdentifier.classdef){
                                         // If we are in the body of the function definition (just inside the body position, not somewhere else)
                                         //then we don't need to look up for the body position as we're already there...
                                         foundFunctionDefFrame = true;
@@ -378,7 +381,9 @@ export default Vue.extend({
                                     }
                                     while(!foundFunctionDefFrame){
                                         functionDefFrameId = this.appStore.frameObjects[currentFrameId].parentId;
-                                        foundFunctionDefFrame = (this.appStore.frameObjects[functionDefFrameId].frameType.type == AllFrameTypesIdentifier.funcdef);
+                                        foundFunctionDefFrame = (currentFrameSelection == SelectAllFramesFuncDefScope.none ?
+                                            this.appStore.frameObjects[functionDefFrameId].frameType.type == AllFrameTypesIdentifier.funcdef
+                                            : this.appStore.frameObjects[functionDefFrameId].frameType.type == AllFrameTypesIdentifier.classdef);
                                         currentFrameId = functionDefFrameId;
                                     }
                                     this.appStore.setCurrentFrame({id: functionDefFrameId, caretPosition: CaretPosition.body});
@@ -395,6 +400,7 @@ export default Vue.extend({
                                 this.appStore.setCurrentFrame({id: this.appStore.selectedFrames.at(-1) as number, caretPosition: CaretPosition.below});   
                                 break;
                             case SelectAllFramesFuncDefScope.wholeFunctionBody:
+                            case SelectAllFramesFuncDefScope.wholeClassBody:
                                 // In function definitions with function body frames selected.
                                 // We select the whole function.
                                 {

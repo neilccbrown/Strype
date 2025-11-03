@@ -2092,7 +2092,7 @@ export function getCurrentFrameSelectionScope(): SelectAllFramesFuncDefScope {
     if(currentFrameSelection.length == 0) {
         const {id: currentFrameId, caretPosition: currentFrameCaretPos} = useStore().currentFrame;
         if(currentFrameId == useStore().defsContainerId){
-            return SelectAllFramesFuncDefScope.functionsContainerBody;
+            return SelectAllFramesFuncDefScope.definitionsContainerBody;
         }
     
         if(useStore().frameObjects[currentFrameId].frameType.type == AllFrameTypesIdentifier.funcdef && currentFrameCaretPos == CaretPosition.below){
@@ -2106,7 +2106,7 @@ export function getCurrentFrameSelectionScope(): SelectAllFramesFuncDefScope {
         
         if (useStore().frameObjects[currentFrameId].frameType.type == AllFrameTypesIdentifier.classdef) {
             // Need to think about how this should work:
-            return SelectAllFramesFuncDefScope.frame;
+            return SelectAllFramesFuncDefScope.wholeClassBody;
         }
 
         return SelectAllFramesFuncDefScope.none;
@@ -2114,21 +2114,27 @@ export function getCurrentFrameSelectionScope(): SelectAllFramesFuncDefScope {
     
     // If there is a selection and the first selected frame is a function definition, then we are in the "frame" scope
     // (it doesn't matter to know if all functions are alreadys selected or not, the result is the same)
-    if(useStore().frameObjects[currentFrameSelection[0]].frameType.type == AllFrameTypesIdentifier.funcdef){
-        return SelectAllFramesFuncDefScope.frame;
+    if(useStore().frameObjects[currentFrameSelection[0]].frameType.type == AllFrameTypesIdentifier.funcdef
+        || useStore().frameObjects[currentFrameSelection[0]].frameType.type == AllFrameTypesIdentifier.classdef){
+        if (useStore().frameObjects[useStore().frameObjects[currentFrameSelection[0]].parentId].frameType.type == AllFrameTypesIdentifier.classdef) {
+            return SelectAllFramesFuncDefScope.partClassBody;
+        }
+        else {
+            return SelectAllFramesFuncDefScope.frame;
+        }
     }
 
     // At this stage, there is a selection within a function definition but we need to check if that's ALL the frames of 
     // a function definition's body or just some of them, or a selection in a deeper level of the frame hierarchy. 
     const selectionParentFrame = useStore().frameObjects[useStore().frameObjects[currentFrameSelection[0]].parentId];
-    if(selectionParentFrame.frameType.type != AllFrameTypesIdentifier.funcdef){
+    if(selectionParentFrame.frameType.type != AllFrameTypesIdentifier.funcdef && selectionParentFrame.frameType.type != AllFrameTypesIdentifier.classdef){
         // We are somewhere inside a function definition, but not just at the function's body level
         return SelectAllFramesFuncDefScope.none;
     }
     const functionChildren = selectionParentFrame.childrenIds;
     if(currentFrameSelection[0] == functionChildren[0] && currentFrameSelection.length == functionChildren.length){
         // All frames of a function's body are already selected
-        return SelectAllFramesFuncDefScope.wholeFunctionBody;
+        return selectionParentFrame.frameType.type == AllFrameTypesIdentifier.funcdef ? SelectAllFramesFuncDefScope.wholeFunctionBody : SelectAllFramesFuncDefScope.wholeClassBody;
     }
     return SelectAllFramesFuncDefScope.none;
 }

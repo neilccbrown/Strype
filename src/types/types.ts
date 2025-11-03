@@ -199,11 +199,13 @@ export enum CaretPosition {
 }
 
 export enum SelectAllFramesFuncDefScope {
-    none, // inside a function body, no frame is selected at all OR some frames are selected but not all
+    none, // inside a function or class body, no frame is selected at all OR some frames are selected but not all
     belowFunc, // below a function definition
     definitionsContainerBody, // inside the body of the function definitions container
     wholeFunctionBody, // all frames for a function def body are selected
-    frame // some function frames are selected
+    frame, // some function frames are selected
+    partClassBody, // some frames in a class are selected
+    wholeClassBody, // all frames a class def are selection
 }
 
 export enum FrameContextMenuActionName {
