@@ -132,6 +132,11 @@ export const useStore = defineStore("app", {
             // This flag is to avoid a loss of focus when we are leaving the application
             ignoreFocusRequest: false,
 
+            // This flag is used to cancel the undo/redo saving mechanisms in some actions.
+            // It must be used with care to avoid breaking the whole undo/redo actions (always make sure it's ultimately reverted to false),
+            // but it is useful when combining several actions that need to activate the saving mechanisms only once...
+            ignoreStateSavingActionsForUndoRedo: false,
+
             // This flag indicates we should not block a key event inside a LabelSlotsStructure
             allowsKeyEventThroughInLabelSlotStructure: false,
 
@@ -1360,6 +1365,11 @@ export const useStore = defineStore("app", {
         },
 
         saveStateChanges(previousState: (typeof this.$state)) {
+            // If have an explicit request to igore the undo/redo save state preps, we don't do anything
+            if(this.ignoreStateSavingActionsForUndoRedo){
+                return;
+            }
+            
             this.isEditorContentModified = true;
             // Saves the state changes in diffPreviousState.
             // We do not simply save the differences between the state and the previous state, because when undo/redo will be invoked, we cannot know what will be 
@@ -2034,7 +2044,7 @@ export const useStore = defineStore("app", {
             })
                 .then(
                     () => {
-                    //save state changes
+                        //save state changes
                         this.saveStateChanges(stateBeforeChanges);
                         // To make sure we are showing the newly added frame, we scroll into view if needed                    
                         const targetDiv =

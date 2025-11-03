@@ -1,4 +1,6 @@
 import toWav from "audiobuffer-to-wav";
+import { MediaDataAndDim } from "@/types/types";
+import { readFileAsyncAsData, readImageSizeFromDataURI } from "./common";
 
 
 // Adapted from https://stackoverflow.com/questions/66776487/how-to-convert-mp3-to-the-sound-wave-image-using-javascript
@@ -92,7 +94,7 @@ export function bufferToBase64(buffer: ArrayBuffer): Promise<string> {
     });
 }
 
-export function svgToPngDataUri(svgText: string): Promise<string> {
+function svgToPngDataUri(svgText: string): Promise<string> {
     return new Promise((resolve, reject) => {
         // 1. Create a Blob for the SVG
         const blob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
@@ -128,4 +130,63 @@ export function svgToPngDataUri(svgText: string): Promise<string> {
         };
         img.src = url;
     });
+}
+
+export function preparePasteMediaData(event: ClipboardEvent, callBackOnDataDimAndCode: (code: string, dataAndDim: MediaDataAndDim) => void): void {
+    const withData = (dataAndDim : MediaDataAndDim) => {
+        // The code is the code to load the literal from its base64 string representation:
+        const code = (dataAndDim.itemType.startsWith("image") ? "load_image" : "load_sound") + "(\"" + dataAndDim.dataURI + "\")";
+        callBackOnDataDimAndCode(code, dataAndDim);
+    };
+
+    if(event.clipboardData?.items){
+        // SVGs are generally put on the clipboard as HTML content by browsers when you copy them
+        // So we need to look for HTML that starts <svg
+        
+        // Apparently for handling HTML we should try to query it direct as it's not always
+        // present in the list of clipboard items:
+        let html = event.clipboardData?.getData("text/html");
+        // Otherwise look in the items:
+        if (!html) {
+            for (const item of event.clipboardData?.items) {
+                if (item.type == "text/html") {
+                    item.getAsString((s) => {
+                        html = s;
+                    });
+                    break;
+                }
+            }
+        }
+        if (html && (html.startsWith("<svg") || html.startsWith("<img"))) {
+            // It can be an img with an SVG source (we do this on our front page for the KCL logo)
+            // so in that case we find the SVG link and fetch it:
+            // (This may be blocked by CORS, but nothing we can do about that).
+            const match = html.match(/<img[^>]+src=["']([^"']+\.svg)['"]/i);
+            if (match) {
+                const svgUrl = match[1];
+                fetch(svgUrl).then((r) => r.text()).then(svgToPngDataUri).then(readImageSizeFromDataURI).then((v) => withData({...v, itemType: "image/png"}));
+                return;
+            }
+            else if (html.startsWith("<svg")) {
+                // Convert to PNG then use our existing infrastructure:
+                svgToPngDataUri(html).then(readImageSizeFromDataURI).then((v) => withData({...v, itemType: "image/png"}));
+                return;
+            }
+            
+        }
+        
+        for (const item of event.clipboardData.items) {
+            const file = item.getAsFile();
+            // Note: it is incredibly important that we store item.type in a variable here.  Due to browser clipboard
+            // permissions, if we access item.type inside the .then() below, it will appear blank.  So we must
+            // fetch it now and store it:
+            const itemType = item.type;
+            const isImage = itemType.startsWith("image");
+            const isAudio = itemType.startsWith("audio");
+            if (file && (isImage || isAudio)) {
+                readFileAsyncAsData(file).then(isImage ? readImageSizeFromDataURI : (s) => Promise.resolve({dataURI: s, width: -1, height: -1})).then((v) => withData({...v, itemType}));
+                return;
+            }
+        }
+    }
 }

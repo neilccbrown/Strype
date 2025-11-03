@@ -37,20 +37,20 @@
 </template>
 
 <script lang="ts">
-import {AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType} from "@/types/types";
+import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, MediaDataAndDim, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
-import {CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters} from "@/helpers/editor";
-import {checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
+import { CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters } from "@/helpers/editor";
+import { checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
-import {calculateParamPrompt} from "@/autocompletion/acManager";
+import { calculateParamPrompt } from "@/autocompletion/acManager";
 import scssVars from "@/assets/style/_export.module.scss";
-import {isMacOSPlatform, readFileAsyncAsData, readImageSizeFromDataURI, splitByRegexMatches} from "@/helpers/common";
-import {detectBrowser} from "@/helpers/browser";
-import {handleVerticalCaretMove} from "@/helpers/spans";
-import {svgToPngDataUri} from "@/helpers/media";
+import { isMacOSPlatform, splitByRegexMatches } from "@/helpers/common";
+import { detectBrowser } from "@/helpers/browser";
+import { handleVerticalCaretMove } from "@/helpers/spans";
+import { preparePasteMediaData } from "@/helpers/media";
 
 export default Vue.extend({
     name: "LabelSlotsStructure",
@@ -588,63 +588,12 @@ export default Vue.extend({
             if (event.clipboardData && focusSlotCursorInfos) {
                 // First we need to check if it's a media item on the clipboard, because that needs
                 // to become a media literal rather than plain text:
-                const items = event.clipboardData.items;
                 /* IFTRUE_isPython */
-                const withData = (dataAndDim : {dataURI: string, width: number, height: number, itemType: string}) => {
-                    // The code is the code to load the literal from its base64 string representation:
-                    const code = (dataAndDim.itemType.startsWith("image") ? "load_image" : "load_sound") + "(\"" + dataAndDim.dataURI + "\")";
+                preparePasteMediaData(event, (code: string, dataAndDim : MediaDataAndDim) => {
+                    // The code is the code to load the literal from its base64 string representation:                    
                     document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos))
                         ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: dataAndDim.itemType, content: code, width: dataAndDim.width, height: dataAndDim.height}}));
-                };
-                
-                // SVGs are generally put on the clipboard as HTML content by browsers when you copy them
-                // So we need to look for HTML that starts <svg
-                
-                // Apparently for handling HTML we should try to query it direct as it's not always
-                // present in the list of clipboard items:
-                let html = event.clipboardData.getData("text/html");
-                // Otherwise look in the items:
-                if (!html) {
-                    for (let item of event.clipboardData.items) {
-                        if (item.type == "text/html") {
-                            item.getAsString((s) => {
-                                html = s;
-                            });
-                            break;
-                        }
-                    }
-                }
-                if (html && (html.startsWith("<svg") || html.startsWith("<img"))) {
-                    // It can be an img with an SVG source (we do this on our front page for the KCL logo)
-                    // so in that case we find the SVG link and fetch it:
-                    // (This may be blocked by CORS, but nothing we can do about that).
-                    const match = html.match(/<img[^>]+src=["']([^"']+\.svg)['"]/i);
-                    if (match) {
-                        const svgUrl = match[1];
-                        fetch(svgUrl).then((r) => r.text()).then(svgToPngDataUri).then(readImageSizeFromDataURI).then((v) => withData({...v, itemType: "image/png"}));
-                        return;
-                    }
-                    else if (html.startsWith("<svg")) {
-                        // Convert to PNG then use our existing infrastructure:
-                        svgToPngDataUri(html).then(readImageSizeFromDataURI).then((v) => withData({...v, itemType: "image/png"}));
-                        return;
-                    }
-                    
-                }
-                
-                for (let item of items) {
-                    let file = item.getAsFile();
-                    // Note: it is incredibly important that we store item.type in a variable here.  Due to browser clipboard
-                    // permissions, if we access item.type inside the .then() below, it will appear blank.  So we must
-                    // fetch it now and store it:
-                    const itemType = item.type;
-                    let isImage = itemType.startsWith("image");
-                    let isAudio = itemType.startsWith("audio");
-                    if (file && (isImage || isAudio)) {
-                        readFileAsyncAsData(file).then(isImage ? readImageSizeFromDataURI : (s) => Promise.resolve({dataURI: s, width: -1, height: -1})).then((v) => withData({...v, itemType}));
-                        return;
-                    }
-                }
+                });
                 /* FITRUE_isPython */
 
                 interface PastedItem {

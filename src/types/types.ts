@@ -352,7 +352,7 @@ const ImportFrameTypesIdentifiers = {
     library: "library",
 };
 
-const FuncDefIdentifiers = {
+export const FuncDefIdentifiers = {
     funcdef: "funcdef",
 };
 
@@ -1198,6 +1198,8 @@ export interface LoadedMedia {
     // But only sounds have this item:
     audioBuffer?: AudioBuffer,
 }
+
+export interface MediaDataAndDim {dataURI: string, width: number, height: number, itemType: string}
 
 export type EditImageInDialogFunction = (imageDataURL: string, showPreview: (dataURL: string) => void, callback: (replacement: { code: string, mediaType: string }) => void) => void;
 export type EditSoundInDialogFunction = (sound: AudioBuffer, callback: (replacement: { code: string, mediaType: string }) => void) => void;
