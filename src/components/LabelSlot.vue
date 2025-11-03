@@ -689,6 +689,17 @@ export default Vue.extend({
             if(this.appStore.isEditing){
                 (document.activeElement as HTMLElement).blur();
                 this.appStore.isEditing = false;
+                // A special case for the project documentation slot: because it doesn't be belong to 
+                // a "real" frame, hitting escape should instead place the frame cursor to the next "real"
+                // available (as visible) frame.
+                if(this.frameId == this.appStore.projectDocumentationFrameId){
+                    const nextVisibleSectionFrame = [this.appStore.importContainerId, this.appStore.functionDefContainerId, this.appStore.getMainCodeFrameContainerId]
+                        .find((frameContainerId) => !this.appStore.frameObjects[frameContainerId].isCollapsed);
+                    // At least the main section is not collapsed we should always get a value.. but let's keep TS happy
+                    if(nextVisibleSectionFrame != undefined){
+                        this.appStore.toggleCaret({id: nextVisibleSectionFrame, caretPosition: CaretPosition.body});
+                    }
+                }
             }
         },
         

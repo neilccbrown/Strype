@@ -75,6 +75,8 @@ export const useStore = defineStore("app", {
             importContainerId: -1,
 
             functionDefContainerId: -2,
+
+            projectDocumentationFrameId: -10,
             /** END of flags that need checking when a build is done **/
 
             currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
@@ -732,7 +734,7 @@ export const useStore = defineStore("app", {
                     this.frameObjects[frameIdInt].childrenIds.splice(0);
                     // The project description is a slot on a negative frame which must also be cleared:
                     if (this.frameObjects[frameIdInt].frameType.type == AllFrameTypesIdentifier.projectDocumentation) {
-                        this.frameObjects[frameIdInt].labelSlotsDict = cloneDeep(emptyState["-10"].labelSlotsDict);
+                        this.frameObjects[frameIdInt].labelSlotsDict = cloneDeep(emptyState[this.projectDocumentationFrameId].labelSlotsDict);
                     }
                 }
             });
@@ -2465,36 +2467,36 @@ export const useStore = defineStore("app", {
                     // 4) if the project predates having project documentation, we add this frame in.
                     // 5) if the object is valid, we just verify the version is correct (and attempt loading) + for newer versions (> 1) make sure the target Strype "platform" is the same as the source's
                     try {
-                    //Check 1)
+                        //Check 1)
                         newStateObj = JSON.parse(payload.stateJSONStr);
                         if(!newStateObj || typeof(newStateObj) !== "object" || Array.isArray(newStateObj)){
-                        //no need to go further
+                            //no need to go further
                             isStateJSONStrValid=false;
                             errorDetailMessage = i18n.t("errorMessage.dataNotObject") as string;
                         }
                         else{
-                        // Check 2) as 1) is validated
+                            // Check 2) as 1) is validated
                             if(!checkStateDataIntegrity(newStateObj)) {
                                 isStateJSONStrValid = false;
                                 errorDetailMessage = i18n.t("errorMessage.stateDataIntegrity") as string;
                             } 
                             else {
-                            // Check 3) as 2) is validated
+                                // Check 3) as 2) is validated
                                 isVersionCorrect = (newStateObj["version"] == AppVersion);
                                 if(Number.parseInt(newStateObj["version"]) > 1 && newStateObj["platform"] != AppPlatform) {
                                     isStateJSONStrValid = false;
                                     errorDetailMessage = i18n.t("errorMessage.stateWrongPlatform") as string;
                                 }
                                 else{
-                                // Check 4) and 5) as 3) is validated
+                                    // Check 4) and 5) as 3) is validated
                                     // If missing project doc frame, copy it in from the empty state and add it as first root child:
-                                    if (!newStateObj["frameObjects"]["-10"]) {
-                                        newStateObj["frameObjects"]["-10"] = cloneDeep(emptyState["-10"]);
-                                        newStateObj["frameObjects"]["0"]["childrenIds"].unshift(-10);
+                                    if (!newStateObj["frameObjects"][this.projectDocumentationFrameId]) {
+                                        newStateObj["frameObjects"][this.projectDocumentationFrameId] = cloneDeep(emptyState[this.projectDocumentationFrameId]);
+                                        newStateObj["frameObjects"]["0"]["childrenIds"].unshift(this.projectDocumentationFrameId);
                                     }
                                     
                                     if(!restoreSavedStateFrameTypes(newStateObj)){
-                                    // There was something wrong with the type name (it should not happen, but better check anyway)
+                                        // There was something wrong with the type name (it should not happen, but better check anyway)
                                         isStateJSONStrValid = false;
                                         errorDetailMessage = i18n.t("errorMessage.stateWrongFrameTypeName") as string;
                                     }
@@ -2505,7 +2507,7 @@ export const useStore = defineStore("app", {
                         }
                     }
                     catch(err){
-                    //we cannot use the string arguemnt to retrieve a valid state --> inform the users
+                        // We cannot use the string arguemnt to retrieve a valid state --> inform the users
                         isStateJSONStrValid = false;
                         errorDetailMessage = i18n.t("errorMessage.wrongDataFormat") as string;
                     }
