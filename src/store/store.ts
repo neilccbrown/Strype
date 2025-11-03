@@ -17,7 +17,6 @@ import { nextTick } from "@vue/composition-api";
 import { TPyParser } from "tigerpython-parser";
 import AppComponent from "@/App.vue";
 import emptyState from "@/store/initial-states/empty-state";
-import Parser from "@/parser/parser";
 /* IFTRUE_isPython */
 import PEAComponent from "@/components/PythonExecutionArea.vue";
 import CommandsComponent from "@/components/Commands.vue";
@@ -747,6 +746,7 @@ export const useStore = defineStore("app", {
         },
 
         deleteFrame(payload: {key: string; frameToDeleteId: number; deleteChildren?: boolean}) {
+            console.log("Delete: " + JSON.stringify(payload));
             //if delete is pressed
             //  case cursor is body: cursor stay here, the first child (if exits) is deleted (*)
             //  case cursor is below: cursor stay here, the next sibling (if exits) is deleted (*)
@@ -1299,7 +1299,7 @@ export const useStore = defineStore("app", {
                 "copiedSelectionFrameIds",  
                 topLevelCopiedFrames
             );
-
+            console.log("Copied selection");
         },
 
         updateState(newState: Record<string, unknown>){
@@ -1335,6 +1335,7 @@ export const useStore = defineStore("app", {
                 "copiedFrames",
                 {}
             );
+            console.log("clearNonFrame");
             this.copiedSelectionFrameIds.splice(0);
 
             //context menu indicator is cleared
@@ -1664,6 +1665,8 @@ export const useStore = defineStore("app", {
             );
 
             this.copiedFrameId = -100;
+            
+            console.log("Flush copied frames");
 
             Vue.set(
                 this,
@@ -2087,8 +2090,9 @@ export const useStore = defineStore("app", {
         // Note: this will not always do the delete, for example if frozen frames are involved
         // Returns true if the deletion ocurred or false if it did not.
         deleteFrames(key: string, ignoreBackState?: boolean) : boolean {
+            //console.log("Delete frames: " + key + " current: " + this.frameObjects[this.currentFrame.id].frameType.type + " " + JSON.stringify(this.currentFrame));
             const stateBeforeChanges = cloneDeep(this.$state);
-
+            
             // we remove the editable slots from the available positions
             let availablePositions = getAvailableNavigationPositions();
             availablePositions = availablePositions.filter((e) => !e.isSlotNavigationPosition);
@@ -2156,6 +2160,7 @@ export const useStore = defineStore("app", {
                         && ((this.currentFrame.caretPosition == CaretPosition.body && (currentFrame.frameType.isJointFrame || currentFrame.frameType.allowJointChildren) && this.frameObjects[currentFrame.id].childrenIds.length == 0) 
                             || (this.currentFrame.caretPosition == CaretPosition.below && (this.frameObjects[currentFrame.parentId].frameType.isJointFrame || this.frameObjects[currentFrame.parentId].frameType.allowJointChildren)
                                 && this.frameObjects[currentFrame.parentId].childrenIds.at(-1) == currentFrame.id))){
+                        //console.log("Part A");
                         // Check if visually, after the current caret, there is disabled joint that we would delete.
                         const frameToLookJointIn = (this.currentFrame.caretPosition == CaretPosition.body) ? currentFrame : this.frameObjects[currentFrame.parentId];
                         if(frameToLookJointIn.frameType.allowJointChildren && frameToLookJointIn.jointFrameIds.length > 0 && this.frameObjects[frameToLookJointIn.jointFrameIds[0]].isDisabled){
@@ -2170,6 +2175,11 @@ export const useStore = defineStore("app", {
                             }
                         }                                        
                     }
+
+                    console.log("Id: " + frameToDelete.frameId);
+                    console.log("Type now: " + this.frameObjects[frameToDelete.frameId]?.frameType.type);
+                    console.log("Allows children: " + this.frameObjects[frameToDelete.frameId]?.frameType.allowChildren);
+                    console.log("Children ids: " + JSON.stringify(this.frameObjects[frameToDelete.frameId]?.childrenIds));
                     
                     if(!foundDisabledJointFrameToDelete) {
                         const indexOfCurrentInAvailables = availablePositions.findIndex((e)=> e.frameId === currentFrame.id && e.caretPosition === this.currentFrame.caretPosition);
@@ -2183,6 +2193,7 @@ export const useStore = defineStore("app", {
                         || ((this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren  || this.frameObjects[frameToDelete.frameId]?.frameType.type === AllFrameTypesIdentifier.funcdef)
                             && (frameToDelete.caretPosition??"") === CaretPosition.below)){
                         frameToDelete.frameId = -100;
+                        console.log("Preventing delete");
                     }
                 }
                 else {
@@ -2449,6 +2460,7 @@ export const useStore = defineStore("app", {
             stateCopy["stateBeforeChanges"] = {};
             stateCopy["copiedFrames"] = {};
             stateCopy.copiedFrameId = -100;
+            console.log("Made state copy");
             stateCopy.copiedSelectionFrameIds = [];
             stateCopy["DAPWrapper"] = {};
             stateCopy["previousDAPWrapper"] = {};
@@ -2758,6 +2770,7 @@ export const useStore = defineStore("app", {
         // This method can be used to copy the selected frames to a position.
         // This can be a paste event or a duplicate event.
         copySelectedFramesToPosition(payload: {newParentId: number; newIndex?: number}, ignoreStateBackup?: boolean) {
+            console.log("copySelectedFramesToPosition");
             const stateBeforeChanges = cloneDeep(this.$state);
             // -100 is chosen so that TS won't complain for non-initialised variable
             let newIndex = payload.newIndex??-100;
@@ -2881,6 +2894,8 @@ export const useStore = defineStore("app", {
         },
 
         pasteSelection(payload: {clickedFrameId: number; caretPosition: CaretPosition, ignoreStateBackup?: boolean}) {
+            console.log("Pasting " + JSON.stringify(this.copiedSelectionFrameIds));
+            
             // If the copiedFrame has a JointParent, we're talking about a JointFrame
             const areCopiedJointFrames = this.copiedFrames[this.copiedSelectionFrameIds[0]].frameType.isJointFrame;
             
@@ -2935,9 +2950,7 @@ export const useStore = defineStore("app", {
 
         copyFrame(frameId: number) {
             this.flushCopiedFrames();
-            const text = new Parser(true, "spy").parse({startAtFrameId: frameId, stopAt: {frameId: frameId, includeThisFrame: true}, excludeLoopsAndCommentsAndCloseTry: false, defsLast: false});
             this.doCopyFrame(frameId);
-            navigator.clipboard.writeText(text);
             this.updateNextAvailableId();
         },
 
@@ -2946,9 +2959,7 @@ export const useStore = defineStore("app", {
                 return;
             }
             this.flushCopiedFrames();
-            const text = new Parser(true, "spy").parse({startAtFrameId: this.selectedFrames[0], stopAt: {frameId: this.selectedFrames.at(-1) as number, includeThisFrame: true}, excludeLoopsAndCommentsAndCloseTry: false, defsLast: false});
             this.doCopySelection();
-            navigator.clipboard.writeText(text);
             this.updateNextAvailableId();
         },
 
