@@ -53,7 +53,6 @@ import { getFrameDefType, SlotType, SlotCursorInfos, MediaDataAndDim} from "@/ty
 import { setDocumentSelection, getFrameLabelSlotsStructureUID, getLabelSlotUID } from "@/helpers/editor";
 import { preparePasteMediaData } from "@/helpers/media";
 import LabelSlotsStructureComponent from "@/components/LabelSlotsStructure.vue";
-import {ContainerTypesIdentifiers, FuncDefIdentifiers } from "@/types/types";
 import { getParentOrJointParent } from "@/helpers/storeMethods";
 /* FITRUE_isPython */
 
@@ -181,8 +180,8 @@ export default Vue.extend({
             // We should know the action is about pasting frames or text if some text is present in the clipboard (we clear it when copying frames)
             if (!this.isPythonExecuting && !this.isEditing && this.caretVisibility !== CaretPosition.none && (this.caretVisibility === this.caretAssignedPosition)) {
                 /*IFTRUE_isPython */
-                const inFrameType = this.appStore.frameObjects[(this.appStore.currentFrame.caretPosition == CaretPosition.body) ? this.frameId : getParentOrJointParent(this.frameId)].frameType.type;
-                if(![ContainerTypesIdentifiers.importsContainer, ContainerTypesIdentifiers.funcDefsContainer, ...Object.values(FuncDefIdentifiers)].includes(inFrameType) && Object.values((event as ClipboardEvent).clipboardData?.items??[]).some((dataTransferItem: DataTransferItem) => dataTransferItem.kind == "file" && /^(image)|(audio)\//.test(dataTransferItem.type))){
+                const inFrameType = this.appStore.frameObjects[(this.appStore.currentFrame.caretPosition == CaretPosition.body) ? this.frameId : getParentOrJointParent(this.frameId)].frameType;
+                if(!inFrameType.forbiddenChildrenTypes.includes(AllFrameTypesIdentifier.funccall) && Object.values((event as ClipboardEvent).clipboardData?.items??[]).some((dataTransferItem: DataTransferItem) => dataTransferItem.kind == "file" && /^(image)|(audio)\//.test(dataTransferItem.type))){
                     // For the special case of image media, we want to simulate the addition of a method call with that media.
                     // Therefore, we will need to "wrap" around the media literal value with our usual wrappers.
                     // We don't rely on the frame authorised children rules for that, because we don't have a copied frame in the state.
