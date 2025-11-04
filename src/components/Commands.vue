@@ -92,9 +92,9 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCloudDriveHandlerComponentRefId, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope,getFrameUID, getEditorMiddleUID, getMenuLeftPaneUID, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
+import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCloudDriveHandlerComponentRefId, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getMenuLeftPaneUID, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, defaultEmptyStrypeLayoutDividerSettings, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
+import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, defaultEmptyStrypeLayoutDividerSettings, FrameObject, PythonExecRunningState, SelectAllFramesAction, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
 import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
@@ -352,11 +352,10 @@ export default Vue.extend({
                         if(getActiveContextMenu() == null && !this.appStore.isAppMenuOpened){
                             const frameContainerId = getFrameSectionIdFromFrameId(this.appStore.currentFrame.id);
                             // If a selection already exists, we clear it, after checking where we are at in the case of function defs (cf. below)
-                            const currentFrameSelection = getCurrentFrameSelectionScope();
+                            const selectAllFramesAction = getCurrentFrameSelectAllAction();
                             this.appStore.unselectAllFrames();
-                            switch(currentFrameSelection){
-                            case SelectAllFramesFuncDefScope.frame:
-                            case SelectAllFramesFuncDefScope.definitionsContainerBody:
+                            switch(selectAllFramesAction){
+                            case SelectAllFramesAction.wholeContainer:
                                 // In imports or main code. Or in function definitions with some functions selected, or inside the function defs container.
                                 // Position the frame cursor inside the body of the frame container
                                 this.appStore.setCurrentFrame({id: frameContainerId, caretPosition: CaretPosition.body});
@@ -365,42 +364,33 @@ export default Vue.extend({
                                     this.appStore.selectMultipleFrames("ArrowDown");
                                 });     
                                 break;
-                            case SelectAllFramesFuncDefScope.none:
-                            case SelectAllFramesFuncDefScope.partClassBody:
-                                // In a function definition with no frame selected or some frames inside a function body (not all).
-                                // We select all the frames of the function's body.
-                                {
-                                    let functionDefFrameId = 0, currentFrameId = this.appStore.currentFrame.id, foundFunctionDefFrame = false;
-                                    if(currentFrameSelection == SelectAllFramesFuncDefScope.none ?
-                                        this.appStore.frameObjects[currentFrameId].frameType.type == AllFrameTypesIdentifier.funcdef
-                                        : this.appStore.frameObjects[currentFrameId].frameType.type == AllFrameTypesIdentifier.classdef){
-                                        // If we are in the body of the function definition (just inside the body position, not somewhere else)
-                                        //then we don't need to look up for the body position as we're already there...
-                                        foundFunctionDefFrame = true;
-                                        functionDefFrameId = currentFrameId;
-                                    }
-                                    while(!foundFunctionDefFrame){
-                                        functionDefFrameId = this.appStore.frameObjects[currentFrameId].parentId;
-                                        foundFunctionDefFrame = (currentFrameSelection == SelectAllFramesFuncDefScope.none ?
-                                            this.appStore.frameObjects[functionDefFrameId].frameType.type == AllFrameTypesIdentifier.funcdef
-                                            : this.appStore.frameObjects[functionDefFrameId].frameType.type == AllFrameTypesIdentifier.classdef);
-                                        currentFrameId = functionDefFrameId;
-                                    }
-                                    this.appStore.setCurrentFrame({id: functionDefFrameId, caretPosition: CaretPosition.body});
-                                    // And select all the children frame of the container (if any...)
-                                    this.appStore.frameObjects[functionDefFrameId].childrenIds.forEach(() => {
-                                        this.appStore.selectMultipleFrames("ArrowDown");
-                                    });    
+                            case SelectAllFramesAction.functionOrClassContents:
+                            case SelectAllFramesAction.currentLevel: {
+                                let selectAllOfId;
+                                let currentFrameId = this.appStore.currentFrame.id;
+                                if (selectAllFramesAction == SelectAllFramesAction.currentLevel) {
+                                    selectAllOfId = this.appStore.frameObjects[currentFrameId].parentId;
                                 }
+                                else {
+                                    // We need to find the nearest parent that is a class or function
+                                    let parentId = 0, foundFunctionDefFrame = false;
+                                    // The second part is a fail safe to prevent an infinite loop, just in case:
+                                    while (!foundFunctionDefFrame && currentFrameId != useStore().defsContainerId) {
+                                        parentId = this.appStore.frameObjects[currentFrameId].parentId;
+                                        foundFunctionDefFrame = this.appStore.frameObjects[parentId].frameType.type == AllFrameTypesIdentifier.funcdef
+                                            || this.appStore.frameObjects[parentId].frameType.type == AllFrameTypesIdentifier.classdef;
+                                        currentFrameId = parentId;
+                                    }
+                                    selectAllOfId = parentId;
+                                }
+                                this.appStore.setCurrentFrame({id: selectAllOfId, caretPosition: CaretPosition.body});
+                                // And select all the children frame of the container (if any...)
+                                this.appStore.frameObjects[selectAllOfId].childrenIds.forEach(() => {
+                                    this.appStore.selectMultipleFrames("ArrowDown");
+                                });
                                 break;
-                            case SelectAllFramesFuncDefScope.belowFunc:
-                                // Below a whole function definition, we select that function.
-                                this.appStore.selectMultipleFrames("ArrowUp");     
-                                // And reposition the caret below for consistency with other select-all conditions
-                                this.appStore.setCurrentFrame({id: this.appStore.selectedFrames.at(-1) as number, caretPosition: CaretPosition.below});   
-                                break;
-                            case SelectAllFramesFuncDefScope.wholeFunctionBody:
-                            case SelectAllFramesFuncDefScope.wholeClassBody:
+                            }
+                            case SelectAllFramesAction.parent:
                                 // In function definitions with function body frames selected.
                                 // We select the whole function.
                                 {
