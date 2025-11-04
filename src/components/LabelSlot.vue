@@ -314,7 +314,8 @@ export default Vue.extend({
 
         isFrameEmptyAndAtLabelSlotStart(): boolean {
             // This computed property checks that all the (visible) editable slots of a frame, and if applies, its body, are empty
-            // (note that if we have nothing but operators, or empty quotes, that is considered as empty)
+            // (note that if we have nothing but operators, or empty quotes*, that is considered as empty)
+            // Exceptions: comments that contains spaces or string literal values with spaces.
             if(!(this.frameId in this.appStore.frameObjects)){
                 return false;
             }            
@@ -323,7 +324,7 @@ export default Vue.extend({
                 if((labelSlotContent.shown??true) && firstVisibleLabelSlotsIndex < 0 ){
                     firstVisibleLabelSlotsIndex = Number(index);
                 }
-                return ((labelSlotContent.shown??true) && isFrameLabelSlotStructWithCodeContent(labelSlotContent.slotStructures));
+                return ((labelSlotContent.shown??true) && isFrameLabelSlotStructWithCodeContent(labelSlotContent.slotStructures, this.appStore.frameObjects[this.frameId].frameType.type));
             })
                 || this.appStore.frameObjects[this.frameId].childrenIds.length > 0);
             return this.labelSlotsIndex == firstVisibleLabelSlotsIndex && this.slotId == "0" && isEmpty;
@@ -689,6 +690,17 @@ export default Vue.extend({
             if(this.appStore.isEditing){
                 (document.activeElement as HTMLElement).blur();
                 this.appStore.isEditing = false;
+                // A special case for the project documentation slot: because it doesn't be belong to 
+                // a "real" frame, hitting escape should instead place the frame cursor to the next "real"
+                // available (as visible) frame.
+                if(this.frameId == this.appStore.projectDocumentationFrameId){
+                    const nextVisibleSectionFrame = [this.appStore.importContainerId, this.appStore.functionDefContainerId, this.appStore.getMainCodeFrameContainerId]
+                        .find((frameContainerId) => !this.appStore.frameObjects[frameContainerId].isCollapsed);
+                    // At least the main section is not collapsed we should always get a value.. but let's keep TS happy
+                    if(nextVisibleSectionFrame != undefined){
+                        this.appStore.toggleCaret({id: nextVisibleSectionFrame, caretPosition: CaretPosition.body});
+                    }
+                }
             }
         },
         
@@ -1216,8 +1228,9 @@ export default Vue.extend({
             else {
                 // If the user pastes a large image (>= 1000 pixels in either dimension)
                 // we figure they probably want to trim it down before pasting, so we
-                // show the image editing dialog:
+                // show the image editing dialog (and make sure we don't lose focus in the slot):
                 if (event.detail.type.startsWith("image/") && (event.detail.width >= 1000 || event.detail.height >= 1000)) {
+                    this.appStore.ignoreBlurEditableSlot = true;
                     this.doEditImageInDialog(/"([^"]+)"/.exec(event.detail.content)?.[1] ?? "", () => {}, (replacement : {code: string, mediaType: string}) => {
                         this.onCodePasteImpl(replacement.code, replacement.mediaType);
                     });

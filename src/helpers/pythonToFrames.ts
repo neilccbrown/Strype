@@ -569,7 +569,7 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
         // Use the next available ID to avoid clashing with any existing IDs:
         copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: useStore().nextAvailableId, addToNonJoint: useStore().copiedSelectionFrameIds, addToJoint: undefined, loadedFrames: useStore().copiedFrames, disabledLines: transformed.disabledLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0, transformTopComment: (c) => {
             if (!dryrun) {
-                const docFrame = useStore().frameObjects[-10] as FrameObject;
+                const docFrame = useStore().frameObjects[useStore().projectDocumentationFrameId] as FrameObject;
                 // The escapes in the loaded project doc were inserted by us on saving, so we should remove them:
                 applyToText(c, unescapeProjectDoc);
                 docFrame.labelSlotsDict[0].slotStructures = c;

@@ -1199,6 +1199,13 @@ export interface LoadedMedia {
     audioBuffer?: AudioBuffer,
 }
 
+export interface MediaDataAndDim {
+    dataURI: string,
+    itemType: string, // similar to MIME (e.g. "image/png")
+    width: number, // for sounds, set to -1
+    height: number // for sounds, set to -1
+}
+
 export type EditImageInDialogFunction = (imageDataURL: string, showPreview: (dataURL: string) => void, callback: (replacement: { code: string, mediaType: string }) => void) => void;
 export type EditSoundInDialogFunction = (sound: AudioBuffer, callback: (replacement: { code: string, mediaType: string }) => void) => void;
 

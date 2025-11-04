@@ -211,14 +211,16 @@ export const getFrameParentSlotsLength = (slotInfos: SlotCoreInfos): number => {
     }
 };
 
-export function isFrameLabelSlotStructWithCodeContent(slotsStruct: SlotsStructure): boolean {
+export function isFrameLabelSlotStructWithCodeContent(slotsStruct: SlotsStructure, frameType: string): boolean {
+    // A label slots structure isn't considered empty if we are in comments that contains spaces or string literal values with spaces.
+    // Otherwise, any other empty content (included with operators) is considered as empty
     let hasContent = false;
     for(const fieldSlot of slotsStruct.fields){
         if(isFieldBracketedSlot(fieldSlot)){
-            hasContent ||= isFrameLabelSlotStructWithCodeContent((fieldSlot as SlotsStructure));
+            hasContent ||= isFrameLabelSlotStructWithCodeContent((fieldSlot as SlotsStructure), frameType);
         }
         else {
-            hasContent ||=  fieldSlot.code.trim().length > 0;
+            hasContent ||=  (frameType == AllFrameTypesIdentifier.comment || isFieldStringSlot(fieldSlot)) ? (fieldSlot.code.replace("\u200B","").length > 0) : fieldSlot.code.trim().length > 0;
         }
         if(hasContent) {
             break;
