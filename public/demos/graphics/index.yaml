@@ -12,3 +12,8 @@
   description: A knock-knock joke
   image: graphics-knock-knock.png
   file: graphics-knock-knock.spy
+
+- name: Sea life game
+  description: Starting point for the sea life game
+  image: graphics-sea-life.png
+  file: graphics-sea-life.spy
