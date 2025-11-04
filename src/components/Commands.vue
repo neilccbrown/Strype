@@ -351,12 +351,12 @@ export default Vue.extend({
                     if(eventKeyLowCase === "a" && !isEditing){ 
                         if(getActiveContextMenu() == null && !this.appStore.isAppMenuOpened){
                             const frameContainerId = getFrameSectionIdFromFrameId(this.appStore.currentFrame.id);
-                            // If a selection already exists, we clear it, after checking where we are at in the case of function defs (cf. below)
+                            // If a selection already exists, we clear it, after checking where we are at with respect to the select-all action to take
                             const selectAllFramesAction = getCurrentFrameSelectAllAction();
                             this.appStore.unselectAllFrames();
                             switch(selectAllFramesAction){
                             case SelectAllFramesAction.wholeContainer:
-                                // In imports or main code. Or in function definitions with some functions selected, or inside the function defs container.
+                                // In imports or main code. Or in definitions section  with some items selected.
                                 // Position the frame cursor inside the body of the frame container
                                 this.appStore.setCurrentFrame({id: frameContainerId, caretPosition: CaretPosition.body});
                                 // And select all the children frame of the container (if any...)
