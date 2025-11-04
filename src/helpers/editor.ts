@@ -127,6 +127,10 @@ export function getImportDiffVersionModalDlgId(): string {
     return "importDiffVersionModalDlg";
 }
 
+export function getCloudLoginErrorModalDlgId(): string {
+    return "cloudLoginErrorModalDlg";
+}
+
 const frameUIDRegex = /^frame_id_(\d+)$/;
 export function isIdAFrameId(id: string): boolean {
     return id.match(frameUIDRegex) !== null;
@@ -139,14 +143,13 @@ export function parseFrameUID(frameUID: string): number {
     return (frameUIDMatch) ? parseInt(frameUIDMatch[1]) : -100;
 }
 
-const labelSlotUIDRegex = /^input_frame_(-?\d+)_label_(\d+)_slot_([0-7]{4})_(\d+(,\d+)*)$/;
+const labelSlotUIDRegex = /^input_frame_(-?\d+)_label_(\d+)_slot_([0-7]{8})_(\d+(,\d+)*)$/;
 export function getLabelSlotUID(slotCoreInfos: SlotCoreInfos): string {
-    // If a change is done in this method, also update isElementLabelSlotInput() and parseLabelSlotUID()
+    // If a change is done in this method, also update isElementEditLabelSlotInput() and parseLabelSlotUID()
     // For explanation about the slotID format, see generateFlatSlotBases() in storeMethods.ts
-    // note: slotype is an enum value, which is rendered as an octal 4 digits value (eg "0010")
-    const intermediateFormattedType = "000" + slotCoreInfos.slotType.toString(8);
-    const formattedTypeValue = intermediateFormattedType.substring(intermediateFormattedType.length - 4, intermediateFormattedType.length);
-    return "input_frame_" + slotCoreInfos.frameId + "_label_" + slotCoreInfos.labelSlotsIndex + "_slot_" + formattedTypeValue + "_" + slotCoreInfos.slotId;
+    // note: slotype is an enum value, which is rendered as an octal 8 digits value (eg "00000010")
+    const paddedTypValue = slotCoreInfos.slotType.toString(8).padStart(8,"0");
+    return "input_frame_" + slotCoreInfos.frameId + "_label_" + slotCoreInfos.labelSlotsIndex + "_slot_" + paddedTypValue + "_" + slotCoreInfos.slotId;
 }
 
 
@@ -176,7 +179,7 @@ export function isElementEditableLabelSlotInput(element: EventTarget | null): bo
         return false;
     }
     // Cf. getLabelSlotUID() for the format
-    const regexMatch = (element as HTMLSpanElement).id.match("^input_frame_-?\\d+_label_\\d+_slot_000(\\d)_\\d+(,\\d+)*$");
+    const regexMatch = (element as HTMLSpanElement).id.match("^input_frame_-?\\d+_label_\\d+_slot_0000000(\\d)_\\d+(,\\d+)*$");
     return regexMatch != null && parseInt(regexMatch[1]) < 8;
 }
 

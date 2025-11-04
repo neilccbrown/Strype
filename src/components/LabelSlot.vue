@@ -87,6 +87,7 @@ import Frame from "@/components/Frame.vue";
 import scssVars from "@/assets/style/_export.module.scss";
 import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
 import {drawSoundOnCanvas} from "@/helpers/media";
+import { isMacOSPlatform } from "@/helpers/common";
 
 // Default time to keep in cache: 5 minutes.
 const soundPreviewImages = new Cache<LoadedMedia>({ defaultTtl: 5 * 60 * 1000 });
@@ -312,7 +313,8 @@ export default Vue.extend({
 
         isFrameEmptyAndAtLabelSlotStart(): boolean {
             // This computed property checks that all the (visible) editable slots of a frame, and if applies, its body, are empty
-            // (note that if we have nothing but operators, or empty quotes, that is considered as empty)
+            // (note that if we have nothing but operators, or empty quotes*, that is considered as empty)
+            // Exceptions: comments that contains spaces or string literal values with spaces.
             if(!(this.frameId in this.appStore.frameObjects)){
                 return false;
             }            
@@ -321,7 +323,7 @@ export default Vue.extend({
                 if((labelSlotContent.shown??true) && firstVisibleLabelSlotsIndex < 0 ){
                     firstVisibleLabelSlotsIndex = Number(index);
                 }
-                return ((labelSlotContent.shown??true) && isFrameLabelSlotStructWithCodeContent(labelSlotContent.slotStructures));
+                return ((labelSlotContent.shown??true) && isFrameLabelSlotStructWithCodeContent(labelSlotContent.slotStructures, this.appStore.frameObjects[this.frameId].frameType.type));
             })
                 || this.appStore.frameObjects[this.frameId].childrenIds.length > 0);
             return this.labelSlotsIndex == firstVisibleLabelSlotsIndex && this.slotId == "0" && isEmpty;
@@ -693,6 +695,17 @@ export default Vue.extend({
             if(this.appStore.isEditing){
                 (document.activeElement as HTMLElement).blur();
                 this.appStore.isEditing = false;
+                // A special case for the project documentation slot: because it doesn't be belong to 
+                // a "real" frame, hitting escape should instead place the frame cursor to the next "real"
+                // available (as visible) frame.
+                if(this.frameId == this.appStore.projectDocumentationFrameId){
+                    const nextVisibleSectionFrame = [this.appStore.importContainerId, this.appStore.functionDefContainerId, this.appStore.getMainCodeFrameContainerId]
+                        .find((frameContainerId) => !this.appStore.frameObjects[frameContainerId].isCollapsed);
+                    // At least the main section is not collapsed we should always get a value.. but let's keep TS happy
+                    if(nextVisibleSectionFrame != undefined){
+                        this.appStore.toggleCaret({id: nextVisibleSectionFrame, caretPosition: CaretPosition.body});
+                    }
+                }
             }
         },
         
@@ -792,8 +805,9 @@ export default Vue.extend({
                 event.stopImmediatePropagation();
             }
 
-            // Manage the handling of home/end and page up/page down keys
-            if(["PageUp", "PageDown", "Home", "End"].includes(event.key)){
+            // Manage the handling of home/end and page up/page down keys (see macOS case in method details)
+            const textHomeEndBehaviourKeys = (isMacOSPlatform() && event.metaKey) ? ["ArrowLeft", "ArrowRight"] : ["Home", "End"];
+            if(["PageUp", "PageDown", ...textHomeEndBehaviourKeys].includes(event.key)){
                 this.handleFastUDNavKeys(event);
                 return;
             }
@@ -1134,36 +1148,61 @@ export default Vue.extend({
         },
 
         handleFastUDNavKeys(event: KeyboardEvent){
-            // If we are in a comment, we let the browser handling the key events.
+            // If we are in a comment (e.g. frame or documentation slot) or in a string slot, we let the browser* handling the key events.
             // Otherwise, the following rules apply:
-            // Home/End move the text cursor to the start/end of the "block" unit of the code, for example the start of a slot bracketed structure
-            // PageUp/PageDown: do nothing
-            if(this.frameType == AllFrameTypesIdentifier.comment){
+            // Home/End* move the text cursor to the start/end of the whole label slots structure, or of the current slot structure level
+            //      (like a bracketed structure) if shift is also held (to avoid selecting code that spans across different levels)
+            // PageUp/PageDown: no interaction with the text, acts as hitting up/down to leave the text slot and show the frame cursor
+            //(*) Note that in macOS things are a big tricky because there is no dedicated home/end keys.
+            //    This is their mapping (simplified for one direction only) and natural behaviour and what we will do:
+            //      ⌘ + Left --> "metaKey + ArrowLeft" --> start of line     --> we detect that and let the browser do its job
+            //      Fn + Left --> "Home"                --> start of document --> we detect that and go to the start/end of the whole slot
+            //    The selection with shift is treated according to the rule above. It seemed that {Fn + Left + Shift} worked
+            //    but to make things consistent we'll just drop it. 
+            if(((!isMacOSPlatform() && (event.key == "Home" || event.key == "End")) || event.key == "ArrowLeft" || event.key == "ArrowRight") && (this.frameType == AllFrameTypesIdentifier.comment || this.slotType == SlotType.comment || this.slotType == SlotType.string)){
                 return;
             }
-            else if(event.key == "Home" || event.key == "End"){
-                // Find which bounds we should target (which bound in the current level based on the key, and also the bound based on current text cursor position)
-                const moveToHome = (event.key === "Home");
+            else if(event.key == "Home" || event.key == "End" || event.key == "ArrowLeft" || event.key == "ArrowRight"){
+                // Find which bounds we should target (which bound in the current level or on the whole label slots structure based on the keys, and also the bound based on current text cursor position)
+                const moveToHome = (event.key === "Home" || event.key == "ArrowLeft");
                 const isSelecting = event.shiftKey;
-                const isInString = isFieldStringSlot(retrieveSlotFromSlotInfos(this.coreSlotInfo));
                 const parentSlotId = getSlotParentIdAndIndexSplit(this.coreSlotInfo.slotId).parentId;
-                // First focus: it will change to one end of the current level depending on the direction we're going
+
+                // First focus: it will change to one end of the label slots structure OR current level depending on the direction we're going and if we are selecting
                 const newFocusSlotId = (moveToHome) 
-                    ? (isInString ? this.slotId : ((parentSlotId.length > 0) ? (parentSlotId + ",0") : "0"))
-                    : (isInString ? this.slotId : ((parentSlotId.length > 0) ? (parentSlotId + "," + ((retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: parentSlotId}) as SlotsStructure).fields.length -1)) : ("" + (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.coreSlotInfo.labelSlotsIndex].slotStructures.fields.length - 1))));
+                    ? ((isSelecting) ? ((parentSlotId.length > 0) ? (parentSlotId + ",0") : "0") : "0" )
+                    : ((isSelecting) 
+                        ? ((parentSlotId.length > 0) ? (parentSlotId + "," + ((retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: parentSlotId}) as SlotsStructure).fields.length -1)) : (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.coreSlotInfo.labelSlotsIndex].slotStructures.fields.length - 1).toString())
+                        : (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.coreSlotInfo.labelSlotsIndex].slotStructures.fields.length - 1).toString());
                 // We only look for the new type and slot core infos for non-string current location to save unnecessary function calls
-                const newFocusSlotType = (isInString) ? this.slotType : evaluateSlotType(getSlotDefFromInfos(this.coreSlotInfo), retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: newFocusSlotId}));
-                const newFocusSlotCoreInfo = (isInString) ? this.coreSlotInfo : {...this.coreSlotInfo, slotId: newFocusSlotId, slotType: newFocusSlotType};
+                const newFocusSlotType = evaluateSlotType(getSlotDefFromInfos(this.coreSlotInfo), retrieveSlotFromSlotInfos({...this.coreSlotInfo, slotId: newFocusSlotId}));
+                const newFocusSlotCoreInfo = {...this.coreSlotInfo, slotId: newFocusSlotId, slotType: newFocusSlotType};
                 const newFocusCursorPos = (moveToHome) ? 0 : (retrieveSlotFromSlotInfos(newFocusSlotCoreInfo) as BaseSlot).code.length;
+               
                 // Then anchor: it will either keep the same if we are doing a selection, or change to the same as focus if we are not.
                 const newAnchorSlotCursorInfo: SlotCursorInfos = (isSelecting) ? this.appStore.anchorSlotCursorInfos as SlotCursorInfos: {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos}; 
+
                 // Set the new bounds
                 this.$nextTick(() => {
                     document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos?.slotInfos as SlotCoreInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotLostCaret));
                     document.getElementById(getLabelSlotUID(newFocusSlotCoreInfo))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
                     setDocumentSelection(newAnchorSlotCursorInfo, {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos});
                     this.appStore.setSlotTextCursors(newAnchorSlotCursorInfo, {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos});
+
                 });
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+            }
+            else{
+                // The case of PageUp and PageDown: we leave the text slot so we get back to the previous/next frame cursor
+                document.getElementById(getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
+                    new KeyboardEvent("keydown", {
+                        key: (event.key == "PageUp") ? "ArrowUp" : "ArrowDown",
+                        altKey: true,
+                        ctrlKey: true,
+                    })
+                );
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
@@ -1194,8 +1233,9 @@ export default Vue.extend({
             else {
                 // If the user pastes a large image (>= 1000 pixels in either dimension)
                 // we figure they probably want to trim it down before pasting, so we
-                // show the image editing dialog:
+                // show the image editing dialog (and make sure we don't lose focus in the slot):
                 if (event.detail.type.startsWith("image/") && (event.detail.width >= 1000 || event.detail.height >= 1000)) {
+                    this.appStore.ignoreBlurEditableSlot = true;
                     this.doEditImageInDialog(/"([^"]+)"/.exec(event.detail.content)?.[1] ?? "", () => {}, (replacement : {code: string, mediaType: string}) => {
                         this.onCodePasteImpl(replacement.code, replacement.mediaType);
                     });
