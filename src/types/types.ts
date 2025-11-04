@@ -198,12 +198,12 @@ export enum CaretPosition {
     none = "none",
 }
 
-export enum SelectAllFramesFuncDefScope {
-    none, // inside a function body, no frame is selected at all OR some frames are selected but not all
-    belowFunc, // below a function definition
-    functionsContainerBody, // inside the body of the function definitions container
-    wholeFunctionBody, // all frames for a function def body are selected
-    frame // some function frames are selected
+// If the user hits Ctrl-A there's a finite set of possibilities of what to do:
+export enum SelectAllFramesAction {
+    currentLevel, // Select all at current level
+    functionOrClassContents, // Select everything in the enclosing function/class
+    wholeContainer, // Select everything in the current container/section
+    parent, // Select the parent (only)
 }
 
 export enum FrameContextMenuActionName {

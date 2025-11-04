@@ -377,12 +377,6 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                 mostRecentIndent = "";
             }
         }
-        /*
-            else {
-                
-            }
-        }
-         */
         else if (codeLines[i].trim() === "" && currentTripleQuoteString == null) {
             // Blank line, outside a string:
             // We indent this to the largest of its indent,
@@ -1284,13 +1278,13 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION)
     switch(currentStrypeLocation){
     case STRYPE_LOCATION.MAIN_CODE_SECTION:
         return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.global].includes(frame.frameType.type));
-    case  STRYPE_LOCATION.IN_FUNCDEF:
+    case STRYPE_LOCATION.IN_FUNCDEF:
         return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type));
-    case  STRYPE_LOCATION.DEFS_SECTION:
+    case STRYPE_LOCATION.DEFS_SECTION:
         removeTopLevelBlankFrames();
-        // We are checking if we can paste; the not at the beginning means everything here is actually the cases
-        // where we *cannot* paste.
-        return !(topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type))
+        // We are checking if we can paste; the not at the beginning means everything inside the ensuing bracket is actually the cases
+        // where we *cannot* paste, then we invert this to get all the cases we can paste
+        return !(topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.varassign, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type))
             || copiedPythonToFrames.some((frame) =>
                 // Look only at non-top-level (i.e. child) frames    
                 !topLevelCopiedFrameIds.includes(frame.id) &&

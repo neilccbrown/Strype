@@ -17,7 +17,6 @@ import { nextTick } from "@vue/composition-api";
 import { TPyParser } from "tigerpython-parser";
 import AppComponent from "@/App.vue";
 import emptyState from "@/store/initial-states/empty-state";
-import Parser from "@/parser/parser";
 /* IFTRUE_isPython */
 import PEAComponent from "@/components/PythonExecutionArea.vue";
 import CommandsComponent from "@/components/Commands.vue";
@@ -1299,7 +1298,6 @@ export const useStore = defineStore("app", {
                 "copiedSelectionFrameIds",  
                 topLevelCopiedFrames
             );
-
         },
 
         updateState(newState: Record<string, unknown>){
@@ -1664,7 +1662,7 @@ export const useStore = defineStore("app", {
             );
 
             this.copiedFrameId = -100;
-
+            
             Vue.set(
                 this,
                 "copiedSelectionFrameIds",
@@ -2088,7 +2086,7 @@ export const useStore = defineStore("app", {
         // Returns true if the deletion ocurred or false if it did not.
         deleteFrames(key: string, ignoreBackState?: boolean) : boolean {
             const stateBeforeChanges = cloneDeep(this.$state);
-
+            
             // we remove the editable slots from the available positions
             let availablePositions = getAvailableNavigationPositions();
             availablePositions = availablePositions.filter((e) => !e.isSlotNavigationPosition);
@@ -2170,7 +2168,7 @@ export const useStore = defineStore("app", {
                             }
                         }                                        
                     }
-                    
+
                     if(!foundDisabledJointFrameToDelete) {
                         const indexOfCurrentInAvailables = availablePositions.findIndex((e)=> e.frameId === currentFrame.id && e.caretPosition === this.currentFrame.caretPosition);
                         // the "next" position of the current
@@ -2935,9 +2933,7 @@ export const useStore = defineStore("app", {
 
         copyFrame(frameId: number) {
             this.flushCopiedFrames();
-            const text = new Parser(true, "spy").parse({startAtFrameId: frameId, stopAt: {frameId: frameId, includeThisFrame: true}, excludeLoopsAndCommentsAndCloseTry: false, defsLast: false});
             this.doCopyFrame(frameId);
-            navigator.clipboard.writeText(text);
             this.updateNextAvailableId();
         },
 
@@ -2946,9 +2942,7 @@ export const useStore = defineStore("app", {
                 return;
             }
             this.flushCopiedFrames();
-            const text = new Parser(true, "spy").parse({startAtFrameId: this.selectedFrames[0], stopAt: {frameId: this.selectedFrames.at(-1) as number, includeThisFrame: true}, excludeLoopsAndCommentsAndCloseTry: false, defsLast: false});
             this.doCopySelection();
-            navigator.clipboard.writeText(text);
             this.updateNextAvailableId();
         },
 

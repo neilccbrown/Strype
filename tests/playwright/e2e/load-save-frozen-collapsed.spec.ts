@@ -1,10 +1,10 @@
 import {Page, test, expect} from "@playwright/test";
-import {load, save} from "../support/loading-saving";
+import {loadContent, save} from "../support/loading-saving";
 import fs from "fs";
 import en from "@/localisation/en/en_main.json";
 import { CollapsedState } from "../../cypress/support/frame-types";
-import { randomUUID } from "node:crypto";
 import {addFakeClipboard} from "../support/clipboard";
+import { checkFrameXorTextCursor } from "../support/editor";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && process.platform === "win32") {
@@ -26,15 +26,6 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         console.log("Browser log:", msg.text());
     });
 });
-
-
-async function loadContent(page: Page, spyToLoad: string) : Promise<void> {
-    // The recursive option stops it failing if the dir exists:
-    fs.mkdirSync("tests/cypress/downloads/", { recursive: true });
-    const path = `tests/cypress/downloads/toload-${randomUUID()}.spy`;
-    fs.writeFileSync(path, spyToLoad);
-    await load(page, path);
-}
 
 async function saveAndCheck(page: Page, expectedSPY: string) {
     const path = await save(page, false);
@@ -307,17 +298,12 @@ test.describe("Saves collapsed state after icon clicks", () => {
             await page.keyboard.press((process.platform == "darwin" ? "Alt" : "Control") + "+ArrowUp");
         }
         // Right arrow should go past header and into frame, then right again should go past
-        // the next frame, so right, shift+right, ctrl-c should copy the first frame inside:
+        // the next frame, so right, and right again should both end up with a frame cursor:
         await page.keyboard.press("ArrowRight");
+        checkFrameXorTextCursor(page, true);
         await page.keyboard.press("ArrowRight");
-        await page.keyboard.press("Shift+ArrowDown");
-        await page.keyboard.press((process.platform == "darwin" ? "Meta" : "Control") + "+c");
+        checkFrameXorTextCursor(page, true);
         
-        const clipboardContent : string = await page.evaluate("navigator.clipboard.readText()");
-        expect(clipboardContent).toEqual(`#(=> FrameState:FoldToHeader
-def __init__ (self, ) :
-    self.x  = 7 
-`);
     });
 
     test("Freezing prevents focusing the text slots with clicking", async ({page}) => {
