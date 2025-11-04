@@ -14,7 +14,7 @@ describe("Parameter prompts Python only", () => {
     if (Cypress.env("mode") !== "microbit") {
         rawFuncs.push(["turtle", "Turtle", ["shape='classic'", "undobuffersize=1000", "visible=True"]]);
         rawFuncs.push(["strype.graphics", "load_image", ["name"]]);
-        rawFuncs.push(["strype.graphics", "Actor", ["image_or_filename", "x=0", "y=0", "tag=None"]]);
+        rawFuncs.push(["strype.graphics", "Actor", ["image", "x=0", "y=0", "tag=None"]]);
     }
     testRawFuncs(rawFuncs);
 });

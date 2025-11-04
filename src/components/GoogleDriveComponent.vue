@@ -22,6 +22,7 @@ import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker.vue";
 import { PropType } from "@vue/composition-api";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { AppSPYFullPrefix } from "@/main";
+import { getCloudLoginErrorModalDlgId } from "@/helpers/editor";
 
 //////////////////////
 //     Component    //
@@ -90,7 +91,7 @@ export default Vue.extend({
 
 
         loginErrorModalDlgId(): string {
-            return "gdLoginErrorModalDlg";
+            return getCloudLoginErrorModalDlgId();
         },
     },
 
