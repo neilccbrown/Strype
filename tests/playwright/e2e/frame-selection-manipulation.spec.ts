@@ -3,9 +3,10 @@ import { loadContent, save } from "../support/loading-saving";
 import { readFileSync } from "node:fs";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    if (browserName === "webkit" && process.platform === "win32") {
-        // On Windows+Webkit it just can't seem to load the page for some reason:
-        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
+    if (browserName === "webkit" && (process.platform === "win32" || process.platform === "linux")) {
+        // On Windows+Webkit it just can't seem to load the page for some reason,
+        // and on Ubuntu+Webkit the paste doesn't seem to work (while it's fine on MacOS):
+        testInfo.skip(true, "Skipping on Windows/Ubuntu + WebKit due to various problems");
     }
 
     // These tests can take longer than the default 30 seconds:
