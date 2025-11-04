@@ -22,7 +22,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     });
 });
 
-async function testBeforeAfterPaste(page: Page, before :string, selectionKeys: string[], operation: "cut" | "copy", moveToDestKeys: string[], afterPaste :string) {
+async function testBeforeAfterPaste(page: Page, before :string, selectionKeys: string[], operation: "cut" | "copy" | "delete", moveToDestKeys: string[], afterPaste :string) {
     // Load:
     await loadContent(page, before);
     for (const k of selectionKeys) {
@@ -40,7 +40,7 @@ async function testBeforeAfterPaste(page: Page, before :string, selectionKeys: s
         await page.keyboard.press(process.platform == "darwin" ? k.replaceAll("Control", "Meta") : k);
     }
     // Paste and check:
-    await page.keyboard.press(process.platform == "darwin" ? "Meta+v" : "Control+v");
+    await page.keyboard.press(operation == "delete" ? "Backspace" : (process.platform == "darwin" ? "Meta+v" : "Control+v"));
     expect(readFileSync(await save(page, false), "utf-8")).toEqual(afterPaste);
 }
 
@@ -309,6 +309,41 @@ class OneFunc  :
     def theOneFunc (self, ) :
         return 42 
 #(=> Section:Main
+#(=> Section:End
+`);
+    });
+
+    test("Test Ctrl-A below var in definitions selects whole section", async ({page}) => {
+        // Should move whole class: 
+        await testBeforeAfterPaste(page, `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+def foo():
+    return 42
+x = 43
+#(=> Section:Main
+#(=> Section:End
+`, /* We get into defs: */ ["End", ...rep(1, "ArrowUp"), ...rep(1, "Control+a")], "delete", [],`#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+#(=> Section:End
+`);
+    });
+
+    test("Test Ctrl-A below solitary var in definitions selects whole section", async ({page}) => {
+        // Should move whole class: 
+        await testBeforeAfterPaste(page, `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+x = 43
+#(=> Section:Main
+#(=> Section:End
+`, /* We get into defs: */ ["End", ...rep(1, "ArrowUp"), ...rep(1, "Control+a")], "cut", ["ArrowDown"],`#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+x  = 43 
 #(=> Section:End
 `);
     });
