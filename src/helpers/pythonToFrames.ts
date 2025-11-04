@@ -1284,7 +1284,7 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION)
         removeTopLevelBlankFrames();
         // We are checking if we can paste; the not at the beginning means everything here is actually the cases
         // where we *cannot* paste.
-        return !(topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type))
+        return !(topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.varassign, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type))
             || copiedPythonToFrames.some((frame) =>
                 // Look only at non-top-level (i.e. child) frames    
                 !topLevelCopiedFrameIds.includes(frame.id) &&
