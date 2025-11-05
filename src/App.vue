@@ -380,6 +380,7 @@ export default Vue.extend({
         );
 
         window.addEventListener("keydown", (event: KeyboardEvent) => {
+            this.appStore.updateKeyModifiers(event);
             const activeContextMenu = getActiveContextMenu();
             if(activeContextMenu != null){
                 // All key hits in the context menu should result in the menu closing.
@@ -521,6 +522,7 @@ export default Vue.extend({
 
         // There are only a few cases when we need to handle key up events
         window.addEventListener("keyup", (event) => {
+            this.appStore.updateKeyModifiers(event);
             // Handling the notification for not doing duplication anymore with drag and drop.
             // We don't really care if another key is hit along ctrl/option, we only look that
             // we are currently in a drag and drop action, and notify the current caret candidate for drop that

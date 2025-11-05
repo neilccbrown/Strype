@@ -30,12 +30,18 @@
                 <img class="frozen-frozen" src="@/assets/images/snowflake.svg" v-if="isFrozen">
             </div>
             <div ref="foldingControl" :class="{'folding-control': true, 'fold-doc': isFoldDoc, 'fold-header': isFoldHeader, 'fold-full': isFoldFull }" @click.stop.prevent="cycleFold" v-if="canCycleFold && groupIndex == 0">
-                <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-funcdef-empty.png" v-if="isFuncDef">
-                <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-funcdef.png" v-if="isFuncDef">
-                <img class="folding-full" src="@/assets/images/quote-circle/quote-circle-funcdef-filled.png" v-if="isFuncDef">
-                <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-class-empty.png" v-if="isClassDef">
-                <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-class.png" v-if="isClassDef">
-                <img class="folding-full" src="@/assets/images/quote-circle/quote-circle-class-filled.png" v-if="isClassDef">
+                <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-funcdef-empty.png" v-if="isFuncDef && !isModifierHeldOnSelection">
+                <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-funcdef.png" v-if="isFuncDef && !isModifierHeldOnSelection">
+                <img class="folding-full" src="@/assets/images/quote-circle/quote-circle-funcdef-filled.png" v-if="isFuncDef && !isModifierHeldOnSelection">
+                <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-class-empty.png" v-if="isClassDef && !isModifierHeldOnSelection">
+                <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-class.png" v-if="isClassDef && !isModifierHeldOnSelection">
+                <img class="folding-full" src="@/assets/images/quote-circle/quote-circle-class-filled.png" v-if="isClassDef && !isModifierHeldOnSelection">
+                <img class="folding-full" src="@/assets/images/quote-circle/quote-circle-container-filled-echoed.png" v-if="isFuncDef && isModifierHeldOnSelection">
+                <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-container-echoed.png" v-if="isFuncDef && isModifierHeldOnSelection">
+                <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-container-empty-echoed.png" v-if="isFuncDef && isModifierHeldOnSelection">
+                <img class="folding-full" src="@/assets/images/quote-circle/quote-circle-class-filled-echoed.png" v-if="isClassDef && isModifierHeldOnSelection">
+                <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-class-echoed.png" v-if="isClassDef && isModifierHeldOnSelection">
+                <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-class-empty-echoed.png" v-if="isClassDef && isModifierHeldOnSelection">
             </div>
             <ChildrenFrameStateToggle v-if="isClassDef && isFoldFull && groupIndex === splitLabels.length - 1" :frames="children" :parentIsFrozen="isFrozen"/>
             <i v-if="wasLastRuntimeError && groupIndex == splitLabels.length - 1" :class="{'fas fa-exclamation-triangle fa-xs runtime-err-icon': true, 'runtime-past-err-icon': !erroneous}"></i>
@@ -55,6 +61,8 @@ import {AllFrameTypesIdentifier, CollapsedState, FrameLabel, FrameObject, Frozen
 import {mapStores} from "pinia";
 import scssVars from "@/assets/style/_export.module.scss";
 import ChildrenFrameStateToggle from "@/components/ChildrenFrameStateToggle.vue";
+import { isMacOSPlatform } from "@/helpers/common";
+import { calculateNextCollapseState } from "@/helpers/storeMethods";
 
 // Splits into a list of lists (each outer list is a line, with 1 or more items on it)
 // by looking at the newLine flag in the FrameLabel.
@@ -157,6 +165,10 @@ export default Vue.extend({
         isFrozenOrChildOfFrozen() {
             return this.appStore.isEffectivelyFrozen(this.frameId);
         },
+        
+        isModifierHeldOnSelection() {
+            return this.appStore.selectedFrames.includes(this.frameId) && (isMacOSPlatform() ? this.appStore.keyModifierStates?.meta : this.appStore.keyModifierStates?.ctrl);
+        },
 
         children: {
             get(): FrameObject[] {
@@ -178,7 +190,15 @@ export default Vue.extend({
             return labelDetails.showSlots??true;
         },
         cycleFold(): void {
-            this.appStore.cycleFrameCollapsedState(this.frameId);
+            if (this.isModifierHeldOnSelection) {
+                const selected = this.appStore.selectedFrames.map((id) => this.appStore.frameObjects[id]);
+                const nextStates = calculateNextCollapseState(selected, this.appStore.frameObjects[this.appStore.frameObjects[this.frameId].parentId].frozenState == FrozenState.FROZEN);
+                this.appStore.setCollapseStatuses(nextStates.individual);
+            }
+            else {
+                // Just cycle this frame:
+                this.appStore.cycleFrameCollapsedState(this.frameId);
+            }
         },
     },
 });
@@ -243,7 +263,7 @@ export default Vue.extend({
     margin-right: 7px;
     margin-top: 5px;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
     width: 0.9em;
     cursor: pointer;
 }

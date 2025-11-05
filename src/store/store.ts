@@ -1,5 +1,5 @@
 import Vue from "vue";
-import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia } from "@/types/types";
+import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia, ModifierKeyCode } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
@@ -228,6 +228,13 @@ export const useStore = defineStore("app", {
             
             groupToggleMemory: {} as Record<string, { lastStates: Record<number, CollapsedState>; overallState: CollapsedState;}> | undefined, // Undefined if missing in old store
 
+            keyModifierStates: {
+                [ModifierKeyCode.ctrl]: false,
+                [ModifierKeyCode.meta]: false,
+                [ModifierKeyCode.shift]: false,
+                [ModifierKeyCode.alt]: false,
+            } as Record<ModifierKeyCode, boolean> | undefined, // Undefined if missing in old store
+            
             /* The following wrapper is used for interacting with the microbit board via DAP*/
             DAPWrapper: {} as DAPWrapper,
 
@@ -724,6 +731,18 @@ export const useStore = defineStore("app", {
                         this.currentMessage = MessageDefinitions.NoMessage;
                     }
                 }, timeoutMillis);
+            }
+        },
+
+        updateKeyModifiers(e: KeyboardEvent | MouseEvent) {
+            if (this.keyModifierStates == undefined) {
+                this.keyModifierStates = {ctrl: e.ctrlKey, meta: e.metaKey, shift: e.shiftKey, alt: e.altKey};
+            }
+            else {
+                this.keyModifierStates.ctrl = e.ctrlKey;
+                this.keyModifierStates.meta = e.metaKey;
+                this.keyModifierStates.shift = e.shiftKey;
+                this.keyModifierStates.alt = e.altKey;
             }
         },
 
