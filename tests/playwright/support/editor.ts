@@ -25,7 +25,12 @@ export async function checkFrameXorTextCursor(page: Page, specificFrameCursor?: 
 
 export async function typeIndividually(page: Page, content: string, timeout = 75) : Promise<void> {
     for (let i = 0; i < content.length; i++) {
-        await page.keyboard.type(content[i]);
+        if (content[i] == "\n") {
+            await page.keyboard.press("Shift+Enter");
+        }
+        else {
+            await page.keyboard.type(content[i]);
+        }
         await page.waitForTimeout(timeout);
     }
 }
@@ -56,3 +61,15 @@ export async function doPagePaste(page: Page, clipboardContent: string, clipboar
         document.activeElement?.dispatchEvent(pasteEvent);
     }, {clipboardContent, clipboardContentType});
 }
+
+export async function doTextHomeEndKeyPress(page: Page, isGoingForward: boolean, isShiftEnabled: boolean) : Promise<void> {
+    // This methods is a helper to handle the tricky case of "home" or "end" actions for text navigation.
+    // With Windows, home and end keys are dedicated keys and their action moves the caret at the start/end of a line.
+    // With macOS, there is no dedicated key, but equivalent action is obtained by ⌘+Left/Right.
+    if(process.platform == "darwin"){
+        await page.keyboard.press(`${isShiftEnabled ? "Shift+" : ""}Meta+${isGoingForward ? "ArrowRight" : "ArrowLeft"}`);
+    }
+    else{
+        await page.keyboard.press(`${isShiftEnabled ? "Shift+" : ""}${isGoingForward ? "End" : "Home"}`);
+    }
+} 

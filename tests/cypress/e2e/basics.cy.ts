@@ -373,6 +373,14 @@ describe("Deleting frames", () => {
             "foo()",
         ]).concat(defaultMyCode));
     });
+    it("Lets you delete a class member frame with delete", () => {
+        // Makes a class with a constructor then we try to delete it:
+        cy.get("body").type("{upArrow}cA{rightArrow}{rightArrow}");
+        cy.get("body").type("{del}");
+        checkCodeEquals(defaultImports.concat([
+            {h:/class +A +:/, b: []},
+        ]).concat(defaultMyCode));
+    });
     it("Lets you delete a frame with backspace", () => {
         // Add three frames:
         cy.get("body").type(" foo({rightArrow}{rightArrow} bar({rightArrow}{rightArrow} baz({rightArrow}{rightArrow}");

@@ -17,7 +17,6 @@ import { nextTick } from "@vue/composition-api";
 import { TPyParser } from "tigerpython-parser";
 import AppComponent from "@/App.vue";
 import emptyState from "@/store/initial-states/empty-state";
-import Parser from "@/parser/parser";
 /* IFTRUE_isPython */
 import PEAComponent from "@/components/PythonExecutionArea.vue";
 import CommandsComponent from "@/components/Commands.vue";
@@ -76,6 +75,8 @@ export const useStore = defineStore("app", {
             importContainerId: -1,
 
             defsContainerId: -2,
+
+            projectDocumentationFrameId: -10,
             /** END of flags that need checking when a build is done **/
 
             currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
@@ -133,6 +134,14 @@ export const useStore = defineStore("app", {
 
             // This flag is to avoid a loss of focus when we are leaving the application
             ignoreFocusRequest: false,
+
+            // This flag is used to ignore the loss of focus on a text slot (rarely required but may happen)
+            ignoreBlurEditableSlot: false,
+
+            // This flag is used to cancel the undo/redo saving mechanisms in some actions.
+            // It must be used with care to avoid breaking the whole undo/redo actions (always make sure it's ultimately reverted to false),
+            // but it is useful when combining several actions that need to activate the saving mechanisms only once...
+            ignoreStateSavingActionsForUndoRedo: false,
 
             // This flag indicates we should not block a key event inside a LabelSlotsStructure
             allowsKeyEventThroughInLabelSlotStructure: false,
@@ -740,7 +749,7 @@ export const useStore = defineStore("app", {
                     this.frameObjects[frameIdInt].childrenIds.splice(0);
                     // The project description is a slot on a negative frame which must also be cleared:
                     if (this.frameObjects[frameIdInt].frameType.type == AllFrameTypesIdentifier.projectDocumentation) {
-                        this.frameObjects[frameIdInt].labelSlotsDict = cloneDeep(emptyState["-10"].labelSlotsDict);
+                        this.frameObjects[frameIdInt].labelSlotsDict = cloneDeep(emptyState[this.projectDocumentationFrameId].labelSlotsDict);
                     }
                 }
             });
@@ -1299,7 +1308,6 @@ export const useStore = defineStore("app", {
                 "copiedSelectionFrameIds",  
                 topLevelCopiedFrames
             );
-
         },
 
         updateState(newState: Record<string, unknown>){
@@ -1376,6 +1384,11 @@ export const useStore = defineStore("app", {
         },
 
         saveStateChanges(previousState: (typeof this.$state)) {
+            // If have an explicit request to igore the undo/redo save state preps, we don't do anything
+            if(this.ignoreStateSavingActionsForUndoRedo){
+                return;
+            }
+            
             this.isEditorContentModified = true;
             // Saves the state changes in diffPreviousState.
             // We do not simply save the differences between the state and the previous state, because when undo/redo will be invoked, we cannot know what will be 
@@ -1664,7 +1677,7 @@ export const useStore = defineStore("app", {
             );
 
             this.copiedFrameId = -100;
-
+            
             Vue.set(
                 this,
                 "copiedSelectionFrameIds",
@@ -2065,7 +2078,7 @@ export const useStore = defineStore("app", {
             })
                 .then(
                     () => {
-                    //save state changes
+                        //save state changes
                         this.saveStateChanges(stateBeforeChanges);
                         // To make sure we are showing the newly added frame, we scroll into view if needed                    
                         const targetDiv =
@@ -2088,7 +2101,7 @@ export const useStore = defineStore("app", {
         // Returns true if the deletion ocurred or false if it did not.
         deleteFrames(key: string, ignoreBackState?: boolean) : boolean {
             const stateBeforeChanges = cloneDeep(this.$state);
-
+            
             // we remove the editable slots from the available positions
             let availablePositions = getAvailableNavigationPositions();
             availablePositions = availablePositions.filter((e) => !e.isSlotNavigationPosition);
@@ -2170,16 +2183,15 @@ export const useStore = defineStore("app", {
                             }
                         }                                        
                     }
-                    
+
                     if(!foundDisabledJointFrameToDelete) {
                         const indexOfCurrentInAvailables = availablePositions.findIndex((e)=> e.frameId === currentFrame.id && e.caretPosition === this.currentFrame.caretPosition);
                         // the "next" position of the current
                         frameToDelete = availablePositions[indexOfCurrentInAvailables+1]??{id:-100, isSlotNavigationPosition: false};
                     }
-                    
                     // The only times to prevent deletion with 'delete' is when we are inside a body that has no children (except in Joint frames)
                     // or when the next position is a joint root's below OR a method declaration below
-                    if((framesIdToDelete.length==1 && this.frameObjects[frameToDelete.frameId]?.frameType.allowChildren && !this.frameObjects[frameToDelete.frameId]?.frameType.isJointFrame 
+                    else if((framesIdToDelete.length==1 && this.frameObjects[frameToDelete.frameId]?.frameType.allowChildren && !this.frameObjects[frameToDelete.frameId]?.frameType.isJointFrame 
                             && this.currentFrame.caretPosition == CaretPosition.body && this.frameObjects[frameToDelete.frameId]?.childrenIds.length == 0)
                         || ((this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren  || this.frameObjects[frameToDelete.frameId]?.frameType.type === AllFrameTypesIdentifier.funcdef)
                             && (frameToDelete.caretPosition??"") === CaretPosition.below)){
@@ -2501,36 +2513,36 @@ export const useStore = defineStore("app", {
                     // 4) if the project predates having project documentation, we add this frame in.
                     // 5) if the object is valid, we just verify the version is correct (and attempt loading) + for newer versions (> 1) make sure the target Strype "platform" is the same as the source's
                     try {
-                    //Check 1)
+                        //Check 1)
                         newStateObj = JSON.parse(payload.stateJSONStr);
                         if(!newStateObj || typeof(newStateObj) !== "object" || Array.isArray(newStateObj)){
-                        //no need to go further
+                            //no need to go further
                             isStateJSONStrValid=false;
                             errorDetailMessage = i18n.t("errorMessage.dataNotObject") as string;
                         }
                         else{
-                        // Check 2) as 1) is validated
+                            // Check 2) as 1) is validated
                             if(!checkStateDataIntegrity(newStateObj)) {
                                 isStateJSONStrValid = false;
                                 errorDetailMessage = i18n.t("errorMessage.stateDataIntegrity") as string;
                             } 
                             else {
-                            // Check 3) as 2) is validated
+                                // Check 3) as 2) is validated
                                 isVersionCorrect = (newStateObj["version"] == AppVersion);
                                 if(Number.parseInt(newStateObj["version"]) > 1 && newStateObj["platform"] != AppPlatform) {
                                     isStateJSONStrValid = false;
                                     errorDetailMessage = i18n.t("errorMessage.stateWrongPlatform") as string;
                                 }
                                 else{
-                                // Check 4) and 5) as 3) is validated
+                                    // Check 4) and 5) as 3) is validated
                                     // If missing project doc frame, copy it in from the empty state and add it as first root child:
-                                    if (!newStateObj["frameObjects"]["-10"]) {
-                                        newStateObj["frameObjects"]["-10"] = cloneDeep(emptyState["-10"]);
-                                        newStateObj["frameObjects"]["0"]["childrenIds"].unshift(-10);
+                                    if (!newStateObj["frameObjects"][this.projectDocumentationFrameId]) {
+                                        newStateObj["frameObjects"][this.projectDocumentationFrameId] = cloneDeep(emptyState[this.projectDocumentationFrameId]);
+                                        newStateObj["frameObjects"]["0"]["childrenIds"].unshift(this.projectDocumentationFrameId);
                                     }
                                     
                                     if(!restoreSavedStateFrameTypes(newStateObj)){
-                                    // There was something wrong with the type name (it should not happen, but better check anyway)
+                                        // There was something wrong with the type name (it should not happen, but better check anyway)
                                         isStateJSONStrValid = false;
                                         errorDetailMessage = i18n.t("errorMessage.stateWrongFrameTypeName") as string;
                                     }
@@ -2541,7 +2553,7 @@ export const useStore = defineStore("app", {
                         }
                     }
                     catch(err){
-                    //we cannot use the string arguemnt to retrieve a valid state --> inform the users
+                        // We cannot use the string arguemnt to retrieve a valid state --> inform the users
                         isStateJSONStrValid = false;
                         errorDetailMessage = i18n.t("errorMessage.wrongDataFormat") as string;
                     }
@@ -2936,9 +2948,7 @@ export const useStore = defineStore("app", {
 
         copyFrame(frameId: number) {
             this.flushCopiedFrames();
-            const text = new Parser(true, "spy").parse({startAtFrameId: frameId, stopAt: {frameId: frameId, includeThisFrame: true}, excludeLoopsAndCommentsAndCloseTry: false, defsLast: false});
             this.doCopyFrame(frameId);
-            navigator.clipboard.writeText(text);
             this.updateNextAvailableId();
         },
 
@@ -2947,9 +2957,7 @@ export const useStore = defineStore("app", {
                 return;
             }
             this.flushCopiedFrames();
-            const text = new Parser(true, "spy").parse({startAtFrameId: this.selectedFrames[0], stopAt: {frameId: this.selectedFrames.at(-1) as number, includeThisFrame: true}, excludeLoopsAndCommentsAndCloseTry: false, defsLast: false});
             this.doCopySelection();
-            navigator.clipboard.writeText(text);
             this.updateNextAvailableId();
         },
 

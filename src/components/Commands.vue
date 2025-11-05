@@ -92,20 +92,21 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCloudDriveHandlerComponentRefId, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope,getFrameUID, getEditorMiddleUID, getMenuLeftPaneUID, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
+import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCloudDriveHandlerComponentRefId, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getMenuLeftPaneUID, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, defaultEmptyStrypeLayoutDividerSettings, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
+import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, defaultEmptyStrypeLayoutDividerSettings, FrameObject, PythonExecRunningState, SelectAllFramesAction, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
 import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
 import { mapStores } from "pinia";
-import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
+import { getAvailableNavigationPositions, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import scssVars  from "@/assets/style/_export.module.scss";
 import { isMacOSPlatform } from "@/helpers/common";
 import fsIcon from "@/assets/images/FSicon.png";
 import gdIcon from "@/assets/images/logoGDrive.png";
 import odIcon from "@/assets/images/logoOneDrive.svg";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
+import { clamp } from "lodash";
 /* IFTRUE_isPython */
 import {Splitpanes, Pane, PaneData} from "splitpanes";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
@@ -351,13 +352,12 @@ export default Vue.extend({
                     if(eventKeyLowCase === "a" && !isEditing){ 
                         if(getActiveContextMenu() == null && !this.appStore.isAppMenuOpened){
                             const frameContainerId = getFrameSectionIdFromFrameId(this.appStore.currentFrame.id);
-                            // If a selection already exists, we clear it, after checking where we are at in the case of function defs (cf. below)
-                            const currentFrameSelection = getCurrentFrameSelectionScope();
+                            // If a selection already exists, we clear it, after checking where we are at with respect to the select-all action to take
+                            const selectAllFramesAction = getCurrentFrameSelectAllAction();
                             this.appStore.unselectAllFrames();
-                            switch(currentFrameSelection){
-                            case SelectAllFramesFuncDefScope.frame:
-                            case SelectAllFramesFuncDefScope.functionsContainerBody:
-                                // In imports or main code. Or in function definitions with some functions selected, or inside the function defs container.
+                            switch(selectAllFramesAction){
+                            case SelectAllFramesAction.wholeContainer:
+                                // In imports or main code. Or in definitions section  with some items selected.
                                 // Position the frame cursor inside the body of the frame container
                                 this.appStore.setCurrentFrame({id: frameContainerId, caretPosition: CaretPosition.body});
                                 // And select all the children frame of the container (if any...)
@@ -365,36 +365,33 @@ export default Vue.extend({
                                     this.appStore.selectMultipleFrames("ArrowDown");
                                 });     
                                 break;
-                            case SelectAllFramesFuncDefScope.none:
-                                // In a function definition with no frame selected or some frames inside a function body (not all).
-                                // We select all the frames of the function's body.
-                                {
-                                    let functionDefFrameId = 0, currentFrameId = this.appStore.currentFrame.id, foundFunctionDefFrame = false;
-                                    if(this.appStore.frameObjects[currentFrameId].frameType.type == AllFrameTypesIdentifier.funcdef){
-                                        // If we are in the body of the function definition (just inside the body position, not somewhere else)
-                                        //then we don't need to look up for the body position as we're already there...
-                                        foundFunctionDefFrame = true;
-                                        functionDefFrameId = currentFrameId;
-                                    }
-                                    while(!foundFunctionDefFrame){
-                                        functionDefFrameId = this.appStore.frameObjects[currentFrameId].parentId;
-                                        foundFunctionDefFrame = (this.appStore.frameObjects[functionDefFrameId].frameType.type == AllFrameTypesIdentifier.funcdef);
-                                        currentFrameId = functionDefFrameId;
-                                    }
-                                    this.appStore.setCurrentFrame({id: functionDefFrameId, caretPosition: CaretPosition.body});
-                                    // And select all the children frame of the container (if any...)
-                                    this.appStore.frameObjects[functionDefFrameId].childrenIds.forEach(() => {
-                                        this.appStore.selectMultipleFrames("ArrowDown");
-                                    });    
+                            case SelectAllFramesAction.functionOrClassContents:
+                            case SelectAllFramesAction.currentLevel: {
+                                let selectAllOfId;
+                                let currentFrameId = this.appStore.currentFrame.id;
+                                if (selectAllFramesAction == SelectAllFramesAction.currentLevel) {
+                                    selectAllOfId = this.appStore.frameObjects[currentFrameId].parentId;
                                 }
+                                else {
+                                    // We need to find the nearest parent that is a class or function
+                                    let parentId = 0, foundFunctionDefFrame = false;
+                                    // The second part is a fail safe to prevent an infinite loop, just in case:
+                                    while (!foundFunctionDefFrame && currentFrameId != useStore().defsContainerId) {
+                                        parentId = this.appStore.frameObjects[currentFrameId].parentId;
+                                        foundFunctionDefFrame = this.appStore.frameObjects[parentId].frameType.type == AllFrameTypesIdentifier.funcdef
+                                            || this.appStore.frameObjects[parentId].frameType.type == AllFrameTypesIdentifier.classdef;
+                                        currentFrameId = parentId;
+                                    }
+                                    selectAllOfId = parentId;
+                                }
+                                this.appStore.setCurrentFrame({id: selectAllOfId, caretPosition: CaretPosition.body});
+                                // And select all the children frame of the container (if any...)
+                                this.appStore.frameObjects[selectAllOfId].childrenIds.forEach(() => {
+                                    this.appStore.selectMultipleFrames("ArrowDown");
+                                });
                                 break;
-                            case SelectAllFramesFuncDefScope.belowFunc:
-                                // Below a whole function definition, we select that function.
-                                this.appStore.selectMultipleFrames("ArrowUp");     
-                                // And reposition the caret below for consistency with other select-all conditions
-                                this.appStore.setCurrentFrame({id: this.appStore.selectedFrames.at(-1) as number, caretPosition: CaretPosition.below});   
-                                break;
-                            case SelectAllFramesFuncDefScope.wholeFunctionBody:
+                            }
+                            case SelectAllFramesAction.parent:
                                 // In function definitions with function body frames selected.
                                 // We select the whole function.
                                 {
@@ -461,7 +458,7 @@ export default Vue.extend({
 
                 // Prevent default scrolling and navigation in the editor, except if Turtle is currently running and listening for key events
                 // (then we just leave the PEA handling it, see at the end of these conditions for related code)
-                if (!isDraggingFrames && !isEditing && /*IFTRUE_isPython*/ !(isPythonExecuting && ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isTurtleListeningKeyEvents || (this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isRunningStrypeGraphics)) && /*FITRUE_isPython*/ ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"].includes(event.key)) {
+                if (!isDraggingFrames && !isEditing && /*IFTRUE_isPython*/ !(isPythonExecuting && ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isTurtleListeningKeyEvents || (this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isRunningStrypeGraphics)) && /*FITRUE_isPython*/ ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End", "PageUp", "PageDown"].includes(event.key)) {
                     event.stopImmediatePropagation();
                     event.stopPropagation();
                     event.preventDefault();
@@ -482,17 +479,45 @@ export default Vue.extend({
                     }
                     else if(event.key == "Home" || event.key == "End"){
                         // For the "home" and "end" key, we move the blue caret to the first or last position of the current main section the caret is in.
+                        // If the ctrl key is used together with home/end, we go to the very start/end of the editor (i.e. import section*/below last frame in main)
+                        // (*) the very top of the editor is actually the project documentation slot, but it is not a frame proper and the frame cursor can't go above
                         // This is overriding the natural browser behaviour that scrolls to the top or bottom of the page (at least with Chrome)
-                       
-                        // Look for the section we're in
-                        const sectionId = getFrameSectionIdFromFrameId(this.appStore.currentFrame.id);
-                        // Update the caret to the first/last position within this section
-                        const isMovingHome = (event.key == "Home");
+                        const sectionId = (event.ctrlKey) ? this.appStore.getMainCodeFrameContainerId :  getFrameSectionIdFromFrameId(this.appStore.currentFrame.id);
                         const isSectionEmpty = (this.appStore.frameObjects[sectionId].childrenIds.length == 0);
-                        const newCaretId = (isMovingHome || isSectionEmpty) ? sectionId : this.appStore.frameObjects[sectionId].childrenIds.at(-1) as number;
+                        const isMovingHome = (event.key == "Home");
+                        const newCaretId = (isMovingHome || isSectionEmpty) 
+                            ? ((isMovingHome && event.ctrlKey) ? this.appStore.getImportsFrameContainerId : sectionId) 
+                            : this.appStore.frameObjects[sectionId].childrenIds.at(-1) as number;
                         const newCaretPosition = (isMovingHome || isSectionEmpty) ? CaretPosition.body : CaretPosition.below;
                         this.appStore.toggleCaret({id: newCaretId, caretPosition: newCaretPosition});
-                    }    
+                    }
+                    else if(event.key == "PageUp" || event.key == "PageDown"){
+                        // For the "PageUp" and "PageDown", we "scroll" up/down the frame cursor.
+                        const viewportTop = window.scrollY;
+                        const viewportBottom = viewportTop + window.innerHeight;
+                        const allNotCollapsedFrameCursorPos = getAvailableNavigationPositions(true).filter((navigationPos) => navigationPos.caretPosition);
+                        let ourCurrentPositionIndex = allNotCollapsedFrameCursorPos.findIndex((navigationPos) => navigationPos.caretPosition == this.appStore.currentFrame.caretPosition && navigationPos.frameId == this.appStore.currentFrame.id);
+                        if(ourCurrentPositionIndex > -1){
+                            // We approximate some scroll page number of carets to offset by counting how many carets positions are in the viewport.
+                            const lookCaretBefore = (event.key == "PageUp");
+                            const numberOfCaretPosInViewPort = allNotCollapsedFrameCursorPos
+                                .filter((navigationPos) => {
+                                    const caretHTMLEl = document.getElementById(getCaretContainerUID(navigationPos.caretPosition as CaretPosition, navigationPos.frameId));
+                                    const caretHTMLElBoundingBox = caretHTMLEl?.getBoundingClientRect()??null;
+                                    if(caretHTMLElBoundingBox){
+                                        return caretHTMLElBoundingBox.top >= 0 && (caretHTMLElBoundingBox.top + caretHTMLElBoundingBox.height) <= viewportBottom;                                        
+                                    }
+                                    return false;
+
+                                })
+                                .length;
+
+                            // We clamp the value to the boundary index of allNotCollapsedFrameCursorPos
+                            const caretPosToScrollToIIndex = clamp(ourCurrentPositionIndex + numberOfCaretPosInViewPort * (lookCaretBefore ? -1 : 1), 0, allNotCollapsedFrameCursorPos.length - 1);
+                            const caretPosToScrollTo = allNotCollapsedFrameCursorPos[caretPosToScrollToIIndex];
+                            this.appStore.toggleCaret({id: caretPosToScrollTo.frameId, caretPosition: caretPosToScrollTo.caretPosition as CaretPosition});
+                        }
+                    }
                     else{
                         // At this stage, tab and left/right arrows are handled only if not editing: editing cases are directly handled by LabelSlotsStructure.
                         // We start by getting from the DOM all the available caret and editable slot positions

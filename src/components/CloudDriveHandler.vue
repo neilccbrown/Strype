@@ -26,7 +26,7 @@ import App from "@/App.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import i18n from "@/i18n";
-import { CustomEventTypes, getAppSimpleMsgDlgId, getFrameUID, getSaveAsProjectModalDlg } from "@/helpers/editor";
+import { CustomEventTypes, getAppSimpleMsgDlgId, getCloudLoginErrorModalDlgId, getFrameUID, getSaveAsProjectModalDlg } from "@/helpers/editor";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { BootstrapDlgSize, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
 import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileSharingStatus, isSyncTargetCloudDrive, SaveExistingCloudProjectInfos } from "@/types/cloud-drive-types";
@@ -76,7 +76,7 @@ export default Vue.extend({
         ...mapStores(useStore),        
         
         loginErrorModalDlgId(): string {
-            return "cloudLoginErrorModalDlg";
+            return getCloudLoginErrorModalDlgId();
         },
 
         unsupportedByStrypeFilePickedModalDlgId(): string {

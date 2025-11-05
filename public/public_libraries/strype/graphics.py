@@ -443,31 +443,30 @@ class Actor:
     # Note that __say can be removed on the Javascript side without our code executing, due to a timeout.  So
     # whenever we use it, we should check it's still actually present.
     
-    def __init__(self, image_or_filename, x = 0, y = 0, tag = None):
-        # type: (Image | str, float, float, Any | None) -> None
+    def __init__(self, image, x = 0, y = 0, tag = None):
+        # type: (Image, float, float, Any | None) -> None
         """
         Create a new Actor.  An actor has an image and a location.  It can optionally have a tag.  A tag (usually a string) 
         can be used to group actors and identify them later for collision detection.
         
-        The image parameter can be either an :class:`Image` object or an image name (a string).  If it is a name, it refers to an image 
-        from Strype's image library.
+        The image parameter must be an :class:`Image` object.
 
         The (x, y) coordinate determines the location of the actor.  The graphics world coordinate system has x coordinates from -400 to 400, 
         and y coordinates from -300 to 300.  The origin (0, 0) point is in the center; (-400, -300) is the bottom left.
         
-        :param image_or_filename: Either an :class:`Image` object, or a string with an image name (from Strype's library).
+        :param image: An :class:`Image` object.
         :param x: The x coordinate at which to place the actor.
         :param y: The y coordinate at which to place the actor.
         :param tag: A optional tag for the actor (usually a string) for use in detecting touching actors.
         """
-        if isinstance(image_or_filename, Image):
-            self.__id = _strype_graphics_internal.addImage(image_or_filename._Image__image, self)
-            self.__editable_image = image_or_filename
-        elif isinstance(image_or_filename, str):
-            self.__id = _strype_graphics_internal.addImage(_strype_graphics_internal.loadAndWaitForImage(image_or_filename), self)
+        if isinstance(image, Image):
+            self.__id = _strype_graphics_internal.addImage(image._Image__image, self)
+            self.__editable_image = image
+        elif isinstance(image, str):
+            self.__id = _strype_graphics_internal.addImage(_strype_graphics_internal.loadAndWaitForImage(image), self)
             self.__editable_image = None
         else:
-            raise TypeError("Actor constructor parameter must be string or Image")
+            raise TypeError("Actor constructor parameter must be Image")
         self.__say = None
         self.__tag = tag
         _strype_graphics_internal.setImageLocation(self.__id, x, y)
@@ -715,23 +714,22 @@ class Actor:
             self.__editable_image._Image__image = _strype_graphics_internal.makeImageEditable(self.__id) 
         return self.__editable_image
     
-    def set_image(self, image_or_filename):
-        # type: (Image | str) -> None
+    def set_image(self, image):
+        # type: (Image) -> None
         """
         Set an actor's image
         
-        The image parameter can be either an :class:`Image` object or an image name (a string).  If it is a name, it refers to an image 
-        from Strype's image library.
-        :param image_or_filename: Either an :class:`Image` object, or a string with an image name (from Strype's library).
+        The image parameter must be an :class:`Image` object.
+        :param image: An :class:`Image` object.
         """
-        if isinstance(image_or_filename, Image):
-            _strype_graphics_internal.updateImage(self.__id, image_or_filename._Image__image)
-            self.__editable_image = image_or_filename
-        elif isinstance(image_or_filename, str):
-            _strype_graphics_internal.updateImage(self.__id, _strype_graphics_internal.loadAndWaitForImage(image_or_filename))
+        if isinstance(image, Image):
+            _strype_graphics_internal.updateImage(self.__id, image._Image__image)
+            self.__editable_image = image
+        elif isinstance(image, str):
+            _strype_graphics_internal.updateImage(self.__id, _strype_graphics_internal.loadAndWaitForImage(image))
             self.__editable_image = None
         else:
-            raise TypeError("Actor image parameter must be string or Image")
+            raise TypeError("Actor image parameter must be Image")
     
     def say(self, text, font_size = 24, max_width = 300, max_height = 200, font_family = None):
         # type: (str, float, float, float, str | None) -> None
@@ -898,12 +896,12 @@ def key_pressed(keyname):
     """
     return _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys())[keyname.lower()]
 
-def set_background(image_or_name_or_color, scale_to_fit = False):
+def set_background(image_or_color, scale_to_fit = False):
     # type: (Image | str, bool) -> None
     """
     Set the current background image.
     
-    The parameter can be an :class:`Image`, a :class:`Color`, or an image name from Strype's image library.
+    The parameter can be an :class:`Image`, a :class:`Color`, or a color name or hex string.
     
     If scale_to_fit is True, the image will be scaled (up or down) so that it fills the world area (800x600 pixels).  
     Otherwise the image will be drawn in the center of the world in its original size, and tiled outwards
@@ -912,7 +910,7 @@ def set_background(image_or_name_or_color, scale_to_fit = False):
     The background image is always copied when it is created, so later changes to the original image will not be 
     shown in the world.  You can call `get_background()` to receive the actual background image object to change it.
     
-    :param image_or_name_or_color: An Image, an image name, a :class:`Color` object, or a color name or hex string.
+    :param image_or_color: An :class:`Image`, a :class:`Color` object, or a color name or hex string.
     :param scale_to_fit: If True, scale the image to the world size. If False, tile the image on the world. 
     """
 
@@ -945,23 +943,23 @@ def set_background(image_or_name_or_color, scale_to_fit = False):
             dest._draw_part_of_image(image, (808 - scale * w) / 2, (606 - scale * h) / 2, 0, 0, w, h, scale)
         return dest
         
-    if isinstance(image_or_name_or_color, Image):
-        bk_image = background_808_606(image_or_name_or_color)
-    elif isinstance(image_or_name_or_color, str):
+    if isinstance(image_or_color, Image):
+        bk_image = background_808_606(image_or_color)
+    elif isinstance(image_or_color, str):
         # We follow this heuristic: if it has a dot, slash or colon it's a filename/URL
         # otherwise it's a color name/value.
-        if _re.search(r"[.:/]", image_or_name_or_color):
-            bk_image = background_808_606(load_image(image_or_name_or_color))
+        if _re.search(r"[.:/]", image_or_color):
+            bk_image = background_808_606(load_image(image_or_color))
         else:
             bk_image = Image(808, 606)
-            bk_image.set_fill(image_or_name_or_color)
+            bk_image.set_fill(image_or_color)
             bk_image.fill()
-    elif isinstance(image_or_name_or_color, Color):
+    elif isinstance(image_or_color, Color):
         bk_image = Image(808, 606)
-        bk_image.set_fill(image_or_name_or_color)
+        bk_image.set_fill(image_or_color)
         bk_image.fill()
     else:
-        raise TypeError("image_or_filename_or_color must be an Image or a string or a Color")
+        raise TypeError("image_or_color must be an Image or a string or a Color")
 
     global _bk_image
     _bk_image = bk_image
