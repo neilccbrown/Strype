@@ -922,14 +922,14 @@ export function frameOrChildHasErrors(frameId : number) : boolean {
 
 // Given a list of frames and a target state, returns a map of all the frame ids to a new state,
 // where the new state is the target state if possible, or otherwise the existing unchanged state of that frame
-function changeWherePossible(frames: FrameObject[], target: CollapsedState) : Map<number, CollapsedState> {
-    const r : Map<number, CollapsedState> = new Map();
+function changeWherePossible(frames: FrameObject[], target: CollapsedState) : Record<number, CollapsedState> {
+    const r : Record<number, CollapsedState> = {};
     frames.forEach((f) => {
         if (f.frameType.allowedCollapsedStates.includes(target)) {
-            r.set(f.id, target);
+            r[f.id] = target;
         }
         else {
-            r.set(f.id, f.collapsedState ?? CollapsedState.FULLY_VISIBLE);
+            r[f.id] = f.collapsedState ?? CollapsedState.FULLY_VISIBLE;
         }
     });
     return r;
@@ -958,7 +958,7 @@ function cycleToNextPossible(currentState: CollapsedState, currentAndPossibleSta
 // this it's impossible to work out the next state just from the individual frames' states alone because
 // they may end up mixed due to differing states not being possible on each frame.
 // This store-map is updated by this function unless you pass "dryrun" as the reason parameter to turn it off.
-export function calculateNextCollapseState(frameList: FrameObject[], parentIsFrozen: boolean, reason: "dryrun" | null = null) : {overall: CollapsedState, individual: Map<number, CollapsedState>} {
+export function calculateNextCollapseState(frameList: FrameObject[], parentIsFrozen: boolean, reason: "dryrun" | null = null) : {overall: CollapsedState, individual: Record<number, CollapsedState>} {
     const allStates : CollapsedState[] = $enum(CollapsedState).getValues().map((v) => v as CollapsedState);
     // Fetch current states and possible states from frames:
     const currentAndPossibleStates = new Map<number, {current: CollapsedState, possible: CollapsedState[]}>();
@@ -979,25 +979,26 @@ export function calculateNextCollapseState(frameList: FrameObject[], parentIsFro
     // a single string by sorting and concatenating:
     const key = [...currentAndPossibleStates.keys()].sort((a, b) => a - b).join("_");
     // We don't look up the remembered state if there's only one frame:
-    const prev = currentAndPossibleStates.size == 1 ? null : useStore().groupToggleMemory.get(key);
+    const prev = currentAndPossibleStates.size == 1 ? null : useStore().groupToggleMemory?.[key];
 
-    const curStates = new Map([...currentAndPossibleStates].map(([k, v]) => [k, v.current] as const));
+    const curStates : Record<number, CollapsedState> = Object.fromEntries([...currentAndPossibleStates].map(([k, v]) => [k, v.current] as const));
     
     if (prev != null && isEqual(prev.lastStates, curStates)) {
         // It matches our memory of the state, so let's use that to work out the next state:
         const nextState = cycleToNextPossible(prev.overallState, currentAndPossibleStates);
+        const nextPossible = changeWherePossible(frameList, nextState);
         if (reason != "dryrun") {
             Vue.set(prev, "overallState", nextState);
-            Vue.set(prev, "lastStates", curStates);
+            Vue.set(prev, "lastStates", nextPossible);
         }
-        return {overall: nextState, individual: changeWherePossible(frameList, nextState)};
+        return {overall: nextState, individual: nextPossible};
     }
     else {
         // Either we don't remember anything about this combination of frames, or it's changed individually since we did,
         // so we must do it memoryless:
         
         // Are they all in a single state at the moment?
-        const curStateValues = new Set(curStates.values());
+        const curStateValues = new Set(Object.values(curStates));
         let nextState;
         if (curStateValues.size == 1) {
             //  They are, so we'll use that then advance it to the next one which is possible for some frame:
@@ -1011,8 +1012,13 @@ export function calculateNextCollapseState(frameList: FrameObject[], parentIsFro
         const decided = changeWherePossible(frameList, nextState);
         
         // We should remember this now, if there is more than one frame (no point remembering for a single frame):
-        if (curStates.size > 1 && reason != "dryrun") {
-            useStore().groupToggleMemory.set(key, {lastStates: decided, overallState: nextState});
+        if (Object.entries(curStates).length > 1 && reason != "dryrun") {
+            // Make a map if not present in the store yet:
+            const store = useStore();
+            if (store.groupToggleMemory == undefined) {
+                store.groupToggleMemory = {} as Record<string, { lastStates: Record<number, CollapsedState>; overallState: CollapsedState;}>;
+            }
+            store.groupToggleMemory[key] = {lastStates: decided, overallState: nextState};
         }
         return {overall: nextState, individual: decided};
     }

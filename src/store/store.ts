@@ -226,7 +226,7 @@ export const useStore = defineStore("app", {
             
             simpleModalDlgMsg: "",
             
-            groupToggleMemory: new Map() as Map<string, { lastStates: Map<number, CollapsedState>; overallState: CollapsedState;}>,
+            groupToggleMemory: {} as Record<string, { lastStates: Record<number, CollapsedState>; overallState: CollapsedState;}> | undefined, // Undefined if missing in old store
 
             /* The following wrapper is used for interacting with the microbit board via DAP*/
             DAPWrapper: {} as DAPWrapper,
@@ -1687,10 +1687,10 @@ export const useStore = defineStore("app", {
             );
         },
 
-        setCollapseStatuses(statuses: Map<number, CollapsedState>) {
-            statuses.forEach((collapsed, frameId) => 
+        setCollapseStatuses(statuses: Record<number, CollapsedState>) {
+            Object.entries(statuses).forEach(([frameId, collapsed]) => 
                 Vue.set(
-                    this.frameObjects[frameId],
+                    this.frameObjects[Number(frameId)],
                     "collapsedState",
                     collapsed
                 ));
