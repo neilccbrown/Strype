@@ -1,6 +1,6 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, FieldSlot, FrameContextMenuActionName, FrameContextMenuShortcut, FrameObject, FramesDefinitions, FrozenState, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesAction, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesAction, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameContainer, getFrameSectionIdFromFrameId } from "./storeMethods";
 import { splitByRegexMatches, strypeFileExtension } from "./common";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
@@ -20,7 +20,6 @@ import { debounce } from "lodash";
 /* FITRUE_isPython */
 import {toUnicodeEscapes} from "@/parser/parser";
 import {fromUnicodeEscapes} from "@/helpers/pythonToFrames";
-import { $enum } from "ts-enum-util";
 
 export const undoMaxSteps = 200;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
@@ -2300,38 +2299,4 @@ export function slotStructureToString(ss: SlotsStructure) : string {
         r.push(getMatchingBracket(ss.openingBracketValue, true));
     }
     return r.join("");
-}
-
-// Given the current state of all the frames (or undefined if in a mixed state), gets the next state that would/should be cycled to
-// This is the next state that all frames support.
-export function calculateNextCollapseState(curCommonState : CollapsedState | undefined, frameList: FrameObject[], parentIsFrozen: boolean) : CollapsedState {
-    // Fetch current states from frames:
-    const currentStates = new Set<CollapsedState>(
-        frameList.map((frame) => frame.collapsedState ?? CollapsedState.FULLY_VISIBLE)
-    );
-
-    // Get all enum values (number values)
-    const allStates : CollapsedState[] = $enum(CollapsedState).getValues().map((v) => v as CollapsedState);
-    // Check states in cyclic order starting after current states
-    for (let offset = 1; offset <= allStates.length; offset++) {
-        const candidateStates = new Set<CollapsedState>();
-        currentStates.forEach((s) => {
-            const candidate = ((s - offset + allStates.length) % allStates.length) as CollapsedState;
-            candidateStates.add(candidate);
-        });
-        
-        for (const candidate of candidateStates) {
-            const willChange = frameList.some((frame) =>
-                frame.frameType.allowedCollapsedStates.includes(candidate) &&
-                    !(candidate == CollapsedState.FULLY_VISIBLE && (parentIsFrozen || (frame.frameType.type == AllFrameTypesIdentifier.funcdef && frame.frozenState == FrozenState.FROZEN))) &&
-                    (frame.collapsedState ?? CollapsedState.FULLY_VISIBLE) !== candidate);
-            if (willChange) {
-                return candidate;
-            }
-        }
-    }
-
-
-    // No progress possible, so it doesn't matter what we return because nothing will change:
-    return CollapsedState.FULLY_VISIBLE;
 }

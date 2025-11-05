@@ -2,12 +2,13 @@ import { getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
-import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameLabel, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
+import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameLabel, FrameObject, FrozenState, getFrameDefType, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
 import Vue from "vue";
 import { checkEditorCodeErrors, countEditorCodeErrors, getCaretContainerUID, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID } from "./editor";
 import { nextTick } from "@vue/composition-api";
-import { cloneDeep } from "lodash";
+import { cloneDeep, isEqual } from "lodash";
 import scssVars from "@/assets/style/_export.module.scss";
+import { $enum } from "ts-enum-util";
 
 export const retrieveSlotFromSlotInfos = (slotCoreInfos: SlotCoreInfos): FieldSlot => {
     // Retrieve the slot from its id (used for UI), check generateFlatSlotBases() for IDs explanation    
@@ -917,4 +918,102 @@ export function frameOrChildHasErrors(frameId : number) : boolean {
     }
     // Check children:
     return frame.childrenIds.some(frameOrChildHasErrors);
+}
+
+// Given a list of frames and a target state, returns a map of all the frame ids to a new state,
+// where the new state is the target state if possible, or otherwise the existing unchanged state of that frame
+function changeWherePossible(frames: FrameObject[], target: CollapsedState) : Map<number, CollapsedState> {
+    const r : Map<number, CollapsedState> = new Map();
+    frames.forEach((f) => {
+        if (f.frameType.allowedCollapsedStates.includes(target)) {
+            r.set(f.id, target);
+        }
+        else {
+            r.set(f.id, f.collapsedState ?? CollapsedState.FULLY_VISIBLE);
+        }
+    });
+    return r;
+}
+
+// Given a current state, and a map of frames to current and possible states, returns the next state
+// that is possible to set for at least one frame.  If this is not possible, it returns currentState
+function cycleToNextPossible(currentState: CollapsedState, currentAndPossibleStates : Map<number, {current: CollapsedState, possible: CollapsedState[]}>) : CollapsedState {
+    const allStates : CollapsedState[] = $enum(CollapsedState).getValues().map((v) => v as CollapsedState);
+    let nextState = currentState;
+    // If this state is impossible for all we'll cycle again until we're back at the start or we find a viable one:
+    const allPossible = new Set([...currentAndPossibleStates.values()].flatMap((x) => x.possible));
+    do {
+        nextState = allStates[(allStates.indexOf(nextState) - 1 + allStates.length) % allStates.length];
+    }
+    while (nextState != currentState && !allPossible.has(nextState));
+    return nextState;
+}
+
+// Given a list of frames assumed to have the same parent, and whether that parent is frozen,
+// gives the state they would move to as an overall "headline" state and then the actual states
+// each frame should be set to given what is possible (e.g. frozen functions shouldn't be FULLY_VISIBLE
+// even if that is the next headline state).
+//
+// This uses a map in the store to remember the headline states for given groups of functions as without
+// this it's impossible to work out the next state just from the individual frames' states alone because
+// they may end up mixed due to differing states not being possible on each frame.
+// This store-map is updated by this function unless you pass "dryrun" as the reason parameter to turn it off.
+export function calculateNextCollapseState(frameList: FrameObject[], parentIsFrozen: boolean, reason: "dryrun" | null = null) : {overall: CollapsedState, individual: Map<number, CollapsedState>} {
+    const allStates : CollapsedState[] = $enum(CollapsedState).getValues().map((v) => v as CollapsedState);
+    // Fetch current states and possible states from frames:
+    const currentAndPossibleStates = new Map<number, {current: CollapsedState, possible: CollapsedState[]}>();
+    for (const frame of frameList) {
+        const possible : CollapsedState[] = [];
+        for (const candidate of allStates) {
+            const allowed = 
+                frame.frameType.allowedCollapsedStates.includes(candidate) &&
+                !(candidate == CollapsedState.FULLY_VISIBLE && (parentIsFrozen || (frame.frameType.type == AllFrameTypesIdentifier.funcdef && frame.frozenState == FrozenState.FROZEN)));
+            if (allowed) {
+                possible.push(candidate);
+            }
+        }
+        currentAndPossibleStates.set(frame.id, {current: frame.collapsedState ?? CollapsedState.FULLY_VISIBLE, possible});
+    }
+    
+    // The groupToggleMemory has the frame IDs as a key.  Since we can't use a Set as a key, we turn them into
+    // a single string by sorting and concatenating:
+    const key = [...currentAndPossibleStates.keys()].sort((a, b) => a - b).join("_");
+    // We don't look up the remembered state if there's only one frame:
+    const prev = currentAndPossibleStates.size == 1 ? null : useStore().groupToggleMemory.get(key);
+
+    const curStates = new Map([...currentAndPossibleStates].map(([k, v]) => [k, v.current] as const));
+    
+    if (prev != null && isEqual(prev.lastStates, curStates)) {
+        // It matches our memory of the state, so let's use that to work out the next state:
+        const nextState = cycleToNextPossible(prev.overallState, currentAndPossibleStates);
+        if (reason != "dryrun") {
+            Vue.set(prev, "overallState", nextState);
+            Vue.set(prev, "lastStates", curStates);
+        }
+        return {overall: nextState, individual: changeWherePossible(frameList, nextState)};
+    }
+    else {
+        // Either we don't remember anything about this combination of frames, or it's changed individually since we did,
+        // so we must do it memoryless:
+        
+        // Are they all in a single state at the moment?
+        const curStateValues = new Set(curStates.values());
+        let nextState;
+        if (curStateValues.size == 1) {
+            //  They are, so we'll use that then advance it to the next one which is possible for some frame:
+            const singleState : CollapsedState = curStateValues.keys().next().value;
+            nextState = cycleToNextPossible(singleState, currentAndPossibleStates);
+        }
+        else {
+            // They are in a mixed state so we're going back to hidden by default:
+            nextState = CollapsedState.ONLY_HEADER_VISIBLE;
+        }
+        const decided = changeWherePossible(frameList, nextState);
+        
+        // We should remember this now, if there is more than one frame (no point remembering for a single frame):
+        if (curStates.size > 1 && reason != "dryrun") {
+            useStore().groupToggleMemory.set(key, {lastStates: decided, overallState: nextState});
+        }
+        return {overall: nextState, individual: decided};
+    }
 }
