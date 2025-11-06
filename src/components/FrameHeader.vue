@@ -265,7 +265,7 @@ export default Vue.extend({
     display: flex;
     gap: 7px; /* space between icons */
     margin-right: 7px;
-    margin-top: 5px;
+    margin-top: 0px;
     align-items: center;
 }
 
