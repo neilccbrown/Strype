@@ -593,8 +593,9 @@ export default Vue.extend({
             // Duplication allowance should be examined based on whether we are talking about a single frame or a selection frames
             const canDuplicate = (this.isPartOfSelection) ?
                 this.appStore.isPositionAllowsSelectedFrames(targetFrameId, CaretPosition.below, false) : 
-                this.appStore.isPositionAllowsFrame(targetFrameId, CaretPosition.below, false, this.frameId); 
-            if(!canDuplicate){
+                this.appStore.isPositionAllowsFrame(targetFrameId, CaretPosition.below, false, this.frameId);
+            // Note: frozen frames themselves can be duplicated, but children of frozen frames cannot:
+            if(!canDuplicate || parentIsFrozen){
                 const duplicateOptionContextMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.method === this.duplicate);
                 //We don't need the duplication option: remove it from the menu options if not present
                 if(duplicateOptionContextMenuPos > -1){
