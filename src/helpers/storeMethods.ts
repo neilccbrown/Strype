@@ -943,7 +943,7 @@ function cycleToNextPossible(currentState: CollapsedState, currentAndPossibleSta
     // If this state is impossible for all we'll cycle again until we're back at the start or we find a viable one:
     const allPossible = new Set([...currentAndPossibleStates.values()].flatMap((x) => x.possible));
     do {
-        nextState = allStates[(allStates.indexOf(nextState) - 1 + allStates.length) % allStates.length];
+        nextState = allStates[(allStates.indexOf(nextState) + 1) % allStates.length];
     }
     while (nextState != currentState && !allPossible.has(nextState));
     return nextState;
