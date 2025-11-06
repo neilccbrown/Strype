@@ -718,10 +718,30 @@ export default Vue.extend({
                 }
             }
 
-            //if a frame is disabled [respectively, enabled], show the enable [resp. disable] option
-            const disableOrEnableOption = (this.isDisabled) 
-                ?  {name: this.$i18n.t("contextMenu.enable"), method: this.enable}
-                :  {name: this.$i18n.t("contextMenu.disable"), method: this.disable};
+            // Our logic for disable/enable is as follows:
+            //   - On an individual frame level:
+            //     - Frozen frames, or children of frozen frames, can't be changed either way
+            //     - Blanks cannot directly be changed
+            //   - If there is a selection:
+            //     - If any are disabled and can be enabled, we show enable
+            //     - If any are enabled and can be disabled, we show disable
+            //     - Otherwise none can be changed, show Disable and grey it out
+            const canEnable = (frameId : number) => {
+                const frame = this.appStore.frameObjects[frameId];
+                return frame.isDisabled && !parentIsFrozen && frame.frozenState != FrozenState.FROZEN;
+            };
+            const canDisable = (frameId : number) => {
+                const frame = this.appStore.frameObjects[frameId];
+                return !frame.isDisabled && !parentIsFrozen && frame.frozenState != FrozenState.FROZEN
+                    && frame.frameType.type != AllFrameTypesIdentifier.blank;
+            };
+            
+            const anyCanEnable = this.isPartOfSelection ? this.appStore.selectedFrames.some(canEnable) : canEnable(this.frameId);
+            const anyCanDisable = this.isPartOfSelection ? this.appStore.selectedFrames.some(canDisable) : canDisable(this.frameId);
+            
+            const disableOrEnableOption = (!anyCanDisable && anyCanEnable) 
+                ?  {name: this.$i18n.t("contextMenu.enable"), method: this.enable, disabled: false}
+                :  {name: this.$i18n.t("contextMenu.disable"), method: this.disable, disabled: !anyCanDisable && !anyCanEnable};
             const enableDisableIndex = this.frameContextMenuItems.findIndex((entry) => entry.method === this.enable || entry.method === this.disable);
             Vue.set(
                 this.frameContextMenuItems,

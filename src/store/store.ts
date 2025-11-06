@@ -2995,14 +2995,21 @@ export const useStore = defineStore("app", {
 
         changeDisableSelection(isDisabling: boolean) {
             const stateBeforeChanges = cloneDeep(this.$state);
-
-            this.selectedFrames.forEach( (id) =>
-                this.doChangeDisableFrame(
-                    {
-                        frameId: id,
-                        isDisabling: isDisabling,
-                    }
-                ));
+            
+            this.selectedFrames.forEach( (id) => {
+                // Can't change frozen frames or children of frozen frames or comments or blanks:
+                if (this.frameObjects[id].frozenState != FrozenState.FROZEN &&
+                    this.frameObjects[this.frameObjects[id].parentId].frozenState != FrozenState.FROZEN &&
+                    // And can't disable blanks (can enable, in case of old projects where this was allowed):
+                    (!isDisabling || this.frameObjects[id].frameType.type != AllFrameTypesIdentifier.blank)) {
+                    this.doChangeDisableFrame(
+                        {
+                            frameId: id,
+                            isDisabling: isDisabling,
+                        }
+                    );
+                }
+            });
             
             //save state changes
             this.saveStateChanges(stateBeforeChanges);
