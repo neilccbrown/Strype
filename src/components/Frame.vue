@@ -511,7 +511,15 @@ export default Vue.extend({
             const combinedCollapse = collapseFrames.reduce(
                 (acc, item) => {
                     acc.states.add(item.collapsedState ?? CollapsedState.FULLY_VISIBLE);
-                    item.frameType.allowedCollapsedStates.forEach((s) => acc.allowedStates.add(s));
+                    item.frameType.allowedCollapsedStates.forEach((s) => {
+                        // Extra rule: frozen functions can't be fully expanded
+                        if (item.frameType.type == AllFrameTypesIdentifier.funcdef && item.frozenState == FrozenState.FROZEN && s == CollapsedState.FULLY_VISIBLE) {
+                            // Don't add this as a possibility
+                        }
+                        else {
+                            acc.allowedStates.add(s);
+                        }
+                    });
                     return acc;
                 },
                 { states: new Set<CollapsedState>(), allowedStates: new Set<CollapsedState>() }
@@ -1297,9 +1305,16 @@ export default Vue.extend({
 
         setCollapse(collapsedState: CollapsedState) {
             const frames = this.isPartOfSelection ? this.appStore.selectedFrames : [this.frameId];
-            for (let frame of frames) {
-                if (this.appStore.frameObjects[frame].frameType.allowedCollapsedStates.includes(collapsedState)) {
-                    this.appStore.setCollapseStatuses({[frame]: collapsedState});
+            for (let frameId of frames) {
+                const frame = this.appStore.frameObjects[frameId];
+                if (frame.frameType.allowedCollapsedStates.includes(collapsedState)) {
+                    // Extra rule: frozen functions can't be fully expanded
+                    if (frame.frameType.type == AllFrameTypesIdentifier.funcdef && frame.frozenState == FrozenState.FROZEN && collapsedState == CollapsedState.FULLY_VISIBLE) {
+                        // Do nothing
+                    }
+                    else {
+                        this.appStore.setCollapseStatuses({[frameId]: collapsedState});
+                    }
                 }
             }
         },
