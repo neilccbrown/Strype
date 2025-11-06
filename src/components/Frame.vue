@@ -699,7 +699,25 @@ export default Vue.extend({
                     );
                 }
             }
-                
+
+            // Should we show any deleting options (Delete, Cut); requires all selected frames to be deleteable.
+            // The only thing that prevents deletion is being frozen:
+            const allCanBeDeleted = !parentIsFrozen && (this.isPartOfSelection
+                ? this.appStore
+                    .selectedFrames
+                    .every((frameId) => this.appStore.frameObjects[frameId].frozenState != FrozenState.FROZEN)
+                : this.frozenState != FrozenState.FROZEN);
+            if (!allCanBeDeleted) {
+                const cutMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.actionName === FrameContextMenuActionName.cut);
+                if(cutMenuPos > -1){
+                    this.frameContextMenuItems.splice(cutMenuPos, 1);
+                }
+                const deleteMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.actionName === FrameContextMenuActionName.delete);
+                if(deleteMenuPos > -1){
+                    this.frameContextMenuItems.splice(deleteMenuPos, 1);
+                }
+            }
+
             //if a frame is disabled [respectively, enabled], show the enable [resp. disable] option
             const disableOrEnableOption = (this.isDisabled) 
                 ?  {name: this.$i18n.t("contextMenu.enable"), method: this.enable}
@@ -756,7 +774,7 @@ export default Vue.extend({
                     adjustContextMenuPosition(event, contextMenu, positionForMenu);
                         
                     //We prepare the indexes of the "delete" entries to add events on. "Delete" will always be added.
-                    const deleteEntriesIndexes = [this.frameContextMenuItems.findIndex((option) => option.method == this.delete)];
+                    const deleteEntriesIndexes = allCanBeDeleted ? [this.frameContextMenuItems.findIndex((option) => option.method == this.delete)] : [];
                     if(canDeleteOuter){
                         deleteEntriesIndexes.push(this.frameContextMenuItems.findIndex((option) => option.method == this.deleteOuter));
                     }
