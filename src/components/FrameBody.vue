@@ -142,6 +142,9 @@ export default Vue.extend({
     border-color: #000 !important;
     border-radius: 8px;
 }
+.frame-div[data-frametype="classdef"] > .frame-body-container {
+    background-color: rgba(255, 255, 255, 0.35);
+}
 
 .body-deletable {
     background-color: transparent !important;
