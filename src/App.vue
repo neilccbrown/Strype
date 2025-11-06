@@ -115,9 +115,9 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane, PaneData} from "splitpanes";
 import { useStore, settingsStore } from "@/store/store";
-import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, CollapsedState, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition } from "@/types/types";
+import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
-import { getFrameContainerUID, getCloudDriveHandlerComponentRefId, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, calculateNextCollapseState } from "./helpers/editor";
+import { getFrameContainerUID, getCloudDriveHandlerComponentRefId, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
 /* IFTRUE_isPython */
 import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getPEAComponentRefId } from "@/helpers/editor";
@@ -127,7 +127,7 @@ import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
 /* FITRUE_isMicrobit */
 import { mapStores } from "pinia";
-import { getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos, getFrameBelowCaretPosition, checkCodeErrors } from "./helpers/storeMethods";
+import { getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos, getFrameBelowCaretPosition, checkCodeErrors, calculateNextCollapseState } from "./helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import { VueContextConstructor } from "vue-context";
 import { BACKEND_SKULPT_DIV_ID } from "@/autocompletion/ac-skulpt";
@@ -380,6 +380,7 @@ export default Vue.extend({
         );
 
         window.addEventListener("keydown", (event: KeyboardEvent) => {
+            this.appStore.updateKeyModifiers(event);
             const activeContextMenu = getActiveContextMenu();
             if(activeContextMenu != null){
                 // All key hits in the context menu should result in the menu closing.
@@ -508,14 +509,9 @@ export default Vue.extend({
                 }
                 if (frameIds.length > 0) {
                     const frames = frameIds.map((f) => this.appStore.frameObjects[f]);
-                    let collapsedStates = frames.map((f) => f.collapsedState ?? CollapsedState.FULLY_VISIBLE);
-                    const curState = collapsedStates.reduce<CollapsedState | undefined>(
-                        (acc, item) => acc === item ? acc : undefined,
-                        collapsedStates[0]
-                    );
                     const parentIsFrozen = this.appStore.frameObjects[this.appStore.frameObjects[frameIds[0]].parentId].frozenState == FrozenState.FROZEN;
-                    const nextState = calculateNextCollapseState(curState, frames, parentIsFrozen);
-                    frameIds.forEach((f) => this.appStore.setCollapseStatus({frameId: f, collapsed: nextState}));
+                    const nextStates = calculateNextCollapseState(frames, parentIsFrozen).individual;
+                    this.appStore.setCollapseStatuses(nextStates);
                 }
                 event.preventDefault();
                 event.stopImmediatePropagation();
@@ -526,6 +522,7 @@ export default Vue.extend({
 
         // There are only a few cases when we need to handle key up events
         window.addEventListener("keyup", (event) => {
+            this.appStore.updateKeyModifiers(event);
             // Handling the notification for not doing duplication anymore with drag and drop.
             // We don't really care if another key is hit along ctrl/option, we only look that
             // we are currently in a drag and drop action, and notify the current caret candidate for drop that

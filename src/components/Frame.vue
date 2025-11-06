@@ -99,8 +99,8 @@ import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, CollapsedState, CurrentFrame, FrozenState, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName, ContainerTypesIdentifiers } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
-import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent, frameOrChildHasErrors } from "@/helpers/storeMethods";
-import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getCaretUID, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID, calculateNextCollapseState } from "@/helpers/editor";
+import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent, frameOrChildHasErrors, calculateNextCollapseState } from "@/helpers/storeMethods";
+import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getCaretUID, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { BPopover } from "bootstrap-vue";
 import html2canvas from "html2canvas";
@@ -522,10 +522,10 @@ export default Vue.extend({
             if (combinedCollapse.states.size === 1) {
                 const commonState : CollapsedState = combinedCollapse.states.keys().next().value;
                 this.frameContextMenuItems[commonState as number].disabled = true;
-                nextWouldBe = calculateNextCollapseState(commonState, collapseFrames, parentIsFrozen);
+                nextWouldBe = calculateNextCollapseState(collapseFrames, parentIsFrozen, "dryrun").overall;
             }
             else {
-                nextWouldBe = calculateNextCollapseState(undefined, collapseFrames, parentIsFrozen);
+                nextWouldBe = calculateNextCollapseState(collapseFrames, parentIsFrozen, "dryrun").overall;
             }
             let someCollapseShowing = false;
             // Loops through all possible enum values, backwards so we can remove without upsetting the later-processed indexes:
@@ -1299,7 +1299,7 @@ export default Vue.extend({
             const frames = this.isPartOfSelection ? this.appStore.selectedFrames : [this.frameId];
             for (let frame of frames) {
                 if (this.appStore.frameObjects[frame].frameType.allowedCollapsedStates.includes(collapsedState)) {
-                    this.appStore.setCollapseStatus({frameId: frame, collapsed: collapsedState});
+                    this.appStore.setCollapseStatuses({[frame]: collapsedState});
                 }
             }
         },
@@ -1313,14 +1313,14 @@ export default Vue.extend({
                     this.appStore.setFrozenStatus({frameId: frameId, frozen: frozenState});
                     if (frameType.type === AllFrameTypesIdentifier.funcdef) {
                         // If we freeze a function it can't be fully visible:
-                        if ((frame.collapsedState ?? CollapsedState.FULLY_VISIBLE) == CollapsedState.FULLY_VISIBLE) {
+                        if (frozenState == FrozenState.FROZEN && (frame.collapsedState ?? CollapsedState.FULLY_VISIBLE) == CollapsedState.FULLY_VISIBLE) {
                             this.appStore.cycleFrameCollapsedState(frameId);
                         }
                     }
                     // We also need to adjust all the children to not be fully visible:
                     for (let childId of frame.childrenIds) {
                         const child = this.appStore.frameObjects[childId];
-                        if ((child.collapsedState ?? CollapsedState.FULLY_VISIBLE) == CollapsedState.FULLY_VISIBLE && child.frameType.allowedCollapsedStates.length > 1) {
+                        if (frozenState == FrozenState.FROZEN && (child.collapsedState ?? CollapsedState.FULLY_VISIBLE) == CollapsedState.FULLY_VISIBLE && child.frameType.allowedCollapsedStates.length > 1) {
                             // We cycle it to the next one:
                             this.appStore.cycleFrameCollapsedState(childId);
                         }

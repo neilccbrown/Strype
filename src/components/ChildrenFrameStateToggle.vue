@@ -14,7 +14,7 @@ import Vue from "vue";
 import {CollapsedState, FrameObject} from "@/types/types";
 import {mapStores} from "pinia";
 import {useStore} from "@/store/store";
-import {calculateNextCollapseState} from "@/helpers/editor";
+import {calculateNextCollapseState} from "@/helpers/storeMethods";
 
 
 export default Vue.extend({
@@ -63,13 +63,8 @@ export default Vue.extend({
                 return;
             }
             
-            let nextState = calculateNextCollapseState(this.childrenCollapsedState, this.frames as FrameObject[], this.parentIsFrozen);
-
-            (this.frames as FrameObject[]).forEach((f) => {
-                if (f.frameType.allowedCollapsedStates.includes(nextState)) {
-                    this.appStore.setCollapseStatus({frameId: f.id, collapsed: nextState});
-                }
-            });
+            const nextStates = calculateNextCollapseState(this.frames as FrameObject[], this.parentIsFrozen).individual;
+            this.appStore.setCollapseStatuses(nextStates);
             
             event.preventDefault();
             event.stopPropagation();

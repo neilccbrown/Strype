@@ -61,6 +61,12 @@ async function makeFrozen(page: Page, identifyingText: string) : Promise<void> {
     await page.getByRole("menuitem", {name: en.contextMenu.freeze, exact: true}).click({timeout: 2000});
 }
 
+async function makeUnfrozen(page: Page, identifyingText: string) : Promise<void> {
+    const ancestor = page.locator(".frame-header:has(span:has-text('" + identifyingText + "'), div:has-text('" + identifyingText + "'))");
+    await ancestor.click({button: "right"});
+    await page.getByRole("menuitem", {name: en.contextMenu.unfreeze, exact: true}).click({timeout: 2000});
+}
+
 async function foldViaMenu(page: Page, identifyingText: string, foldTo: CollapsedState) : Promise<void> {
     const ancestor = page.locator(".frame-header:has(span:has-text('" + identifyingText + "'))");
     await ancestor.click({button: "right"});
@@ -217,8 +223,10 @@ test.describe("Saves collapsed state after icon clicks", () => {
         await clickFoldFor(page, "Beta");
         await saveAndCheck(page, testState({"Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
         // However, you should only be able to toggle the children between the two folded states:
+        console.log("Doc to header:");
         await clickFoldChildrenFor(page, "Beta");
         await saveAndCheck(page, testState({"Beta": "Frozen", "set_double": "FoldToHeader", "get_x": "FoldToHeader", "set_x": "FoldToHeader"}));
+        console.log("Header back to doc:");
         await clickFoldChildrenFor(page, "Beta");
         await saveAndCheck(page, testState({"Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
         // Ditto when done individually:
@@ -255,6 +263,31 @@ test.describe("Saves collapsed state after icon clicks", () => {
         await saveAndCheck(page, testState({"top1": "FoldToHeader;Frozen"}));
         await clickFoldFor(page, "top1");
         await saveAndCheck(page, testState({"top1": "FoldToDocumentation;Frozen"}));
+
+        // Back to header ahead of the next test, and freeze Beta:
+        await clickFoldFor(page, "top1");
+        await makeFrozen(page, "Beta");
+        await saveAndCheck(page, testState({"top1": "FoldToHeader;Frozen", "Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
+        // Click the toggle for all defs:
+        await page.locator(".frame-container-header > .fold-children-control").click();
+        // Should initially try to collapse everything because we have a mixed state:
+        await saveAndCheck(page, testState({"top1": "FoldToHeader;Frozen", "Alpha": "FoldToHeader", "Beta": "FoldToHeader;Frozen", "top2": "FoldToHeader", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
+        // Then should all fold out where possible, which is all except frozen items:
+        await page.locator(".frame-container-header > .fold-children-control").click();
+        await saveAndCheck(page, testState({"top1": "Frozen", "Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
+        // Then should all fold to documentation where possible, which is all except frozen class:
+        await page.locator(".frame-container-header > .fold-children-control").click();
+        await saveAndCheck(page, testState({"top1": "FoldToDocumentation;Frozen", "Beta": "Frozen", "top2": "FoldToDocumentation", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
+        // Go back to fold out where possible:
+        await page.locator(".frame-container-header > .fold-children-control").click();
+        await page.locator(".frame-container-header > .fold-children-control").click();
+        await saveAndCheck(page, testState({"top1": "Frozen", "Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
+        
+        // Unfreeze top1:
+        await makeUnfrozen(page, "top1");
+        await page.locator(".frame-container-header > .fold-children-control").click();
+        // Should go back to documentation as frozen isn't part of the memory state:
+        await saveAndCheck(page, testState({"top1": "FoldToDocumentation", "Beta": "Frozen", "top2": "FoldToDocumentation", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
     });
     test("Freezing prevents deletion of the whole frame and its member frames", async ({page}) => {
         await loadContent(page, testState({"Alpha": "Frozen", "__init__": "FoldToHeader", "top1": "FoldToDocumentation;Frozen"}));

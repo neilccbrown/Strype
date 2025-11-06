@@ -154,12 +154,7 @@ export default Vue.extend({
                 return (this.isMainCodeFrameContainer || this.isDefsFrameContainer) ? false : this.appStore.isContainerCollapsed(this.frameId);
             },
             set(value: boolean){
-                this.appStore.setCollapseStatus(
-                    {
-                        frameId: this.frameId,
-                        collapsed: value ? CollapsedState.ONLY_HEADER_VISIBLE : CollapsedState.FULLY_VISIBLE,
-                    }
-                );
+                this.appStore.setCollapseStatuses({[this.frameId]: value ? CollapsedState.ONLY_HEADER_VISIBLE : CollapsedState.FULLY_VISIBLE});
             },
         },
 
