@@ -88,6 +88,7 @@ import scssVars from "@/assets/style/_export.module.scss";
 import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
 import {drawSoundOnCanvas} from "@/helpers/media";
 import { isMacOSPlatform } from "@/helpers/common";
+import { projectDocumentationFrameId } from "@/main";
 
 // Default time to keep in cache: 5 minutes.
 const soundPreviewImages = new Cache<LoadedMedia>({ defaultTtl: 5 * 60 * 1000 });
@@ -693,7 +694,7 @@ export default Vue.extend({
                 // A special case for the project documentation slot: because it doesn't be belong to 
                 // a "real" frame, hitting escape should instead place the frame cursor to the next "real"
                 // available (as visible) frame.
-                if(this.frameId == this.appStore.projectDocumentationFrameId){
+                if(this.frameId == projectDocumentationFrameId){
                     const nextVisibleSectionFrame = [this.appStore.importContainerId, this.appStore.functionDefContainerId, this.appStore.getMainCodeFrameContainerId]
                         .find((frameContainerId) => !this.appStore.frameObjects[frameContainerId].isCollapsed);
                     // At least the main section is not collapsed we should always get a value.. but let's keep TS happy
