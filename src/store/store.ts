@@ -3,7 +3,7 @@ import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPro
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import {checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
-import { AppPlatform, AppVersion, vm } from "@/main";
+import { AppPlatform, AppVersion, projectDocumentationFrameId, vm } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
 import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getStrypeCommandComponentRefId, getCaretContainerUID, isCaretContainerElement, AutoSaveKeyNames } from "@/helpers/editor";
@@ -76,7 +76,6 @@ export const useStore = defineStore("app", {
 
             functionDefContainerId: -2,
 
-            projectDocumentationFrameId: -10,
             /** END of flags that need checking when a build is done **/
 
             currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
@@ -734,7 +733,7 @@ export const useStore = defineStore("app", {
                     this.frameObjects[frameIdInt].childrenIds.splice(0);
                     // The project description is a slot on a negative frame which must also be cleared:
                     if (this.frameObjects[frameIdInt] && this.frameObjects[frameIdInt].frameType.type == AllFrameTypesIdentifier.projectDocumentation) {
-                        this.frameObjects[frameIdInt].labelSlotsDict = cloneDeep(emptyState[this.projectDocumentationFrameId].labelSlotsDict);
+                        this.frameObjects[frameIdInt].labelSlotsDict = cloneDeep(emptyState[projectDocumentationFrameId].labelSlotsDict);
                     }
                 }
             });
@@ -2490,9 +2489,9 @@ export const useStore = defineStore("app", {
                                 else{
                                     // Check 4) and 5) as 3) is validated
                                     // If missing project doc frame, copy it in from the empty state and add it as first root child:
-                                    if (!newStateObj["frameObjects"][this.projectDocumentationFrameId]) {
-                                        newStateObj["frameObjects"][this.projectDocumentationFrameId] = cloneDeep(emptyState[this.projectDocumentationFrameId]);
-                                        newStateObj["frameObjects"]["0"]["childrenIds"].unshift(this.projectDocumentationFrameId);
+                                    if (!newStateObj["frameObjects"][projectDocumentationFrameId]) {
+                                        newStateObj["frameObjects"][projectDocumentationFrameId] = cloneDeep(emptyState[projectDocumentationFrameId]);
+                                        newStateObj["frameObjects"]["0"]["childrenIds"].unshift(projectDocumentationFrameId);
                                     }
                                     
                                     if(!restoreSavedStateFrameTypes(newStateObj)){
