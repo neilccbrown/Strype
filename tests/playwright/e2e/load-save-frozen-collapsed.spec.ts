@@ -148,14 +148,14 @@ test.describe("Saves collapsed state after icon clicks", () => {
     test("Fold the function once", async ({page}) => {
         await loadContent(page, testState());
         await clickFoldFor(page, "top1");
-        await saveAndCheck(page, testState({"top1": "FoldToDocumentation"}));
+        await saveAndCheck(page, testState({"top1": "FoldToHeader"}));
     });
     test("Fold the function twice and the other once", async ({page}) => {
         await loadContent(page, testState());
         await clickFoldFor(page, "top1");
         await clickFoldFor(page, "top1");
         await clickFoldFor(page, "top2");
-        await saveAndCheck(page, testState({"top1": "FoldToHeader", "top2": "FoldToDocumentation"}));
+        await saveAndCheck(page, testState({"top1": "FoldToDocumentation", "top2": "FoldToHeader"}));
     });
     test("Fold the member functions too", async ({page}) => {
         await loadContent(page, testState());
@@ -165,22 +165,23 @@ test.describe("Saves collapsed state after icon clicks", () => {
         await clickFoldFor(page, "get_x");
         await clickFoldFor(page, "get_x");
         await clickFoldFor(page, "set_x");
-        await saveAndCheck(page, testState({"get_x": "FoldToHeader", "set_x": "FoldToDocumentation", "top1": "FoldToHeader", "top2": "FoldToDocumentation"}));
+        await saveAndCheck(page, testState({"get_x": "FoldToDocumentation", "set_x": "FoldToHeader", "top1": "FoldToDocumentation", "top2": "FoldToHeader"}));
     });
     test("Fold the Alpha member function using joint control", async ({page}) => {
         await loadContent(page, testState());
         await clickFoldChildrenFor(page, "Alpha");
-        await saveAndCheck(page, testState({"__init__": "FoldToDocumentation"}));
+        await saveAndCheck(page, testState({"__init__": "FoldToHeader"}));
     });
-    test("Fold the Beta member functions using joint control", async ({page}) => {
+    test("Fold the Beta member functions using joint control, twice", async ({page}) => {
         await loadContent(page, testState());
+        await clickFoldChildrenFor(page, "Beta");
         await clickFoldChildrenFor(page, "Beta");
         await saveAndCheck(page, testState({"set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
     });
     test("Freeze Alpha unfolded", async ({page}) => {
         await loadContent(page, testState());
         await makeFrozen(page, "Alpha");
-        await saveAndCheck(page, testState({"Alpha": "Frozen", "__init__": "FoldToDocumentation"}));
+        await saveAndCheck(page, testState({"Alpha": "Frozen", "__init__": "FoldToHeader"}));
     });
 
     test("Freeze Beta part-folded", async ({page}) => {
@@ -189,7 +190,7 @@ test.describe("Saves collapsed state after icon clicks", () => {
         await clickFoldFor(page, "set_x");
         await makeFrozen(page, "Beta");
         // Freezing Beta should automatically fold in its children that are not already folded: 
-        await saveAndCheck(page, testState({"Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToHeader"}));
+        await saveAndCheck(page, testState({"Beta": "Frozen", "set_double": "FoldToHeader", "get_x": "FoldToHeader", "set_x": "FoldToDocumentation"}));
     });
 
     test("Freeze Alpha and Beta and top_2 in one go", async ({page}) => {
@@ -202,7 +203,7 @@ test.describe("Saves collapsed state after icon clicks", () => {
         }
         // Then do contect menu and freeze:
         await makeFrozen(page, "Beta"); 
-        await saveAndCheck(page, testState({"Alpha": "Frozen", "__init__": "FoldToDocumentation", "Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation", "top2": "FoldToDocumentation;Frozen"}));
+        await saveAndCheck(page, testState({"Alpha": "Frozen", "__init__": "FoldToHeader", "Beta": "Frozen", "set_double": "FoldToHeader", "get_x": "FoldToHeader", "set_x": "FoldToHeader", "top2": "FoldToHeader;Frozen"}));
     });
 
     test("Attempt to freeze member function", async ({page}) => {
@@ -215,6 +216,8 @@ test.describe("Saves collapsed state after icon clicks", () => {
         await loadContent(page, testState());
         await makeFrozen(page, "Beta");
         // Freezing Beta should automatically fold in its children that are not already folded:
+        await saveAndCheck(page, testState({"Beta": "Frozen", "set_double": "FoldToHeader", "get_x": "FoldToHeader", "set_x": "FoldToHeader"}));
+        await clickFoldChildrenFor(page, "Beta");
         await saveAndCheck(page, testState({"Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
         // You should be able to freely toggle frozen class visibility between fully visible (although its members are not visible)
         // and folded:
@@ -257,8 +260,10 @@ test.describe("Saves collapsed state after icon clicks", () => {
     test("Freeze top1 then cycle its visibility with toggle", async ({page}) => {
         await loadContent(page, testState());
         await makeFrozen(page, "top1");
-        await saveAndCheck(page, testState({"top1": "FoldToDocumentation;Frozen"}));
+        await saveAndCheck(page, testState({"top1": "FoldToHeader;Frozen"}));
         // You should be able to freely toggle frozen function visibility between folded to header and folded to doc, but not fully visible:
+        await clickFoldFor(page, "top1");
+        await saveAndCheck(page, testState({"top1": "FoldToDocumentation;Frozen"}));
         await clickFoldFor(page, "top1");
         await saveAndCheck(page, testState({"top1": "FoldToHeader;Frozen"}));
         await clickFoldFor(page, "top1");
@@ -267,27 +272,27 @@ test.describe("Saves collapsed state after icon clicks", () => {
         // Back to header ahead of the next test, and freeze Beta:
         await clickFoldFor(page, "top1");
         await makeFrozen(page, "Beta");
-        await saveAndCheck(page, testState({"top1": "FoldToHeader;Frozen", "Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
+        await saveAndCheck(page, testState({"top1": "FoldToHeader;Frozen", "Beta": "Frozen", "set_double": "FoldToHeader", "get_x": "FoldToHeader", "set_x": "FoldToHeader"}));
+        await clickFoldChildrenFor(page, "Beta");
         // Click the toggle for all defs:
         await page.locator(".frame-container-header > .fold-children-control").click();
         // Should initially try to collapse everything because we have a mixed state:
         await saveAndCheck(page, testState({"top1": "FoldToHeader;Frozen", "Alpha": "FoldToHeader", "Beta": "FoldToHeader;Frozen", "top2": "FoldToHeader", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
+        // Then should all fold to documentation where possible, which is all except classes:
+        await page.locator(".frame-container-header > .fold-children-control").click();
+        await saveAndCheck(page, testState({"top1": "FoldToDocumentation;Frozen", "Alpha": "FoldToHeader", "Beta": "FoldToHeader;Frozen", "top2": "FoldToDocumentation", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
         // Then should all fold out where possible, which is all except frozen items:
         await page.locator(".frame-container-header > .fold-children-control").click();
         await saveAndCheck(page, testState({"top1": "Frozen", "Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
-        // Then should all fold to documentation where possible, which is all except frozen class:
+        // Then to folded again ready for next test:
         await page.locator(".frame-container-header > .fold-children-control").click();
-        await saveAndCheck(page, testState({"top1": "FoldToDocumentation;Frozen", "Beta": "Frozen", "top2": "FoldToDocumentation", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
-        // Go back to fold out where possible:
-        await page.locator(".frame-container-header > .fold-children-control").click();
-        await page.locator(".frame-container-header > .fold-children-control").click();
-        await saveAndCheck(page, testState({"top1": "Frozen", "Beta": "Frozen", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
+        await saveAndCheck(page, testState({"top1": "FoldToHeader;Frozen", "Alpha": "FoldToHeader", "Beta": "FoldToHeader;Frozen", "top2": "FoldToHeader", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
         
         // Unfreeze top1:
         await makeUnfrozen(page, "top1");
         await page.locator(".frame-container-header > .fold-children-control").click();
         // Should go back to documentation as frozen isn't part of the memory state:
-        await saveAndCheck(page, testState({"top1": "FoldToDocumentation", "Beta": "Frozen", "top2": "FoldToDocumentation", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
+        await saveAndCheck(page, testState({"top1": "FoldToDocumentation", "Alpha": "FoldToHeader", "Beta": "FoldToHeader;Frozen", "top2": "FoldToDocumentation", "set_double": "FoldToDocumentation", "get_x": "FoldToDocumentation", "set_x": "FoldToDocumentation"}));
     });
     test("Freezing prevents deletion of the whole frame and its member frames", async ({page}) => {
         await loadContent(page, testState({"Alpha": "Frozen", "__init__": "FoldToHeader", "top1": "FoldToDocumentation;Frozen"}));
@@ -396,14 +401,14 @@ test.describe("Frozen state deals with errors", () => {
         // Then try to freeze:
         await makeFrozen(page, "class ");
         // We should then be frozen, despite there being an error because it is a runtime error:
-        await saveAndCheck(page, testState({"class": "Frozen", "__init__": "FoldToDocumentation"}, inputWhichWillRuntimeError));
+        await saveAndCheck(page, testState({"class": "Frozen", "__init__": "FoldToHeader"}, inputWhichWillRuntimeError));
     });
     test("Frozen frame unfolds if there is a runtime error", async ({page}) => {
         await loadContent(page, inputWhichWillRuntimeError);
         // Freeze:
         await makeFrozen(page, "class ");
         // We should then be frozen, despite there being an error because it is a runtime error:
-        await saveAndCheck(page, testState({"class": "Frozen", "__init__": "FoldToDocumentation"}, inputWhichWillRuntimeError));
+        await saveAndCheck(page, testState({"class": "Frozen", "__init__": "FoldToHeader"}, inputWhichWillRuntimeError));
         
         // Run to provoke the error, and check it is there:
         await page.getByText("Run").click();
