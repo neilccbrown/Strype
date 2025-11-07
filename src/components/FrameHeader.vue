@@ -26,22 +26,24 @@
                 />
                 <!-- ^^ Note: append to frame label is same as prepend to slot -->
             </div>
-            <div ref="frozenControl" :class="{'frozen-control': true, 'frozen': isFrozen}" v-if="groupIndex == 0">
-                <img class="frozen-frozen" src="@/assets/images/snowflake.svg" v-if="isFrozen">
-            </div>
-            <div ref="foldingControl" :class="{'folding-control': true, 'fold-doc': isFoldDoc, 'fold-header': isFoldHeader, 'fold-full': isFoldFull }" @click.stop.prevent="cycleFold" v-if="canCycleFold && groupIndex == 0">
-                <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-funcdef-empty.png" v-if="isFuncDef && !isModifierHeldOnSelection">
-                <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-funcdef.png" v-if="isFuncDef && !isModifierHeldOnSelection">
-                <img class="folding-full" src="@/assets/images/quote-circle/quote-circle-funcdef-filled.png" v-if="isFuncDef && !isModifierHeldOnSelection">
-                <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-class-empty.png" v-if="isClassDef && !isModifierHeldOnSelection">
-                <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-class.png" v-if="isClassDef && !isModifierHeldOnSelection">
-                <img class="folding-full" src="@/assets/images/quote-circle/quote-circle-class-filled.png" v-if="isClassDef && !isModifierHeldOnSelection">
-                <img class="folding-full" src="@/assets/images/quote-circle/quote-circle-container-filled-echoed.png" v-if="isFuncDef && isModifierHeldOnSelection">
-                <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-container-echoed.png" v-if="isFuncDef && isModifierHeldOnSelection">
-                <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-container-empty-echoed.png" v-if="isFuncDef && isModifierHeldOnSelection">
-                <img class="folding-full" src="@/assets/images/quote-circle/quote-circle-class-filled-echoed.png" v-if="isClassDef && isModifierHeldOnSelection">
-                <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-class-echoed.png" v-if="isClassDef && isModifierHeldOnSelection">
-                <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-class-empty-echoed.png" v-if="isClassDef && isModifierHeldOnSelection">
+            <div class="frame-controls-container">
+                <div ref="frozenControl" :class="{'frozen-control': true, 'frozen': isFrozen}" v-if="groupIndex == 0">
+                    <img class="frozen-frozen" src="@/assets/images/snowflake.svg" v-if="isFrozen">
+                </div>
+                <div ref="foldingControl" :class="{'folding-control': true, 'fold-doc': isFoldDoc, 'fold-header': isFoldHeader, 'fold-full': isFoldFull }" @click.stop.prevent="cycleFold" v-if="canCycleFold && groupIndex == 0">
+                    <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-funcdef-empty.png" v-if="isFuncDef && !isModifierHeldOnSelection">
+                    <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-funcdef.png" v-if="isFuncDef && !isModifierHeldOnSelection">
+                    <img class="folding-full" src="@/assets/images/quote-circle/quote-circle-funcdef-filled.png" v-if="isFuncDef && !isModifierHeldOnSelection">
+                    <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-class-empty.png" v-if="isClassDef && !isModifierHeldOnSelection">
+                    <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-class.png" v-if="isClassDef && !isModifierHeldOnSelection">
+                    <img class="folding-full" src="@/assets/images/quote-circle/quote-circle-class-filled.png" v-if="isClassDef && !isModifierHeldOnSelection">
+                    <img class="folding-full" src="@/assets/images/quote-circle/quote-circle-container-filled-echoed.png" v-if="isFuncDef && isModifierHeldOnSelection">
+                    <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-container-echoed.png" v-if="isFuncDef && isModifierHeldOnSelection">
+                    <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-container-empty-echoed.png" v-if="isFuncDef && isModifierHeldOnSelection">
+                    <img class="folding-full" src="@/assets/images/quote-circle/quote-circle-class-filled-echoed.png" v-if="isClassDef && isModifierHeldOnSelection">
+                    <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-class-echoed.png" v-if="isClassDef && isModifierHeldOnSelection">
+                    <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-class-empty-echoed.png" v-if="isClassDef && isModifierHeldOnSelection">
+                </div>
             </div>
             <ChildrenFrameStateToggle v-if="isClassDef && isFoldFull && groupIndex === splitLabels.length - 1" :frames="children" :parentIsFrozen="isFrozen"/>
             <i v-if="wasLastRuntimeError && groupIndex == splitLabels.length - 1" :class="{'fas fa-exclamation-triangle fa-xs runtime-err-icon': true, 'runtime-past-err-icon': !erroneous}"></i>
@@ -258,13 +260,20 @@ export default Vue.extend({
     margin-top: 0.3em;
 }
 
-.folding-control, .frozen-control {
-    margin-left: auto;
+.frame-controls-container {
+    margin-left: auto; /* pushes the group to the right */
+    display: flex;
+    gap: 7px; /* space between icons */
     margin-right: 7px;
-    margin-top: 5px;
+    margin-top: 0px;
+    align-items: center;
+}
+
+.folding-control, .frozen-control {
     position: relative;
     overflow: visible;
     width: 0.9em;
+    height: 0.9em;
     cursor: pointer;
 }
 .folding-control > img, .frozen-control > img {

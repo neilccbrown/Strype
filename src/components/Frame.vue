@@ -511,7 +511,15 @@ export default Vue.extend({
             const combinedCollapse = collapseFrames.reduce(
                 (acc, item) => {
                     acc.states.add(item.collapsedState ?? CollapsedState.FULLY_VISIBLE);
-                    item.frameType.allowedCollapsedStates.forEach((s) => acc.allowedStates.add(s));
+                    item.frameType.allowedCollapsedStates.forEach((s) => {
+                        // Extra rule: frozen functions can't be fully expanded
+                        if (item.frameType.type == AllFrameTypesIdentifier.funcdef && item.frozenState == FrozenState.FROZEN && s == CollapsedState.FULLY_VISIBLE) {
+                            // Don't add this as a possibility
+                        }
+                        else {
+                            acc.allowedStates.add(s);
+                        }
+                    });
                     return acc;
                 },
                 { states: new Set<CollapsedState>(), allowedStates: new Set<CollapsedState>() }
@@ -585,8 +593,9 @@ export default Vue.extend({
             // Duplication allowance should be examined based on whether we are talking about a single frame or a selection frames
             const canDuplicate = (this.isPartOfSelection) ?
                 this.appStore.isPositionAllowsSelectedFrames(targetFrameId, CaretPosition.below, false) : 
-                this.appStore.isPositionAllowsFrame(targetFrameId, CaretPosition.below, false, this.frameId); 
-            if(!canDuplicate){
+                this.appStore.isPositionAllowsFrame(targetFrameId, CaretPosition.below, false, this.frameId);
+            // Note: frozen frames themselves can be duplicated, but children of frozen frames cannot:
+            if(!canDuplicate || parentIsFrozen){
                 const duplicateOptionContextMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.method === this.duplicate);
                 //We don't need the duplication option: remove it from the menu options if not present
                 if(duplicateOptionContextMenuPos > -1){
@@ -690,11 +699,49 @@ export default Vue.extend({
                     );
                 }
             }
-                
-            //if a frame is disabled [respectively, enabled], show the enable [resp. disable] option
-            const disableOrEnableOption = (this.isDisabled) 
-                ?  {name: this.$i18n.t("contextMenu.enable"), method: this.enable}
-                :  {name: this.$i18n.t("contextMenu.disable"), method: this.disable};
+
+            // Should we show any deleting options (Delete, Cut); requires all selected frames to be deleteable.
+            // The only thing that prevents deletion is being frozen:
+            const allCanBeDeleted = !parentIsFrozen && (this.isPartOfSelection
+                ? this.appStore
+                    .selectedFrames
+                    .every((frameId) => this.appStore.frameObjects[frameId].frozenState != FrozenState.FROZEN)
+                : this.frozenState != FrozenState.FROZEN);
+            if (!allCanBeDeleted) {
+                const cutMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.actionName === FrameContextMenuActionName.cut);
+                if(cutMenuPos > -1){
+                    this.frameContextMenuItems.splice(cutMenuPos, 1);
+                }
+                const deleteMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.actionName === FrameContextMenuActionName.delete);
+                if(deleteMenuPos > -1){
+                    this.frameContextMenuItems.splice(deleteMenuPos, 1);
+                }
+            }
+
+            // Our logic for disable/enable is as follows:
+            //   - On an individual frame level:
+            //     - Frozen frames, or children of frozen frames, can't be changed either way
+            //     - Blanks cannot directly be changed
+            //   - If there is a selection:
+            //     - If any are disabled and can be enabled, we show enable
+            //     - If any are enabled and can be disabled, we show disable
+            //     - Otherwise none can be changed, show Disable and grey it out
+            const canEnable = (frameId : number) => {
+                const frame = this.appStore.frameObjects[frameId];
+                return frame.isDisabled && !parentIsFrozen && frame.frozenState != FrozenState.FROZEN;
+            };
+            const canDisable = (frameId : number) => {
+                const frame = this.appStore.frameObjects[frameId];
+                return !frame.isDisabled && !parentIsFrozen && frame.frozenState != FrozenState.FROZEN
+                    && frame.frameType.type != AllFrameTypesIdentifier.blank;
+            };
+            
+            const anyCanEnable = this.isPartOfSelection ? this.appStore.selectedFrames.some(canEnable) : canEnable(this.frameId);
+            const anyCanDisable = this.isPartOfSelection ? this.appStore.selectedFrames.some(canDisable) : canDisable(this.frameId);
+            
+            const disableOrEnableOption = (!anyCanDisable && anyCanEnable) 
+                ?  {name: this.$i18n.t("contextMenu.enable"), method: this.enable, disabled: false}
+                :  {name: this.$i18n.t("contextMenu.disable"), method: this.disable, disabled: !anyCanDisable && !anyCanEnable};
             const enableDisableIndex = this.frameContextMenuItems.findIndex((entry) => entry.method === this.enable || entry.method === this.disable);
             Vue.set(
                 this.frameContextMenuItems,
@@ -747,7 +794,7 @@ export default Vue.extend({
                     adjustContextMenuPosition(event, contextMenu, positionForMenu);
                         
                     //We prepare the indexes of the "delete" entries to add events on. "Delete" will always be added.
-                    const deleteEntriesIndexes = [this.frameContextMenuItems.findIndex((option) => option.method == this.delete)];
+                    const deleteEntriesIndexes = allCanBeDeleted ? [this.frameContextMenuItems.findIndex((option) => option.method == this.delete)] : [];
                     if(canDeleteOuter){
                         deleteEntriesIndexes.push(this.frameContextMenuItems.findIndex((option) => option.method == this.deleteOuter));
                     }
@@ -1297,9 +1344,16 @@ export default Vue.extend({
 
         setCollapse(collapsedState: CollapsedState) {
             const frames = this.isPartOfSelection ? this.appStore.selectedFrames : [this.frameId];
-            for (let frame of frames) {
-                if (this.appStore.frameObjects[frame].frameType.allowedCollapsedStates.includes(collapsedState)) {
-                    this.appStore.setCollapseStatuses({[frame]: collapsedState});
+            for (let frameId of frames) {
+                const frame = this.appStore.frameObjects[frameId];
+                if (frame.frameType.allowedCollapsedStates.includes(collapsedState)) {
+                    // Extra rule: frozen functions can't be fully expanded
+                    if (frame.frameType.type == AllFrameTypesIdentifier.funcdef && frame.frozenState == FrozenState.FROZEN && collapsedState == CollapsedState.FULLY_VISIBLE) {
+                        // Do nothing
+                    }
+                    else {
+                        this.appStore.setCollapseStatuses({[frameId]: collapsedState});
+                    }
                 }
             }
         },
