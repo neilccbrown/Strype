@@ -733,7 +733,7 @@ export const useStore = defineStore("app", {
                     // The frame section containers are not cleared, but their children are!
                     this.frameObjects[frameIdInt].childrenIds.splice(0);
                     // The project description is a slot on a negative frame which must also be cleared:
-                    if (this.frameObjects[frameIdInt].frameType.type == AllFrameTypesIdentifier.projectDocumentation) {
+                    if (this.frameObjects[frameIdInt] && this.frameObjects[frameIdInt].frameType.type == AllFrameTypesIdentifier.projectDocumentation) {
                         this.frameObjects[frameIdInt].labelSlotsDict = cloneDeep(emptyState[this.projectDocumentationFrameId].labelSlotsDict);
                     }
                 }
