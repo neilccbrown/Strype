@@ -94,7 +94,7 @@
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCloudDriveHandlerComponentRefId, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getMenuLeftPaneUID, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, defaultEmptyStrypeLayoutDividerSettings, FrameObject, PythonExecRunningState, SelectAllFramesAction, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
+import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, CollapsedState, defaultEmptyStrypeLayoutDividerSettings, FrameObject, PythonExecRunningState, SelectAllFramesAction, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
 import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
@@ -485,8 +485,10 @@ export default Vue.extend({
                         const sectionId = (event.ctrlKey) ? this.appStore.getMainCodeFrameContainerId :  getFrameSectionIdFromFrameId(this.appStore.currentFrame.id);
                         const isSectionEmpty = (this.appStore.frameObjects[sectionId].childrenIds.length == 0);
                         const isMovingHome = (event.key == "Home");
+                        const firstVisibleSectionId = [this.appStore.importContainerId, this.appStore.defsContainerId, this.appStore.getMainCodeFrameContainerId]
+                            .find((frameContainerId) => (this.appStore.frameObjects[frameContainerId].collapsedState ?? CollapsedState.FULLY_VISIBLE) == CollapsedState.FULLY_VISIBLE) as number;
                         const newCaretId = (isMovingHome || isSectionEmpty) 
-                            ? ((isMovingHome && event.ctrlKey) ? this.appStore.getImportsFrameContainerId : sectionId) 
+                            ? ((isMovingHome && event.ctrlKey) ? firstVisibleSectionId : sectionId) 
                             : this.appStore.frameObjects[sectionId].childrenIds.at(-1) as number;
                         const newCaretPosition = (isMovingHome || isSectionEmpty) ? CaretPosition.body : CaretPosition.below;
                         this.appStore.toggleCaret({id: newCaretId, caretPosition: newCaretPosition});
