@@ -485,8 +485,10 @@ export default Vue.extend({
                         const sectionId = (event.ctrlKey) ? this.appStore.getMainCodeFrameContainerId :  getFrameSectionIdFromFrameId(this.appStore.currentFrame.id);
                         const isSectionEmpty = (this.appStore.frameObjects[sectionId].childrenIds.length == 0);
                         const isMovingHome = (event.key == "Home");
+                        const firstVisibleSectionId = [this.appStore.importContainerId, this.appStore.functionDefContainerId, this.appStore.getMainCodeFrameContainerId]
+                            .find((frameContainerId) => !this.appStore.frameObjects[frameContainerId].isCollapsed) as number;
                         const newCaretId = (isMovingHome || isSectionEmpty) 
-                            ? ((isMovingHome && event.ctrlKey) ? this.appStore.getImportsFrameContainerId : sectionId) 
+                            ? ((isMovingHome && event.ctrlKey) ? firstVisibleSectionId : sectionId) 
                             : this.appStore.frameObjects[sectionId].childrenIds.at(-1) as number;
                         const newCaretPosition = (isMovingHome || isSectionEmpty) ? CaretPosition.body : CaretPosition.below;
                         this.appStore.toggleCaret({id: newCaretId, caretPosition: newCaretPosition});
