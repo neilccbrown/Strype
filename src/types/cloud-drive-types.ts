@@ -133,7 +133,7 @@ export interface CloudDriveComponent {
     checkIsFileLocked: (existingFileId: string, onSuccess: VoidFunction, onFailure: VoidFunction) => void,
     doSaveFile: (saveFileId: string | undefined, projetLocation: string, fullFileName: string, fileContent: string, isExplictSave: boolean, onSuccess: (savedFileId: string) => void, onFailure: (errRespStatus: number) => void) => void,
     getCloudAPIStatusWhenLoadedOrFailed: () => Promise<CloudDriveAPIState>,
-    getPublicSharedProjectContent: (sharedFileId: string) => Promise<{ isSuccess: boolean, encodedURIFileContent: string, errorMsg: string }>,
+    getPublicSharedProjectContent: (sharedFileId: string) => Promise<{ isSuccess: boolean, projectName: string, decodedURIFileContent: string, errorMsg: string }>,
     getCurrentCloudFileCurrentSharingStatus: (saveFileId: string) => Promise<CloudFileSharingStatus>,
     shareCloudDriveFile: (saveFileId: string) => Promise<boolean>,
     restoreCloudDriveFileSharingStatus: (saveFileId: string) => Promise<void>,
