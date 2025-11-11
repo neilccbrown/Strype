@@ -174,21 +174,38 @@ export default Vue.extend({
         },
 
         
-        getPublicSharedProjectContent(sharedFileID: string): Promise<{isSuccess: boolean, encodedURIFileContent: string, errorMsg: string}> {            
+        getPublicSharedProjectContent(sharedFileID: string): Promise<{isSuccess: boolean, projectName: string, decodedURIFileContent: string, errorMsg: string}> {   
+            // We retrieve the project name first, then if successful, we retrieve the file content
             return gapi.client.request({
-                path: `https://www.googleapis.com/drive/v3/files/${sharedFileID}?alt=media&key=${this.devKey}`,
+                path: `https://www.googleapis.com/drive/v3/files/${sharedFileID}?key=${this.devKey}`,
                 method: "GET",
             })
-                .then((response) => {
-                    if(response.status == 200){
-                        return {isSuccess: true, encodedURIFileContent: decodeURIComponent(escape(response.body)), errorMsg: ""};  
+                .then((resp) => {
+                    if(resp.status == 200 && JSON.parse(resp.body).name){
+                        const projectName = JSON.parse(resp.body).name.replace(/\.spy$/,"");
+                        // Now retrieve the conten.
+                        return gapi.client.request({
+                            path: `https://www.googleapis.com/drive/v3/files/${sharedFileID}?alt=media&key=${this.devKey}`,
+                            method: "GET",
+                        })
+                            .then((response) => {
+                                if(response.status == 200){
+                                    return {isSuccess: true, projectName: projectName, decodedURIFileContent: decodeURIComponent(escape(response.body)), errorMsg: ""};  
+                                }
+                                else{
+                                    return {isSuccess: false, projectName: "", decodedURIFileContent: "", errorMsg: response.status?.toString()??"unknown"};
+                                }
+                            })
+                            .catch((reason) => {
+                                return {isSuccess: false, projectName: "", decodedURIFileContent: "", errorMsg: (reason?.result?.error?.message)??(reason?.status)};
+                            });
                     }
                     else{
-                        return {isSuccess: false, encodedURIFileContent: "", errorMsg: response.status?.toString()??"unknown"};
+                        return {isSuccess: false, projectName: "", decodedURIFileContent: "", errorMsg: resp.status?.toString()??"unknown"};
                     }
                 })
                 .catch((reason) => {
-                    return {isSuccess: false, encodedURIFileContent: "", errorMsg: (reason?.result?.error?.message)??(reason?.status)};
+                    return {isSuccess: false, projectName: "", decodedURIFileContent: "", errorMsg: (reason?.result?.error?.message)??(reason?.status)};
                 });
         },
 
