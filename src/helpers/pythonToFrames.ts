@@ -805,11 +805,12 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
     if (p.children == null || p.children.length == 0) {
         let val = p.value ?? "";
         // Strings can be prefixed by combinations of rbf (case insensitive):
-        // The regex doesn't enforce that the quotes match, but the parser will have already
-        // made sure that is the case:
-        const strMatch = /([rbfRBF]*)(["'])(.*)["']/.exec(val);
+        // The regex doesn't enforce that the quotes match,
+        // but the parser will have already made sure that is the case:
+        // ([\s\S] matches any char, including newlines, which might be present if it's triple quoted):
+        const strMatch = /^([rbfRBF]*)(["'])([\s\S]+)$/.exec(val);
         if (strMatch) {
-            const str : StringSlot = {code: strMatch[3], quote: strMatch[2]};
+            const str : StringSlot = {code: strMatch[3].slice(0, strMatch[3].length - strMatch[2].length), quote: strMatch[2]};
             return {fields: [{code: strMatch[1]}, str, {code: ""}], operators: [{code: ""}, {code: ""}]};
         }
         else {

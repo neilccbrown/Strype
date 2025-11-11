@@ -133,7 +133,7 @@ function transformSlotLevel(slots: SlotsStructure, topLevel?: {frameType: string
         if (slots.operators[i].code.trim() === "") {
             const before = slots.fields[i];
             const blankBefore = isFieldBaseSlot(before) && before.code.trim() === "";
-            const rbfBefore = isFieldBaseSlot(before) && before.code.match(/[rbfRBF]+/);
+            const rbfBefore = isFieldBaseSlot(before) && before.code.match(/^[rbfRBF]+$/);
             if (rbfBefore && isFieldStringSlot(slots.fields[i+1])) {
                 // This is fine, but still need to scan the rest of the items so continue the loop
             }
