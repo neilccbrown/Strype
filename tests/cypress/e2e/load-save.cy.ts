@@ -297,15 +297,18 @@ describe("Tests loading project descriptions", () => {
 });
 
 describe("Tests loading/saving classes", () => {
-    it("Loads/saves classes", () => {
+    it("Loads/saves classes without images", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/oop-crab-no-images.spy");
     });
-    it("Loads/saves classes", () => {
+    it("Loads/saves classes with images", () => {
         if (Cypress.env("mode") == "microbit") {
             // No image literals in microbit mode:
             return;
         }
         testRoundTripImportAndDownload("tests/cypress/fixtures/oop-crab.spy");
+    });
+    it("Loads/saves classes with format strings", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/students.spy");
     });
 });
 
