@@ -1,10 +1,7 @@
 import {Page, test, expect} from "@playwright/test";
 import {doPagePaste} from "../support/editor";
 
-let browser = "";
-
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    browser = browserName;
     if (browserName === "webkit" && process.platform === "win32") {
         // On Windows+Webkit it just can't seem to load the page for some reason:
         testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
