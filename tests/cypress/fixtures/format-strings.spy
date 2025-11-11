@@ -1,0 +1,11 @@
+#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+print(f"Hi there") 
+x  = 7+3 
+print(f"X is: {x} (double quotes)") 
+print(f'X is: {x} (single quotes)') 
+print(1+F"Invalid as missing closing: {x") 
+y  = B'1'-r'2'+rF'3'+print(f"''")-br"1" 
+#(=> Section:End

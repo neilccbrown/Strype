@@ -3,7 +3,7 @@ import {hasEditorCodeErrors, trimmedKeywordOperators} from "@/helpers/editor";
 import {generateFlatSlotBases, retrieveSlotByPredicate} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
+import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 import {AppSPYFullPrefix} from "@/main";
 /*IFTRUE_isPython */
@@ -129,10 +129,15 @@ function transformSlotLevel(slots: SlotsStructure, topLevel?: {frameType: string
         // - a round bracket (method call)
         // - a square bracket (list indexing)
         // OR the left-hand side is blank
+        // OR the left-hand side is [rbfRBF]+ and the right-hand side is a string literal
         if (slots.operators[i].code.trim() === "") {
             const before = slots.fields[i];
             const blankBefore = isFieldBaseSlot(before) && before.code.trim() === "";
-            if (!blankBefore) {
+            const rbfBefore = isFieldBaseSlot(before) && before.code.match(/[rbfRBF]+/);
+            if (rbfBefore && isFieldStringSlot(slots.fields[i+1])) {
+                // This is fine, but still need to scan the rest of the items so continue the loop
+            }
+            else if (!blankBefore) {
                 if (i + 1 < slots.fields.length) {
                     const after = slots.fields[i + 1];
                     if (!(isFieldBaseSlot(after) && after.code == "") && !(isFieldBracketedSlot(after) && (after.openingBracketValue == "(" || after.openingBracketValue == "["))) {

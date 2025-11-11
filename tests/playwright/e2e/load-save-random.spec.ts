@@ -1079,4 +1079,11 @@ test.describe("Enters, saves and loads specific frames", () => {
             {frameType: "library", slotContent: ["(#‘+’_$\\\\) not in "]},
         ], [], []]);
     });
+
+    test("Format strings", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "if", slotContent: ["f‘Hello’"], body: [], joint: []},
+            {frameType: "funccall", slotContent: ["print(f‘{x}’)"]},
+        ]]);
+    });
 });
