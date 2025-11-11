@@ -1113,4 +1113,11 @@ test.describe("Enters, saves and loads specific frames", () => {
             {frameType: "funcdef", slotContent: ["foo", "", "Func doc, this is before # this is after\nThis is another line with # in it\nThis last one too#"], body: [], disabled: true},
         ], []], "Project doc, this is before # this is after\nThis is another line with # in it\nThis last one too#");
     });
+
+    test("Format strings", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "if", slotContent: ["f‘Hello’"], body: [], joint: []},
+            {frameType: "funccall", slotContent: ["print(f‘{x}’)"]},
+        ]]);
+    });
 });

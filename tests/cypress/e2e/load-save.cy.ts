@@ -308,3 +308,9 @@ describe("Tests loading/saving classes", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/oop-crab.spy");
     });
 });
+
+describe("Tests loading/saving format strings", () => {
+    it("Loads/saves format strings", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/format-strings.spy");
+    });
+});

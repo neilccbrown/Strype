@@ -306,9 +306,9 @@ export default Vue.extend({
             return Promise.resolve();
         },
         
-        getPublicSharedProjectContent(sharedFileID: string): Promise<{isSuccess: boolean, encodedURIFileContent: string, errorMsg: string}> {            
+        getPublicSharedProjectContent(sharedFileID: string): Promise<{isSuccess: boolean, projectName: string, decodedURIFileContent: string, errorMsg: string}> {            
             // With OneDrive, it seems we can't generate a permanent raw file link, so we won't get here.
-            return Promise.resolve({isSuccess: false, encodedURIFileContent: "", errorMsg: "Not supported."});
+            return Promise.resolve({isSuccess: false, projectName: "", decodedURIFileContent: "", errorMsg: "Not supported."});
         },
 
         async shareCloudDriveFile(saveFileId: string): Promise<boolean>{
