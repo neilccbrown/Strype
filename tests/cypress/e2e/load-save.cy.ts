@@ -285,3 +285,9 @@ describe("Tests loading project descriptions", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic.spy");
     });
 });
+
+describe("Tests loading/saving format strings", () => {
+    it("Loads/saves format strings", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/format-strings.spy");
+    });
+});

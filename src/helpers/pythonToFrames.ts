@@ -804,9 +804,14 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
     // Handle terminal nodes by just plonking them into a single-field slot:
     if (p.children == null || p.children.length == 0) {
         let val = p.value ?? "";
-        if (val.startsWith("\"") || val.startsWith("'")) {
-            const str : StringSlot = {code: val.slice(1, val.length - 1), quote: val.slice(0, 1)};
-            return {fields: [{code: ""}, str, {code: ""}], operators: [{code: ""}, {code: ""}]};
+        // Strings can be prefixed by combinations of rbf (case insensitive):
+        // The regex doesn't enforce that the quotes match,
+        // but the parser will have already made sure that is the case:
+        // ([\s\S] matches any char, including newlines, which might be present if it's triple quoted):
+        const strMatch = /^([rbfRBF]*)(["'])([\s\S]+)$/.exec(val);
+        if (strMatch) {
+            const str : StringSlot = {code: strMatch[3].slice(0, strMatch[3].length - strMatch[2].length), quote: strMatch[2]};
+            return {fields: [{code: strMatch[1]}, str, {code: ""}], operators: [{code: ""}, {code: ""}]};
         }
         else {
             if (val == STRYPE_EXPRESSION_BLANK) {
