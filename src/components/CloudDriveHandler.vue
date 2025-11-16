@@ -282,10 +282,19 @@ export default Vue.extend({
                         let alertMsgKey = "", alertParams = "";
                         // Attempt the retrieval of the file, if the Cloud Drive supports it
                         return cloudDriveComponent.getPublicSharedProjectContent(sharedFileID)
-                            .then(({isSuccess, encodedURIFileContent, errorMsg}) => {
+                            .then(({isSuccess, projectName, decodedURIFileContent, errorMsg}) => {
                                 if(isSuccess){
-                                    return this.appStore.setStateFromJSONStr({stateJSONStr: decodeURIComponent(escape(encodedURIFileContent)), showMessage: false })
+                                    // We need to check if we're loading the new SPY format or the old one.
+                                    const isSpyNewFormat = decodedURIFileContent.startsWith(AppSPYFullPrefix);
+                                    const loadFn = (isSpyNewFormat) 
+                                        ? (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(decodedURIFileContent, projectName, -1, false)
+                                        : this.appStore.setStateFromJSONStr({stateJSONStr: decodedURIFileContent, showMessage: false });                            
+                                    return loadFn
                                         .then(() => {
+                                            // If we have loaded the project with the new SPY format, the project name isn't part of the file, so we need to set it explicitly
+                                            if(isSpyNewFormat){
+                                                this.appStore.projectName  = projectName;
+                                            }
                                             alertMsgKey = "appMessage.retrievedSharedGenericProject";
                                             alertParams = this.appStore.projectName;
 
@@ -295,7 +304,8 @@ export default Vue.extend({
                                         .catch((reason) => {
                                             alertMsgKey = "errorMessage.retrievedSharedGenericProject";
                                             alertParams = reason;
-                                        });   
+                                        });
+                                
                                 }
                                 else{
                                     alertMsgKey = "errorMessage.retrievedSharedGenericProject";
