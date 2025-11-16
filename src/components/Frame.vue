@@ -553,6 +553,7 @@ export default Vue.extend({
             }
             // For freezing, we don't show it for bulk operations:
             let someFrozenShowing = false;
+            const errorsInFrameOrChild = frameOrChildHasErrors(this.frameId);
             // We take it out if the frame doesn't allow it or it's already in that state:
             removeIf(this.frameContextMenuItems, (x) => {
                 if (x.actionName === FrameContextMenuActionName.freeze) {
@@ -563,7 +564,7 @@ export default Vue.extend({
                     someFrozenShowing = someFrozenShowing || !remove;
                     
                     // Check if there are precompile errors on any of our slots anywhere in the frame:
-                    if (frameOrChildHasErrors(this.frameId)) {
+                    if (errorsInFrameOrChild) {
                         x.name = this.$i18n.t("contextMenu.cannotFreezeErrors") as string;
                         x.disabled = true;
                     }
@@ -574,6 +575,13 @@ export default Vue.extend({
                     const remove = this.frozenState as FrozenState === FrozenState.UNFROZEN || !this.frameType.allowedFrozenStates.includes(FrozenState.UNFROZEN);
                     someFrozenShowing = someFrozenShowing || !remove;
                     return remove;
+                }
+                else if (x.actionName === FrameContextMenuActionName.collapseToHeader || x.actionName === FrameContextMenuActionName.collapseToDocumentation) {
+                    if (errorsInFrameOrChild) {
+                        x.name = this.$i18n.t("contextMenu.cannotCollapseErrors") as string;
+                        x.disabled = true;
+                    }
+                    return false;
                 }
                 else {
                     return false; // Leave everything else untouched

@@ -926,7 +926,8 @@ export function frameOrChildHasErrors(frameId : number) : boolean {
 function changeWherePossible(frames: FrameObject[], target: CollapsedState) : Record<number, CollapsedState> {
     const r : Record<number, CollapsedState> = {};
     frames.forEach((f) => {
-        if (f.frameType.allowedCollapsedStates.includes(target)) {
+        if (f.frameType.allowedCollapsedStates.includes(target) &&
+            (target == CollapsedState.FULLY_VISIBLE || !frameOrChildHasErrors(f.id))) {
             r[f.id] = target;
         }
         else {
@@ -965,9 +966,11 @@ export function calculateNextCollapseState(frameList: FrameObject[], parentIsFro
     const currentAndPossibleStates = new Map<number, {current: CollapsedState, possible: CollapsedState[]}>();
     for (const frame of frameList) {
         const possible : CollapsedState[] = [];
+        const hasError = frameOrChildHasErrors(frame.id);
         for (const candidate of allStates) {
             const allowed = 
                 frame.frameType.allowedCollapsedStates.includes(candidate) &&
+                (candidate == CollapsedState.FULLY_VISIBLE || !hasError) &&
                 !(candidate == CollapsedState.FULLY_VISIBLE && (parentIsFrozen || (frame.frameType.type == AllFrameTypesIdentifier.funcdef && frame.frozenState == FrozenState.FROZEN)));
             if (allowed) {
                 possible.push(candidate);
