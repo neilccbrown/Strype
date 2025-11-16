@@ -379,7 +379,7 @@ Alpha(None)
 `;
 
 test.describe("Frozen state deals with errors", () => {
-    test("Cannot freeze if there is a syntax error", async ({page}) => {
+    test("Cannot freeze if there is a syntax error #1", async ({page}) => {
         await loadContent(page, inputWithBlank);
         //await page.getByText("Run").click();
         // Wait a moment for errors to be checked:
@@ -391,7 +391,7 @@ test.describe("Frozen state deals with errors", () => {
         // We should then not be frozen, so should be unmodified state:
         await saveAndCheck(page, inputWithBlank);
     });
-    test("Can freeze if there is a runtime error", async ({page}) => {
+    test("Can freeze if there is a runtime error #1", async ({page}) => {
         await loadContent(page, inputWhichWillRuntimeError);
         // Run to provoke the error, and check it is there:
         await page.getByText("Run").click();
@@ -403,7 +403,7 @@ test.describe("Frozen state deals with errors", () => {
         // We should then be frozen, despite there being an error because it is a runtime error:
         await saveAndCheck(page, testState({"class": "Frozen", "__init__": "FoldToHeader"}, inputWhichWillRuntimeError));
     });
-    test("Frozen frame unfolds if there is a runtime error", async ({page}) => {
+    test("Frozen frame unfolds if there is a runtime error #1", async ({page}) => {
         await loadContent(page, inputWhichWillRuntimeError);
         // Freeze:
         await makeFrozen(page, "class ");
@@ -414,6 +414,30 @@ test.describe("Frozen state deals with errors", () => {
         await page.getByText("Run").click();
         await expect(await page.locator(".fa-exclamation-triangle")).toBeVisible();
         expect(await page.locator("#peaConsole").inputValue()).toContain("object of type 'NoneType' has no len()");
+    });
+    
+    const inputWithTigerPythonError = `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+def foo (name,ID ) :
+    # Mismatched format string:
+    print(f"Student: {name} ({ID)") 
+#(=> Section:Main
+foo("Anon",7) 
+#(=> Section:End
+`;
+
+    test("Cannot freeze if there is a syntax error #2", async ({page}) => {
+        await loadContent(page, inputWithTigerPythonError);
+        //await page.getByText("Run").click();
+        // Wait a moment for errors to be checked:
+        await page.waitForTimeout(2000);
+        // Will Timeout when it doesn't find the menu item:
+        await expect(makeFrozen(page, "def")).rejects.toThrow(/Timeout/i);
+        // Menu remains though so we need to dismiss it:
+        await page.keyboard.press("Escape");
+        // We should then not be frozen, so should be unmodified state:
+        await saveAndCheck(page, inputWithTigerPythonError);
     });
 });
 
