@@ -547,7 +547,6 @@ export function getFrameComponent(frameId: number, innerLookDetails?: {framePare
         // We don't need to parse recursively for getting the refs/frames as we can just find out what frame container it is in first directly...
         // And if we are already in the container (body), then we just return this component 
         const frameContainerId = (frameId < 0) ? frameId : getFrameContainer(frameId);
-        console.log("fCId: " + frameContainerId + " UID: " + getFrameContainerUID(frameContainerId));
         const containerElementRefs = vm.$root.$children[0].$refs[getFrameContainerUID(frameContainerId)] as (Vue|Element)[]; // Retrieve in App
         if(containerElementRefs) {
             result = (frameId < 0) 
