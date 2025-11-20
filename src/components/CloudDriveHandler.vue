@@ -374,10 +374,11 @@ export default Vue.extend({
                     let isStrypeForNewCloudDriveTargetSave = saveReason == SaveRequestReason.saveProjectAtLocation 
                         && this.isSwappingCloudDriveTarget(cloudTarget)
                         && ((this.$parent as InstanceType<typeof Menu>).currentDriveLocation == "Strype");
-                    const createStrypeFolder = isStrypeForNewCloudDriveTargetSave || !(this.appStore.strypeProjectLocation) || (typeof this.appStore.strypeProjectLocation != "string");
+                    const updateStrypeProjectLocation =  isStrypeForNewCloudDriveTargetSave || (typeof this.appStore.strypeProjectLocation != "string") || this.appStore.syncTarget == StrypeSyncTarget.none;
+                    const createStrypeFolder = updateStrypeProjectLocation || !(this.appStore.strypeProjectLocation);
                     cloudDriveComponent?.checkDriveStrypeOrOtherFolder(createStrypeFolder, createStrypeFolder, (strypeFolderId: string | null) => {
                         // Show the file picker to select a folder (with default location) if the location specified doesn't exist, or if the user asked for changing it
-                        if(strypeFolderId != null && (this.appStore.strypeProjectLocation == undefined || isStrypeForNewCloudDriveTargetSave)){
+                        if(strypeFolderId != null && (this.appStore.strypeProjectLocation == undefined  || updateStrypeProjectLocation)){
                             // No location is set, we set the Strype folder
                             this.appStore.strypeProjectLocation = strypeFolderId;
                             this.appStore.strypeProjectLocationAlias = "Strype";
