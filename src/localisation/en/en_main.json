@@ -187,6 +187,7 @@
     "collapseHeader": "Collapsed View",
     "collapseDocumentation": "Interface View",
     "collapseFull": "Expanded View",
+    "cannotCollapseErrors": "Cannot collapse with errors",
     "freeze": "Freeze",
     "unfreeze": "Unfreeze", 
     "cannotFreezeErrors": "Cannot freeze with errors"

@@ -35,7 +35,7 @@ async function saveAndCheck(page: Page, expectedSPY: string) {
 
 async function clickFoldFor(page: Page, identifyingText: string) : Promise<void> {
     // Find the span with text "top1"
-    const header = page.locator("span", { hasText: identifyingText });
+    const header = page.locator("span,div", { hasText: identifyingText });
     // Find its frame header ancestor:
     const ancestor = header.locator("xpath=ancestor::*[contains(@class, \"frame-header-div-line\")]");
     const control = ancestor.locator(":scope > .frame-controls-container > .folding-control");
@@ -46,7 +46,7 @@ async function clickFoldFor(page: Page, identifyingText: string) : Promise<void>
 
 async function clickFoldChildrenFor(page: Page, identifyingText: string) : Promise<void> {
     // Find the span with text "top1"
-    const header = page.locator("span", { hasText: identifyingText });
+    const header = page.locator("span,div", { hasText: identifyingText });
     // Find its frame header ancestor:
     const ancestor = header.locator("xpath=ancestor::*[contains(@class, \"frame-header\")]");
     const control = ancestor.locator(":scope > .frame-header-div-line > .fold-children-control");
@@ -68,7 +68,7 @@ async function makeUnfrozen(page: Page, identifyingText: string) : Promise<void>
 }
 
 async function foldViaMenu(page: Page, identifyingText: string, foldTo: CollapsedState) : Promise<void> {
-    const ancestor = page.locator(".frame-header:has(span:has-text('" + identifyingText + "'))");
+    const ancestor = page.locator(".frame-header:has(span:has-text('" + identifyingText + "'), div:has-text('" + identifyingText + "'))");
     await ancestor.click({button: "right"});
     let name : string;
     switch (foldTo) {
@@ -379,9 +379,8 @@ Alpha(None)
 `;
 
 test.describe("Frozen state deals with errors", () => {
-    test("Cannot freeze if there is a syntax error", async ({page}) => {
+    test("Cannot freeze if there is a syntax error #1", async ({page}) => {
         await loadContent(page, inputWithBlank);
-        //await page.getByText("Run").click();
         // Wait a moment for errors to be checked:
         await page.waitForTimeout(2000);
         // Will Timeout when it doesn't find the menu item:
@@ -391,7 +390,7 @@ test.describe("Frozen state deals with errors", () => {
         // We should then not be frozen, so should be unmodified state:
         await saveAndCheck(page, inputWithBlank);
     });
-    test("Can freeze if there is a runtime error", async ({page}) => {
+    test("Can freeze if there is a runtime error #1", async ({page}) => {
         await loadContent(page, inputWhichWillRuntimeError);
         // Run to provoke the error, and check it is there:
         await page.getByText("Run").click();
@@ -403,7 +402,7 @@ test.describe("Frozen state deals with errors", () => {
         // We should then be frozen, despite there being an error because it is a runtime error:
         await saveAndCheck(page, testState({"class": "Frozen", "__init__": "FoldToHeader"}, inputWhichWillRuntimeError));
     });
-    test("Frozen frame unfolds if there is a runtime error", async ({page}) => {
+    test("Frozen frame unfolds if there is a runtime error #1", async ({page}) => {
         await loadContent(page, inputWhichWillRuntimeError);
         // Freeze:
         await makeFrozen(page, "class ");
@@ -415,5 +414,117 @@ test.describe("Frozen state deals with errors", () => {
         await expect(await page.locator(".fa-exclamation-triangle")).toBeVisible();
         expect(await page.locator("#peaConsole").inputValue()).toContain("object of type 'NoneType' has no len()");
     });
+    
+    const inputWithTigerPythonError = `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+def foo (name,ID ) :
+    # Mismatched format string:
+    print(f"Student: {name} ({ID)") 
+#(=> Section:Main
+foo("Anon",7) 
+#(=> Section:End
+`;
+
+    test("Cannot freeze if there is a syntax error #2", async ({page}) => {
+        await loadContent(page, inputWithTigerPythonError);
+        // Wait a moment for errors to be checked:
+        await page.waitForTimeout(2000);
+        // Will Timeout when it doesn't find the menu item:
+        await expect(makeFrozen(page, "def")).rejects.toThrow(/Timeout/i);
+        // Menu remains though so we need to dismiss it:
+        await page.keyboard.press("Escape");
+        // We should then not be frozen, so should be unmodified state:
+        await saveAndCheck(page, inputWithTigerPythonError);
+    });
 });
+
+test.describe("Folding state deals with errors", () => {
+    test("Cannot fold if there is a syntax error #1", async ({page}) => {
+        await loadContent(page, inputWithBlank);
+        // Wait a moment for errors to be checked:
+        await page.waitForTimeout(2000);
+        // Will Timeout when it doesn't find the menu item:
+        await expect(foldViaMenu(page, "Alpha", CollapsedState.ONLY_HEADER_VISIBLE)).rejects.toThrow(/Timeout/i);
+        // Menu remains though so we need to dismiss it:
+        await page.keyboard.press("Escape");
+        // Try also via the clickable control:
+        await clickFoldFor(page, "Alpha");
+        
+        // We should then not be folded, so should be unmodified state:
+        await saveAndCheck(page, inputWithBlank);
+    });
+    test("Can fold if there is a runtime error #1", async ({page}) => {
+        await loadContent(page, inputWhichWillRuntimeError);
+        // Run to provoke the error, and check it is there:
+        await page.getByText("Run").click();
+        await expect(await page.locator(".fa-exclamation-triangle")).toBeVisible();
+        expect(await page.locator("#peaConsole").inputValue()).toContain("object of type 'NoneType' has no len()");
+
+        // Then try to fold:
+        await clickFoldFor(page, "class");
+        // We should then be folded, despite there being an error because it is a runtime error:
+        await saveAndCheck(page, testState({"class": "FoldToHeader"}, inputWhichWillRuntimeError));
+    });
+    test("Folded frame unfolds if there is a runtime error #1", async ({page}) => {
+        await loadContent(page, inputWhichWillRuntimeError);
+        // Freeze:
+        await clickFoldFor(page, "class ");
+        // We should then be folded, despite there being an error because it is a runtime error:
+        await saveAndCheck(page, testState({"class": "FoldToHeader"}, inputWhichWillRuntimeError));
+
+        // Run to provoke the error, and check it is there:
+        await page.getByText("Run").click();
+        await expect(await page.locator(".fa-exclamation-triangle")).toBeVisible();
+        expect(await page.locator("#peaConsole").inputValue()).toContain("object of type 'NoneType' has no len()");
+    });
+
+    const inputWithTigerPythonError = `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+def foo (name,ID ) :
+    # Mismatched format string:
+    print(f"Student: {name} ({ID)") 
+#(=> Section:Main
+foo("Anon",7) 
+#(=> Section:End
+`;
+
+    test("Cannot fold if there is a syntax error #2", async ({page}) => {
+        await loadContent(page, inputWithTigerPythonError);
+        // Wait a moment for errors to be checked:
+        await page.waitForTimeout(2000);
+        // Will Timeout when it doesn't find the menu item:
+        await expect(foldViaMenu(page, "def", CollapsedState.HEADER_AND_DOC_VISIBLE)).rejects.toThrow(/Timeout/i);
+        // Menu remains though so we need to dismiss it:
+        await page.keyboard.press("Escape");
+        await clickFoldFor(page, "def");
+        // We should then not be folded, so should be unmodified state:
+        await saveAndCheck(page, inputWithTigerPythonError);
+    });
+    
+    const inputWithNestedTigerPythonError = `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+class Alpha  :
+    def hasNoError (self, ) :
+        return 42 
+    def __init__ (self,y ) :
+        self.x  = f"{len(y)" 
+#(=> Section:Main
+Alpha(None) 
+#(=> Section:End
+`;
+
+    test("Cannot fold if there is a syntax error #3", async ({page}) => {
+        await loadContent(page, inputWithNestedTigerPythonError);
+        // Wait a moment for errors to be checked:
+        await page.waitForTimeout(2000);
+        // Folding all children should not fold it:
+        await clickFoldChildrenFor(page, "class");
+        // We should then only have folded the one without an error:
+        await saveAndCheck(page, testState({"hasNoError": "FoldToHeader"}, inputWithNestedTigerPythonError));
+    });
+});
+
 

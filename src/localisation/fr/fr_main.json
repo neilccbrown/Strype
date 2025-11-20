@@ -189,6 +189,7 @@
     "collapseHeader": "Vue Réduite",
     "collapseDocumentation": "Vue Interface",
     "collapseFull": "Vue Dévelopée",
+    "cannotCollapseErrors": "Réduction impossible avec des erreurs",
     "freeze": "Verrouiller",
     "unfreeze": "Déverrouiller", 
     "cannotFreezeErrors": "Verrouillage impossible avec des erreurs"      

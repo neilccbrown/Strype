@@ -709,8 +709,9 @@ export const getAboveFrameCaretPosition = function (frameId: number): Navigation
     // if we deal with a block frame which is NOT disabled*, we look for the caret position before that block frame "body" position (which is the first position for that block frames)
     // if we deal with a statement frame or a disabled block frame*, we look for the caret position before the statement frame "below" position (which is the first position for that statement frame)
     // (*) that is because a disabled block frame is seen as a "unit", no caret position exist within that disabled block frame
+    const frame = useStore().frameObjects[frameId];
     const referenceFramePosIndex = availablePositions.findIndex((navPos) => navPos.frameId == frameId
-        && navPos.caretPosition == ((useStore().frameObjects[frameId].frameType.allowChildren && !useStore().frameObjects[frameId].isDisabled) ? CaretPosition.body : CaretPosition.below));
+        && navPos.caretPosition == ((frame.frameType.allowChildren && !frame.isDisabled && (frame.collapsedState ?? CollapsedState.FULLY_VISIBLE) == CollapsedState.FULLY_VISIBLE) ? CaretPosition.body : CaretPosition.below));
     
     // step 3 --> get the position before that (a frame is at least contained in a frame container, so position index can't be 0)
     const prevCaretPos = availablePositions[referenceFramePosIndex - 1];
@@ -925,7 +926,8 @@ export function frameOrChildHasErrors(frameId : number) : boolean {
 function changeWherePossible(frames: FrameObject[], target: CollapsedState) : Record<number, CollapsedState> {
     const r : Record<number, CollapsedState> = {};
     frames.forEach((f) => {
-        if (f.frameType.allowedCollapsedStates.includes(target)) {
+        if (f.frameType.allowedCollapsedStates.includes(target) &&
+            (target == CollapsedState.FULLY_VISIBLE || !frameOrChildHasErrors(f.id))) {
             r[f.id] = target;
         }
         else {
@@ -964,9 +966,11 @@ export function calculateNextCollapseState(frameList: FrameObject[], parentIsFro
     const currentAndPossibleStates = new Map<number, {current: CollapsedState, possible: CollapsedState[]}>();
     for (const frame of frameList) {
         const possible : CollapsedState[] = [];
+        const hasError = frameOrChildHasErrors(frame.id);
         for (const candidate of allStates) {
             const allowed = 
                 frame.frameType.allowedCollapsedStates.includes(candidate) &&
+                (candidate == CollapsedState.FULLY_VISIBLE || !hasError) &&
                 !(candidate == CollapsedState.FULLY_VISIBLE && (parentIsFrozen || (frame.frameType.type == AllFrameTypesIdentifier.funcdef && frame.frozenState == FrozenState.FROZEN)));
             if (allowed) {
                 possible.push(candidate);

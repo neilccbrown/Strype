@@ -524,6 +524,10 @@ export function getFrameComponent(frameId: number, innerLookDetails?: {framePare
                 // That frame isn't the one we want, but maybe it contains the one we want so we look into it.
                 // We first look into the children, the joint frames (which may have children as well)
                 const frameBodyComponent = (childFrameComponent.$refs[getFrameBodyRef()] as InstanceType<typeof FrameBody>); // There is 1 body in a frame, no v-for is used, we have 1 element
+                if (!frameBodyComponent){
+                    // This can happen when a frame is folded; have to return undefined:
+                    return undefined;
+                }
                 result = getFrameComponent(frameId, {frameParentComponent: frameBodyComponent, listOfFrameIdToCheck: useStore().frameObjects[childFrameId].childrenIds});
 
                 if(!result){
@@ -542,7 +546,7 @@ export function getFrameComponent(frameId: number, innerLookDetails?: {framePare
         // When we look for the frame from the whole editor, we need to find in wich frame container that frame lives.
         // We don't need to parse recursively for getting the refs/frames as we can just find out what frame container it is in first directly...
         // And if we are already in the container (body), then we just return this component 
-        const frameContainerId = (frameId < 0) ? frameId : getFrameContainer(frameId); 
+        const frameContainerId = (frameId < 0) ? frameId : getFrameContainer(frameId);
         const containerElementRefs = vm.$root.$children[0].$refs[getFrameContainerUID(frameContainerId)] as (Vue|Element)[]; // Retrieve in App
         if(containerElementRefs) {
             result = (frameId < 0) 
