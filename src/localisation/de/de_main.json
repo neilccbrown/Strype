@@ -77,7 +77,7 @@
     "editorFileUpload": "Deine Datei wird in den Editor geladen...",
     "editorFileUploadWrongVersion": "Dieser Code wurde mit einer anderen Version des Editors erstellt.\nImportieren kann womöglich Fehler beinhalten.\n\nFortfahren?",
     "importsContainer": "Importe:",
-    "funcDefsContainer": "Funktionsdefinitionen:",
+    "defsContainer": "Definitionen:",
     "mainContainer": "Mein Code:",
     "preCompiledErrorNeedFix": "Bitte erst die existierenden Fehler beheben.",
     "noWebUSB": "Dieser Browser unterstützt keine webUSB-Verbindungen. Bitte benutze einen anderen Browser (z.B. Google Chrome).",

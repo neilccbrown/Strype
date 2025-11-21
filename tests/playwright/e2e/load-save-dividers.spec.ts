@@ -1,13 +1,14 @@
 import {Page, test, expect} from "@playwright/test";
 import {load, save} from "../support/loading-saving";
 import fs from "fs";
-
-// The tests in this file can't run in parallel because they download
-// to the same filenames, so need to run one at a time.
-test.describe.configure({ mode: "serial" });
+import { randomUUID } from "node:crypto";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-
+    if (browserName === "webkit" && process.platform === "win32") {
+        // On Windows+Webkit it just can't seem to load the page for some reason:
+        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
+    }
+    
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
     //scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
@@ -25,7 +26,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
 async function loadHeader(page: Page, spyToLoad: string) : Promise<void> {
     // The recursive option stops it failing if the dir exists:
     fs.mkdirSync("tests/cypress/downloads/", { recursive: true });
-    const path = "tests/cypress/downloads/toload.spy";
+    const path = `tests/cypress/downloads/toload-${randomUUID()}.spy`;
     fs.writeFileSync(path, spyToLoad + `
 #(=> Section:Imports
 #(=> Section:Definitions

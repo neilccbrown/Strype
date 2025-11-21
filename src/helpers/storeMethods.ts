@@ -2,12 +2,13 @@ import { getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
-import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameLabel, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
+import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameLabel, FrameObject, FrozenState, getFrameDefType, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
 import Vue from "vue";
 import { checkEditorCodeErrors, countEditorCodeErrors, getCaretContainerUID, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID } from "./editor";
 import { nextTick } from "@vue/composition-api";
-import { cloneDeep } from "lodash";
+import { cloneDeep, isEqual } from "lodash";
 import scssVars from "@/assets/style/_export.module.scss";
+import { $enum } from "ts-enum-util";
 
 export const retrieveSlotFromSlotInfos = (slotCoreInfos: SlotCoreInfos): FieldSlot => {
     // Retrieve the slot from its id (used for UI), check generateFlatSlotBases() for IDs explanation    
@@ -275,7 +276,7 @@ export const removeFrameInFrameList = (frameId: number): void => {
 };
 
 // Returns the parentId of the frame or if it is a joint frame returns the parentId of the JointParent.
-export const getParent = (currentFrame: FrameObject): number => {
+export const getParentId = (currentFrame: FrameObject): number => {
     let parentId = 0;
     if(currentFrame.id !== 0){
         parentId = (currentFrame.jointParentId > 0) ? useStore().frameObjects[currentFrame.jointParentId].parentId : currentFrame.parentId;
@@ -299,7 +300,7 @@ export const getFrameSectionIdFromFrameId = (frameId: number): number => {
     // (We know when we reached a frame section when the id of that frame is negative; all frame sections are defined with a negative index.) 
     let parentId = frameId;
     while(parentId > 0){
-        parentId = getParent(useStore().frameObjects[parentId]);
+        parentId = getParentId(useStore().frameObjects[parentId]);
     }    
     return parentId;
 };
@@ -327,7 +328,7 @@ export const childrenListWithJointFrames = (currentFrameId: number, caretPositio
             
     // Create the list of children + joints with which the caret will work with
     let childrenAndJointFramesIds = [] as number[];
-    const parentId = getParent(currentFrame);
+    const parentId = getParentId(currentFrame);
 
     childrenAndJointFramesIds = [...useStore().frameObjects[parentId].childrenIds];    
     
@@ -708,8 +709,9 @@ export const getAboveFrameCaretPosition = function (frameId: number): Navigation
     // if we deal with a block frame which is NOT disabled*, we look for the caret position before that block frame "body" position (which is the first position for that block frames)
     // if we deal with a statement frame or a disabled block frame*, we look for the caret position before the statement frame "below" position (which is the first position for that statement frame)
     // (*) that is because a disabled block frame is seen as a "unit", no caret position exist within that disabled block frame
+    const frame = useStore().frameObjects[frameId];
     const referenceFramePosIndex = availablePositions.findIndex((navPos) => navPos.frameId == frameId
-        && navPos.caretPosition == ((useStore().frameObjects[frameId].frameType.allowChildren && !useStore().frameObjects[frameId].isDisabled) ? CaretPosition.body : CaretPosition.below));
+        && navPos.caretPosition == ((frame.frameType.allowChildren && !frame.isDisabled && (frame.collapsedState ?? CollapsedState.FULLY_VISIBLE) == CollapsedState.FULLY_VISIBLE) ? CaretPosition.body : CaretPosition.below));
     
     // step 3 --> get the position before that (a frame is at least contained in a frame container, so position index can't be 0)
     const prevCaretPos = availablePositions[referenceFramePosIndex - 1];
@@ -740,11 +742,11 @@ export const isContainedInFrame = function (currFrameId: number, caretPosition: 
     let isAncestorTypeFound = false;
     let frameToCheckId = (caretPosition === CaretPosition.body) ? 
         currFrameId:
-        getParent(useStore().frameObjects[currFrameId]);
+        getParentId(useStore().frameObjects[currFrameId]);
     
     while(frameToCheckId != 0 && !isAncestorTypeFound){
         isAncestorTypeFound = containerTypes.includes(useStore().frameObjects[frameToCheckId].frameType.type);
-        frameToCheckId = getParent(useStore().frameObjects[frameToCheckId]);
+        frameToCheckId = getParentId(useStore().frameObjects[frameToCheckId]);
     }
 
     return isAncestorTypeFound;
@@ -777,7 +779,7 @@ export const getAvailableNavigationPositions = function(showIsInCollapsedFrameCo
             frameId: (frameIdMatch != null) ? parseInt(frameIdMatch[0]) : -100, // need to check the match isn't null for TS, but it should NOT be.
             isSlotNavigationPosition: isSlotNavigationPosition, 
             ...positionObjIdentifier,
-            isInCollapsedFrameContainer: (showIsInCollapsedFrameContainer) ? (useStore().frameObjects[getFrameSectionIdFromFrameId(parseInt(frameIdMatch?.[0]??"-100"))].isCollapsed) : undefined,            
+            isInCollapsedFrameContainer: (showIsInCollapsedFrameContainer) ? ((useStore().frameObjects[getFrameSectionIdFromFrameId(parseInt(frameIdMatch?.[0]??"-100"))].collapsedState ?? CollapsedState.FULLY_VISIBLE) != CollapsedState.FULLY_VISIBLE) : undefined,            
         } as NavigationPosition;
     }).filter((navigationPosition) => useStore().frameObjects[navigationPosition.frameId] && !(navigationPosition.isSlotNavigationPosition && useStore().frameObjects[navigationPosition.frameId].isDisabled)) as NavigationPosition[]; 
 };
@@ -902,4 +904,126 @@ export function checkCodeErrors(frameIdForPrecompiled?: number): void {
 
 export function getAllEnabledUserDefinedFunctions() : FrameObject[] {
     return Object.values(useStore().frameObjects).filter((f) => f.frameType.type === AllFrameTypesIdentifier.funcdef && !f.isDisabled && (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.length > 0);
+}
+
+export function frameOrChildHasErrors(frameId : number) : boolean {
+    const frame = useStore().frameObjects[frameId];
+    if (!frame) {
+        // If missing count it as having an error I guess
+        return true;
+    }
+    const hasError = retrieveSlotByPredicate(Object.values(frame.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures),
+        (slot: FieldSlot) => ((slot as BaseSlot).error?.length??0) > 0) != undefined;
+    if (hasError) {
+        return true;
+    }
+    // Check children:
+    return frame.childrenIds.some(frameOrChildHasErrors);
+}
+
+// Given a list of frames and a target state, returns a map of all the frame ids to a new state,
+// where the new state is the target state if possible, or otherwise the existing unchanged state of that frame
+function changeWherePossible(frames: FrameObject[], target: CollapsedState) : Record<number, CollapsedState> {
+    const r : Record<number, CollapsedState> = {};
+    frames.forEach((f) => {
+        if (f.frameType.allowedCollapsedStates.includes(target) &&
+            (target == CollapsedState.FULLY_VISIBLE || !frameOrChildHasErrors(f.id))) {
+            r[f.id] = target;
+        }
+        else {
+            r[f.id] = f.collapsedState ?? CollapsedState.FULLY_VISIBLE;
+        }
+    });
+    return r;
+}
+
+// Given a current state, and a map of frames to current and possible states, returns the next state
+// that is possible to set for at least one frame.  If this is not possible, it returns currentState
+function cycleToNextPossible(currentState: CollapsedState, currentAndPossibleStates : Map<number, {current: CollapsedState, possible: CollapsedState[]}>) : CollapsedState {
+    const allStates : CollapsedState[] = $enum(CollapsedState).getValues().map((v) => v as CollapsedState);
+    let nextState = currentState;
+    // If this state is impossible for all we'll cycle again until we're back at the start or we find a viable one:
+    const allPossible = new Set([...currentAndPossibleStates.values()].flatMap((x) => x.possible));
+    do {
+        nextState = allStates[(allStates.indexOf(nextState) + 1) % allStates.length];
+    }
+    while (nextState != currentState && !allPossible.has(nextState));
+    return nextState;
+}
+
+// Given a list of frames assumed to have the same parent, and whether that parent is frozen,
+// gives the state they would move to as an overall "headline" state and then the actual states
+// each frame should be set to given what is possible (e.g. frozen functions shouldn't be FULLY_VISIBLE
+// even if that is the next headline state).
+//
+// This uses a map in the store to remember the headline states for given groups of functions as without
+// this it's impossible to work out the next state just from the individual frames' states alone because
+// they may end up mixed due to differing states not being possible on each frame.
+// This store-map is updated by this function unless you pass "dryrun" as the reason parameter to turn it off.
+export function calculateNextCollapseState(frameList: FrameObject[], parentIsFrozen: boolean, reason: "dryrun" | null = null) : {overall: CollapsedState, individual: Record<number, CollapsedState>} {
+    const allStates : CollapsedState[] = $enum(CollapsedState).getValues().map((v) => v as CollapsedState);
+    // Fetch current states and possible states from frames:
+    const currentAndPossibleStates = new Map<number, {current: CollapsedState, possible: CollapsedState[]}>();
+    for (const frame of frameList) {
+        const possible : CollapsedState[] = [];
+        const hasError = frameOrChildHasErrors(frame.id);
+        for (const candidate of allStates) {
+            const allowed = 
+                frame.frameType.allowedCollapsedStates.includes(candidate) &&
+                (candidate == CollapsedState.FULLY_VISIBLE || !hasError) &&
+                !(candidate == CollapsedState.FULLY_VISIBLE && (parentIsFrozen || (frame.frameType.type == AllFrameTypesIdentifier.funcdef && frame.frozenState == FrozenState.FROZEN)));
+            if (allowed) {
+                possible.push(candidate);
+            }
+        }
+        currentAndPossibleStates.set(frame.id, {current: frame.collapsedState ?? CollapsedState.FULLY_VISIBLE, possible});
+    }
+    
+    // The groupToggleMemory has the frame IDs as a key.  Since we can't use a Set as a key, we turn them into
+    // a single string by sorting and concatenating:
+    const key = [...currentAndPossibleStates.keys()].sort((a, b) => a - b).join("_");
+    // We don't look up the remembered state if there's only one frame:
+    const prev = currentAndPossibleStates.size == 1 ? null : useStore().groupToggleMemory?.[key];
+
+    const curStates : Record<number, CollapsedState> = Object.fromEntries([...currentAndPossibleStates].map(([k, v]) => [k, v.current] as const));
+    
+    if (prev != null && isEqual(prev.lastStates, curStates)) {
+        // It matches our memory of the state, so let's use that to work out the next state:
+        const nextState = cycleToNextPossible(prev.overallState, currentAndPossibleStates);
+        const nextPossible = changeWherePossible(frameList, nextState);
+        if (reason != "dryrun") {
+            Vue.set(prev, "overallState", nextState);
+            Vue.set(prev, "lastStates", nextPossible);
+        }
+        return {overall: nextState, individual: nextPossible};
+    }
+    else {
+        // Either we don't remember anything about this combination of frames, or it's changed individually since we did,
+        // so we must do it memoryless:
+        
+        // Are they all in a single state at the moment?
+        const curStateValues = new Set(Object.values(curStates));
+        let nextState;
+        if (curStateValues.size == 1) {
+            //  They are, so we'll use that then advance it to the next one which is possible for some frame:
+            const singleState : CollapsedState = curStateValues.keys().next().value;
+            nextState = cycleToNextPossible(singleState, currentAndPossibleStates);
+        }
+        else {
+            // They are in a mixed state so we're going back to hidden by default:
+            nextState = CollapsedState.ONLY_HEADER_VISIBLE;
+        }
+        const decided = changeWherePossible(frameList, nextState);
+        
+        // We should remember this now, if there is more than one frame (no point remembering for a single frame):
+        if (Object.entries(curStates).length > 1 && reason != "dryrun") {
+            // Make a map if not present in the store yet:
+            const store = useStore();
+            if (store.groupToggleMemory == undefined) {
+                store.groupToggleMemory = {} as Record<string, { lastStates: Record<number, CollapsedState>; overallState: CollapsedState;}>;
+            }
+            store.groupToggleMemory[key] = {lastStates: decided, overallState: nextState};
+        }
+        return {overall: nextState, individual: decided};
+    }
 }

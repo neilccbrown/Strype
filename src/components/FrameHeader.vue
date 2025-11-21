@@ -11,19 +11,43 @@
                 <!-- the class isn't set on the parent div so the size of hidden editable slots can still be evaluated correctly -->
                 <div 
                     style="font-weight: 600;"
-                    :class="{['frame-header-label frame-header-label-' + frameType + ' next-to-eachother ' + scssVars.framePythonTokenClassName]: true, hidden: isLabelHidden(item), leftMargin: originalIndex > 0, rightMargin: (item.label.length > 0), [scssVars.frameColouredLabelClassName]: !isCommentFrame}"
+                    :class="{['frame-header-label frame-header-label-' + frameType + ' next-to-eachother ' + scssVars.framePythonTokenClassName]: true, hidden: isLabelHidden(item), leftMargin: originalIndex > 0, rightMargin: (item.label.length > 0 && !item.appendSelfWhenInClass), [scssVars.frameColouredLabelClassName]: !isCommentFrame}"
                     v-html="item.label"
                 >
                 </div>
                 <LabelSlotsStructure 
                     v-if="areSlotsShown(item)"
                     :isDisabled="isDisabled"
+                    :isFrozen="isFrozenOrChildOfFrozen"
                     :default-text="item.defaultText"
                     :frameId="frameId"
                     :labelIndex="originalIndex"
+                    :prependSelfWhenInClass="item.appendSelfWhenInClass"
                 />
+                <!-- ^^ Note: append to frame label is same as prepend to slot -->
             </div>
+            <div class="frame-controls-container">
+                <div ref="frozenControl" :class="{'frozen-control': true, 'frozen': isFrozen}" v-if="groupIndex == 0">
+                    <img class="frozen-frozen" src="@/assets/images/snowflake.svg" v-if="isFrozen">
+                </div>
+                <div ref="foldingControl" :class="{'folding-control': true, 'fold-doc': isFoldDoc, 'fold-header': isFoldHeader, 'fold-full': isFoldFull }" @click.stop.prevent="cycleFold" v-if="canCycleFold && groupIndex == 0">
+                    <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-funcdef-empty.png" v-if="isFuncDef && !isModifierHeldOnSelection">
+                    <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-funcdef.png" v-if="isFuncDef && !isModifierHeldOnSelection">
+                    <img class="folding-full" src="@/assets/images/quote-circle/quote-circle-funcdef-filled.png" v-if="isFuncDef && !isModifierHeldOnSelection">
+                    <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-class-empty.png" v-if="isClassDef && !isModifierHeldOnSelection">
+                    <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-class.png" v-if="isClassDef && !isModifierHeldOnSelection">
+                    <img class="folding-full" src="@/assets/images/quote-circle/quote-circle-class-filled.png" v-if="isClassDef && !isModifierHeldOnSelection">
+                    <img class="folding-full" src="@/assets/images/quote-circle/quote-circle-container-filled-echoed.png" v-if="isFuncDef && isModifierHeldOnSelection">
+                    <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-container-echoed.png" v-if="isFuncDef && isModifierHeldOnSelection">
+                    <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-container-empty-echoed.png" v-if="isFuncDef && isModifierHeldOnSelection">
+                    <img class="folding-full" src="@/assets/images/quote-circle/quote-circle-class-filled-echoed.png" v-if="isClassDef && isModifierHeldOnSelection">
+                    <img class="folding-doc" src="@/assets/images/quote-circle/quote-circle-class-echoed.png" v-if="isClassDef && isModifierHeldOnSelection">
+                    <img class="folding-header" src="@/assets/images/quote-circle/quote-circle-class-empty-echoed.png" v-if="isClassDef && isModifierHeldOnSelection">
+                </div>
+            </div>
+            <ChildrenFrameStateToggle v-if="isClassDef && isFoldFull && groupIndex === splitLabels.length - 1" :frames="children" :parentIsFrozen="isFrozen"/>
             <i v-if="wasLastRuntimeError && groupIndex == splitLabels.length - 1" :class="{'fas fa-exclamation-triangle fa-xs runtime-err-icon': true, 'runtime-past-err-icon': !erroneous}"></i>
+            
         </div>
     </div>
 </template>
@@ -34,14 +58,18 @@
 //////////////////////
 import Vue from "vue";
 import LabelSlotsStructure from "@/components/LabelSlotsStructure.vue";
-import { useStore } from "@/store/store";
-import {AllFrameTypesIdentifier, FrameLabel} from "@/types/types";
-import { mapStores } from "pinia";
+import {useStore} from "@/store/store";
+import {AllFrameTypesIdentifier, CollapsedState, FrameLabel, FrameObject, FrozenState} from "@/types/types";
+import {mapStores} from "pinia";
 import scssVars from "@/assets/style/_export.module.scss";
+import ChildrenFrameStateToggle from "@/components/ChildrenFrameStateToggle.vue";
+import { isMacOSPlatform } from "@/helpers/common";
+import { calculateNextCollapseState } from "@/helpers/storeMethods";
 
 // Splits into a list of lists (each outer list is a line, with 1 or more items on it)
 // by looking at the newLine flag in the FrameLabel.
-function splitAtNewLines(labels : FrameLabel[]) : {item: FrameLabel, originalIndex: number}[][] {
+// If the collapsed state is header only, only the first line is returned
+function splitAtNewLines(labels : FrameLabel[], state: CollapsedState) : {item: FrameLabel, originalIndex: number}[][] {
     const result : {item: FrameLabel, originalIndex: number}[][] = [];
     let currentGroup : {item: FrameLabel, originalIndex: number}[] = [];
     labels.forEach((item, index) => {
@@ -54,6 +82,10 @@ function splitAtNewLines(labels : FrameLabel[]) : {item: FrameLabel, originalInd
     if (currentGroup.length > 0) {
         result.push(currentGroup);
     }
+    if (state == CollapsedState.ONLY_HEADER_VISIBLE) {
+        // Only keep the first item:
+        result.length = Math.min(result.length, 1);
+    }
     return result;
 }
 
@@ -64,6 +96,7 @@ export default Vue.extend({
     name: "FrameHeader",
 
     components: {
+        ChildrenFrameStateToggle,
         LabelSlotsStructure,
     },
 
@@ -75,6 +108,10 @@ export default Vue.extend({
         frameType: String,
         isDisabled: Boolean,
         frameAllowChildren: Boolean,
+        frameCollapsedState: Number, // Index in the enum CollapsedState
+        frameFrozenState: Number,  // Index in the enum FrozenState
+        frameAllowedCollapsedStates: Array,
+        frameAllowedFrozenStates: Array,
         erroneous: Boolean,
         wasLastRuntimeError: Boolean,
         onFocus: Function, // Handler for focus/blur the header (see Frame.vue)
@@ -97,7 +134,52 @@ export default Vue.extend({
         },
         
         splitLabels() {
-            return splitAtNewLines(this.labels as FrameLabel[]);
+            return splitAtNewLines(this.labels as FrameLabel[], this.frameCollapsedState as CollapsedState);
+        },
+        
+        canCycleFold() {
+            return this.frameAllowedCollapsedStates.length > 1;
+        },
+        
+        isFuncDef() {
+            return this.frameType===AllFrameTypesIdentifier.funcdef;
+        },
+
+        isClassDef() {
+            return this.frameType===AllFrameTypesIdentifier.classdef;
+        },
+        
+        isFoldDoc() {
+            return (this.frameCollapsedState as CollapsedState) == CollapsedState.HEADER_AND_DOC_VISIBLE;
+        },
+
+        isFoldHeader() {
+            return (this.frameCollapsedState as CollapsedState) == CollapsedState.ONLY_HEADER_VISIBLE;
+        },
+
+        isFoldFull() {
+            return (this.frameCollapsedState as CollapsedState) == CollapsedState.FULLY_VISIBLE;
+        },
+        
+        isFrozen() {
+            return (this.frameFrozenState as FrozenState) == FrozenState.FROZEN;
+        },
+        isFrozenOrChildOfFrozen() {
+            return this.appStore.isEffectivelyFrozen(this.frameId);
+        },
+        
+        isModifierHeldOnSelection() {
+            return this.appStore.selectedFrames.includes(this.frameId) && (isMacOSPlatform() ? this.appStore.keyModifierStates?.meta : this.appStore.keyModifierStates?.ctrl);
+        },
+
+        children: {
+            get(): FrameObject[] {
+                // gets the frames objects which are nested in here (i.e. have this frameID as parent)
+                return this.appStore.getFramesForParentId(this.frameId);
+            },
+            set() {
+                return;
+            },
         },
     },
 
@@ -108,6 +190,17 @@ export default Vue.extend({
 
         areSlotsShown(labelDetails: FrameLabel): boolean {
             return labelDetails.showSlots??true;
+        },
+        cycleFold(): void {
+            if (this.isModifierHeldOnSelection) {
+                const selected = this.appStore.selectedFrames.map((id) => this.appStore.frameObjects[id]);
+                const nextStates = calculateNextCollapseState(selected, this.appStore.frameObjects[this.appStore.frameObjects[this.frameId].parentId].frozenState == FrozenState.FROZEN);
+                this.appStore.setCollapseStatuses(nextStates.individual);
+            }
+            else {
+                // Just cycle this frame:
+                this.appStore.cycleFrameCollapsedState(this.frameId);
+            }
         },
     },
 });
@@ -159,17 +252,55 @@ export default Vue.extend({
     margin-left: auto;
     color:#d66;
 }
-
 .runtime-past-err-icon {
     color:#706e6e;
 }
-.frame-header-label:has(svg) {
-    display: flex;
-    align-items: center;
-    justify-content: center; /* optional */
-}
-.frame-header-label-projectDocumentation > img, .frame-header-label-funcdef > img {
+.frame-header-label-projectDocumentation > img, .frame-header-label-funcdef > img, .frame-header-label-classdef > img {
     height: 0.9em;
-    align-self: center;
+    margin-top: 0.3em;
+}
+
+.frame-controls-container {
+    margin-left: auto; /* pushes the group to the right */
+    display: flex;
+    gap: 7px; /* space between icons */
+    margin-right: 7px;
+    margin-top: 0px;
+    align-items: center;
+}
+
+.folding-control, .frozen-control {
+    position: relative;
+    overflow: visible;
+    width: 0.9em;
+    height: 0.9em;
+    cursor: pointer;
+}
+.folding-control > img, .frozen-control > img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    object-fit: cover;
+    opacity: 0;
+}
+// Note: important the hover is on the folding control not the img, because
+// the imgs are on top of each other so only the top one gets hover
+.folding-control:hover > img, .frozen-control:hover > img {
+    filter: brightness(1.25);
+}
+.folding-control.fold-header > img.folding-header,
+.folding-control.fold-doc > img.folding-doc,
+.frame-div:hover > .frame-header .folding-control.fold-full > img.folding-full {
+    opacity: 0.5;
+}
+.frozen-control.frozen > img.frozen-frozen {
+    opacity: 1;
+}
+.frame-div:hover:has(.caret-container:hover) > .frame-header .folding-control.fold-full > img.folding-full,
+.frame-div:hover:has(.frame-div:hover) > .frame-header .folding-control.fold-full > img.folding-full{
+    opacity: 0;
 }
 </style>

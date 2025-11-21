@@ -1,6 +1,13 @@
+// Copied from src/types/types.ts
 // Bit annoying that this must be copied, but it's a pain to try to share the original:
 
 const i18n = { t: ((x : string) => x)};
+
+export enum CollapsedState {
+    ONLY_HEADER_VISIBLE,
+    HEADER_AND_DOC_VISIBLE,
+    FULLY_VISIBLE,
+}
 
 export enum AllowedSlotContent {
     ONLY_NAMES,
@@ -28,7 +35,8 @@ export interface FrameLabel {
     optionalSlot?: OptionalSlotType; //default REQUIRED (indicates whether this label requires a value, and its hiding behaviour when empty; see OptionalSlotType)
     acceptAC?: boolean; //default true
     allowedSlotContent?: AllowedSlotContent; // default TERMINAL_EXPRESSION; what the slot accepts
-    newLine?: boolean;
+    newLine?: boolean; //default false; this item starts a new line
+    appendSelfWhenInClass?: boolean, // default false.  For the opening bracket in function definitions (which show "self" if inside a class)
 }
 
 export interface FramesDefinitions {
@@ -40,8 +48,8 @@ export interface FramesDefinitions {
     isJointFrame: boolean;
     jointFrameTypes: string[];
     colour: string;
-    isCollapsed?: boolean;
     isImportFrame: boolean;
+    allowedCollapsedStates: CollapsedState[];
     // Optional default children or joint frames (we use frame rather than definitions as we may want to have child or joint frame with content!)
     // BE SURE TO SET THE SLOT STRUCTURE AS EXPECTED BY THE FRAME DEFINITION (example: for a if, there should be 1 slot defined, even if empty)
     //defaultChildrenTypes?: FrameObject[];
@@ -52,7 +60,7 @@ export interface FramesDefinitions {
 export const ContainerTypesIdentifiers = {
     root: "root",
     importsContainer: "importsContainer",
-    funcDefsContainer: "funcDefsContainer",
+    defsContainer: "defsContainer",
     framesMainContainer: "mainContainer",
 };
 
@@ -71,8 +79,9 @@ export const ImportFrameTypesIdentifiers = {
     library: "library",
 };
 
-export const FuncDefIdentifiers = {
+export const DefIdentifiers = {
     funcdef: "funcdef",
+    classdef: "classdef",
 };
 
 export const JointFrameIdentifiers = {
@@ -103,7 +112,7 @@ export const StandardFrameTypesIdentifiers = {
 export const AllFrameTypesIdentifier = {
     ...SpecialTypesIdentifiers,
     ...ImportFrameTypesIdentifiers,
-    ...FuncDefIdentifiers,
+    ...DefIdentifiers,
     ...StandardFrameTypesIdentifiers,
 };
 
@@ -117,13 +126,14 @@ export const DefaultFramesDefinition: FramesDefinitions = {
     jointFrameTypes: [],
     colour: "",
     isImportFrame: false,
+    allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE],
 };
 
 export const BlockDefinition: FramesDefinitions = {
     ...DefaultFramesDefinition,
     allowChildren: true,
     forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
-        .concat(Object.values(FuncDefIdentifiers))
+        .concat(Object.values(DefIdentifiers))
         .concat([StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
 };
 
@@ -144,21 +154,21 @@ export const ImportsContainerDefinition: FramesDefinitions = {
     labels: [
         { label: (i18n.t("appMessage.importsContainer") as string), showSlots: false, defaultText: ""},
     ],
-    isCollapsed: false,
+    allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(ImportFrameTypesIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
     colour: "#BBC6B6",
 };
 
-export const FuncDefContainerDefinition: FramesDefinitions = {
+export const DefsContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
-    type: ContainerTypesIdentifiers.funcDefsContainer,
+    type: ContainerTypesIdentifiers.defsContainer,
     labels: [
-        { label: (i18n.t("appMessage.funcDefsContainer") as string), showSlots: false, defaultText: ""},
+        { label: (i18n.t("appMessage.defsContainer") as string), showSlots: false, defaultText: ""},
     ],
-    isCollapsed: false,
+    allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
-        .filter((frameTypeDef: string) => !Object.values(FuncDefIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
+        .filter((frameTypeDef: string) => !Object.values(DefIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment && frameTypeDef != AllFrameTypesIdentifier.varassign),
     colour: "#BBC6B6",
 };
 
@@ -168,7 +178,7 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
     labels: [
         { label: (i18n.t("appMessage.mainContainer") as string), showSlots: false, defaultText: ""},
     ],
-    isCollapsed: false,
+    allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
     forbiddenChildrenTypes: BlockDefinition.forbiddenChildrenTypes.concat(Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(StandardFrameTypesIdentifiers).includes(frameTypeDef))),
     colour: "#BBC6B6",
@@ -178,7 +188,7 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
 export const FrameContainersDefinitions = {
     RootContainerFrameDefinition,
     ImportsContainerDefinition,
-    FuncDefContainerDefinition,
+    DefsContainerDefinition,
     MainFramesContainerDefinition,
 };
 
@@ -305,7 +315,7 @@ export function generateAllFrameDefinitionTypes(): void{
         jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
         colour: "#E0DFE4",
         forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
-            .concat(Object.values(FuncDefIdentifiers))
+            .concat(Object.values(DefIdentifiers))
             .concat([ StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
     };
 
@@ -387,7 +397,7 @@ export function generateAllFrameDefinitionTypes(): void{
 
     const FuncDefDefinition: FramesDefinitions = {
         ...BlockDefinition,
-        type: FuncDefIdentifiers.funcdef,
+        type: DefIdentifiers.funcdef,
         labels: [
             { label: "def ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
             { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
@@ -395,6 +405,21 @@ export function generateAllFrameDefinitionTypes(): void{
             { label: "‘‘‘", newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: "Describe the function", allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],
         colour: "#ECECC8",
+    };
+    
+    const ClassDefinition : FramesDefinitions = {
+        ...BlockDefinition,
+        type: DefIdentifiers.classdef,
+        labels: [
+            { label: "class ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false},
+            { label: " :", showSlots: false, defaultText: ""},
+            { label: "'''", newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.t("frame.defaultText.classDescription") as string, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
+        ],
+        colour: "#baded3",
+        forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
+            .concat(Object.values(StandardFrameTypesIdentifiers).filter((f) => f != CommentFrameTypesIdentifier.comment && f != StandardFrameTypesIdentifiers.varassign))
+            .concat([DefIdentifiers.classdef]),
+
     };
 
     const WithDefinition: FramesDefinitions = {
@@ -422,6 +447,7 @@ export function generateAllFrameDefinitionTypes(): void{
         ExceptDefinition,
         FinallyDefinition,
         FuncDefDefinition,
+        ClassDefinition,
         WithDefinition,
         FuncCallDefinition,
         BlankDefinition,
@@ -447,7 +473,7 @@ export function getFrameDefType(key: string): FramesDefinitions{
     return Object.values(Definitions).find((frameDefinition) => ((frameDefinition as FramesDefinitions).type === key)) as FramesDefinitions;
 }
 
-
+// Copied from src/helpers/editor.ts
 export const allFrameCommandsDefs = {
     " ": [{
         type: getFrameDefType(AllFrameTypesIdentifier.funccall),
@@ -515,6 +541,11 @@ export const allFrameCommandsDefs = {
             index:2,
         },
     ],
+    "c": [{
+        type: getFrameDefType(AllFrameTypesIdentifier.classdef),
+        description: i18n.t("frame.classdef_desc") as string,
+        shortcuts: ["c"],
+    }],
     "w": [{
         type: getFrameDefType(AllFrameTypesIdentifier.while),
         description: "while",

@@ -1,0 +1,54 @@
+#(=> Strype:1:std
+#(=> peaCommandsSplitterPane2Size:{"tabsCollapsed":51.99}
+'''Classic crab and lobster game.'''
+#(=> Section:Imports
+from strype.graphics import * 
+from strype.sound import * 
+from random import randint,choice 
+#(=> Section:Definitions
+class Crab(Actor)  :
+    '''The crab is the main player character in the game.'''
+    def __init__ (self, ) :
+        super().__init__(load_image("crab.png"),0,0,"player") 
+    def act (self, ) :
+        '''The actions the crab takes each animation frame.'''
+        if key_pressed("left")  :
+            self.turn(5) 
+        if key_pressed("right")  :
+            self.turn(-5) 
+        self.move(4) 
+        if self.is_touching("food")  :
+            self.remove_touching("food") 
+            load_sound("slurp.wav").play() 
+class Lobster(Actor)  :
+    '''The lobster is the enemy in the scenario.'''
+    def __init__ (self, ) :
+        super().__init__(load_image("lobster.png")) 
+        self.set_location(choice([randint(-350,-200),randint(200,350)]),choice([randint(-250,-100),randint(100,250)])) 
+    def act (self, ) :
+        self.move(4) 
+        if randint(1,10)==1  :
+            self.turn(randint(-20,20)) 
+        if self.is_at_edge()  :
+            self.turn(20) 
+        if self.is_touching("player")  :
+            load_sound("au.wav").play() 
+            stop() 
+def act_loop ( ) :
+    while True  :
+        for a  in get_actors()  :
+            #If it acts like a duck....
+            if hasattr(a,"act")  :
+                a.act() 
+        pace() 
+#(=> Section:Main
+set_background(load_image("background.png")) 
+Crab() 
+Lobster() 
+Lobster() 
+Lobster() 
+for i  in range(30)  :
+    food  = Actor(load_image("food.png"),tag="food") 
+    food.set_location(randint(-350,350),randint(-250,250)) 
+act_loop() 
+#(=> Section:End

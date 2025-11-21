@@ -474,3 +474,49 @@ describe("Python complex function", () => {
 `, "{uparrow}");
     });
 });
+
+describe("Python classes", () => {
+    const test = (code : string) => {
+        // When we write out Python, lone self items have a trailing comma:
+        testRoundTripPasteAndDownload(code, "{uparrow}", code.replaceAll("self)", "self,)"));
+    };
+    it("Allows pasting class with one method", () => {
+        test(`class Foo:
+    def bar (self):
+        return 6
+`);
+    });
+    it("Allows pasting class with a class comment", () => {
+        test(`class Foo:
+    '''This is a class comment.'''
+    def bar (self):
+        return 6
+`);
+    });
+    it("Allows pasting class with fields and methods", () => {
+        test(`class Foo:
+    x = 5
+    def bar (self):
+        return 6
+    y = 7
+    def baz (self,x):
+        if True:
+            return 21
+`);
+    });
+    it("Allows pasting class with a parent", () => {
+        test(`class Foo(Parent):
+    def __init__ (self,x,y):
+        self.x = x
+        self.y = y
+`);
+    });
+    it("Allows pasting class with multiple parents", () => {
+        test(`class Foo(Parent1,Parent2,Other):
+    z = 8
+    def __init__ (self,x,y):
+        self.x = x
+        self.y = y
+`);
+    });
+});

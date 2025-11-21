@@ -28,7 +28,7 @@
     "editorFileUpload": "Μεταφόρτωση αρχείου στο Strype",
     "editorFileUploadWrongVersion": "Ο εισαγώμενος κώδικας προέρχεται απο παλαιότερη έκδοση του Strype.\nΗ εισαγωγή του μπορεί να προκαλέσει σφάλαματα.\nΕπιθυμείτε να συνεχίσετε?",
     "importsContainer": "Εισαγωγές:",
-    "funcDefsContainer": "Ορισμοί Συναρτήσεων:",
+    "defsContainer": "Ορισμοί:",
     "mainContainer": "Ο Κώδικας μου:",
     "preCompiledErrorNeedFix": "Διορθώστε παρώντα σφάλματα πρώτα.",
     "noWebUSB": "Ο παρών περιηγητής δεν θποστηρίζει συνδέσεις μέσω webUSB. Παρακαλώ δοκιμάστε με Chrome ή Edge.",

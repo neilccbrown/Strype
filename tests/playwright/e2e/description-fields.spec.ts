@@ -3,10 +3,6 @@ import {checkFrameXorTextCursor, doTextHomeEndKeyPress} from "../support/editor"
 import {readFileSync} from "node:fs";
 import {save, testPlaywrightRoundTripImportAndDownload} from "../support/loading-saving";
 
-// The tests in this file can't run in parallel because they download
-// to the same filenames, so need to run one at a time.
-test.describe.configure({ mode: "serial" });
-
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && process.platform === "win32") {
         // On Windows+Webkit it just can't seem to load the page for some reason:

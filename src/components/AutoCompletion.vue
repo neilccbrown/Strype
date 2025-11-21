@@ -256,7 +256,7 @@ export default Vue.extend({
         async updateAC(frameId: number, token : string | null, context: string): Promise<void> {
             const tokenStartsWithUnderscore = (token ?? "").startsWith("_");
             const parser = new Parser();
-            const inFuncDef = getFrameContainer(frameId) == useStore().getFuncDefsFrameContainerId;
+            const inFuncDef = getFrameContainer(frameId) == useStore().getDefsFrameContainerId;
             const userCode = parser.getCodeWithoutErrors(frameId, inFuncDef);
             
             await tpyDefineLibraries(parser);

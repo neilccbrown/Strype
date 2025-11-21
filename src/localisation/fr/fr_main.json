@@ -22,9 +22,10 @@
       "libraryAddress": "emplacement",
       "comment": "commentaire ",
       "projectDescription": "description du projet",
-      "funcDescription": "description de la fonction"
-        
+      "funcDescription": "description de la fonction",
+      "classDescription": "description de la classe"        
     },
+    "classdef_desc": "définition de classe",
     "funcdef_desc": "définition de fonction",
     "varassign_desc": "affectation",
     "funccall_desc": "appel de fonction",
@@ -123,7 +124,7 @@
     "editorAskSaveChangedCode": "Votre projet contient des modifications non-enregistrées. Enregister avant de quitter le projet actuel ?",
     "editorFileUploadWrongVersion": "Le code a été réalisé avec une version différente de l'éditeur.\nL'importer pourrait générer des erreurs.\n\nSouhaitez-vous néanmoins continuer ?",
     "importsContainer": "Imports :",
-    "funcDefsContainer": "Définitions de fonctions :",
+    "defsContainer": "Définitions :",
     "mainContainer": "Mon code :",
     "preCompiledErrorNeedFix": "Veuillez d'abord corriger les erreurs existantes.",
     "noWebUSB": "Ce navigateur ne supporte pas les connexions webUSB. Veuillez utiliser un autre navigateur (par example Google Chrome).",
@@ -184,7 +185,14 @@
     "delete": "Supprimer",
     "deleteOuter": "Supprimer externe(s)",
     "insert": "Insérer",
-    "screenshotGraphics": "Télécharger une capture d'écran"
+    "screenshotGraphics": "Télécharger une capture d'écran",
+    "collapseHeader": "Vue Réduite",
+    "collapseDocumentation": "Vue Interface",
+    "collapseFull": "Vue Dévelopée",
+    "cannotCollapseErrors": "Réduction impossible avec des erreurs",
+    "freeze": "Verrouiller",
+    "unfreeze": "Déverrouiller", 
+    "cannotFreezeErrors": "Verrouillage impossible avec des erreurs"      
   },
   "appMenu": {
     "downloadHex": "Convertir vers Hex",
@@ -265,6 +273,7 @@
   },
   "shortcut": {
     "delete": "Suppr",
-    "ctrlPlus": "Ctrl+"
+    "ctrlPlus": "Ctrl+",
+    "period": "Point"
   }
 }

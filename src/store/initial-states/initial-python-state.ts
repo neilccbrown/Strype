@@ -1,4 +1,4 @@
-import {CaretPosition, EditorFrameObjects, RootContainerFrameDefinition, ImportsContainerDefinition, FuncDefContainerDefinition, MainFramesContainerDefinition, getFrameDefType, AllFrameTypesIdentifier} from "@/types/types";
+import {CaretPosition, EditorFrameObjects, RootContainerFrameDefinition, ImportsContainerDefinition, DefsContainerDefinition, MainFramesContainerDefinition, getFrameDefType, AllFrameTypesIdentifier} from "@/types/types";
 
 const initialPythonState: EditorFrameObjects = {
     0: {
@@ -25,7 +25,6 @@ const initialPythonState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         labelSlotsDict: {0: {slotStructures: {fields: [{code: ""}], operators: []}}},
-        isCollapsed: false,
         caretVisibility: CaretPosition.none,
     },
     "-1": {
@@ -39,12 +38,11 @@ const initialPythonState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         labelSlotsDict: {},
-        isCollapsed: false,
         caretVisibility: CaretPosition.none,
     },
     "-2": {
         id: -2,
-        frameType : FuncDefContainerDefinition,
+        frameType : DefsContainerDefinition,
         isDisabled: false,
         isSelected: false,
         isVisible: true,
@@ -53,7 +51,6 @@ const initialPythonState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         labelSlotsDict: { },
-        isCollapsed: false,
         caretVisibility: CaretPosition.none,
     },
     "-3": {
@@ -67,7 +64,6 @@ const initialPythonState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         labelSlotsDict: {},
-        isCollapsed: false,
         caretVisibility: CaretPosition.body,
     },
 

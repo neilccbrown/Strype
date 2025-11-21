@@ -236,3 +236,13 @@ export function splitByRegexMatches(input: string, regex: RegExp): string[] {
 
     return result;
 }
+
+// Removes all elements from the array (in-place, i.e. without making a copy of the array) where the given function returns true
+export function removeIf<T>(arr: T[], predicate: (item: T, index: number, array: T[]) => boolean): void {
+    let i = arr.length;
+    while (i--) {
+        if (predicate(arr[i], i, arr)) {
+            arr.splice(i, 1);
+        }
+    }
+}

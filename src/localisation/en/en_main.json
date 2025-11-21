@@ -22,8 +22,10 @@
       "libraryAddress": "location",
       "comment": "comment ",
       "projectDescription": "project description",
-      "funcDescription": "function description"
+      "funcDescription": "function description",
+      "classDescription": "class description"
     },
+    "classdef_desc": "class definition",
     "funcdef_desc": "function definition",
     "varassign_desc": "assignment",
     "funccall_desc": "function call",
@@ -120,7 +122,7 @@
     "editorAskSaveChangedCode": "Your project contains unsaved changes.\nSave before closing?",
     "editorFileUploadWrongVersion": "This code has been produced with a different version of the editor.\nImporting may result in errors.\n\nDo you still want to continue?",
     "importsContainer": "Imports:",
-    "funcDefsContainer": "Function definitions:",
+    "defsContainer": "Definitions:",
     "mainContainer": "My code:",
     "preCompiledErrorNeedFix": "Please fix existing errors first.",
     "noWebUSB": "This browser does not support webUSB connections. Please use a browser such as Google Chrome.",
@@ -181,7 +183,14 @@
     "delete": "Delete",
     "deleteOuter": "Delete Outer",
     "insert": "Insert",
-    "screenshotGraphics": "Download screenshot"
+    "screenshotGraphics": "Download screenshot",
+    "collapseHeader": "Collapsed View",
+    "collapseDocumentation": "Interface View",
+    "collapseFull": "Expanded View",
+    "cannotCollapseErrors": "Cannot collapse with errors",
+    "freeze": "Freeze",
+    "unfreeze": "Unfreeze", 
+    "cannotFreezeErrors": "Cannot freeze with errors"
   },
   "appMenu": {
     "downloadHex": "Convert to Hex file",
@@ -262,6 +271,7 @@
   },
   "shortcut": {
     "delete": "Delete",
-    "ctrlPlus": "Ctrl+"
+    "ctrlPlus": "Ctrl+",
+    "period": "Dot"
   }
 }

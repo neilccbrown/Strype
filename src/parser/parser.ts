@@ -3,7 +3,7 @@ import {hasEditorCodeErrors, trimmedKeywordOperators} from "@/helpers/editor";
 import {generateFlatSlotBases, retrieveSlotByPredicate} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
+import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CollapsedState, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, FrozenState, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 import {AppSPYFullPrefix} from "@/main";
 /*IFTRUE_isPython */
@@ -199,9 +199,39 @@ function transformSlotLevel(slots: SlotsStructure, topLevel?: {frameType: string
     }
 }
 
+const collapsedToString: Record<CollapsedState, string> = {
+    [CollapsedState.FULLY_VISIBLE]: "FoldToVisible", //Note: we never save this one, but Typescript wants the full set of enum values here
+    [CollapsedState.ONLY_HEADER_VISIBLE]: "FoldToHeader",
+    [CollapsedState.HEADER_AND_DOC_VISIBLE]: "FoldToDocumentation",
+};
+
+// Reverse mapping:
+export const stringToCollapsed: Record<string, CollapsedState> = Object.entries(collapsedToString).reduce(
+    (acc, [key, value]) => {
+        acc[value] = Number(key) as CollapsedState;
+        return acc;
+    },
+    {} as Record<string, CollapsedState>
+);
+
+const frozenToString: Record<FrozenState, string> = {
+    [FrozenState.UNFROZEN]: "Unfrozen", //Note: we never save this one, but Typescript wants the full set of enum values here
+    [FrozenState.FROZEN]: "Frozen",
+};
+
+// Reverse mapping:
+export const stringToFrozen: Record<string, FrozenState> = Object.entries(frozenToString).reduce(
+    (acc, [key, value]) => {
+        acc[value] = Number(key) as FrozenState;
+        return acc;
+    },
+    {} as Record<string, FrozenState>
+);
+
 export default class Parser {
     private startAtFrameId = -100; // default value to indicate there is no start
     private stopAtFrameId = -100; // default value to indicate there is no stop
+    private stopAtIncludesLastFrame = false; // what to do with stopAtFrameId; do we include it?
     private exitFlag = false; // becomes true when the stopAtFrameId is reached.
     private framePositionMap: LineAndSlotPositions = {} as LineAndSlotPositions;  // For each line holds the positions the *editable slots* start at
     private line = 0;
@@ -228,7 +258,7 @@ export default class Parser {
         return [...this.libraries];
     }
 
-    private parseBlock(block: FrameObject, indentation: string): string {
+    private parseBlock(block: FrameObject, insideAClass : boolean, indentation: string): string {
         let output = "";
         const children = useStore().getFramesForParentId(block.id);
 
@@ -240,8 +270,18 @@ export default class Parser {
         // on `excludeLoops` the loop frames must not be added to the code and nor should their contents be indented
         const conditionalIndent = (passBlock) ? "" : INDENT;
 
-        output += 
-            ((!passBlock)? this.parseStatement(block, indentation) : "") +
+        // We only add states if there is a non-default value to save:
+        const frameStates : string[] = [];
+        if (block.collapsedState != undefined && block.collapsedState != CollapsedState.FULLY_VISIBLE) {
+            frameStates.push(collapsedToString[block.collapsedState]);
+        }
+        if (block.frozenState != undefined && block.frozenState != FrozenState.UNFROZEN) {
+            frameStates.push(frozenToString[block.frozenState]);
+        }
+        
+        output +=
+            (frameStates.length > 0 && this.saveAsSPY ? indentation + AppSPYFullPrefix + " FrameState:" + frameStates.sort().join(";") + "\n" : "") +
+            ((!passBlock)? this.parseStatement(block, insideAClass, indentation) : "") +
             ((this.saveAsSPY && children.length > 0 &&
                 ((!block.isDisabled && children.filter((c) => !c.isDisabled && c.frameType.type != AllFrameTypesIdentifier.blank && c.frameType.type != AllFrameTypesIdentifier.comment).length == 0)
                     || (block.isDisabled && children.filter((c) => c.frameType.type != AllFrameTypesIdentifier.blank && c.frameType.type != AllFrameTypesIdentifier.comment).length == 0)))
@@ -257,6 +297,7 @@ export default class Parser {
                 ?
                 this.parseFrames(
                     children,
+                    insideAClass,
                     indentation + conditionalIndent
                 ) :
                 // When we replace empty body frames by "pass", if that's because we have only blank or comments, we need to
@@ -270,6 +311,7 @@ export default class Parser {
                 ? indentation + "except " + STRYPE_DUMMY_FIELD + ":\n" + indentation + "    pass\n" : "") +
             this.parseFrames(
                 useStore().getJointFramesForFrameId(block.id),
+                insideAClass,
                 indentation
             );
         
@@ -280,12 +322,12 @@ export default class Parser {
         // This method is called when parsing the content of a block frame that only contains simple comments or blank frames,
         // effectively making the block content empty. However, we need to 1) allow "passing" the content for Python to 
         // compile properly, and 2) make sure we keep the slots/lines mapping for proper errors handling.
-        const emptyContent = this.parseFrames(children, indentation + conditionalIndent);
+        const emptyContent = this.parseFrames(children, false, indentation + conditionalIndent);
         const passLine = indentation + conditionalIndent + "pass" + "\n";
         return this.saveAsSPY ? emptyContent : passLine.repeat(children.length);
     }
     
-    private parseStatement(statement: FrameObject, indentation = ""): string {
+    private parseStatement(statement: FrameObject, insideAClass : boolean, indentation = ""): string {
         let output = indentation;
         const labelSlotsPositionLengths: {[labelSlotsIndex: number]: LabelSlotsPositions} = {};
         
@@ -360,6 +402,11 @@ export default class Parser {
                 else {
                     // For varassign frames, the symbolic assignment on the UI should be replaced by the Python "=" symbol
                     output += ((label.label.length > 0 && statement.frameType.type === AllFrameTypesIdentifier.varassign) ? " = " : label.label);
+                    if (label.appendSelfWhenInClass && insideAClass) {
+                        // In Python it's okay to have a trailing comma on the params, so we don't need to check
+                        // whether any actual params follow:
+                        output += "self,";
+                    }
                 }
             }
             
@@ -402,26 +449,36 @@ export default class Parser {
         return output;
     }
 
-    private parseFrames(codeUnits: FrameObject[], indentation = ""): string {
+    private parseFrames(codeUnits: FrameObject[], parentInsideAClass = false, indentation = ""): string {
         let output = "";
         let lineCode = "";
 
         //if the current frame is a container, we don't parse it as such
         //but parse directly its children (frames that it contains)
+        let exitNextFrame = false;
         for (const frame of codeUnits) {
+            if (exitNextFrame) {
+                this.exitFlag = true;
+                break;
+            }
             if(frame.id === this.stopAtFrameId || this.exitFlag){
-                this.exitFlag = true; // this is used in case we are inside a recursion
                 if (frame.id === this.stopAtFrameId) {
                     this.stoppedIndentation = indentation;
                 }
-                break;
+                if (frame.id == this.stopAtFrameId && this.stopAtIncludesLastFrame) {
+                    exitNextFrame = true;
+                }
+                else {
+                    this.exitFlag = true; // this is used in case we are inside a recursion
+                    break;
+                }
             }
             
             if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.framesMainContainer) {
                 output += AppSPYFullPrefix + " Section:Main\n";
                 this.line += 1;
             }
-            else if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.funcDefsContainer) {
+            else if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.defsContainer) {
                 output += AppSPYFullPrefix + " Section:Definitions\n";
                 this.line += 1;
             }
@@ -453,18 +510,20 @@ export default class Parser {
                     thisIndentation = indentation + AppSPYFullPrefix + " Disabled:";
                 }
             }
+            
+            const insideAClass = parentInsideAClass || frame.frameType.type == AllFrameTypesIdentifier.classdef;
 
             lineCode = frame.frameType.allowChildren ?
                 // frame with children
                 (Object.values(FrameContainersDefinitions).find((e) => e.type ===frame.frameType.type))?
                     // for containers call parseFrames again on their frames
-                    this.parseFrames(useStore().getFramesForParentId(frame.id), "") 
+                    this.parseFrames(useStore().getFramesForParentId(frame.id), insideAClass, "") 
                     :
                     // for simple block frames (i.e. if) call parseBlock
-                    this.parseBlock(frame, thisIndentation) 
+                    this.parseBlock(frame, insideAClass, thisIndentation) 
                 : 
                 // single line frame
-                this.parseStatement(frame, thisIndentation);
+                this.parseStatement(frame, insideAClass, thisIndentation);
 
             output += disabledFrameBlockFlag + lineCode;
             
@@ -478,20 +537,25 @@ export default class Parser {
             }            
         }
 
+        if (exitNextFrame) {
+            this.exitFlag = true;
+        }
+
         return output;
     }
     
     public parseJustImports() : string {
-        return this.parse({startAtFrameId: useStore().getImportsFrameContainerId, stopAtFrameId: useStore().getFuncDefsFrameContainerId});
+        return this.parse({startAtFrameId: useStore().getImportsFrameContainerId, stopAt: {frameId: useStore().getDefsFrameContainerId, includeThisFrame: false}});
     }
 
-    public parse({startAtFrameId, stopAtFrameId, excludeLoopsAndCommentsAndCloseTry, defsLast}: {startAtFrameId?: number, stopAtFrameId?: number, excludeLoopsAndCommentsAndCloseTry?: boolean, defsLast?: boolean}): string {
+    public parse({startAtFrameId, stopAt, excludeLoopsAndCommentsAndCloseTry, defsLast}: {startAtFrameId?: number, stopAt?: {frameId: number, includeThisFrame: boolean}, excludeLoopsAndCommentsAndCloseTry?: boolean, defsLast?: boolean}): string {
         let output = "";
         if(startAtFrameId){
             this.startAtFrameId = startAtFrameId;
         }
-        if(stopAtFrameId){
-            this.stopAtFrameId = stopAtFrameId;
+        if(stopAt){
+            this.stopAtFrameId = stopAt.frameId;
+            this.stopAtIncludesLastFrame = stopAt.includeThisFrame;
         }
 
         if(excludeLoopsAndCommentsAndCloseTry){
@@ -503,20 +567,21 @@ export default class Parser {
         actOnTurtleImport();
         /* FITRUE_isPython */
 
-        //console.time();
+        let parentInsideAClass = false;
         let codeUnits: FrameObject[];
         if (this.startAtFrameId > -100) {
             codeUnits = [useStore().frameObjects[this.startAtFrameId]];
+            parentInsideAClass = useStore().frameObjects[codeUnits[0].parentId].frameType.type == AllFrameTypesIdentifier.classdef;
         }
         else {            
             codeUnits = useStore().getFramesForParentId(0);
             if (defsLast) {
                 codeUnits = codeUnits
-                    .filter((item) => item.frameType.type !== ContainerTypesIdentifiers.funcDefsContainer)
-                    .concat(codeUnits.filter((item) => item.frameType.type === ContainerTypesIdentifiers.funcDefsContainer));
+                    .filter((item) => item.frameType.type !== ContainerTypesIdentifiers.defsContainer)
+                    .concat(codeUnits.filter((item) => item.frameType.type === ContainerTypesIdentifiers.defsContainer));
             }
         }
-        output += this.parseFrames(codeUnits, "");
+        output += this.parseFrames(codeUnits, parentInsideAClass, "");
         // We could have disabled frame(s) just at the end of the code. 
         // Since no further frame would be used in the parse to close the ongoing comment block we need to check
         // if there are disabled frames being rendered when reaching the end of the editor's code.
@@ -617,7 +682,7 @@ export default class Parser {
     }
 
     public getCodeWithoutErrors(endFrameId: number, defsLast: boolean): string {
-        const code = this.parse({stopAtFrameId: endFrameId, excludeLoopsAndCommentsAndCloseTry: true, defsLast});
+        const code = this.parse({stopAt: {frameId: endFrameId, includeThisFrame: false}, excludeLoopsAndCommentsAndCloseTry: true, defsLast});
 
         const errors = this.getErrors(code);
 

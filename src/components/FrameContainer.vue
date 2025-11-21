@@ -1,8 +1,9 @@
 <template>
     <div class="frame-container" :style="frameStyle" @click.self="onOuterContainerClick" @mouseenter="onFrameContainerHover(true)" @mouseleave="onFrameContainerHover(false)">
-        <div class="frame-container-header">
-            <button v-if="!isMainCodeFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
-            <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer}" @click.self="toggleCollapse">{{containerLabel}}</span>
+        <div class="frame-container-header" @click.self="onOuterContainerClick">
+            <button v-if="!isMainCodeFrameContainer && !isDefsFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
+            <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer}" @click.self="toggleCollapse">{{containerLabel}}</span>
+            <ChildrenFrameStateToggle v-if="isDefsFrameContainer" :frames="this.frames" :parentIsFrozen="false"/>
         </div>
 
         <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
@@ -39,11 +40,12 @@ import Vue from "vue";
 import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
-import { CaretPosition, FrameObject, DefaultFramesDefinition, FramesDefinitions, FrameContainersDefinitions, getFrameDefType, AllFrameTypesIdentifier, PythonExecRunningState } from "@/types/types";
+import { CaretPosition, CollapsedState, FrameObject, DefaultFramesDefinition, FramesDefinitions, FrameContainersDefinitions, getFrameDefType, AllFrameTypesIdentifier, PythonExecRunningState } from "@/types/types";
 import { mapStores } from "pinia";
 import { CustomEventTypes, getCaretContainerRef, getCaretUID, getFrameUID} from "@/helpers/editor";
 import scssVars from "@/assets/style/_export.module.scss";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
+import ChildrenFrameStateToggle from "@/components/ChildrenFrameStateToggle.vue";
 
 //////////////////////
 //     Component    //
@@ -52,6 +54,7 @@ export default Vue.extend({
     name: "FrameContainer",
 
     components: {
+        ChildrenFrameStateToggle,
         Frame,
         CaretContainer,
     },
@@ -103,6 +106,10 @@ export default Vue.extend({
         isMainCodeFrameContainer(): boolean {
             return this.frameId == this.appStore.getMainCodeFrameContainerId;
         },
+
+        isDefsFrameContainer(): boolean {
+            return this.frameId == this.appStore.getDefsFrameContainerId;
+        },
         
         frames: {
             get(): FrameObject[] {
@@ -143,16 +150,11 @@ export default Vue.extend({
 
         isCollapsed: {
             get(): boolean {
-                // Ignore the value for "My code" container for compatibility with saved project having collapsable "My code" container.
-                return (this.isMainCodeFrameContainer)? false : this.appStore.isContainerCollapsed(this.frameId);
+                // Ignore the value for "My code" or Defs container for compatibility with saved project having collapsable "My code" container.
+                return (this.isMainCodeFrameContainer || this.isDefsFrameContainer) ? false : this.appStore.isContainerCollapsed(this.frameId);
             },
             set(value: boolean){
-                this.appStore.setCollapseStatusContainer(
-                    {
-                        frameId: this.frameId,
-                        isCollapsed: value,
-                    }
-                );
+                this.appStore.setCollapseStatuses({[this.frameId]: value ? CollapsedState.ONLY_HEADER_VISIBLE : CollapsedState.FULLY_VISIBLE});
             },
         },
 
@@ -163,7 +165,7 @@ export default Vue.extend({
         containerStyle(): Record<string, string> {
             return {
                 "display": (this.isCollapsed) ? "none" : "block",
-                "backgroundColor": `${(this.frameType.type === FrameContainersDefinitions.ImportsContainerDefinition.type || this.frameType.type == FrameContainersDefinitions.FuncDefContainerDefinition.type) 
+                "backgroundColor": `${(this.frameType.type === FrameContainersDefinitions.ImportsContainerDefinition.type || this.frameType.type == FrameContainersDefinitions.DefsContainerDefinition.type) 
                     ? getFrameDefType(AllFrameTypesIdentifier.import).colour
                     : getFrameDefType(AllFrameTypesIdentifier.return).colour}`,
             };
@@ -171,7 +173,7 @@ export default Vue.extend({
 
         isPythonExecuting(): boolean {
             return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
-        },
+        },        
     },
 
     methods: {
@@ -190,7 +192,7 @@ export default Vue.extend({
                     const nextFrameContainerIndex = this.appStore.frameObjects[this.appStore.getRootFrameContainerId].childrenIds.indexOf(this.frameId) + 1;
                     const nextFrameContainerId = this.appStore.frameObjects[this.appStore.getRootFrameContainerId].childrenIds.at(nextFrameContainerIndex);
                     // As we have only 3 sections, if the next section is collapsed we automatically get to "My code", as this one is never collapsed.
-                    const targetFrameContainerId = (nextFrameContainerId && !this.appStore.frameObjects[nextFrameContainerId].isCollapsed)
+                    const targetFrameContainerId = (nextFrameContainerId && this.appStore.frameObjects[nextFrameContainerId].collapsedState == CollapsedState.FULLY_VISIBLE)
                         ? nextFrameContainerId
                         : this.appStore.getMainCodeFrameContainerId;
                     this.appStore.setCurrentFrame({id: targetFrameContainerId, caretPosition: CaretPosition.body});
@@ -236,7 +238,7 @@ export default Vue.extend({
             }
 
             // Make sure the container is expanded.
-            this.appStore.frameObjects[this.frameId].isCollapsed = false;
+            this.appStore.frameObjects[this.frameId].collapsedState = CollapsedState.FULLY_VISIBLE;
         },
 
         onFrameContainerHover(isHovered: boolean): void {
@@ -256,13 +258,15 @@ export default Vue.extend({
                 this.currentDragAndDropHoverTimeoutHandle = window.setTimeout(() => {
                     // Check if we are still hovering and dragging                
                     if(this.isHovered && this.appStore.isDraggingFrame){
-                        this.appStore.frameObjects[this.frameId].isCollapsed = false;
+                        this.appStore.frameObjects[this.frameId].collapsedState = CollapsedState.FULLY_VISIBLE;
                         document.dispatchEvent(new CustomEvent(CustomEventTypes.dropFramePositionsUpdated));
                     }
                 }, timeout);
             }
 
         },
+        
+
     },
 });
 
@@ -312,11 +316,10 @@ export default Vue.extend({
     min-height: $frame-container-min-height;
 }
 .frame-container-header {
-    // Stop it taking up full width, to allow click to select top frame cursor instead of folding:
-    display: inline-block;
+    display: flex;
     padding-right: 5px;
 }
-.frame-container-header * {
+.frame-container-header > .frame-container-btn-collapse, .frame-container-header > span:not(.no-toggle-frame-container-span) {
     cursor: pointer;
 }
 </style>

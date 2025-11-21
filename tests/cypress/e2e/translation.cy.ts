@@ -49,7 +49,7 @@ function focusEditor(): void {
 // it will test the frame container labels as well as the autocompletion
 function checkTranslationsForLocale(locale: string): void {    
     // Check that the sections are present and translated:
-    cy.get("."+ scssVars.frameContainerLabelSpanClassName).should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer", locale) as string, i18n.t("appMessage.funcDefsContainer", locale) as string, i18n.t("appMessage.mainContainer", locale) as string]));
+    cy.get("."+ scssVars.frameContainerLabelSpanClassName).should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer", locale) as string, i18n.t("appMessage.defsContainer", locale) as string, i18n.t("appMessage.mainContainer", locale) as string]));
 
     // Check that sections in the autocomplete are translated:
     // Add a function:
@@ -69,7 +69,7 @@ function checkTranslationsForLocale(locale: string): void {
 // and swap Strype to a given locale, then check translations for that given locale.
 function changeLocaleAndCheckTranslations(locale: string): void {
     // Starts as English:
-    cy.get("." + scssVars.frameContainerLabelSpanClassName).should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer") as string, i18n.t("appMessage.funcDefsContainer") as string, i18n.t("appMessage.mainContainer") as string]));
+    cy.get("." + scssVars.frameContainerLabelSpanClassName).should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer") as string, i18n.t("appMessage.defsContainer") as string, i18n.t("appMessage.mainContainer") as string]));
     cy.get("select#" + strypeElIds.getAppLangSelectId()).should("have.value", "en");
 
     // Swap to another locale and check it worked:

@@ -1,6 +1,6 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import {AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesFuncDefScope, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot} from "@/types/types";
+import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesAction, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameContainer, getFrameSectionIdFromFrameId } from "./storeMethods";
 import { splitByRegexMatches, strypeFileExtension } from "./common";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
@@ -64,6 +64,8 @@ export enum CustomEventTypes {
     requestedCloudDriveItemChildren = "requestedCloudDriveItemChildren",
     exposedCloudDriveItemChidren = "exposedCloudDriveItemChidren",
     requestedCloudDrivePickerRefresh = "requestedCloudDrivePickerRefresh",
+    cutFrameSelection = "cutFrameSelection",
+    copyFrameSelection = "copyFrameSelection",
     /* IFTRUE_isPython */
     pythonExecAreaMounted = "peaMounted",
     pythonExecAreaExpandCollapseChanged = "peaExpandCollapsChanged",
@@ -164,7 +166,7 @@ export function parseLabelSlotUID(UID: string): SlotCoreInfos {
     return res;
 }
 
-export function isElementLabelSlotInput(element: EventTarget | null): boolean{
+export function isElementLabelSlotInput(element: EventTarget | null): element is HTMLSpanElement {
     if(!(element instanceof HTMLSpanElement)){
         return false;
     }
@@ -522,6 +524,10 @@ export function getFrameComponent(frameId: number, innerLookDetails?: {framePare
                 // That frame isn't the one we want, but maybe it contains the one we want so we look into it.
                 // We first look into the children, the joint frames (which may have children as well)
                 const frameBodyComponent = (childFrameComponent.$refs[getFrameBodyRef()] as InstanceType<typeof FrameBody>); // There is 1 body in a frame, no v-for is used, we have 1 element
+                if (!frameBodyComponent){
+                    // This can happen when a frame is folded; have to return undefined:
+                    return undefined;
+                }
                 result = getFrameComponent(frameId, {frameParentComponent: frameBodyComponent, listOfFrameIdToCheck: useStore().frameObjects[childFrameId].childrenIds});
 
                 if(!result){
@@ -540,7 +546,7 @@ export function getFrameComponent(frameId: number, innerLookDetails?: {framePare
         // When we look for the frame from the whole editor, we need to find in wich frame container that frame lives.
         // We don't need to parse recursively for getting the refs/frames as we can just find out what frame container it is in first directly...
         // And if we are already in the container (body), then we just return this component 
-        const frameContainerId = (frameId < 0) ? frameId : getFrameContainer(frameId); 
+        const frameContainerId = (frameId < 0) ? frameId : getFrameContainer(frameId);
         const containerElementRefs = vm.$root.$children[0].$refs[getFrameContainerUID(frameContainerId)] as (Vue|Element)[]; // Retrieve in App
         if(containerElementRefs) {
             result = (frameId < 0) 
@@ -874,6 +880,11 @@ export function generateAllFrameCommandsDefs():void {
                 index:2,
             },
         ],
+        "c": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.classdef),
+            description: i18n.t("frame.classdef_desc") as string,
+            shortcuts: ["c"],
+        }],
         "w": [{
             type: getFrameDefType(AllFrameTypesIdentifier.while),
             description: "while",
@@ -1215,7 +1226,7 @@ export function notifyDragStarted(frameId?: number):void {
         // easier to see, we retrieve the dragged frame parent's body background to set it in the companion image.
         if(useStore().frameObjects[frameId].frameType.type == AllFrameTypesIdentifier.comment){
             const parentId = useStore().frameObjects[frameId].parentId;
-            const commentBackgroundColor = (parentId == useStore().getImportsFrameContainerId || parentId == useStore().getFuncDefsFrameContainerId)
+            const commentBackgroundColor = (parentId == useStore().getImportsFrameContainerId || parentId == useStore().getDefsFrameContainerId)
                 ? scssVars.nonMainCodeContainerBackground
                 : scssVars.mainCodeContainerBackground;
             html2canvasOptions.backgroundColor = commentBackgroundColor;
@@ -2072,56 +2083,69 @@ export function computeAddFrameCommandContainerSize(isExpandedPEA?: boolean): vo
 /* FITRUE_isPython */
 
 
-export function getCurrentFrameSelectionScope(): SelectAllFramesFuncDefScope {
+export function getCurrentFrameSelectAllAction(): SelectAllFramesAction {
     // This method checks the current selection scope that we need to know when doing select-all (for function definitions).
-    // If we are not in function definitions, for commodity, we return SelectAllFramesFuncDefScope.frame as it will the same
-    // logics for the other sections (selecting all the frames in the section)
-    if(getFrameSectionIdFromFrameId(useStore().currentFrame.id) != useStore().functionDefContainerId){
-        return SelectAllFramesFuncDefScope.frame;
+    // If we are not in function definitions, we return wholeContainer
+    if(getFrameSectionIdFromFrameId(useStore().currentFrame.id) != useStore().defsContainerId){
+        return SelectAllFramesAction.wholeContainer;
     }
+    // Now we know we are in the definitions section, and it's a matter of working out what to do
 
     const currentFrameSelection = useStore().selectedFrames;
-    // No selection *for somewhere non empty inside a function* then we are in the scope "none",
-    // No selection *and inside empty function* then we are in the scope "function body",
-    // No selection *for somewhere inside the function definition container, then it depends where we are (see details below),
-    // (no selection *and inside empty container* doesn't need to be considered, because it won't have any effect in the selection loops)
+    // No selection currently:
     if(currentFrameSelection.length == 0) {
         const {id: currentFrameId, caretPosition: currentFrameCaretPos} = useStore().currentFrame;
-        if(currentFrameId == useStore().functionDefContainerId){
-            return SelectAllFramesFuncDefScope.functionsContainerBody;
-        }
-    
-        if(useStore().frameObjects[currentFrameId].frameType.type == AllFrameTypesIdentifier.funcdef && currentFrameCaretPos == CaretPosition.below){
-            return SelectAllFramesFuncDefScope.belowFunc;
+        // We are at top-level, select the whole container:
+        if(currentFrameId == useStore().defsContainerId){
+            // currentLevel and wholeContainer are the same here, really:
+            return SelectAllFramesAction.wholeContainer;
         }
 
-        if(useStore().frameObjects[currentFrameId].frameType.type == AllFrameTypesIdentifier.funcdef && currentFrameCaretPos == CaretPosition.body
+        const isClassOrFunc = useStore().frameObjects[currentFrameId].frameType.type == AllFrameTypesIdentifier.funcdef || useStore().frameObjects[currentFrameId].frameType.type == AllFrameTypesIdentifier.classdef;
+        const isOtherInDefs = !isClassOrFunc && useStore().frameObjects[currentFrameId].parentId == useStore().defsContainerId;
+
+        // If we are just below a function or class then we select everything at this level (which might be top level, or not):
+        if((isClassOrFunc || isOtherInDefs) && currentFrameCaretPos == CaretPosition.below){
+            return SelectAllFramesAction.currentLevel;
+        }
+        
+        // If we are just inside an empty function or class, we select the parent as we have effectively
+        // already selected the entire (empty) content
+        if(isClassOrFunc
+            && currentFrameCaretPos == CaretPosition.body
             && useStore().frameObjects[currentFrameId].childrenIds.length == 0){
-            return SelectAllFramesFuncDefScope.wholeFunctionBody;
+            return SelectAllFramesAction.parent;
         }
 
-        return SelectAllFramesFuncDefScope.none;
+        // Otherwise we select the whole enclosing function or class:
+        return SelectAllFramesAction.functionOrClassContents;
     }
+
+    // We must have a non-empty selection already, so look at the parent:
+    const parentId = useStore().frameObjects[currentFrameSelection[0]].parentId;
     
-    // If there is a selection and the first selected frame is a function definition, then we are in the "frame" scope
-    // (it doesn't matter to know if all functions are alreadys selected or not, the result is the same)
-    if(useStore().frameObjects[currentFrameSelection[0]].frameType.type == AllFrameTypesIdentifier.funcdef){
-        return SelectAllFramesFuncDefScope.frame;
+    // If we are top level then select everything:
+    if(parentId == useStore().defsContainerId) {
+        return SelectAllFramesAction.wholeContainer;
     }
 
     // At this stage, there is a selection within a function definition but we need to check if that's ALL the frames of 
     // a function definition's body or just some of them, or a selection in a deeper level of the frame hierarchy. 
-    const selectionParentFrame = useStore().frameObjects[useStore().frameObjects[currentFrameSelection[0]].parentId];
-    if(selectionParentFrame.frameType.type != AllFrameTypesIdentifier.funcdef){
-        // We are somewhere inside a function definition, but not just at the function's body level
-        return SelectAllFramesFuncDefScope.none;
+    const selectionParentFrame = useStore().frameObjects[parentId];
+    if(selectionParentFrame.frameType.type != AllFrameTypesIdentifier.funcdef && selectionParentFrame.frameType.type != AllFrameTypesIdentifier.classdef){
+        // We are somewhere inside a function definition or class, but not just at the top level:
+        return SelectAllFramesAction.functionOrClassContents;
     }
+    // We must be just inside a function or class; have we selected all of it?
     const functionChildren = selectionParentFrame.childrenIds;
     if(currentFrameSelection[0] == functionChildren[0] && currentFrameSelection.length == functionChildren.length){
-        // All frames of a function's body are already selected
-        return SelectAllFramesFuncDefScope.wholeFunctionBody;
+        // All frames of a function's body are already selected, select the parent
+        return SelectAllFramesAction.parent;
     }
-    return SelectAllFramesFuncDefScope.none;
+    else {
+        // Select all of the current level then:
+        return SelectAllFramesAction.currentLevel;
+    }
 }
 
 

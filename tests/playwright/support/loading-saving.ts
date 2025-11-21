@@ -2,6 +2,8 @@ import {strypeElIds} from "./proxy";
 import {Page, expect} from "@playwright/test";
 import en from "../../../src/localisation/en/en_main.json";
 import {readFileSync} from "node:fs";
+import fs from "fs";
+import { randomUUID } from "node:crypto";
 
 
 export async function load(page: Page, filepath: string) : Promise<void> {
@@ -14,6 +16,15 @@ export async function load(page: Page, filepath: string) : Promise<void> {
     await page.setInputFiles("#" + await strypeElIds(page).getImportFileInputId(), filepath);
     await page.waitForTimeout(2000);
 }
+
+export async function loadContent(page: Page, spyToLoad: string) : Promise<void> {
+    // The recursive option stops it failing if the dir exists:
+    fs.mkdirSync("tests/cypress/downloads/", { recursive: true });
+    const path = `tests/cypress/downloads/toload-${randomUUID()}.spy`;
+    fs.writeFileSync(path, spyToLoad);
+    await load(page, path);
+}
+
 
 export async function save(page: Page, firstSave = true) : Promise<string> {
     // Save is located in the menu, so we need to open it first, then find the link and click on it:
@@ -41,7 +52,7 @@ export async function save(page: Page, firstSave = true) : Promise<string> {
 
 export async function testPlaywrightRoundTripImportAndDownload(page:Page, filepath: string) : Promise<void> {
     await load(page, filepath);
-    const expected = readFileSync(filepath, "utf8");
-    const output = readFileSync(await save(page, false), "utf8");
+    const expected = readFileSync(filepath, "utf8").replace(/\r\n/g, "\n");
+    const output = readFileSync(await save(page, false), "utf8").replace(/\r\n/g, "\n");
     expect(output).toEqual(expected);
 }

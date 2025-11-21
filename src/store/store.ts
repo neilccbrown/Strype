@@ -1,8 +1,8 @@
 import Vue from "vue";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia } from "@/types/types";
+import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia, ModifierKeyCode } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
-import {checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
+import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion, projectDocumentationFrameId, vm } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
@@ -74,7 +74,7 @@ export const useStore = defineStore("app", {
 
             importContainerId: -1,
 
-            functionDefContainerId: -2,
+            defsContainerId: -2,
 
             /** END of flags that need checking when a build is done **/
 
@@ -102,6 +102,7 @@ export const useStore = defineStore("app", {
             // This is the selected tab index of the Commands' tab panel.
             commandsTabIndex: 0, 
 
+            // Are we editing a text slot?
             isEditing: false,
 
             /* These state properties are for saving the layout of the UI.
@@ -221,9 +222,18 @@ export const useStore = defineStore("app", {
             isModalDlgShown: false,
 
             currentModalDlgId: "",
-
+            
             simpleModalDlgMsg: "",
+            
+            groupToggleMemory: {} as Record<string, { lastStates: Record<number, CollapsedState>; overallState: CollapsedState;}> | undefined, // Undefined if missing in old store
 
+            keyModifierStates: {
+                [ModifierKeyCode.ctrl]: false,
+                [ModifierKeyCode.meta]: false,
+                [ModifierKeyCode.shift]: false,
+                [ModifierKeyCode.alt]: false,
+            } as Record<ModifierKeyCode, boolean> | undefined, // Undefined if missing in old store
+            
             /* The following wrapper is used for interacting with the microbit board via DAP*/
             DAPWrapper: {} as DAPWrapper,
 
@@ -296,8 +306,8 @@ export const useStore = defineStore("app", {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === ImportsContainerDefinition.type)[0].id;
         },
 
-        getFuncDefsFrameContainerId:(state) => {
-            return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === FuncDefContainerDefinition.type)[0].id;
+        getDefsFrameContainerId:(state) => {
+            return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === DefsContainerDefinition.type)[0].id;
         },
         
         isEditableFocused: () => (frameSlotInfos: SlotCoreInfos) => {
@@ -446,7 +456,7 @@ export const useStore = defineStore("app", {
             //"return" and "global" statements can't be added when in the main container frame
             //We don't forbid them to be in the main container, but we don't provide a way to add them directly.
             //They can be added when in the function definition container though.
-            const canShowReturnStatement = isContainedInFrame(frameId,caretPosition, [FuncDefContainerDefinition.type]);
+            const canShowReturnStatement = isContainedInFrame(frameId,caretPosition, [DefsContainerDefinition.type]);
             if(!canShowReturnStatement){
                 //by default, "break" and "continue" are NOT forbidden to any frame which can host children frames,
                 //so if we cannot show "break" and "continue" : we add them from the list of forbidden
@@ -462,7 +472,7 @@ export const useStore = defineStore("app", {
 
             // If frames are selected, we only show the frames commands that can be used for wrapping.
             // (For the definitions section, we won't allow any wrapping.)
-            const isSelectingInsideDefsSection = ((currentFrame.id == useStore().getFuncDefsFrameContainerId || state.frameObjects[currentFrame.id].parentId == useStore().getFuncDefsFrameContainerId) 
+            const isSelectingInsideDefsSection = ((currentFrame.id == useStore().getDefsFrameContainerId || state.frameObjects[currentFrame.id].parentId == useStore().getDefsFrameContainerId) 
                 && state.selectedFrames.length > 0);
 
             // for each shortcut we get a list of the corresponding commands
@@ -641,6 +651,20 @@ export const useStore = defineStore("app", {
             return state.frameObjects[frameId].isVisible;
         },
 
+        // A frame is "effectively frozen" either if its own state is frozen, or any of its ancestors are frozen.  So for
+        // example if you have a frozen class, its member functions are effectively-frozen, as are all frames inside those
+        // functions.  This is useful when deciding whether it is possible to delete or focus items in the inner frames. 
+        isEffectivelyFrozen: (state) => (frameId: number) => {
+            while (frameId > 0) {
+                if (state.frameObjects[frameId].frozenState == FrozenState.FROZEN) {
+                    return true;
+                }
+                frameId = state.frameObjects[frameId].parentId;
+            }
+            // No frozen frames found in the ancestors:
+            return false;
+        },
+
         retrieveUserDefinedElements:(state) => {
             // Retrieve the user defined functions and variables.
             // We make sure we don't look up the variable/function in the current frame
@@ -681,8 +705,8 @@ export const useStore = defineStore("app", {
                 // - imports container
                 // - function definition container
                 const currentFrame = state.frameObjects[state.currentFrame.id];
-                return (state.currentFrame.caretPosition == CaretPosition.body && currentFrame.id != state.importContainerId && currentFrame.id != state.functionDefContainerId) 
-                    || (state.currentFrame.caretPosition == CaretPosition.below && currentFrame.parentId !== undefined && currentFrame.parentId != state.importContainerId && currentFrame.parentId != state.functionDefContainerId);        
+                return (state.currentFrame.caretPosition == CaretPosition.body && currentFrame.id != state.importContainerId && currentFrame.id != state.defsContainerId) 
+                    || (state.currentFrame.caretPosition == CaretPosition.below && currentFrame.parentId !== undefined && currentFrame.parentId != state.importContainerId && currentFrame.parentId != state.defsContainerId);        
             }
         },
 
@@ -691,7 +715,7 @@ export const useStore = defineStore("app", {
         },
 
         isContainerCollapsed: (state) => (frameId: number) => {
-            return state.frameObjects[frameId].isCollapsed ?? false;
+            return (state.frameObjects[frameId].collapsedState ?? CollapsedState.FULLY_VISIBLE) != CollapsedState.FULLY_VISIBLE;
         },
     },
     
@@ -706,6 +730,18 @@ export const useStore = defineStore("app", {
                         this.currentMessage = MessageDefinitions.NoMessage;
                     }
                 }, timeoutMillis);
+            }
+        },
+
+        updateKeyModifiers(e: KeyboardEvent | MouseEvent) {
+            if (this.keyModifierStates == undefined) {
+                this.keyModifierStates = {ctrl: e.ctrlKey, meta: e.metaKey, shift: e.shiftKey, alt: e.altKey};
+            }
+            else {
+                this.keyModifierStates.ctrl = e.ctrlKey;
+                this.keyModifierStates.meta = e.metaKey;
+                this.keyModifierStates.shift = e.shiftKey;
+                this.keyModifierStates.alt = e.altKey;
             }
         },
 
@@ -875,7 +911,7 @@ export const useStore = defineStore("app", {
             // Only frame containers (sections) are collapsable, so we don't need to check if a destination frame itself is collapsed,
             // but we do need to check if the target container is - and expand it if needed.
             const containerId = getFrameSectionIdFromFrameId(nextCaret.id);
-            this.frameObjects[containerId].isCollapsed = false;
+            this.frameObjects[containerId].collapsedState = CollapsedState.FULLY_VISIBLE;
         },
 
         setCurrentFrame(newCurrentFrame: CurrentFrame) {
@@ -1292,7 +1328,6 @@ export const useStore = defineStore("app", {
                 "copiedSelectionFrameIds",  
                 topLevelCopiedFrames
             );
-
         },
 
         updateState(newState: Record<string, unknown>){
@@ -1309,7 +1344,7 @@ export const useStore = defineStore("app", {
             // however, for compatibility with project saved under the old behaviour (which allowed the situation),
             // we explicitly check the frame container (section) containing the current frame cursor is expanded
             const currentPositionFrameContainerId = getFrameSectionIdFromFrameId(this.currentFrame.id);
-            this.frameObjects[currentPositionFrameContainerId].isCollapsed = false;
+            this.frameObjects[currentPositionFrameContainerId].collapsedState = CollapsedState.FULLY_VISIBLE;
 
             this.clearNoneFrameRelatedState();
         },
@@ -1577,7 +1612,7 @@ export const useStore = defineStore("app", {
 
                 // As we will show the frame cursor that is potentiallly inside a collapsed frame container, 
                 // we make sure we set that frame container expanded to ensure the changes visibility
-                this.frameObjects[getFrameSectionIdFromFrameId(this.currentFrame.id)].isCollapsed = false;
+                this.frameObjects[getFrameSectionIdFromFrameId(this.currentFrame.id)].collapsedState = CollapsedState.FULLY_VISIBLE;
 
                 // Just like for saveStateChanges(), we need to simulate some dummy changes so that differences between
                 // the stateBeforeChanges and the current state regarding positioning and editing are all reflected properly
@@ -1662,22 +1697,37 @@ export const useStore = defineStore("app", {
             );
 
             this.copiedFrameId = -100;
-
+            
             Vue.set(
                 this,
                 "copiedSelectionFrameIds",
                 []
             );
         },
-        
-        setCollapseStatusContainer(payload: {frameId: number; isCollapsed: boolean}) {
-            Vue.set(
-                this.frameObjects[payload.frameId],
-                "isCollapsed",
-                payload.isCollapsed
-            );
+
+        setCollapseStatuses(statuses: Record<number, CollapsedState>) {
+            Object.entries(statuses).forEach(([frameId, collapsed]) => 
+                Vue.set(
+                    this.frameObjects[Number(frameId)],
+                    "collapsedState",
+                    collapsed
+                ));
         },
 
+        cycleFrameCollapsedState(frameId: number) {
+            const parentIsFrozen = this.frameObjects[this.frameObjects[frameId].parentId].frozenState == FrozenState.FROZEN;
+            const newStates = calculateNextCollapseState([this.frameObjects[frameId]], parentIsFrozen).individual;
+            this.setCollapseStatuses(newStates);
+        },
+
+        setFrozenStatus(payload: {frameId: number; frozen: FrozenState}) {
+            Vue.set(
+                this.frameObjects[payload.frameId],
+                "frozenState",
+                payload.frozen
+            );
+        },
+        
 
         /******************** OLD ACTIONS ********** */
         updateDroppedFramesOrder(destinationCaretFrameId: number, destinationCaretPos: CaretPosition, draggedFrameId?: number) {
@@ -2067,21 +2117,25 @@ export const useStore = defineStore("app", {
                 );
         },
 
-        deleteFrames(key: string, ignoreBackState?: boolean){
+        // Note: this will not always do the delete, for example if frozen frames are involved
+        // Returns true if the deletion ocurred or false if it did not.
+        deleteFrames(key: string, ignoreBackState?: boolean) : boolean {
             const stateBeforeChanges = cloneDeep(this.$state);
-
+            
             // we remove the editable slots from the available positions
             let availablePositions = getAvailableNavigationPositions();
             availablePositions = availablePositions.filter((e) => !e.isSlotNavigationPosition);
 
             //we create a list of frames to delete that is either the elements of a selection OR the current frame's position
             let framesIdToDelete = [this.currentFrame.id];
+            
+            let beforeDelete = () => {};
 
             //If a selection is deleted, we don't distinguish between "del" and "backspace": 
             //We move the caret at the last element of the selection, and perform "backspace" for each element of the selection
             if(this.selectedFrames.length > 0){
                 if(this.selectedFrames[this.selectedFrames.length-1] !== this.currentFrame.id){
-                    this.setCurrentFrame(
+                    beforeDelete = () => this.setCurrentFrame(
                         {
                             id: this.selectedFrames[this.selectedFrames.length-1], 
                             caretPosition: CaretPosition.below,
@@ -2096,6 +2150,18 @@ export const useStore = defineStore("app", {
                 // delete the last of the joint frames:
                 framesIdToDelete = [this.frameObjects[this.currentFrame.id].jointFrameIds[this.frameObjects[this.currentFrame.id].jointFrameIds.length - 1]];
             }
+            
+            // Check if we can actually delete all frames.  If we can't, we back out and delete none.
+            const canDeleteAll = framesIdToDelete.every((frameId) => {
+                // A frame can be deleted if it is non-frozen, and all its parents are non-frozen:
+                return !this.isEffectivelyFrozen(frameId);
+            });
+            
+            if (!canDeleteAll) {
+                return false;
+            }
+            
+            beforeDelete();
             
             framesIdToDelete.forEach((currentFrameId) => {
                 //if delete is pressed
@@ -2137,16 +2203,15 @@ export const useStore = defineStore("app", {
                             }
                         }                                        
                     }
-                    
+
                     if(!foundDisabledJointFrameToDelete) {
                         const indexOfCurrentInAvailables = availablePositions.findIndex((e)=> e.frameId === currentFrame.id && e.caretPosition === this.currentFrame.caretPosition);
                         // the "next" position of the current
                         frameToDelete = availablePositions[indexOfCurrentInAvailables+1]??{id:-100, isSlotNavigationPosition: false};
                     }
-                    
                     // The only times to prevent deletion with 'delete' is when we are inside a body that has no children (except in Joint frames)
                     // or when the next position is a joint root's below OR a method declaration below
-                    if((framesIdToDelete.length==1 && this.frameObjects[frameToDelete.frameId]?.frameType.allowChildren && !this.frameObjects[frameToDelete.frameId]?.frameType.isJointFrame 
+                    else if((framesIdToDelete.length==1 && this.frameObjects[frameToDelete.frameId]?.frameType.allowChildren && !this.frameObjects[frameToDelete.frameId]?.frameType.isJointFrame 
                             && this.currentFrame.caretPosition == CaretPosition.body && this.frameObjects[frameToDelete.frameId]?.childrenIds.length == 0)
                         || ((this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren  || this.frameObjects[frameToDelete.frameId]?.frameType.type === AllFrameTypesIdentifier.funcdef)
                             && (frameToDelete.caretPosition??"") === CaretPosition.below)){
@@ -2194,9 +2259,9 @@ export const useStore = defineStore("app", {
                             deleteChildren: deleteChildren,
                         }
                     );
-                }  
+                }
             });
-
+            
             //clear the selection of frames
             this.unselectAllFrames();
 
@@ -2210,6 +2275,8 @@ export const useStore = defineStore("app", {
             if(!ignoreBackState){
                 this.saveStateChanges(stateBeforeChanges);
             }
+            
+            return true;
         },
         
         deleteFrameFromSlot(frameId: number){      
@@ -2392,7 +2459,7 @@ export const useStore = defineStore("app", {
                 // Only frame containers (sections) are collapsable, so we don't need to check if a destination frame itself is collapsed,
                 // but we do need to check if the target container is - and expand it if needed.
                 const containerId = getFrameSectionIdFromFrameId(nextPosition.frameId);
-                this.frameObjects[containerId].isCollapsed = false;
+                this.frameObjects[containerId].collapsedState = CollapsedState.FULLY_VISIBLE;
                 
                 // And since we just left a frame, we check errors
                 checkCodeErrors();             
@@ -2900,16 +2967,15 @@ export const useStore = defineStore("app", {
         },
 
         copyFrame(frameId: number) {
-            // We do not use the system's clipboard for frames, so we clear any potential text to avoid interference
-            navigator.clipboard.writeText("");
             this.flushCopiedFrames();
             this.doCopyFrame(frameId);
             this.updateNextAvailableId();
         },
 
         copySelection() {
-            // We do not use the system's clipboard for frames, so we clear any potential text to avoid interference
-            navigator.clipboard.writeText("");
+            if (this.selectedFrames.length == 0) {
+                return;
+            }
             this.flushCopiedFrames();
             this.doCopySelection();
             this.updateNextAvailableId();
@@ -2928,14 +2994,21 @@ export const useStore = defineStore("app", {
 
         changeDisableSelection(isDisabling: boolean) {
             const stateBeforeChanges = cloneDeep(this.$state);
-
-            this.selectedFrames.forEach( (id) =>
-                this.doChangeDisableFrame(
-                    {
-                        frameId: id,
-                        isDisabling: isDisabling,
-                    }
-                ));
+            
+            this.selectedFrames.forEach( (id) => {
+                // Can't change frozen frames or children of frozen frames or comments or blanks:
+                if (this.frameObjects[id].frozenState != FrozenState.FROZEN &&
+                    this.frameObjects[this.frameObjects[id].parentId].frozenState != FrozenState.FROZEN &&
+                    // And can't disable blanks (can enable, in case of old projects where this was allowed):
+                    (!isDisabling || this.frameObjects[id].frameType.type != AllFrameTypesIdentifier.blank)) {
+                    this.doChangeDisableFrame(
+                        {
+                            frameId: id,
+                            isDisabling: isDisabling,
+                        }
+                    );
+                }
+            });
             
             //save state changes
             this.saveStateChanges(stateBeforeChanges);
@@ -3029,6 +3102,14 @@ export const useStore = defineStore("app", {
                 previousFramesSelection = [...this.selectedFrames];
                 this.selectMultipleFrames(direction);
             } while (previousFramesSelection.length !== this.selectedFrames.length && !this.selectedFrames.includes(stopId));
+        },
+        
+        // Forces this frame and all its ancestors to be FULLY_VISIBLE, even if they are frozen
+        forceExpand(frameId: number) {
+            if (frameId != 0 && frameId in this.frameObjects) {
+                this.frameObjects[frameId].collapsedState = CollapsedState.FULLY_VISIBLE;
+                this.forceExpand(this.frameObjects[frameId].parentId);
+            }
         },
     },
 });

@@ -1,10 +1,10 @@
-import {AllFrameTypesIdentifier, BaseSlot, CaretPosition, ContainerTypesIdentifiers, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, StringSlot, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders} from "@/types/types";
+import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, StringSlot, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrozenState } from "@/types/types";
 import {useStore} from "@/store/store";
 import {getCaretContainerComponent, getFrameComponent, operators, trimmedKeywordOperators} from "@/helpers/editor";
 import i18n from "@/i18n";
 import {cloneDeep, escapeRegExp} from "lodash";
 import {AppName, AppSPYFullPrefix, projectDocumentationFrameId} from "@/main";
-import {toUnicodeEscapes} from "@/parser/parser";
+import {toUnicodeEscapes, stringToCollapsed, stringToFrozen} from "@/parser/parser";
 import FrameContainer from "@/components/FrameContainer.vue";
 
 const TOP_LEVEL_TEMP_ID = -999;
@@ -15,12 +15,6 @@ const TOP_LEVEL_TEMP_ID = -999;
 // Therefore, we look for the string content starting with '' or "" and finishing with '' or "".
 const parsedTripleSingleQuotesStrRegex = /^''.*''$/s, parsedTripleDoubleQuotesStrRegex = /^"".*""$/s;
 
-// Enum for the type of triple quote strings token (used for flagging)
-enum QuoteStringTokenType {
-    NO_PARSING, // when no triple quote string is parsed yet
-    SINGLE, // when the string is being parsed, and the token is '''
-    DOUBLE,// when the string is being parsed, and the token is """"
-}
 
 // Type for the things we get from the Skulpt parser:
 export interface ParsedConcreteTree {
@@ -40,6 +34,7 @@ interface CopyState {
     parent: FrameObject | null; // The parent, if any, for borrowing the parent ID
     jointParent: FrameObject | null; // The joint parent, if any, for borrowing the parent ID
     disabledLines: number[]; // The line numbers which had a Disabled: prefix
+    frameStateLines: Map<number, SavedFrameState>; // The line numbers which had a Collapsed: prefix
     lineNumberToIndentation: Map<number, string>; // Maps a line number to a string of indentation
     transformTopComment: ((content: SlotsStructure) => void) | undefined; // If defined, consumes the top docstring-style comment rather than adding it as a frame.
     isSPY: boolean;
@@ -54,7 +49,7 @@ export enum STRYPE_LOCATION {
     PROJECT_DOC_SECTION,
     MAIN_CODE_SECTION,
     IN_FUNCDEF,
-    FUNCDEF_SECTION,
+    DEFS_SECTION,
     IMPORTS_SECTION
 }
 
@@ -90,6 +85,8 @@ function addFrame(frame: FrameObject, lineno: number | undefined, s: CopyState) 
     frame.id = id;
     s.loadedFrames[id] = frame;
     frame.isDisabled = lineno != undefined && s.disabledLines.includes(lineno);
+    frame.collapsedState = lineno != undefined ? s.frameStateLines.get(lineno)?.collapsed : undefined;
+    frame.frozenState = lineno != undefined ? s.frameStateLines.get(lineno)?.frozen : undefined;
     if (!frame.frameType.isJointFrame) {
         s.addToNonJoint?.push(id);
         if (s.parent != null) {
@@ -130,7 +127,7 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}, i
     ){
         // A multilines comment is detected, we transform the frame.
         const stringFieldContent = (slots[0].slotStructures.fields[1] as BaseSlot).code;
-        slots[0].slotStructures.fields.splice(0, 3, {code: stringFieldContent.slice(2,-2)});
+        slots[0].slotStructures.fields.splice(0, 3, {code: stringFieldContent.slice(2,-2).replaceAll(STRYPE_DOC_NEWLINE, "\n")});
         slots[0].slotStructures.operators.splice(0);
         type = AllFrameTypesIdentifier.comment;
     }
@@ -143,7 +140,7 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}, i
         caretVisibility: CaretPosition.none,
         childrenIds: [],
         id: -100, // Will be set during addFrame
-        isCollapsed: false,
+        collapsedState: CollapsedState.FULLY_VISIBLE,
         isDisabled: false,
         isSelected: false,
         isVisible: true,
@@ -211,6 +208,7 @@ function getIndent(codeLine: string) {
 const STRYPE_COMMENT_PREFIX = "___strype_comment_";
 const STRYPE_LIBRARY_PREFIX = "___strype_library_";
 
+const STRYPE_DOC_NEWLINE = "___strype_doc_newline";
 const STRYPE_WHOLE_LINE_BLANK = "___strype_whole_line_blank";
 
 export const STRYPE_DUMMY_FIELD = "___strype_dummy";
@@ -223,9 +221,60 @@ export const STRYPE_INVALID_SLOT = "___strype_invalid_";
 export const STRYPE_INVALID_OPS_WRAPPER = "___strype_opsinvalid";
 export const STRYPE_INVALID_OP = "___strype_operator_";
 
-function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") : {disabledLines : number[], transformedLines : string[], strypeDirectives: Map<string, string>} { 
+export interface SavedFrameState {
+    collapsed?: CollapsedState;
+    frozen?: FrozenState;
+    // Could be more in future, potentially
+}
+
+// Given a line and a start index, looks for the given closing quote from startIndex (inclusive) onwards.
+// Ensures that the quote is not escaped by looking at preceding backslashes.  If there's:
+// '     --> 0, not escaped
+// \'    --> 1, escaped
+// \\'   --> 2, not escaped (preceding escaped backslash)
+// \\\'  --> 3, escaped (after a preceding escaped backslash)
+// \\\\' --> 4, not escaped (after two preceding escaped backslashes)
+// General rule: must have even number of backslash before to be not-escaped.
+// Returns -1 if not found, or otherwise the position just after the end of the closing quote
+function findStringEnd(line : string, startIndex : number, quoteType : string) : number {
+    const quoteLen = quoteType.length;
+    let pos = startIndex;
+    while (pos < line.length) {
+        const nextQuoteIndex = line.indexOf(quoteType, pos);
+        if (nextQuoteIndex === -1) {
+            return -1; // Not found
+        }
+        else {
+            // Found, but check if it's escaped.
+
+            // Count backslashes immediately before the quote
+            let backslashes = 0;
+            for (let j = nextQuoteIndex - 1; j >= 0 && line[j] === "\\"; j--) {
+                backslashes++;
+            }
+
+            // Even number of backslashes; quote is not escaped, so it's the real end
+            if (backslashes % 2 === 0) {
+                return nextQuoteIndex + quoteLen;
+            }
+
+            // Otherwise, escaped → skip past and keep looking
+            pos = nextQuoteIndex + 1;
+        }
+    }
+    return -1;
+}
+
+// Takes the original code lines, and specification of py or spy format.
+// Returns a list of transformed lines with recording for frame states for a particular line
+// (and similarly but separatedly, which lines are disabled), any non-line-specific Strype states
+// and a list of transformed lines.  Comments are transformed to identifiers, as are blanks, so that
+// we can see them after Skulpt's parse.
+// Note the disabledLines are one-based, not zero-based
+function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") : {disabledLines : number[], frameStateLines : Map<number, SavedFrameState>, transformedLines : string[], strypeDirectives: Map<string, string>} { 
     codeLines = [...codeLines];
     const disabledLines : number[] = [];
+    const frameStateLines : Map<number, SavedFrameState> = new Map<number, SavedFrameState>();
     const transformedLines : string[] = [];
     const strypeDirectives: Map<string, string> = new Map<string, string>();
 
@@ -275,60 +324,61 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
 
     // Skulpt doesn't preserve blanks or comments so we must find them and transform
     // them into something that does parse.
-    // Note that we do not worry about blank spaces inside triple quotes strings: Skulpt won't remove them, 
-    // we need to preserve them, so we also need to know when we are inside a triple quotes string.
-    // Find all comments.  This isn't quite perfect (with respect to # in strings and triple quotes tokens) but it will do:
-    let mostRecentIndent = "", singleIndentLength = 0, isParsingTripleQuotesStr = false, currentTripleQuoteTokenStyle = QuoteStringTokenType.NO_PARSING;
+    
+    // The content here includes the original starting line, opening quote and all string content.
+    // We turn all triple quotes into single lines with \n to avoid issues with indents on subsequent lines:
+    let mostRecentIndent = "", currentTripleQuoteString: {quote: "'''" | "\"\"\"", content: string, disabled: boolean } | null = null;
     for (let i = 0; i < codeLines.length; i++) {
-        // Look for # with only space before them, or a # with no quote after (if we are not in the context of a multlines comment):
-        const match = /^( *)#(.*)$/.exec(codeLines[i]) ?? /^([^#]*)#([^"]+)$/.exec(codeLines[i]);
-        if (match && !isParsingTripleQuotesStr) {
-            const directiveMatch = new RegExp("^ *" + escapeRegExp(AppSPYFullPrefix) + "([^:]+):(.*)$").exec(codeLines[i]);
-            if (directiveMatch) {
-                // By default, directives are just added to the map:
-                // Note we trim() keys but not values; space may well be important in values:
-                const key = directiveMatch[1].trim();
-                const value = directiveMatch[2];
-                if (key == "Disabled") {
-                    // Process line again:
-                    codeLines[i] = match[1] + value;
+        // The #(=> directives are only valid if they appear on a line with only whitespace before them:
+        const directiveMatch = new RegExp("^( *)" + escapeRegExp(AppSPYFullPrefix) + "([^:]+):(.*)$").exec(codeLines[i]);
+        if (directiveMatch && (currentTripleQuoteString == null || (currentTripleQuoteString.disabled && directiveMatch[2].trim() == "Disabled"))) {
+            // By default, directives are just added to the map:
+            const directiveIndent = directiveMatch[1];
+            // Note we trim() keys but not values; space may well be important in values:
+            const key = directiveMatch[2].trim();
+            const value = directiveMatch[3];
+            
+            if (key == "Disabled") {
+                // Process line again:
+                codeLines[i] = directiveIndent + value;
+                disabledLines.push(i+1);
+                i -= 1;
+                continue;
+            }
+            else if (key == "Library" || key == "LibraryDisabled") {
+                transformedLines.push(directiveIndent + STRYPE_LIBRARY_PREFIX + toUnicodeEscapes(value));
+                // We know this is only whitespace because directiveMatch also matched:
+                mostRecentIndent = directiveIndent;
+                if (key == "LibraryDisabled") {
                     disabledLines.push(i+1);
-                    i -= 1;
-                    continue;
                 }
-                else if (key == "Library" || key == "LibraryDisabled") {
-                    transformedLines.push(match[1] + STRYPE_LIBRARY_PREFIX + toUnicodeEscapes(value));
-                    // We know this is only whitespace because directiveMatch also matched:
-                    mostRecentIndent = match[1];
-                    if (key == "LibraryDisabled") {
-                        disabledLines.push(i+1);
+            }
+            else if (key == "FrameState") {
+                const states = value.trim().split(";");
+                const composite = {} as SavedFrameState;
+                for (const s of states) {
+                    if (s.trim() in stringToCollapsed) {
+                        composite.collapsed = stringToCollapsed[s.trim()];
+                    }
+                    if (s.trim() in stringToFrozen) {
+                        composite.frozen = stringToFrozen[s.trim()];
                     }
                 }
-                else {
-                    strypeDirectives.set(key, value);
-                    // Push a blank to make line numbers match:
-                    transformedLines.push("");
-                    mostRecentIndent = "";
-                }
+                // +1 to move to a 1-based rather than 0-based line number, and +1 more to mean the line after us:
+                frameStateLines.set(i + 2, composite);
+                // Push a blank to make line numbers match:
+                transformedLines.push("");
             }
             else {
-                if (match[1].trim() == "") {
-                    // Just a single line comment:
-                    transformedLines.push(match[1] + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(match[2]));
-                    mostRecentIndent = match[1];
-                    aCommentBlockLines.push(transformedLines.length-1);
-                }
-                else {
-                    // Code followed by comment, put comment on next line:
-                    mostRecentIndent = getIndent(match[1]);
-                    transformedLines.push(match[1]);
-                    checkRearrangeCommentsIdent();
-                    transformedLines.push(mostRecentIndent + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(match[2]));
-                }
+                // Not one we have to deal with during parsing, probably a config setting, so record for later processing:
+                strypeDirectives.set(key, value);
+                // Push a blank to make line numbers match:
+                transformedLines.push("");
+                mostRecentIndent = "";
             }
         }
-        else if (codeLines[i].trim() === "" && !isParsingTripleQuotesStr) {
-            // Blank line:
+        else if (codeLines[i].trim() === "" && currentTripleQuoteString == null) {
+            // Blank line, outside a string:
             // We indent this to the largest of its indent,
             // and the (smallest of the indent before us and the indent after us).
             let nextIndent = "";
@@ -347,156 +397,103 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
             }
             checkRearrangeCommentsIdent();
         }
-        else if((currentTripleQuoteTokenStyle != QuoteStringTokenType.DOUBLE && codeLines[i].trim().includes("'''")) || (currentTripleQuoteTokenStyle != QuoteStringTokenType.SINGLE && codeLines[i].trim().includes("\"\"\""))){
-            // At least 1 triple quotes string is in the line, we don't know if it is actually a 
-            // "normal" string or a comment, but we care about that later when we put things in frames.
-            // For the moment we just try to see if the current line "hangs" a triple quotes string
-            // literal "started", so we can flag it out; and we arrange the indentation as such:
-            // 1) if the line doesn't start with ''' or """ we align the comment at the current mostRecentIndent 
-            // or 2) if it's a multiple of the indent unit length we keep it and update the most recent indent,
-            // otherwise we take a guess where to start the string literal to the closest indentation.
-            let transformedLine = "";
-            let hasFinishedFindingTripleQuotesString = false, lookUpTripleQuoteTokenFromIndex = 0, foundOneTripleQuoteStartToken = false;
-            const stringStartDetectorIndexes: {stringToken: QuoteStringTokenType, stringStartIndex: number}[] = [];
-            while(!hasFinishedFindingTripleQuotesString){
-                // We "scan" the line to find the triple quotes strings: the point is to 
-                // 1) know what token (''' or """) opens a string literal and discard inner """ or ''' from the search
-                // 2) find out when a triple quote string literal is fully contained in the line and can be ignored for parsing.                
-                if(!isParsingTripleQuotesStr){
-                    // We look for normal strings too, just to avoid the case of bumping to a triple quote token as literal inside,
-                    // like in "this is a triple quote: ''', yes.". We just find them and go beyond them if they come first.
-                    // Because JS limitations with regex, we can't directly find the normal string in the line.
-                    // So instead, we look for a normal string start, record the start index to see what comes first.
-                    // If a normal string comes first, we process it.
-                    // Note: the index of the string is (lookUpTripleQuoteTokenFromIndex (where we started) + match index + (1 if match length is 2, 0 otherwise -, because the match index counts the non grouping part)
-                    const normalSingleQuoteStringStartRegexRes = /(?:^|[^\\'])(')(?!')/.exec(codeLines[i].slice(lookUpTripleQuoteTokenFromIndex));
-                    if(normalSingleQuoteStringStartRegexRes){
-                        stringStartDetectorIndexes.push({stringToken: QuoteStringTokenType.SINGLE, stringStartIndex: lookUpTripleQuoteTokenFromIndex + (normalSingleQuoteStringStartRegexRes.index + normalSingleQuoteStringStartRegexRes[0].length - 1)});
-                    }
-                    const normalDoubleQuoteStringStartRegexRes = /(?:^|[^\\"])(")(?!")/.exec(codeLines[i].slice(lookUpTripleQuoteTokenFromIndex));
-                    if(normalDoubleQuoteStringStartRegexRes){
-                        stringStartDetectorIndexes.push({stringToken: QuoteStringTokenType.DOUBLE, stringStartIndex: lookUpTripleQuoteTokenFromIndex + (normalDoubleQuoteStringStartRegexRes.index + normalDoubleQuoteStringStartRegexRes[0].length - 1)});         
-                    }           
-                }
-                const lookUpTripleQuoteTokenRegex: RegExp = (currentTripleQuoteTokenStyle == QuoteStringTokenType.NO_PARSING) 
-                    ? /(?<!\\)('''|""")/ 
-                    : ((currentTripleQuoteTokenStyle == QuoteStringTokenType.SINGLE) 
-                        ? /(?<!\\)'''/ 
-                        : /(?<!\\)"""/);
-                const regexExecRes = lookUpTripleQuoteTokenRegex.exec(codeLines[i].slice(lookUpTripleQuoteTokenFromIndex));
-                if(regexExecRes){
-                    // We found a triple quote string token, if it's a starting token, we set the flags and then look up for the ending token;
-                    // if it's a closing token, we reset the flags and look for other strings that may still follow.
-                    isParsingTripleQuotesStr = !isParsingTripleQuotesStr;
-                    if(isParsingTripleQuotesStr){
-                        // Check that no normal string is found before this triple quote token: if not, we don't proceed but move past that normal string.
-                        // (only keep first found strings)
-                        const filteredStringStartDetectorIndexes = stringStartDetectorIndexes.reduce((acc, curr) => {
-                            if(curr.stringStartIndex > -1 && curr.stringStartIndex > acc.stringStartIndex ){                                
-                                return curr;                                
-                            }
-                            else{ 
-                                return acc;
-                            }
-                        }, {stringToken: QuoteStringTokenType.NO_PARSING, stringStartIndex: -1});
-                        if(filteredStringStartDetectorIndexes.stringStartIndex > -1 && (lookUpTripleQuoteTokenFromIndex + regexExecRes.index) > filteredStringStartDetectorIndexes.stringStartIndex){
-                            // Reset stringStartDetectorIndexes
-                            stringStartDetectorIndexes.splice(0);
-                            // Look up the end of the normal string, then just reset the lookup index flag and the parsing state and break the loop 
-                            const normalStringEndTokenRegexRes = ((filteredStringStartDetectorIndexes.stringToken == QuoteStringTokenType.SINGLE) 
-                                ? /(?:^|[^\\'])(')/ : /(?:^|[^\\"])(")/)
-                                .exec(codeLines[i].slice(filteredStringStartDetectorIndexes.stringStartIndex + 1));
-                            if(normalStringEndTokenRegexRes){
-                                // The new index to look up is filteredStringStartDetectorIndexes.stringStartIndex + 1 (since we start looking here)
-                                // + index of the match + length of the match (can be 1 or 2)
-                                // + 1 for the passing the match itself (passing the ending token)
-                                lookUpTripleQuoteTokenFromIndex = filteredStringStartDetectorIndexes.stringStartIndex  + (normalStringEndTokenRegexRes.index + normalStringEndTokenRegexRes[0].length + 2);
-                                isParsingTripleQuotesStr = !isParsingTripleQuotesStr;
-                                break;
-                            }
-                        }
-
-                    }
-                    currentTripleQuoteTokenStyle = (isParsingTripleQuotesStr) 
-                        ? ((regexExecRes[0] == "'''") ? QuoteStringTokenType.SINGLE: QuoteStringTokenType.DOUBLE)
-                        : QuoteStringTokenType.NO_PARSING;
-                    lookUpTripleQuoteTokenFromIndex += regexExecRes.index + 3; // pass the opening/closing token
-                    if(!foundOneTripleQuoteStartToken && isParsingTripleQuotesStr){
-                        foundOneTripleQuoteStartToken = true;
-                        // A string literal may start on that line, we check what indentation to use as mentioned above.
-                        const tripleQuoteToken = (currentTripleQuoteTokenStyle == QuoteStringTokenType.SINGLE) ? "'''" : "\"\"\"";
-                        if(codeLines[i].trimStart().startsWith(tripleQuoteToken)) {
-                            const blanksAtStart = codeLines[i].slice(0, codeLines[i].indexOf(tripleQuoteToken));
-                            if(singleIndentLength == 0 || (blanksAtStart.length % singleIndentLength) == 0) {
-                                mostRecentIndent = blanksAtStart;
-                                transformedLine = codeLines[i];    
-                            }                    
-                            else{
-                                mostRecentIndent = mostRecentIndent.charAt(0).repeat(Math.round(blanksAtStart.length / singleIndentLength) * singleIndentLength);
-                                transformedLine = mostRecentIndent + codeLines[i].trimStart();
-                            }
+        else {
+            // We have a line which could contain strings, multiline string start/end, comments, some awkward sequence of the set.
+            
+            // We have to go character by character to process it fully:
+            let charIndex = 0;
+            let line = codeLines[i];
+            while (charIndex < line.length) {
+                if (currentTripleQuoteString != null) {
+                    // We're currently in a triple-quoted string looking for the end.  Use indexOf rather than going char-by-char:
+                    const afterEndQuote = findStringEnd(line, charIndex, currentTripleQuoteString.quote);
+                    if (afterEndQuote != -1) {
+                        // The end exists on this line, jump to it:
+                        charIndex = afterEndQuote;
+                        if (line.startsWith(mostRecentIndent) && currentTripleQuoteString.content.includes(STRYPE_DOC_NEWLINE) && format == "spy") {
+                            currentTripleQuoteString.content = currentTripleQuoteString.content + line.substring(mostRecentIndent.length, afterEndQuote);
                         }
                         else {
-                            // We remove the leading indent if it is there:
-                            if (codeLines[i].startsWith(mostRecentIndent)) {
-                                transformedLine = codeLines[i].substring(mostRecentIndent.length);
-                            }
-                            else {
-                                // Better just leave as is:
-                                transformedLine = codeLines[i];
-                            }
+                            currentTripleQuoteString.content = currentTripleQuoteString.content + line.slice(0, afterEndQuote);
                         }
-                    }
-                }
-                else{
-                    // All the triple quotes strings tokens in the line have been detected.
-                    hasFinishedFindingTripleQuotesString = true;
-                }
-            }
-
-            // Only trim the end of the line if we are not in a "hanging" situation
-            if(!isParsingTripleQuotesStr){
-                if (foundOneTripleQuoteStartToken) {
-                    transformedLine = transformedLine.trimEnd();
-                }
-                else {
-                    if (codeLines[i].startsWith(mostRecentIndent)) {
-                        transformedLine = codeLines[i].substring(mostRecentIndent.length).trimEnd();
+                        line = currentTripleQuoteString.content + line.slice(afterEndQuote);
+                        charIndex = currentTripleQuoteString.content.length; 
+                        currentTripleQuoteString = null;
+                        // Continue on line because could be more, e.g. '''a''' + '''b''' is valid.
                     }
                     else {
-                        transformedLine = codeLines[i].trimEnd();
+                        // Whole line is in string, add it to string and remove indent if SPY, indent present, and not first line of string:
+                        if (line.startsWith(mostRecentIndent) && currentTripleQuoteString.content.includes(STRYPE_DOC_NEWLINE) && format == "spy") {
+                            currentTripleQuoteString.content = currentTripleQuoteString.content + line.substring(mostRecentIndent.length);
+                        }
+                        else {
+                            currentTripleQuoteString.content = currentTripleQuoteString.content + line;
+                        }
+                        // New line is pushed after the loop:
+                        break;
                     }
                 }
-            }            
-            transformedLines.push(transformedLine);
-        }
-        else {
-            // Any other valid code, except if we are in the context of triple quotes strings: we keep the line as is.
-            if(isParsingTripleQuotesStr){
-                // We remove the leading indent if it is there:
-                if (codeLines[i].startsWith(mostRecentIndent)) {
-                    transformedLines.push(codeLines[i].substring(mostRecentIndent.length));
-                }
                 else {
-                    transformedLines.push(codeLines[i]);
+                    // Must check triple quote possibility before single quote characters:
+                    const next3 = line.slice(charIndex, charIndex + 3);
+                    if (next3 == "'''" || next3 == "\"\"\"") {
+                        currentTripleQuoteString = {quote: next3, content: line.slice(0, charIndex+3), disabled: disabledLines.includes(i+1)};
+                        mostRecentIndent = getIndent(line);
+                        // Process the rest of the line:
+                        line = line.slice(charIndex + 3);
+                        charIndex = 0;
+                    }
+                    else if (line.slice(charIndex, charIndex+1) == "'" || line.slice(charIndex, charIndex+1) == "\"") {
+                        // This is a standard string so it must finish on this line to be valid.
+                        // We look for end or otherwise proceed as if it finished on this line:
+                        const afterEnd = findStringEnd(line, charIndex+1, line.slice(charIndex, charIndex+1));
+                        if (afterEnd != -1) {
+                            charIndex = afterEnd;
+                        }
+                    }
+                    else if (line.slice(charIndex, charIndex+1) == "#") {
+                        // Start of a comment and we're not in a string, so rest of the line is comment
+                        const before = line.slice(0, charIndex);
+                        const after = line.slice(charIndex+1);
+                        if (before.trim() == "") {
+                            // Just a single line comment by itself:
+                            transformedLines.push(before + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(after));
+                            mostRecentIndent = before;
+                            aCommentBlockLines.push(transformedLines.length-1);
+                        }
+                        else {
+                            // Code followed by comment, put comment on next line:
+                            mostRecentIndent = getIndent(before);
+                            transformedLines.push(before);
+                            checkRearrangeCommentsIdent();
+                            transformedLines.push(mostRecentIndent + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(after));
+                        }
+                        // Make sure we don't push the line again:
+                        charIndex = -1;
+                        break;
+                    }
+                    else {
+                        // Nothing string or comment related, keep going:
+                        charIndex = charIndex + 1;
+                    }
                 }
             }
-            else {
-                transformedLines.push(codeLines[i].trimEnd());
-                mostRecentIndent = getIndent(codeLines[i].trimEnd());
-                checkRearrangeCommentsIdent();            
+            if (charIndex >= 0 && currentTripleQuoteString == null) {
+                // Got to the end without finding a comment, and we're not in a string (processed specially) so preserve it in full:
+                transformedLines.push(line);
+                mostRecentIndent = getIndent(line.trimEnd());
+                checkRearrangeCommentsIdent();
             }
-        }
-
-        // Update the indentation "unit" length: that is the length of 1 indentation (like 4 for "   ").
-        if(singleIndentLength == 0 && mostRecentIndent.length > 0) {
-            singleIndentLength = mostRecentIndent.length;
+            else if (currentTripleQuoteString != null) {
+                // Record the newline here, which is an escaped newline:
+                currentTripleQuoteString.content = currentTripleQuoteString.content + STRYPE_DOC_NEWLINE;
+            }
         }
     }
     // We might have comments at the end of the code, so we need to check their indentation:
     checkRearrangeCommentsIdent();
 
-    return { disabledLines, transformedLines, strypeDirectives };
+    return { disabledLines, frameStateLines: frameStateLines, transformedLines, strypeDirectives };
 }
 
 // Get rid of escapes in the project doc string:
@@ -567,7 +564,7 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
     useStore().copiedSelectionFrameIds = [];
     try {
         // Use the next available ID to avoid clashing with any existing IDs:
-        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: useStore().nextAvailableId, addToNonJoint: useStore().copiedSelectionFrameIds, addToJoint: undefined, loadedFrames: useStore().copiedFrames, disabledLines: transformed.disabledLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0, transformTopComment: (c) => {
+        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: useStore().nextAvailableId, addToNonJoint: useStore().copiedSelectionFrameIds, addToJoint: undefined, loadedFrames: useStore().copiedFrames, disabledLines: transformed.disabledLines, frameStateLines: transformed.frameStateLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0, transformTopComment: (c) => {
             if (!dryrun) {
                 const docFrame = useStore().frameObjects[projectDocumentationFrameId] as FrameObject;
                 // The escapes in the loaded project doc were inserted by us on saving, so we should remove them:
@@ -872,6 +869,9 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
                 // Can be blank on RHS of colon
                 latest = concatSlots(latest, op, {fields: [{code: ""}], operators: []});
             }
+            else if (op == "," && ps.nextIndex == ps.seq.length) {
+                // Can have a trailing comma with nothing following; ignore
+            }
             else {
                 latest = concatSlots(latest, op, parseNextTerm(ps));
             }
@@ -921,10 +921,15 @@ function getRealLineNo(p: ParsedConcreteTree) : number | undefined {
 }
 
 // the given index for the body, and call addFrame on it.
-function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, keywordIndexForLineno: number, childrenIndicesForSlots: (number | number[])[], childIndexForBody: number, s : CopyState, transformTopComment?: (content: SlotsStructure, frame: FrameObject) => void) : {s: CopyState, frame: FrameObject} {
-    const slots : { [index: number]: LabelSlotsContent} = {};
-    for (let slotIndex = 0; slotIndex < childrenIndicesForSlots.length; slotIndex++) {
-        slots[slotIndex] = {slotStructures : toSlots(applyIndex(p, childrenIndicesForSlots[slotIndex]))};
+function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, keywordIndexForLineno: number, childrenIndicesForSlots: (number | number[])[] | { [index: number]: LabelSlotsContent}, childIndexForBody: number, s : CopyState, transformTopComment?: (content: SlotsStructure, frame: FrameObject) => void) : {s: CopyState, frame: FrameObject} {
+    let slots : { [index: number]: LabelSlotsContent} = {};
+    if (Array.isArray(childrenIndicesForSlots)) {
+        for (let slotIndex = 0; slotIndex < childrenIndicesForSlots.length; slotIndex++) {
+            slots[slotIndex] = {slotStructures : toSlots(applyIndex(p, childrenIndicesForSlots[slotIndex]))};
+        }
+    }
+    else {
+        slots = childrenIndicesForSlots;
     }
     const frame = makeFrame(frameType, slots, s.isSPY);    
     s = addFrame(frame, applyIndex(p, keywordIndexForLineno).lineno, s);
@@ -1176,6 +1181,52 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         if (!(3 in r.frame.labelSlotsDict)) {
             r.frame.labelSlotsDict[3] = {slotStructures: {operators: [], fields: [{code: ""}]}};
         }
+        if (s.parent?.frameType.type == AllFrameTypesIdentifier.classdef) {
+            // We remove the first param from the start of function params,
+            // assuming it is the self parameter that we add automatically.
+            const params = r.frame.labelSlotsDict[1];
+
+            if (params && params.slotStructures.fields.length == 1) {
+                // We need to keep a field, but we blank the content:
+                (params.slotStructures.fields[0] as BaseSlot).code = "";
+            }
+            else if (params && params.slotStructures.fields.length > 1) {
+                // We can just delete the first item and first operator, and rest can stay:
+                params.slotStructures.fields.splice(0, 1);
+                params.slotStructures.operators.splice(0, 1);
+            }
+        }
+        break;
+    }
+    case Sk.ParseTables.sym.classdef: {
+        // First child is keyword, second is the name, penultimate is colon, last is body.
+        // If there are parent classes, third is open-bracket, fourth is content, fifth is close bracket
+        // However, this doesn't work with makeAndAddFrameWithBody because the way we deal with parent classes
+        // is to add them as a bracketed item inside the single name slot.  So we need to do some custom work:
+        const numChildren = children(p).length;
+        const slots : { [index: number]: LabelSlotsContent} = {};
+        if (numChildren == 4) {
+            // No parent, just the name:
+            slots[0] = {slotStructures: toSlots(applyIndex(p, 1))};
+        }
+        else {
+            // There are brackets with parent names:
+            const name = toSlots(applyIndex(p, 1));
+            const parent = toSlots(applyIndex(p, 3));
+            parent.openingBracketValue = "(";
+            // Now we need to combine them:
+            name.fields.push(parent, {code: ""});
+            name.operators.push({code: ""}, {code: ""});
+            slots[0] = {slotStructures: name};
+        }
+        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.classdef, 0, slots, numChildren - 1, s, (comment : SlotsStructure, frame : FrameObject) => {
+            frame.labelSlotsDict[2] = {slotStructures: comment};
+        });
+        s = r.s;
+        // If we didn't find a top comment, add blank:
+        if (!(2 in r.frame.labelSlotsDict)) {
+            r.frame.labelSlotsDict[2] = {slotStructures: {operators: [], fields: [{code: ""}]}};
+        }
         break;
     }
     }
@@ -1196,9 +1247,9 @@ export function findCurrentStrypeLocation(): STRYPE_LOCATION {
             // Two possible cases: we are at the body of a function definition or at the bottom:
             // in the first case, we are inside a function definition,
             // in the second case, we are inside the definitions section.
-            return (navigFrameCaretPos == CaretPosition.body) ? STRYPE_LOCATION.IN_FUNCDEF : STRYPE_LOCATION.FUNCDEF_SECTION;
-        case ContainerTypesIdentifiers.funcDefsContainer:
-            return STRYPE_LOCATION.FUNCDEF_SECTION;
+            return (navigFrameCaretPos == CaretPosition.body) ? STRYPE_LOCATION.IN_FUNCDEF : STRYPE_LOCATION.DEFS_SECTION;
+        case ContainerTypesIdentifiers.defsContainer:
+            return STRYPE_LOCATION.DEFS_SECTION;
         case ContainerTypesIdentifiers.importsContainer:
             return STRYPE_LOCATION.IMPORTS_SECTION;
         default:
@@ -1231,13 +1282,27 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION)
     // Check if the match between the current Strype location and the copied Python code frames is possible
     switch(currentStrypeLocation){
     case STRYPE_LOCATION.MAIN_CODE_SECTION:
-        return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.global].includes(frame.frameType.type));
-    case  STRYPE_LOCATION.IN_FUNCDEF:
-        return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type));
-    case  STRYPE_LOCATION.FUNCDEF_SECTION:
+        return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.global].includes(frame.frameType.type));
+    case STRYPE_LOCATION.IN_FUNCDEF:
+        return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type));
+    case STRYPE_LOCATION.DEFS_SECTION:
         removeTopLevelBlankFrames();
-        return !(topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type))
-            || copiedPythonToFrames.some((frame) => !topLevelCopiedFrameIds.includes(frame.id) && [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type)));
+        // We are checking if we can paste; the not at the beginning means everything inside the ensuing bracket is actually the cases
+        // where we *cannot* paste, then we invert this to get all the cases we can paste
+        return !(topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.varassign, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type))
+            || copiedPythonToFrames.some((frame) =>
+                // Look only at non-top-level (i.e. child) frames    
+                !topLevelCopiedFrameIds.includes(frame.id) &&
+                // Look for frames which are outright banned as children: 
+                ([AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef].includes(frame.frameType.type)
+                // Funcdefs are a special case; they can be children, but only inside classes:
+                ||
+                (frame.frameType.type === AllFrameTypesIdentifier.funcdef
+                    // Forbidden if either their parent is not top-level,
+                    && (!topLevelCopiedFrameIds.includes(frame.parentId)
+                        // Or if that parent is not a class:
+                        || !topLevelCopiedFrames.some((p) => p.id == frame.parentId && p.frameType.type == AllFrameTypesIdentifier.classdef)))
+                )));
     case  STRYPE_LOCATION.IMPORTS_SECTION:
         removeTopLevelBlankFrames();
         return !topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.library, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type));
@@ -1343,10 +1408,14 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
     const imports: NumberedLine[] = [];
     const defs: NumberedLine[] = [];
     const main: NumberedLine[] = [];
-    let addingToDef = false;
-    let defIndent = 0;
+    // -1 if we're not in a def
+    let outermostDefIndentLevel = -1;
     allLines.forEach((line : string, zeroBasedLine : number) => {
         const lineWithNum : NumberedLine = {text: line, lineno: zeroBasedLine + 1};
+        const indentLevel = line.length - line.trimStart().length;
+        if (line.trim() != "" && indentLevel <= outermostDefIndentLevel) {
+            outermostDefIndentLevel = -1;
+        }
         if (line.match(/^\s*["'].*/) && imports.length + defs.length + main.length == 0) {
             projectDoc.push(lineWithNum);
         }
@@ -1355,27 +1424,24 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
             imports.push(...latestComments);
             latestComments = [];
             imports.push(lineWithNum);
-            addingToDef = false;
         }
-        else if (line.match(/^\s*def\s+/)) {
-            addingToDef = true;
-            defIndent = line.length - line.trimStart().length;
-            defs.push(...latestComments.map((l) => ({...l, text: l.text.trimStart() + " ".repeat(defIndent)})));
+        // We're only the new outermost if there is no current outermost:
+        else if (line.match(/^\s*(def|class)\s+/) && outermostDefIndentLevel == -1) {
+            defs.push(...latestComments.map((l) => ({...l, text: l.text.trimStart() + " ".repeat(indentLevel)})));
             latestComments = [];
             defs.push({...lineWithNum, text: line.trimStart()});
-            
+            outermostDefIndentLevel = indentLevel;
         }
         else if (line.match(/^\s*#/)) {
             latestComments.push(lineWithNum);
         }
-        else if (addingToDef && (line.trim() == "" || (line.length - line.trimStart().length) > defIndent)) {
+        else if (outermostDefIndentLevel >= 0) {
             // Keep adding to defs until we see a non-comment non-blank line with less or equal indent:
             defs.push(...latestComments);
             latestComments = [];
-            defs.push({...lineWithNum, text: line.slice(defIndent)});
+            defs.push({...lineWithNum, text: line.slice(outermostDefIndentLevel)});
         }
         else {
-            addingToDef = false;
             main.push(...latestComments);
             latestComments = [];
             // We don't push leading blanks to main (i.e. blank lines while main is empty), otherwise all the blanks before/between imports and defs end up there:
@@ -1412,7 +1478,7 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
     // if there are any errors we don't want to paste any:
     let err = copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.format, s.importsMapping, "dryrun");
     if (typeof err != "string") {
-        err = copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.FUNCDEF_SECTION, s.format, s.defsMapping, "dryrun");
+        err = copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.DEFS_SECTION, s.format, s.defsMapping, "dryrun");
     }
     if (typeof err != "string") {
         err = copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION, s.format, s.mainMapping, "dryrun");
@@ -1437,7 +1503,7 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
         // The logic for pasting is: every frame that are allowed at the current cursor's position are added.
         // Frames that are related to another section where the caret is not present are added in that section.
         const curLocation = findCurrentStrypeLocation();
-        const isCurLocationInImportsSection = curLocation == STRYPE_LOCATION.IMPORTS_SECTION, isCurLocationInDefsSection = curLocation == STRYPE_LOCATION.FUNCDEF_SECTION, 
+        const isCurLocationInImportsSection = curLocation == STRYPE_LOCATION.IMPORTS_SECTION, isCurLocationInDefsSection = curLocation == STRYPE_LOCATION.DEFS_SECTION, 
             isCurLocationInMainCodeSection = curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION, isCurLocationInAFuncDefFrame = curLocation == STRYPE_LOCATION.IN_FUNCDEF;
 
         copyFramesFromParsedPython(s.projectDoc, STRYPE_LOCATION.PROJECT_DOC_SECTION, s.format);
@@ -1445,9 +1511,9 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
         if (useStore().copiedSelectionFrameIds.length > 0) {
             getCaretContainerComponent(getFrameComponent((isCurLocationInImportsSection) ? useStore().currentFrame.id : useStore().getImportsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(isCurLocationInImportsSection ? "caret" : "end");
         }
-        copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.FUNCDEF_SECTION, s.format);
+        copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.DEFS_SECTION, s.format);
         if (useStore().copiedSelectionFrameIds.length > 0) {
-            getCaretContainerComponent(getFrameComponent((isCurLocationInDefsSection) ? useStore().currentFrame.id : useStore().getFuncDefsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(isCurLocationInDefsSection ? "caret" : "end");
+            getCaretContainerComponent(getFrameComponent((isCurLocationInDefsSection) ? useStore().currentFrame.id : useStore().getDefsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(isCurLocationInDefsSection ? "caret" : "end");
         }
         if (s.main.length > 0) {
             copyFramesFromParsedPython(s.main, (isCurLocationInAFuncDefFrame) ? STRYPE_LOCATION.IN_FUNCDEF : STRYPE_LOCATION.MAIN_CODE_SECTION, s.format);
@@ -1475,7 +1541,7 @@ const transformTripleQuotesStrings = (slots: {[index: number]: LabelSlotsContent
                 const stringSlotLiteralValue = fieldSlot.code;
                 if((fieldSlot.quote == "'" && parsedTripleSingleQuotesStrRegex.test(stringSlotLiteralValue)) 
                     || (fieldSlot.quote == "\"" && parsedTripleDoubleQuotesStrRegex.test(stringSlotLiteralValue))){
-                    fieldSlot.code = stringSlotLiteralValue.slice(2, -2).replaceAll(/\r?\n/g, "\\n");
+                    fieldSlot.code = stringSlotLiteralValue.slice(2, -2).replaceAll(/\r?\n/g, STRYPE_DOC_NEWLINE);
                 }
             }
             // Else, there is nothing to transform

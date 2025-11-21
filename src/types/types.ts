@@ -2,8 +2,9 @@ import i18n from "@/i18n";
 import Compiler from "@/compiler/compiler";
 import { useStore } from "@/store/store";
 import scssVars from "@/assets/style/_export.module.scss";
-import quoteCircleProject from "@/assets/images/quote-circle-project.png";
-import quoteCircleFuncdef from "@/assets/images/quote-circle-funcdef.png";
+import quoteCircleProject from "@/assets/images/quote-circle/quote-circle-project.png";
+import quoteCircleFuncdef from "@/assets/images/quote-circle/quote-circle-funcdef.png";
+import quoteCircleClass from "@/assets/images/quote-circle/quote-circle-class.png";
 
 // Re-export types from ac-types:
 // Note, important to use * here rather than individual imports, to avoid this issue with Babel:
@@ -126,6 +127,19 @@ export interface EditorFrameObjects {
     [id: number]: FrameObject;
 }
 
+export enum CollapsedState {
+    ONLY_HEADER_VISIBLE,
+    HEADER_AND_DOC_VISIBLE,
+    FULLY_VISIBLE,
+}
+
+export enum FrozenState {
+    UNFROZEN, // Normal, not frozen
+    FROZEN, // Frozen; prevents editing and constrains visibility.
+            // For classes, frozen means member functions cannot be fully visible
+            // For top-level (non-member) functions, cannot be fully visible 
+}
+
 // Frame related interace, the highest level to describe a frame
 // Note the labelSlotsDict property is an array inline with each label of the frame
 // and slots are always related to 1 label (for example "for" (label 0) and "in" (label 1) in a for frame)
@@ -135,7 +149,8 @@ export interface FrameObject {
     isDisabled: boolean;
     isSelected: boolean;
     isVisible: boolean;
-    isCollapsed?: boolean;
+    collapsedState?: CollapsedState; // default is FULLY_VISIBLE
+    frozenState?: FrozenState; // default is UNFROZEN
     isBeingDragged?: boolean; //this flag is used mainly for UI purposes, so we can distinguish specific things that happens during dragging from intrisic properties of the frame
     parentId: number; //this is the ID of a parent frame (example: the if frame of a inner while frame). Value can be 0 (root), 1+ (in a level), -1 for a joint frame
     childrenIds: number[]; //this contains the IDs of the children frames
@@ -174,6 +189,7 @@ export interface FrameLabel {
     acceptAC?: boolean; //default true
     allowedSlotContent?: AllowedSlotContent; // default TERMINAL_EXPRESSION; what the slot accepts
     newLine?: boolean; //default false; this item starts a new line
+    appendSelfWhenInClass?: boolean, // default false.  For the opening bracket in function definitions (which show "self" if inside a class)
 }
 
 export enum CaretPosition {
@@ -182,12 +198,12 @@ export enum CaretPosition {
     none = "none",
 }
 
-export enum SelectAllFramesFuncDefScope {
-    none, // inside a function body, no frame is selected at all OR some frames are selected but not all
-    belowFunc, // below a function definition
-    functionsContainerBody, // inside the body of the function definitions container
-    wholeFunctionBody, // all frames for a function def body are selected
-    frame // some function frames are selected
+// If the user hits Ctrl-A there's a finite set of possibilities of what to do:
+export enum SelectAllFramesAction {
+    currentLevel, // Select all at current level
+    functionOrClassContents, // Select everything in the enclosing function/class
+    wholeContainer, // Select everything in the current container/section
+    parent, // Select the parent (only)
 }
 
 export enum FrameContextMenuActionName {
@@ -202,6 +218,11 @@ export enum FrameContextMenuActionName {
     deleteOuter,
     enable,
     disable,
+    collapseToHeader,
+    collapseToDocumentation,
+    collapseToFull,
+    freeze,
+    unfreeze,
 }
 
 export enum ModifierKeyCode {
@@ -322,8 +343,9 @@ export interface FramesDefinitions {
     isJointFrame: boolean;
     jointFrameTypes: string[];
     colour: string;
-    isCollapsed?: boolean;
     isImportFrame: boolean;
+    allowedCollapsedStates: CollapsedState[];
+    allowedFrozenStates: FrozenState[];
     // Optional default children or joint frames (we use frame rather than definitions as we may want to have child or joint frame with content!)
     // BE SURE TO SET THE SLOT STRUCTURE AS EXPECTED BY THE FRAME DEFINITION (example: for a if, there should be 1 slot defined, even if empty)
     defaultChildrenTypes?: FrameObject[];
@@ -334,7 +356,7 @@ export interface FramesDefinitions {
 export const ContainerTypesIdentifiers = {
     root: "root",
     importsContainer: "importsContainer",
-    funcDefsContainer: "funcDefsContainer",
+    defsContainer: "defsContainer",
     framesMainContainer: "mainContainer",
 };
 
@@ -352,8 +374,9 @@ const ImportFrameTypesIdentifiers = {
     library: "library",
 };
 
-const FuncDefIdentifiers = {
+export const DefIdentifiers = {
     funcdef: "funcdef",
+    classdef: "classdef",
 };
 
 export const JointFrameIdentifiers = {
@@ -384,7 +407,7 @@ const StandardFrameTypesIdentifiers = {
 export const AllFrameTypesIdentifier = {
     ...SpecialTypesIdentifiers,
     ...ImportFrameTypesIdentifiers,
-    ...FuncDefIdentifiers,
+    ...DefIdentifiers,
     ...StandardFrameTypesIdentifiers,
 };
 
@@ -398,13 +421,15 @@ export const DefaultFramesDefinition: FramesDefinitions = {
     jointFrameTypes: [],
     colour: "",
     isImportFrame: false,
+    allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE], // Default is to not allow folding
+    allowedFrozenStates: [FrozenState.UNFROZEN], // Default is to not allow freezing
 };
 
 export const BlockDefinition: FramesDefinitions = {
     ...DefaultFramesDefinition,
     allowChildren: true,
     forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
-        .concat(Object.values(FuncDefIdentifiers))
+        .concat(Object.values(DefIdentifiers))
         .concat([StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
 };
 
@@ -425,21 +450,21 @@ export const ImportsContainerDefinition: FramesDefinitions = {
     labels: [
         { label: (i18n.t("appMessage.importsContainer") as string), showSlots: false, defaultText: "" },
     ],
-    isCollapsed: false,
+    allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(ImportFrameTypesIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
     colour: "#BBC6B6",
 };
 
-export const FuncDefContainerDefinition: FramesDefinitions = {
+export const DefsContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
-    type: ContainerTypesIdentifiers.funcDefsContainer,
+    type: ContainerTypesIdentifiers.defsContainer,
     labels: [
-        { label: (i18n.t("appMessage.funcDefsContainer") as string), showSlots: false, defaultText: "" },
+        { label: (i18n.t("appMessage.defsContainer") as string), showSlots: false, defaultText: "" },
     ],
-    isCollapsed: false,
+    allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
-        .filter((frameTypeDef: string) => !Object.values(FuncDefIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment),
+        .filter((frameTypeDef: string) => !Object.values(DefIdentifiers).includes(frameTypeDef) && frameTypeDef !== CommentFrameTypesIdentifier.comment && frameTypeDef != AllFrameTypesIdentifier.varassign),
     colour: "#BBC6B6",
 };
 
@@ -449,7 +474,7 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
     labels: [
         { label: (i18n.t("appMessage.mainContainer") as string), showSlots: false, defaultText: "" },
     ],
-    isCollapsed: false,
+    allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
     forbiddenChildrenTypes: BlockDefinition.forbiddenChildrenTypes.concat(Object.values(AllFrameTypesIdentifier)
         .filter((frameTypeDef: string) => !Object.values(StandardFrameTypesIdentifiers).includes(frameTypeDef))),
     colour: "#BBC6B6",
@@ -459,7 +484,7 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
 export const FrameContainersDefinitions = {
     RootContainerFrameDefinition,
     ImportsContainerDefinition,
-    FuncDefContainerDefinition,
+    DefsContainerDefinition,
     MainFramesContainerDefinition,
 };
 
@@ -599,7 +624,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
         colour: "#E0DFE4",
         forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
-            .concat(Object.values(FuncDefIdentifiers))
+            .concat(Object.values(DefIdentifiers))
             .concat([StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
     };
 
@@ -681,14 +706,34 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
 
     const FuncDefDefinition: FramesDefinitions = {
         ...BlockDefinition,
-        type: FuncDefIdentifiers.funcdef,
+        type: DefIdentifiers.funcdef,
         labels: [
             { label: "def ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
-            { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
+            { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES, appendSelfWhenInClass: true },
             { label: ") :", showSlots: false, defaultText: "" },
             { label: `<img src='${quoteCircleFuncdef}'>`, newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.t("frame.defaultText.funcDescription") as string, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],
+        allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.HEADER_AND_DOC_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
+        allowedFrozenStates: [FrozenState.UNFROZEN, FrozenState.FROZEN], // Note: logic elsewhere only allows freezing at the top-level
         colour: "#ECECC8",
+    };
+    
+    const ClassDefinition : FramesDefinitions = {
+        ...BlockDefinition,
+        type: DefIdentifiers.classdef,
+        labels: [
+            { label: "class ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false},
+            { label: " :", showSlots: false, defaultText: ""},
+            { label: `<img src='${quoteCircleClass}'>`, newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.t("frame.defaultText.classDescription") as string, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
+        ],
+        allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
+        allowedFrozenStates: [FrozenState.UNFROZEN, FrozenState.FROZEN],
+        colour: "#baded3",
+        forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
+            .concat(Object.values(StandardFrameTypesIdentifiers).filter((f) => f != CommentFrameTypesIdentifier.comment && f != StandardFrameTypesIdentifiers.varassign))
+            .concat([DefIdentifiers.classdef]),
+        defaultChildrenTypes: [{...EmptyFrameObject, frameType: FuncDefDefinition, labelSlotsDict: {0: {slotStructures:{fields:[{code:"__init__"}], operators: []}}, 1: {slotStructures:{fields:[{code:""}], operators: []}}, 3: {slotStructures:{fields:[{code:""}], operators: []}}}}],
+
     };
 
     const WithDefinition: FramesDefinitions = {
@@ -716,6 +761,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ExceptDefinition,
         FinallyDefinition,
         FuncDefDefinition,
+        ClassDefinition,
         WithDefinition,
         FuncCallDefinition,
         BlankDefinition,
@@ -740,9 +786,9 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
                 frameObject.frameType.labels[0].label = i18n.t("appMessage.importsContainer") as string;
                 ImportsContainerDefinition.labels[0].label = i18n.t("appMessage.importsContainer") as string;
                 break;
-            case FuncDefContainerDefinition.type:
-                frameObject.frameType.labels[0].label = i18n.t("appMessage.funcDefsContainer") as string;
-                FuncDefContainerDefinition.labels[0].label = i18n.t("appMessage.funcDefsContainer") as string;
+            case DefsContainerDefinition.type:
+                frameObject.frameType.labels[0].label = i18n.t("appMessage.defsContainer") as string;
+                DefsContainerDefinition.labels[0].label = i18n.t("appMessage.defsContainer") as string;
                 break;
             case MainFramesContainerDefinition.type:
                 frameObject.frameType.labels[0].label = i18n.t("appMessage.mainContainer") as string;

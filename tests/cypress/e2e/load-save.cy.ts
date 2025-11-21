@@ -74,11 +74,12 @@ function checkDownloadedFileEquals(fullContent: string, filename: string, firstS
 function adjustIfMicrobit(filepath: string) {
     if (Cypress.env("mode") === "microbit") {
         const dest = "cypress/downloads/temp.spy";
-        cy.readFile(filepath).then((content) => {
+        cy.readFile(filepath).then((content : string) => {
             const lines = content.split(/\r?\n/);
             // Replace std with mb on the top line:
             lines[0] = lines[0].replace(/std/g, "mb");
-            const updated = lines.join("\n");
+            // Microbit doesn't store any PythonExecutionArea layout info (which is prefixed pea) because it doesn't have it:
+            const updated = lines.filter((line : string) => !line.includes("#(=> pea")).join("\n");
             cy.writeFile(dest, updated);
         });
         filepath = dest;
@@ -184,6 +185,15 @@ describe("Tests disabling frames", () => {
     });
 });
 
+describe("Tests collapsing frames", () => {
+    it("Loads and saves a simple collapsed project", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic-trisection-collapse.spy");
+    });
+    it("Loads and saves a complex disable project", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-complex-disable-collapse.spy");
+    });
+});
+
 describe("Tests blanks", () => {
     it("Outputs a file with lots of blanks", () => {
         // import x as ___strype_blank
@@ -283,6 +293,22 @@ describe("Tests loading project descriptions", () => {
         focusEditorPasteAndClear();
         cy.get("body").type("{uparrow}{uparrow}{leftarrow}Temporary description.");
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic.spy");
+    });
+});
+
+describe("Tests loading/saving classes", () => {
+    it("Loads/saves classes without images", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/oop-crab-no-images.spy");
+    });
+    it("Loads/saves classes with images", () => {
+        if (Cypress.env("mode") == "microbit") {
+            // No image literals in microbit mode:
+            return;
+        }
+        testRoundTripImportAndDownload("tests/cypress/fixtures/oop-crab.spy");
+    });
+    it("Loads/saves classes with format strings", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/students.spy");
     });
 });
 

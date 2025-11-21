@@ -2,7 +2,7 @@
     <div 
         :id="labelSlotsStructDivId"
         :key="refactorCount"
-        contenteditable="true"
+        :contenteditable="!isFrozen"
         @keydown.left="onLRKeyDown($event)"
         @keydown.right="onLRKeyDown($event)"
         @keydown.up="slotUpDown($event)"
@@ -15,7 +15,7 @@
         @paste.prevent.stop="forwardPaste"
         @input="onInput"
         @compositionend="onCompositionEnd"
-        :class="'next-to-eachother '+scssVars.labelSlotStructClassName"
+        :class="{'next-to-eachother': true, [scssVars.labelSlotStructClassName]:true, 'prepend-self-only': prependText === 'self', 'prepend-self-comma': prependText === 'self,'}"
     >
             <!-- Note: the default text is only showing for new slots (1 subslot), we also use unicode zero width space character for empty slots for UI -->
             <LabelSlot
@@ -30,9 +30,11 @@
                 :code="getSlotCode(slotItem)"
                 :frameId="frameId"
                 :isEditableSlot="isEditableSlot(slotItem.type)"
+                :isFrozen="isFrozen"
                 :isEmphasised="isSlotEmphasised(slotItem)"
-                v-on:[CustomEventTypes.requestSlotsRefactoring]="checkSlotRefactoring"
-            /> 
+                @requestSlotsRefactoring="checkSlotRefactoring"
+                @slotLostCaret="updatePrependText"
+            />
     </div>
 </template>
 
@@ -42,8 +44,8 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
-import { CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters } from "@/helpers/editor";
-import { checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import {CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters} from "@/helpers/editor";
+import {checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import { calculateParamPrompt } from "@/autocompletion/acManager";
 import scssVars from "@/assets/style/_export.module.scss";
@@ -64,24 +66,32 @@ export default Vue.extend({
         labelIndex: Number,
         defaultText: String,
         isDisabled: Boolean,
+        isFrozen: Boolean,
+        prependSelfWhenInClass: Boolean,
     },
 
     data: function() {
         return {
             CustomEventTypes, // just to be able to use in template
             ignoreBracketEmphasisCheck: false, // cf. isSlotEmphasised()
-            isFocused: false,
             // Because the user edits the DOM directly, Vue can fail to realise it needs to update the DOM.
             // So we add a dummy counter variable that just increases every time we refactor (which includes all cases where
             // the user has edited things which might affect the slot structure) in order to nudge
             // Vue into re-rendering all items in our loop above.
             refactorCount : 0,
+            prependText: "", // This is updated properly in updatePrependText()
         };
     },
 
     created(){
         // Register this component on the root, to allow external calls for refactoring the slots
         this.$root.$refs[this.labelSlotsStructDivId] = this;
+    },
+    
+    mounted() {
+        this.$nextTick(() => {
+            this.updatePrependText();
+        });
     },
 
     computed:{
@@ -112,7 +122,7 @@ export default Vue.extend({
             if (this.subSlots.length == 1) {
                 // If we are on an optional label slots structure that doesn't contain anything yet, we only show the placeholder if we're focused
                 const isOptionalEmpty = (this.appStore.frameObjects[this.frameId].frameType.labels[this.labelIndex].optionalSlot??OptionalSlotType.REQUIRED) == OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK && this.subSlots.length == 1 && this.subSlots[0].code.length == 0;
-                if(isOptionalEmpty && !this.isFocused){
+                if(isOptionalEmpty && !this.isFocused()){
                     return Promise.resolve([" "]);
                 }
                 return Promise.resolve([(isFuncCallFrame) ? getFunctionCallDefaultText(this.frameId) : this.defaultText]);
@@ -927,7 +937,7 @@ export default Vue.extend({
         },
 
         onFocus(){
-            this.isFocused = true;
+            this.updatePrependText();
             // When the application gains focus again, the browser might try to give the first span of a div the focus (because the div may have been focused)
             // even if we have the blue caret showing. We do not let this happen.
             if(this.appStore.ignoreFocusRequest && this.appStore.focusSlotCursorInfos == undefined){
@@ -943,7 +953,7 @@ export default Vue.extend({
                 return;
             }
             
-            this.isFocused = false;
+            this.updatePrependText();
             // If a flag to ignore editable slot focus is set, we just revert it and do nothing else
             if(this.appStore.bypassEditableSlotBlurErrorCheck){
                 this.appStore.bypassEditableSlotBlurErrorCheck = false;
@@ -992,6 +1002,34 @@ export default Vue.extend({
                 }
             }, 200);
         },
+        
+        isFocused() {
+            // We check if we are the parent of the currently focused element, as it may be a contenteditable item within us:
+            var selectedElement = window.getSelection()?.focusNode;
+            while (selectedElement != null) {
+                if (selectedElement instanceof Element && selectedElement.id === this.labelSlotsStructDivId) {
+                    return true;
+                }
+                selectedElement = selectedElement.parentNode;
+            }
+            return false;
+        },
+        
+        updatePrependText() {
+            if (this.prependSelfWhenInClass) {
+                const isInClass = useStore().frameObjects[getParentId(useStore().frameObjects[this.frameId])]?.frameType.type == AllFrameTypesIdentifier.classdef;
+                if (!isInClass) {
+                    this.prependText = "";
+                }
+                else {
+                    const empty = this.subSlots.length == 0 || !this.subSlots.some((s) => s.code !== "");
+                    this.prependText = (this.isFocused() || !empty) ? "self," : "self";
+                }
+            }
+            else {
+                this.prependText = "";
+            }
+        },
     },
 });
 </script>
@@ -1001,5 +1039,19 @@ export default Vue.extend({
     outline: none;
     max-width: 100%;
     flex-wrap: wrap;
+}
+
+.label-slot-structure.prepend-self-only::before, .label-slot-structure.prepend-self-comma::before {
+    color: rgb(2, 33, 168);
+    font-weight: 600;
+    margin-right: 4px;
+    display: inline-block;
+    border: 1px solid transparent; /* For alignment with following slots */
+}
+.label-slot-structure.prepend-self-only::before {
+    content: "self";
+}
+.label-slot-structure.prepend-self-comma::before {
+    content: "self,";
 }
 </style>

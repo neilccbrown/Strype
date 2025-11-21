@@ -1,0 +1,52 @@
+#(=> Strype:1:std
+'''A simple OOP program: 
+Create a class list (list of students)'''
+#(=> Section:Imports
+#(=> Section:Definitions
+class Student  :
+    '''A student object'''
+    #(=> FrameState:FoldToDocumentation
+    def __init__ (self,name,ID="00000" ) :
+        '''Create a student with a given name and default ID'''
+        self.name  = name 
+        self.ID  = ID 
+    #(=> FrameState:FoldToDocumentation
+    def set_ID (self,ID ) :
+        '''Set the student\'s ID number'''
+        self.ID  = ID 
+    #(=> FrameState:FoldToDocumentation
+    def print (self, ) :
+        '''Print the student info to the console'''
+        print(f"Student: {self.name} ({self.ID})") 
+    #(=> FrameState:FoldToDocumentation
+    def __repr__ (self, ) :
+        '''Return a sting representation of this student'''
+        return f"Student: {self.name} ({self.ID})" 
+class LabClass  :
+    '''A class for class lists'''
+    #(=> FrameState:FoldToDocumentation
+    def __init__ (self,max_size ) :
+        '''Create a new, empty class with a maximum capacity'''
+        self.max_size  = max_size 
+        self.students  = [] 
+    #(=> FrameState:FoldToDocumentation
+    def add_student (self,student ) :
+        '''Add a student to this class'''
+        self.students.append(student) 
+    #(=> FrameState:FoldToDocumentation
+    def show_all (self, ) :
+        '''Print out a list of all students in this class'''
+        for student  in self.students  :
+            print(student) 
+#(=> Section:Main
+s1  = Student("Michael","88887") 
+s2  = Student("Neil","88889") 
+s3  = Student("Pierre","12222") 
+
+my_class  = LabClass(12) 
+my_class.add_student(s1) 
+my_class.add_student(s2) 
+my_class.add_student(s3) 
+
+my_class.show_all() 
+#(=> Section:End

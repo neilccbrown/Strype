@@ -1,12 +1,12 @@
 <template>
-    <div :id="'div_'+UID" :class="{[scssVars.labelSlotContainerClassName]: true, nohover: isDraggingFrame}" contenteditable="true">
+    <div :id="'div_'+UID" :class="{[scssVars.labelSlotContainerClassName]: true, nohover: isDraggingFrame}" :contenteditable="isEditableSlot && !(isDisabled || isFrozen || isPythonExecuting)">
         <span
             autocomplete="off"
             spellcheck="false"
             :disabled="isDisabled"
             :placeholder="defaultText"
             :empty-content="!code || code == '\u200B'"
-            :contenteditable="isEditableSlot && !(isDisabled || isPythonExecuting)"
+            :contenteditable="isEditableSlot && !(isDisabled || isFrozen || isPythonExecuting)"
             @click.stop="onGetCaret"
             @slotGotCaret="onGetCaret"
             @slotLostCaret="onLoseCaret"
@@ -23,7 +23,7 @@
             @keyup.backspace="onBackSpaceKeyUp"
             @keydown="onKeyDown($event)"
             @contentPastedInSlot="onCodePaste"
-            :class="{[scssVars.labelSlotInputClassName]: true, [scssVars.navigationPositionClassName]: isEditableSlot, [scssVars.errorSlotClassName]: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised, readonly: (isPythonExecuting || isDisabled)}"
+            :class="{[scssVars.labelSlotInputClassName]: true, [scssVars.navigationPositionClassName]: isEditableSlot && !isFrozen, [scssVars.errorSlotClassName]: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised, readonly: (isPythonExecuting || isDisabled)}"
             :id="UID"
             :key="UID"
             :style="spanBackgroundStyle"
@@ -75,7 +75,7 @@ import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { closeBracketCharacters, CustomEventTypes, getACLabelSlotUID, getFocusedEditableSlotTextSelectionStartEnd, getFrameComponent, getFrameHeaderUID, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFrameUID, getLabelSlotUID, getMatchingBracket, getNumPrecedingBackslashes, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, keywordOperatorsWithSurroundSpaces, openBracketCharacters, operators, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, simpleSlotStructureToString, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringDoubleQuoteChar, stringQuoteCharacters, stringSingleQuoteChar, UIDoubleQuotesCharacters, UISingleQuotesCharacters } from "@/helpers/editor";
-import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
 import {evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
@@ -112,6 +112,7 @@ export default Vue.extend({
         isDisabled: Boolean,
         isEditableSlot: Boolean,
         isEmphasised: Boolean,
+        isFrozen: Boolean,
     },
     
     inject: ["mediaPreviewPopupInstance", "editImageInDialog"],    
@@ -220,7 +221,7 @@ export default Vue.extend({
                 if ((isStructureSingleSlot || isEmptyFunctionCallSlot || this.defaultText?.replace(/\u200B/g, "")?.trim()) && (optionalSlot != OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK) && this.code.replace(/\u200B/g, "").trim().length == 0) {
                     // Non-focused and empty; white if required, or semi-transparent white if shows prompt
                     backgroundColor = optionalSlot == OptionalSlotType.REQUIRED ? "#FFFFFF" : "rgba(255, 255, 255, 0.6)";
-                    if (isDoc && frameType == AllFrameTypesIdentifier.funcdef) {
+                    if (isDoc && (frameType == AllFrameTypesIdentifier.funcdef || frameType == AllFrameTypesIdentifier.classdef)) {
                         backgroundColor = "rgba(255, 255, 255, 0.35)";
                         styles["--prompt-color"] = "rgb(255, 255, 255, 0)";
                         styles["transform"] = "scaleY(0.4)";
@@ -239,6 +240,10 @@ export default Vue.extend({
                 // things in the function frame header that we don't want to colour
                 if (frameType == AllFrameTypesIdentifier.funcdef) {
                     styles["color"] = "rgb(114, 114, 39) !important";
+                    styles["font-style"] = "italic";
+                }
+                else if (frameType == AllFrameTypesIdentifier.classdef) {
+                    styles["color"] = "rgb(51, 71, 65) !important";
                     styles["font-style"] = "italic";
                 }
                 else if (frameType == AllFrameTypesIdentifier.projectDocumentation) {
@@ -284,13 +289,7 @@ export default Vue.extend({
         },
 
         focused(): boolean {
-            // We need to keep update of the label slots structure's "isFocused" flag, because using the keyboard to navigate will not
-            // update this flag -- but we always end up here when the focus (for slots) is updated.
-            const isSlotFocused = this.appStore.isEditableFocused(this.coreSlotInfo);
-            if (isSlotFocused || (this.appStore.focusSlotCursorInfos?.slotInfos.frameId != this.coreSlotInfo.frameId || this.appStore.focusSlotCursorInfos?.slotInfos.labelSlotsIndex != this.coreSlotInfo.labelSlotsIndex)) {
-                (this.$parent as InstanceType<typeof LabelSlotsStructure>).isFocused = isSlotFocused;
-            }
-            return isSlotFocused;
+            return this.appStore.isEditableFocused(this.coreSlotInfo);
         },
 
         UID(): string {
@@ -432,8 +431,11 @@ export default Vue.extend({
         // Event callback equivalent to what would happen for a focus event callback 
         // (the spans don't get focus anymore because the containg editable div grab it)
         onGetCaret(event: MouseEvent): void {
+            let parent = this.$parent as InstanceType<typeof LabelSlotsStructure>;
+            Vue.nextTick(() => parent.updatePrependText());
+            
             // If the user's code is being executed, or if the frame is disabled, we don't focus any slot, but we make sure we show the adequate frame cursor instead.
-            if(this.isPythonExecuting || this.isDisabled){
+            if(this.isPythonExecuting || this.isDisabled || this.isFrozen){
                 event.stopImmediatePropagation();
                 event.stopPropagation();
                 event.preventDefault();
@@ -618,6 +620,9 @@ export default Vue.extend({
         // Event callback equivalent to what would happen for a blur event callback 
         // (the spans don't get focus anymore because the containg editable div grab it)
         onLoseCaret(keepIgnoreKeyEventFlagOn?: boolean): void {
+            let parent = this.$parent as InstanceType<typeof LabelSlotsStructure>;
+            Vue.nextTick(() => parent.updatePrependText());
+            
             // Before anything, we make sure that the current frame still exists,
             // and that our slot still exists.  If we shouldn't exist any more, we should
             // just do nothing and exit quietly:
@@ -695,8 +700,8 @@ export default Vue.extend({
                 // a "real" frame, hitting escape should instead place the frame cursor to the next "real"
                 // available (as visible) frame.
                 if(this.frameId == projectDocumentationFrameId){
-                    const nextVisibleSectionFrame = [this.appStore.importContainerId, this.appStore.functionDefContainerId, this.appStore.getMainCodeFrameContainerId]
-                        .find((frameContainerId) => !this.appStore.frameObjects[frameContainerId].isCollapsed);
+                    const nextVisibleSectionFrame = [this.appStore.importContainerId, this.appStore.defsContainerId, this.appStore.getMainCodeFrameContainerId]
+                        .find((frameContainerId) => this.appStore.frameObjects[frameContainerId].collapsedState != CollapsedState.ONLY_HEADER_VISIBLE);
                     // At least the main section is not collapsed we should always get a value.. but let's keep TS happy
                     if(nextVisibleSectionFrame != undefined){
                         this.appStore.toggleCaret({id: nextVisibleSectionFrame, caretPosition: CaretPosition.body});
