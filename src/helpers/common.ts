@@ -177,6 +177,10 @@ export const readFileContent = async (file: File): Promise<string>  => {
 };
 
 export const getSHA1HashForObject = async (obj: {[id: string]: any}): Promise<string> => {
+    // This method has been updated after v1.2.0 by using the browser's native library "crypto",
+    // rather than an external package as we did before, because object-hash wasn't handling the
+    // hashing of a code containing some emojis/characters outside the Basic Multilingual Plane.
+    // Note that the Web Crypto API is supported by browsers' versions now quite old, so use is reliable.
     const encoder = new TextEncoder();
     const data = encoder.encode(JSON.stringify(obj)); // UTF-8 encoding
     const hashBuffer = await crypto.subtle.digest("SHA-1",data);
