@@ -1,6 +1,6 @@
 import {Page, test, expect} from "@playwright/test";
 import path from "path";
-import {assertState, checkFrameXorTextCursor, checkTextSlotCursorPos, doPagePaste, pressN} from "../support/editor";
+import {assertStateOfIfFrame, checkFrameXorTextCursor, checkTextSlotCursorPos, doPagePaste, pressN} from "../support/editor";
 import fs from "fs";
 import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "@/helpers/sharedIdCssWithTests";
 import {createBrowserProxy} from "../support/proxy";
@@ -215,15 +215,17 @@ test.describe.only("Check navigation around grapheme clusters in strings", () =>
     test("Delete (del) parts of the string literal", async ({page}) => {
         const strWithGraphemes = "a ✈️ with 👻 with 𡨴 plus 👨‍👩‍👧‍👦 and plus 🛠️, it's great!";
         const strWithGraphemesSize = Array.from(new Intl.Segmenter("en", { granularity: "grapheme" }).segment(strWithGraphemes)).length;
-        // Delete existing frames, adds a function call frame and remove the existing parentheses
-        await page.keyboard.press("Delete");
-        await page.keyboard.press("Delete");
-        await page.keyboard.type(" ");
-        await page.keyboard.press("Delete");
-        // Adds a function call frame with empty literal
+        // Delete existing frames, adds an if frame and adds an empty string literal (no sense for condition but it's only a test)
+        await page.keyboard.press("Backspace");
+        await page.keyboard.press("Backspace");
+        await page.keyboard.type("i");
+        await page.waitForTimeout(100);                
         await page.keyboard.type(" \"");
+        await page.waitForTimeout(100);
+        await assertStateOfIfFrame(page, "{}_“$”_{}");
         // Types the content of the literal, with some grapheme clusters
         await page.keyboard.type(strWithGraphemes);
+        await page.waitForTimeout(100);
         // Gets back above that frame and in the frame (after the opening quote)
         await page.keyboard.press("ArrowUp");
         await pressN("ArrowRight", 2, true)(page);
@@ -233,21 +235,23 @@ test.describe.only("Check navigation around grapheme clusters in strings", () =>
         // Check the cursor position is as expected
         await checkTextSlotCursorPos(page, 0);
         // Check the content is as expected
-        await assertState(page, "{}_“$it's great!”");
+        await assertStateOfIfFrame(page, "{}_“$it's great!”_{}");
     });
 
     test("Delete (backspace) parts of the string literal", async ({page}) => {
         const strWithGraphemes = "a ✈️ with 👻 with 𡨴 plus 👨‍👩‍👧‍👦 and plus 🛠️, it's great!";
         const strWithGraphemesSize = Array.from(new Intl.Segmenter("en", { granularity: "grapheme" }).segment(strWithGraphemes)).length;
-        // Delete existing frames, adds a function call frame and remove the existing parentheses
-        await page.keyboard.press("Delete");
-        await page.keyboard.press("Delete");
-        await page.keyboard.type(" ");
-        await page.keyboard.press("Delete");
-        // Adds a function call frame with empty literal
+        // Delete existing frames, adds an if frame and adds an empty string literal (no sense for condition but it's only a test)
+        await page.keyboard.press("Backspace");
+        await page.keyboard.press("Backspace");
+        await page.keyboard.type("i");
+        await page.waitForTimeout(100);                
         await page.keyboard.type(" \"");
+        await page.waitForTimeout(100);
+        await assertStateOfIfFrame(page, "{}_“$”_{}");
         // Types the content of the literal, with some grapheme clusters
         await page.keyboard.type(strWithGraphemes);
+        await page.waitForTimeout(100);
         // Gets back below that frame and in the frame (before the closing quote)
         await page.keyboard.press("ArrowDown");
         await pressN("ArrowLeft", 2, true)(page);
@@ -257,10 +261,10 @@ test.describe.only("Check navigation around grapheme clusters in strings", () =>
         // Check the cursor position is as expected
         await checkTextSlotCursorPos(page, 1);
         // Check the content is as expected
-        await assertState(page, "{}_“a$”");
+        await assertStateOfIfFrame(page, "{}_“a$”_{}");
         // TESTING 
         await page.keyboard.press("ArrowRight");
         await checkFrameXorTextCursor(page, false);
-        await assertState(page, "{}_“a”_{$}");
+        await assertStateOfIfFrame(page, "{}_“a”_{$}");
     });
 });

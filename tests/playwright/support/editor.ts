@@ -38,7 +38,7 @@ async function getSelection(page: Page) : Promise<{ id: string, cursorPos : numb
     });
 }
 
-export async function assertState(page: Page, expectedState : string) : Promise<void> {
+export async function assertStateOfIfFrame(page: Page, expectedState : string) : Promise<void> {
     const info = await getSelection(page);
     const scssVars = await page.evaluate(() => {
         return (window as any)["StrypeSCSSVarsGlobals"];
@@ -132,7 +132,7 @@ export function pressN(key: string, n : number, enforceWaitBetween?: boolean) : 
             }            
             await page.keyboard.press(key); 
             if(enforceWaitBetween){
-                await page.waitForTimeout(300);
+                await page.waitForTimeout(100);
             }
         }
     };
