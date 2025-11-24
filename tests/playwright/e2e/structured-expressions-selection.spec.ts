@@ -1,5 +1,5 @@
 import {Page, test, expect} from "@playwright/test";
-import {typeIndividually, doPagePaste, doTextHomeEndKeyPress, pressN, assertState} from "../support/editor";
+import {typeIndividually, doPagePaste, doTextHomeEndKeyPress, pressN, assertStateOfIfFrame} from "../support/editor";
 import fs from "fs";
 import {addFakeClipboard} from "../support/clipboard";
 
@@ -23,7 +23,7 @@ function testSelection(code : string, startIndex: number, endIndex: number, seco
         await page.keyboard.press("Backspace");
         await page.keyboard.type("i");
         await page.waitForTimeout(100);
-        await assertState(page, "{$}");
+        await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, code);
         await doTextHomeEndKeyPress(page, false, false); // To handle the issue with macOS, see the method details (equivalent to "home").
         for (let i = 0; i < startIndex; i++) {
@@ -48,7 +48,7 @@ function testSelection(code : string, startIndex: number, endIndex: number, seco
             await secondEntry(page);
         }
         await page.waitForTimeout(500);
-        await assertState(page, expectedAfter);
+        await assertStateOfIfFrame(page, expectedAfter);
     });
 }
 
@@ -58,11 +58,11 @@ function testSelectionThenDelete(code : string, doSelectKeys: (page: Page) => Pr
         await page.keyboard.press("Backspace");
         await page.keyboard.type("i");
         await page.waitForTimeout(100);
-        await assertState(page, "{$}");
+        await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, code);
         await doSelectKeys(page);
         await page.keyboard.press("Delete");
-        await assertState(page, expectedAfterDeletion);
+        await assertStateOfIfFrame(page, expectedAfterDeletion);
     });
 }
 
@@ -92,7 +92,7 @@ function testCutCopy(code : string, stepsToBegin: number, stepsWhileSelecting: n
         await page.keyboard.press("Backspace");
         await page.keyboard.type("i");
         await page.waitForTimeout(100);
-        await assertState(page, "{$}");
+        await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, code);
         await doTextHomeEndKeyPress(page, false, false); // To handle the issue with macOS, see the method details.
         for (let i = 0; i < stepsToBegin; i++) {
@@ -120,7 +120,7 @@ function testCutCopy(code : string, stepsToBegin: number, stepsWhileSelecting: n
             // So instead we must send our own paste event:
             await doPagePaste(page, clipboardContent);
         }
-        await assertState(page, expectedAfter);
+        await assertStateOfIfFrame(page, expectedAfter);
     });
 }
 
@@ -147,11 +147,11 @@ function testNavigation(code: string, navigate: (page: Page) => Promise<void>, e
         await page.keyboard.press("Backspace");
         await page.keyboard.type("i");
         await page.waitForTimeout(100);
-        await assertState(page, "{$}");
+        await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, code);
         await navigate(page);
         await page.waitForTimeout(100);
-        await assertState(page, expectedAfter);
+        await assertStateOfIfFrame(page, expectedAfter);
     });
 }
 
@@ -367,7 +367,7 @@ test.describe("Media literal copying", () => {
         await page.keyboard.press("Backspace");
         await page.keyboard.type("i");
         await page.waitForTimeout(100);
-        await assertState(page, "{$}");
+        await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, "set_background(");
         const image = fs.readFileSync("public/graphics_images/cat-test.jpg").toString("base64");
         await doPagePaste(page, image, "image/jpeg");
@@ -397,7 +397,7 @@ test.describe("Media literal copying", () => {
         await page.keyboard.press("Backspace");
         await page.keyboard.type("i");
         await page.waitForTimeout(100);
-        await assertState(page, "{$}");
+        await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, "set_background(");
         const image = fs.readFileSync("public/graphics_images/cat-test.jpg").toString("base64");
         await doPagePaste(page, image, "image/jpeg");
