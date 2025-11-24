@@ -122,7 +122,7 @@ export async function doTextHomeEndKeyPress(page: Page, isGoingForward: boolean,
     }
 } 
 
-export function pressN(key: string, n : number) : ((page: Page) => Promise<void>) {
+export function pressN(key: string, n : number, enforceWaitBetween?: boolean) : ((page: Page) => Promise<void>) {
     return async (page) => {
         for (let i = 0; i < n; i++) {
             // Handle the issue with macOS for home/end, see the method details
@@ -131,6 +131,9 @@ export function pressN(key: string, n : number) : ((page: Page) => Promise<void>
                 return;
             }            
             await page.keyboard.press(key); 
+            if(enforceWaitBetween){
+                await page.waitForTimeout(300);
+            }
         }
     };
 }
