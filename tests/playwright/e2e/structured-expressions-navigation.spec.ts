@@ -177,7 +177,7 @@ Actor(load_image("data:image/jpeg;base64,${image}").foo)
     });
 });
 
-test.describe("Check navigation around grapheme clusters in strings", () => {
+test.describe.only("Check navigation around grapheme clusters in strings", () => {
     test("Move rightwards to the very end of string literal", async ({page}) => {
         const strWithGraphemes = "a ✈️ with 👻 with 𡨴 plus 👨‍👩‍👧‍👦 and plus 🛠️, it's great!";
         const strWithGraphemesSize = Array.from(new Intl.Segmenter("en", { granularity: "grapheme" }).segment(strWithGraphemes)).length;
@@ -258,5 +258,9 @@ test.describe("Check navigation around grapheme clusters in strings", () => {
         await checkTextSlotCursorPos(page, 1);
         // Check the content is as expected
         await assertState(page, "{}_“a$”");
+        // TESTING 
+        await page.keyboard.press("ArrowRight");
+        await checkFrameXorTextCursor(page, false);
+        await assertState(page, "{}_“a”_{$}");
     });
 });

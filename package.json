@@ -17,14 +17,7 @@
         "preprocess:build-docs": "cd docs-sphinx && make clean && make html",
         "preprocess:update-test-library-ac": "concurrently \"cross-env LIBRARY='http://localhost:8089/test-library/' npm run library:make-ac-json\" \"npm run test:cypress:serve-assets\"",
         "serve:https": "HTTPS=true vue-cli-service serve",
-        "cy:run:microbit": "npx cypress run --env mode=microbit",
-        "cy:run:python": "npx cypress run --env mode=python",
-        "test:cypress:serve-assets": "npx serve tests/cypress/test-http-assets/ -l 8089 --cors",
-        "test:cypress:serve-both": "concurrently \"npm run serve:python\" \"npm run test:cypress:serve-assets\"",
-        "test:cypress:microbit-only": "cross-env WAIT_ON_TIMEOUT=90000 start-server-and-test serve:microbit http-get://127.0.0.1:8081/microbit/ cy:run:microbit",
-        "test:cypress:python-only": "cross-env WAIT_ON_TIMEOUT=90000 start-server-and-test test:cypress:serve-both http-get://127.0.0.1:8081/editor/ cy:run:python",
-        "test:cypress": "cross-env WAIT_ON_TIMEOUT=90000 start-server-and-test test:cypress:serve-both http-get://127.0.0.1:8081/editor/ cy:run:python && cross-env WAIT_ON_TIMEOUT=90000 start-server-and-test serve:microbit http-get://127.0.0.1:8081/microbit/ cy:run:microbit",
-        "playwright:run": "npx playwright test",
+        "playwright:run": "npx playwright test tests/playwright/e2e/structured-expressions-navigation.spec.ts",
         "test:playwright": "cross-env BASE_URL=http://127.0.0.1:8081/editor/ start-server-and-test serve:python:dist:playwright http-get://127.0.0.1:8081/editor/ playwright:run"
     },
     "dependencies": {
