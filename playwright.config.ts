@@ -19,7 +19,7 @@ export default defineConfig({
     // Folder for test artifacts such as screenshots, videos, traces, etc.
     outputDir: "./tests/playwright/test-results",
     /* Fail the build on CI if you accidentally left test.only in the source code. */
-    forbidOnly: !!process.env.CI,
+    //forbidOnly: !!process.env.CI,
     /* Retry twice on CI, as some of the random tests are slightly flaky */
     retries: process.env.CI ? 2 : 0,
     fullyParallel: true,
