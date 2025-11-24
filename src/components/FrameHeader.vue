@@ -23,6 +23,7 @@
                     :frameId="frameId"
                     :labelIndex="originalIndex"
                     :prependSelfWhenInClass="item.appendSelfWhenInClass"
+                    @[CustomEventTypes.notifyLabelSlotInError]="onLabelSlotContainsError"
                 />
                 <!-- ^^ Note: append to frame label is same as prepend to slot -->
             </div>
@@ -46,8 +47,7 @@
                 </div>
             </div>
             <ChildrenFrameStateToggle v-if="isClassDef && isFoldFull && groupIndex === splitLabels.length - 1" :frames="children" :parentIsFrozen="isFrozen"/>
-            <i v-if="wasLastRuntimeError && groupIndex == splitLabels.length - 1" :class="{'fas fa-exclamation-triangle fa-xs runtime-err-icon': true, 'runtime-past-err-icon': !erroneous}"></i>
-            
+            <i v-if="(wasLastRuntimeError || hasErroneousSlot) && groupIndex == splitLabels.length - 1" :class="{'fas fa-exclamation-triangle fa-xs err-icon': true, 'runtime-past-err-icon': (!erroneous && !hasErroneousSlot)}"></i>            
         </div>
     </div>
 </template>
@@ -56,7 +56,7 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue from "vue";
+import Vue, { PropType } from "vue";
 import LabelSlotsStructure from "@/components/LabelSlotsStructure.vue";
 import {useStore} from "@/store/store";
 import {AllFrameTypesIdentifier, CollapsedState, FrameLabel, FrameObject, FrozenState} from "@/types/types";
@@ -65,6 +65,7 @@ import scssVars from "@/assets/style/_export.module.scss";
 import ChildrenFrameStateToggle from "@/components/ChildrenFrameStateToggle.vue";
 import { isMacOSPlatform } from "@/helpers/common";
 import { calculateNextCollapseState } from "@/helpers/storeMethods";
+import { CustomEventTypes } from "@/helpers/editor";
 
 // Splits into a list of lists (each outer list is a line, with 1 or more items on it)
 // by looking at the newLine flag in the FrameLabel.
@@ -103,15 +104,18 @@ export default Vue.extend({
     props: {
         // We need an array of labels in the case there are more
         // than a label in the frame (e.g. `with` ... `as ... ) 
-        labels: Array,
+        labels: {
+            type: Array as PropType<FrameLabel[]>,
+            required: true,
+        },
         frameId: Number,
         frameType: String,
         isDisabled: Boolean,
         frameAllowChildren: Boolean,
         frameCollapsedState: Number, // Index in the enum CollapsedState
         frameFrozenState: Number,  // Index in the enum FrozenState
-        frameAllowedCollapsedStates: Array,
-        frameAllowedFrozenStates: Array,
+        frameAllowedCollapsedStates: {type: Array as PropType<CollapsedState[]>},
+        frameAllowedFrozenStates: {type: Array as PropType<FrozenState[]>},
         erroneous: Boolean,
         wasLastRuntimeError: Boolean,
         onFocus: Function, // Handler for focus/blur the header (see Frame.vue)
@@ -123,52 +127,53 @@ export default Vue.extend({
         isCommentFrame(): boolean{
             return this.frameType===AllFrameTypesIdentifier.comment;
         },
-
+   
         scssVars() {
             // just to be able to use in template
             return scssVars;
         },
-
+        
         projectDocFrameType() {
             return AllFrameTypesIdentifier.projectDocumentation;
         },
         
-        splitLabels() {
+        splitLabels(): { item: FrameLabel, originalIndex: number }[][] {
             return splitAtNewLines(this.labels as FrameLabel[], this.frameCollapsedState as CollapsedState);
         },
         
-        canCycleFold() {
+        canCycleFold(): boolean {
             return this.frameAllowedCollapsedStates.length > 1;
         },
         
-        isFuncDef() {
+        isFuncDef(): boolean {
             return this.frameType===AllFrameTypesIdentifier.funcdef;
         },
 
-        isClassDef() {
+        isClassDef(): boolean {
             return this.frameType===AllFrameTypesIdentifier.classdef;
         },
         
-        isFoldDoc() {
+        isFoldDoc(): boolean {
             return (this.frameCollapsedState as CollapsedState) == CollapsedState.HEADER_AND_DOC_VISIBLE;
         },
 
-        isFoldHeader() {
+        isFoldHeader(): boolean {
             return (this.frameCollapsedState as CollapsedState) == CollapsedState.ONLY_HEADER_VISIBLE;
         },
 
-        isFoldFull() {
+        isFoldFull(): boolean {
             return (this.frameCollapsedState as CollapsedState) == CollapsedState.FULLY_VISIBLE;
         },
         
-        isFrozen() {
+        isFrozen(): boolean {
             return (this.frameFrozenState as FrozenState) == FrozenState.FROZEN;
         },
-        isFrozenOrChildOfFrozen() {
+
+        isFrozenOrChildOfFrozen(): boolean {
             return this.appStore.isEffectivelyFrozen(this.frameId);
         },
         
-        isModifierHeldOnSelection() {
+        isModifierHeldOnSelection(): boolean | undefined {
             return this.appStore.selectedFrames.includes(this.frameId) && (isMacOSPlatform() ? this.appStore.keyModifierStates?.meta : this.appStore.keyModifierStates?.ctrl);
         },
 
@@ -183,6 +188,13 @@ export default Vue.extend({
         },
     },
 
+    data(){
+        return {
+            CustomEventTypes, // just to be able to use in template
+            hasErroneousSlot: false,
+        };
+    },
+
     methods:{
         isLabelHidden(labelDetails: FrameLabel): boolean {
             return !(labelDetails.showLabel??true);
@@ -191,6 +203,7 @@ export default Vue.extend({
         areSlotsShown(labelDetails: FrameLabel): boolean {
             return labelDetails.showSlots??true;
         },
+
         cycleFold(): void {
             if (this.isModifierHeldOnSelection) {
                 const selected = this.appStore.selectedFrames.map((id) => this.appStore.frameObjects[id]);
@@ -201,6 +214,10 @@ export default Vue.extend({
                 // Just cycle this frame:
                 this.appStore.cycleFrameCollapsedState(this.frameId);
             }
+        },
+
+        onLabelSlotContainsError(): void {            
+            this.hasErroneousSlot = true;
         },
     },
 });
@@ -247,7 +264,7 @@ export default Vue.extend({
     color: rgb(2, 33, 168);
 }
 
-.runtime-err-icon {
+.err-icon {
     margin: 7px 2px 0px 2px;
     margin-left: auto;
     color:#d66;

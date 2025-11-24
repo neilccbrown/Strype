@@ -836,11 +836,13 @@ export default Vue.extend({
                     localStorage.setItem(AutoSaveKeyNames.settingsState, JSON.stringify(this.settingsStore.$state));
                 }
                 else{
-                    localStorage.setItem(this.localStorageAutosaveEditorKey, this.appStore.generateStateJSONStrWithCheckpoint(true));
-                    // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
-                    if(reason==SaveRequestReason.loadProject && projectSaveFunctionsState.length == 1){
-                        this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
-                    }
+                    this.appStore.generateStateJSONStrWithCheckpoint(true).then((stateJSONStrWithCheckpoint) => {
+                        localStorage.setItem(this.localStorageAutosaveEditorKey, stateJSONStrWithCheckpoint);
+                        // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
+                        if(reason==SaveRequestReason.loadProject && projectSaveFunctionsState.length == 1){
+                            this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                        }
+                    });
                 }
             }
         },
@@ -955,6 +957,10 @@ export default Vue.extend({
                         };
                         this.$root.$on("bv::modal::hide", execGetCloudDriveFileFunction);   
                         this.$root.$emit("bv::show::modal", this.resyncToCloudDriveAtStartupModalDlgId);
+                    }
+                    // When a file has been reloaded and it was previously saved the File System, we want to clear off any references to that file
+                    else if(this.appStore.syncTarget == StrypeSyncTarget.fs){
+                        (this.$refs[this.menuUID] as InstanceType<typeof Menu>).saveTargetChoice(StrypeSyncTarget.none);
                     }
                 }, () => {});
             }, () => {});
@@ -1527,7 +1533,7 @@ body.#{$strype-classname-dragging-frame} {
     height: 100vh;
     position: absolute;
     left: 0px;
-    z-index: 5000;
+    z-index: 500;
 }
 
 .app-progress-pane {
@@ -1602,7 +1608,7 @@ $divider-grey: darken($background-grey, 15%);
     margin:0;
     padding: 0;
     min-width:10rem;
-    z-index:6000;
+    z-index:600;
     position:fixed;
     list-style:none;
     max-height:calc(100% - 50px);
@@ -1696,7 +1702,7 @@ $divider-grey: darken($background-grey, 15%);
 }
 
 .expanded-PEA-splitter-overlay .splitpanes__splitter {
-    z-index: 10;
+    z-index: 502; // It needs to be higher than the PEA
 }
 
 .companion-canvas-dnd {

@@ -1,6 +1,6 @@
 import {Page, test, expect} from "@playwright/test";
 import path from "path";
-import {checkFrameXorTextCursor, doPagePaste} from "../support/editor";
+import {assertStateOfIfFrame, checkFrameXorTextCursor, checkTextSlotCursorPos, doPagePaste, pressN} from "../support/editor";
 import fs from "fs";
 import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "@/helpers/sharedIdCssWithTests";
 import {createBrowserProxy} from "../support/proxy";
@@ -174,5 +174,93 @@ test.describe("Check clicking near image literal", () => {
 Actor(load_image("data:image/jpeg;base64,${image}").foo) 
 #(=> Section:End
 `.trimStart());
+    });
+});
+
+test.describe("Check navigation around grapheme clusters in strings", () => {
+    test("Move rightwards to the very end of string literal", async ({page}) => {
+        const strWithGraphemes = "a ✈️ with 👻 with 𡨴 plus 👨‍👩‍👧‍👦 and plus 🛠️, it's great!";
+        const strWithGraphemesSize = Array.from(new Intl.Segmenter("en", { granularity: "grapheme" }).segment(strWithGraphemes)).length;
+        // Adds a function call frame with empty literal
+        await page.keyboard.type(" \"");
+        // Types the content of the literal, with some grapheme clusters
+        await page.keyboard.type(strWithGraphemes);
+        // Gets back above that frame and in the frame
+        await page.keyboard.press("ArrowUp");
+        await page.keyboard.press("ArrowRight");
+        // Move right until the end of the literal (not past the closing quote, and we need +1 for passing the opening quote)
+        await pressN("ArrowRight", 1 + strWithGraphemesSize, true)(page);
+        await page.waitForTimeout(100);
+        // Check the cursor position is as expected
+        await checkTextSlotCursorPos(page, strWithGraphemes.length);
+    });
+
+    test("Move leftwards to the very start of string literal", async ({page}) => {
+        const strWithGraphemes = "a ✈️ with 👻 with 𡨴 plus 👨‍👩‍👧‍👦 and plus 🛠️, it's great!";
+        const strWithGraphemesSize = Array.from(new Intl.Segmenter("en", { granularity: "grapheme" }).segment(strWithGraphemes)).length;
+        // Adds a function call frame with empty literal
+        await page.keyboard.type(" \"");
+        // Types the content of the literal, with some grapheme clusters
+        await page.keyboard.type(strWithGraphemes);
+        // Gets back below that frame and in the frame
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("ArrowLeft");
+        // Move left until the start of the literal (not past the opening quote, and we need +3 for passing the brackets and closing quote)
+        await pressN("ArrowLeft", 3 + strWithGraphemesSize, true)(page);
+        await page.waitForTimeout(100);
+        // Check the cursor position is as expected
+        await checkTextSlotCursorPos(page, 0);
+    });
+
+    test("Delete (del) parts of the string literal", async ({page}) => {
+        const strWithGraphemes = "a ✈️ with 👻 with 𡨴 plus 👨‍👩‍👧‍👦 and plus 🛠️, it's great!";
+        const strWithGraphemesSize = Array.from(new Intl.Segmenter("en", { granularity: "grapheme" }).segment(strWithGraphemes)).length;
+        // Delete existing frames, adds an if frame and adds an empty string literal (no sense for condition but it's only a test)
+        await page.keyboard.press("Backspace");
+        await page.keyboard.press("Backspace");
+        await page.keyboard.type("i");
+        await page.waitForTimeout(100);                
+        await page.keyboard.type(" \"");
+        await page.waitForTimeout(100);
+        await assertStateOfIfFrame(page, "{}_“$”_{}");
+        // Types the content of the literal, with some grapheme clusters
+        await page.keyboard.type(strWithGraphemes);
+        await page.waitForTimeout(100);
+        // Gets back above that frame and in the frame (after the opening quote)
+        await page.keyboard.press("ArrowUp");
+        await pressN("ArrowRight", 2, true)(page);
+        // Delete to keep "it's great"
+        await pressN("Delete", strWithGraphemesSize - "it's great!".length, true)(page);
+        await page.waitForTimeout(100);
+        // Check the cursor position is as expected
+        await checkTextSlotCursorPos(page, 0);
+        // Check the content is as expected
+        await assertStateOfIfFrame(page, "{}_“$it's great!”_{}");
+    });
+
+    test("Delete (backspace) parts of the string literal", async ({page}) => {
+        const strWithGraphemes = "a ✈️ with 👻 with 𡨴 plus 👨‍👩‍👧‍👦 and plus 🛠️, it's great!";
+        const strWithGraphemesSize = Array.from(new Intl.Segmenter("en", { granularity: "grapheme" }).segment(strWithGraphemes)).length;
+        // Delete existing frames, adds an if frame and adds an empty string literal (no sense for condition but it's only a test)
+        await page.keyboard.press("Backspace");
+        await page.keyboard.press("Backspace");
+        await page.keyboard.type("i");
+        await page.waitForTimeout(100);                
+        await page.keyboard.type(" \"");
+        await page.waitForTimeout(100);
+        await assertStateOfIfFrame(page, "{}_“$”_{}");
+        // Types the content of the literal, with some grapheme clusters
+        await page.keyboard.type(strWithGraphemes);
+        await page.waitForTimeout(100);
+        // Gets back below that frame and in the frame (before the closing quote)
+        await page.keyboard.press("ArrowDown");
+        await pressN("ArrowLeft", 2, true)(page);
+        // Delete to keep "a"
+        await pressN("Backspace", strWithGraphemesSize - 1, true)(page);
+        await page.waitForTimeout(100);
+        // Check the cursor position is as expected
+        await checkTextSlotCursorPos(page, 1);
+        // Check the content is as expected
+        await assertStateOfIfFrame(page, "{}_“a$”_{}");
     });
 });

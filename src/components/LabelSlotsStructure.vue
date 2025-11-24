@@ -43,9 +43,10 @@ import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, Bas
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
+import FrameHeaderComponent from "@/components/FrameHeader.vue";
 import LabelSlot from "@/components/LabelSlot.vue";
-import {CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters} from "@/helpers/editor";
-import {checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId} from "@/helpers/storeMethods";
+import { CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength } from "@/helpers/editor";
+import { checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import { calculateParamPrompt } from "@/autocompletion/acManager";
 import scssVars from "@/assets/style/_export.module.scss";
@@ -114,6 +115,7 @@ export default Vue.extend({
             return this.appStore.focusSlotCursorInfos;
         },
     },
+
     asyncComputed: {
         placeholderText() : Promise<string[]> {
             // Look for the placeholder (default) text to put in slots.
@@ -330,6 +332,8 @@ export default Vue.extend({
         },
 
         checkSlotRefactoring(slotUID: string, stateBeforeChanges: any, options?: {doAfterCursorSet?: VoidFunction, useFlatMediaDataCode?: boolean}) {
+            // Slot errors will be check later again. We clear off the notification on the parent (frame header) for slot errors so it can reset the triangle error indicator
+            (this.$parent as InstanceType<typeof FrameHeaderComponent>).$data.hasErroneousSlot = false;
             // Comments do not need to be checked, so we do nothing special for them, but just enforce the caret to be placed at the right place and the code value to be updated
             const currentFocusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
             const allowed = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelIndex].allowedSlotContent;
@@ -700,8 +704,14 @@ export default Vue.extend({
                 else {
                     //no specific action to take, we just move the cursor to the left or to the right
                     this.appStore.isSelectingMultiSlots = false; // reset flag
-                    const incrementStep = (event.key==="ArrowLeft") ? -1 : 1;
-                    const slotCursorInfo: SlotCursorInfos = {slotInfos: slotInfos, cursorPos: (cursorPos + incrementStep)};
+                    // Note that moving the cursor doesn't always mean move by 1: it depends on the characters' encoding.
+                    // If we move forward, we bypass the current grapheme, if we move backwards, we bypass the grapheme before the current one.
+                    // (We don't need to worry about goint outbounds since that's already taken care of by other methods, but still need a particular
+                    // case for when we're at the end of the slot and we go left, there is no "current" grapheme at this position.)
+                    const newCursorPos = (event.key == "ArrowRight")
+                        ? cursorPos + getGraphemeLength(spanInputContent, cursorPos, "current")
+                        : cursorPos - getGraphemeLength(spanInputContent, cursorPos, "before" );
+                    const slotCursorInfo: SlotCursorInfos = {slotInfos: slotInfos, cursorPos: (newCursorPos)};
                     setDocumentSelection(slotCursorInfo, slotCursorInfo);
                 }
                 event.preventDefault();
