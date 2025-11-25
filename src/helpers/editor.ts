@@ -21,7 +21,7 @@ import { debounce } from "lodash";
 import {toUnicodeEscapes} from "@/parser/parser";
 import {fromUnicodeEscapes} from "@/helpers/pythonToFrames";
 
-export const undoMaxSteps = 200;
+export const undoMaxSteps = 50;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
 
 // Constants used for query parameters parsing
