@@ -1266,6 +1266,12 @@ export default Vue.extend({
 
                     // Update the selection now 
                     const focusCursorInfoToUse = (isSelectionNotAllowed) ? amendedSelectionFocusCursorSlotInfos : focusSlotCursorInfos;
+                    if(!isSelectionNotAllowed && focusSlotCursorInfos.cursorPos == 1 && focusCursorInfoToUse.slotInfos.slotType == SlotType.code && (retrieveSlotFromSlotInfos(focusSlotCursorInfos.slotInfos) as BaseSlot).code.length == 0 ){
+                        // Fix an issue with focus on empty slots: the underlying span element matching the anchor slot contains a zero-width space when empty,
+                        // therefore it possible that, with the mouse, the cursor was placed right after that ZWSP and we get a focus slot core infos that
+                        // doesn't match our "code" content. So we always replace the cursor position when detect this situation.
+                        focusCursorInfoToUse.cursorPos = 0;                    
+                    }
                     this.appStore.setSlotTextCursors((oneQuoteOrBracketSelected) ? focusCursorInfoToUse : anchorSlotCursorInfos, focusCursorInfoToUse);
                     setDocumentSelection((oneQuoteOrBracketSelected) ? focusCursorInfoToUse : anchorSlotCursorInfos, focusCursorInfoToUse);
                     // Explicitly set the focused property to the focused slot

@@ -2974,6 +2974,8 @@ export const useStore = defineStore("app", {
         },
 
         copyFrame(frameId: number) {
+            // We do not use the system's clipboard for frames, so we clear any potential text to avoid interference
+            navigator.clipboard.writeText("");
             this.flushCopiedFrames();
             this.doCopyFrame(frameId);
             this.updateNextAvailableId();
@@ -2983,6 +2985,8 @@ export const useStore = defineStore("app", {
             if (this.selectedFrames.length == 0) {
                 return;
             }
+            // We do not use the system's clipboard for frames, so we clear any potential text to avoid interference
+            navigator.clipboard.writeText("");
             this.flushCopiedFrames();
             this.doCopySelection();
             this.updateNextAvailableId();
