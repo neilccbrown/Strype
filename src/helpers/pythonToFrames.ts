@@ -127,7 +127,13 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}, i
     ){
         // A multilines comment is detected, we transform the frame.
         const stringFieldContent = (slots[0].slotStructures.fields[1] as BaseSlot).code;
-        slots[0].slotStructures.fields.splice(0, 3, {code: stringFieldContent.slice(2,-2).replaceAll(STRYPE_DOC_NEWLINE, "\n")});
+        // When we save these items we add extra escapes to all the quotes and backslashes, so we must reverse that here: 
+        slots[0].slotStructures.fields.splice(0, 3, {code: stringFieldContent.slice(2,-2)
+            .replaceAll(STRYPE_DOC_NEWLINE, "\n")
+            .replaceAll("\\'", "'")
+            .replaceAll("\\\"", "\"")
+            .replaceAll("\\\\", "\\"),
+        });
         slots[0].slotStructures.operators.splice(0);
         type = AllFrameTypesIdentifier.comment;
     }
