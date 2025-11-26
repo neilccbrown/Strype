@@ -123,6 +123,7 @@
     "editorFileUpload": "Chargement de votre fichier dans l'éditeur...",
     "editorAskSaveChangedCode": "Votre projet contient des modifications non-enregistrées. Enregister avant de quitter le projet actuel ?",
     "editorFileUploadWrongVersion": "Le code a été réalisé avec une version différente de l'éditeur.\nL'importer pourrait générer des erreurs.\n\nSouhaitez-vous néanmoins continuer ?",
+    "newProjectConfirmation":"Votre projet va être réinitialisé: <b>toute modification sera perdue</b>.<br/>Charger un nouveau projet quand même ?",
     "importsContainer": "Imports :",
     "defsContainer": "Définitions :",
     "mainContainer": "Mon code :",

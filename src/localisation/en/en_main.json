@@ -121,6 +121,7 @@
     "editorFileUpload": "Uploading your file to the editor...",
     "editorAskSaveChangedCode": "Your project contains unsaved changes.\nSave before closing?",
     "editorFileUploadWrongVersion": "This code has been produced with a different version of the editor.\nImporting may result in errors.\n\nDo you still want to continue?",
+    "newProjectConfirmation":"Your project will be reset: <b>any changes will be lost</b>.<br/>Load a new project anyway?",
     "importsContainer": "Imports:",
     "defsContainer": "Definitions:",
     "mainContainer": "My code:",
