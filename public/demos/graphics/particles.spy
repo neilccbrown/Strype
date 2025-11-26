@@ -2,6 +2,7 @@
 #(=> peaLayoutMode:tabsCollapsed
 #(=> peaCommandsSplitterPane2Size:{"2":68.42,"tabsCollapsed":48.22}
 #(=> peaSplitViewSplitterPane1Size:{"2":77.23}
+'''A particule sparkling effect that follows the mouse'''
 #(=> Section:Imports
 from strype.graphics import * 
 import random 

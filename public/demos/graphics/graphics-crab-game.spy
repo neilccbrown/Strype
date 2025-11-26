@@ -1,4 +1,5 @@
 #(=> Strype:1:std
+'''Move the crab with left and right towards the worms to eat them... and to avoid the lobsters!'''
 #(=> Section:Imports
 from strype.graphics import * 
 from strype.sound import * 
