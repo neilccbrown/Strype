@@ -215,6 +215,7 @@
   "autoCompletion": {
     "myFunctions": "Mes fonctions",
     "myVariables": "Mes variables",
+    "myClasses": "Mes classes",
     "importedModules": "Modules importés",
     "invalidState": "Aucune complétion disponible",
     "noDocumentation":"Aucune documentation disponible"
