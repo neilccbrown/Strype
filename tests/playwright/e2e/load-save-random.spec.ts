@@ -1090,6 +1090,17 @@ test.describe("Enters, saves and loads specific frames", () => {
             {frameType: "library", slotContent: ["(#‘+’_$\\\\) not in "]},
         ], [], []]);
     });
+
+    test("Enabled comments after disabled class and function", async ({page}) => {
+        await testSpecific(page, [[], [
+            {frameType: "classdef", slotContent: ["Foo", "Class doc, this is before \' this is after\nThis is another line with \' in it\nThis last one too\'"], body: [], disabled: true},
+            {frameType: "funcdef", slotContent: ["foo", "", "Func doc, this is before \" this is after\nThis is another line with \" in it\nThis last one too\""], body: [], disabled: true},
+            {frameType: "comment", slotContent: ["This has a single quote \' and a double quote\" in it."]},
+            {frameType: "comment", slotContent: ["This has paired single quotes \' like this \' and paired double quotes \" like this \" in it."]},
+            {frameType: "comment", slotContent: ["This has a single quote \' and a double quote\" in it.\nAnd a second line without."]},
+            {frameType: "comment", slotContent: ["This has paired single quotes \' like this \' and paired double quotes \" like this \" in it.\n And a second line too."]},
+        ], []], "Project doc, this is before \' this is after\nThis is another line with \" in it\nThis last one too\' \"\'");
+    });
     
     test("Empty classes", async ({page}) => {
         await testSpecific(page, [[], [

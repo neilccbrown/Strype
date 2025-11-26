@@ -81,6 +81,7 @@ function debugToString(p : ParsedConcreteTree, curIndent: string) : string {
 // Given a frame, assigns it a new ID and adds it to the list specified in the CopyState
 // If it is not a joint frame, set its parent.
 function addFrame(frame: FrameObject, lineno: number | undefined, s: CopyState) : CopyState {
+    console.log("Adding frame " + frame.frameType.type + " " + JSON.stringify(frame.labelSlotsDict) + " #" + lineno);
     const id = s.nextId;
     frame.id = id;
     s.loadedFrames[id] = frame;
@@ -347,7 +348,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
             if (key == "Disabled") {
                 // Process line again:
                 codeLines[i] = directiveIndent + value;
-                disabledLines.push(i+1);
+                disabledLines.push(transformedLines.length + 1);
                 i -= 1;
                 continue;
             }
@@ -356,7 +357,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                 // We know this is only whitespace because directiveMatch also matched:
                 mostRecentIndent = directiveIndent;
                 if (key == "LibraryDisabled") {
-                    disabledLines.push(i+1);
+                    disabledLines.push(transformedLines.length + 1);
                 }
             }
             else if (key == "FrameState") {
@@ -443,7 +444,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                     // Must check triple quote possibility before single quote characters:
                     const next3 = line.slice(charIndex, charIndex + 3);
                     if (next3 == "'''" || next3 == "\"\"\"") {
-                        currentTripleQuoteString = {quote: next3, content: line.slice(0, charIndex+3), disabled: disabledLines.includes(i+1)};
+                        currentTripleQuoteString = {quote: next3, content: line.slice(0, charIndex+3), disabled: disabledLines.includes(transformedLines.length + 1)};
                         mostRecentIndent = getIndent(line);
                         // Process the rest of the line:
                         line = line.slice(charIndex + 3);
