@@ -76,6 +76,7 @@ export enum CustomEventTypes {
     pythonExecAreaSizeChanged = "peaSizeChanged",
     skulptMouseEventListenerOff = "skMouseEventsOff",
     skulptTimerEventListenerOff = "skTimerEventsOff",
+    highlightPythonRunningState = "highlightPythonRunningState"
     /* FITRUE_isPython */
 }
 

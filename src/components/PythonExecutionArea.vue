@@ -9,7 +9,7 @@
             <!-- IMPORTANT: keep this div with "invisible" text for proper layout rendering, it replaces the tabs -->
             <span v-if="!isTabsLayout" :class="scssVars.peaNoTabsPlaceholderSpanClassName">c+g</span>
             <div class="flex-padding"/>            
-            <button id="runButton" ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'">
+            <button id="runButton" ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}">
                 <img v-if="!isPythonExecuting" src="favicon.png" class="pea-play-img">
                 <span v-else class="python-running">{{runCodeButtonIconText}}</span>
                 <span>{{runCodeButtonLabel}}</span>
@@ -148,6 +148,7 @@ export default Vue.extend({
                 {iconName: "PEA-layout-split-collapsed", mode: StrypePEALayoutMode.splitCollapsed},
                 {iconName: "PEA-layout-split-expanded", mode: StrypePEALayoutMode.splitExpanded},
             ] as StrypePEALayoutData[],
+            highlightPythonRunningState: false, // a flag used to trigger a CSS highlight of the PEA running state
         };
     },
     
@@ -155,9 +156,12 @@ export default Vue.extend({
         // Just to prevent any inconsistency with a uncompatible state, set a state value here and we'll know we won't get in some error
         useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
         
-        // Register an event listen on the tab content container on hover (in/out) to handle some styling
+        // Register an event listener on the tab content container on hover (in/out) to handle some styling
         (document.getElementById(getPEATabContentContainerDivId()))?.addEventListener("mouseenter", () => this.isTabContentHovered = true);
         (document.getElementById(getPEATabContentContainerDivId()))?.addEventListener("mouseleave", () => this.isTabContentHovered = false);
+
+        // Register an event listener on "running highlight notification" request
+        document.addEventListener(CustomEventTypes.highlightPythonRunningState, this.doHighlightPythonRunningState);
 
         // Have to use nextTick because Bootstrap won't have created the actual HTML parts until then:
         this.$nextTick(() => document.querySelectorAll("#" + getPEAControlsDivId() + " .nav-item a").forEach((el) => {
@@ -1024,8 +1028,14 @@ export default Vue.extend({
                 offScreenCanvasToUse = null;
             }
         },
+        
+        doHighlightPythonRunningState(){
+            // This method is called when we want to draw attention on the "running state" of the Strype project.
+            // This is achieved using CSS only, so we just use a flag to trigger a CSS change, and reset it after a decent amount of time.
+            this.highlightPythonRunningState = true;
+            setTimeout(() => this.highlightPythonRunningState = false, 3000);
+        },
     },
-    
 });
 </script>
 
@@ -1075,6 +1085,16 @@ export default Vue.extend({
 
     .python-running {
         color: red;
+    }
+    
+    @keyframes pulse {
+        0%   { box-shadow: 0 0 5px gold; }
+        50%  { box-shadow: 0 0 20px gold; }
+        100% { box-shadow: 0 0 5px gold; }
+    }
+
+    #runButton.highlighted {
+        animation: pulse 1s ease infinite;
     }
 
     .#{$strype-classname-pea-toggle-layout-buttons-container} {
@@ -1164,10 +1184,12 @@ export default Vue.extend({
     // Mac Safari: always show scrollbar (when content is large enough to require one), and make it light
     .pea-console::-webkit-scrollbar {
         width: 8px;
-    }    
+    }
+
     .pea-console::-webkit-scrollbar-track {
         background: #333;
     }
+
     .pea-console::-webkit-scrollbar-thumb {
         background: #888;
         border-radius: 5px;
@@ -1233,6 +1255,7 @@ export default Vue.extend({
     #pythonGraphicsContainer {
         position: relative;
     }
+
     #pythonGraphicsContainer > * {
         top: 0;
         left: 0;
