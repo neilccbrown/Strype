@@ -587,7 +587,7 @@ export default Vue.extend({
         // When the page is loaded, we might load an existing code for which the caret is not visible, so we get it into view.
         setTimeout(() => {
             const htmlElementToShowId = (this.appStore.focusSlotCursorInfos) ? getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos) : getCaretContainerUID(this.appStore.currentFrame.caretPosition, this.appStore.currentFrame.id);
-            document.getElementById(htmlElementToShowId)?.scrollIntoView();
+            document.getElementById(htmlElementToShowId)?.scrollIntoView({block:"nearest"});
         }, 1000);
 
         // Add an event listener to put the app not on top (for an element to be modal) or reset it to normal

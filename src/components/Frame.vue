@@ -915,7 +915,8 @@ export default Vue.extend({
                 return;
             }
 
-            this.changeToggledCaretPosition(event.clientY, frameDivParent, event.shiftKey);
+            // When we come from a text slot, we need to leave time for the text slot blur to be done, so we delay a bit this event
+            setTimeout(() => this.changeToggledCaretPosition(event.clientY, frameDivParent, event.shiftKey), 100);
         },
 
         changeToggledCaretPosition(clickY: number, frameClickedDiv: HTMLDivElement, selectClick?: boolean): void{

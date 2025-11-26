@@ -7,7 +7,7 @@
             :placeholder="defaultText"
             :empty-content="!code || code == '\u200B'"
             :contenteditable="isEditableSlot && !(isDisabled || isFrozen || isPythonExecuting)"
-            @click.stop="onGetCaret"
+            @click.stop="onGetCaret($event, true)"
             @slotGotCaret="onGetCaret"
             @slotLostCaret="onLoseCaret"
             @mouseenter="handleMouseEnterLeave(true)"
@@ -435,113 +435,118 @@ export default Vue.extend({
 
         // Event callback equivalent to what would happen for a focus event callback 
         // (the spans don't get focus anymore because the containg editable div grab it)
-        onGetCaret(event: MouseEvent): void {
+        onGetCaret(event: MouseEvent, fromNaturalClick?: boolean): void {
             let parent = this.$parent as InstanceType<typeof LabelSlotsStructure>;
             Vue.nextTick(() => parent.updatePrependText());
-            
-            // If the user's code is being executed, or if the frame is disabled, we don't focus any slot, but we make sure we show the adequate frame cursor instead.
-            if(this.isPythonExecuting || this.isDisabled || this.isFrozen){
-                event.stopImmediatePropagation();
-                event.stopPropagation();
-                event.preventDefault();
-                // Call the method which handles a click on the frame instead, we need to find the associated frame object:
-                // the corresponding frame div under that click in the general case, or the outmost disabled ancester frame if the frame is disabled.
-                const outmostDisabledFrameAncestorId = getOutmostDisabledAncestorFrameId(this.frameId);
-                const frameDiv = document.getElementById(getFrameUID((this.isDisabled) ? outmostDisabledFrameAncestorId : this.frameId)) as HTMLDivElement;
-                if(frameDiv){
-                    const frameComponent = getFrameComponent((this.isDisabled) ? outmostDisabledFrameAncestorId: this.frameId);
-                    if(frameComponent){
-                        // The frame component can only be a frame (and not a frame container) since we've clicked on a slot...
-                        (frameComponent as InstanceType<typeof Frame>).changeToggledCaretPosition(event.clientY, frameDiv);
-                        // Even if visually and logically in the app the slot doesn't have focus, the browser will see differently
-                        // (a click happened on the span...) - to make sure no undesirable effect occur, we set the focus on the frame div
-                        (document.getElementById(getFrameUID(frameComponent.frameId)))?.focus();
-                    }
-                }
-                return;
-            }
-            
-            this.isFirstChange = true;
 
-            // If we arrive here by a click, and the slot is a bracket, a quote or an operator, we should get the focus to the nearest editable frame.
-            // We should have neigbours because brackets, quotes and operators are always surronded by fields, but keep TS happy
-            if(this.slotType != SlotType.code && this.slotType != SlotType.string && this.slotType != SlotType.comment){
-                const clickXValue = event.x;
-                const slotWidth = document.getElementById(getLabelSlotUID(this.coreSlotInfo))?.offsetWidth??0;
-                const slotXPos = document.getElementById(getLabelSlotUID(this.coreSlotInfo))?.getBoundingClientRect().x??0; 
-
-                // Get the spans of that frame label container
-                const spans = document.querySelectorAll("#"+getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex) + " span." + scssVars.labelSlotInputClassName);
-                let indexOfCurrentSpan = 0;
-                spans.forEach((element, index) => {
-                    if(element.id == getLabelSlotUID(this.coreSlotInfo)){
-                        indexOfCurrentSpan = index;
-                    }
-                });
-
-                // Get the neigbour spans
-                const previousNeighbourSlotInfos = parseLabelSlotUID(spans[indexOfCurrentSpan - 1].id);
-                const nextNeighbourSlotInfos = parseLabelSlotUID(spans[indexOfCurrentSpan + 1].id);
-                if(slotWidth> 0){
-                    // Set default neigbour as the next
-                    let neighbourSlotInfos = nextNeighbourSlotInfos;
-                    let cursorPos = 0;
-                    if(clickXValue < (slotXPos + (slotWidth / 2))) {
-                        neighbourSlotInfos = previousNeighbourSlotInfos; 
-                        cursorPos = (document.getElementById(getLabelSlotUID(previousNeighbourSlotInfos))?.textContent?.replace(/\u200B/g, "")??"").length;                       
-                    }
-                  
-                    // Focus on the nearest neighbour to the click
+            // When this method is triggered by a natural click on the text slot, we delay the chain of actions a bit,
+            // because the potential blurring of another slot may interfer with with timing and scrolling into view.
+            const waitFor = (fromNaturalClick) ? 200 : 0;
+            setTimeout(() => {
+                // If the user's code is being executed, or if the frame is disabled, we don't focus any slot, but we make sure we show the adequate frame cursor instead.
+                if(this.isPythonExecuting || this.isDisabled || this.isFrozen){
+                    event.stopImmediatePropagation();
+                    event.stopPropagation();
                     event.preventDefault();
-                    this.$nextTick(() => {
-                        const neighbourCursorSlotInfos: SlotCursorInfos = {slotInfos: neighbourSlotInfos, cursorPos: cursorPos};
-                        document.getElementById(getLabelSlotUID(neighbourSlotInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
-                        setDocumentSelection(neighbourCursorSlotInfos, neighbourCursorSlotInfos);
-                        this.appStore.setSlotTextCursors(neighbourCursorSlotInfos, neighbourCursorSlotInfos);
-                    });
+                    // Call the method which handles a click on the frame instead, we need to find the associated frame object:
+                    // the corresponding frame div under that click in the general case, or the outmost disabled ancester frame if the frame is disabled.
+                    const outmostDisabledFrameAncestorId = getOutmostDisabledAncestorFrameId(this.frameId);
+                    const frameDiv = document.getElementById(getFrameUID((this.isDisabled) ? outmostDisabledFrameAncestorId : this.frameId)) as HTMLDivElement;
+                    if(frameDiv){
+                        const frameComponent = getFrameComponent((this.isDisabled) ? outmostDisabledFrameAncestorId: this.frameId);
+                        if(frameComponent){
+                            // The frame component can only be a frame (and not a frame container) since we've clicked on a slot...
+                            (frameComponent as InstanceType<typeof Frame>).changeToggledCaretPosition(event.clientY, frameDiv);
+                            // Even if visually and logically in the app the slot doesn't have focus, the browser will see differently
+                            // (a click happened on the span...) - to make sure no undesirable effect occur, we set the focus on the frame div
+                            (document.getElementById(getFrameUID(frameComponent.frameId)))?.focus();
+                        }
+                    }
                     return;
                 }
-                else {
-                    const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
-                    const inputSpanFieldContent = inputSpanField.textContent ?? "";
-                    if (inputSpanFieldContent == "\u200B") {
-                        const cursorPos = getTextStartCursorPositionOfHTMLElement(inputSpanField);
-                        if (cursorPos > 0 && this.appStore.anchorSlotCursorInfos && this.appStore.focusSlotCursorInfos) {
-                            // We maybe came here by moving left from the field after, need to set pos to before zero-width space:
-                            const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: 0};
-                            const hasMultiSlotTextSelection = !areSlotCoreInfosEqual(this.appStore.anchorSlotCursorInfos.slotInfos, this.appStore.focusSlotCursorInfos.slotInfos);
-                            setDocumentSelection(hasMultiSlotTextSelection ? this.appStore.anchorSlotCursorInfos : slotCursorInfo, slotCursorInfo);
-                            this.appStore.setSlotTextCursors(hasMultiSlotTextSelection ? this.appStore.anchorSlotCursorInfos : slotCursorInfo, slotCursorInfo);
+                
+                this.isFirstChange = true;
+
+                // If we arrive here by a click, and the slot is a bracket, a quote or an operator, we should get the focus to the nearest editable frame.
+                // We should have neigbours because brackets, quotes and operators are always surronded by fields, but keep TS happy
+                if(this.slotType != SlotType.code && this.slotType != SlotType.string && this.slotType != SlotType.comment){
+                    const clickXValue = event.x;
+                    const slotWidth = document.getElementById(getLabelSlotUID(this.coreSlotInfo))?.offsetWidth??0;
+                    const slotXPos = document.getElementById(getLabelSlotUID(this.coreSlotInfo))?.getBoundingClientRect().x??0; 
+
+                    // Get the spans of that frame label container
+                    const spans = document.querySelectorAll("#"+getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex) + " span." + scssVars.labelSlotInputClassName);
+                    let indexOfCurrentSpan = 0;
+                    spans.forEach((element, index) => {
+                        if(element.id == getLabelSlotUID(this.coreSlotInfo)){
+                            indexOfCurrentSpan = index;
+                        }
+                    });
+
+                    // Get the neigbour spans
+                    const previousNeighbourSlotInfos = parseLabelSlotUID(spans[indexOfCurrentSpan - 1].id);
+                    const nextNeighbourSlotInfos = parseLabelSlotUID(spans[indexOfCurrentSpan + 1].id);
+                    if(slotWidth> 0){
+                        // Set default neigbour as the next
+                        let neighbourSlotInfos = nextNeighbourSlotInfos;
+                        let cursorPos = 0;
+                        if(clickXValue < (slotXPos + (slotWidth / 2))) {
+                            neighbourSlotInfos = previousNeighbourSlotInfos; 
+                            cursorPos = (document.getElementById(getLabelSlotUID(previousNeighbourSlotInfos))?.textContent?.replace(/\u200B/g, "")??"").length;                       
+                        }
+                    
+                        // Focus on the nearest neighbour to the click
+                        event.preventDefault();
+                        this.$nextTick(() => {
+                            const neighbourCursorSlotInfos: SlotCursorInfos = {slotInfos: neighbourSlotInfos, cursorPos: cursorPos};
+                            document.getElementById(getLabelSlotUID(neighbourSlotInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
+                            setDocumentSelection(neighbourCursorSlotInfos, neighbourCursorSlotInfos);
+                            this.appStore.setSlotTextCursors(neighbourCursorSlotInfos, neighbourCursorSlotInfos);
+                        });
+                        return;
+                    }
+                    else {
+                        const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
+                        const inputSpanFieldContent = inputSpanField.textContent ?? "";
+                        if (inputSpanFieldContent == "\u200B") {
+                            const cursorPos = getTextStartCursorPositionOfHTMLElement(inputSpanField);
+                            if (cursorPos > 0 && this.appStore.anchorSlotCursorInfos && this.appStore.focusSlotCursorInfos) {
+                                // We maybe came here by moving left from the field after, need to set pos to before zero-width space:
+                                const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: 0};
+                                const hasMultiSlotTextSelection = !areSlotCoreInfosEqual(this.appStore.anchorSlotCursorInfos.slotInfos, this.appStore.focusSlotCursorInfos.slotInfos);
+                                setDocumentSelection(hasMultiSlotTextSelection ? this.appStore.anchorSlotCursorInfos : slotCursorInfo, slotCursorInfo);
+                                this.appStore.setSlotTextCursors(hasMultiSlotTextSelection ? this.appStore.anchorSlotCursorInfos : slotCursorInfo, slotCursorInfo);
+                            }
                         }
                     }
                 }
-            }
-            
-            this.appStore.setFocusEditableSlot(
-                {
-                    frameSlotInfos: this.coreSlotInfo,
-                    caretPosition: (this.appStore.getAllowedChildren(this.frameId)) ? CaretPosition.body : CaretPosition.below,
+                
+                this.appStore.setFocusEditableSlot(
+                    {
+                        frameSlotInfos: this.coreSlotInfo,
+                        caretPosition: (this.appStore.getAllowedChildren(this.frameId)) ? CaretPosition.body : CaretPosition.below,
+                    }
+                );
+                
+                if (!this.code) {
+                    // If code is empty, on Firefox we need to force the focus because a click on the placeholder
+                    // text does not actually set the caret into this span:
+                    this.$nextTick(() => {
+                        const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: this.textCursorPos};
+                        setDocumentSelection(useStore().anchorSlotCursorInfos ?? slotCursorInfo, slotCursorInfo);
+                    });
                 }
-            );
-            
-            if (!this.code) {
-                // If code is empty, on Firefox we need to force the focus because a click on the placeholder
-                // text does not actually set the caret into this span:
-                this.$nextTick(() => {
-                    const slotCursorInfo: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: this.textCursorPos};
-                    setDocumentSelection(useStore().anchorSlotCursorInfos ?? slotCursorInfo, slotCursorInfo);
-                });
-            }
 
-            // Make sure we're visible in the viewport properly
-            document.getElementById(getLabelSlotUID(this.coreSlotInfo))?.scrollIntoView({block: "nearest"});
+                // Make sure we're visible in the viewport properly
+                document.getElementById(getLabelSlotUID(this.coreSlotInfo))?.scrollIntoView({block: "nearest"});
 
-            this.updateAC();
+                this.updateAC();
 
-            // As we receive focus, we show the error popover if required. Note that we do it programmatically as it seems the focus trigger on popover isn't working in our configuration
-            if(this.erroneous()){
-                (this.$refs.errorPopover as InstanceType<typeof BPopover>).$emit("open");
-            }
+                // As we receive focus, we show the error popover if required. Note that we do it programmatically as it seems the focus trigger on popover isn't working in our configuration
+                if(this.erroneous()){
+                    (this.$refs.errorPopover as InstanceType<typeof BPopover>).$emit("open");
+                }
+            }, waitFor);           
         },
         
         handleMouseEnterLeave(isEntering: boolean) {
