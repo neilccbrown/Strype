@@ -427,9 +427,9 @@ export default Vue.extend({
             // index the results, in order to be able to browse through it with the keys and show the selected.
             let lastIndex=0;
             for (const module in this.acResults) {
-                // Filter the list based on the token
+                // Filter the list based on the token (starting with the token or having "_<token>" in the name, all case insensitve)
                 const filteredResults: AcResultType[] = this.acResults[module].filter((element: AcResultType) => 
-                    element.acResult.toLowerCase().includes(token.toLowerCase()));
+                    element.acResult.toLowerCase().startsWith(token.toLowerCase()) || element.acResult.toLowerCase().includes("_"+token.toLowerCase()));
 
                 // Don't put empty lists in resultsToShow
                 if (filteredResults.length == 0) {
