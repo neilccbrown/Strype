@@ -1420,7 +1420,7 @@ export default Vue.extend({
                     
                     this.appStore.setDividerStates(
                         loadDivider(s.headers["editorCommandsSplitterPane2Size"]),
-                        s.headers["peaLayoutMode"] !== undefined ? StrypePEALayoutMode[s.headers["peaLayoutMode"] as keyof typeof StrypePEALayoutMode] : undefined,
+                        s.headers["peaLayoutMode"] !== undefined ? StrypePEALayoutMode[s.headers["peaLayoutMode"] as keyof typeof StrypePEALayoutMode] : StrypePEALayoutMode.tabsCollapsed,
                         loadDivider(s.headers["peaCommandsSplitterPane2Size"]),
                         loadDivider(s.headers["peaSplitViewSplitterPane1Size"]),
                         loadDivider(s.headers["peaExpandedSplitterPane2Size"]),
@@ -1430,7 +1430,8 @@ export default Vue.extend({
                                 (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, lastSaveDate, fileLocation);
                             }
                             resolve();
-                        }
+                        },
+                        true
                     );
                     
                     // Check for errors (could be that we loaded something with blanks or syntax errors):
