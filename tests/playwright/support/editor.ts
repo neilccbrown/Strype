@@ -137,3 +137,7 @@ export function pressN(key: string, n : number, enforceWaitBetween?: boolean) : 
         }
     };
 }
+
+export function getDefaultStrypeProjectDocumentationFullLine(): string {
+    return "'''This is the default Strype starter project'''\n";
+}

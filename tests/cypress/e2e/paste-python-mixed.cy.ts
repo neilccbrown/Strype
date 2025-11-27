@@ -6,6 +6,7 @@ import os from "os";
 failOnConsoleError();
 import "../support/paste-test-support";
 import {testRoundTripImportAndDownload,testRoundTripPasteAndDownload} from "../support/paste-test-support";
+import { getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
 
 // If the user pastes "mixed" code (i.e. imports, functions and body code)
 // then we split it into those three categories and obey the following rules:
@@ -40,7 +41,7 @@ const STARTING_DEF = `def myfunc ():
     return 7`;
 const STARTING_MAIN = "print(\"Hello\")";
 const STARTING_POINT = `
-${STARTING_IMPORT}
+${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}${STARTING_IMPORT}
 ${STARTING_DEF}
 ${STARTING_MAIN}
 `.trimStart();
@@ -58,7 +59,7 @@ describe("Tests pasting mixed content", () => {
     it("Imports initial content and saves .spy", () => {
         testRoundTripPasteAndDownload(STARTING_POINT, "", `
 #(=> Strype:1:${MODE}
-#(=> Section:Imports
+${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${STARTING_IMPORT}
 #(=> Section:Definitions
 ${STARTING_DEF}
@@ -74,7 +75,7 @@ ${STARTING_MAIN}
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload(IMPORT0 + "\n" + IMPORT1 + "\n" + IMPORT2, "", `
 #(=> Strype:1:${MODE}
-#(=> Section:Imports
+${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${STARTING_IMPORT}
 ${IMPORT0}
 ${IMPORT1}
@@ -91,7 +92,7 @@ ${STARTING_MAIN}
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload(DEF0 + "\n" + DEF1, "", `
 #(=> Strype:1:${MODE}
-#(=> Section:Imports
+${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${STARTING_IMPORT}
 #(=> Section:Definitions
 ${STARTING_DEF}
@@ -107,7 +108,7 @@ ${STARTING_MAIN}
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload(MAIN0 + "\n" + MAIN1, "{home}", `
 #(=> Strype:1:${MODE}
-#(=> Section:Imports
+${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${STARTING_IMPORT}
 #(=> Section:Definitions
 ${STARTING_DEF}
@@ -123,7 +124,7 @@ ${STARTING_MAIN}
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload(IMPORT0 + "\n" + IMPORT1 + "\n" + IMPORT2, "{home}{uparrow}{home}{uparrow}{home}", `
 #(=> Strype:1:${MODE}
-#(=> Section:Imports
+${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${IMPORT0}
 ${IMPORT1}
 ${IMPORT2}
@@ -140,7 +141,7 @@ ${STARTING_MAIN}
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload(DEF0 + "\n" + DEF1, "{home}{uparrow}{home}", `
 #(=> Strype:1:${MODE}
-#(=> Section:Imports
+${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${STARTING_IMPORT}
 #(=> Section:Definitions
 ${DEF0}
@@ -156,7 +157,7 @@ ${STARTING_MAIN}
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{home}{uparrow}{home}{uparrow}{home}", `
 #(=> Strype:1:${MODE}
-#(=> Section:Imports
+${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${IMPORT0}
 ${IMPORT1}
 ${IMPORT2}
@@ -178,7 +179,7 @@ ${STARTING_MAIN}
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{home}{uparrow}{home}", `
 #(=> Strype:1:${MODE}
-#(=> Section:Imports
+${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${STARTING_IMPORT}
 ${IMPORT0}
 ${IMPORT1}
@@ -200,7 +201,7 @@ ${STARTING_MAIN}
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "", `
 #(=> Strype:1:${MODE}
-#(=> Section:Imports
+${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${STARTING_IMPORT}
 ${IMPORT0}
 ${IMPORT1}
@@ -222,7 +223,7 @@ ${MAIN2}
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload([IMPORT0, MAIN0, DEF0, IMPORT1, DEF1, MAIN1, MAIN2, IMPORT2].join("\n"), "", `
 #(=> Strype:1:${MODE}
-#(=> Section:Imports
+${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${STARTING_IMPORT}
 ${IMPORT0}
 ${IMPORT1}
@@ -244,7 +245,7 @@ ${MAIN2}
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{home}{uparrow}{uparrow}", `
 #(=> Strype:1:${MODE}
-#(=> Section:Imports
+${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${STARTING_IMPORT}
 ${IMPORT0}
 ${IMPORT1}
@@ -266,7 +267,7 @@ ${STARTING_MAIN}
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{home}{uparrow}{uparrow}", `
 #(=> Strype:1:${MODE}
-#(=> Section:Imports
+${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${STARTING_IMPORT}
 ${IMPORT0}
 ${IMPORT1}
@@ -291,7 +292,7 @@ ${STARTING_MAIN}
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload(IMPORT0 + "\n" + IMPORT1 + "\n" + IMPORT2, "", `
 #(=> Strype:1:${MODE}
-#(=> Section:Imports
+${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${STARTING_IMPORT}
 ${IMPORT0}
 ${IMPORT1}
@@ -311,7 +312,7 @@ afterwards()
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{home}{uparrow}{home}{uparrow}{home}", `
 #(=> Strype:1:${MODE}
-#(=> Section:Imports
+${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${IMPORT0}
 ${IMPORT1}
 ${IMPORT2}
@@ -336,7 +337,7 @@ ${STARTING_MAIN}
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{shift}{uparrow}", `
 #(=> Strype:1:${MODE}
-#(=> Section:Imports
+${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${STARTING_IMPORT}
 ${IMPORT0}
 ${IMPORT1}
@@ -357,7 +358,7 @@ ${MAIN2}
         testRoundTripPasteAndDownload(STARTING_POINT);
         testRoundTripPasteAndDownload(IMPORT0 + "\n" + IMPORT1 + "\n" + IMPORT2, "{shift}{uparrow}", `
 #(=> Strype:1:${MODE}
-#(=> Section:Imports
+${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${STARTING_IMPORT}
 ${IMPORT0}
 ${IMPORT1}

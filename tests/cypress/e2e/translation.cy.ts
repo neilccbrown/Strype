@@ -146,18 +146,22 @@ describe("Locale persistence", () => {
         // but the locale should still be the same as before.
         cy.get("button#" + strypeElIds.getEditorMenuUID()).click({force: true}); 
         cy.contains(i18n.t("appMenu.resetProject", localeForTest) as string).click({force: true}).then(() => {
-            // Check the editor contains the initial state code: we download the conversion and compare with the backed up Python file
-            changeCodeThenDownloadPy({locale: localeForTest});
-            cy.wait(500);            
-            return cy.readFile(path.join(downloadsFolder, initialPyFileName)).then((intialPyFileContent : string) =>  {
-                return cy.readFile(path.join(downloadsFolder, "main.py")).then((newPyFileContent : string) =>  {
-                    expect(newPyFileContent, "Reset project's Python file differs from intial project's Python file").to.equal(intialPyFileContent);
-                    // Check the page is still in the previously selected locale
-                    checkTranslationsForLocale(localeForTest);
-                    // Clean up the downloads folder for the backed up file (not sure we need though)
-                    cy.task("deleteFile", path.join(downloadsFolder, initialPyFileName)); 
-                });                
-            });
+            // Accept the change for a new project
+            cy.wait(500);
+            return cy.contains(i18n.t("buttonLabel.yes", localeForTest) as string).click({force: true}).then(() => {
+                // Check the editor contains the initial state code: we download the conversion and compare with the backed up Python file
+                changeCodeThenDownloadPy({locale: localeForTest});
+                cy.wait(500);            
+                return cy.readFile(path.join(downloadsFolder, initialPyFileName)).then((intialPyFileContent : string) =>  {
+                    return cy.readFile(path.join(downloadsFolder, "main.py")).then((newPyFileContent : string) =>  {
+                        expect(newPyFileContent, "Reset project's Python file differs from intial project's Python file").to.equal(intialPyFileContent);
+                        // Check the page is still in the previously selected locale
+                        checkTranslationsForLocale(localeForTest);
+                        // Clean up the downloads folder for the backed up file (not sure we need though)
+                        cy.task("deleteFile", path.join(downloadsFolder, initialPyFileName)); 
+                    });                
+                });
+            });            
         });
     });
 

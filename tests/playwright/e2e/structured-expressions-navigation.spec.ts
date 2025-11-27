@@ -1,6 +1,6 @@
 import {Page, test, expect} from "@playwright/test";
 import path from "path";
-import {assertStateOfIfFrame, checkFrameXorTextCursor, checkTextSlotCursorPos, doPagePaste, pressN} from "../support/editor";
+import {assertStateOfIfFrame, checkFrameXorTextCursor, checkTextSlotCursorPos, doPagePaste, getDefaultStrypeProjectDocumentationFullLine, pressN} from "../support/editor";
 import fs from "fs";
 import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "@/helpers/sharedIdCssWithTests";
 import {createBrowserProxy} from "../support/proxy";
@@ -168,7 +168,7 @@ test.describe("Check clicking near image literal", () => {
         const contents = readFileSync(savePath, "utf8");
         expect(contents).toEqual(`
 #(=> Strype:1:std
-#(=> Section:Imports
+${getDefaultStrypeProjectDocumentationFullLine()}#(=> Section:Imports
 #(=> Section:Definitions
 #(=> Section:Main
 Actor(load_image("data:image/jpeg;base64,${image}").foo) 
