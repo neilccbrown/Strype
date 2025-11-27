@@ -1162,6 +1162,12 @@ export const useStore = defineStore("app", {
                             const currentSlotCode = (retrieveSlotFromSlotInfos(currentSlotInfos) as BaseSlot).code;
                             (retrieveSlotFromSlotInfos(currentSlotInfos) as BaseSlot).code = (isForwardDeletion) ? (currentSlotCode + slotToDeleteCode) : (slotToDeleteCode + currentSlotCode);
                         }
+                        else {
+                            // When we delete a media slot with backspace, the new slot must be indexed 2 prior since it's surrounded with empty operators
+                            // so we remove 1 extra index from the id
+                            const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(slotToDeleteInfos.slotId);
+                            slotToDeleteInfos.slotId = getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex - 1);
+                        }
 
                         // Now we do the fields/operator deletion:
                                 
