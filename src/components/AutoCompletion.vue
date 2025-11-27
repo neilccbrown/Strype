@@ -393,7 +393,7 @@ export default Vue.extend({
                 this.acResults[this.$i18n.t("autoCompletion.myClasses") as string] = getAllEnabledUserDefinedClasses().map((f) => ({
                     acResult: (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code,
                     documentation: "",
-                    type: ["function"], // A class in Python is seen as a function
+                    type: ["function"], // Class names are used as constructor functions in Python
                     version: 0,
                 }));
                 
