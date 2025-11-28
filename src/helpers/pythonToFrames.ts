@@ -1,4 +1,4 @@
-import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, StringSlot, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrozenState } from "@/types/types";
+import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, StringSlot, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrozenState } from "@/types/types";
 import {useStore} from "@/store/store";
 import {getCaretContainerComponent, getFrameComponent, operators, trimmedKeywordOperators} from "@/helpers/editor";
 import i18n from "@/i18n";
@@ -81,6 +81,7 @@ function debugToString(p : ParsedConcreteTree, curIndent: string) : string {
 // Given a frame, assigns it a new ID and adds it to the list specified in the CopyState
 // If it is not a joint frame, set its parent.
 function addFrame(frame: FrameObject, lineno: number | undefined, s: CopyState) : CopyState {
+    console.log("Adding frame " + frame.frameType.type + " " + JSON.stringify(frame.labelSlotsDict) + " #" + lineno);
     const id = s.nextId;
     frame.id = id;
     s.loadedFrames[id] = frame;
@@ -127,7 +128,13 @@ function makeFrame(type: string, slots: { [index: number]: LabelSlotsContent}, i
     ){
         // A multilines comment is detected, we transform the frame.
         const stringFieldContent = (slots[0].slotStructures.fields[1] as BaseSlot).code;
-        slots[0].slotStructures.fields.splice(0, 3, {code: stringFieldContent.slice(2,-2).replaceAll(STRYPE_DOC_NEWLINE, "\n")});
+        // When we save these items we add extra escapes to all the quotes and backslashes, so we must reverse that here: 
+        slots[0].slotStructures.fields.splice(0, 3, {code: stringFieldContent.slice(2,-2)
+            .replaceAll(STRYPE_DOC_NEWLINE, "\n")
+            .replaceAll("\\'", "'")
+            .replaceAll("\\\"", "\"")
+            .replaceAll("\\\\", "\\"),
+        });
         slots[0].slotStructures.operators.splice(0);
         type = AllFrameTypesIdentifier.comment;
     }
@@ -341,17 +348,17 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
             if (key == "Disabled") {
                 // Process line again:
                 codeLines[i] = directiveIndent + value;
-                disabledLines.push(i+1);
+                disabledLines.push(transformedLines.length + 1);
                 i -= 1;
                 continue;
             }
             else if (key == "Library" || key == "LibraryDisabled") {
+                if (key == "LibraryDisabled") {
+                    disabledLines.push(transformedLines.length + 1);
+                }
                 transformedLines.push(directiveIndent + STRYPE_LIBRARY_PREFIX + toUnicodeEscapes(value));
                 // We know this is only whitespace because directiveMatch also matched:
                 mostRecentIndent = directiveIndent;
-                if (key == "LibraryDisabled") {
-                    disabledLines.push(i+1);
-                }
             }
             else if (key == "FrameState") {
                 const states = value.trim().split(";");
@@ -437,7 +444,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                     // Must check triple quote possibility before single quote characters:
                     const next3 = line.slice(charIndex, charIndex + 3);
                     if (next3 == "'''" || next3 == "\"\"\"") {
-                        currentTripleQuoteString = {quote: next3, content: line.slice(0, charIndex+3), disabled: disabledLines.includes(i+1)};
+                        currentTripleQuoteString = {quote: next3, content: line.slice(0, charIndex+3), disabled: disabledLines.includes(transformedLines.length + 1)};
                         mostRecentIndent = getIndent(line);
                         // Process the rest of the line:
                         line = line.slice(charIndex + 3);
@@ -496,25 +503,6 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
     return { disabledLines, frameStateLines: frameStateLines, transformedLines, strypeDirectives };
 }
 
-// Get rid of escapes in the project doc string:
-function unescapeProjectDoc(doc: string) : string {
-    return doc.replace(/\\\\/g, "\\").replace(/\\'/g, "'");
-}
-
-// Apply a function to all code parts of BaseSlots:
-function applyToText(s : SlotsStructure, f : (t: string) => string) : void {
-    for (const field of s.fields) {
-        if (isFieldBracketedSlot(field)) {
-            // Recurse into nested structures
-            applyToText(field, f);
-        }
-        else if (!isFieldStringSlot(field) && !isFieldMediaSlot(field)) {
-            // Apply transformation if it's a BaseSlot (not string/media)
-            field.code = f(field.code);
-        }
-    }
-}
-
 // The main entry point to this module.  Given a string of Python code that the user
 // has pasted in, copy it to the store's copiedFrames/copiedSelectionFrameIds fields,
 // ready to be pasted immediately afterwards.
@@ -567,8 +555,6 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
         copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: useStore().nextAvailableId, addToNonJoint: useStore().copiedSelectionFrameIds, addToJoint: undefined, loadedFrames: useStore().copiedFrames, disabledLines: transformed.disabledLines, frameStateLines: transformed.frameStateLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0, transformTopComment: (c) => {
             if (!dryrun) {
                 const docFrame = useStore().frameObjects[projectDocumentationFrameId] as FrameObject;
-                // The escapes in the loaded project doc were inserted by us on saving, so we should remove them:
-                applyToText(c, unescapeProjectDoc);
                 docFrame.labelSlotsDict[0].slotStructures = c;
             }
         }});
@@ -1172,8 +1158,6 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
     case Sk.ParseTables.sym.funcdef: {
         // First child is keyword, second is the name, third is params, fourth is colon, fifth is body
         const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.funcdef, 0, [1, 2], 4, s, (comment : SlotsStructure, frame : FrameObject) => {
-            // Unescape quotes:
-            applyToText(comment, (s) => unescapeProjectDoc(s));
             frame.labelSlotsDict[3] = {slotStructures: comment};
         });
         s = r.s;

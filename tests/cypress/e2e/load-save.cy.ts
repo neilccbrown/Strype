@@ -329,3 +329,9 @@ describe("Tests loading/saving grapheme clusters (like emojis) in strings", () =
         testRoundTripImportAndDownload("tests/cypress/fixtures/grapheme-strings.spy");
     });
 });
+
+describe("Tests loading/saving complex expressions", () => {
+    it("Loads/saves expressions with images", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/image-expressions.spy");
+    });
+});
