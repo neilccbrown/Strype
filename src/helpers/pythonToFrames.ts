@@ -353,12 +353,12 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                 continue;
             }
             else if (key == "Library" || key == "LibraryDisabled") {
-                transformedLines.push(directiveIndent + STRYPE_LIBRARY_PREFIX + toUnicodeEscapes(value));
-                // We know this is only whitespace because directiveMatch also matched:
-                mostRecentIndent = directiveIndent;
                 if (key == "LibraryDisabled") {
                     disabledLines.push(transformedLines.length + 1);
                 }
+                transformedLines.push(directiveIndent + STRYPE_LIBRARY_PREFIX + toUnicodeEscapes(value));
+                // We know this is only whitespace because directiveMatch also matched:
+                mostRecentIndent = directiveIndent;
             }
             else if (key == "FrameState") {
                 const states = value.trim().split(";");
