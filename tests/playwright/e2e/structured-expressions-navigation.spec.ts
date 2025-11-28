@@ -110,10 +110,10 @@ test.describe("Check navigation", () => {
         for (let i = 0; i < 100; i++) {
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowDown");
-            await page.waitForTimeout(200);
+            await page.waitForTimeout(500);
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowDown");
-            await page.waitForTimeout(200);
+            await page.waitForTimeout(500);
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("Shift+Tab");
         }
