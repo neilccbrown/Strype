@@ -98,6 +98,9 @@
                 <br/>
             </div>
         </ModalDlg>
+        <ModalDlg :dlgId="confirmNewProjectModalDlgId" :useYesNo="true">
+            <span style="white-space:pre-wrap" v-html="$t('appMessage.newProjectConfirmation')"></span>
+        </ModalDlg>
     </div>
 </template>
 
@@ -115,7 +118,7 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane, PaneData} from "splitpanes";
 import { useStore, settingsStore } from "@/store/store";
-import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition } from "@/types/types";
+import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
 import { getFrameContainerUID, getCloudDriveHandlerComponentRefId, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
@@ -141,6 +144,7 @@ import axios from "axios";
 import scssVars from "@/assets/style/_export.module.scss";
 import {loadDivider} from "@/helpers/load-save";
 import FrameHeader from "@/components/FrameHeader.vue";
+import { projectDocumentationFrameId } from "./main";
 
 let autoSaveTimerId = -1;
 let projectSaveFunctionsState : ProjectSaveFunction[] = [];
@@ -173,7 +177,6 @@ export default Vue.extend({
             showAppProgress: false,
             setAppNotOnTop: false,
             progressbarMessage: "",
-            resetStrypeProjectFlag: false,
             cloudDriveName: "",
             /* IFTRUE_isPython */
             isExpandedPythonExecArea: false,
@@ -283,6 +286,10 @@ export default Vue.extend({
             return this.$i18n.t("appMessage.resyncToCloudDriveAtStartup", {drivename: this.cloudDriveName}) as string;
         },
 
+        confirmNewProjectModalDlgId(): string {
+            return "confirmNewProjectModalDlg";
+        },
+
         getSkulptBackendTurtleDivId(): string {
             return BACKEND_SKULPT_DIV_ID;
         },
@@ -332,42 +339,7 @@ export default Vue.extend({
         this.setStrypeLocale();
 
         projectSaveFunctionsState[0] = {syncTarget: StrypeSyncTarget.ws, function: (reason: SaveRequestReason) => this.autoSaveStateToWebLocalStorage(reason)};
-        window.addEventListener("beforeunload", (event) => {
-            // No matter the choice the user will make on saving the page, and because it is not straight forward to know what action has been done,
-            // we systematically exit any slot being edited to have a state showing the blue caret.
-            // We do so by simulating a key down event (which exits the current slot)
-            const focusCursorInfos = useStore().focusSlotCursorInfos;
-            if(useStore().isEditing && focusCursorInfos){
-                useStore().ignoreFocusRequest = false;
-                document.getElementById(getFrameLabelSlotsStructureUID(focusCursorInfos.slotInfos.frameId, focusCursorInfos.slotInfos.labelSlotsIndex))?.dispatchEvent(
-                    new KeyboardEvent("keydown", {
-                        key: "ArrowDown",
-                    })
-                );
-            }
-
-            // Browsers won't display a customised message, and can detect when to prompt the user,
-            // so we don't need to do anything special.
-            event.returnValue = true;
-
-            // Save the state before exiting
-            if(!this.resetStrypeProjectFlag){
-                this.autoSaveStateToWebLocalStorage(SaveRequestReason.unloadPage);
-            }
-            else {
-                // if the user cancels the reload, and that the reset was request, we need to restore the autosave process:
-                // to make sure this doesn't happen right when the user validates the reload, we do it later: if the user had
-                // cancelled the reload, the timeout will occur, and if the page has been reload, it won't (most likely)
-                setTimeout(() =>  {
-                    this.resetStrypeProjectFlag = true;
-                    this.setAutoSaveState();
-                }, 10000);
-                
-            }
-
-            // We clear the session storage as well. This is notably used to clear MSAL authentication data (when using OneDrive).
-            sessionStorage.clear();
-        });
+        window.addEventListener("beforeunload", this.beforeUnloadHandler);
 
         // By means of protection against browser crashes or anything that could prevent auto-backup, we do a backup every 2 minutes
         this.setAutoSaveState();
@@ -615,7 +587,7 @@ export default Vue.extend({
         // When the page is loaded, we might load an existing code for which the caret is not visible, so we get it into view.
         setTimeout(() => {
             const htmlElementToShowId = (this.appStore.focusSlotCursorInfos) ? getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos) : getCaretContainerUID(this.appStore.currentFrame.caretPosition, this.appStore.currentFrame.id);
-            document.getElementById(htmlElementToShowId)?.scrollIntoView();
+            document.getElementById(htmlElementToShowId)?.scrollIntoView({block:"nearest"});
         }, 1000);
 
         // Add an event listener to put the app not on top (for an element to be modal) or reset it to normal
@@ -847,6 +819,31 @@ export default Vue.extend({
             }
         },
 
+        beforeUnloadHandler(event: BeforeUnloadEvent) {
+            // No matter the choice the user will make on saving the page, and because it is not straight forward to know what action has been done,
+            // we systematically exit any slot being edited to have a state showing the blue caret.
+            // We do so by simulating a key down event (which exits the current slot)
+            const focusCursorInfos = useStore().focusSlotCursorInfos;
+            if(useStore().isEditing && focusCursorInfos){
+                useStore().ignoreFocusRequest = false;
+                document.getElementById(getFrameLabelSlotsStructureUID(focusCursorInfos.slotInfos.frameId, focusCursorInfos.slotInfos.labelSlotsIndex))?.dispatchEvent(
+                    new KeyboardEvent("keydown", {
+                        key: "ArrowDown",
+                    })
+                );
+            }
+
+            // Browsers won't display a customised message, and can detect when to prompt the user,
+            // so we don't need to do anything special.
+            event.returnValue = true;
+
+            // Save the state before exiting            
+            this.autoSaveStateToWebLocalStorage(SaveRequestReason.unloadPage);            
+
+            // We clear the session storage as well. This is notably used to clear MSAL authentication data (when using OneDrive).
+            sessionStorage.clear();
+        },
+
         setStrypeLocale() {
             // We need to retrieve Strype's language (session) if it exists in the localStorage.
             // If we didn't retrieve it, we try to infer the browser's language and ask the user
@@ -919,6 +916,21 @@ export default Vue.extend({
             if(dlgId == this.confirmResetLSOnShareProjectLoadDlgId) {
                 document.dispatchEvent(new CustomEvent(CustomEventTypes.resetLSOnShareProjectLoadConfirmed, {detail: (event.trigger == "ok")}));
             }
+            else if(dlgId == this.confirmNewProjectModalDlgId){
+                if(event.trigger == "ok"){
+                    // If the user confirmed: delete the WebStorage key that refers to the current autosaved project
+                    if (typeof(Storage) !== "undefined") {
+                        localStorage.removeItem(this.localStorageAutosaveEditorKey);
+                    }
+                    // ... and reload the page to reload the Strype default project (removing potential query parameters)
+                    window.location.href = window.location.pathname;
+                }
+                else{
+                    // If the user declined: restore the autosave timer and the registration to the "beforeunload" event
+                    window.addEventListener("beforeunload", this.beforeUnloadHandler);
+                    this.setAutoSaveState();
+                }
+            }
         },
 
         loadLocalStorageProjectOnStart() {
@@ -985,14 +997,18 @@ export default Vue.extend({
             // To reset the project we:
             // 1) stop the autosave timer
             window.clearInterval(autoSaveTimerId);
-            // 2) toggle the flag to disable saving on unload
-            this.resetStrypeProjectFlag = true;
-            // 3) delete the WebStorage key that refers to the current autosaved project
-            if (typeof(Storage) !== "undefined") {
-                localStorage.removeItem(this.localStorageAutosaveEditorKey);
+            // 2) De-register the "beforeunload" event so we can handle the "continue/cancel" process ourselves if needed
+            window.removeEventListener("beforeunload", this.beforeUnloadHandler);
+            // 3) 2 situations: Strype knows we are in a saved state* --> just do like if we confirmed the project update (see below)
+            //                  otherwise --> show the modal dialog for user confirmation
+            const isSavedProject = this.appStore.syncTarget != StrypeSyncTarget.none && !this.appStore.isEditorContentModified;
+            if(isSavedProject){
+                // (*) project is saved (to the cloud or FS) without modifications
+                this.onHideModalDlg({trigger: "ok"} as BvModalEvent, this.confirmNewProjectModalDlgId);
             }
-            // Finally, reload the page to reload the Strype default project (removing potential query parameters)
-            window.location.href = window.location.pathname;
+            else {
+                this.$root.$emit("bv::show::modal", this.confirmNewProjectModalDlgId);
+            }            
         },
 
         finaliseOpenShareProject(messageKey: string, messageParam: string) {
@@ -1280,6 +1296,21 @@ export default Vue.extend({
                             frameSlotInfos: focusCursorInfoToUse.slotInfos,
                             caretPosition: (this.appStore.frameObjects[focusCursorInfoToUse.slotInfos.frameId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below,
                         });
+                    }
+                }
+                else{
+                    // This situation is usually handled properly: we clicked "outside" a frame and it will show the frame cursor we were at.
+                    // There is one exception we can handle here: when we were inside the project documentation and left to a part of the editor
+                    // that's not defined (like the green black space below the editor). 
+                    // That is because the project documentation is inside a specific "fake" frame.
+                    // We go to the next available frame section.
+                    if(this.appStore.currentFrame.id == projectDocumentationFrameId){
+                        const nextVisibleSectionFrame = [this.appStore.importContainerId, this.appStore.defsContainerId, this.appStore.getMainCodeFrameContainerId]
+                            .find((frameContainerId) => this.appStore.frameObjects[frameContainerId].collapsedState != CollapsedState.ONLY_HEADER_VISIBLE);
+                        // At least the main section is not collapsed we should always get a value.. but let's keep TS happy
+                        if(nextVisibleSectionFrame != undefined){
+                            this.appStore.toggleCaret({id: nextVisibleSectionFrame, caretPosition: CaretPosition.body});
+                        }
                     }
                 }
             });     

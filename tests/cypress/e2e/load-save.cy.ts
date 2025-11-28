@@ -14,6 +14,7 @@ import path from "path";
 import i18n from "@/i18n";
 import "../support/expression-test-support";
 import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
+import { getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
 
 
 // Must clear all local storage between tests to reset the state,
@@ -42,6 +43,8 @@ beforeEach(() => {
         cy.wait(2000);
     });
 });
+
+const defaultProjectDocFullLine = getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"));
 
 function focusEditorPasteAndClear(): void {
     // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
@@ -141,7 +144,8 @@ function testEntryDisableAndSave(commands: string, disableFrames: string[], file
             cy.contains("*", i18n.t("contextMenu.disable") as string).click();
         });
 
-        checkDownloadedFileEquals(spy.replaceAll("\r\n", "\n"), "My project.spy", true);
+        // The files will contain the default project documentation, so we need to include it in the code
+        checkDownloadedFileEquals(spy.replaceAll("\r\n", "\n").replace("\n", "\n" + defaultProjectDocFullLine), "My project.spy", true);
     });
 } 
 
@@ -218,7 +222,7 @@ describe("Tests blanks", () => {
 describe("Tests invalid characters", () => {
     it("Outputs a file with invalid chars", () => {
         testEntryDisableAndSave("{uparrow}{uparrow}" +
-            "i100{rightarrow}ffoo{rightarrow}£1000{downarrow}i50{downarrow}ifoo（）{downarrow}{downarrow}" +
+            "i100{rightarrow}ffoo{rightarrow}£1000{downarrow}i50{downarrow}if#(=>oo（）{downarrow}{downarrow}" +
             "f#include{rightarrow}100,abc,#35{downarrow}r$50{downarrow}{downarrow}{downarrow}" +
             " 100($50, 24.24a)", [], "tests/cypress/fixtures/project-invalid-chars.spy");
     });
@@ -236,7 +240,8 @@ describe("Tests saving layout metadata", () => {
         cy.get("#" + strypeElIds.getPEATabContentContainerDivId()).trigger("mouseenter");
         cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-expanded") + "']").click();
 
-        cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded.spy").then((f) => checkDownloadedFileEquals(f, "My project.spy", true));
+        // Since the default code contains a project doc, we need to include it to the code
+        cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded.spy").then((f) => checkDownloadedFileEquals(f.replace("#(=> Section:Imports", defaultProjectDocFullLine + "#(=> Section:Imports"), "My project.spy", true));
     });
     it("Saves changed layout to tabsExpanded and back", () => {
         focusEditorPasteAndClear();
@@ -244,7 +249,8 @@ describe("Tests saving layout metadata", () => {
         cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-expanded") + "']").click();
         cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-collapsed") + "']").click();
 
-        cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded-collapsed.spy").then((f) => checkDownloadedFileEquals(f, "My project.spy", true));
+        // Since the default code contains a project doc, we need to include it to the code
+        cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded-collapsed.spy").then((f) => checkDownloadedFileEquals(f.replace("#(=> Section:Imports", defaultProjectDocFullLine + "#(=> Section:Imports"), "My project.spy", true));
     });
     it("Loads and saves a file with tabsExpanded layout", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-layout-tabs-expanded.spy");

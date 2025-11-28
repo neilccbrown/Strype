@@ -152,7 +152,7 @@
                 :id="menuUID" 
                 href="#" 
                 tabindex="0" 
-                class="show-menu-btn"
+                :class="{'show-menu-btn': true, disabled: isPythonRunning}"
                 @click="toggleMenuOnOff"
             >
             &#x2630;
@@ -287,12 +287,26 @@ export default Vue.extend({
                 if((event.key.toLowerCase() === "s" || event.key.toLowerCase() === "o") && (event.metaKey || event.ctrlKey) && (!event.shiftKey)){
                     event.stopImmediatePropagation();
                     event.preventDefault();
-                    const linkIdToSimulate = (event.key.toLowerCase() === "s") ? this.saveProjectLinkId : this.loadProjectLinkId;
-                    document.getElementById(linkIdToSimulate)?.click();
+                    if(this.isPythonRunning){
+                        // If the project is running, the menu is disabled and therefore shortcuts are not available.
+                        // We only make a notification in the UI that the project is running so users still gets some feedback.
+                        document.dispatchEvent(new Event(CustomEventTypes.highlightPythonRunningState));
+                    }
+                    else{
+                        const linkIdToSimulate = (event.key.toLowerCase() === "s") ? this.saveProjectLinkId : this.loadProjectLinkId;
+                        document.getElementById(linkIdToSimulate)?.click();
+                    }                    
                 }
                 // Sharing project shorcut
                 else if(event.key.toLowerCase() === "l" && (event.metaKey || event.ctrlKey) && event.shiftKey) {
-                    document.getElementById(this.shareProjectLinkId)?.click();
+                    if(this.isPythonRunning){
+                        // If the project is running, the menu is disabled and therefore shortcuts are not available.
+                        // We only make a notification in the UI that the project is running so users still gets some feedback.
+                        document.dispatchEvent(new Event(CustomEventTypes.highlightPythonRunningState));
+                    }
+                    else{
+                        document.getElementById(this.shareProjectLinkId)?.click();
+                    }
                     // Safari is using this shortcut, so we consume it!
                     event.preventDefault();
                     event.stopImmediatePropagation();
@@ -522,12 +536,16 @@ export default Vue.extend({
             return (this.publicModeProjectSharingLink.length == 0 && this.shareProjectMode == ShareProjectMode.public);
         },
 
+        isPythonRunning(): boolean {
+            return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
+        },
+
         isUndoDisabled(): boolean {
-            return this.appStore.isUndoRedoEmpty("undo") || ((this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning) || this.appStore.isDraggingFrame;
+            return this.appStore.isUndoRedoEmpty("undo") || this.isPythonRunning || this.appStore.isDraggingFrame;
         },
 
         isRedoDisabled(): boolean {
-            return this.appStore.isUndoRedoEmpty("redo") || ((this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning) || this.appStore.isDraggingFrame;
+            return this.appStore.isUndoRedoEmpty("redo") || this.isPythonRunning || this.appStore.isDraggingFrame;
         },
 
         undoImagePath(): string {
@@ -1194,6 +1212,14 @@ export default Vue.extend({
         },
 
         toggleMenuOnOff(e: Event | null): void {
+            if(e && this.isPythonRunning){
+                // When the project runs, we can't open the menu, but we show some "notification" in the PEA
+                /* IFTRUE_isPython */
+                document.dispatchEvent(new Event(CustomEventTypes.highlightPythonRunningState));
+                /* FITRUE_isPython */
+                return;
+            }
+
             const isMenuOpening = (e !== null);
             if(isMenuOpening) {
                 //cf online issues about vue-burger-menu https://github.com/mbj36/vue-burger-menu/issues/33
@@ -1386,8 +1412,13 @@ export default Vue.extend({
     background-color: transparent;
     font-size: 200%;
     min-width: 45px;
-    color: #6c757d;
+    color: #1B456F;
     border-radius: 50%;
+}
+
+.show-menu-btn.disabled {
+    color: #b8bac0 !important;
+    cursor: default;
 }
 
 .strype-menu-link {

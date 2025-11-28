@@ -24,7 +24,7 @@ const initialMicrobitState: EditorFrameObjects = {
         childrenIds: [],
         jointParentId: 0,
         jointFrameIds: [],
-        labelSlotsDict: {0: {slotStructures: {fields: [{code: ""}], operators: []}}},
+        labelSlotsDict: {0: {slotStructures: {fields: [{code: "This is the default Strype starter project for micro:bit"}], operators: []}}},
         caretVisibility: CaretPosition.none,
     },
     "-1": {
@@ -93,7 +93,7 @@ const initialMicrobitState: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: {
             0: {slotStructures: {operators: [], fields: [{code: "myString"}]}},
-            1: {slotStructures: {operators: [{code: ""},{code: ""}], fields: [{code: ""}, {code: "Hello micro:bit!", quote: "\""}, {code: ""}]}}},
+            1: {slotStructures: {operators: [{code: ""},{code: ""}], fields: [{code: ""}, {code: "Hello from Strype", quote: "\""}, {code: ""}]}}},
         caretVisibility: CaretPosition.none,
     },
     3: {
