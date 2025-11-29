@@ -29,7 +29,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     }
 
     // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(90000); // 90 seconds
+    testInfo.setTimeout(180000); // 180 seconds
     
     strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
     await page.goto("./", {waitUntil: "load"});
@@ -124,7 +124,7 @@ function genRandomFrame(fromFrames: string[], level : number): FrameEntry {
     const def = getFrameDefType(id);
     const subLen = level == 2 ? 0 : genRandomInt(4 - level * 2);
 
-    const children = def.allowChildren ? Array.from({ length: subLen }, () => genRandomFrame(framesBySection[2], level + 1)) : undefined;
+    const children = def.allowChildren ? Array.from({ length: subLen }, () => genRandomFrame(framesBySection[2].filter((f) => !def.forbiddenChildrenTypes.includes(f)), level + 1)) : undefined;
     const jointChildren: FrameEntry[] | undefined = def.allowJointChildren ? [] : undefined;
     if (jointChildren != undefined && (id == "try" || genRandomInt(2) == 0)) {
         // Pick one then see what can follow that:
@@ -217,7 +217,7 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
         console.log("Entering slot:   <<<" + s + ">>> into " + frame.frameType);
         await checkFrameXorTextCursor(page, false, "Slot of frame " + frame.frameType);
         const enterable = slotType == AllowedSlotContent.FREE_TEXT_DOCUMENTATION || slotType == AllowedSlotContent.LIBRARY_ADDRESS ? s : s.replaceAll(/[“”]/g, "\"").replaceAll(/[‘’]/g, "'");
-        await typeIndividually(page, enterable, 200);
+        await typeIndividually(page, enterable, 100);
         await page.keyboard.press("ArrowRight");
         await page.waitForTimeout(100);
     }
@@ -294,6 +294,10 @@ function visibleTextContent(elementHandle : JSHandle<HTMLElement>) : Promise<str
                 const style = window.getComputedStyle(node as Element);
                 if (style.display === "none" || style.visibility === "hidden") {
                     return "";
+                }
+                if ((node as HTMLElement).tagName.toLowerCase() === "img") {
+                    // Turn the string literal (will only be one) into smart quotes:
+                    return ((node as HTMLElement).getAttribute("data-code") ?? "").replace(/"([^"]+)"/, "“$1”");
                 }
 
                 return Array.from(node.childNodes).map(getVisibleText).join("");
@@ -1086,6 +1090,17 @@ test.describe("Enters, saves and loads specific frames", () => {
             {frameType: "library", slotContent: ["(#‘+’_$\\\\) not in "]},
         ], [], []]);
     });
+
+    test("Enabled comments after disabled class and function", async ({page}) => {
+        await testSpecific(page, [[], [
+            {frameType: "classdef", slotContent: ["Foo", "Class doc, this is before ' this is after\nThis is another line with ' in it\nThis last one too'"], body: [], disabled: true},
+            {frameType: "funcdef", slotContent: ["foo", "", "Func doc, this is before \" this is after\nThis is another line with \" in it\nThis last one too\""], body: [], disabled: true},
+            {frameType: "comment", slotContent: ["This has a single quote ' and a double quote\" in it."]},
+            {frameType: "comment", slotContent: ["This has paired single quotes ' like this ' and paired double quotes \" like this \" in it."]},
+            {frameType: "comment", slotContent: ["This has a single quote ' and a double quote\" in it.\nAnd a second line without."]},
+            {frameType: "comment", slotContent: ["This has paired single quotes ' like this ' and paired double quotes \" like this \" in it.\n And a second line too."]},
+        ], []], "Project doc, this is before ' this is after\nThis is another line with \" in it\nThis last one too' \"'");
+    });
     
     test("Empty classes", async ({page}) => {
         await testSpecific(page, [[], [
@@ -1114,10 +1129,28 @@ test.describe("Enters, saves and loads specific frames", () => {
         ], []], "Project doc, this is before # this is after\nThis is another line with # in it\nThis last one too#");
     });
 
+    test("Quote characters in descriptions and comments", async ({page}) => {
+        await testSpecific(page, [[], [
+            {frameType: "classdef", slotContent: ["Foo", "Class doc, this is before ' this is after\nThis is another line with ' in it\nThis last one too'"], body: []},
+            {frameType: "funcdef", slotContent: ["foo", "", "Func doc, this is before \" this is after\nThis is another line with \" in it\nThis last one too\""], body: []},
+            {frameType: "comment", slotContent: ["This has a single quote ' and a double quote\" in it."]},
+            {frameType: "comment", slotContent: ["This has paired single quotes ' like this ' and paired double quotes \" like this \" in it."]},
+            {frameType: "comment", slotContent: ["This has a single quote ' and a double quote\" in it.\nAnd a second line without."]},
+            {frameType: "comment", slotContent: ["This has paired single quotes ' like this ' and paired double quotes \" like this \" in it.\n And a second line too."]},
+        ], []], "Project doc, this is before ' this is after\nThis is another line with \" in it\nThis last one too' \"'");
+    });
+
     test("Format strings", async ({page}) => {
         await testSpecific(page, [[], [], [
             {frameType: "if", slotContent: ["f‘Hello’"], body: [], joint: []},
             {frameType: "funccall", slotContent: ["print(f‘{x}’)"]},
+        ]]);
+    });
+    
+    test("Complex image expression", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "varassign", slotContent: ["myDict", "{4.5:[(load_image(“data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIAQMAAAD+wSzIAAAABlBMVEX///+/v7+jQ3Y5AAAADklEQVQI12P4AIX8EAgALgAD/aNpbtEAAAAASUVORK5CYII”),-180,170,“a”),(load_image(“data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIAQMAAAD+wSzIAAAABlBMVEX///+/v7+jQ3Y5AAAADklEQVQI12P4AIX8EAgALgAD/aNpbtEAAAAASUVORK5CYII”),0,0,“foo”,11)],11:[(load_image(“data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIAQMAAAD+wSzIAAAABlBMVEX///+/v7+jQ3Y5AAAADklEQVQI12P4AIX8EAgALgAD/aNpbtEAAAAASUVORK5CYII”),0,0,“bar”)]}"]},
+            {frameType: "funccall", slotContent: ["print(myDict)"]},
         ]]);
     });
 });

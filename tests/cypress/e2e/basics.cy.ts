@@ -2,7 +2,7 @@ import * as path from "path";
 import {expect} from "chai";
 import i18n from "@/i18n";
 import failOnConsoleError from "cypress-fail-on-console-error";
-import {cleanFromHTML} from "../support/test-support";
+import {cleanFromHTML, getDefaultStrypeProjectDocumentationFullLine} from "../support/test-support";
 failOnConsoleError();
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
@@ -202,7 +202,11 @@ function checkCodeEquals(codeLines : CodeMatch[]) : Cypress.Chainable<JQuery<HTM
         cy.contains(i18n.t("appMenu.downloadPython") as string).click({force: true});
             
         cy.readFile(path.join(downloadsFolder, "main.py")).then((p : string) => {
-            expectMatchRegex(p.split("\n").map((l) => l.trimEnd()),
+            // The default projects contains the default project description.
+            // We check that project description is correct, and then discard it for the further code check.
+            const indexOfFirstLineReturn = p.indexOf("\n");
+            expect(p.substring(0, indexOfFirstLineReturn + 1)).equals(getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode")));
+            expectMatchRegex(p.substring(indexOfFirstLineReturn + 1).split("\n").map((l) => l.trimEnd()),
                 flatten(codeLines).concat([/\s*/]));
         });
     });
@@ -218,7 +222,7 @@ if (Cypress.env("mode") == "microbit") {
     ];
 
     defaultMyCode = [
-        /myString\s*[⇐=]\s*[“"]Hello micro:bit![”"]/,
+        /myString\s*[⇐=]\s*[“"]Hello from Strype[”"]/,
         /display\s*.\s*scroll\(myString\)/,
     ];
 }
@@ -227,11 +231,10 @@ else {
     ];
 
     defaultMyCode  = [
-        /myString\s*[⇐=]\s*[“"]Hello from Python![”"]/,
+        /myString\s*[⇐=]\s*[“"]Hello from Strype[”"]/,
         "print(myString)",
     ];
 }
-
 
 // We need this to prevent test failures.  I don't actually know what the error is for sure
 // (even if you log it, it is not visible), but I suspect it may be a Brython error that I

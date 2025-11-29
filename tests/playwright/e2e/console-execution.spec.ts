@@ -55,7 +55,7 @@ test.describe("Check console after execution", () => {
     test("Check default code works", async ({page}) => {
         await page.click("#runButton");
         await runToFinish(page);
-        await checkConsoleContent(page, "Hello from Python!\n");
+        await checkConsoleContent(page, "Hello from Strype\n");
     });
 
     test("Check two prints work", async ({page}) => {

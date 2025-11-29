@@ -343,16 +343,14 @@ export default class Parser {
         || (!this.saveAsSPY && statement.frameType.type === AllFrameTypesIdentifier.funccall && isFieldBaseSlot(statement.labelSlotsDict[0].slotStructures.fields[0]) && (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.startsWith("#"))){
             const commentContent = (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code;
 
-
             // The project doc is optional so if it's blank omit it, and we don't mind about line numbers for SPY:
             if (statement.frameType.type === AllFrameTypesIdentifier.projectDocumentation && (!this.outputProjectDoc || commentContent.trim().length == 0)) {
                 return "";
             }
             
             // Before returning, we update the line counter used for the frame mapping in the parser:
-            // +1 except if we are in a multiline comment (and not excluding them) when we then return the number of lines-1 + 2 for the multi quotes
-            // (for UI purpose our multiline comments content always terminates with an extra line return so we need to discard it)
-            this.line += ((this.excludeLoopsAndCommentsAndCloseTry) ? 1 : ((commentContent.includes("\n")) ? 1 + commentContent.split("\n").length : 1));
+            // +1 except if we are in a multiline comment (and not excluding them) when we then return the number of lines
+            this.line += ((this.excludeLoopsAndCommentsAndCloseTry) ? 1 : ((commentContent.includes("\n")) ? commentContent.split("\n").length : 1));
 
             const passLine = indentation + "pass" + "\n";
             
@@ -391,7 +389,8 @@ export default class Parser {
                 if (label.allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
                     if (useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields.length > 1 || (useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields[0] as BaseSlot).code.trim().length > 0) {
                         if (label.newLine ?? false) {
-                            this.line += 1;
+                            // If we are in a free text documentation situation (in functions or classes docs), we need to account for all the line breaks this comment can contain.
+                            this.line += ((((useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields[0] as BaseSlot).code.trim().length > 0)) ? ((useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields[0] as BaseSlot).code.split("\n").length) : 1);
                             // Newlines indent below, e.g. comments in funcdef frames:
                             output += "\n" + indentation + "    ";
                         }

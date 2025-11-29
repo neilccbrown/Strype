@@ -3,6 +3,8 @@ import {checkFrameXorTextCursor, doTextHomeEndKeyPress} from "../support/editor"
 import {readFileSync} from "node:fs";
 import {save, testPlaywrightRoundTripImportAndDownload} from "../support/loading-saving";
 
+const defaultStandardStrypeProjectDocLiteralWithDotSpace = "This is the default Strype starter project. ";
+
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && process.platform === "win32") {
         // On Windows+Webkit it just can't seem to load the page for some reason:
@@ -29,14 +31,14 @@ test.describe("Project description selection", () => {
         await page.keyboard.press("ArrowUp");
         await page.keyboard.press("ArrowUp");
         await page.keyboard.press("ArrowLeft");
-        await page.keyboard.type("A project description");
+        await page.keyboard.type(". A project description");
         expect(readFileSync(await save(page), "utf-8")).toEqual(`
 #(=> Strype:1:std
-'''A project description'''
+'''${defaultStandardStrypeProjectDocLiteralWithDotSpace}A project description'''
 #(=> Section:Imports
 #(=> Section:Definitions
 #(=> Section:Main
-myString  = "Hello from Python!" 
+myString  = "Hello from Strype" 
 print(myString) 
 #(=> Section:End
 `.trimStart());
@@ -57,7 +59,7 @@ print(myString)
                 await page.keyboard.press("ArrowUp");
                 await page.keyboard.press("ArrowUp");
                 await page.keyboard.press("ArrowLeft");
-                await page.keyboard.type("Initial project description");
+                await page.keyboard.type(". Initial project description");
                 await page.waitForTimeout(2000);
                 for (const key of selectAll) {
                     if(typeof key == "string"){
@@ -80,7 +82,7 @@ print(myString)
 #(=> Section:Imports
 #(=> Section:Definitions
 #(=> Section:Main
-myString  = "Hello from Python!" 
+myString  = "Hello from Strype" 
 print(myString) 
 #(=> Section:End
 `.trimStart());
@@ -93,7 +95,7 @@ print(myString)
         await page.keyboard.press("ArrowUp");
         await page.keyboard.press("ArrowUp");
         await page.keyboard.press("ArrowLeft");
-        await page.keyboard.type("\"This is in double quotes\" and ''this is in doubled single quotes'' and this is an unmatched apostrophe of someone's.");
+        await page.keyboard.type(". \"This is in double quotes\" and ''this is in doubled single quotes'' and this is an unmatched apostrophe of someone's.");
         await page.keyboard.press("ArrowRight");
         await page.keyboard.press("ArrowDown");
         await page.keyboard.type("f");
@@ -103,14 +105,14 @@ print(myString)
         await page.keyboard.type("\"This is in double quotes\" and ''this is in doubled single quotes'' and this is also an unmatched apostrophe of someone's.");
         expect(readFileSync(await save(page), "utf-8")).toEqual(`
 #(=> Strype:1:std
-'''"This is in double quotes" and \\'\\'this is in doubled single quotes\\'\\' and this is an unmatched apostrophe of someone\\'s.'''
+'''${defaultStandardStrypeProjectDocLiteralWithDotSpace}"This is in double quotes" and \\'\\'this is in doubled single quotes\\'\\' and this is an unmatched apostrophe of someone\\'s.'''
 #(=> Section:Imports
 #(=> Section:Definitions
 def foo ( ) :
     '''"This is in double quotes" and \\'\\'this is in doubled single quotes\\'\\' and this is also an unmatched apostrophe of someone\\'s.'''
     pass
 #(=> Section:Main
-myString  = "Hello from Python!" 
+myString  = "Hello from Strype" 
 print(myString) 
 #(=> Section:End
 `.trimStart());
@@ -121,7 +123,7 @@ print(myString)
         await page.keyboard.press("ArrowUp");
         await page.keyboard.press("ArrowUp");
         await page.keyboard.press("ArrowLeft");
-        await page.keyboard.type("This has");
+        await page.keyboard.type(". This has");
         await page.keyboard.press("Shift+Enter");
         await page.keyboard.type("three");
         await page.keyboard.press("Shift+Enter");
@@ -141,7 +143,7 @@ print(myString)
         await page.keyboard.type("in total.");
         expect(readFileSync(await save(page), "utf-8")).toEqual(`
 #(=> Strype:1:std
-'''This has
+'''${defaultStandardStrypeProjectDocLiteralWithDotSpace}This has
 three
 lines.'''
 #(=> Section:Imports
@@ -153,7 +155,7 @@ def foo ( ) :
     in total.'''
     pass
 #(=> Section:Main
-myString  = "Hello from Python!" 
+myString  = "Hello from Strype" 
 print(myString) 
 #(=> Section:End
 `.trimStart());
@@ -164,14 +166,14 @@ print(myString)
         await page.keyboard.press("ArrowUp");
         await page.keyboard.press("ArrowUp");
         await page.keyboard.press("ArrowLeft");
-        await page.keyboard.type("This has horrible quotes: \"\"\" ''' \"\"\" ''' and backslashes by quotes \\' and some doubles to end: '' ''");
+        await page.keyboard.type(". This has horrible quotes: \"\"\" ''' \"\"\" ''' and backslashes by quotes \\' and some doubles to end: '' ''");
         expect(readFileSync(await save(page), "utf-8")).toEqual(`
 #(=> Strype:1:std
-'''This has horrible quotes: """ \\'\\'\\' """ \\'\\'\\' and backslashes by quotes \\\\\\' and some doubles to end: \\'\\' \\'\\''''
+'''${defaultStandardStrypeProjectDocLiteralWithDotSpace}This has horrible quotes: """ \\'\\'\\' """ \\'\\'\\' and backslashes by quotes \\\\\\' and some doubles to end: \\'\\' \\'\\''''
 #(=> Section:Imports
 #(=> Section:Definitions
 #(=> Section:Main
-myString  = "Hello from Python!" 
+myString  = "Hello from Strype" 
 print(myString) 
 #(=> Section:End
 `.trimStart());

@@ -1,4 +1,5 @@
 #(=> Strype:1:std
+'''Draw flowers with Turtle'''
 #(=> Section:Imports
 from turtle import * 
 #(=> Section:Definitions

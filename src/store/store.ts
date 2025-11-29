@@ -1162,6 +1162,12 @@ export const useStore = defineStore("app", {
                             const currentSlotCode = (retrieveSlotFromSlotInfos(currentSlotInfos) as BaseSlot).code;
                             (retrieveSlotFromSlotInfos(currentSlotInfos) as BaseSlot).code = (isForwardDeletion) ? (currentSlotCode + slotToDeleteCode) : (slotToDeleteCode + currentSlotCode);
                         }
+                        else {
+                            // When we delete a media slot with backspace, the new slot must be indexed 2 prior since it's surrounded with empty operators
+                            // so we remove 1 extra index from the id
+                            const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(slotToDeleteInfos.slotId);
+                            slotToDeleteInfos.slotId = getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex - 1);
+                        }
 
                         // Now we do the fields/operator deletion:
                                 
@@ -2980,6 +2986,8 @@ export const useStore = defineStore("app", {
         },
 
         copyFrame(frameId: number) {
+            // We do not use the system's clipboard for frames, so we clear any potential text to avoid interference
+            navigator.clipboard.writeText("");
             this.flushCopiedFrames();
             this.doCopyFrame(frameId);
             this.updateNextAvailableId();
@@ -2989,6 +2997,8 @@ export const useStore = defineStore("app", {
             if (this.selectedFrames.length == 0) {
                 return;
             }
+            // We do not use the system's clipboard for frames, so we clear any potential text to avoid interference
+            navigator.clipboard.writeText("");
             this.flushCopiedFrames();
             this.doCopySelection();
             this.updateNextAvailableId();

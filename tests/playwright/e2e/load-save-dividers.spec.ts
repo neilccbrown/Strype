@@ -2,6 +2,7 @@ import {Page, test, expect} from "@playwright/test";
 import {load, save} from "../support/loading-saving";
 import fs from "fs";
 import { randomUUID } from "node:crypto";
+import { getDefaultStrypeProjectDocumentationFullLine } from "../support/editor";
 import en from "@/localisation/en/en_main.json";
 import {StrypePEALayoutMode} from "../../cypress/support/frame-types";
 
@@ -71,11 +72,12 @@ async function saveAndCheck(page: Page, dividerStates: RegExp[]) {
         expect(savedLines[1 + i]).toMatch(/^#\(=> .*/);
         expect(savedLines[1 + i].slice("#(=> ".length)).toMatch(dividerStates[i]);
     }
+    // Since the default code contains a project doc, we need to include it to the code
     expect(savedLines.slice(1 + dividerStates.length)).toEqual(`
-#(=> Section:Imports
+${getDefaultStrypeProjectDocumentationFullLine()}#(=> Section:Imports
 #(=> Section:Definitions
 #(=> Section:Main
-myString  = "Hello from Python!" 
+myString  = "Hello from Strype" 
 print(myString) 
 #(=> Section:End
 `.trimStart().split(/\r?\n/));

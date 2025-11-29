@@ -79,7 +79,7 @@ import PopUpItem from "@/components/PopUpItem.vue";
 import {IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWithCategory, BaseSlot, AllFrameTypesIdentifier, AcMicrobitResultType} from "@/types/types";
 import _ from "lodash";
 import { mapStores } from "pinia";
-import {getAllEnabledUserDefinedFunctions, getFrameContainer} from "@/helpers/storeMethods";
+import {getAllEnabledUserDefinedClasses, getAllEnabledUserDefinedFunctions, getFrameContainer} from "@/helpers/storeMethods";
 import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, tpyDefineLibraries, getUserDefinedSignature} from "@/autocompletion/acManager";
 import Parser from "@/parser/parser"; 
 import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
@@ -198,22 +198,25 @@ export default Vue.extend({
             // which works nicely because they should be first:
             const isInsideFuncCallFrame = this.appStore.frameObjects[(parseLabelSlotUID(this.slotId).frameId)].frameType.type === AllFrameTypesIdentifier.funccall;
             const getOrder = (cat : string) => {
-                // First is my variables and my functions (in that order, except when we are inside a function call frame.)
+                // First is my variables, my functions and my classes (in that order, except when we are inside a function call frame, my variables comes last.)
                 if (cat === this.$i18n.t("autoCompletion.myVariables")) {
-                    return (isInsideFuncCallFrame) ? 1 : 0;
+                    return (isInsideFuncCallFrame) ? 2 : 0;
                 }
                 else if (cat === this.$i18n.t("autoCompletion.myFunctions")) {
                     return (isInsideFuncCallFrame) ? 0 : 1;
                 }
+                else if (cat === this.$i18n.t("autoCompletion.myClasses")) {
+                    return (isInsideFuncCallFrame) ? 1 : 2;
+                }
                 else if (cat === this.$i18n.t("autoCompletion.importedModules")) {
-                    return 2;
+                    return 3;
                 }
                 // Python in-built is after any custom imports:
                 else if (cat === "Python") {
-                    return 4;
+                    return 5;
                 }
                 else {
-                    return 3;
+                    return 4;
                 }
             };
             
@@ -377,12 +380,20 @@ export default Vue.extend({
                 // Pick up built-in Python functions and types:
                 this.acResults["Python"] = getBuiltins().filter((ac) => !ac.acResult.startsWith("_") || token.startsWith("_"));
               
-                // Add user-defined functions:
+                // Add user-defined functions except class functions (even if the user is inside the class):
                 this.acResults[this.$i18n.t("autoCompletion.myFunctions") as string] = getAllEnabledUserDefinedFunctions().map((f) => ({
                     acResult: (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code,
                     documentation: "",
                     type: ["function"],
                     signature: getUserDefinedSignature(f),
+                    version: 0,
+                }));
+
+                // Add user-defined classes:
+                this.acResults[this.$i18n.t("autoCompletion.myClasses") as string] = getAllEnabledUserDefinedClasses().map((f) => ({
+                    acResult: (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code,
+                    documentation: "",
+                    type: ["function"], // Class names are used as constructor functions in Python
                     version: 0,
                 }));
                 
@@ -416,9 +427,9 @@ export default Vue.extend({
             // index the results, in order to be able to browse through it with the keys and show the selected.
             let lastIndex=0;
             for (const module in this.acResults) {
-                // Filter the list based on the token
+                // Filter the list based on the token (starting with the token or having "_<token>" in the name, all case insensitve)
                 const filteredResults: AcResultType[] = this.acResults[module].filter((element: AcResultType) => 
-                    element.acResult.toLowerCase().startsWith(token.toLowerCase()));
+                    element.acResult.toLowerCase().startsWith(token.toLowerCase()) || element.acResult.toLowerCase().includes("_"+token.toLowerCase()));
 
                 // Don't put empty lists in resultsToShow
                 if (filteredResults.length == 0) {

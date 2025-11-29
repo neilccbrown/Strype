@@ -21,7 +21,7 @@ import { debounce } from "lodash";
 import {toUnicodeEscapes} from "@/parser/parser";
 import {fromUnicodeEscapes} from "@/helpers/pythonToFrames";
 
-export const undoMaxSteps = 200;
+export const undoMaxSteps = 50;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
 
 // Constants used for query parameters parsing
@@ -76,6 +76,7 @@ export enum CustomEventTypes {
     pythonExecAreaSizeChanged = "peaSizeChanged",
     skulptMouseEventListenerOff = "skMouseEventsOff",
     skulptTimerEventListenerOff = "skTimerEventsOff",
+    highlightPythonRunningState = "highlightPythonRunningState"
     /* FITRUE_isPython */
 }
 
@@ -1803,13 +1804,13 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
 
     blankedStringCodeLiteral = blankedStringCodeLiteral
         // Replacing exponential sign operator first (ex "-.25e-5" --> replace "-" after "e")
-        .replaceAll(/(^\s+|\b|[+\-*/%<>&|^=!,]\s*)((\d+(\.\d*)?|\.\d+)[eE][-+]\d+j?)($|(\s*[ +\-*/%<>&|^=!,]))/g,
+        .replaceAll(/(^\s+|\b|[+\-*/%<>&|^=!,]\s*)((\d+(\.\d*)?|\.\d+)[eE][-+]\d+j?)($|(\s*[ +\-*/%<>&|^=!,:]))/g,
             (...params) => blankReplacer(2, ["+", "-"], ...params))
         // Replacing a preceding sign operator
-        .replaceAll(/(^\s*|[+\-*/%<>&|^=!,]\s*)([+-]((0b[01]+)|(0x[0-9A-Fa-f]+)|((\d+(\.\d*)?|\.\d+)([eE]\d+)?j?)))(?=$|(\s*[ +\-*/%<>&|^=!,]))/g,
+        .replaceAll(/(^\s*|[+\-*/%<>&|^=!,]\s*)([+-]((0b[01]+)|(0x[0-9A-Fa-f]+)|((\d+(\.\d*)?|\.\d+)([eE]\d+)?j?)))(?=$|(\s*[ +\-*/%<>&|^=!,:]))/g,
             (...params) => blankReplacer(2, ["+", "-"], ...params))
         // Replacing the decimal separator (note: \b is a word boundary)
-        .replaceAll(/(\s+|\b|[+\-*/%<>&|^=!,]\s*)(((\d+(\.\d*))([eE][0]?\d+)?j?))($|(\s*[ +\-*/%<>&|^=!,]))/g,
+        .replaceAll(/(\s+|\b|[+\-*/%<>&|^=!,:]\s*)(((\d+(\.\d*))([eE][0]?\d+)?j?))($|(\s*[ +\-*/%<>&|^=!,:]))/g,
             (...params) => blankReplacer(3, ["."], ...params));
 
     const resStructSlot: SlotsStructure = {fields: [], operators:[]};

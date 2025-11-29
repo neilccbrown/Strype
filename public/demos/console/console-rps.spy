@@ -1,4 +1,5 @@
 #(=> Strype:1:std
+'''Play the classic hand game... against Strype'''
 #(=> Section:Imports
 import random 
 #(=> Section:Definitions

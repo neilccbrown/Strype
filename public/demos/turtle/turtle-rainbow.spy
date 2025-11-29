@@ -1,4 +1,5 @@
 #(=> Strype:1:std
+'''Draw a rainbow pattern with Turtle'''
 #(=> Section:Imports
 import turtle 
 #(=> Section:Definitions

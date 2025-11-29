@@ -1,4 +1,5 @@
 #(=> Strype:1:std
+'''A basic story template'''
 #(=> Section:Imports
 from strype.graphics import * 
 #(=> Section:Definitions

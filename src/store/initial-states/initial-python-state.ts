@@ -24,7 +24,7 @@ const initialPythonState: EditorFrameObjects = {
         childrenIds: [],
         jointParentId: 0,
         jointFrameIds: [],
-        labelSlotsDict: {0: {slotStructures: {fields: [{code: ""}], operators: []}}},
+        labelSlotsDict: {0: {slotStructures: {fields: [{code: "This is the default Strype starter project"}], operators: []}}},
         caretVisibility: CaretPosition.none,
     },
     "-1": {
@@ -79,7 +79,7 @@ const initialPythonState: EditorFrameObjects = {
         jointFrameIds: [],
         labelSlotsDict: {
             0: {slotStructures: {operators: [], fields: [{code: "myString"}]}},
-            1: {slotStructures: {operators: [{code: ""}, {code: ""}], fields: [{code: ""}, {code: "Hello from Python!", quote: "\""}, {code: ""}]}}},
+            1: {slotStructures: {operators: [{code: ""}, {code: ""}], fields: [{code: ""}, {code: "Hello from Strype", quote: "\""}, {code: ""}]}}},
         caretVisibility: CaretPosition.none,
     },
 

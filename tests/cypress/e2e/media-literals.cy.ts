@@ -7,6 +7,7 @@ import pixelmatch from "pixelmatch";
 import failOnConsoleError from "cypress-fail-on-console-error";
 import path from "path";
 import i18n from "@/i18n";
+import { getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
 
 
 failOnConsoleError();
@@ -345,7 +346,9 @@ describe("Paste image literals", () => {
             cy.wait(1000);
             (cy.focused() as any).paste(catJPEG, "image/jpeg");
             cy.wait(1000);
+            // Since the default code contains a project doc, we need to include it to the code
             checkDownloadedCodeMatchesRegexes([
+                new RegExp(getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode")).replace("\n", "")),
                 /from strype.graphics import \*/,
                 /from strype.sound import \*/,
                 /from time import sleep/,
