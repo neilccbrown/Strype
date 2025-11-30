@@ -2647,7 +2647,9 @@ export const useStore = defineStore("app", {
                 if (this.peaLayoutMode != newPEALayout) {
                     setTimeout(() => {
                         this.peaLayoutMode = newPEALayout;
+                        /* IFTRUE_isPython */
                         ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).$refs[getPEAComponentRefId()] as InstanceType<typeof PEAComponent>).togglePEALayout(newPEALayout);
+                        /* FITRUE_isPython */
                     }, chainedTimeOuts += 200);
                 }
 
