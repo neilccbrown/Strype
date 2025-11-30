@@ -2683,7 +2683,7 @@ export const useStore = defineStore("app", {
                 // We can resolve the promise when all the changes for the UI have been done
                 setTimeout(() => {
                     resolve();
-                }, chainedTimeOuts + 50);
+                }, chainedTimeOuts + 100);
             }, 1000);
         }, doSetStateFromJSONStr(stateJSONStr: string): Promise<void>{
             return new Promise((resolve) => {
