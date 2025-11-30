@@ -6,8 +6,6 @@
 // it should save correctly.
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-import { escapeRegExp } from "lodash";
-
 require("cypress-terminal-report/src/installLogsCollector")();
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
