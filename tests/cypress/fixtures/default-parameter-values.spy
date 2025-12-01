@@ -1,0 +1,15 @@
+#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+def no_defaults (a,b,c ) :
+    return 0 
+def first_default (a=0,b,c ) :
+    return 1 
+def first_third_default (a=0,b,c="hello" ) :
+    return 2 
+def one_default (a=0.6 ) :
+    return 3 
+def complex_defaults (a=[0.6],b={0.2:0.25,"a":["b"]},c=None ) :
+    return 4 
+#(=> Section:Main
+#(=> Section:End
