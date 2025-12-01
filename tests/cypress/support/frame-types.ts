@@ -19,6 +19,7 @@ export enum StrypePEALayoutMode {
 export enum AllowedSlotContent {
     ONLY_NAMES,
     ONLY_NAMES_OR_STAR,
+    ONLY_FORMAL_PARAMS,
     TERMINAL_EXPRESSION,
     FREE_TEXT_DOCUMENTATION,
     LIBRARY_ADDRESS,
@@ -407,7 +408,7 @@ export function generateAllFrameDefinitionTypes(): void{
         type: DefIdentifiers.funcdef,
         labels: [
             { label: "def ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
-            { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
+            { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_FORMAL_PARAMS },
             { label: ") :", showSlots: false, defaultText: ""},
             { label: "‘‘‘", newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: "Describe the function", allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],

@@ -336,3 +336,10 @@ describe("Tests loading/saving complex expressions", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/image-expressions.spy");
     });
 });
+
+describe("Tests loading/saving default parameter values", () => {
+    it("Loads/saves functions with default parameters", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/default-parameter-values.spy");
+    });
+});
+

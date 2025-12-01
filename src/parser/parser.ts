@@ -763,11 +763,23 @@ export default class Parser {
             slotTypes.push(type);
         };
 
+        // We keep track of whether we're at top level by counting opening and closing brackets/quotes:
+        // We know they can't mismatch so we don't need to worry about which is which or round vs square:
+        let nestingLevel = 0;
+        let startOfTopLevelParamName = true;
+        let inTopLevelParamValue = false;
         generateFlatSlotBases({allowedSlotContent: allowed }, slotStructures, "", (flatSlot: FlatSlotBase, besidesOp: boolean, opAfter: undefined | string) => {
             if(isSlotQuoteType(flatSlot.type) || isSlotBracketType(flatSlot.type) || flatSlot.type === SlotType.media){
                 // a quote or a bracket is a 1 character token, shown in the code
                 // but it's not editable so we don't include it in the slot positions
                 code += flatSlot.code;
+                if (flatSlot.type == SlotType.openingQuote || flatSlot.type == SlotType.openingBracket) {
+                    nestingLevel += 1;
+                }
+                else if (flatSlot.type == SlotType.closingQuote || flatSlot.type == SlotType.closingBracket) {
+                    nestingLevel -= 1;
+                }
+                startOfTopLevelParamName = false;
             }
             else if(flatSlot.type == SlotType.operator){
                 // an operator, if not blank, is shown in the code and we keep spaces surrounding it (for keyword operators)
@@ -776,6 +788,17 @@ export default class Parser {
                     // Add extra 2 characters for the surrounding spaces
                     const operatorSpace = (trimmedKeywordOperators.includes(flatSlot.code)) ? " " : "";
                     addSlotInPositionLengths(flatSlot.code.length + 2, flatSlot.id, operatorSpace + flatSlot.code + operatorSpace, flatSlot.type);
+                }
+                startOfTopLevelParamName = flatSlot.code === "," && nestingLevel == 0;
+                if (nestingLevel == 0) {
+                    if (inTopLevelParamValue) {
+                        // Can be broken only by top-level comma:
+                        inTopLevelParamValue = !startOfTopLevelParamName;
+                    }
+                    else {
+                        // We only enter param value if we see a top-level = while not in a param value:
+                        inTopLevelParamValue = flatSlot.code === "=";
+                    }
                 }
             }
             else{        
@@ -795,6 +818,21 @@ export default class Parser {
                         case AllowedSlotContent.ONLY_NAMES_OR_STAR:
                             valid = flatSlotCode.trim() == "*" || isValidPythonName(flatSlotCode);
                             break;
+                        case AllowedSlotContent.ONLY_FORMAL_PARAMS: {
+                            if (startOfTopLevelParamName) {
+                                // Should be a name, do a name check:
+                                valid = isValidPythonName(flatSlotCode);
+                            }
+                            else if (inTopLevelParamValue) {
+                                // In param value, anything goes:
+                                valid = true;
+                            }
+                            else {
+                                // We're not at start of name or in a value; invalid!
+                                valid = false;
+                            }
+                            break;    
+                        }
                         case AllowedSlotContent.TERMINAL_EXPRESSION:
                             valid = ["False", "None", "True"].includes(flatSlotCode.trim()) ||
                                 isValidPythonName(flatSlotCode) ||
@@ -814,6 +852,7 @@ export default class Parser {
                     }
                 }
                 addSlotInPositionLengths(flatSlotCode.length, flatSlot.id, flatSlotCode, flatSlot.type);
+                startOfTopLevelParamName = false;
             }
         }, this.saveAsSPY && allowed != AllowedSlotContent.FREE_TEXT_DOCUMENTATION ? transformSlotLevel : ((s) => s), topLevel);
 
