@@ -338,7 +338,7 @@ describe("Tests loading/saving complex expressions", () => {
 });
 
 describe("Tests loading/saving default parameter values", () => {
-    it("Loads/saves expressions with images", () => {
+    it("Loads/saves functions with default parameters", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/default-parameter-values.spy");
     });
 });
