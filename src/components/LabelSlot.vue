@@ -1155,7 +1155,7 @@ export default Vue.extend({
             // The logic is as such, we handle the insertion in the slot (with adequate adaptation if needed, see above)
             // let the parsing and slot factorisation do the checkup later
             // (we handle the insertion even if there is specific adapation because in the call to emit, the DOM has not updated)
-            return () => this.$emit(CustomEventTypes.requestSlotsRefactoring, refactorFocusSpanUID, stateBeforeChanges);
+            return () => this.$emit(CustomEventTypes.requestSlotsRefactoring, refactorFocusSpanUID, stateBeforeChanges, {useFlatMediaDataCode: true});
         },
 
         handleFastUDNavKeys(event: KeyboardEvent){

@@ -232,7 +232,7 @@ export default Vue.extend({
                 // (i.e. in case it doesn't change the number/type of slots);
                 // we definitely need to completely redo all the slots if Firefox has deleted a bunch of nodes
                 this.refactorCount += 1;
-                this.checkSlotRefactoring("", stateBeforeChanges);
+                this.checkSlotRefactoring("", stateBeforeChanges, {useFlatMediaDataCode: true});
             }
         },
         isSlotEmphasised(slot: FlatSlotBase): boolean{
