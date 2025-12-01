@@ -127,13 +127,16 @@ class Image:
         """
 
         # Note: for internal purposes we sometimes don't want to make an image, so we pass -1,-1 for that case:
-        if width > 0 and height > 0:
+        if width >= 1 and height >= 1:
             self.__image = _strype_graphics_internal.makeCanvasOfSize(width, height)
             self.clear()
             _strype_graphics_internal.canvas_setFill(self.__image, "white")
             _strype_graphics_internal.canvas_setStroke(self.__image, "black")
-        else:
+        elif width == -42 and height == -42:
+            # Magic constants used elsewhere in the code to mean make it empty for now.
             self.__image = None
+        else:
+            raise ValueError("Invalid image size: " + str(width) + " * " + str(height))
 
     def fill(self):
         # type: () -> None
@@ -709,8 +712,8 @@ class Actor:
         # That is, if you load an image from a file it's kept internally as an HTML Image,
         # but if you call get_image() we turn it into an off-screen canvas so that it can be edited.
         if self.__editable_image is None:
-            # The -1, -1 sizing indicates we will set the image ourselves afterwards:
-            self.__editable_image = Image(-1, -1)
+            # The -42, -42 sizing indicates we will set the image ourselves afterwards:
+            self.__editable_image = Image(-42, -42)
             self.__editable_image._Image__image = _strype_graphics_internal.makeImageEditable(self.__id) 
         return self.__editable_image
     
@@ -837,7 +840,8 @@ def load_image(name):
     # If they mistakenly try to load an image (e.g. a literal) just let it through:
     if isinstance(name, Image):
         return name
-    img = Image(-1, -1)
+    # Make an internal empty image then load it:
+    img = Image(-42, -42)
     img._Image__image = _strype_graphics_internal.htmlImageToCanvas(_strype_graphics_internal.loadAndWaitForImage(name))
     return img
 
