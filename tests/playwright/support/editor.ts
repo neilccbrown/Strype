@@ -108,6 +108,7 @@ export async function doPagePaste(page: Page, clipboardContent: string, clipboar
         // Dispatch the paste event to the whole document
         document.activeElement?.dispatchEvent(pasteEvent);
     }, {clipboardContent, clipboardContentType});
+    await page.waitForTimeout(300);
 }
 
 export async function doTextHomeEndKeyPress(page: Page, isGoingForward: boolean, isShiftEnabled: boolean) : Promise<void> {
