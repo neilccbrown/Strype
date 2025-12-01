@@ -102,3 +102,44 @@ test.describe("Media literal copying", () => {
         expect(clipboardImage).toEqual("data:image/jpeg;base64," + image);
     });
 });
+
+test.describe("Media literal manipulation", () => {
+    test("Test surrounding an image literal with brackets", async ({page}) => {
+        await page.keyboard.press("Backspace");
+        await page.keyboard.press("Backspace");
+        await page.keyboard.type("i");
+        await page.waitForTimeout(100);
+        await assertStateOfIfFrame(page, "{$}");
+        const image = fs.readFileSync("public/graphics_images/cat-test.jpg").toString("base64");
+        await doPagePaste(page, image, "image/jpeg");
+        // Check it is appearing as an image:
+        await expect(page.getByText("load_image")).not.toBeVisible();
+        await expect(page.locator("img[data-code^='load_image']")).toBeVisible();        
+        // Select the image:
+        await page.keyboard.press("Shift+ArrowLeft");
+        // And bracket:
+        await page.keyboard.type("(");
+        // Check that the image is still an image (in bug #661, it turned into the text of the load_image call):
+        await expect(page.getByText("load_image")).not.toBeVisible();
+        await expect(page.locator("img[data-code^='load_image']")).toBeVisible();
+    });
+    test("Test surrounding a sound literal with brackets", async ({page}) => {
+        await page.keyboard.press("Backspace");
+        await page.keyboard.press("Backspace");
+        await page.keyboard.type("i");
+        await page.waitForTimeout(100);
+        await assertStateOfIfFrame(page, "{$}");
+        const image = fs.readFileSync("public/sounds/cat-test-meow.wav").toString("base64");
+        await doPagePaste(page, image, "audio/wav");
+        // Check it is appearing as an image:
+        await expect(page.getByText("load_sound")).not.toBeVisible();
+        await expect(page.locator("img[data-code^='load_sound']")).toBeVisible();
+        // Select the image:
+        await page.keyboard.press("Shift+ArrowLeft");
+        // And bracket:
+        await page.keyboard.type("(");
+        // Check that the image is still an image (in bug #661, it turned into the text of the load_sound call):
+        await expect(page.getByText("load_sound")).not.toBeVisible();
+        await expect(page.locator("img[data-code^='load_sound']")).toBeVisible();
+    });
+});
