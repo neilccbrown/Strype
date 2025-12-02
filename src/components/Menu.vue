@@ -799,7 +799,7 @@ export default Vue.extend({
         
         copySnapshotLink() {
             // Since we made the link content when showing the dialog, all we need to do is format it and copy it to the clipboard:
-            navigator.clipboard.writeText(`${window.location}?${sharedStrypeProjectIdKey}=${this.shareContentZippedBase64}`);
+            navigator.clipboard.writeText(`${window.location}?${sharedStrypeProjectIdKey}=spy:${this.shareContentZippedBase64}`);
 
             this.$root.$emit("bv::hide::modal", this.shareProjectChooseMethodDlgId);
             this.onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.shareProjectChooseMethodDlgId);
