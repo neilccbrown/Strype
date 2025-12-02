@@ -794,7 +794,6 @@ export default Vue.extend({
             // so we have to replace them (with - and _ respectively).
             // That is specified by the true boolean parameter to the Base64 call:
             this.shareContentZippedBase64 = Base64.fromUint8Array(deflateRaw(generateSPYFileContent()), true);
-            console.log("Link length: " + this.shareContentZippedBase64.length + " from code length " + generateSPYFileContent().length);
             this.$root.$emit("bv::show::modal", this.shareProjectChooseMethodDlgId);
         },
         

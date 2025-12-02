@@ -619,8 +619,6 @@ export default Vue.extend({
         const queryParams = new URLSearchParams(window.location.search);
         const sharedProjectTarget= queryParams.get(sharedStrypeProjectTargetKey); // if provided, appears like the numbered value of the SyncTarget enum
         const shareProjectId = queryParams.get(sharedStrypeProjectIdKey);
-        console.log("Proj ID:", shareProjectId);
-        
         // When there is a shared project shared within a Cloud Drive, we do like if we were opening that Cloud Drive project BUT we use a special
         // mode that does not ask for the target selection (which shows with "open" in the menu) and breaks links to the Cloud Drive
         // (it's only a retrieval of the code)
