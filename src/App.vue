@@ -737,8 +737,7 @@ export default Vue.extend({
                 // Base64 uses A-Za-z0-9+/, but the latter two are meaningful in URLs
                 // so we have to replace them (with - and _ respectively).
                 // That is handled automatically on decode by the js-base64 package: 
-                const decoded = Base64.decode(param);
-                const binary = Uint8Array.from(decoded, (c) => c.charCodeAt(0));
+                const binary = Base64.toUint8Array(param);
                 const spyContent = inflateRaw(binary, { to: "string" });
 
                 const loadSpy = () => this.setStateFromPythonFile(spyContent, this.$i18n.t("en.defaultProjName") as string, 0, false);

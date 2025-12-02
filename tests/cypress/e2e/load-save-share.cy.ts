@@ -78,7 +78,7 @@ function encodeBase64URI(spyContent: string) {
         .replace(/\//g, "_");
 }
 
-function testRoundTripImportAndDownload(filepath: string) {
+function testLoadingFromCalculatedShareLink(filepath: string) {
     filepath = adjustIfMicrobit(filepath);
 
     // The filename is a path, fixture just needs the filename:
@@ -124,41 +124,44 @@ function testRoundTripImportAndDownload(filepath: string) {
 
 describe("Loads and re-saves fixture files", () => {
     it("Loads a basic project", () => {
-        testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic.spy");
+        testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-basic.spy");
     });
     it("Loads a basic trisection project", () => {
-        testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic-trisection.spy");
+        testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-basic-trisection.spy");
     });
     it("Loads and saves a solo try", () => {
         // Make an empty try, which should save with a placeholder:
-        testRoundTripImportAndDownload("tests/cypress/fixtures/project-try-solo.spy");
+        testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-try-solo.spy");
+    });
+    it("Loads a basic trisection project", () => {
+        testLoadingFromCalculatedShareLink("tests/cypress/fixtures/grapheme-strings.spy");
     });
 });
 
 describe("Tests disabling frames", () => {
     it("Loads and saves a try with disabled except", () => {
         // Make an empty try, which should save with a placeholder:
-        testRoundTripImportAndDownload("tests/cypress/fixtures/project-try-disabled-except.spy");
+        testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-try-disabled-except.spy");
     });
     it("Loads and saves a basic disable project", () => {
-        testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic-disable.spy");
+        testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-basic-disable.spy");
     });
     
     it("Loads and saves a complex disable project", () => {
-        testRoundTripImportAndDownload("tests/cypress/fixtures/project-complex-disable.spy");
+        testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-complex-disable.spy");
     });
 });
 
 describe("Tests blanks", () => {
     it("Loads and saves with lots of blanks", () => {
-        testRoundTripImportAndDownload("tests/cypress/fixtures/project-blanks.spy");
+        testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-blanks.spy");
     });
 
 });
 
 describe("Tests invalid characters", () => {
     it("Loads and saves a file with invalid chars", () => {
-        testRoundTripImportAndDownload("tests/cypress/fixtures/project-invalid-chars.spy");
+        testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-invalid-chars.spy");
     });
 });
 
@@ -182,7 +185,7 @@ describe("Tests saving layout metadata", () => {
         cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded-collapsed.spy").then((f) => checkDownloadedFileEquals(strypeElIds, f, "My project.spy", true));
     });
     it("Loads and saves a file with tabsExpanded layout", () => {
-        testRoundTripImportAndDownload("tests/cypress/fixtures/project-layout-tabs-expanded.spy");
+        testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-layout-tabs-expanded.spy");
     });
     //it("Loads and saves a file with tabsExpanded layout and collapsed", () => {
     //    testRoundTripImportAndDownload("tests/cypress/fixtures/project-layout-tabs-expanded-collapsed.spy");
@@ -192,33 +195,33 @@ describe("Tests saving layout metadata", () => {
 
 describe("Tests loading/saving library frames", () => {
     it ("Saves and loads libraries", () => {
-        testRoundTripImportAndDownload("tests/cypress/fixtures/project-libraries.spy");
+        testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-libraries.spy");
     });
     it ("Saves and loads disabled libraries", () => {
-        testRoundTripImportAndDownload("tests/cypress/fixtures/project-libraries-disable.spy");
+        testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-libraries-disable.spy");
     });
 });
 
 describe("Tests loading project descriptions", () => {
     it("Loads a project with docs", () => {
-        testRoundTripImportAndDownload("tests/cypress/fixtures/project-documented.spy");
+        testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-documented.spy");
     });
     it("Loads a project with docs when there is already a project description", () => {
         focusEditorPasteAndClear();
         cy.get("body").type("{uparrow}{uparrow}{leftarrow}Temporary description.");
-        testRoundTripImportAndDownload("tests/cypress/fixtures/project-documented.spy");
+        testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-documented.spy");
     });
     it("Loads a project description over the top of another", () => {
-        testRoundTripImportAndDownload("tests/cypress/fixtures/project-documented.spy");
-        testRoundTripImportAndDownload("tests/cypress/fixtures/project-documented-2.spy");
+        testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-documented.spy");
+        testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-documented-2.spy");
     });
     it("Loads a project without description over the top of another with description", () => {
-        testRoundTripImportAndDownload("tests/cypress/fixtures/project-documented.spy");
-        testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic-trisection.spy");
+        testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-documented.spy");
+        testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-basic-trisection.spy");
     });
     it("Loads a project without docs when there is already a project description", () => {
         focusEditorPasteAndClear();
         cy.get("body").type("{uparrow}{uparrow}{leftarrow}Temporary description.");
-        testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic.spy");
+        testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-basic.spy");
     });
 });
