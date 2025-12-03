@@ -2,6 +2,8 @@
 // into the URL
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
+import { getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
+
 require("cypress-terminal-report/src/installLogsCollector")();
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
@@ -38,6 +40,8 @@ beforeEach(() => {
         cy.wait(2000);
     });
 });
+
+const defaultProjectDocFullLine = getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"));
 
 function focusEditorPasteAndClear(): void {
     // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
@@ -174,7 +178,7 @@ describe("Tests saving layout metadata", () => {
         cy.get("#" + strypeElIds.getPEATabContentContainerDivId()).trigger("mouseenter");
         cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-expanded") + "']").click();
 
-        cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded.spy").then((f) => checkDownloadedFileEquals(strypeElIds, f, "My project.spy", true));
+        cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded.spy").then((f) => checkDownloadedFileEquals(strypeElIds, f.replace("#(=> Section:Imports", defaultProjectDocFullLine + "#(=> Section:Imports"), "My project.spy", true));
     });
     it("Saves changed layout to tabsExpanded and back", () => {
         focusEditorPasteAndClear();
@@ -182,7 +186,8 @@ describe("Tests saving layout metadata", () => {
         cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-expanded") + "']").click();
         cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-collapsed") + "']").click();
 
-        cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded-collapsed.spy").then((f) => checkDownloadedFileEquals(strypeElIds, f, "My project.spy", true));
+        // Since the default code contains a project doc, we need to include it to the code
+        cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded-collapsed.spy").then((f) => checkDownloadedFileEquals(strypeElIds, f.replace("#(=> Section:Imports", defaultProjectDocFullLine + "#(=> Section:Imports"), "My project.spy", true));
     });
     it("Loads and saves a file with tabsExpanded layout", () => {
         testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-layout-tabs-expanded.spy");
