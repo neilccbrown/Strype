@@ -21,17 +21,17 @@
                 <div class="project-target-popup-content-container">
                     <span v-t="'appMessage.loadToTarget'" class="load-save-label"/>
                     <div :ref="loadProjectTargetButtonGpId" class="project-target-button-container">
-                        <div id="loadFromGDStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
+                        <div id="loadFromGDStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, this.loadProjectModalDlgId)"
                             @mouseenter="changeTargetFocusOnMouseOver">
                             <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive"/> 
                             <span>Google Drive</span>
                         </div>
-                        <div id="loadFromODStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncODValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
+                        <div id="loadFromODStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncODValue)" @keydown.self="onTargetButtonKeyDown($event, this.loadProjectModalDlgId)"
                             @mouseenter="changeTargetFocusOnMouseOver">
                             <img :src="require('@/assets/images/logoOneDrive.svg')" alt="OneDrive"/> 
                             <span>OneDrive</span>
                         </div>
-                        <div :id="loadFromFSStrypeButtonId" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, false)"
+                        <div :id="loadFromFSStrypeButtonId" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, this.loadProjectModalDlgId)"
                             @mouseenter="changeTargetFocusOnMouseOver">
                             <img :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')"/> 
                             <span v-t="'appMessage.targetFS'"></span>
@@ -52,17 +52,17 @@
                         <span v-t="'appMessage.saveToTarget'" class="load-save-label cell" />
                         <div class="cell">
                             <div :ref="saveProjectTargetButtonGpId" class="project-target-button-container">
-                                <div id="saveToGDStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)"
+                                <div id="saveToGDStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, this.saveProjectModalDlgId)"
                                     :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncGDValue || tempSyncTarget == noSyncTargetValue}">
                                     <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive"/> 
                                     <span>Google Drive</span>
                                 </div>
-                                <div id="saveToODStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncODValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)"
+                                <div id="saveToODStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncODValue, true)" @keydown.self="onTargetButtonKeyDown($event, this.saveProjectModalDlgId)"
                                     :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncODValue}">
                                     <img :src="require('@/assets/images/logoOneDrive.svg')" alt="OneDrive"/> 
                                     <span>OneDrive</span>
                                 </div>
-                                <div :id="saveToFSStrypeButtonId" tabindex="0"  @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)"
+                                <div :id="saveToFSStrypeButtonId" tabindex="0"  @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, this.saveProjectModalDlgId)"
                                     :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncFSValue}">
                                     <img :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')"/> 
                                     <span v-t="'appMessage.targetFS'"></span>
@@ -94,7 +94,27 @@
                FITRUE_isPython */
             <!-- category: export -->
             <!-- share project -->
-            <a :id="shareProjectLinkId" v-show="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !canShareProject}" :title="$t((isSyncingToCloud)?'':'appMenu.needSaveShareProj')" @click="onShareProjectClick">{{$t('appMenu.shareProject')}}<span class="strype-menu-kb-shortcut">{{shareProjectKBShortcut}}</span></a>
+            <a :id="shareProjectLinkId" v-show="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true}" @click="onShareProjectClick">{{$t('appMenu.shareProject')}}<span class="strype-menu-kb-shortcut">{{shareProjectKBShortcut}}</span></a>
+            <ModalDlg :dlgId="shareProjectChooseMethodDlgId" :dlgTitle="$t('appMessage.createShareProjectLink')" showCloseBtn hideDlgBtns>
+                <div>
+                    <div class="share-method-container">
+                        <div id="shareMethodSnapshotButton" :class="scssVars.projectTargetButtonClassName + ' share-method-dlg'" tabindex="0"  @click="copySnapshotLink()" @keydown.self="onTargetButtonKeyDown($event, this.shareProjectChooseMethodDlgId)"
+                             @mouseenter="changeTargetFocusOnMouseOver">
+                            <img :src="require('@/assets/images/snapshotIcon.svg')" :alt="$t('appMessage.methodSnapshotLink')"/>
+                            <span class="share-method-title" v-t="'appMessage.methodSnapshotLink'"></span>
+                            <span class="share-method-explanation" v-t="'appMessage.methodSnapshotLinkExplanation'"></span>
+                            <span class="share-method-warning" v-if="shareContentZippedBase64.length > 2000" v-t="'appMessage.snapshotLinkTooLarge'"></span>
+                        </div>
+                        <div id="shareMethodCloudButton" :class="scssVars.projectTargetButtonClassName + ' share-method-dlg'" tabindex="0"  @click="copyCloudLink()" @keydown.self="onTargetButtonKeyDown($event, this.shareProjectChooseMethodDlgId)"
+                             @mouseenter="changeTargetFocusOnMouseOver">
+                            <img :src="require('@/assets/images/logoOneDrive.svg')" alt="$t('appMessage.methodCloudLink')"/>
+                            <span class="share-method-title" v-t="'appMessage.methodCloudLink'"></span>
+                            <span class="share-method-explanation" v-t="'appMessage.methodCloudLinkExplanation'"></span>
+                            <span class="share-method-warning" v-if="!canShareProjectViaCloud" v-t="'appMessage.cloudShareUnavailable'"></span>
+                        </div>
+                    </div>
+                </div>
+            </ModalDlg>
             <ModalDlg :dlgId="shareProjectModalDlgId" :okCustomTitle="$t('buttonLabel.copyLink')" :okDisabled="isSharingLinkGenerationPending" :useLoadingOK="isSharingLinkGenerationPending" 
                 :dlgTitle="$t('appMessage.createShareProjectLink')" :elementToFocusId="shareCloudDriveProjectPublicRadioBtnId">
                         <div>
@@ -206,7 +226,7 @@ import Vue from "vue";
 import { useStore, settingsStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
 import { AppEvent, CaretPosition, CollapsedState, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, ShareProjectMode, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
-import {countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppLangSelectId, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getCloudDriveHandlerComponentRefId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNearestErrorIndex, getSaveAsProjectModalDlg, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey, getSaveProjectLinkId, getNewProjectLinkId, getImportFileInputId} from "@/helpers/editor";
+import {countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppLangSelectId, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getCloudDriveHandlerComponentRefId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNearestErrorIndex, getSaveAsProjectModalDlg, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey, getSaveProjectLinkId, getShareProjectLinkId, getNewProjectLinkId, getImportFileInputId} from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
 import CloudDriveHandler from "@/components/CloudDriveHandler.vue";
@@ -224,6 +244,8 @@ import { getLocaleBuildDate } from "@/main";
 import scssVars from "@/assets/style/_export.module.scss";
 import OpenDemoDlg from "@/components/OpenDemoDlg.vue";
 import { CloudFileSharingStatus, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
+import {deflateRaw} from "pako";
+import {Base64} from "js-base64";
 
 //////////////////////
 //     Component    //
@@ -275,6 +297,7 @@ export default Vue.extend({
             openSharedProjectId: "",
             openSharedProjectTarget: StrypeSyncTarget.none,
             showDialogAfterSave: "", // The ID of the dialog to show after save-before-load
+            shareContentZippedBase64: "",
         };
     },
 
@@ -472,7 +495,7 @@ export default Vue.extend({
         },
 
         shareProjectLinkId(): string {
-            return "shareStrypeProjLink";
+            return getShareProjectLinkId();
         },
 
         shareProjectKBShortcut(): string {
@@ -483,11 +506,15 @@ export default Vue.extend({
             return "shareProjectModalDlg";
         },
 
+        shareProjectChooseMethodDlgId(): string {
+            return "shareProjectChooseMethodDlg";
+        },
+
         shareCloudDriveProjectPublicRadioBtnId(): string {
             return "shareCloudDriveProjectPublicRadioBtnId";
         },
 
-        canShareProject(): boolean {
+        canShareProjectViaCloud(): boolean {
             return isSyncTargetCloudDrive(this.appStore.syncTarget) && !this.appStore.isEditorContentModified;
         },
 
@@ -760,9 +787,27 @@ export default Vue.extend({
             this.showMenu = false;
         },
 
-        onShareProjectClick(){
+        onShareProjectClick() {
+            // We make the snapshot link before showing the dialog, so that we know if it's a long link:
+            
+            // Base64 uses A-Za-z0-9+/, but the latter two are meaningful in URLs
+            // so we have to replace them (with - and _ respectively).
+            // That is specified by the true boolean parameter to the Base64 call:
+            this.shareContentZippedBase64 = Base64.fromUint8Array(deflateRaw(generateSPYFileContent()), true);
+            this.$root.$emit("bv::show::modal", this.shareProjectChooseMethodDlgId);
+        },
+        
+        copySnapshotLink() {
+            // Since we made the link content when showing the dialog, all we need to do is format it and copy it to the clipboard:
+            navigator.clipboard.writeText(`${window.location}?${sharedStrypeProjectIdKey}=spy:${this.shareContentZippedBase64}`);
+
+            this.$root.$emit("bv::hide::modal", this.shareProjectChooseMethodDlgId);
+            this.onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.shareProjectChooseMethodDlgId);
+        },
+
+        copyCloudLink() {
             // We only share a project that is saved on a Cloud Drive. Show the user what mode of sharing to use (see details in shareProjectWithMode())
-            if(this.canShareProject){
+            if(this.canShareProjectViaCloud){
                 this.publicModeProjectSharingLink = "";
                 this.shareProjectInitialCall = true;
                 // First we retrieve the current Cloud File sharing status, as we may need to restore the sharing status later
@@ -779,7 +824,10 @@ export default Vue.extend({
                         const erroMsg = (typeof _ == "string") ? _ : JSON.stringify(_);
                         this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.clouldFileRestoreSharingStatus", {drivename: cloudDriveHandlerComponent.getDriveName(), errordetails: erroMsg}) as string;
                         this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
-                    });                
+                    });
+
+                this.$root.$emit("bv::hide::modal", this.shareProjectChooseMethodDlgId);
+                this.onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.shareProjectChooseMethodDlgId);
             }
         },
 
@@ -1270,13 +1318,13 @@ export default Vue.extend({
             }
         },
 
-        onTargetButtonKeyDown(event: KeyboardEvent, isSaveAction: boolean) {
+        onTargetButtonKeyDown(event: KeyboardEvent, dlgId : string) {
             // Handle some basic keyboard logic for the target selection.
 
             // Space, left/right arrows should trigger a change of target
             if(event.key.toLowerCase() == " " || event.key.toLowerCase() == "arrowleft" || event.key.toLowerCase() == "arrowright"){
                 const currentFocusedElementID = document.activeElement?.id??"";
-                const targetButtons = [...document.querySelectorAll(`#${(isSaveAction) ? this.saveProjectModalDlgId : this.loadProjectModalDlgId} .${scssVars.projectTargetButtonClassName}`)];
+                const targetButtons = [...document.querySelectorAll(`#${dlgId} .${scssVars.projectTargetButtonClassName}`)];
                 const focusedButtonIndex = targetButtons.findIndex((target) => {
                     return target.id == currentFocusedElementID;
                 });
@@ -1285,7 +1333,8 @@ export default Vue.extend({
                         ? (((focusedButtonIndex - 1) >= 0) ? focusedButtonIndex - 1 : targetButtons.length - 1)
                         : (((focusedButtonIndex + 1) < targetButtons.length) ? focusedButtonIndex + 1 : 0); 
                     (targetButtons[newFocousedButtonIndex] as HTMLDivElement).focus();
-                    if(isSaveAction) {
+                    if(dlgId != this.loadProjectModalDlgId) {
+                        // Save and share-method immediately click:
                         (targetButtons[newFocousedButtonIndex] as HTMLDivElement).click();
                     }                    
                 }
@@ -1300,8 +1349,8 @@ export default Vue.extend({
                 const focusedTarget = document.activeElement;
                 if(focusedTarget && focusedTarget.classList.contains(scssVars.projectTargetButtonClassName)){
                     (focusedTarget as HTMLDivElement).click();
-                    if(isSaveAction){
-                        // On the save dialog, the action doesn't validate the modal dialog
+                    if(dlgId != this.loadProjectModalDlgId){
+                        // On the save and share method dialogs, the action doesn't validate the modal dialog
                         event.stopPropagation();
                         event.stopImmediatePropagation();
                         event.preventDefault();
@@ -1582,6 +1631,7 @@ export default Vue.extend({
 }
 
 .#{$strype-classname-project-target-button}.load-dlg:focus,
+.#{$strype-classname-project-target-button}.share-method-dlg:focus,
 .#{$strype-classname-project-target-button}.saveTargetSelected
  {
     border-color: #007bff;
@@ -1693,4 +1743,38 @@ export default Vue.extend({
     margin: 0;
     height: 1px !important;
 }
+
+.share-method-container {
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 30px;
+}
+.share-method-container .project-target-button {
+    width: 220px;
+    justify-content: initial;
+}
+.share-method-container img {
+    width: 160px;
+    height: 140px;
+    object-fit: contain;
+    margin-top: 20px;
+}
+
+.share-method-title {
+    font-weight: bold;
+    font-size: 110%;
+    text-align: center;
+    margin-bottom: 15px;
+}
+.share-method-explanation {
+    color: #777;
+    font-size: 90%;
+    text-align: center;
+}
+.share-method-warning {
+    color: darkorange;
+    font-size: 90%;
+    text-align: center;
+}
+
 </style>
