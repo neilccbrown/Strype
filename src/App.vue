@@ -738,7 +738,7 @@ export default Vue.extend({
                 const binary = Base64.toUint8Array(param);
                 const spyContent = inflateRaw(binary, { to: "string" });
 
-                const loadSpy = () => this.setStateFromPythonFile(spyContent, this.$i18n.t("en.defaultProjName") as string, 0, false);
+                const loadSpy = () => this.setStateFromPythonFile(spyContent, this.$i18n.t("defaultProjName") as string, 0, false);
                 
                 this.checkLocalStorageHasProject().then(() => {
                     // A project exists in the local storage, we ask the user if they want to keep it (and cancel the load of the shared project)
