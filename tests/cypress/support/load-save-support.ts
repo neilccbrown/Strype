@@ -21,3 +21,17 @@ export function checkDownloadedFileEquals(strypeElIds: {[varName: string]: (...a
         expect(p, "Actual unescaped:\n" + p).to.equal(fullContent.replaceAll("\r\n", "\n"));
     });
 }
+
+export function loadFile(strypeElIds: {[varName: string]: (...args: any[]) => string}, filepath: string) : void {
+    cy.get("#" + strypeElIds.getEditorMenuUID()).click();
+    cy.get("#" + strypeElIds.getLoadProjectLinkId()).click();
+    // If the current state of the project is modified,
+    // we first need to discard the changes (we check the button is available)
+    cy.get("button").contains(i18n.t("buttonLabel.discardChanges") as string).should("exist").click();
+    cy.wait(2000);
+    // The "button" for the target selection is now a div element.
+    cy.get("#" + strypeElIds.getLoadFromFSStrypeButtonId()).click();
+    // Must force because the <input> is hidden:
+    cy.get("#" + strypeElIds.getImportFileInputId()).selectFile(filepath, {force: true});
+    cy.wait(4000);
+}

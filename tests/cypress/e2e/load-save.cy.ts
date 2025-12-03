@@ -12,7 +12,7 @@ failOnConsoleError();
 
 import i18n from "@/i18n";
 import "../support/expression-test-support";
-import {checkDownloadedFileEquals} from "../support/load-save-support";
+import {checkDownloadedFileEquals, loadFile} from "../support/load-save-support";
 import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
 import { getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
 
@@ -78,19 +78,8 @@ function testRoundTripImportAndDownload(filepath: string) {
     cy.readFile(filepath).then((spy) => {
         // Delete existing:
         focusEditorPasteAndClear();
+        loadFile(strypeElIds, filepath);
 
-        cy.get("#" + strypeElIds.getEditorMenuUID()).click();
-        cy.get("#" + strypeElIds.getLoadProjectLinkId()).click();
-        // If the current state of the project is modified,
-        // we first need to discard the changes (we check the button is available)
-        cy.get("button").contains(i18n.t("buttonLabel.discardChanges") as string).should("exist").click();
-        cy.wait(2000);
-        // The "button" for the target selection is now a div element.
-        cy.get("#" + strypeElIds.getLoadFromFSStrypeButtonId()).click();
-        // Must force because the <input> is hidden:
-        cy.get("#" + strypeElIds.getImportFileInputId()).selectFile(filepath, {force : true});
-        cy.wait(4000);
-        
         // We must make sure there are no comment frames starting "(=>" because that would indicate
         // our special comments have become comment frames, rather than being processed:
         // Making sure there's zero items is awkward in Cypress so we drop to doing it manually:
