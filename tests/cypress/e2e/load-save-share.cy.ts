@@ -2,9 +2,8 @@
 // into the URL
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-import { getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
-
 require("cypress-terminal-report/src/installLogsCollector")();
+import { getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 
