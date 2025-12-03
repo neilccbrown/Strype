@@ -489,6 +489,10 @@ export function getSaveProjectLinkId(): string {
     return "saveStrypeProjLink";
 }
 
+export function getShareProjectLinkId(): string {
+    return "shareStrypeProjLink";
+}
+
 export function getImportFileInputId(): string {
     return "importFileInput";
 }

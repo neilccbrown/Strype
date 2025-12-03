@@ -226,7 +226,7 @@ import Vue from "vue";
 import { useStore, settingsStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
 import { AppEvent, CaretPosition, CollapsedState, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, ShareProjectMode, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
-import {countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppLangSelectId, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getCloudDriveHandlerComponentRefId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNearestErrorIndex, getSaveAsProjectModalDlg, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey, getSaveProjectLinkId, getNewProjectLinkId, getImportFileInputId} from "@/helpers/editor";
+import {countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppLangSelectId, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getCloudDriveHandlerComponentRefId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNearestErrorIndex, getSaveAsProjectModalDlg, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey, getSaveProjectLinkId, getShareProjectLinkId, getNewProjectLinkId, getImportFileInputId} from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
 import CloudDriveHandler from "@/components/CloudDriveHandler.vue";
@@ -495,7 +495,7 @@ export default Vue.extend({
         },
 
         shareProjectLinkId(): string {
-            return "shareStrypeProjLink";
+            return getShareProjectLinkId();
         },
 
         shareProjectKBShortcut(): string {
