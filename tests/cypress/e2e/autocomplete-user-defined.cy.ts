@@ -283,24 +283,30 @@ describe("User-defined items", () => {
         }, true);
     });
 
-    it("Offers auto-complete for user-defined class overwriting Actor", () => {
+    it("Offers auto-complete for user-defined class overwriting " + ((Cypress.env("mode") == "microbit") ? "microbit's NeoPixel" : "Strype Graphics' Actor"), () => {
+        const isTestingMicrobitVersion = Cypress.env("mode") == "microbit";
+        const parentImport = (isTestingMicrobitVersion) ? ["neopixel", "NeoPixel"] : ["strype.graphics", "Actor"];
+        const parentClassName = (isTestingMicrobitVersion) ? "NeoPixel" : "Actor";
+        const parentClassInitParamsToTest = (isTestingMicrobitVersion) ? "pin, n, bpp" : "image, x, y, tag";
+        const parentClassMethodWithParamsToTest = (isTestingMicrobitVersion) ? "fill(colour)" : "get_in_range(distance)";
+        const parentClassMethodWithoutParamsToTest = (isTestingMicrobitVersion) ? "clear()" : "remove()";
         focusEditorAC();
-        // Add the Graphics API import to get Actor
-        cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}Actor{downarrow}{downarrow}");
-        // Make a class frame with "foo(Actor)" and delete the init function then go to my code
-        cy.get("body").type("cfoo(Actor{downarrow}{del}{downarrow}{downarrow}");
+        // Add the right import to get Actor or NeoPixel
+        cy.get("body").type(`{uparrow}{uparrow}f${parentImport[0]}{rightarrow}${parentImport[1]}{downarrow}{downarrow}`);
+        // Make a class frame with "foo(<parent class>)" and delete the init function, add a function "myF", then go to my code
+        cy.get("body").type(`cfoo(${parentClassName}{downarrow}{del}fmyF{downarrow}{downarrow}{downarrow}{downarrow}`);
         // Trigger auto-completion on a function call frame:
         cy.get("body").type(" {ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
-            checkExactlyOneItem(acIDSel, MYCLASSES, "foo(image, x, y, tag)");
+            checkExactlyOneItem(acIDSel, MYCLASSES, `foo(${parentClassInitParamsToTest})`);
             checkNoItems(acIDSel, "foo()", true);
             // Go out of this call and into the main body:
             cy.get("body").type("{backspace}");
             cy.wait(500);
             cy.get("body").type("{downarrow}{downarrow}{downarrow}");
         }, true);
-        // Make a function call and check "self, bar, vaz" don't show there:
+        // Make a function call and check "self" doesn't show there:
         cy.get("body").type(" {ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
@@ -310,12 +316,13 @@ describe("User-defined items", () => {
             cy.wait(500);
             cy.get("body").type("{rightarrow}.");
         }, true);
-        // Triggers the autocompletion and see that some Actor methods are listed
+        // Triggers the autocompletion and see that some Actor or NeoPixel methods are listed
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
-            checkExactlyOneItem(acIDSel, "foo()", "get_in_range(distance)");
-            checkExactlyOneItem(acIDSel, "foo()", "remove()");
+            checkExactlyOneItem(acIDSel, "foo()", parentClassMethodWithParamsToTest);
+            checkExactlyOneItem(acIDSel, "foo()", parentClassMethodWithoutParamsToTest);
+            checkExactlyOneItem(acIDSel, "foo()", "myF()");
         }, true);
     });
 });

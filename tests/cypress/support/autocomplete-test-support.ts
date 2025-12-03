@@ -149,6 +149,7 @@ export function checkAutocompleteSorted(acIDSel: string, isInFuncCallFrame: bool
         ...(isInFuncCallFrame ? [MYFUNCS, MYCLASSES, MYVARS] : [MYVARS, MYFUNCS, MYCLASSES]),
         "microbit",
         "microbit.accelerometer",
+        "neopixel",
         "time",
         "strype.graphics",
         BUILTIN,
