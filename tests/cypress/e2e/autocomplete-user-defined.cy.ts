@@ -84,7 +84,7 @@ describe("User-defined items", () => {
             cy.get("body").type("myV");
             cy.wait(1000);
             cy.get("body").type("{enter}");
-        }, true);
+        }, false);
 
         // Now check members complete on it:
         cy.get("body").type(".");
@@ -105,7 +105,7 @@ describe("User-defined items", () => {
             // Check docs show:
             cy.get("body").type("pper");
             cy.get(acIDSel).contains(UPPER_DOC);
-        }, true);
+        }, false);
     });
 
     it("Offers auto-complete for user-defined function parameters", () => {
@@ -122,7 +122,7 @@ describe("User-defined items", () => {
             cy.get("body").type("{backspace}");
             cy.wait(500);
             cy.get("body").type("{downarrow}{downarrow}");
-        }, true);
+        }, false);
         // Make a function call and check myParam doesn't show there:
         cy.get("body").type(" {ctrl} ");
         withAC((acIDSel) => {

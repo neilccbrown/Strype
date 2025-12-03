@@ -65,7 +65,7 @@ Cypress.Commands.add("paste",
         });
     });
 
-export function withAC(inner : (acIDSel : string, frameId: number) => void, isInFuncCallFrame:boolean, skipSortedCheck?: boolean) : void {
+export function withAC(inner : (acIDSel : string, frameId: number) => void, isInMyCodeFuncCallFrame:boolean, skipSortedCheck?: boolean) : void {
     // We need a delay to make sure last DOM update has occurred:
     cy.wait(600);
     cy.get("#" + strypeElIds.getEditorID()).then((eds) => {
@@ -75,7 +75,7 @@ export function withAC(inner : (acIDSel : string, frameId: number) => void, isIn
         const acIDSel = "#" + ed.getAttribute("data-slot-focus-id")?.replace(",", "\\,") + "_AutoCompletion";
         // Should always be sorted:
         if (!skipSortedCheck) {
-            checkAutocompleteSorted(acIDSel, isInFuncCallFrame);
+            checkAutocompleteSorted(acIDSel, isInMyCodeFuncCallFrame);
         }
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
