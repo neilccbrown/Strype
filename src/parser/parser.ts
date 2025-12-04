@@ -238,7 +238,7 @@ export default class Parser {
     private isDisabledFramesTriggered = false; //this flag is used to notify when we enter and leave the disabled frames.
     private disabledBlockIndent = "";
     private excludeLoopsAndCommentsAndCloseTry = false;
-    private ignoreSpecifiFrameId = -100;
+    private ignoreSpecificFrameId = -100;
     private ignoreCheckErrors = false;
     private saveAsSPY = false;
     private outputProjectDoc = false;
@@ -478,7 +478,7 @@ export default class Parser {
                 }
             }
 
-            if(frame.id == this.ignoreSpecifiFrameId){
+            if(frame.id == this.ignoreSpecificFrameId){
                 // We still need to put something here, in case we are in an empty block, we add a f() dummy function to have something.
                 output += `${indentation}f()\n`;
                 this.line += 1;
@@ -559,7 +559,7 @@ export default class Parser {
         return this.parse({startAtFrameId: useStore().getImportsFrameContainerId, stopAt: {frameId: useStore().getDefsFrameContainerId, includeThisFrame: false}});
     }
 
-    public parse({startAtFrameId, stopAt, excludeLoopsAndCommentsAndCloseTry, defsLast, ignoreSpecifiFrameId}: {startAtFrameId?: number, stopAt?: {frameId: number, includeThisFrame: boolean}, excludeLoopsAndCommentsAndCloseTry?: boolean, defsLast?: boolean; ignoreSpecifiFrameId?: number}): string {
+    public parse({startAtFrameId, stopAt, excludeLoopsAndCommentsAndCloseTry, defsLast, ignoreSpecificFrameId}: {startAtFrameId?: number, stopAt?: {frameId: number, includeThisFrame: boolean}, excludeLoopsAndCommentsAndCloseTry?: boolean, defsLast?: boolean; ignoreSpecificFrameId?: number}): string {
         let output = "";
         if(startAtFrameId){
             this.startAtFrameId = startAtFrameId;
@@ -573,8 +573,8 @@ export default class Parser {
             this.excludeLoopsAndCommentsAndCloseTry = excludeLoopsAndCommentsAndCloseTry;
         }
 
-        if(ignoreSpecifiFrameId){
-            this.ignoreSpecifiFrameId = ignoreSpecifiFrameId;
+        if(ignoreSpecificFrameId){
+            this.ignoreSpecificFrameId = ignoreSpecificFrameId;
         }
 
         /* IFTRUE_isPython */
@@ -761,7 +761,7 @@ export default class Parser {
         // (similar to getCodeWithoutError but with only parsing a specifc frame).
         const classFrameSiblingId = getNextSibling(classFrameId);
         const frameIdAfterClass = (classFrameSiblingId > 0) ? classFrameSiblingId : useStore().getMainCodeFrameContainerId; // If that class is last in definitions, next frame is in "my code";
-        const code = this.parse({startAtFrameId: classFrameId, stopAt:{frameId: frameIdAfterClass, includeThisFrame: false}, excludeLoopsAndCommentsAndCloseTry: true, ignoreSpecifiFrameId: currentFrameId});
+        const code = this.parse({startAtFrameId: classFrameId, stopAt:{frameId: frameIdAfterClass, includeThisFrame: false}, excludeLoopsAndCommentsAndCloseTry: true, ignoreSpecificFrameId: currentFrameId});
         return this.removeErrorsFromParsedCode(code);
     }
 
