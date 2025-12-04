@@ -74,6 +74,7 @@
     "stateWrongPlatform": "le fichier a été créé à partir d'une version de Strype incompatible",
     "stateWrongFrameTypeName": "erreur lors de la lecture des types de cadres",
     "emptyEditableSlot": "Le champ ne peut pas être vide",
+    "editableSlotWithHash": "Ce champ de peut pas contenir '#'",
     "errorTitle": "Erreur",
     "pastFrameErrTitle": "Erreur d'exécution lors de la dernière exécution",
     "errorUserDefinedFuncMsg": "Fonction définie par l'utilisateur\nla définition de cette fonction contient des erreurs",
