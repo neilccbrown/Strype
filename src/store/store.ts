@@ -1882,7 +1882,8 @@ export const useStore = defineStore("app", {
             this.unselectAllFrames();
         },
 
-        async addFrameWithCommand(frame: FramesDefinitions, hiddenShorthandFrameDetails?: AddShorthandFrameCommandDef, skipFuncCallBrackets?: boolean) {
+        // Returns the id of the newly added frame
+        async addFrameWithCommand(frame: FramesDefinitions, hiddenShorthandFrameDetails?: AddShorthandFrameCommandDef, skipFuncCallBracketsAndCaretSet?: boolean) : Promise<number> {
             const stateBeforeChanges = cloneDeep(this.$state);
             const currentFrame = this.frameObjects[this.currentFrame.id];
             const addingJointFrame = frame.isJointFrame;
@@ -1947,7 +1948,7 @@ export const useStore = defineStore("app", {
                             }
                             const labelContent: LabelSlotsContent = {
                                 shown: (!cur.hidableLabelSlots),
-                                slotStructures: (frame.type == AllFrameTypesIdentifier.funccall && !skipFuncCallBrackets) 
+                                slotStructures: (frame.type == AllFrameTypesIdentifier.funccall && !skipFuncCallBracketsAndCaretSet) 
                                     ? {fields: [{code: ""},{openingBracketValue:"(", fields: [{code: ""}], operators: []},{code: ""}], operators: [{code: ""}, {code: ""}]}
                                     : {fields: [{code: ""}], operators: []},
                             };
@@ -2073,6 +2074,10 @@ export const useStore = defineStore("app", {
             }
 
             this.updateNextAvailableId();
+            
+            if (skipFuncCallBracketsAndCaretSet) {
+                return newFrame.id;
+            }
         
             // "Move" the caret along, using the newly computed positions
             await this.leftRightKey(
@@ -2121,6 +2126,8 @@ export const useStore = defineStore("app", {
                         this.lastAddedFrameIds = newFrame.id;
                     }
                 );
+
+            return newFrame.id;
         },
 
         // Note: this will not always do the delete, for example if frozen frames are involved
@@ -2335,6 +2342,7 @@ export const useStore = defineStore("app", {
         },
 
         async leftRightKey(payload: {key: string, isShiftKeyHold?: boolean, availablePositions?: NavigationPosition[]}) {
+            console.trace("lrKey");
             //  used for moving index up (+1) or down (-1)
             const directionDown = payload.key === "ArrowRight" || payload.key === "Enter" || (payload.key === "Tab" && !payload.isShiftKeyHold);
             const directionDelta = (directionDown)?+1:-1;
