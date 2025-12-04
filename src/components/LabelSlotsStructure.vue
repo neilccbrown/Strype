@@ -510,11 +510,14 @@ export default Vue.extend({
                 event.stopImmediatePropagation();
                 return;
             }
+            
+            console.log("Has focus: " + !!this.appStore.focusSlotCursorInfos + " event key: " + event.key);
 
             // When some text is cut through *a selection*, we need to handle it fully: we want to handle the slot changes in the store to reflect the
             // text change, but also we need to handle the clipboard, as doing events here on keydown results the browser not being able to get the text
             // cut (since the slots have already disappear, and the action for cut seems to be done on the keyup event)
             if (this.appStore.focusSlotCursorInfos && (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() ==  "x" || event.key.toLowerCase() ==  "c")){
+                console.log("Doing a cut/copy");
                 // There is a selection already, we can directly set the text in the browser's clipboard here
                 const selectionText = getEditableSelectionText();
                 if (selectionText) {
@@ -599,11 +602,18 @@ export default Vue.extend({
         },
 
         forwardPaste(event: ClipboardEvent){
+            console.log("Paste event detected", event, event.clipboardData, event.clipboardData?.items);
             // Paste events need to be handled on the parent contenteditable div because FF will not accept
             // forwarded (untrusted) events to be hooked by the children spans. 
             this.appStore.ignoreKeyEvent = true;
             const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
             if (event.clipboardData && focusSlotCursorInfos) {
+                if (event.clipboardData.items) {
+                    console.log("Num items: " + event.clipboardData.items.length);
+                    for (let i = 0; i < event.clipboardData.items.length; ++i) {
+                        console.log("Item: " + event.clipboardData.items[i].kind + " " + event.clipboardData.items[i].type + " " + !!event.clipboardData.items[i].getAsFile());
+                    }
+                }
                 // First we need to check if it's a media item on the clipboard, because that needs
                 // to become a media literal rather than plain text:
                 /* IFTRUE_isPython */

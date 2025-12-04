@@ -183,6 +183,7 @@ export function preparePasteMediaData(event: ClipboardEvent, callBackOnDataDimAn
             const itemType = item.type;
             const isImage = itemType.startsWith("image");
             const isAudio = itemType.startsWith("audio");
+            console.log("Clipboard type: " + itemType + " file " + !!file);
             if (file && (isImage || isAudio)) {
                 readFileAsyncAsData(file).then(isImage ? readImageSizeFromDataURI : (s) => Promise.resolve({dataURI: s, width: -1, height: -1})).then((v) => withData({...v, itemType}));
                 return;

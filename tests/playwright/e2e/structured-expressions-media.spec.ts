@@ -125,6 +125,38 @@ test.describe("Media literal copying", () => {
         await page.waitForTimeout(100);
         await typeIndividually(page, "set_background(");
     });
+
+    test("Test pasting image at frame cursor focuses on frame cursor", async ({page}) => {
+        await page.keyboard.press("End");
+        await page.keyboard.press("Backspace");
+        await page.keyboard.press("Backspace");
+        await page.waitForTimeout(100);
+        const image = fs.readFileSync("public/graphics_images/cat-test.jpg").toString("base64");
+        await doPagePaste(page, image, "image/jpeg");
+        // Now check if the bottom frame cursor has focus.
+        //#error TODO
+        
+        await typeIndividually(page, ")");
+        let startIndex = 0;
+        const endIndex = "set_background(X)".length;
+        await doTextHomeEndKeyPress(page, false, false); // equivalent to "Home", see method for details
+        for (let i = 0; i < startIndex; i++) {
+            await page.keyboard.press("ArrowRight");
+            await page.waitForTimeout(75);
+        }
+        while (startIndex < endIndex) {
+            await page.keyboard.press("Shift+ArrowRight");
+            await page.waitForTimeout(75);
+            startIndex += 1;
+        }
+        await page.waitForTimeout(200);
+        await page.keyboard.press("ControlOrMeta+c");
+        await page.waitForTimeout(300);
+        const clipboardContent : string = await page.evaluate("navigator.clipboard.readText()");
+        expect(clipboardContent).toEqual("set_background(load_image(\"data:image/jpeg;base64," + image + "\"))");
+        const clipboardItemCount : string = await page.evaluate("navigator.clipboard.read().then((items) => items.length)");
+        expect(clipboardItemCount).toEqual(1);
+    });
 });
 
 test.describe("Media literal manipulation", () => {
