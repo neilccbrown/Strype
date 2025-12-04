@@ -25,7 +25,7 @@ export async function loadContent(page: Page, spyToLoad: string) : Promise<void>
     await load(page, path);
 }
 
-
+// Returns the file path
 export async function save(page: Page, firstSave = true) : Promise<string> {
     // Save is located in the menu, so we need to open it first, then find the link and click on it:
     await page.click("#" + await strypeElIds(page).getEditorMenuUID());

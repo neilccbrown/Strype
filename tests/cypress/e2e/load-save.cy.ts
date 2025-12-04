@@ -10,11 +10,12 @@ require("cypress-terminal-report/src/installLogsCollector")();
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 
-import path from "path";
 import i18n from "@/i18n";
 import "../support/expression-test-support";
+import {checkDownloadedFileEquals, loadFile} from "../support/load-save-support";
 import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
 import { getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
+
 
 
 // Must clear all local storage between tests to reset the state,
@@ -54,27 +55,6 @@ function focusEditorPasteAndClear(): void {
     cy.get("body").type("{uparrow}{uparrow}{uparrow}{del}{downarrow}{downarrow}{downarrow}{downarrow}{backspace}{backspace}");
 }
 
-function checkDownloadedFileEquals(fullContent: string, filename: string, firstSave?: boolean) : void {
-    const downloadsFolder = Cypress.config("downloadsFolder");
-    const destFile = path.join(downloadsFolder, filename);
-    cy.task("deleteFile", destFile);
-    // Save is located in the menu, so we need to open it first, then find the link and click on it
-    // Force these because sometimes cypress gives false alarm about webpack overlay being on top:
-    cy.get("button#" + strypeElIds.getEditorMenuUID()).click({force: true});
-    // Note we use the ID because cy.contains is awkward when "Save" and "Save as" begin the same.
-    cy.get("#saveStrypeProjLink").click({force: true});
-    if (firstSave) {
-        // For testing, we always want to save to this device:
-        cy.contains(i18n.t("appMessage.targetFS") as string).click({force: true});
-        cy.contains(i18n.t("OK") as string).click({force: true});
-    }
-
-    cy.readFile(destFile).then((p : string) => {
-        // Print out full version in message (without escaped \n), to make it easier to diff:
-        expect(p, "Actual unescaped:\n" + p).to.equal(fullContent.replaceAll("\r\n", "\n"));
-    });
-}
-
 function adjustIfMicrobit(filepath: string) {
     if (Cypress.env("mode") === "microbit") {
         const dest = "cypress/downloads/temp.spy";
@@ -98,19 +78,8 @@ function testRoundTripImportAndDownload(filepath: string) {
     cy.readFile(filepath).then((spy) => {
         // Delete existing:
         focusEditorPasteAndClear();
+        loadFile(strypeElIds, filepath);
 
-        cy.get("#" + strypeElIds.getEditorMenuUID()).click();
-        cy.get("#" + strypeElIds.getLoadProjectLinkId()).click();
-        // If the current state of the project is modified,
-        // we first need to discard the changes (we check the button is available)
-        cy.get("button").contains(i18n.t("buttonLabel.discardChanges") as string).should("exist").click();
-        cy.wait(2000);
-        // The "button" for the target selection is now a div element.
-        cy.get("#" + strypeElIds.getLoadFromFSStrypeButtonId()).click();
-        // Must force because the <input> is hidden:
-        cy.get("#" + strypeElIds.getImportFileInputId()).selectFile(filepath, {force : true});
-        cy.wait(4000);
-        
         // We must make sure there are no comment frames starting "(=>" because that would indicate
         // our special comments have become comment frames, rather than being processed:
         // Making sure there's zero items is awkward in Cypress so we drop to doing it manually:
@@ -127,7 +96,7 @@ function testRoundTripImportAndDownload(filepath: string) {
             expect(matching.length).to.eq(0);
         });
 
-        checkDownloadedFileEquals(spy.replaceAll("\r\n", "\n"), filepath.split("/").pop() ?? "My project.spy");
+        checkDownloadedFileEquals(strypeElIds, spy.replaceAll("\r\n", "\n"), filepath.split("/").pop() ?? "My project.spy");
     });
 }
 
@@ -146,7 +115,7 @@ function testEntryDisableAndSave(commands: string, disableFrames: string[], file
         });
 
         // The files will contain the default project documentation, so we need to include it in the code
-        checkDownloadedFileEquals(spy.replaceAll("\r\n", "\n").replace("\n", "\n" + defaultProjectDocFullLine), "My project.spy", true);
+        checkDownloadedFileEquals(strypeElIds, spy.replaceAll("\r\n", "\n").replace("\n", "\n" + defaultProjectDocFullLine), "My project.spy", true);
     });
 } 
 
@@ -223,7 +192,7 @@ describe("Tests blanks", () => {
 describe("Tests invalid characters", () => {
     it("Outputs a file with invalid chars", () => {
         testEntryDisableAndSave("{uparrow}{uparrow}" +
-            "i100{rightarrow}ffoo{rightarrow}£1000{downarrow}i50{downarrow}if#(=>oo（）{downarrow}{downarrow}" +
+            "i100{rightarrow}ffoo{rightarrow}£1000{downarrow}i50{downarrow}ifoo（）{downarrow}{downarrow}" +
             "f#include{rightarrow}100,abc,#35{downarrow}r$50{downarrow}{downarrow}{downarrow}" +
             " 100($50, 24.24a)", [], "tests/cypress/fixtures/project-invalid-chars.spy");
     });
@@ -242,7 +211,7 @@ describe("Tests saving layout metadata", () => {
         cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-expanded") + "']").click();
 
         // Since the default code contains a project doc, we need to include it to the code
-        cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded.spy").then((f) => checkDownloadedFileEquals(f.replace("#(=> Section:Imports", defaultProjectDocFullLine + "#(=> Section:Imports"), "My project.spy", true));
+        cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded.spy").then((f) => checkDownloadedFileEquals(strypeElIds, f.replace("#(=> Section:Imports", defaultProjectDocFullLine + "#(=> Section:Imports"), "My project.spy", true));
     });
     it("Saves changed layout to tabsExpanded and back", () => {
         focusEditorPasteAndClear();
@@ -251,7 +220,7 @@ describe("Tests saving layout metadata", () => {
         cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-collapsed") + "']").click();
 
         // Since the default code contains a project doc, we need to include it to the code
-        cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded-collapsed.spy").then((f) => checkDownloadedFileEquals(f.replace("#(=> Section:Imports", defaultProjectDocFullLine + "#(=> Section:Imports"), "My project.spy", true));
+        cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded-collapsed.spy").then((f) => checkDownloadedFileEquals(strypeElIds, f.replace("#(=> Section:Imports", defaultProjectDocFullLine + "#(=> Section:Imports"), "My project.spy", true));
     });
     it("Loads and saves a file with tabsExpanded layout", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-layout-tabs-expanded.spy");
@@ -336,3 +305,10 @@ describe("Tests loading/saving complex expressions", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/image-expressions.spy");
     });
 });
+
+describe("Tests loading/saving default parameter values", () => {
+    it("Loads/saves functions with default parameters", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/default-parameter-values.spy");
+    });
+});
+

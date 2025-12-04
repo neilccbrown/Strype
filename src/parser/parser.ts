@@ -1,6 +1,6 @@
 import Compiler from "@/compiler/compiler";
 import {hasEditorCodeErrors, trimmedKeywordOperators} from "@/helpers/editor";
-import {generateFlatSlotBases, retrieveSlotByPredicate} from "@/helpers/storeMethods";
+import {generateFlatSlotBases, getNextSibling, retrieveSlotByPredicate} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CollapsedState, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, FrozenState, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
@@ -238,6 +238,7 @@ export default class Parser {
     private isDisabledFramesTriggered = false; //this flag is used to notify when we enter and leave the disabled frames.
     private disabledBlockIndent = "";
     private excludeLoopsAndCommentsAndCloseTry = false;
+    private ignoreSpecificFrameId = -100;
     private ignoreCheckErrors = false;
     private saveAsSPY = false;
     private outputProjectDoc = false;
@@ -248,6 +249,10 @@ export default class Parser {
         this.ignoreCheckErrors = ignoreCheckErrors;
         this.saveAsSPY = destination == "spy";
         this.outputProjectDoc = destination == "spy" || destination == "py-export";
+    }
+
+    public getIndent(): string {
+        return INDENT;
     }
     
     public getStoppedIndentation() : string {
@@ -292,7 +297,8 @@ export default class Parser {
             // won't make an issue when executed, so we parse them normally.
             ((block.frameType.allowChildren && children.length > 0 && 
                 children.some((childFrame) => childFrame.isDisabled 
-                    || (childFrame.frameType.type != AllFrameTypesIdentifier.blank && (childFrame.frameType.type != AllFrameTypesIdentifier.comment 
+                    || (!(childFrame.frameType.type == AllFrameTypesIdentifier.funccall && childFrame.labelSlotsDict[0].slotStructures.fields.length == 1 && (childFrame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.length == 0) 
+                        && childFrame.frameType.type != AllFrameTypesIdentifier.blank && (childFrame.frameType.type != AllFrameTypesIdentifier.comment 
                         || (childFrame.frameType.type == AllFrameTypesIdentifier.comment && (childFrame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.includes("\n"))))))
                 ?
                 this.parseFrames(
@@ -472,6 +478,13 @@ export default class Parser {
                     break;
                 }
             }
+
+            if(frame.id == this.ignoreSpecificFrameId){
+                // We still need to put something here, in case we are in an empty block, we add a f() dummy function to have something.
+                output += `${indentation}f()\n`;
+                this.line += 1;
+                continue;
+            }
             
             if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.framesMainContainer) {
                 output += AppSPYFullPrefix + " Section:Main\n";
@@ -547,7 +560,7 @@ export default class Parser {
         return this.parse({startAtFrameId: useStore().getImportsFrameContainerId, stopAt: {frameId: useStore().getDefsFrameContainerId, includeThisFrame: false}});
     }
 
-    public parse({startAtFrameId, stopAt, excludeLoopsAndCommentsAndCloseTry, defsLast}: {startAtFrameId?: number, stopAt?: {frameId: number, includeThisFrame: boolean}, excludeLoopsAndCommentsAndCloseTry?: boolean, defsLast?: boolean}): string {
+    public parse({startAtFrameId, stopAt, excludeLoopsAndCommentsAndCloseTry, defsLast, ignoreSpecificFrameId}: {startAtFrameId?: number, stopAt?: {frameId: number, includeThisFrame: boolean}, excludeLoopsAndCommentsAndCloseTry?: boolean, defsLast?: boolean; ignoreSpecificFrameId?: number}): string {
         let output = "";
         if(startAtFrameId){
             this.startAtFrameId = startAtFrameId;
@@ -559,6 +572,10 @@ export default class Parser {
 
         if(excludeLoopsAndCommentsAndCloseTry){
             this.excludeLoopsAndCommentsAndCloseTry = excludeLoopsAndCommentsAndCloseTry;
+        }
+
+        if(ignoreSpecificFrameId){
+            this.ignoreSpecificFrameId = ignoreSpecificFrameId;
         }
 
         /* IFTRUE_isPython */
@@ -680,9 +697,7 @@ export default class Parser {
         return errorString;
     }
 
-    public getCodeWithoutErrors(endFrameId: number, defsLast: boolean): string {
-        const code = this.parse({stopAt: {frameId: endFrameId, includeThisFrame: false}, excludeLoopsAndCommentsAndCloseTry: true, defsLast});
-
+    public removeErrorsFromParsedCode(code: string): string {
         const errors = this.getErrors(code);
 
         const lines = code.split(/\r?\n/g);
@@ -734,6 +749,30 @@ export default class Parser {
         return filteredCode;
     }
 
+    public getAllImportsAndClassesCodeWithoutError(): string {
+        // This is called to parse the imports and user defined classes of the project.
+        // Note that to make it easier, we just get the whole "definitions" section rather than really just keeping the classes.
+        const importCode = this.parse({startAtFrameId: useStore().getImportsFrameContainerId, stopAt:{frameId: useStore().getDefsFrameContainerId, includeThisFrame: false}, excludeLoopsAndCommentsAndCloseTry: true});        
+        const classesCode = this.parse({startAtFrameId: useStore().getDefsFrameContainerId, stopAt:{frameId: useStore().getMainCodeFrameContainerId, includeThisFrame: false}, excludeLoopsAndCommentsAndCloseTry: true});
+        return this.removeErrorsFromParsedCode(`${importCode}\n${classesCode}`);
+    }
+
+    public getWholeClassCodeWithoutError(classFrameId: number, currentFrameId: number): string{
+        // This is called to parse the whole code of a user defined class bar the current frame we're in,
+        // (similar to getCodeWithoutError but with only parsing a specifc frame).
+        const classFrameSiblingId = getNextSibling(classFrameId);
+        const frameIdAfterClass = (classFrameSiblingId > 0) ? classFrameSiblingId : useStore().getMainCodeFrameContainerId; // If that class is last in definitions, next frame is in "my code";
+        const code = this.parse({startAtFrameId: classFrameId, stopAt:{frameId: frameIdAfterClass, includeThisFrame: false}, excludeLoopsAndCommentsAndCloseTry: true, ignoreSpecificFrameId: currentFrameId});
+        return this.removeErrorsFromParsedCode(code);
+    }
+
+    public getCodeWithoutErrors(endFrameId: number, defsLast: boolean): string {
+        // defsLast is set to true when we are inside the def section: the variables in "my code"
+        // may be required from within and therefore we need to place them before to interpreted properly.
+        const code = this.parse({stopAt: {frameId: endFrameId, includeThisFrame: false}, excludeLoopsAndCommentsAndCloseTry: true, defsLast});
+        return this.removeErrorsFromParsedCode(code);
+    }
+
     public getFullCode(): string {
         return this.parse({excludeLoopsAndCommentsAndCloseTry: false});
     }
@@ -763,11 +802,23 @@ export default class Parser {
             slotTypes.push(type);
         };
 
+        // We keep track of whether we're at top level by counting opening and closing brackets/quotes:
+        // We know they can't mismatch so we don't need to worry about which is which or round vs square:
+        let nestingLevel = 0;
+        let startOfTopLevelParamName = true;
+        let inTopLevelParamValue = false;
         generateFlatSlotBases({allowedSlotContent: allowed }, slotStructures, "", (flatSlot: FlatSlotBase, besidesOp: boolean, opAfter: undefined | string) => {
             if(isSlotQuoteType(flatSlot.type) || isSlotBracketType(flatSlot.type) || flatSlot.type === SlotType.media){
                 // a quote or a bracket is a 1 character token, shown in the code
                 // but it's not editable so we don't include it in the slot positions
                 code += flatSlot.code;
+                if (flatSlot.type == SlotType.openingQuote || flatSlot.type == SlotType.openingBracket) {
+                    nestingLevel += 1;
+                }
+                else if (flatSlot.type == SlotType.closingQuote || flatSlot.type == SlotType.closingBracket) {
+                    nestingLevel -= 1;
+                }
+                startOfTopLevelParamName = false;
             }
             else if(flatSlot.type == SlotType.operator){
                 // an operator, if not blank, is shown in the code and we keep spaces surrounding it (for keyword operators)
@@ -776,6 +827,17 @@ export default class Parser {
                     // Add extra 2 characters for the surrounding spaces
                     const operatorSpace = (trimmedKeywordOperators.includes(flatSlot.code)) ? " " : "";
                     addSlotInPositionLengths(flatSlot.code.length + 2, flatSlot.id, operatorSpace + flatSlot.code + operatorSpace, flatSlot.type);
+                }
+                startOfTopLevelParamName = flatSlot.code === "," && nestingLevel == 0;
+                if (nestingLevel == 0) {
+                    if (inTopLevelParamValue) {
+                        // Can be broken only by top-level comma:
+                        inTopLevelParamValue = !startOfTopLevelParamName;
+                    }
+                    else {
+                        // We only enter param value if we see a top-level = while not in a param value:
+                        inTopLevelParamValue = flatSlot.code === "=";
+                    }
                 }
             }
             else{        
@@ -795,6 +857,21 @@ export default class Parser {
                         case AllowedSlotContent.ONLY_NAMES_OR_STAR:
                             valid = flatSlotCode.trim() == "*" || isValidPythonName(flatSlotCode);
                             break;
+                        case AllowedSlotContent.ONLY_FORMAL_PARAMS: {
+                            if (startOfTopLevelParamName) {
+                                // Should be a name, do a name check:
+                                valid = isValidPythonName(flatSlotCode);
+                            }
+                            else if (inTopLevelParamValue) {
+                                // In param value, anything goes:
+                                valid = true;
+                            }
+                            else {
+                                // We're not at start of name or in a value; invalid!
+                                valid = false;
+                            }
+                            break;    
+                        }
                         case AllowedSlotContent.TERMINAL_EXPRESSION:
                             valid = ["False", "None", "True"].includes(flatSlotCode.trim()) ||
                                 isValidPythonName(flatSlotCode) ||
@@ -814,6 +891,7 @@ export default class Parser {
                     }
                 }
                 addSlotInPositionLengths(flatSlotCode.length, flatSlot.id, flatSlotCode, flatSlot.type);
+                startOfTopLevelParamName = false;
             }
         }, this.saveAsSPY && allowed != AllowedSlotContent.FREE_TEXT_DOCUMENTATION ? transformSlotLevel : ((s) => s), topLevel);
 

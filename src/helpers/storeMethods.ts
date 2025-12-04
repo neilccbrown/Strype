@@ -565,13 +565,6 @@ export const getNextSibling= function (frameId: number): number {
     return list[list.indexOf(frameId)+1]??-100;
 };
 
-export const getAllSiblingsAndJointParent= function (frameId: number): number[] {
-    const isJointFrame = useStore().frameObjects[frameId].frameType.isJointFrame;
-    const parentId = (isJointFrame) ? useStore().frameObjects[frameId].jointParentId : useStore().frameObjects[frameId].parentId;
-
-    return (isJointFrame)? [useStore().frameObjects[frameId].jointParentId, ...useStore().frameObjects[parentId].jointFrameIds] : useStore().frameObjects[parentId].childrenIds;    
-};
-
 export const frameForSelection = (currentFrame: CurrentFrame, direction: "up"|"down", selectedFrames: number[]): {frameForSelection: number, newCurrentFrame: CurrentFrame}|null => {
     
     // we first check the cases that are 100% sure there is nothing to do about them
@@ -830,6 +823,17 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
         );
         useStore().addPreCompileErrors(getLabelSlotUID(slotInfos));
     }
+
+    // Checks that a slot (bar in comment frames and string slots) do not contain any #
+    if(slotInfos.code.includes("#") && slotInfos.slotType != SlotType.string && slotInfos.slotType != SlotType.comment){
+        useStore().setSlotErroneous( 
+            {
+                ...slotInfos,  
+                error: i18n.t("errorMessage.editableSlotWithHash") as string,
+            }
+        );
+        useStore().addPreCompileErrors(getLabelSlotUID(slotInfos));
+    }
 };
 
 export function checkPrecompiledErrorsForFrame(frameId: number): void {
@@ -903,11 +907,12 @@ export function checkCodeErrors(frameIdForPrecompiled?: number): void {
 }
 
 export function getAllEnabledUserDefinedFunctions() : FrameObject[] {
-    // All enabled user-defined functions except class functions (even if the user is inside the class):
+    // All enabled user-defined functions except those of used-defined classes (even if the user is inside the class):
     return Object.values(useStore().frameObjects).filter((f) => f.frameType.type === AllFrameTypesIdentifier.funcdef && !f.isDisabled  && (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.length > 0 && useStore().frameObjects[f.parentId].frameType.type != AllFrameTypesIdentifier.classdef);
 }
 
 export function getAllEnabledUserDefinedClasses(): FrameObject[] {
+    // All enabled user-defined classes
     return Object.values(useStore().frameObjects).filter((f) => f.frameType.type === AllFrameTypesIdentifier.classdef && !f.isDisabled && (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.length > 0);
 }
 
