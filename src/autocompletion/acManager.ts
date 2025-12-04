@@ -665,7 +665,7 @@ async function getFormalParamsSlotStructureOrSignatureForUserDefinedClass(userCl
     // The parameters of a user-defined Class initialisator are retrieved at different places, depending on the situation.
     // If __init__() is defined for this class, we use its parameters.
     // If __init__() isn't defined for this class:
-    //  - if the user defined class is a sub-class (that is it inherits from at least another), we use the first available __init__ (in the MRO)
+    //  - if the user defined class is a sub-class (that is it inherits from at least another), we use the first available __init__ (in the Method Resolution Order (MRO))
     //  - if the user defined class is not a sub-class, then the default __init__ is just a method doing nothing and using "self" as argument
     const userClassInitFrameId = userClassFrame.childrenIds.find((classChildFrameId) => useStore().frameObjects[classChildFrameId].frameType.type == AllFrameTypesIdentifier.funcdef 
         && (useStore().frameObjects[classChildFrameId].labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code  == "__init__");
