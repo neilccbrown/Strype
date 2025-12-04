@@ -297,7 +297,8 @@ export default class Parser {
             // won't make an issue when executed, so we parse them normally.
             ((block.frameType.allowChildren && children.length > 0 && 
                 children.some((childFrame) => childFrame.isDisabled 
-                    || (childFrame.frameType.type != AllFrameTypesIdentifier.blank && (childFrame.frameType.type != AllFrameTypesIdentifier.comment 
+                    || (!(childFrame.frameType.type == AllFrameTypesIdentifier.funccall && childFrame.labelSlotsDict[0].slotStructures.fields.length == 1 && (childFrame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.length == 0) 
+                        && childFrame.frameType.type != AllFrameTypesIdentifier.blank && (childFrame.frameType.type != AllFrameTypesIdentifier.comment 
                         || (childFrame.frameType.type == AllFrameTypesIdentifier.comment && (childFrame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.includes("\n"))))))
                 ?
                 this.parseFrames(
