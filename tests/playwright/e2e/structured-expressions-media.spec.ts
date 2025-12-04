@@ -1,5 +1,5 @@
 import {test, expect} from "@playwright/test";
-import {typeIndividually, doPagePaste, doTextHomeEndKeyPress, assertStateOfIfFrame} from "../support/editor";
+import { typeIndividually, doPagePaste, doTextHomeEndKeyPress, assertStateOfIfFrame, checkFrameXorTextCursor } from "../support/editor";
 import fs from "fs";
 import {addFakeClipboard} from "../support/clipboard";
 
@@ -124,6 +124,23 @@ test.describe("Media literal copying", () => {
         await page.keyboard.type("i");
         await page.waitForTimeout(100);
         await typeIndividually(page, "set_background(");
+    });
+
+    test("Test pasting image at frame cursor focuses on frame cursor", async ({page}) => {
+        await page.keyboard.press("End");
+        await page.keyboard.press("Backspace");
+        await page.keyboard.press("Backspace");
+        await checkFrameXorTextCursor(page, true);
+        await page.waitForTimeout(100);
+        const image = fs.readFileSync("public/graphics_images/cat-test.jpg").toString("base64");
+        await doPagePaste(page, image, "image/jpeg");
+        // Can take a moment to decode the image:
+        await page.waitForTimeout(2000);
+        // Check text cursor has focus:
+        await checkFrameXorTextCursor(page, false);
+        await page.keyboard.press("ArrowRight");
+        // Now check if the bottom frame cursor has focus:
+        await checkFrameXorTextCursor(page, true);
     });
 });
 
