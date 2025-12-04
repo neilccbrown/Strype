@@ -1882,7 +1882,7 @@ export const useStore = defineStore("app", {
             this.unselectAllFrames();
         },
 
-        async addFrameWithCommand(frame: FramesDefinitions, hiddenShorthandFrameDetails?: AddShorthandFrameCommandDef) {
+        async addFrameWithCommand(frame: FramesDefinitions, hiddenShorthandFrameDetails?: AddShorthandFrameCommandDef, skipFuncCallBrackets?: boolean) {
             const stateBeforeChanges = cloneDeep(this.$state);
             const currentFrame = this.frameObjects[this.currentFrame.id];
             const addingJointFrame = frame.isJointFrame;
@@ -1947,7 +1947,7 @@ export const useStore = defineStore("app", {
                             }
                             const labelContent: LabelSlotsContent = {
                                 shown: (!cur.hidableLabelSlots),
-                                slotStructures: (frame.type == AllFrameTypesIdentifier.funccall) 
+                                slotStructures: (frame.type == AllFrameTypesIdentifier.funccall && !skipFuncCallBrackets) 
                                     ? {fields: [{code: ""},{openingBracketValue:"(", fields: [{code: ""}], operators: []},{code: ""}], operators: [{code: ""}, {code: ""}]}
                                     : {fields: [{code: ""}], operators: []},
                             };
