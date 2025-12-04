@@ -73,6 +73,7 @@
     "stateWrongPlatform": "the file was created by an incompatible version of Strype",
     "stateWrongFrameTypeName": "error reading frames types",
     "emptyEditableSlot": "Slot cannot be empty",
+    "editableSlotWithHash": "This slot cannot contain '#'",
     "errorTitle": "Error",
     "pastFrameErrTitle": "Runtime error at last run",
     "errorUserDefinedFuncMsg": "User-defined function\nthis function definition contains errors",

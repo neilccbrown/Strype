@@ -823,6 +823,17 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
         );
         useStore().addPreCompileErrors(getLabelSlotUID(slotInfos));
     }
+
+    // Checks that a slot (bar in comment frames and string slots) do not contain any #
+    if(slotInfos.code.includes("#") && slotInfos.slotType != SlotType.string && slotInfos.slotType != SlotType.comment){
+        useStore().setSlotErroneous( 
+            {
+                ...slotInfos,  
+                error: i18n.t("errorMessage.editableSlotWithHash") as string,
+            }
+        );
+        useStore().addPreCompileErrors(getLabelSlotUID(slotInfos));
+    }
 };
 
 export function checkPrecompiledErrorsForFrame(frameId: number): void {
