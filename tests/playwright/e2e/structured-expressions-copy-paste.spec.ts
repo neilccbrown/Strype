@@ -1,5 +1,5 @@
 import {Page, test, expect} from "@playwright/test";
-import {typeIndividually, doPagePaste, doTextHomeEndKeyPress, pressN, assertStateOfIfFrame} from "../support/editor";
+import {typeIndividually, doPagePaste, doTextHomeEndKeyPress, assertStateOfIfFrame} from "../support/editor";
 import {addFakeClipboard} from "../support/clipboard";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
