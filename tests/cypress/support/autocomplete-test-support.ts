@@ -65,7 +65,7 @@ Cypress.Commands.add("paste",
         });
     });
 
-export function withAC(inner : (acIDSel : string, frameId: number) => void, isInFuncCallFrame:boolean, skipSortedCheck?: boolean) : void {
+export function withAC(inner : (acIDSel : string, frameId: number) => void, isInMyCodeFuncCallFrame:boolean, skipSortedCheck?: boolean) : void {
     // We need a delay to make sure last DOM update has occurred:
     cy.wait(600);
     cy.get("#" + strypeElIds.getEditorID()).then((eds) => {
@@ -75,7 +75,7 @@ export function withAC(inner : (acIDSel : string, frameId: number) => void, isIn
         const acIDSel = "#" + ed.getAttribute("data-slot-focus-id")?.replace(",", "\\,") + "_AutoCompletion";
         // Should always be sorted:
         if (!skipSortedCheck) {
-            checkAutocompleteSorted(acIDSel, isInFuncCallFrame);
+            checkAutocompleteSorted(acIDSel, isInMyCodeFuncCallFrame);
         }
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
@@ -131,6 +131,7 @@ export function checkNoneAvailable(acIDSel : string) : void {
 
 export const MYVARS = "My variables";
 export const MYFUNCS = "My functions";
+export const MYCLASSES = "My classes";
 export const BUILTIN = "Python";
 
 
@@ -143,12 +144,14 @@ export function checkAutocompleteSorted(acIDSel: string, isInFuncCallFrame: bool
     // Other items (like the names of variables when you do var.) will come out as -1,
     // which works nicely because they should be first 
     // (if we are in a function call definition (isInFuncCallFrame true) "My Functions"
-    // comes before "My Variables", and the other way around if not):
+    // and "My Classes" come before "My Variables", and the other way around if not):
     const intendedOrder = [
-        ...(isInFuncCallFrame ? [MYFUNCS, MYVARS] : [MYVARS, MYFUNCS]),
+        ...(isInFuncCallFrame ? [MYFUNCS, MYCLASSES, MYVARS] : [MYVARS, MYFUNCS, MYCLASSES]),
         "microbit",
         "microbit.accelerometer",
+        "neopixel",
         "time",
+        "strype.graphics",
         BUILTIN,
     ];
     cy.get(acIDSel + " div.ac-module-header:not(." + scssVars.acEmptyResultsContainerClassName + ")")
