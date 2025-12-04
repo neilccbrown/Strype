@@ -9,7 +9,6 @@
         @keydown.down="slotUpDown($event)"
         @beforeinput="beforeInput"
         @keydown="forwardKeyEvent($event)"
-        @keyup="forwardKeyEvent($event)"
         @focus="onFocus"
         @blur="blurEditableSlot"
         @paste.prevent.stop="forwardPaste"
@@ -531,13 +530,18 @@ export default Vue.extend({
                             bytes[i] = binary.charCodeAt(i);
                         }
                         const blob = new Blob([bytes], { type: mimeType });
-                        const mediaItem = new ClipboardItem({ [mimeType]: blob });
-                        const textItem = new ClipboardItem({ "text/plain": new Blob([selectionText], { type: "text/plain" }) });
-                        navigator.clipboard.write([textItem, mediaItem]);
+                        const mediaAndTextItem = new ClipboardItem({ [mimeType]: blob });
+                        navigator.clipboard.write([mediaAndTextItem])
+                            .catch((err) => {
+                                console.error("Clipboard write failed:", err);
+                            });
                     }
                     else {
                         // Otherwise we just copy the text:
-                        navigator.clipboard.writeText(selectionText);
+                        navigator.clipboard.writeText(selectionText)
+                            .catch((err) => {
+                                console.error("Clipboard write failed:", err);
+                            });
                     }
                     if (event.key.toLowerCase() == "x" && this.appStore.focusSlotCursorInfos) {
                         // Send fake delete key to delete the content:
