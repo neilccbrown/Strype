@@ -93,6 +93,7 @@ export default Vue.extend({
         this.$nextTick(() => {
             this.updatePrependText();
         });
+        this.$root.$on(CustomEventTypes.updateParamPrompts, this.updateParamPromptsIfInList);
     },
 
     computed:{
@@ -160,6 +161,15 @@ export default Vue.extend({
             // On Firefox there are problems typing into completely blank slots,
             // so we use a zero-width space if there is no code:
             return slot.code ? slot.code : "\u200B";
+        },
+
+        updateParamPromptsIfInList(frameIds: number[]) {
+            if (frameIds.includes(this.frameId)) {
+                // The refactor doesn't actually update the state (we're only updating param prompts)
+                // so this param shouldn't matter but supply valid one just in case:
+                const stateBeforeChanges = cloneDeep(this.appStore.$state);
+                this.checkSlotRefactoring("", stateBeforeChanges, {useFlatMediaDataCode: true, skipCursorSetAndStateSave: true});
+            }
         },
         
         onCompositionEnd(event: CompositionEvent) {
@@ -331,7 +341,7 @@ export default Vue.extend({
             return true;
         },
 
-        checkSlotRefactoring(slotUID: string, stateBeforeChanges: any, options?: {doAfterCursorSet?: VoidFunction, useFlatMediaDataCode?: boolean}) {
+        checkSlotRefactoring(slotUID: string, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, doAfterCursorSet?: VoidFunction, useFlatMediaDataCode?: boolean}) {
             // Slot errors will be check later again. We clear off the notification on the parent (frame header) for slot errors so it can reset the triangle error indicator
             (this.$parent as InstanceType<typeof FrameHeaderComponent>).$data.hasErroneousSlot = false;
             // Comments do not need to be checked, so we do nothing special for them, but just enforce the caret to be placed at the right place and the code value to be updated
@@ -340,9 +350,11 @@ export default Vue.extend({
             if (allowed !== undefined && [AllowedSlotContent.FREE_TEXT_DOCUMENTATION, AllowedSlotContent.LIBRARY_ADDRESS].includes(allowed) && currentFocusSlotCursorInfos) {
                 (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields[0] as BaseSlot).code = (document.getElementById(getLabelSlotUID(currentFocusSlotCursorInfos.slotInfos))?.textContent??"").replace(/\u200B/g, "");
                 this.$nextTick(() => {
-                    setDocumentSelection(currentFocusSlotCursorInfos, currentFocusSlotCursorInfos);
-                    options?.doAfterCursorSet?.();                    
-                    this.appStore.saveStateChanges(stateBeforeChanges);
+                    if (!options?.skipCursorSetAndStateSave) {
+                        setDocumentSelection(currentFocusSlotCursorInfos, currentFocusSlotCursorInfos);
+                        options?.doAfterCursorSet?.();
+                        this.appStore.saveStateChanges(stateBeforeChanges);
+                    }
                 });
                 return;
             }
@@ -392,7 +404,9 @@ export default Vue.extend({
                                 }
                                 else{
                                     foundPos = true;
-                                    (spanElement as HTMLSpanElement).dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
+                                    if (!options?.skipCursorSetAndStateSave) {
+                                        (spanElement as HTMLSpanElement).dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
+                                    }
                                     const pos = (setInsideNextSlot) ? 0 : focusCursorAbsPos - newUICodeLiteralLength;
                                     const cursorInfos = {slotInfos: parseLabelSlotUID(spanElement.id), cursorPos: pos};
 
@@ -404,7 +418,9 @@ export default Vue.extend({
                                     if(isVarAssignSlotStructure && this.labelIndex == 0 && !((currentFocusSlotCursorInfos?.slotInfos.slotId??",").includes(",")) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && uiLiteralCode.match(/(?<!=)=(?!=)/) != null){
                                         // We need to break at the slot preceding the first "=" operator.
                                         const breakAtSlotIndex = parsedCodeRes.slots.operators.findIndex((opSlot) => opSlot.code == "=");
-                                        this.appStore.setSlotTextCursors(undefined, undefined);
+                                        if (!options?.skipCursorSetAndStateSave) {
+                                            this.appStore.setSlotTextCursors(undefined, undefined);
+                                        }
 
                                         setTimeout(() => {
                                             // Remove the focus
@@ -443,20 +459,24 @@ export default Vue.extend({
                                                 cursorPos: cursorInfos.cursorPos,
                                             };                                        
                                             this.$nextTick(() => this.$nextTick(() => {
-                                                setDocumentSelection(newCursorSlotInfos, newCursorSlotInfos);
-                                                this.appStore.setSlotTextCursors(newCursorSlotInfos, newCursorSlotInfos);
-                                                options?.doAfterCursorSet?.();
-                                                // Save changes only when arrived here (for undo/redo)
-                                                this.appStore.saveStateChanges(stateBeforeChanges);
+                                                if (!options?.skipCursorSetAndStateSave) {
+                                                    setDocumentSelection(newCursorSlotInfos, newCursorSlotInfos);
+                                                    this.appStore.setSlotTextCursors(newCursorSlotInfos, newCursorSlotInfos);
+                                                    options?.doAfterCursorSet?.();
+                                                    // Save changes only when arrived here (for undo/redo)
+                                                    this.appStore.saveStateChanges(stateBeforeChanges);
+                                                }
                                             }));
                                         }, 300);                                         
                                     }
                                     else{
-                                        setDocumentSelection(cursorInfos, cursorInfos);
-                                        this.appStore.setSlotTextCursors(cursorInfos, cursorInfos);
-                                        options?.doAfterCursorSet?.();
-                                        // Save changes only when arrived here (for undo/redo)
-                                        this.appStore.saveStateChanges(stateBeforeChanges);
+                                        if (!options?.skipCursorSetAndStateSave) {
+                                            setDocumentSelection(cursorInfos, cursorInfos);
+                                            this.appStore.setSlotTextCursors(cursorInfos, cursorInfos);
+                                            options?.doAfterCursorSet?.();
+                                            // Save changes only when arrived here (for undo/redo)
+                                            this.appStore.saveStateChanges(stateBeforeChanges);
+                                        }
                                     }
                                 }                            
                             }

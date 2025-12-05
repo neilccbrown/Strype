@@ -67,6 +67,7 @@ export enum CustomEventTypes {
     requestedCloudDrivePickerRefresh = "requestedCloudDrivePickerRefresh",
     cutFrameSelection = "cutFrameSelection",
     copyFrameSelection = "copyFrameSelection",
+    updateParamPrompts = "updateParamPrompts",
     /* IFTRUE_isPython */
     pythonExecAreaMounted = "peaMounted",
     pythonExecAreaExpandCollapseChanged = "peaExpandCollapsChanged",
