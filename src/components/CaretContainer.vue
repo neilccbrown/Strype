@@ -210,7 +210,11 @@ export default Vue.extend({
                     event.preventDefault();
                 }
                 
-                navigator.clipboard.readText().then((text) => {
+                navigator.clipboard.readText().catch((err) => {
+                    // This can happen during Playwright testing:
+                    console.error("Failed to read clipboard during frame paste", err);
+                    return "";
+                }).then((text) => {
                     this.pasteIfFocused(event, text);
                 });
                 
