@@ -23,5 +23,8 @@ author = 'K-PET Group, King\'s College London'
 
 templates_path = ['_templates']
 exclude_patterns = []
+# Turn off having package/module names at the start of every identifier, which is quite distracting
+# and potentially confusing for novices:
+add_module_names = False
 
 strype_sphinx_conf_defaults.set_defaults(globals())
