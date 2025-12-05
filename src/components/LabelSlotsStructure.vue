@@ -612,11 +612,14 @@ export default Vue.extend({
                 // First we need to check if it's a media item on the clipboard, because that needs
                 // to become a media literal rather than plain text:
                 /* IFTRUE_isPython */
-                preparePasteMediaData(event, (code: string, dataAndDim : MediaDataAndDim) => {
+                if (preparePasteMediaData(event, (code: string, dataAndDim : MediaDataAndDim) => {
                     // The code is the code to load the literal from its base64 string representation:                    
                     document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos))
                         ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: dataAndDim.itemType, content: code, width: dataAndDim.width, height: dataAndDim.height}}));
-                });
+                })) {
+                    // If pasting image, don't also paste text:
+                    return;
+                }
                 /* FITRUE_isPython */
 
                 interface PastedItem {
