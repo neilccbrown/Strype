@@ -406,7 +406,7 @@ export default class Parser {
                 }
                 else {
                     // For varassign frames, the symbolic assignment on the UI should be replaced by the Python "=" symbol
-                    output += ((label.label.length > 0 && statement.frameType.type === AllFrameTypesIdentifier.varassign) ? " = " : label.label);
+                    output += ((label.label.length > 0 && statement.frameType.type === AllFrameTypesIdentifier.varassign) ? " = " : label.label.replaceAll("&nbsp;", " "));
                     if (label.appendSelfWhenInClass && insideAClass) {
                         // In Python it's okay to have a trailing comma on the params, so we don't need to check
                         // whether any actual params follow:
