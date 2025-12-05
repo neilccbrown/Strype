@@ -3007,7 +3007,10 @@ export const useStore = defineStore("app", {
                 return;
             }
             // We do not use the system's clipboard for frames, so we clear any potential text to avoid interference
-            navigator.clipboard.writeText("");
+            navigator.clipboard.writeText("")
+                .catch((err) => {
+                    console.error("Failed to write frame placeholder to clipboard", err);
+                });
             this.flushCopiedFrames();
             this.doCopySelection();
             this.updateNextAvailableId();

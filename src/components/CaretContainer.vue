@@ -48,6 +48,7 @@ import { cloneDeep } from "lodash";
 import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import { pasteMixedPython } from "@/helpers/pythonToFrames";
 import scssVars  from "@/assets/style/_export.module.scss";
+import {detectBrowser} from "@/helpers/browser";
 /* IFTRUE_isPython */
 import { getFrameDefType, SlotType, MediaDataAndDim} from "@/types/types";
 import { getFrameLabelSlotsStructureUID, getLabelSlotUID } from "@/helpers/editor";
@@ -138,6 +139,10 @@ export default Vue.extend({
             //if the frame isn't disabled, we never blur the caret. If the frame is disabled, then we check if frames can be added to decide if we blur or not.
             return this.isFrameDisabled && ((this.caretAssignedPosition ===  CaretPosition.below) ? !this.appStore.canAddFrameBelowDisabled(this.frameId) : true);
         },
+        
+        isFocusedForPaste(): boolean {
+            return !this.isPythonExecuting && !this.appStore.isModalDlgShown && !this.isEditing && this.caretVisibility !== CaretPosition.none && (this.caretVisibility === this.caretAssignedPosition);
+        },
     },
 
     data: function () {
@@ -153,6 +158,7 @@ export default Vue.extend({
 
     mounted() {
         window.addEventListener("paste", this.pasteIfFocused);
+        window.addEventListener("keydown", this.keydownForSafariPaste);
         // When a frame is added, we need to make sure it will be visible in the view port. This is particularly true
         // when a paste or duplicate action is performed.
         this.putCaretContainerInView();
@@ -160,6 +166,7 @@ export default Vue.extend({
 
     destroyed() {
         window.removeEventListener("paste", this.pasteIfFocused);
+        window.removeEventListener("keydown", this.keydownForSafariPaste);
     },
 
     updated() {
@@ -183,12 +190,33 @@ export default Vue.extend({
                 }
             }  
         },
+        
+        keydownForSafariPaste(event: KeyboardEvent) {
+            // Safari-specific code.  Safari doesn't turn Cmd-V into a paste if it believes the paste
+            // is not applicable.  This can happen to us at frame cursors.  So we manually turn it into
+            // paste if we believe Safari won't turn it into paste:
+            // Note: Safari also won't paste if the clipboard is empty, which it is when frames are on the clipboard
+            // So this solves both issues.
+            if (this.isFocusedForPaste && detectBrowser() === "safari" && event.metaKey && event.key.toLowerCase() === "v") {
+                navigator.clipboard.readText().catch((err) => {
+                    // This can happen during Playwright testing:
+                    console.error("Failed to read clipboard during frame paste", err);
+                    return "";
+                }).then((text) => {
+                    this.pasteIfFocused(event, text);
+                });
+                
+                event.stopPropagation();
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+        },
 
-        pasteIfFocused(event: Event) {
+        pasteIfFocused(event: Event, overrideText?: string) {
             // A paste via shortcut cannot get the verification that would be done via a click
             // so we check that 1) we are on the caret position that is currently selected and 2) that paste is allowed here.
             // We should know the action is about pasting frames or text if some text is present in the clipboard (we clear it when copying frames)
-            if (!this.isPythonExecuting && !this.appStore.isModalDlgShown && !this.isEditing && this.caretVisibility !== CaretPosition.none && (this.caretVisibility === this.caretAssignedPosition)) {
+            if (this.isFocusedForPaste) {
                 /*IFTRUE_isPython */
                 const inFrameType = this.appStore.frameObjects[(this.appStore.currentFrame.caretPosition == CaretPosition.body) ? this.frameId : getParentOrJointParent(this.frameId)].frameType;
                 if(!inFrameType.forbiddenChildrenTypes.includes(AllFrameTypesIdentifier.funccall) && Object.values((event as ClipboardEvent).clipboardData?.items??[]).some((dataTransferItem: DataTransferItem) => dataTransferItem.kind == "file" && /^(image)|(audio)\//.test(dataTransferItem.type))){
@@ -234,7 +262,7 @@ export default Vue.extend({
                     return;
                 }
                 /*FITRUE_isPython */
-                const pythonCode = (event as ClipboardEvent).clipboardData?.getData("text");
+                const pythonCode = overrideText ?? (event as ClipboardEvent).clipboardData?.getData("text");
                 if (this.pasteAvailable && (pythonCode == undefined || pythonCode.trim().length == 0)) {
                     // We check if pasting frames is possible here, if not, show a message.
                     //we need to update the context menu as if it had been shown
