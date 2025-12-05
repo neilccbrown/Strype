@@ -48,13 +48,13 @@ import { cloneDeep } from "lodash";
 import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import { pasteMixedPython } from "@/helpers/pythonToFrames";
 import scssVars  from "@/assets/style/_export.module.scss";
+import {detectBrowser} from "@/helpers/browser";
 /* IFTRUE_isPython */
 import { getFrameDefType, SlotType, SlotCursorInfos, MediaDataAndDim} from "@/types/types";
 import { setDocumentSelection, getFrameLabelSlotsStructureUID, getLabelSlotUID } from "@/helpers/editor";
 import { preparePasteMediaData } from "@/helpers/media";
 import LabelSlotsStructureComponent from "@/components/LabelSlotsStructure.vue";
 import { getParentOrJointParent } from "@/helpers/storeMethods";
-import {detectBrowser} from "@/helpers/browser";
 /* FITRUE_isPython */
 
 //////////////////////
