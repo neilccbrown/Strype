@@ -58,6 +58,7 @@ h2 {
     position: relative;
     padding-bottom: 1rem;
     border-bottom: 1px solid rgba(0,0,0,0.05);
+    margin-bottom: 150px; /* Good to have space anyway, and stops the scrolling indicators overlapping */ 
 }
 
 /* The indicator itself */
@@ -70,6 +71,8 @@ h2 {
     width: 3rem;        /* same as column width */
 
     overflow: visible;  /* allow rotated text to extend outward */
+
+    font-family: 'Trebuchet MS', sans-serif;
 
     display: flex;
     justify-content: center;
@@ -85,7 +88,7 @@ h2 {
 
     white-space: nowrap;     /* prevent wrapping after rotation */
     font-weight: bold;
-    background: rgba(240, 246, 252, 0.9);
+    background: #f2f2f2;
     padding: 0.3rem 0.5rem;
     border: 1px solid rgba(0,0,0,0.1);
     border-radius: 4px;
