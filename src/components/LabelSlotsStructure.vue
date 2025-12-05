@@ -347,15 +347,17 @@ export default Vue.extend({
             // Comments do not need to be checked, so we do nothing special for them, but just enforce the caret to be placed at the right place and the code value to be updated
             const currentFocusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
             const allowed = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelIndex].allowedSlotContent;
-            if (allowed !== undefined && [AllowedSlotContent.FREE_TEXT_DOCUMENTATION, AllowedSlotContent.LIBRARY_ADDRESS].includes(allowed) && currentFocusSlotCursorInfos) {
-                (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields[0] as BaseSlot).code = (document.getElementById(getLabelSlotUID(currentFocusSlotCursorInfos.slotInfos))?.textContent??"").replace(/\u200B/g, "");
-                this.$nextTick(() => {
-                    if (!options?.skipCursorSetAndStateSave) {
-                        setDocumentSelection(currentFocusSlotCursorInfos, currentFocusSlotCursorInfos);
-                        options?.doAfterCursorSet?.();
-                        this.appStore.saveStateChanges(stateBeforeChanges);
-                    }
-                });
+            if (allowed !== undefined && [AllowedSlotContent.FREE_TEXT_DOCUMENTATION, AllowedSlotContent.LIBRARY_ADDRESS].includes(allowed) && (currentFocusSlotCursorInfos || options?.skipCursorSetAndStateSave)) {
+                if (currentFocusSlotCursorInfos) {
+                    (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields[0] as BaseSlot).code = (document.getElementById(getLabelSlotUID(currentFocusSlotCursorInfos.slotInfos))?.textContent ?? "").replace(/\u200B/g, "");
+                    this.$nextTick(() => {
+                        if (!options?.skipCursorSetAndStateSave) {
+                            setDocumentSelection(currentFocusSlotCursorInfos, currentFocusSlotCursorInfos);
+                            options?.doAfterCursorSet?.();
+                            this.appStore.saveStateChanges(stateBeforeChanges);
+                        }
+                    });
+                }
                 return;
             }
 
