@@ -213,6 +213,10 @@ export default Vue.extend({
                 navigator.clipboard.readText().then((text) => {
                     this.pasteIfFocused(event, text);
                 });
+                
+                event.stopPropagation();
+                event.preventDefault();
+                event.stopImmediatePropagation();
             }
         },
 
