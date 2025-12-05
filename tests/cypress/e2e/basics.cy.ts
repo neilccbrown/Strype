@@ -343,8 +343,8 @@ describe("Classes", () => {
         // Attribute:
         cy.get("body").type("{rightarrow}{downarrow}=myattr=5");
         // Methods:
-        cy.get("body").type("{rightarrow}ffoo{downarrow}r6");
-        cy.get("body").type("{rightarrow}{downarrow}fbar(x,y{downarrow}r7");
+        cy.get("body").type("{rightarrow}ffoo{downarrow}{downArrow}r6");
+        cy.get("body").type("{rightarrow}{downarrow}fbar(x,y{downarrow}{downArrow}r7");
         checkCodeEquals(defaultImports.concat([
             {h: /class\s+Foo\s*:/, b: [
                 {h: /def\s+__init__\s*\((self,?)?\s*\)\s*:/, b: [
@@ -473,7 +473,7 @@ describe("Copying key combination", () => {
         cy.get("body").trigger("keydown", {keycode: 67, key: "c", code: "c"});
         cy.get("body").trigger("keyup", {keycode: 67, key: "c", code: "c"});
         // Empty body messes up test so make a body in constructor:
-        cy.get("body").type("Hello{downArrow}{downArrow}r42");
+        cy.get("body").type("Hello{downArrow}{downArrow}{downArrow}r42");
         checkCodeEquals(defaultImports.concat([{
             h:/class +Hello *:/,
             b:[{h:/def *__init__ *\((self,?)? *\) *:/, b:[/return *42/]}]}]).concat(defaultMyCode));
@@ -481,7 +481,7 @@ describe("Copying key combination", () => {
     it("Does not insert a class frame on Ctrl+C, when C is released first", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
         // Make a function frame and select it:
-        cy.get("body").type("{upArrow}{f}foo{downArrow}r42{downArrow}{downArrow}{shift}{upArrow}");
+        cy.get("body").type("{upArrow}{f}foo{downArrow}{downArrow}r42{downArrow}{downArrow}{downArrow}{shift}{upArrow}");
         cy.get("body").trigger("keydown", {keycode: 17, key: "Control", code: "ControlLeft"});
         cy.get("body").trigger("keydown", {keycode: 67, key: "c", code: "c", ctrlKey: true});
         cy.get("body").trigger("keyup", {keycode: 67, key: "c", code: "c", ctrlKey: true});
@@ -491,7 +491,7 @@ describe("Copying key combination", () => {
     it("Does not insert a class frame on Ctrl+C, when C is released second", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
         // Make a function frame and select it:
-        cy.get("body").type("{upArrow}{f}foo{downArrow}r42{downArrow}{downArrow}{shift}{upArrow}");
+        cy.get("body").type("{upArrow}{f}foo{downArrow}{downArrow}r42{downArrow}{downArrow}{downArrow}{shift}{upArrow}");
         cy.get("body").trigger("keydown", {keycode: 17, key: "Control", code: "ControlLeft"});
         cy.get("body").trigger("keydown", {keycode: 67, key: "c", code: "c", ctrlKey: true});
         cy.get("body").trigger("keyup", {keycode: 17, key: "Control", code: "ControlLeft"}); // Release Ctrl
