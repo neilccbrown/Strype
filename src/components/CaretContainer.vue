@@ -198,18 +198,6 @@ export default Vue.extend({
             // Note: Safari also won't paste if the clipboard is empty, which it is when frames are on the clipboard
             // So this solves both issues.
             if (this.isFocusedForPaste && detectBrowser() === "safari" && event.metaKey && event.key.toLowerCase() === "v") {
-                const el = document.activeElement;
-                const safariWouldPaste = el && (
-                    (el as any).isContentEditable ||
-                    el.tagName === "INPUT" ||
-                    el.tagName === "TEXTAREA"
-                );
-
-                if (safariWouldPaste) {
-                    // Block Safari's native paste
-                    event.preventDefault();
-                }
-                
                 navigator.clipboard.readText().catch((err) => {
                     // This can happen during Playwright testing:
                     console.error("Failed to read clipboard during frame paste", err);
