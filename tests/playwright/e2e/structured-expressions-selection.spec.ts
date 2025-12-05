@@ -60,6 +60,7 @@ function testSelectionThenDelete(code : string, doSelectKeys: (page: Page) => Pr
         await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, code);
         await doSelectKeys(page);
+        await page.waitForTimeout(200);
         await page.keyboard.press("Delete");
         await assertStateOfIfFrame(page, expectedAfterDeletion);
     });
