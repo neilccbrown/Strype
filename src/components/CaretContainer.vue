@@ -49,8 +49,8 @@ import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/help
 import { pasteMixedPython } from "@/helpers/pythonToFrames";
 import scssVars  from "@/assets/style/_export.module.scss";
 /* IFTRUE_isPython */
-import { getFrameDefType, SlotType, SlotCursorInfos, MediaDataAndDim} from "@/types/types";
-import { setDocumentSelection, getFrameLabelSlotsStructureUID, getLabelSlotUID } from "@/helpers/editor";
+import { getFrameDefType, SlotType, MediaDataAndDim} from "@/types/types";
+import { getFrameLabelSlotsStructureUID, getLabelSlotUID } from "@/helpers/editor";
 import { preparePasteMediaData } from "@/helpers/media";
 import LabelSlotsStructureComponent from "@/components/LabelSlotsStructure.vue";
 import { getParentOrJointParent } from "@/helpers/storeMethods";
@@ -201,35 +201,31 @@ export default Vue.extend({
                         // We create a new function call frame with the media-adapated code content
                         const stateBeforeChanges = cloneDeep(this.appStore.$state);
                         this.appStore.ignoreStateSavingActionsForUndoRedo = true;
-                        this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall)).then(() => {
-                            // We need to delete the extra brackets added as the function call frame template.
-                            // We must then wait a bit before doing anything to make sure the deletion has been effective 
-                            // and won't interfer with the slot's content manipulation.
-                            document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", {key: "Delete"}));
-                            setTimeout(() => {
-                                const slotCursorInfos: SlotCursorInfos = {slotInfos: {frameId: this.appStore.currentFrame.id, labelSlotsIndex: 0, slotId: "0", slotType: SlotType.media}, cursorPos: 1};
-                                this.appStore.setFrameEditableSlotContent(
-                                    {
-                                        ...slotCursorInfos.slotInfos,
-                                        code: code,
-                                        mediaType: dataAndDim.itemType,
-                                        initCode: "",
-                                        isFirstChange: true,
-                                    }
-                                )
-                                    .then(()=>{
-                                        // Move the cursor after the insertion (if no arguments)
-                                        setDocumentSelection(slotCursorInfos, slotCursorInfos);
-                                        // Update the store too
-                                        this.appStore.setSlotTextCursors(slotCursorInfos, slotCursorInfos);                                       
-
-                                        // Refactor the slots, we call the refactorisation on the LabelSlotsStructure   
-                                        // Since that's our last action, we can revert the flag to allow the registration of the state for undo/redo
-                                        this.appStore.ignoreStateSavingActionsForUndoRedo = false;                                   
-                                        (this.$root.$refs[getFrameLabelSlotsStructureUID(slotCursorInfos.slotInfos.frameId, slotCursorInfos.slotInfos.labelSlotsIndex)] as InstanceType<typeof LabelSlotsStructureComponent>)
-                                            .checkSlotRefactoring(getLabelSlotUID(slotCursorInfos.slotInfos), stateBeforeChanges, {doAfterCursorSet: () =>  this.appStore.leftRightKey({key: "ArrowRight"})});                                        
-                                    });
-                            }, 100);
+                        this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall), undefined, true).then((frameId) => {
+                            this.appStore.setFrameEditableSlotContent(
+                                {
+                                    frameId: frameId,
+                                    labelSlotsIndex: 0,
+                                    slotId: "0",
+                                    slotType: SlotType.media,
+                                    code: code,
+                                    mediaType: dataAndDim.itemType,
+                                    initCode: "",
+                                    isFirstChange: true,
+                                }
+                            )
+                                .then(()=>{
+                                    // The slot has not yet been refactored to reflect that it has media in it with multiple slots, and placing the cursor is a bit fragile.
+                                    // So what we do is remain at the preceding frame cursor,  then after refactoring, we move right twice (once to go in to the frame, once to go past the image): 
+                                    
+                                    // Refactor the slots, we call the refactorisation on the LabelSlotsStructure   
+                                    // Since that's our last action, we can revert the flag to allow the registration of the state for undo/redo
+                                    this.appStore.ignoreStateSavingActionsForUndoRedo = false;                                   
+                                    (this.$root.$refs[getFrameLabelSlotsStructureUID(frameId, 0)] as InstanceType<typeof LabelSlotsStructureComponent>)
+                                        .checkSlotRefactoring(getLabelSlotUID({frameId: frameId, labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code}), stateBeforeChanges, {doAfterCursorSet: () => {
+                                            this.appStore.leftRightKey({key: "ArrowRight"}).then(() => this.appStore.leftRightKey({key: "ArrowRight"}));
+                                        }});                                        
+                                });
                         });                        
                     });
                     event.preventDefault();

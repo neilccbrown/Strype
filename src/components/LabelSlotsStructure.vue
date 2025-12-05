@@ -232,7 +232,7 @@ export default Vue.extend({
                 // (i.e. in case it doesn't change the number/type of slots);
                 // we definitely need to completely redo all the slots if Firefox has deleted a bunch of nodes
                 this.refactorCount += 1;
-                this.checkSlotRefactoring("", stateBeforeChanges);
+                this.checkSlotRefactoring("", stateBeforeChanges, {useFlatMediaDataCode: true});
             }
         },
         isSlotEmphasised(slot: FlatSlotBase): boolean{
@@ -487,25 +487,27 @@ export default Vue.extend({
             }
 
             if(this.appStore.focusSlotCursorInfos && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() == "a") {
-                // On Firefox Ctrl-A doesn't work correctly when processed natively in slots.
-                // So we have to manually implement it.  It selects the entire slot, no matter how deep we were in what kind of slot
-                let slotFields = this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields;
-                const newFocusSlotId = ("" + (slotFields.length - 1));
-                // We only look for the new type and slot core infos for non-string current location to save unnecessary function calls
-                const newFocusSlotType = evaluateSlotType(getSlotDefFromInfos({frameId: this.frameId, labelSlotsIndex: this.labelIndex}), slotFields.at(-1) as FieldSlot);
-                const newFocusSlotCoreInfo = {frameId: this.frameId, labelSlotsIndex: this.labelIndex, slotId: newFocusSlotId, slotType: newFocusSlotType};
-                const newFocusCursorPos = (retrieveSlotFromSlotInfos(newFocusSlotCoreInfo) as BaseSlot).code.length;
-                // Then anchor: it will either keep the same if we are doing a selection, or change to the same as focus if we are not.
-                const newAnchorSlotId = "0";
-                const newAnchorSlotCoreInfo = {...newFocusSlotCoreInfo, slotId: newAnchorSlotId, slotType: evaluateSlotType(getSlotDefFromInfos({frameId: this.frameId, labelSlotsIndex: this.labelIndex}), slotFields[0])};
-                const newAnchorSlotCursorInfo: SlotCursorInfos = {slotInfos: newAnchorSlotCoreInfo, cursorPos: 0};
-                // Set the new bounds
-                this.$nextTick(() => {
-                    document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos?.slotInfos as SlotCoreInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotLostCaret));
-                    document.getElementById(getLabelSlotUID(newFocusSlotCoreInfo))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
-                    setDocumentSelection(newAnchorSlotCursorInfo, {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos});
-                    this.appStore.setSlotTextCursors(newAnchorSlotCursorInfo, {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos});
-                });                
+                if (event.type === "keydown") {
+                    // On Firefox Ctrl-A doesn't work correctly when processed natively in slots.
+                    // So we have to manually implement it.  It selects the entire slot, no matter how deep we were in what kind of slot
+                    let slotFields = this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields;
+                    const newFocusSlotId = ("" + (slotFields.length - 1));
+                    // We only look for the new type and slot core infos for non-string current location to save unnecessary function calls
+                    const newFocusSlotType = evaluateSlotType(getSlotDefFromInfos({frameId: this.frameId, labelSlotsIndex: this.labelIndex}), slotFields.at(-1) as FieldSlot);
+                    const newFocusSlotCoreInfo = {frameId: this.frameId, labelSlotsIndex: this.labelIndex, slotId: newFocusSlotId, slotType: newFocusSlotType};
+                    const newFocusCursorPos = (retrieveSlotFromSlotInfos(newFocusSlotCoreInfo) as BaseSlot).code.length;
+                    // Then anchor: it will either keep the same if we are doing a selection, or change to the same as focus if we are not.
+                    const newAnchorSlotId = "0";
+                    const newAnchorSlotCoreInfo = {...newFocusSlotCoreInfo, slotId: newAnchorSlotId, slotType: evaluateSlotType(getSlotDefFromInfos({frameId: this.frameId, labelSlotsIndex: this.labelIndex}), slotFields[0])};
+                    const newAnchorSlotCursorInfo: SlotCursorInfos = {slotInfos: newAnchorSlotCoreInfo, cursorPos: 0};
+                    // Set the new bounds
+                    this.$nextTick(() => {
+                        document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos?.slotInfos as SlotCoreInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotLostCaret));
+                        document.getElementById(getLabelSlotUID(newFocusSlotCoreInfo))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
+                        setDocumentSelection(newAnchorSlotCursorInfo, {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos});
+                        this.appStore.setSlotTextCursors(newAnchorSlotCursorInfo, {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos});
+                    });
+                }
                 event.preventDefault();
                 event.stopPropagation();
                 event.stopImmediatePropagation();
@@ -516,35 +518,42 @@ export default Vue.extend({
             // text change, but also we need to handle the clipboard, as doing events here on keydown results the browser not being able to get the text
             // cut (since the slots have already disappear, and the action for cut seems to be done on the keyup event)
             if (this.appStore.focusSlotCursorInfos && (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() ==  "x" || event.key.toLowerCase() ==  "c")){
-                // There is a selection already, we can directly set the text in the browser's clipboard here
-                const selectionText = getEditableSelectionText();
-                if (selectionText) {
-                    // If it's a media literal, we copy the literal content and text to the clipboard:
-                    const litMatch = selectionText.match(/^load_(image|sound)\("data:([^;]+);base64,([^"]+)"\)$/);
-                    if (litMatch) {
-                        const mimeType = litMatch[2];
-
-                        // Convert base64 to binary data:
-                        const binary = atob(litMatch[3]);
-                        const bytes = new Uint8Array(binary.length);
-                        for (let i = 0; i < binary.length; i++) {
-                            bytes[i] = binary.charCodeAt(i);
+                if (event.type === "keydown") {
+                    // There is a selection already, we can directly set the text in the browser's clipboard here
+                    const selectionText = getEditableSelectionText();
+                    if (selectionText) {
+                        // If it's a media literal, we copy the literal content and text to the clipboard:
+                        const litMatch = selectionText.match(/^load_(image|sound)\("data:([^;]+);base64,([^"]+)"\)$/);
+                        if (litMatch) {
+                            const mimeType = litMatch[2];
+    
+                            // Convert base64 to binary data:
+                            const binary = atob(litMatch[3]);
+                            const bytes = new Uint8Array(binary.length);
+                            for (let i = 0; i < binary.length; i++) {
+                                bytes[i] = binary.charCodeAt(i);
+                            }
+                            const blob = new Blob([bytes], { type: mimeType });
+                            const mediaAndTextItem = new ClipboardItem({ [mimeType]: blob });
+                            navigator.clipboard.write([mediaAndTextItem])
+                                .catch((err) => {
+                                    console.error("Clipboard write failed:", err);
+                                });
                         }
-                        const blob = new Blob([bytes], { type: mimeType });
-                        const mediaItem = new ClipboardItem({ [mimeType]: blob });
-                        const textItem = new ClipboardItem({ "text/plain": new Blob([selectionText], { type: "text/plain" }) });
-                        navigator.clipboard.write([textItem, mediaItem]);
-                    }
-                    else {
-                        // Otherwise we just copy the text:
-                        navigator.clipboard.writeText(selectionText);
-                    }
-                    if (event.key.toLowerCase() == "x" && this.appStore.focusSlotCursorInfos) {
-                        // Send fake delete key to delete the content:
-                        document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
-                            ?.dispatchEvent(new KeyboardEvent(event.type, {
-                                key: "Backspace",
-                            }));
+                        else {
+                            // Otherwise we just copy the text:
+                            navigator.clipboard.writeText(selectionText)
+                                .catch((err) => {
+                                    console.error("Clipboard write failed:", err);
+                                });
+                        }
+                        if (event.key.toLowerCase() == "x" && this.appStore.focusSlotCursorInfos) {
+                            // Send fake delete key to delete the content:
+                            document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
+                                ?.dispatchEvent(new KeyboardEvent(event.type, {
+                                    key: "Backspace",
+                                }));
+                        }
                     }
                 }
                 event.preventDefault();

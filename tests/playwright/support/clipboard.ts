@@ -25,8 +25,10 @@ export async function addFakeClipboard(page: Page) : Promise<void> {
                 mockTextContent = text;
                 mockItems = [{
                     types: ["text/plain"], getType: (type) => {
-                        // We use readText so we don't need to return the real content:
-                        return Promise.reject("");
+                        if (type === "text/plain") {
+                            return Promise.resolve(new Blob([mockTextContent], { type }));
+                        }
+                        return Promise.reject(`Type ${type} not found`);
                     },
                 }];
             },
