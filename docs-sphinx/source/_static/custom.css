@@ -47,3 +47,46 @@ dt.sig {
 h2 {
     font-size: 3em;
 }
+
+/* Each module section becomes a two-column grid: narrow left, wide right */
+.module-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 3rem;   /* ← only 3rem reserved for indicator */
+    gap: 1rem;
+    margin-bottom: 2rem;
+    align-items: start;
+    position: relative;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+/* The indicator itself */
+.module-indicator {
+    position: sticky;
+    top: 1rem;
+
+    /* Make it fill the narrow column vertically for sticky behavior */
+    height: 0;          /* avoid affecting layout */
+    width: 3rem;        /* same as column width */
+
+    overflow: visible;  /* allow rotated text to extend outward */
+
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+/* Inner text rotated 90 degrees */
+.module-indicator > * {
+    display: inline-block;
+
+    transform: rotate(90deg) translateX(+40%);
+    transform-origin: center top;
+
+    white-space: nowrap;     /* prevent wrapping after rotation */
+    font-weight: bold;
+    background: rgba(240, 246, 252, 0.9);
+    padding: 0.3rem 0.5rem;
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 4px;
+}

@@ -11,18 +11,34 @@ You can see more documentation for Strype on the `main documentation page <https
 strype.graphics module
 ----------------------
 
-.. automodule:: strype.graphics
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. container:: module-wrapper
 
+  .. container:: module-content
+
+    .. automodule:: strype.graphics
+       :members:
+       :undoc-members:
+       :show-inheritance:
+
+  .. container:: module-indicator
+
+    Module strype.graphics
+    
 strype.sound module
 -------------------
 
-.. automodule:: strype.sound
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. container:: module-wrapper
+
+  .. container:: module-content
+
+    .. automodule:: strype.sound
+       :members:
+       :undoc-members:
+       :show-inheritance:
+
+  .. container:: module-indicator
+
+    Module strype.sound
 
 
 .. toctree::
