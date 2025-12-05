@@ -792,6 +792,10 @@ export default Vue.extend({
                     const newCaretPosition = CaretPosition.body;
                     this.appStore.toggleCaret({id: newCaretId, caretPosition: newCaretPosition});
                 }
+                else if (this.appStore.isCurrentFrameCollapsedClassOrFunction){
+                    // If we are leaving the content of a class or function def frame, and that frame is *fully collapsed*, we need to go below.
+                    this.appStore.toggleCaret({id: this.frameId, caretPosition: CaretPosition.below});
+                }
                 else {
                     // Restore the caret visibility
                     Vue.set(this.appStore.frameObjects[this.appStore.currentFrame.id], "caretVisibility", this.appStore.currentFrame.caretPosition);
