@@ -1782,8 +1782,8 @@ export default Vue.extend({
     color: black !important; 
 }
 
-.#{$strype-classname-frame-comment-slot}t {
-    color: #97971E !important;
+.#{$strype-classname-frame-comment-slot} {
+    color: $frame-comment-slot-base-colour !important;
     margin-right: 2px;
 }
 
