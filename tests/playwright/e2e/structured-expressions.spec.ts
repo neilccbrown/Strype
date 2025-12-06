@@ -38,7 +38,7 @@ test.describe("Function definition to variable assigment transformation", () => 
         await page.keyboard.type(" abc123");
         await page.waitForTimeout(300);
         // Get before "123" and transform to varassign
-        await pressN("ArrowLeft", 3, true)(page);
+        await pressN("ArrowLeft", 3)(page);
         await page.keyboard.press("=");
         await page.waitForTimeout(300);
         await assertStateOfVarAssignFrame(page,"{abc}", "{$123}({}){}");
@@ -50,7 +50,7 @@ test.describe("Function definition to variable assigment transformation", () => 
         await page.keyboard.type(" ab456");
         await page.waitForTimeout(50);
         // Get before "456" and copy double equals
-        await pressN("ArrowLeft", 3, true)(page);
+        await pressN("ArrowLeft", 3)(page);
         await page.waitForTimeout(50);
         await doPagePaste(page, "==");
         await page.waitForTimeout(50);
