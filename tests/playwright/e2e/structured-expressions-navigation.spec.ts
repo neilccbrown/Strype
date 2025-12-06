@@ -185,6 +185,7 @@ test.describe("Check navigation around grapheme clusters in strings", () => {
         const strWithGraphemesSize = Array.from(new Intl.Segmenter("en", { granularity: "grapheme" }).segment(strWithGraphemes)).length;
         // Adds a function call frame with empty literal
         await page.keyboard.type(" \"");
+        await page.waitForTimeout(200);
         // Types the content of the literal, with some grapheme clusters
         await page.keyboard.type(strWithGraphemes);
         // Gets back above that frame and in the frame
@@ -204,6 +205,7 @@ test.describe("Check navigation around grapheme clusters in strings", () => {
         const strWithGraphemesSize = Array.from(new Intl.Segmenter("en", { granularity: "grapheme" }).segment(strWithGraphemes)).length;
         // Adds a function call frame with empty literal
         await page.keyboard.type(" \"");
+        await page.waitForTimeout(200);
         // Types the content of the literal, with some grapheme clusters
         await page.keyboard.type(strWithGraphemes);
         // Gets back below that frame and in the frame
