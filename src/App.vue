@@ -641,7 +641,7 @@ export default Vue.extend({
                                 afterAPILoaded();
                             }
                             else{
-                                this.finaliseOpenShareProject("errorMessage.retrievedSharedGenericProject", this.$i18n.t("errorMessage.cloudAPIFailed",{apiname: specifcDriveComponent?.driveAPIName}) as string);
+                                this.finaliseOpenShareProject({key: "errorMessage.retrievedSharedGenericProject", param: this.$i18n.t("errorMessage.cloudAPIFailed",{apiname: specifcDriveComponent?.driveAPIName}) as string});
                             }
                         });
                 }
@@ -715,7 +715,7 @@ export default Vue.extend({
                             }, 3000);                            
                         })
                         .finally(() => {
-                            this.finaliseOpenShareProject(alertMsgKey, alertParams);
+                            this.finaliseOpenShareProject({key: alertMsgKey, param: alertParams});
                         });
                 }
             };
@@ -745,7 +745,11 @@ export default Vue.extend({
                     this.confirmResetLSOnShareProjectLoad().then((continueLoadingSharedProject) => (continueLoadingSharedProject) ? loadSpy() : this.loadLocalStorageProjectOnStart());
                 },
                 // No project in the local storage, we can continue loading the shared project
-                loadSpy);
+                loadSpy)
+                    .finally(() => {
+                        // In any case, we want to clear the query parameters of the URL.
+                        this.finaliseOpenShareProject();
+                    });
             }
         }
         else{
@@ -1035,10 +1039,12 @@ export default Vue.extend({
             }            
         },
 
-        finaliseOpenShareProject(messageKey: string, messageParam: string) {
-            // Show a message to the user that the project has (not) been loaded
-            this.appStore.simpleModalDlgMsg = this.$i18n.t(messageKey, {param1: messageParam}) as string;
-            this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+        finaliseOpenShareProject(message?: {key: string, param: string}) {
+            // Show a message to the user that the project has (not) been loaded, if requested
+            if(message){
+                this.appStore.simpleModalDlgMsg = this.$i18n.t(message.key, {param1: message.param}) as string;
+                this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+            }
             // And also remove the query parameters in the URL
             window.history.replaceState({}, document.title, window.location.pathname);
         },

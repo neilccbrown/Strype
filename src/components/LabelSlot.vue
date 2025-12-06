@@ -717,6 +717,10 @@ export default Vue.extend({
                         this.appStore.toggleCaret({id: nextVisibleSectionFrame, caretPosition: CaretPosition.body});
                     }
                 }
+                else if(this.appStore.isCurrentFrameCollapsedClassOrFunction){
+                    // Another special case for leaving the content of a class or function def frame, and that frame is *fully collapsed*, we need to go below.
+                    this.appStore.toggleCaret({id: this.frameId, caretPosition: CaretPosition.below});
+                }
             }
         },
         
@@ -1778,8 +1782,8 @@ export default Vue.extend({
     color: black !important; 
 }
 
-.#{$strype-classname-frame-comment-slot}t {
-    color: #97971E !important;
+.#{$strype-classname-frame-comment-slot} {
+    color: $frame-comment-slot-base-colour !important;
     margin-right: 2px;
 }
 
