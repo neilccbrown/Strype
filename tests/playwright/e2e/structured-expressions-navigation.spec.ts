@@ -189,7 +189,9 @@ test.describe("Check navigation around grapheme clusters in strings", () => {
         await page.keyboard.type(strWithGraphemes);
         // Gets back above that frame and in the frame
         await page.keyboard.press("ArrowUp");
+        await page.waitForTimeout(200);
         await page.keyboard.press("ArrowRight");
+        await page.waitForTimeout(200);
         // Move right until the end of the literal (not past the closing quote, and we need +1 for passing the opening quote)
         await pressN("ArrowRight", 1 + strWithGraphemesSize)(page);
         await page.waitForTimeout(100);
@@ -206,7 +208,9 @@ test.describe("Check navigation around grapheme clusters in strings", () => {
         await page.keyboard.type(strWithGraphemes);
         // Gets back below that frame and in the frame
         await page.keyboard.press("ArrowDown");
+        await page.waitForTimeout(200);
         await page.keyboard.press("ArrowLeft");
+        await page.waitForTimeout(200);
         // Move left until the start of the literal (not past the opening quote, and we need +3 for passing the brackets and closing quote)
         await pressN("ArrowLeft", 3 + strWithGraphemesSize)(page);
         await page.waitForTimeout(100);
