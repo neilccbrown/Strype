@@ -48,7 +48,7 @@ async function loadPY(page: Page, filepath: string) {
     for (let i = 0; i < 200; i++) {
         await checkFrameXorTextCursor(page);
         await page.keyboard.press("ArrowUp");
-        await page.waitForTimeout(75);
+        await page.waitForTimeout(150);
     }
 }
 
@@ -99,6 +99,7 @@ test.describe("Check navigation", () => {
         for (let i = 0; i < 500; i++) {
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("Tab");
+            await page.waitForTimeout(150);
         }
     });
     test("Down-down-shift-tab through a file", async ({page}, testInfo) => {
@@ -110,12 +111,13 @@ test.describe("Check navigation", () => {
         for (let i = 0; i < 100; i++) {
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowDown");
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(150);
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowDown");
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(150);
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("Shift+Tab");
+            await page.waitForTimeout(150);
         }
     });
     test("Tab through two empty assignments", async ({page}, testInfo) => {
@@ -136,7 +138,7 @@ test.describe("Check navigation", () => {
         for (let i = 0; i < expectedFrameCursor.length; i++) {
             await checkFrameXorTextCursor(page, expectedFrameCursor[i]);
             await page.keyboard.press("Tab");
-            await page.waitForTimeout(75);
+            await page.waitForTimeout(150);
         }
     });
 });
