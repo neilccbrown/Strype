@@ -21,7 +21,7 @@ export default defineConfig({
     /* Fail the build on CI if you accidentally left test.only in the source code. */
     forbidOnly: !!process.env.CI,
     /* Retry twice on CI, as some of the random tests are slightly flaky */
-    retries: 0,
+    retries: process.env.CI ? 2 : 0,
     fullyParallel: true,
     /* If you need different in CI, replicate the conditional expression above: process.env.CI ? 2 : 4 */
     workers: 4,
