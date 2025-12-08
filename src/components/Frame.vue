@@ -187,9 +187,12 @@ export default Vue.extend({
         },
 
         frameStyle(): Record<string, string> {
+            const isFrameInImportsOrDefsSection = [this.appStore.getImportsFrameContainerId, this.appStore.getDefsFrameContainerId].includes(this.appStore.frameObjects[this.frameId].parentId);
             const baseStylePart = {
                 "background-color": `${this.getFrameBgColor()} !important`,
-                "color": (this.frameType.type === AllFrameTypesIdentifier.comment) ? `${scssVars.frameCommentSlotBaseColour} !important` : "#000 !important",
+                "color": (this.frameType.type === AllFrameTypesIdentifier.comment) 
+                    ? ((isFrameInImportsOrDefsSection) ? `${scssVars.frameCommentSlotBaseColour} !important` : `${scssVars.frameStatementCommentSlotBaseColour} !important`) 
+                    : "#000 !important",
             };
             
             // We want to offset (non joint) block frames when they are stacking on top of each other,

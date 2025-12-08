@@ -4,6 +4,7 @@
   caretHeightValue: $caret-height-value;
   frameContainerMinHeight: $frame-container-min-height;
   frameCommentSlotBaseColour: $frame-comment-slot-base-colour;
+  frameStatementCommentSlotBaseColour: $frame-statement-comment-slot-base-colour;
   pythonExecutionAreaLayoutButtonsPosOffset: $strype-python-exec-area-layout-buttons-pos-offset;
   pythonExecutionAreaMargin: $strype-python-exec-area-margin;
   nonMainCodeContainerBackground: $strype-non-main-code-container-background;
@@ -34,6 +35,7 @@
   frameStringSlotQuoteClassName: $strype-classname-frame-string-slot-quote;
   frameOperatorSlotClassName: $strype-classname-frame-operator-slot;
   frameCommentSlotClassName: $strype-classname-frame-comment-slot;
+  frameStatementCommentSlotClassName: $strype-classname-frame-statement-comment-slot;
   frameCodeSlotClassName: $strype-classname-frame-code-slot;
   croppedEditorDivClassName: $strype-classname-cropped-editor-code-div;
   // autocompletion related
