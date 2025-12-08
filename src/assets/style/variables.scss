@@ -3,6 +3,7 @@ $caret-height-value: 6;
 $caret-width: 120px;
 $frame-container-min-height: 30px;
 $frame-comment-slot-base-colour: #68744E;
+$frame-statement-comment-slot-base-colour: #808018;
 $strype-menu-entry-border: 2px solid transparent;
 $strype-menu-entry-focus-border: 2px solid #0d47f7 !important;
 $strype-python-exec-area-layout-buttons-pos-offset: 2px;
@@ -37,6 +38,7 @@ $strype-classname-frame-string-slot: string-slot;
 $strype-classname-frame-string-slot-quote: string-slot-quote;
 $strype-classname-frame-operator-slot: operator-slot;
 $strype-classname-frame-comment-slot: comment-slot;
+$strype-classname-frame-statement-comment-slot: statement-comment-slot;
 $strype-classname-frame-code-slot: code-slot;
 $strype-classname-cropped-editor-code-div: cropped-editor-code-div;
 // autocompletion related

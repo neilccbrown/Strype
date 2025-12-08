@@ -274,7 +274,9 @@ export default Vue.extend({
             default:
                 // Check comments here
                 if(this.frameType === AllFrameTypesIdentifier.comment){
-                    codeTypeCSS = scssVars.frameCommentSlotClassName;
+                    const isFrameInImportsOrDefsSection = [this.appStore.getImportsFrameContainerId, this.appStore.getDefsFrameContainerId].includes(this.appStore.frameObjects[this.frameId].parentId);
+                    const extraCSSCommmentClass = (isFrameInImportsOrDefsSection) ? "" : (" " + scssVars.frameStatementCommentSlotClassName);
+                    codeTypeCSS = scssVars.frameCommentSlotClassName + extraCSSCommmentClass;
                 }
                 else{
                     // Everything else is code, however, if we are in a function definition name slot, we want the text to show bold as well.
@@ -1785,6 +1787,10 @@ export default Vue.extend({
 .#{$strype-classname-frame-comment-slot} {
     color: $frame-comment-slot-base-colour !important;
     margin-right: 2px;
+}
+
+.#{$strype-classname-frame-statement-comment-slot} {
+    color: $frame-statement-comment-slot-base-colour !important;
 }
 
 .slot-right-margin {
