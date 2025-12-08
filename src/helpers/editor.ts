@@ -67,6 +67,7 @@ export enum CustomEventTypes {
     requestedCloudDrivePickerRefresh = "requestedCloudDrivePickerRefresh",
     cutFrameSelection = "cutFrameSelection",
     copyFrameSelection = "copyFrameSelection",
+    updateParamPrompts = "updateParamPrompts",
     /* IFTRUE_isPython */
     pythonExecAreaMounted = "peaMounted",
     pythonExecAreaExpandCollapseChanged = "peaExpandCollapsChanged",
@@ -410,7 +411,9 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                 // and if we parse the string quotes, we need to set the position value as if the quotes were still here (because they are in the UI)
                 let spacesOffset = 0;
                 const spanElementContentLength = (spanElement.textContent?.replace(/\u200B/g, "")?.length??0);
-                const ignoreAsKW = (spanElement.textContent == "as" && useStore().frameObjects[parseLabelSlotUID(spanElement.id).frameId].frameType.type != AllFrameTypesIdentifier.import);
+                // Note that sometimes the frameId is unavailable (-100) so the frame object may not be available, hence we need ?. when accessing it:
+                const frameType : string | undefined = useStore().frameObjects[parseLabelSlotUID(spanElement.id).frameId]?.frameType?.type;
+                const ignoreAsKW = (spanElement.textContent == "as" && frameType != AllFrameTypesIdentifier.import && frameType != AllFrameTypesIdentifier.except);
                 if(!ignoreAsKW && !isSlotStringLiteralType(labelSlotCoreInfos.slotType) && (trimmedKeywordOperators.includes(spanElement.textContent??""))){
                     spacesOffset = 2;
                     // Reinsert the spaces in the literal code

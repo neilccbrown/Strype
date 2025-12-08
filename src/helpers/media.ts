@@ -132,7 +132,8 @@ function svgToPngDataUri(svgText: string): Promise<string> {
     });
 }
 
-export function preparePasteMediaData(event: ClipboardEvent, callBackOnDataDimAndCode: (code: string, dataAndDim: MediaDataAndDim) => void): void {
+// Returns true if there is an image, false if not
+export function preparePasteMediaData(event: ClipboardEvent, callBackOnDataDimAndCode: (code: string, dataAndDim: MediaDataAndDim) => void): boolean {
     const withData = (dataAndDim : MediaDataAndDim) => {
         // The code is the code to load the literal from its base64 string representation:
         const code = (dataAndDim.itemType.startsWith("image") ? "load_image" : "load_sound") + "(\"" + dataAndDim.dataURI + "\")";
@@ -165,12 +166,12 @@ export function preparePasteMediaData(event: ClipboardEvent, callBackOnDataDimAn
             if (match) {
                 const svgUrl = match[1];
                 fetch(svgUrl).then((r) => r.text()).then(svgToPngDataUri).then(readImageSizeFromDataURI).then((v) => withData({...v, itemType: "image/png"}));
-                return;
+                return true;
             }
             else if (html.startsWith("<svg")) {
                 // Convert to PNG then use our existing infrastructure:
                 svgToPngDataUri(html).then(readImageSizeFromDataURI).then((v) => withData({...v, itemType: "image/png"}));
-                return;
+                return true;
             }
             
         }
@@ -185,8 +186,10 @@ export function preparePasteMediaData(event: ClipboardEvent, callBackOnDataDimAn
             const isAudio = itemType.startsWith("audio");
             if (file && (isImage || isAudio)) {
                 readFileAsyncAsData(file).then(isImage ? readImageSizeFromDataURI : (s) => Promise.resolve({dataURI: s, width: -1, height: -1})).then((v) => withData({...v, itemType}));
-                return;
+                return true;
             }
         }
     }
+    
+    return false;
 }

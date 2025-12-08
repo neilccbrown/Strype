@@ -284,6 +284,7 @@ export default Vue.extend({
     margin-right: 7px;
     margin-top: 0px;
     align-items: center;
+    height: 1.5rem;
 }
 
 .folding-control, .frozen-control {

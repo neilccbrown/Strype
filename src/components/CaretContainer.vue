@@ -386,6 +386,9 @@ export default Vue.extend({
                 }
                 this.appStore.deleteFrames("backspace", true);
             }   
+            
+            // To find all new frames added (including at lower levels), we record all frame ids before the paste:
+            const frameIdsBeforePaste = new Set(Object.keys(this.appStore.frameObjects).map((key) => Number(key)));
 
             if(this.appStore.isSelectionCopied){
                 this.appStore.pasteSelection(
@@ -406,11 +409,19 @@ export default Vue.extend({
                 );
             }
 
+            const frameIdsAfterPaste = Object.keys(this.appStore.frameObjects).map((key) => Number(key));
+            
             if (restoreCaretTo != null && (this.appStore.currentFrame?.id != restoreCaretTo.id || this.appStore.currentFrame?.caretPosition != restoreCaretTo.caretPosition)) {
                 this.appStore.setCurrentFrame(restoreCaretTo);
             }
 
             this.appStore.saveStateChanges(stateBeforeChanges);
+
+            const framesAdded = frameIdsAfterPaste.filter((frameId) => !frameIdsBeforePaste.has(frameId));
+            // Then after nextTick tell all the new frames to update their prompts:
+            Vue.nextTick(() => {
+                this.$root.$emit(CustomEventTypes.updateParamPrompts, framesAdded);
+            });
         },
     
         prepareInsertFrameSubMenu(): void {
