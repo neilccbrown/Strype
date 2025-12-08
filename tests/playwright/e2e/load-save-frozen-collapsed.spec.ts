@@ -527,4 +527,60 @@ Alpha(None)
     });
 });
 
+test.describe("Multiple folded frozen frames and multi-line comments", () => {
+    const input = `#(=> Strype:1:std
+''' This is is a multi-line
+project description with
+lots
+and
+lots
+of
+lines. Also some quotes: "like this"
+because why not.'''
+#(=> Section:Imports
+from strype.graphics import * 
+from time import sleep 
+#(=> Section:Definitions
+def func1 (x,y ) :
+    '''This is a multi-line comment with 
+    different lines for explaining the params:
+        - param x: The X coordinate
+        - param y: The Y coordinate
+        - returns: a magic number'''
+    if x<0  :
+        return -1 
+    if y<0  :
+        return -1 
+    if x>=800  :
+        return -1 
+    if y>=600  :
+        return -1 
+    return 6 
+def func2 (a,b ) :
+    '''A much shorter line'''
+    a  = b 
+    b  = c 
+    c  = d 
+    d  = e 
+    e  = f 
+    f  = g 
+#(=> Section:Main
+sleep(5) 
+#(=> Section:End
+`;
+    test("Load plain, fold, freeze, save", async ({page}) => {
+        await loadContent(page, input);
+        await clickFoldFor(page, "func1");
+        await clickFoldFor(page, "func2");
+        await makeFrozen(page, "func1");
+        await makeFrozen(page, "func2");
+        await saveAndCheck(page, testState({"func1": "FoldToHeader;Frozen", "func2": "FoldToHeader;Frozen"}, input));
+    });
 
+    test("Load when already folded and frozen, save again", async ({page}) => {
+        const alreadyFoldedAndFrozen = testState({"func1": "FoldToHeader;Frozen", "func2": "FoldToHeader;Frozen"}, input);
+        await loadContent(page, alreadyFoldedAndFrozen);
+        await saveAndCheck(page, alreadyFoldedAndFrozen);
+    });
+    
+});
