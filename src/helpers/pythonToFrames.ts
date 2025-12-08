@@ -371,10 +371,10 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                         composite.frozen = stringToFrozen[s.trim()];
                     }
                 }
-                // +1 to move to a 1-based rather than 0-based line number, and +1 more to mean the line after us:
-                frameStateLines.set(i + 2, composite);
                 // Push a blank to make line numbers match:
                 transformedLines.push("");
+                // +1 to mean the line after us:
+                frameStateLines.set(transformedLines.length + 1, composite);
             }
             else {
                 // Not one we have to deal with during parsing, probably a config setting, so record for later processing:
