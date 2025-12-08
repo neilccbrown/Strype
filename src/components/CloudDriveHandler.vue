@@ -314,11 +314,11 @@ export default Vue.extend({
                             })
                             .finally(() => {
                                 // Show a message to the user that the project has (/not) been loaded
-                                (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject(alertMsgKey, alertParams);
+                                (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject({key: alertMsgKey, param: alertParams});
                             });
                     }
                     else{
-                        (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject("errorMessage.retrievedSharedGenericProject", this.$i18n.t("errorMessage.cloudAPIFailed", {apiname: cloudDriveComponent.driveAPIName}) as string);
+                        (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject({key: "errorMessage.retrievedSharedGenericProject", param: this.$i18n.t("errorMessage.cloudAPIFailed", {apiname: cloudDriveComponent.driveAPIName}) as string});
                     }
                 });
         },
@@ -608,7 +608,7 @@ export default Vue.extend({
                                 this.saveFileId = undefined;
                                 this.updateSignInStatus(cloudTarget, false);
                                 if(isOpenedSharedProject){
-                                    (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject("appMessage.retrievedSharedGenericProject", fileNameNoExt);
+                                    (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject({key: "appMessage.retrievedSharedGenericProject", param: fileNameNoExt});
                                 }
                                 else{
                                     this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.driveFileReadOnly", {drivename: cloudDriveComponent.driveName}) as string;
@@ -623,7 +623,7 @@ export default Vue.extend({
                         // When loading a file didn't work, we only need to handle the situation of opening a shared file 
                         // (because the error message would have been shown before for normal opening from the Drive picker)
                         if(this.openSharedProjectFileId.length > 0){
-                            (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject("errorMessage.retrievedSharedGenericProject", reason);
+                            (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject({key: "errorMessage.retrievedSharedGenericProject", param: reason});
                         }
                     }); 
                 }

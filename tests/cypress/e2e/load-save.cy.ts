@@ -180,7 +180,7 @@ describe("Tests blanks", () => {
         // ___strype_blank = 1 + ___strype_blank * ___strype_blank / () - __strype_blank
         testEntryDisableAndSave("{uparrow}{uparrow}" +
             "ix {rightarrow}f{downarrow}{downarrow}" +
-            "f{downarrow}i{rightarrow} {downarrow}{downarrow}r{rightarrow}{downarrow}{downarrow}" +
+            "f{downarrow}{downarrow}i{rightarrow} {downarrow}{downarrow}r{rightarrow}{downarrow}{downarrow}" +
             "a{rightarrow}={rightarrow}1+*/()-", [], "tests/cypress/fixtures/project-blanks.spy");
     });
     it("Loads and saves with lots of blanks", () => {
@@ -193,7 +193,7 @@ describe("Tests invalid characters", () => {
     it("Outputs a file with invalid chars", () => {
         testEntryDisableAndSave("{uparrow}{uparrow}" +
             "i100{rightarrow}ffoo{rightarrow}£1000{downarrow}i50{downarrow}ifoo（）{downarrow}{downarrow}" +
-            "f#include{rightarrow}100,abc,#35{downarrow}r$50{downarrow}{downarrow}{downarrow}" +
+            "f#include{rightarrow}100,abc,#35{downarrow}{downarrow}r$50{downarrow}{downarrow}{downarrow}" +
             " 100($50, 24.24a)", [], "tests/cypress/fixtures/project-invalid-chars.spy");
     });
     it("Loads and saves a file with invalid chars", () => {

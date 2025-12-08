@@ -45,7 +45,7 @@ import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import FrameHeaderComponent from "@/components/FrameHeader.vue";
 import LabelSlot from "@/components/LabelSlot.vue";
-import { CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength } from "@/helpers/editor";
+import { CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID } from "@/helpers/editor";
 import { checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import { calculateParamPrompt } from "@/autocompletion/acManager";
@@ -773,7 +773,7 @@ export default Vue.extend({
             
             if (!(event.metaKey || event.altKey || event.ctrlKey)) {
                 // Try to move up/down within this item, if we have wrapped:
-                const spans = document.getElementById(this.labelSlotsStructDivId)?.querySelectorAll("span." + scssVars.labelSlotInputClassName + "[contenteditable=\"true\"]") as NodeListOf<HTMLSpanElement>;
+                const spans = document.getElementById(getFrameHeaderUID(this.frameId))?.querySelectorAll("span." + scssVars.labelSlotInputClassName + "[contenteditable=\"true\"]") as NodeListOf<HTMLSpanElement>;
                 if (spans.length > 0) {
                     const dest = handleVerticalCaretMove(Array.from(spans), event.key == "ArrowUp" ? "up" : "down");
                     if (dest) {
@@ -816,6 +816,10 @@ export default Vue.extend({
                     const newCaretId = this.appStore.frameObjects[0].childrenIds[1];
                     const newCaretPosition = CaretPosition.body;
                     this.appStore.toggleCaret({id: newCaretId, caretPosition: newCaretPosition});
+                }
+                else if (this.appStore.isCurrentFrameCollapsedClassOrFunction){
+                    // If we are leaving the content of a class or function def frame, and that frame is *fully collapsed*, we need to go below.
+                    this.appStore.toggleCaret({id: this.frameId, caretPosition: CaretPosition.below});
                 }
                 else {
                     // Restore the caret visibility

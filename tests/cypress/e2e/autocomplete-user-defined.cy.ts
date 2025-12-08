@@ -38,7 +38,7 @@ describe("User-defined items", () => {
     it("Offers auto-complete for user-defined functions with *", () => {
         focusEditorAC();
         // Go up to functions section, add a function named "foo" then come back down and make a function call frame:
-        cy.get("body").type("{uparrow}ffoo(a,*,b){downarrow}{downarrow}{downarrow} ");
+        cy.get("body").type("{uparrow}ffoo(a,*,b){downarrow}{downarrow}{downarrow}{downarrow} ");
         cy.wait(500);
         // Trigger auto-complete:
         cy.get("body").type("{ctrl} ");
@@ -217,7 +217,7 @@ describe("User-defined items", () => {
         focusEditorAC();
         // Make a class frame with "foo" and the params for the init function "bar, vaz",
         // then make a function call frame inside:
-        cy.get("body").type("{uparrow}cfoo{downarrow}{downarrow}{leftarrow}{leftarrow}bar,vaz{rightarrow}{rightarrow}");
+        cy.get("body").type("{uparrow}cfoo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar,vaz{rightarrow}{rightarrow}");
         // Trigger auto-completion:
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
@@ -246,7 +246,7 @@ describe("User-defined items", () => {
         focusEditorAC();
         // Make a class frame with "foo" and the params for the init function "bar",
         // then add function definition "myF" frame with parameters "vaz, param2" and go inside:
-        cy.get("body").type("{uparrow}cfoo{downarrow}{downarrow}{leftarrow}{leftarrow}bar{rightarrow}{rightarrow}{downarrow}fmyF{rightarrow}vaz,param2{rightarrow}{rightarrow}");
+        cy.get("body").type("{uparrow}cfoo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar{rightarrow}{rightarrow}{downarrow}fmyF{rightarrow}vaz,param2{rightarrow}{rightarrow}");
         // Trigger auto-completion:
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
@@ -294,7 +294,7 @@ describe("User-defined items", () => {
         // Add the right import to get Actor or NeoPixel
         cy.get("body").type(`{uparrow}{uparrow}f${parentImport[0]}{rightarrow}${parentImport[1]}{downarrow}{downarrow}`);
         // Make a class frame with "foo(<parent class>)" and delete the init function, add a function "myF", then go to my code
-        cy.get("body").type(`cfoo(${parentClassName}{downarrow}{del}fmyF{downarrow}{downarrow}{downarrow}{downarrow}`);
+        cy.get("body").type(`cfoo(${parentClassName}{downarrow}{downarrow}{del}fmyF{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}`);
         // Trigger auto-completion on a function call frame:
         cy.get("body").type(" {ctrl} ");
         withAC((acIDSel) => {

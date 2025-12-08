@@ -546,9 +546,9 @@ describe("Underscore handling", () => {
     it("Offers user's own definitions, even if they start with underscores", () => {
         focusEditorAC();
         // Go up to functions section, add a function named "__myFunction" then come down the function definition:
-        cy.get("body").type("{uparrow}f__myFunction{rightarrow}myParam{downarrow}{downarrow}");
+        cy.get("body").type("{uparrow}f__myFunction{rightarrow}myParam{downarrow}{downarrow}{downarrow}");
         // Make a class called _myClass then come back down the "my code" section
-        cy.get("body").type("c__myClass{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}");
+        cy.get("body").type("c__myClass{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}");
         // Make a variable called __myVar:
         cy.get("body").type("=__myVar=42{enter}");
         // Add a function frame and trigger auto-complete:

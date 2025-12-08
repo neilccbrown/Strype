@@ -143,7 +143,7 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | {class?: str
                     ? `c${(rawFunc[0] as any)?.class}{rightarrow}{rightarrow}`
                     : "";            
                 funcs.push({
-                    keyboardTypingToImport: "{uparrow}" + classTypePreamble + "f" + (rawFunc[0] as any)?.udf + "{downarrow}",
+                    keyboardTypingToImport: "{uparrow}" + classTypePreamble + "f" + (rawFunc[0] as any)?.udf + "{downarrow}{downarrow}",
                     funcName: rawFunc[1],
                     params: params,
                     acSection: (isTestingFunctionInClass) ? "self" : "My functions",

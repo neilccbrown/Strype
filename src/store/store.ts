@@ -309,6 +309,11 @@ export const useStore = defineStore("app", {
         getDefsFrameContainerId:(state) => {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === DefsContainerDefinition.type)[0].id;
         },
+
+        isCurrentFrameCollapsedClassOrFunction: (state) => {
+            return (state.frameObjects[state.currentFrame.id].collapsedState??CollapsedState.FULLY_VISIBLE) != CollapsedState.FULLY_VISIBLE
+                    && (state.frameObjects[state.currentFrame.id].frameType.type == AllFrameTypesIdentifier.classdef || state.frameObjects[state.currentFrame.id].frameType.type == AllFrameTypesIdentifier.funcdef);
+        },
         
         isEditableFocused: () => (frameSlotInfos: SlotCoreInfos) => {
             // ONLY a text type slot can be focused (so operators, brackets and quote UI slots will always return false)
@@ -857,9 +862,16 @@ export const useStore = defineStore("app", {
 
         changeCaretWithKeyboard(key: string, isLevelScopeChange?: boolean) {  
             const currId = this.currentFrame.id;
-            const currPosition = this.currentFrame.caretPosition;
+            let currPosition = this.currentFrame.caretPosition;
 
-            //Turn off previous caret 
+            // Before we do the change, we might have to "trick" the code below with setting another current frame cursor:
+            // if we are inside a *fully collapsed* class or function def frame, the caret is inside its body in our state, but
+            // we need to act as if the actual position was below the frame (if fully collapsed)
+            if(currPosition == CaretPosition.body && this.isCurrentFrameCollapsedClassOrFunction){
+                currPosition = CaretPosition.below;
+            } 
+
+            // Turn off previous caret 
             Vue.set(
                 this.frameObjects[currId],
                 "caretVisibility",
@@ -3007,7 +3019,10 @@ export const useStore = defineStore("app", {
                 return;
             }
             // We do not use the system's clipboard for frames, so we clear any potential text to avoid interference
-            navigator.clipboard.writeText("");
+            navigator.clipboard.writeText("")
+                .catch((err) => {
+                    console.error("Failed to write frame placeholder to clipboard", err);
+                });
             this.flushCopiedFrames();
             this.doCopySelection();
             this.updateNextAvailableId();
