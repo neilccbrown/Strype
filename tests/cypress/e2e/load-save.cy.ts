@@ -312,3 +312,9 @@ describe("Tests loading/saving default parameter values", () => {
     });
 });
 
+describe("Tests loading/saving project with freezing and folding", () => {
+    it("Loads/saves folded/frozen functions", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/fireworks.spy");
+    });
+});
+
