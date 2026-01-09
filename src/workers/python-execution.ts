@@ -1,6 +1,7 @@
 import type { PyodideInterface } from "pyodide";
-import { loadPyodideAndPackage, makeRunnerCallback, OutputPart, pyodideExpose, PyodideExtras, PyodideFatalErrorReloader } from "pyodide-worker-runner";
+import { loadPyodideAndPackage, OutputPart, pyodideExpose, PyodideExtras, PyodideFatalErrorReloader } from "pyodide-worker-runner";
 import * as Comlink from "comlink";
+import { SyncExtras } from "comsync";
 
 declare const globalThis: any;
 async function loadOnly() : Promise<PyodideInterface> {
@@ -21,18 +22,60 @@ async function loadOnly() : Promise<PyodideInterface> {
 }
 const reloader = new PyodideFatalErrorReloader(loadOnly);
 
-const executePython = pyodideExpose(async (extras: PyodideExtras, pythonCode: string, printStdout:  Comlink.Remote<(output: string) => void>) : Promise<string | null> => {
+interface RunnerCallbacks {
+    input?: (prompt: string) => void;
+    output: (parts: OutputPart[]) => unknown;
+    other?: (type: string, data: unknown) => unknown;
+}
+function makeRunnerCallbackLogTemp(
+    comsyncExtras: SyncExtras,
+    callbacks: RunnerCallbacks
+) {
+    return function (type: string, data: any) {
+        if (data.toJs) {
+            data = data.toJs({dict_converter: Object.fromEntries});
+        }
+
+        if (type === "input") {
+            console.log(">>> Runner requesting input");
+            callbacks.input && callbacks.input(data.prompt);
+            console.log(">>> Runner requested input, reading... " + JSON.stringify(comsyncExtras));
+            return comsyncExtras.readMessage() + "\n";
+        }
+        else if (type === "sleep") {
+            comsyncExtras.syncSleep(data.seconds * 1000);
+        }
+        else if (type === "output") {
+            return callbacks.output(data.parts);
+        }
+        else {
+            return (callbacks.other as any)(type, data);
+        }
+    };
+}
+
+const executePython = pyodideExpose(async (
+    extras: PyodideExtras,
+    pythonCode: string,
+    printStdout: Comlink.Remote<(output: string) => void>,
+    requestInput: Comlink.Remote<(prompt: string) => void>
+) : Promise<string | null> => {
     console.log("About to execute Python: " + pythonCode);
     return await reloader.withPyodide(async (pyodide : PyodideInterface) => {
         console.log("Found Pyodide");
         const runner = pyodide.runPython("from python_runner import PyodideRunner\nPyodideRunner()");
-        const callback = makeRunnerCallback(extras, {
+        const callback = makeRunnerCallbackLogTemp(extras, {
             output: (outputText: OutputPart[]) => {
-                console.log("Received output from Python", outputText);
+                console.log("Received output from Python: " + JSON.stringify(outputText));
                 const stdoutParts = outputText.filter((t) => t.type == "stdout");
                 if (stdoutParts.length > 0) {
                     printStdout(stdoutParts.map((t) => t.text).join(""));
                 }
+            },
+            // We fire off the input request and it asynchronously gives back the input
+            input: requestInput,
+            other: (type: string, data: any) => {
+                console.log("Received other [" + type + "] from Python: " + JSON.stringify(data));
             },
         });
         runner.set_callback(callback);

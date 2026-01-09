@@ -11,6 +11,7 @@ import { StrypePlatform } from "./types/types";
 import scssVars  from "@/assets/style/_export.module.scss";
 import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "./helpers/sharedIdCssWithTests";
 import {getAppLangSelectId, getEditorID, getEditorMenuUID, getFrameBodyUID, getFrameContainerUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getImportFileInputId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNewProjectLinkId, getSaveProjectLinkId, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, getShareProjectLinkId} from "./helpers/editor";
+import "./registerServiceWorker";
 /* IFTRUE_isPython */
 import {getPEATabContentContainerDivId} from "./helpers/editor";
 /* FITRUE_isPython */
@@ -59,6 +60,19 @@ export function getLocaleBuildDate(): string {
         }
     }
 }
+/*
+// Remove old service workers during development mode:
+if (process.env.NODE_ENV === "development" && "serviceWorker" in navigator) {
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+        regs.forEach((reg) => reg.unregister());
+    });
+}
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register(`${process.env.BASE_URL}service-worker.js`, {type: "module", scope: "/editor/"});
+}
+*/
+
+
 
 // Set the SCSS variables for the tests here
 (window as any)[WINDOW_STRYPE_SCSSVARS_PROPNAME] = scssVars;

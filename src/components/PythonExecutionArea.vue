@@ -78,8 +78,9 @@ import audioBufferToWav from "audiobuffer-to-wav";
 import { saveAs } from "file-saver";
 import {bufferToBase64} from "@/helpers/media";
 import { PyodideClient } from "pyodide-worker-runner";
-import { makeChannel } from "sync-message";
+import { makeServiceWorkerChannel } from "sync-message";
 import * as Comlink from "comlink";
+import { setSInputConsole, sInput } from "@/helpers/execPythonCode";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
@@ -159,12 +160,18 @@ export default Vue.extend({
     },
     
     mounted(){
-        this.pythonWorker = new Worker(new URL("../workers/python-execution.ts", import.meta.url), {type: "module"});
-        this.pythonClient = new PyodideClient(() => this.pythonWorker as Worker, makeChannel());
+        this.pythonWorker = new Worker(new URL("@/workers/python-execution.ts", import.meta.url), {type: "module"});
+        console.log("Registering on: " + navigator.serviceWorker);
+        const channel = makeServiceWorkerChannel({scope: "/editor/"});
+        this.pythonClient = new PyodideClient(() => this.pythonWorker as Worker, channel);
         this.pythonClient.call(
             this.pythonClient.workerProxy.onReady,
             Comlink.proxy(() => {
+                console.log("onReady, awaiting worker registration");
+                //registration.then((r) => {
+                //console.log("Worker ready, channel details: " + JSON.stringify(r));
                 this.pythonWorkerReady = true;
+                //});
             })
         );
         
@@ -524,24 +531,43 @@ export default Vue.extend({
                 window.addEventListener("keyup", this.graphicsCanvasKeyUp);
                 // Start the redraw loop:
                 // eslint-disable-next-line @typescript-eslint/no-this-alias
-                const t = this;
+                /*const t = this;
                 function redraw() {
                     t.redrawCanvasIfNeeded();
                     if (useStore().pythonExecRunningState != PythonExecRunningState.RunningAwaitingStop) {
                         requestAnimationFrame(redraw);
                     }
-                }
-                requestAnimationFrame(redraw);
+                }*/
+                //requestAnimationFrame(redraw);
                 
                 this.libraries = parser.getLibraries();
 
+                setSInputConsole(pythonConsole);
+                
                 //this.postToWorker({toWorker: "ExecutePython", pythonCode: userCode});
                 if (this.pythonClient != null) {
+                    const client = this.pythonClient;
                     (this.pythonClient.call(
                         this.pythonClient.workerProxy.executePython,
                         userCode,
                         Comlink.proxy((output: string) => {
                             pythonConsole.value = pythonConsole.value + output;
+                        }),
+                        Comlink.proxy((prompt: string) => {
+                            console.log("Input requested: " + prompt);
+                            sInput(prompt).then(async (s : string) => {
+                                console.log("Sending via writeMessage: " + s + " to " + JSON.stringify(this.pythonClient));
+                                console.log("Controller is " + navigator.serviceWorker.controller);
+                                await navigator.serviceWorker.ready;
+                                console.log("Service worker is ready!");
+                                try {
+                                    console.log("Doing the actual message");
+                                    await client.writeMessage(s);
+                                }
+                                catch (e) {
+                                    console.error(e);
+                                }
+                            });
                         })
                     ) as Promise<string | null>).then((possibleError) => {
                         // TODO deal with error if present
@@ -613,6 +639,7 @@ export default Vue.extend({
                 this.peaDisplayTabIndex = PEATabIndexes.console;
             }
 
+            console.log("Focusing console by request");
             //In any case, then we focus the console (keep setTimeout rather than nextTick to have enough time to be effective)
             setTimeout(() => document.getElementById(getPEAConsoleId())?.focus(), 200);
         },

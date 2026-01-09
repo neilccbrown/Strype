@@ -29,7 +29,7 @@ function outf(text: string) {
 
 // The function used for "transpiling" the input function of Python to some JS handled by Skulpt.
 // The function is to be registered against the Skulpt object.
-function sInput(prompt: string) {
+export function sInput(prompt: string) : Promise<string> {
     // When we encounter an input call, we make sure the console has focus (i.e. turtle is not shown, for example)
     return new Promise(function(resolve,reject){
         outf(prompt); 
@@ -45,6 +45,7 @@ function sInput(prompt: string) {
         let compositionStartSelectStart = -1, compositionStartSelectEnd = -1; // this is used for dealing with composition, cf. below
 
         function consoleCompositionListener(event: CompositionEvent){
+            console.log("Console composition!");
             // Listened to handle the problem with IMEs: when used, they trigger text writing even if the key events prevent default behaviour.
             // So the approach to deal with it is to keep them anywhere, but if they appear in some parts of the console that shouldn't be edited
             // then we just update the flag of the input point of entry (initialConsoleTextAreaCaretPos)
@@ -64,6 +65,7 @@ function sInput(prompt: string) {
         }
 
         function consoleKeyListener(event: KeyboardEvent){
+            console.log("Console key!");
             const eventKeyLowerCase = event.key.toLowerCase();
             // monitor a key hit on "enter" to validate input
             if (eventKeyLowerCase == "enter") {
@@ -85,6 +87,7 @@ function sInput(prompt: string) {
                 event.stopImmediatePropagation();
                 event.preventDefault();
                 // now we can return the promise with the input text
+                console.log("sInput found text <" + inputText + "> and is resolving it");
                 resolve(inputText);   
                 // Clear the timer used to check interruptions
                 clearTimeout(checkInterruptionHandle);             
@@ -107,6 +110,7 @@ function sInput(prompt: string) {
             }
         }
 
+        console.log("Adding console listeners");
         consoleTextArea.addEventListener("keydown", consoleKeyListener);
         consoleTextArea.addEventListener("compositionstart", consoleCompositionListener);
         consoleTextArea.addEventListener("compositionend", consoleCompositionListener);
@@ -132,6 +136,10 @@ function sInput(prompt: string) {
         // We check if the expand/collapse button needs to be repositioned.
         setPythonExecAreaLayoutButtonPos();
     });
+}
+
+export function setSInputConsole(aConsoleTextArea: HTMLTextAreaElement) : void {
+    consoleTextArea = aConsoleTextArea;
 }
 
 // Entry point function for running Python code with Skulpt - the UI is responsible for calling it,

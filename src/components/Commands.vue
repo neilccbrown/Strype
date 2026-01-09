@@ -306,6 +306,7 @@ export default Vue.extend({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
+                console.log("Commands window keydown");
                 if (event.repeat && !(!this.appStore.isEditing &&  ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End"].includes(event.key))) {
                     // For all keys except Arrows when not editing, ignore all repeated keypresses, only process the initial press:
                     

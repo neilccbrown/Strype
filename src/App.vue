@@ -354,6 +354,7 @@ export default Vue.extend({
         );
 
         window.addEventListener("keydown", (event: KeyboardEvent) => {
+            console.log("App window keydown: " + event.key);
             this.appStore.updateKeyModifiers(event);
             const activeContextMenu = getActiveContextMenu();
             if(activeContextMenu != null){
