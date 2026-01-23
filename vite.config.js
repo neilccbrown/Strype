@@ -3,6 +3,7 @@ import { execSync } from "child_process";
 import vue2 from  "@vitejs/plugin-vue2";
 import path from "path";
 import ConditionalCompile from "vite-plugin-conditional-compiler";
+import { VitePWA } from "vite-plugin-pwa";
 import fs from "fs";
 
 function removeFilesPlugin(isStandardPython) {
@@ -44,6 +45,12 @@ export default defineConfig(({mode}) => {
             ConditionalCompile(),            
             vue2(),
             removeFilesPlugin(isStandardPython),
+            VitePWA({
+                registerType: 'autoUpdate',
+                strategies: 'injectManifest',
+                srcDir: 'src/worker',
+                filename: 'service-worker.ts'
+            }),
         ],
 
         css: {

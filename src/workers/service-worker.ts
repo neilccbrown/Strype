@@ -1,9 +1,14 @@
 /// <reference lib="webworker" />
 import { serviceWorkerFetchListener } from "sync-message";
 
+// Note: this worker is automatically registered and updated by Vita PWA (see vite.config.js)
+
 declare let self: ServiceWorkerGlobalScope;
 
-// Required for InjectManifest (see vue.config.js), even though we don't actually use the variable
+// Required for InjectManifest (see vite.config.js), even though we don't actually use the variable
+// because it complains otherwise during build.
+// We don't want the alternative config of generateSW because that would be a default service worker
+// without the message relaying provided by serviceWorkerFetchListener from sync-message.
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
