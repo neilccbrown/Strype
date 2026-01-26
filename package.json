@@ -151,5 +151,8 @@
     },
     "lint-staged": {
         "src/**/*.{js,ts,vue}": "eslint --fix"
+    },
+    "volta": {
+        "node": "24.13.0"
     }
 }
