@@ -1,8 +1,8 @@
-import strype_graphics_internal as _strype_graphics_internal
-import strype_graphics_input_internal as _strype_input_internal
+from strype_bridge import strype_graphics_internal as _strype_graphics_internal, strype_graphics_input_internal as _strype_input_internal
 import math as _math
 import collections as _collections
 import re as _re
+import sys as _sys
 import time as _time
 
 # This file is automatically processed to extract types for TigerPython, using the "# type" annotations
@@ -1060,6 +1060,11 @@ def pace(actions_per_second = 25):
     
     :param actions_per_second: The amount of times you want to call pace() per second, 25 by default.
     """
+    # Trigger a redraw:
+    r = _sys.modules["_strype_pyodide_globals"]["runner"]
+    if r:
+        r.callback("redraw", data=[])
+    
     global _last_frame
     now = _time.time()
     # We sleep for 1/Nth minus the time since we last slept.  If it's negative (because we can't keep

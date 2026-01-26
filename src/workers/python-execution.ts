@@ -2,10 +2,13 @@ import type { PyodideInterface } from "pyodide";
 import { loadPyodide } from "pyodide";
 import { loadPyodideAndPackage, makeRunnerCallback, OutputPart, pyodideExpose, PyodideExtras, PyodideFatalErrorReloader } from "pyodide-worker-runner";
 import * as Comlink from "comlink";
+import { strype_bridge } from "@/stryperuntime/pyodide-bridge";
 
 async function loadOnly() : Promise<PyodideInterface> {
-    const pyodide = await loadPyodideAndPackage({url: `${import.meta.env.BASE_URL}public_libraries/python_runner.zip`, format: "zip"}, loadPyodide);
+    const pyodide = await loadPyodideAndPackage({url: `${import.meta.env.BASE_URL}pysrc.zip`, format: "zip"}, loadPyodide);
     console.log("Loaded pyodide and package");
+    
+    pyodide.registerJsModule("strype_bridge", strype_bridge);
     
     return pyodide;
 }

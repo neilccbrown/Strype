@@ -1,4 +1,4 @@
-import strype_sound_internal as _strype_sound_internal
+from strype_bridge import strype_sound_internal as _strype_sound_internal 
 import time as _time
 
 class Sound:

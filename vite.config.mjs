@@ -7,6 +7,35 @@ import { fileURLToPath } from "url";
 import ConditionalCompile from "vite-plugin-conditional-compiler";
 import { VitePWA } from "vite-plugin-pwa";
 import fs from "fs";
+import { zipDir } from "./scripts/zip-dir.js";
+
+function zipPysrcPlugin() {
+    const run = () =>
+        zipDir({
+            rootDir: "pysrc",
+            subdirs: ["strype", "python_runner"],
+            outFile: path.resolve("public/pysrc.zip")
+        })
+
+    return {
+        name: "zip-pysrc",
+
+        async buildStart() {
+            await run()
+        },
+
+        // Rerun when pysrc changes:
+        configureServer(server) {
+            run()
+
+            server.watcher.add("pysrc/**")
+
+            server.watcher.on("change", async () => {
+                await run()
+            })
+        }
+    }
+}
 
 // Taken from https://pyodide.org/en/0.29.0/usage/working-with-bundlers.html with a tweak to make paths work on Windows:
 const PYODIDE_EXCLUDE = [
@@ -78,6 +107,7 @@ export default defineConfig(({mode}) => {
                 injectRegister: "false", // we register in main.ts so that it registers in dev mode
             }),
             viteStaticCopyPyodide(),
+            zipPysrcPlugin(),
         ],
 
         css: {

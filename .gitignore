@@ -41,3 +41,5 @@ tests/cypress/expected-screenshots/diff/*
 /tests/playwright/test-results/
 /tests/playwright/html-report/
 
+# Built files
+public/pysrc.zip
