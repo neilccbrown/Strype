@@ -46,10 +46,10 @@ export default defineConfig(({mode}) => {
             vue2(),
             removeFilesPlugin(isStandardPython),
             VitePWA({
-                registerType: 'autoUpdate',
-                strategies: 'injectManifest',
-                srcDir: 'src/workers',
-                filename: 'service-worker.ts'
+                registerType: "autoUpdate",
+                strategies: "injectManifest",
+                srcDir: "src/workers",
+                filename: "service-worker.ts",
             }),
         ],
 
