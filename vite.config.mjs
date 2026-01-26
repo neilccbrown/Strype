@@ -21,18 +21,18 @@ function zipPysrcPlugin() {
         name: "zip-pysrc",
 
         async buildStart() {
-            await run()
+            await run();
         },
 
         // Rerun when pysrc changes:
-        configureServer(server) {
-            run()
+        async configureServer(server) {
+            await run();
 
-            server.watcher.add("pysrc/**")
+            server.watcher.add("pysrc/**");
 
             server.watcher.on("change", async () => {
                 await run()
-            })
+            });
         }
     }
 }
