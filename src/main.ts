@@ -40,7 +40,7 @@ export const projectDocumentationFrameId = -10;
 
 let localeBuildDate = "";
 export function getLocaleBuildDate(): string {
-    // This method returns the build date, set in vite.config.js.
+    // This method returns the build date, set in vite.config.mjs.
     // To avoid calling the formatter every time, we keep a local
     // variable with the formatted date value for the web session.
     if(localeBuildDate.length > 0) {
@@ -58,6 +58,22 @@ export function getLocaleBuildDate(): string {
         }
     }
 }
+
+// We have to register the service worker ourselves so that it works in dev.
+// (If we used the Vite PWA auto-register it would only work in production.)
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", async () => {
+        try {
+            const swUrl = `${import.meta.env.BASE_URL}service-worker.js`;
+            const registration = await navigator.serviceWorker.register(swUrl);
+            console.log("SW registered:", registration);
+        }
+        catch (err) {
+            console.error("SW registration failed:", err);
+        }
+    });
+}
+
 
 // Set the SCSS variables for the tests here
 (window as any)[WINDOW_STRYPE_SCSSVARS_PROPNAME] = scssVars;

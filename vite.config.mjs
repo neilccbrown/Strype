@@ -1,10 +1,32 @@
 import { defineConfig, loadEnv } from "vite";
+import { viteStaticCopy } from "vite-plugin-static-copy";
 import { execSync } from "child_process";
 import vue2 from  "@vitejs/plugin-vue2";
 import path from "path";
+import { fileURLToPath } from "url";
 import ConditionalCompile from "vite-plugin-conditional-compiler";
 import { VitePWA } from "vite-plugin-pwa";
 import fs from "fs";
+
+// Taken from https://pyodide.org/en/0.29.0/usage/working-with-bundlers.html with a tweak to make paths work on Windows:
+const PYODIDE_EXCLUDE = [
+    "!**/*.{md,html}",
+    "!**/*.d.ts",
+    "!**/*.whl",
+    "!**/node_modules",
+];
+export function viteStaticCopyPyodide() {
+    const pyodideDir = path.dirname(fileURLToPath(import.meta.resolve("pyodide")));
+    return viteStaticCopy({
+        targets: [
+            {
+                // Important to use posix.join to get forward slashes instead of backslashes:
+                src: [path.join(pyodideDir, "*").replaceAll("\\", "/")].concat(PYODIDE_EXCLUDE),
+                dest: "assets",
+            },
+        ],
+    });
+}
 
 function removeFilesPlugin(isStandardPython) {
     // The  library files we ship in the website depending on the platform we're on (standard Python or micro;bit).
@@ -50,7 +72,12 @@ export default defineConfig(({mode}) => {
                 strategies: "injectManifest",
                 srcDir: "src/workers",
                 filename: "service-worker.ts",
+                injectManifest: {
+                    globPatterns: [], // don't precache any files because we're not actually using precaching
+                },
+                injectRegister: "false", // we register in main.ts so that it registers in dev mode
             }),
+            viteStaticCopyPyodide(),
         ],
 
         css: {
@@ -85,5 +112,9 @@ export default defineConfig(({mode}) => {
                 "@": path.resolve(__dirname, "src"),
             },
         },
+
+        optimizeDeps: { exclude: ["pyodide"] },
+
+        worker: { format: 'es' },
     };
 });

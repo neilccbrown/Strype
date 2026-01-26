@@ -1,19 +1,10 @@
 import type { PyodideInterface } from "pyodide";
+import { loadPyodide } from "pyodide";
 import { loadPyodideAndPackage, makeRunnerCallback, OutputPart, pyodideExpose, PyodideExtras, PyodideFatalErrorReloader } from "pyodide-worker-runner";
 import * as Comlink from "comlink";
 
-declare const globalThis: any;
 async function loadOnly() : Promise<PyodideInterface> {
-    const ourPyodideLoader = async () => {
-        await import(
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            /* webpackIgnore: true */ "./pyodide-0.29.0/pyodide.js"
-        );
-        return await globalThis.loadPyodide({indexURL: "./pyodide-0.29.0/"}) as PyodideInterface;
-    };
-
-    const pyodide = await loadPyodideAndPackage({url: "../public_libraries/python_runner.zip", format: "zip"}, ourPyodideLoader);
+    const pyodide = await loadPyodideAndPackage({url: `${import.meta.env.BASE_URL}public_libraries/python_runner.zip`, format: "zip"}, loadPyodide);
     console.log("Loaded pyodide and package");
     
     return pyodide;

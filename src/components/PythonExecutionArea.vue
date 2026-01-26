@@ -161,7 +161,7 @@ export default Vue.extend({
     
     mounted(){
         const pythonWorker = new Worker(new URL("@/workers/python-execution.ts", import.meta.url), {type: "module"});
-        const channel = makeServiceWorkerChannel({scope: process.env.BASE_URL});
+        const channel = makeServiceWorkerChannel({scope: import.meta.env.BASE_URL});
         this.pythonClient = new PyodideClient(() => pythonWorker, channel);
         this.pythonClient.call(
             this.pythonClient.workerProxy.onReady,
