@@ -8,6 +8,7 @@ import ConditionalCompile from "vite-plugin-conditional-compiler";
 import { VitePWA } from "vite-plugin-pwa";
 import fs from "fs";
 import { zipDir } from "./scripts/zip-dir.js";
+import checker from 'vite-plugin-checker';
 
 function zipPysrcPlugin() {
     const run = () =>
@@ -108,6 +109,8 @@ export default defineConfig(({mode}) => {
             }),
             viteStaticCopyPyodide(),
             zipPysrcPlugin(),
+            // Ideally we want typescript: true, but only after finishing the Pyodide and Vue 3 work:
+            checker({ typescript: false }),        
         ],
 
         css: {

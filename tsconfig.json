@@ -17,8 +17,6 @@
       "gapi", 
       "google.accounts",
       "google.picker",
-      "webpack-env",
-      "webpack",
       "jquery",
       "mocha",
       "chai",
