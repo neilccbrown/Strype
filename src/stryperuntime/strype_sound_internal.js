@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+// Disabled until we convert to Typescript and export everything
+
 // This file contains the internal sound/music API for Strype.
 // These functions are not directly exposed to users, but are used by sound.py to
 // form the actual public API.

@@ -14,6 +14,9 @@ export default [
             "**/*.min.js",
             "assets/**",
             "public/**/*.js",
+            "temp-scripts/**",
+            "scripts/compiled/**",
+            "docs-sphinx/**",
         ],
     },
     {

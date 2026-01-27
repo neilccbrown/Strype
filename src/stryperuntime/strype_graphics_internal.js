@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-unused-vars */
+// Disabled until we convert to Typescript and export everything
+
 // This file contains the internal graphics API for the Strype graphics world.
 // These functions are not directly exposed to users, but are used by graphics.py to
 // form the actual public API.
@@ -21,9 +24,13 @@ class LRU {
 
     set(key, val) {
         // refresh key
-        if (this.cache.has(key)) this.cache.delete(key);
+        if (this.cache.has(key)) {
+            this.cache.delete(key);
+        }
         // evict oldest
-        else if (this.cache.size === this.max) this.cache.delete(this.first());
+        else if (this.cache.size === this.max) {
+            this.cache.delete(this.first());
+        }
         this.cache.set(key, val);
     }
 
