@@ -14,12 +14,12 @@ import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFr
 import { pythonBuiltins } from "@/autocompletion/pythonBuiltins";
 import skulptPythonAPI from "@/autocompletion/skulpt-api.json";
 import {OUR_PUBLIC_LIBRARY_MODULES} from "@/autocompletion/ac-skulpt";
-// The PY/PYI files live in /public, which is not where Vite expects assets. 
-// We could just import with "?raw" added to the import, but that triggers warnings when Vite runs,
-// which are annoying to see in the console, especially for tests in GitHub. 
-fetch("./public_libraries/strype/graphics.py").then((response) => response.text().then((modContent) => TPyParser.defineModule("strype.graphics", extractPYI(modContent), "pyi")));
-fetch("./public_libraries/strype/sound.py").then((response) => response.text().then((modContent) => TPyParser.defineModule("strype.sound", extractPYI(modContent), "pyi")));
-fetch("./pyi/turtle.pyi").then((response) => response.text().then((modContent) => TPyParser.defineModule("turtle", modContent, "pyi")));
+import graphicsMod from "@/../pysrc/strype/graphics.py?raw";
+import soundMod from "@/../pysrc/strype/sound.py?raw";
+import turtleMod from "@/../pysrc/pyi/turtle.pyi?raw";
+TPyParser.defineModule("strype.graphics", extractPYI(graphicsMod), "pyi");
+TPyParser.defineModule("strype.sound", extractPYI(soundMod), "pyi");
+TPyParser.defineModule("turtle", turtleMod, "pyi");
 // #v-else
 import microbitPythonAPI from "@/autocompletion/microbit-api.json";
 import microbitDescriptions from "@/autocompletion/microbit.json";
