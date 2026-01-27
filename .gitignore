@@ -43,3 +43,4 @@ tests/cypress/expected-screenshots/diff/*
 
 # Built files
 public/pysrc.zip
+public/compiled-service-worker.js

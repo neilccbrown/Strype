@@ -63,15 +63,19 @@ export function getLocaleBuildDate(): string {
 // (If we used the Vite PWA auto-register it would only work in production.)
 if ("serviceWorker" in navigator) {
     window.addEventListener("load", async () => {
+        // Note: service-worker.js is our desired name, the dev-sw.js is the one PWA always uses in dev mode.
+        const swUrl = import.meta.env.BASE_URL + "compiled-service-worker.js";
         try {
-            const swUrl = `${import.meta.env.BASE_URL}service-worker.js`;
-            const registration = await navigator.serviceWorker.register(swUrl);
+            const registration = await navigator.serviceWorker.register(swUrl, {type: "module", scope: import.meta.env.BASE_URL});
             console.log("SW registered:", registration);
         }
         catch (err) {
-            console.error("SW registration failed:", err);
+            console.error(`SW registration failed for ${swUrl} because:`, err);
         }
     });
+}
+else {
+    console.error("No service worker support");
 }
 
 

@@ -5,7 +5,6 @@ import vue2 from  "@vitejs/plugin-vue2";
 import path from "path";
 import { fileURLToPath } from "url";
 import ConditionalCompile from "vite-plugin-conditional-compiler";
-import { VitePWA } from "vite-plugin-pwa";
 import fs from "fs";
 import { zipDir } from "./scripts/zip-dir.js";
 import checker from 'vite-plugin-checker';
@@ -97,16 +96,6 @@ export default defineConfig(({mode}) => {
             ConditionalCompile(),            
             vue2(),
             removeFilesPlugin(isStandardPython),
-            VitePWA({
-                registerType: "autoUpdate",
-                strategies: "injectManifest",
-                srcDir: "src/workers",
-                filename: "service-worker.ts",
-                injectManifest: {
-                    globPatterns: [], // don't precache any files because we're not actually using precaching
-                },
-                injectRegister: "false", // we register in main.ts so that it registers in dev mode
-            }),
             viteStaticCopyPyodide(),
             zipPysrcPlugin(),
             // Ideally we want typescript: true, but only after finishing the Pyodide and Vue 3 work:

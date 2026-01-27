@@ -4,11 +4,12 @@
     "private": true,
     "scripts": {
         "serve:microbit": "cross-env vite --mode microbit --port 8081",
-        "serve:python": "cross-env vite --mode standard --port 8081",
+        "serve:python": "npm run compile-service-worker && vite --mode standard --port 8081",
         "serve:python:dist:playwright": "rimraf temp-scripts/playwright-server && npm run build:python && mkdirp temp-scripts/playwright-server/editor/ && mv dist/* temp-scripts/playwright-server/editor/ && npx serve -l 8081 temp-scripts/playwright-server",
         "build:microbit": "cross-env vite build --mode microbit",
-        "build:python": "cross-env vite build --mode standard",
+        "build:python": "npm run compile-service-worker && cross-env vite build --mode standard",
         "build:github-pages": "cross-env VITE_GITHUB_PAGE=true vite build --mode standard",
+        "compile-service-worker": "npx node scripts/build-service-worker.mjs",
         "lint:check": "eslint . --ext .js,.vue --max-warnings 0",
         "library:make-ac-json": "cd scripts && npm install && npx tsc && (node -e \"console.log('library_arg = \\'' + process.env.LIBRARY + '\\';')\" && npx esbuild --bundle compiled/scripts/process-skulpt-api.js) | npx browser-run -s ../public > ../autocomplete.json",
         "preprocess:update-microbit-api": "python3.9 scripts/process-microbit-api.py | python3.8 scripts/add-docs-from-python.py > src/autocompletion/microbit-api.json",
@@ -142,7 +143,6 @@
         "start-server-and-test": "^1.15.4",
         "typescript": "^4.9.5",
         "vite-plugin-checker": "^0.12.0",
-        "vite-plugin-pwa": "^1.2.0",
         "vite-plugin-static-copy": "^3.1.6",
         "vue-eslint-parser": "^10.2.0",
         "vue-template-compiler": "2.7.14"
