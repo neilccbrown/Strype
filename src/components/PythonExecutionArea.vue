@@ -82,6 +82,7 @@ import { makeServiceWorkerChannel } from "sync-message";
 import * as Comlink from "comlink";
 import { handleErrorTrace, setSInputConsole, sInput } from "@/helpers/execPythonCode";
 import { ErrorDetails } from "@/workers/python-execution";
+import {StrypePyodideHandlerFunctionAsync, StrypePyodideWorkerRequestInput} from "@/stryperuntime/worker_bridge_type";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
@@ -549,6 +550,23 @@ export default Vue.extend({
                 
                 if (this.pythonClient != null) {
                     const client = this.pythonClient;
+                    
+                    // eslint-disable-next-line @typescript-eslint/no-this-alias
+                    const v = this;
+                    
+                    const asyncBridge : StrypePyodideHandlerFunctionAsync = async (req) => {
+                        switch (req.request) {
+                        case "loadImage": {
+                            const response = await fetch(req.url);
+                            const blob = await response.blob();
+                            return await createImageBitmap(blob);
+                        }
+                        case "loadLibraryAsset": {
+                            return await v.loadLibraryAsset(req.libraryShortName, req.fileName);
+                        }
+                        }
+                    };
+
                     (this.pythonClient.call(
                         this.pythonClient.workerProxy.executePython,
                         userCode,
@@ -561,6 +579,17 @@ export default Vue.extend({
                                 await navigator.serviceWorker.ready;
                                 try {
                                     await client.writeMessage(s);
+                                }
+                                catch (e) {
+                                    console.error(e);
+                                }
+                            });
+                        }),
+                        Comlink.proxy((req : StrypePyodideWorkerRequestInput) => {
+                            asyncBridge(req).then(async (r : any) => {
+                                await navigator.serviceWorker.ready;
+                                try {
+                                    await client.writeMessage(r);
                                 }
                                 catch (e) {
                                     console.error(e);

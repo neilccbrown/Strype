@@ -7,12 +7,14 @@
 
 // From https://stackoverflow.com/questions/996505/lru-cache-implementation-in-javascript
 class LRU {
+    max : number;
+    cache : Map<string, number>;
     constructor(max = 10) {
         this.max = max;
         this.cache = new Map();
     }
 
-    get(key) {
+    get(key : string) {
         let item = this.cache.get(key);
         if (item !== undefined) {
             // refresh key
@@ -22,7 +24,7 @@ class LRU {
         return item;
     }
 
-    set(key, val) {
+    set(key : string, val : number) {
         // refresh key
         if (this.cache.has(key)) {
             this.cache.delete(key);
@@ -34,10 +36,20 @@ class LRU {
         this.cache.set(key, val);
     }
 
-    first() {
+    first() : string {
         return this.cache.keys().next().value;
     }
 }
+
+import type {StrypePyodideHandlerFunctionSync} from "./worker_bridge_type";
+
+declare const globalThis: WorkerGlobalScope & {
+    StrypePyodideWorkerBridge: StrypePyodideHandlerFunctionSync;
+};
+
+const bridge : StrypePyodideHandlerFunctionSync = (req) => {
+    return globalThis.StrypePyodideWorkerBridge(req);
+};
 
 // There is no standard way in HTML to synchronously load images,
 // but we need to be able to do this in order to use the image's attributes
@@ -46,65 +58,35 @@ class LRU {
 // the image has executed.  This effectively makes it seem like the user
 // code has loaded the image synchronously.
 // This code is adapted from Skulpt's src/lib/image.js
-export function loadAndWaitForImage(filename) {
-    /*
-    filename = Sk.ffi.remapToJs(filename);
-    let susp = new Sk.misceval.Suspension();
-    function susp.resume () {
-        if (susp.data["error"]) {
-            throw new Sk.builtin.IOError(susp.data["error"].message);
-        }
-        return susp.ret;
-    };
-    susp.data = {
-        type: "Sk.promise",
-        promise: new Promise(function (resolve, reject) {
-            var newImg = new Image();
-            newImg.crossOrigin = "";
-            function newImg.onerror () {
-                reject(Error("Failed to load image (does not exist or server refused permission): " + newImg.src));
-            };
-            function newImg.onload () {
-                susp.ret = newImg;
-                resolve();
-            };
-            // Actually trigger the load:
-            // Try to detect if it's a relative path or absolute URL.  We are fairly lenient
-            // and permissive, so our rule is: if it starts with http: or https: or // we 
-            // treat it as absolute, or something.ext/something then we assume it's a URL.
-            // Otherwise we count it as a relative path:
-            let match;
-            if (/^https?:/.test(filename) || /^\/\//.test(filename)) {
-                // Absolute:
-                newImg.src = filename;
-            }
-            else if (!/:/.test(filename) && /^[^./]+\.[^/]+\/.+/.test(filename)) {
-                // Absolute partial:
-                newImg.src = "https://" + filename;
-            }
-            else if (/^data:/.test(filename) && !/^data:image\/svg+xml/.test(filename)) {
-                // Base64 data image:
-                newImg.src = filename;
-            }
-            else if ((match = /^:([^:]+):(.+)$/.exec(filename))) {
-                // If it's some other prefix between two colons, it's a library asset:
-                const libraryName = match[1];
-                const fileName = match[2];
-                peaComponent.__vue__.loadLibraryAsset(libraryName, fileName).then((dataURL) => {
-                    newImg.src = dataURL ?? filename;
-                }).catch((error) => {
-                    // Propagate the error to the outer promise
-                    reject(error);
-                });
-            }
-            else {
-                // Relative path:
-                newImg.src = "./graphics_images/" + filename;
-            }
-        }),
-    };
-    return susp;
-     */
+export function loadAndWaitForImage(filename: string) : ImageBitmap {
+    // Try to detect if it's a relative path or absolute URL.  We are fairly lenient
+    // and permissive, so our rule is: if it starts with http: or https: or // we 
+    // treat it as absolute, or something.ext/something then we assume it's a URL.
+    // Otherwise we count it as a relative path:
+    let match;
+    if (/^https?:/.test(filename) || /^\/\//.test(filename)) {
+        // Absolute:
+        return bridge({request: "loadImage", url: filename});
+    }
+    else if (!/:/.test(filename) && /^[^./]+\.[^/]+\/.+/.test(filename)) {
+        // Absolute partial:
+        return bridge({request: "loadImage", url: "https://" + filename});
+    }
+    else if (/^data:/.test(filename) && !/^data:image\/svg+xml/.test(filename)) {
+        // Base64 data image:
+        return bridge({request: "loadImage", url: filename});
+    }
+    else if ((match = /^:([^:]+):(.+)$/.exec(filename))) {
+        // If it's some other prefix between two colons, it's a library asset:
+        const libraryShortName = match[1];
+        const fileName = match[2];
+        const viaLibrary = bridge({request: "loadLibraryAsset", libraryShortName, fileName}) ?? filename;
+        return bridge({request: "loadImage", url: viaLibrary});
+    }
+    else {
+        // Relative path:
+        return bridge({request: "loadImage", url: "./graphics_images/" + filename});
+    }
 };
 export function setBackground(img) {
     peaComponent.__vue__.getPersistentImageManager().setBackground(img);
@@ -158,9 +140,9 @@ export function makeCanvasOfSize(width, height) {
     // Note: we do not remapToPy because it makes no sense, we are just passing the reference around:
     return c;
 };
-export function htmlImageToCanvas(imageElement) {
+export function htmlImageToCanvas(imageElement : ImageBitmap) {
     const c = new OffscreenCanvas(imageElement.width, imageElement.height);
-    c.getContext("2d").drawImage(imageElement, 0, 0);
+    c.getContext("2d")?.drawImage(imageElement, 0, 0);
     return c;
 };
 export function getCanvasDimensions(img) {

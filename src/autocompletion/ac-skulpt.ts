@@ -9,7 +9,7 @@ declare const Sk: any;
 export const OUR_PUBLIC_LIBRARY_FILES : string[] = [
     /* #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE  */
     "strype/__init__.py",
-    "strype/strype_graphics_internal.js", "strype/graphics.py",
+    "strype/strype_graphics_internal.ts", "strype/graphics.py",
     "strype/strype_sound_internal.js", "strype/sound.py",
     "strype/strype_graphics_input_internal.js",
     /* #v-endif  */

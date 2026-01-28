@@ -1,8 +1,14 @@
+/// <reference lib="webworker" />
 import type { PyodideInterface } from "pyodide";
 import { loadPyodide } from "pyodide";
 import { loadPyodideAndPackage, makeRunnerCallback, OutputPart, pyodideExpose, PyodideExtras, PyodideFatalErrorReloader } from "pyodide-worker-runner";
 import * as Comlink from "comlink";
-import { strype_bridge } from "@/stryperuntime/pyodide-bridge";
+import { strype_bridge } from "@/stryperuntime/pyodide_bridge";
+import {StrypePyodideHandlerFunctionSync, StrypePyodideHandlerFunctionVoid, StrypePyodideWorkerRequestInput, StrypePyodideWorkerRequestOutput} from "@/stryperuntime/worker_bridge_type";
+
+declare const self: WorkerGlobalScope & {
+    StrypePyodideWorkerBridge: StrypePyodideHandlerFunctionSync;
+};
 
 async function loadOnly() : Promise<PyodideInterface> {
     const pyodide = await loadPyodideAndPackage({url: `${import.meta.env.BASE_URL}pysrc.zip`, format: "zip"}, loadPyodide);
@@ -25,7 +31,8 @@ const executePython = pyodideExpose(async (
     extras: PyodideExtras,
     pythonCode: string,
     printStdout: Comlink.Remote<(output: string) => void>,
-    requestInput: Comlink.Remote<(prompt: string) => void>
+    requestInput: Comlink.Remote<(prompt: string) => void>,
+    bridge: Comlink.Remote<StrypePyodideHandlerFunctionVoid>
 ) : Promise<ErrorDetails | null> => {
     return await reloader.withPyodide(async (pyodide : PyodideInterface) => {
         const runner = pyodide.runPython(`from python_runner import PyodideRunner
@@ -40,6 +47,14 @@ class StrypePyodideRunner(PyodideRunner):
         filtered = [dict(filename=frame.filename, lineno=frame.lineno) for frame in list(dropwhile(lambda f: f.filename != self.filename, tbe.stack))]
         return dict(error_type=type(exc).__name__, error_message=str(exc), traceback=filtered, text=type(exc).__name__ + ": " + str(exc))
 StrypePyodideRunner()`);
+        const bridgeSync: StrypePyodideHandlerFunctionSync = <K extends StrypePyodideWorkerRequestInput["request"]>(
+            req: Extract<StrypePyodideWorkerRequestInput, { request: K }>
+        ) : StrypePyodideWorkerRequestOutput[K]  => {
+            bridge(req);
+            const reply = extras.readMessage() as StrypePyodideWorkerRequestOutput[K];
+            return reply;
+        };        
+        
         let error : ErrorDetails | null = null;
         const callback = makeRunnerCallback(extras, {
             output: (outputText: OutputPart[]) => {
@@ -66,6 +81,7 @@ StrypePyodideRunner()`);
             },
         });
         runner.set_callback(callback);
+        self.StrypePyodideWorkerBridge = bridgeSync;
         await runner.run_async(pythonCode, {});
         return error;
     });
