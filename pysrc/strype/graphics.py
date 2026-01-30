@@ -541,7 +541,7 @@ class Actor:
         
          # Gets X with rounding (towards zero):
         location = _strype_graphics_internal.getImageLocation(self.__id)
-        return int(location['x']) if location else None
+        return int(location.x) if location else None
 
     def get_y(self):
         # type: () -> int
@@ -554,7 +554,7 @@ class Actor:
         """
         # Gets Y with rounding (towards zero):
         location = _strype_graphics_internal.getImageLocation(self.__id)
-        return int(location['y']) if location else None
+        return int(location.y) if location else None
 
     def get_exact_x(self):
         # type: () -> float
@@ -566,7 +566,7 @@ class Actor:
         """
         # Gets X with no rounding:
         location = _strype_graphics_internal.getImageLocation(self.__id)
-        return location['x'] if location else None
+        return location.x if location else None
 
     def get_exact_y(self):
         # type: () -> float
@@ -578,7 +578,7 @@ class Actor:
         """
         # Gets Y with no rounding:
         location = _strype_graphics_internal.getImageLocation(self.__id)
-        return location['y'] if location else None
+        return location.y if location else None
     
     def move(self, distance):
         # type: (float) -> None
@@ -593,7 +593,7 @@ class Actor:
         cur = _strype_graphics_internal.getImageLocation(self.__id)
         if cur is not None:
             rot = _math.radians(_strype_graphics_internal.getImageRotation(self.__id))
-            self.set_location(cur['x'] + distance * _math.cos(rot), cur['y'] + distance * _math.sin(rot))
+            self.set_location(cur.x + distance * _math.cos(rot), cur.y + distance * _math.sin(rot))
         # If cur is None, do nothing
     
     def turn(self, degrees):
@@ -1059,12 +1059,7 @@ def pace(actions_per_second = 25):
     for actions_per_second).
     
     :param actions_per_second: The amount of times you want to call pace() per second, 25 by default.
-    """
-    # Trigger a redraw:
-    r = _sys.modules["_strype_pyodide_globals"]["runner"]
-    if r:
-        r.callback("redraw", data=[])
-    
+    """    
     global _last_frame
     now = _time.time()
     # We sleep for 1/Nth minus the time since we last slept.  If it's negative (because we can't keep

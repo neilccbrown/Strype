@@ -6,6 +6,13 @@
 // form the actual public API.
 
 // From https://stackoverflow.com/questions/996505/lru-cache-implementation-in-javascript
+import {PersistentImageManager} from "@/stryperuntime/image_and_collisions";
+import type { PyProxy } from "pyodide/ffi";
+import type {PyodideAPI} from "pyodide";
+import type {RemoteCanvas, RemoteImage, StrypePyodideHandlerFunctionSync} from "./worker_bridge_type";
+import {PyodideWorkerGlobalScope} from "@/workers/python_execution_type";
+
+
 class LRU {
     max : number;
     cache : Map<string, number>;
@@ -41,11 +48,8 @@ class LRU {
     }
 }
 
-import type {StrypePyodideHandlerFunctionSync} from "./worker_bridge_type";
 
-declare const globalThis: WorkerGlobalScope & {
-    StrypePyodideWorkerBridge: StrypePyodideHandlerFunctionSync;
-};
+declare const globalThis: PyodideWorkerGlobalScope;
 
 const bridge : StrypePyodideHandlerFunctionSync = (req) => {
     return globalThis.StrypePyodideWorkerBridge(req);
@@ -58,7 +62,7 @@ const bridge : StrypePyodideHandlerFunctionSync = (req) => {
 // the image has executed.  This effectively makes it seem like the user
 // code has loaded the image synchronously.
 // This code is adapted from Skulpt's src/lib/image.js
-export function loadAndWaitForImage(filename: string) : ImageBitmap {
+export function loadAndWaitForImage(filename: string) : RemoteImage {
     // Try to detect if it's a relative path or absolute URL.  We are fairly lenient
     // and permissive, so our rule is: if it starts with http: or https: or // we 
     // treat it as absolute, or something.ext/something then we assume it's a URL.
@@ -87,87 +91,79 @@ export function loadAndWaitForImage(filename: string) : ImageBitmap {
         // Relative path:
         return bridge({request: "loadImage", url: "./graphics_images/" + filename});
     }
-};
-export function setBackground(img) {
-    peaComponent.__vue__.getPersistentImageManager().setBackground(img);
-};
+}
+export function setBackground(img : RemoteImage) {
+    globalThis.persistentImageManager.setBackground(img);
+}
 // Note, assoc parameter may be missing (and thus undefined): 
-export function addImage(image, assoc) {
-    return peaComponent.__vue__.getPersistentImageManager().addPersistentImage(image, assoc);
-};
-export function updateImage(id, image) {
-    return peaComponent.__vue__.getPersistentImageManager().setPersistentImageImage(id, image);
-};
-export function imageExists(image) {
-    return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageManager().hasPersistentImage(image));
-};
-export function getImageSize (img) {
-    return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageManager().getPersistentImageSize(img));
-};
-export function setImageLocation(img, x, y) {
-    peaComponent.__vue__.getPersistentImageManager().setPersistentImageLocation(img, x, y);
-};
-export function setImageRotation(img, r) {
-    peaComponent.__vue__.getPersistentImageManager().setPersistentImageRotation(img, r);
-};
-export function setImageScale(img, s) {
-    peaComponent.__vue__.getPersistentImageManager().setPersistentImageScale(img, s);
-};
-export function getImageLocation(img) {
-    return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageManager().getPersistentImageLocation(img));
-};
-export function getImageRotation(img) {
-    return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageManager().getPersistentImageRotation(img));
-};
-export function getImageScale(img) {
-    return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageManager().getPersistentImageScale(img));
-};
-export function removeImage(img) {
-    peaComponent.__vue__.getPersistentImageManager().removePersistentImage(img);
-};
+export function addImage(image: RemoteImage, assoc : PyProxy) : number {
+    return globalThis.persistentImageManager.addPersistentImage(image, assoc);
+}
+export function updateImage(id: number, image: RemoteImage) : void {
+    globalThis.persistentImageManager.setPersistentImageImage(id, image);
+}
+export function imageExists(image : number) : boolean {
+    return globalThis.persistentImageManager.hasPersistentImage(image);
+}
+export function getImageSize (img : number)  : {width: number, height: number} | undefined {
+    return globalThis.persistentImageManager.getPersistentImageSize(img);
+}
+export function setImageLocation(img : number, x : number, y : number) : void {
+    globalThis.persistentImageManager.setPersistentImageLocation(img, x, y);
+}
+export function setImageRotation(img : number, r : number) : void {
+    globalThis.persistentImageManager.setPersistentImageRotation(img, r);
+}
+export function setImageScale(img : number, s : number) : void {
+    globalThis.persistentImageManager.setPersistentImageScale(img, s);
+}
+export function getImageLocation(img : number): { x: number; y: number } | undefined {
+    return globalThis.persistentImageManager.getPersistentImageLocation(img);
+}
+export function getImageRotation(img : number): number | undefined {
+    return globalThis.persistentImageManager.getPersistentImageRotation(img);
+}
+export function getImageScale(img : number) : number | undefined {
+    return globalThis.persistentImageManager.getPersistentImageScale(img);
+}
+export function removeImage(img: number) : void {
+    globalThis.persistentImageManager.removePersistentImage(img);
+}
 // Removes an image after a timeout.  Can be cancelled with cancelRemoveImageAfter (passing same img)
-export function removeImageAfter(img, secs) {
-    peaComponent.__vue__.getPersistentImageManager().removePersistentImageAfter(img, secs);
-};
+export function removeImageAfter(img : number, secs : number) : void {
+    globalThis.persistentImageManager.removePersistentImageAfter(img, secs);
+}
 
-export function makeImageEditable(img) {
-    return peaComponent.__vue__.getPersistentImageManager().editImage(img);
-};
+export function makeImageEditable(img : number) {
+    return globalThis.persistentImageManager.editImage(img);
+}
 
 
-export function makeCanvasOfSize(width, height) {
-    const c = new OffscreenCanvas(width, height);
-    // Note: we do not remapToPy because it makes no sense, we are just passing the reference around:
+export function makeCanvasOfSize(width : number, height : number) : RemoteCanvas {
+    return bridge({request: "makeOffscreenCanvas", width, height});
+}
+export function htmlImageToCanvas(imageElement : RemoteImage) : RemoteCanvas {
+    const c = makeCanvasOfSize(imageElement.width, imageElement.height);
+    canvas_drawImagePart(c, imageElement, 0, 0, 0, 0, imageElement.width, imageElement.height, 1.0);
     return c;
-};
-export function htmlImageToCanvas(imageElement : ImageBitmap) {
-    const c = new OffscreenCanvas(imageElement.width, imageElement.height);
-    c.getContext("2d")?.drawImage(imageElement, 0, 0);
-    return c;
-};
-export function getCanvasDimensions(img) {
-    return new Sk.builtin.tuple([Sk.ffi.remapToPy(img.width), Sk.ffi.remapToPy(img.height)]);
-};
+}
+export function getCanvasDimensions(img : RemoteCanvas) : number[] {
+    return [img.width, img.height];
+}
 export function canvas_fillRect(img, x, y, width, height) {
     const ctx = img.getContext("2d");
     return ctx.fillRect(x, y, width, height);
-};
-export function canvas_clearRect(img, x, y, width, height) {
-    const ctx = img.getContext("2d");
-    return ctx.clearRect(x, y, width, height);
-};
-export function canvas_setFill(img, color) {
-    const ctx = img.getContext("2d");
-    let colorJs = Sk.ffi.remapToJs(color);
+}
+export function canvas_clearRect(img: RemoteCanvas, x : number, y : number, width : number, height : number) : void {
+    bridge({request:"canvas_clearRect", img, x, y, width, height});
+}
+export function canvas_setFill(img : RemoteCanvas, color : string | null) {
     // Note 8 zeroes: this is fully transparent, not black:
-    ctx.fillStyle = colorJs == null ? "#00000000" : colorJs;
-};
-export function canvas_setStroke(img, color) {
-    const ctx = img.getContext("2d");
-    let colorJs = Sk.ffi.remapToJs(color);
-    // Note 8 zeroes: this is fully transparent, not black:
-    ctx.strokeStyle = colorJs == null ? "#00000000" : colorJs;
-};
+    bridge({request:"canvas_setFill", img, fill: color == null ? "#00000000" : color});
+}
+export function canvas_setStroke(img : RemoteCanvas, color : string | null) {
+    bridge({request:"canvas_setStroke", img, stroke: color == null ? "#00000000" : color});
+}
 export function canvas_getPixel(img, x, y) {
     const ctx = img.getContext("2d");
     const p = ctx.getImageData(x, y, 1, 1);
@@ -176,31 +172,30 @@ export function canvas_getPixel(img, x, y) {
         new Sk.builtin.int_(p.data[1]),
         new Sk.builtin.int_(p.data[2]),
         new Sk.builtin.int_(p.data[3])]);
-};
+}
 export function canvas_setPixel(img, x, y, colorTuple) {
     const ctx = img.getContext("2d");
     const p = Sk.ffi.remapToJs(colorTuple);
     ctx.putImageData(new ImageData(new Uint8ClampedArray([p[0], p[1], p[2], p[3]]), 1, 1), x, y);
-};
+}
 export function canvas_getAllPixels(img) {
     const ctx = img.getContext("2d");
     return Sk.ffi.remapToPy(ctx.getImageData(0, 0, img.width, img.height).data);
-};
+}
 export function canvas_setAllPixelsRGBA(img, pixels) {
     const ctx = img.getContext("2d");
     ctx.putImageData(new ImageData(new Uint8ClampedArray(Sk.ffi.remapToJs(pixels)), img.width, img.height), 0, 0);
-};
-export function canvas_drawImagePart(dest, src, dx, dy, sx, sy, sw, sh, scale) {
-    const ctx = dest.getContext("2d");
-    ctx.drawImage(src, sx, sy, sw, sh, dx, dy, sw * scale, sh * scale);
-};
+}
+export function canvas_drawImagePart(dest: RemoteCanvas, src : RemoteImage | RemoteCanvas, dx : number, dy : number, sx : number, sy : number, sw : number, sh : number, scale : number) {
+    bridge({request: "canvas_drawImagePart", dest, src, sx, sy, sw, sh, dx, dy, scale});
+}
 export function canvas_line(dest, x, y, ex, ey) {
     const ctx = dest.getContext("2d");
     ctx.beginPath();
     ctx.moveTo(x, y);
     ctx.lineTo(ex, ey);
     ctx.stroke();
-};
+}
 export function canvas_roundedRect(img, x, y, width, height, cornerSize) {
     const ctx = img.getContext("2d");
     ctx.beginPath();
@@ -213,17 +208,17 @@ export function canvas_roundedRect(img, x, y, width, height, cornerSize) {
     }
     ctx.fill();
     ctx.stroke();
-};
+}
 function toRadians(deg) {
     return deg * Math.PI / 180;
-};
+}
 export function canvas_arc(img, x, y, width, height, angleStart, angleDelta) {
     const ctx = img.getContext("2d");
     ctx.beginPath();
     ctx.ellipse(x, y, width, height, 0, toRadians(angleStart), toRadians(angleStart + angleDelta), false);
     ctx.fill();
     ctx.stroke();
-};
+}
 export function polygon_xy_pairs(img, xy_pairs_py) {
     let xys = Sk.ffi.remapToJs(xy_pairs_py);
     const ctx = img.getContext("2d");
@@ -235,7 +230,7 @@ export function polygon_xy_pairs(img, xy_pairs_py) {
     });
     ctx.fill();
     ctx.stroke();
-};
+}
 
 export function canvas_loadFont(provider, fontName) {
     /*
@@ -246,7 +241,7 @@ export function canvas_loadFont(provider, fontName) {
     const susp = new Sk.misceval.Suspension();
     function susp.resume () {
         return susp.ret;
-    };
+    }
     susp.data = {
         type: "Sk.promise",
         promise: new Promise(function (resolve, reject) {
@@ -264,10 +259,10 @@ export function canvas_loadFont(provider, fontName) {
                 },
             });
         }),
-    };
+    }
     return susp;
      */
-};
+}
 
 const sayFont="\"Klee One\", sans-serif";
 // Load font:
@@ -344,8 +339,8 @@ function calculateTextToFit(ctx, text, fontSize, maxWidth, maxHeight, font) {
         }
         // Otherwise we go round again, reducing the font size...
     }
-    return {lines: lines, fontSize: fontSize, width: longestWidth, height: textHeight};
-};
+    return {lines: lines, fontSize: fontSize, width: longestWidth, height: textHeight}
+}
 
 // Draws the given text on canvas dest at top-left of x, y with given fontSize in pixels.
 // If the text would be larger than maxWidth (and maxWidth is > 0) then it will be wrapped at white space in the text.
@@ -383,7 +378,7 @@ export function canvas_drawText(dest, text, x, y, fontSize, maxWidth = 0, maxHei
         ctx.fillText(details.lines[i], x, actualY); 
     }
     return Sk.ffi.remapToPy({width: details.width, height: details.height});
-};
+}
 
 // Skulpt can't access our common.ts code so we have to copy this here:
 function getDateTimeFormatted(dt) {
@@ -406,7 +401,7 @@ export function canvas_downloadPNG(src, filenameStem) {
             throw new Sk.builtin.IOError(susp.data["error"].message);
         }
         return susp.ret;
-    };
+    }
     susp.data = {
         type: "Sk.promise",
         promise: new Promise(function (resolve, reject) {
@@ -420,8 +415,8 @@ export function canvas_downloadPNG(src, filenameStem) {
                 }
             });
         }),
-    };
+    }
     return susp;
      */
-};
+}
 

@@ -83,11 +83,11 @@ import * as Comlink from "comlink";
 import { handleErrorTrace, setSInputConsole, sInput } from "@/helpers/execPythonCode";
 import { ErrorDetails } from "@/workers/python-execution";
 import {StrypePyodideHandlerFunctionAsync, StrypePyodideWorkerRequestInput} from "@/stryperuntime/worker_bridge_type";
+import {Renderer} from "@/stryperuntime/renderer";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
 
-const persistentImageManager = new PersistentImageManager();
 let domContext : CanvasRenderingContext2D | null = null;
 let targetContext : OffscreenCanvasRenderingContext2D | null = null;
 let targetCanvas : OffscreenCanvas | null = null;
@@ -98,6 +98,10 @@ let mostRecentMouseDetails : [number, number, [boolean, boolean, boolean]] = [0,
 const pressedKeys = new Map<string, boolean>();
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
 const bufferToSource = new Map<AudioBuffer, AudioBufferSourceNode>(); // Used to stop playing sounds
+
+const updateChannel = new MessageChannel();
+const renderer = new Renderer(updateChannel.port2);
+
 
 // We draw our actual graphics canvas (for strype.graphics) at the size it is on the page,
 // given the 4:3 aspect ratio.  But we also have a logical size that is constant, which is 800x600.
@@ -162,6 +166,8 @@ export default Vue.extend({
     
     mounted(){
         const pythonWorker = new Worker(new URL("@/workers/python-execution.ts", import.meta.url), {type: "module"});
+        // Must post it the update channel before wrapping in Pyodide:
+        pythonWorker.postMessage({updatePort: updateChannel.port1}, [updateChannel.port1]);
         const channel = makeServiceWorkerChannel({scope: import.meta.env.BASE_URL});
         this.pythonClient = new PyodideClient(() => pythonWorker, channel);
         this.pythonClient.call(
@@ -525,7 +531,6 @@ export default Vue.extend({
                 if (targetCanvas != null) {
                     targetContext?.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
                 }
-                persistentImageManager.clear();
                 // Clear input:
                 mostRecentClickedItems = [];
                 mostRecentClickDetails = null;
@@ -552,57 +557,68 @@ export default Vue.extend({
                     const client = this.pythonClient;
                     
                     // eslint-disable-next-line @typescript-eslint/no-this-alias
-                    const v = this;
+                    const v = this; 
                     
                     const asyncBridge : StrypePyodideHandlerFunctionAsync = async (req) => {
                         switch (req.request) {
                         case "loadImage": {
-                            const response = await fetch(req.url);
-                            const blob = await response.blob();
-                            return await createImageBitmap(blob);
+                            return await renderer.loadImage(req.url);
                         }
                         case "loadLibraryAsset": {
                             return await v.loadLibraryAsset(req.libraryShortName, req.fileName);
                         }
+                        case "makeOffscreenCanvas": {
+                            return await renderer.makeCanvas(req.width, req.height);
+                        }
+                        case "canvas_drawImagePart": {
+                            renderer.getCanvasContext(req.dest.handle).drawImage(req.src.handle.handleKind == "Canvas" ? renderer.getCanvas(req.src.handle) : renderer.getImage(req.src.handle), req.sx, req.sy, req.sw, req.sh, req.dx, req.dy, req.sw * req.scale, req.sh * req.scale);
+                            return undefined;
+                        }
+                        case "canvas_clearRect": {
+                            renderer.getCanvasContext(req.img.handle).clearRect(req.x, req.y, req.width, req.height);
+                            return undefined;
+                        }
                         }
                     };
-
-                    (this.pythonClient.call(
-                        this.pythonClient.workerProxy.executePython,
-                        userCode,
-                        Comlink.proxy((output: string) => {
-                            pythonConsole.value = pythonConsole.value + output;
-                        }),
-                        Comlink.proxy((prompt: string) => {
-                            sInput(prompt).then(async (s : string) => {
-                                // We send the output back via writeMessage rather than a direct return:
-                                await navigator.serviceWorker.ready;
-                                try {
-                                    await client.writeMessage(s);
-                                }
-                                catch (e) {
-                                    console.error(e);
-                                }
-                            });
-                        }),
-                        Comlink.proxy((req : StrypePyodideWorkerRequestInput) => {
-                            asyncBridge(req).then(async (r : any) => {
-                                await navigator.serviceWorker.ready;
-                                try {
-                                    await client.writeMessage(r);
-                                }
-                                catch (e) {
-                                    console.error(e);
-                                }
-                            });
-                        })
-                    ) as Promise<ErrorDetails | null>).then((possibleError) => {
-                        if (possibleError != null) {
-                            handleErrorTrace(possibleError.text, possibleError.traceback, () => {}, parser.getFramePositionMap());
-                        }
-                        useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
-                        this.isRunningStrypeGraphics = false;
-                        setPythonExecAreaLayoutButtonPos();
+                    
+                    renderer.initialise().then(() => {
+                        (client.call(
+                            client.workerProxy.executePython,
+                            userCode,
+                            Comlink.proxy((output: string) => {
+                                pythonConsole.value = pythonConsole.value + output;
+                            }),
+                            Comlink.proxy((prompt: string) => {
+                                sInput(prompt).then(async (s : string) => {
+                                    // We send the output back via writeMessage rather than a direct return:
+                                    await navigator.serviceWorker.ready;
+                                    try {
+                                        await client.writeMessage(s);
+                                    }
+                                    catch (e) {
+                                        console.error(e);
+                                    }
+                                });
+                            }),
+                            Comlink.proxy((req : StrypePyodideWorkerRequestInput) => {
+                                asyncBridge(req).then(async (r : any) => {
+                                    await navigator.serviceWorker.ready;
+                                    try {
+                                        await client.writeMessage(r);
+                                    }
+                                    catch (e) {
+                                        console.error(e);
+                                    }
+                                });
+                            })
+                        ) as Promise<ErrorDetails | null>).then((possibleError) => {
+                            if (possibleError != null) {
+                                handleErrorTrace(possibleError.text, possibleError.traceback, () => {}, parser.getFramePositionMap());
+                            }
+                            useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
+                            this.isRunningStrypeGraphics = false;
+                            setPythonExecAreaLayoutButtonPos();
+                        });
                     });
                 }
 
@@ -822,7 +838,7 @@ export default Vue.extend({
             this.isRunningStrypeGraphics = false;
             pressedKeys.clear();
             // Important not to use the accessor here as that will switch to the tab:
-            persistentImageManager.clear();
+            //persistentImageManager.clear();
             this.redrawCanvas();
         },
         
@@ -868,7 +884,7 @@ export default Vue.extend({
         
         redrawCanvasIfNeeded() : void {
             // Draws canvas if anything has changed:
-            if (persistentImageManager.isDirty()) {
+            if (renderer.isDirty()) {
                 this.redrawCanvas();
             }
         },
@@ -908,7 +924,7 @@ export default Vue.extend({
             targetContext?.scale(this.scaleToFit, this.scaleToFit);
             domCanvas.setAttribute("data-scale", this.scaleToFit.toString());
             
-            for (let obj of persistentImageManager.getPersistentImages()) {
+            for (let obj of renderer.getItemsToDraw()) {
                 if (obj.rotation != 0) {
                     // These translations are in terms of the 0,0 top left system, but we call mapX/mapY
                     // on the coords we pass in, so it works out:
@@ -916,6 +932,7 @@ export default Vue.extend({
                     targetContext?.translate(mapX(obj.x), mapY(obj.y));
                     targetContext?.rotate(-obj.rotation * Math.PI / 180);
                     targetContext?.scale(obj.scale, obj.scale);
+                    console.log("Drawing at " + obj.scale + " with " + this.scaleToFit);
                     targetContext?.drawImage(obj.img, -0.5 * obj.img.width, -0.5 * obj.img.height);
                     targetContext?.restore();
                 } 
@@ -925,9 +942,9 @@ export default Vue.extend({
                     let dheight = obj.scale * obj.img.height;
                     targetContext?.drawImage(obj.img, mapX(obj.x) - dwidth*0.5, mapY(obj.y)-dheight*0.5, dwidth, dheight);
                 }
-                obj.dirty = false;
+                //obj.dirty = false;
             }
-            persistentImageManager.resetDirty();
+            renderer.resetDirty();
             // Restore the scale:
             targetContext?.restore();
             

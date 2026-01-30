@@ -1,8 +1,10 @@
 import {System, Box, Point} from "detect-collisions";
+import {makeImageHandle, makePersistentImageHandle, RemoteCanvas, RemoteImage, StrypePersistentImageStateUpdate} from "@/stryperuntime/worker_bridge_type";
+import {PyProxy} from "pyodide/ffi";
 
 export interface PersistentImage {
     id: number,
-    img: HTMLImageElement | OffscreenCanvas,
+    img: RemoteImage | RemoteCanvas,
     x: number,
     y: number,
     rotation: number, // degrees
@@ -24,26 +26,19 @@ export class PersistentImageManager {
     private collisionSystem = new System();
     // A map to be able to look up the PersistentImage when we find an intersecting Box during collision detection:
     private boxToImageMap = new Map<Box, PersistentImage>();
+    private notify: (update: StrypePersistentImageStateUpdate) => void;
     
-    constructor() {
+    constructor(notify: (update: StrypePersistentImageStateUpdate) => void) {
+        this.notify = notify;
         this.clear();
     }
     
     public clear() : void {
+        this.notify({request: "clear"});
         this.persistentImages.clear();
-        // Set background to plain black image:
-        // We use an oversize image to avoid slivers of other colour appearing at the edges
-        // due to the size not being perfectly 800 x 600 on the actual webpage,
-        // which means we are scaling and using anti-aliased sub-pixel rendering: 
-        const black_808_606 = new OffscreenCanvas(808, 606);
-        const ctx = black_808_606.getContext("2d");
-        if (ctx != null) {
-            (ctx as OffscreenCanvasRenderingContext2D).fillStyle = "black";
-            (ctx as OffscreenCanvasRenderingContext2D).fillRect(0, 0, 808, 606);
-        }
-        this.persistentImages.set(0, {
+        const bk = {
             id: 0,
-            img: black_808_606,
+            img: {width: 808, height: 606, handle: makeImageHandle(0)}, // Special identifier indicating a black image
             // Since we go from -399 to 400, -299 to 300, the actual centre is 0.5, 0.5:
             x: 0.5,
             y: 0.5,
@@ -52,28 +47,38 @@ export class PersistentImageManager {
             collisionBox: null,
             dirty: true,
             associatedObject: null,
-        });
+        };
+        this.persistentImages.set(0, bk);
+        this.notify({request: "add", id: makePersistentImageHandle(0), x: bk.x, y: bk.y, rotation: bk.rotation, scale: bk.scale, image: bk.img.handle});
         this.persistentImagesDirty = true;
         this.collisionSystem.clear();
     }
     
-    public setBackground(imageOrCanvas : OffscreenCanvas) : void {
+    public setBackground(imageOrCanvas : RemoteImage) : void {
         const bk = this.persistentImages.get(0);
+        // Should always be present but keep Typescript happy:
         if (bk) {
             bk.img = imageOrCanvas;
+            this.sendUpdateFor(bk);
         }
     }
 
-    // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-    public addPersistentImage(imageOrCanvas : HTMLImageElement | OffscreenCanvas, associatedObject?: any): number {
+    private sendUpdateFor(p: PersistentImage) {
+        this.notify({request: "update", id: makePersistentImageHandle(p.id), image: p.img.handle, x: p.x, y: p.y, scale: p.scale, rotation: p.rotation});
+    }
+
+    public addPersistentImage(imageOrCanvas : RemoteImage | RemoteCanvas, associatedObject?: PyProxy): number {
         this.persistentImagesDirty = true;
+        const id = this.nextPersistentImageId++;
         const box = associatedObject ? this.collisionSystem.createBox({x:0, y:0}, imageOrCanvas.width, imageOrCanvas.height, {isCentered: true}) : null;
-        const newImage = {id: this.nextPersistentImageId, img: imageOrCanvas, x: 0, y: 0, rotation: 0, scale: 1, collisionBox : box, dirty: false, associatedObject: associatedObject};
-        this.persistentImages.set(this.nextPersistentImageId, newImage);
+        const newImage = {id, img: imageOrCanvas, x: 0, y: 0, rotation: 0, scale: 1, collisionBox : box, dirty: false, associatedObject: associatedObject};
+        this.persistentImages.set(id, newImage);
         if (box != null) {
             this.boxToImageMap.set(box, newImage);
         }
-        return this.nextPersistentImageId++;
+        
+        this.notify({request: "add", id: makePersistentImageHandle(id), x: newImage.x, y: newImage.y, rotation: newImage.rotation, scale: newImage.scale, image: imageOrCanvas.handle});
+        return id;
     }
 
     public hasPersistentImage(id: number) : boolean {
@@ -93,13 +98,14 @@ export class PersistentImageManager {
             this.boxToImageMap.delete(box);
         }
         this.persistentImages.delete(id);
+        this.notify({request: "remove", id: makePersistentImageHandle(id)});
     }
 
     public removePersistentImageAfter(id: number, secs: number): void {
         setTimeout(() => this.removePersistentImage(id), secs * 1000);
     }
 
-    public setPersistentImageImage(id: number, imageOrCanvas : HTMLImageElement | OffscreenCanvas): void {
+    public setPersistentImageImage(id: number, imageOrCanvas : RemoteImage): void {
         const obj = this.persistentImages.get(id);
         if (obj != undefined) {
             obj.img = imageOrCanvas;
@@ -110,6 +116,7 @@ export class PersistentImageManager {
                 this.setPersistentImageCollidable(id, true);
                 
             }
+            this.sendUpdateFor(obj);
         }
     }
 
@@ -121,6 +128,7 @@ export class PersistentImageManager {
             obj.dirty = true;
             obj.collisionBox?.setPosition(x, y);
             obj.collisionBox?.updateBody();
+            this.sendUpdateFor(obj);
         }
     }
     
@@ -131,6 +139,7 @@ export class PersistentImageManager {
             obj.dirty = true;
             obj.collisionBox?.setAngle(rotation * Math.PI / 180);
             obj.collisionBox?.updateBody();
+            this.sendUpdateFor(obj);
         }
     }
     
@@ -141,6 +150,7 @@ export class PersistentImageManager {
             obj.dirty = true;
             obj.collisionBox?.setScale(scale);
             obj.collisionBox?.updateBody();
+            this.sendUpdateFor(obj);
         }
     }
     

@@ -5,10 +5,11 @@ import { loadPyodideAndPackage, makeRunnerCallback, OutputPart, pyodideExpose, P
 import * as Comlink from "comlink";
 import { strype_bridge } from "@/stryperuntime/pyodide_bridge";
 import {StrypePyodideHandlerFunctionSync, StrypePyodideHandlerFunctionVoid, StrypePyodideWorkerRequestInput, StrypePyodideWorkerRequestOutput} from "@/stryperuntime/worker_bridge_type";
+import {PersistentImageManager} from "@/stryperuntime/image_and_collisions";
+import {PyodideWorkerGlobalScope} from "@/workers/python_execution_type";
 
-declare const self: WorkerGlobalScope & {
-    StrypePyodideWorkerBridge: StrypePyodideHandlerFunctionSync;
-};
+// We only specify updatePort here as we don't want other files using it directly:
+declare const self: PyodideWorkerGlobalScope & { updatePort: MessagePort };
 
 async function loadOnly() : Promise<PyodideInterface> {
     const pyodide = await loadPyodideAndPackage({url: `${import.meta.env.BASE_URL}pysrc.zip`, format: "zip"}, loadPyodide);
@@ -82,6 +83,8 @@ StrypePyodideRunner()`);
         });
         runner.set_callback(callback);
         self.StrypePyodideWorkerBridge = bridgeSync;
+        self.persistentImageManager = new PersistentImageManager((u) => self.updatePort.postMessage(u));
+        self.pyodide = pyodide;
         await runner.run_async(pythonCode, {});
         return error;
     });
@@ -94,4 +97,10 @@ const onReady = pyodideExpose(async (extras: PyodideExtras, callOnceReady:  Coml
 Comlink.expose({
     executePython,
     onReady,
+});
+
+self.addEventListener("message", (e : any) => {
+    if (e.data.updatePort) {
+        self.updatePort = e.data.updatePort;
+    }
 });

@@ -154,6 +154,7 @@ export function handleErrorTrace(errorType : string, traceback: { filename: stri
     let errorLine = -1;
     if (traceback) {
         let lastmodule = "";
+        console.log("Traceback", Array.from(traceback.entries()).map((e) => e[1].filename + "@" + e[1].lineno));
         for (const [index, entry] of traceback.entries()) {
             const filename = entry.filename as string;
             if (filename == "<stdin>.py" || filename == "/home/pyodide/my_program.py") {
