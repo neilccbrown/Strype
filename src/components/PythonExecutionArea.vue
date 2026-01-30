@@ -95,7 +95,7 @@ let audioContext : AudioContext | null = null; // Important we don't initialise 
 let mostRecentClickedItems : PersistentImage[] = []; // All the items under the mouse cursor at last click
 let mostRecentClickDetails : number[] | null = null; // Array of four numbers: x, y, button, click_count
 let mostRecentMouseDetails : [number, number, [boolean, boolean, boolean]] = [0, 0, [false, false, false]]; // X, Y, three button states
-const pressedKeys = new Map<string, boolean>();
+let pressedKeys : {[key: string]: boolean} = {};
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
 const bufferToSource = new Map<AudioBuffer, AudioBufferSourceNode>(); // Used to stop playing sounds
 
@@ -535,7 +535,7 @@ export default Vue.extend({
                 mostRecentClickedItems = [];
                 mostRecentClickDetails = null;
                 mostRecentMouseDetails = [0, 0, [false, false, false]];
-                pressedKeys.clear();
+                pressedKeys = {};
                 window.addEventListener("keydown", this.graphicsCanvasKeyDown);
                 window.addEventListener("keyup", this.graphicsCanvasKeyUp);
                 // Start the redraw loop:
@@ -577,6 +577,9 @@ export default Vue.extend({
                         case "canvas_clearRect": {
                             renderer.getCanvasContext(req.img.handle).clearRect(req.x, req.y, req.width, req.height);
                             return undefined;
+                        }
+                        case "getPressedKeys": {
+                            return pressedKeys;
                         }
                         }
                     };
@@ -836,20 +839,20 @@ export default Vue.extend({
                 useStore().pythonExecRunningState = PythonExecRunningState.RunningAwaitingStop;              
             }
             this.isRunningStrypeGraphics = false;
-            pressedKeys.clear();
+            pressedKeys = {};
             // Important not to use the accessor here as that will switch to the tab:
             //persistentImageManager.clear();
             this.redrawCanvas();
         },
         
-        // Note: this is called from our graphics API in strype_graphics_input_internal.js
+        // Note: this is called from our graphics API in strype_graphics_input_internal.ts
         getPersistentImageManager() : PersistentImageManager {
             this.isRunningStrypeGraphics = true;
             this.peaDisplayTabIndex = PEATabIndexes.graphics;
             return persistentImageManager;
         },
 
-        // Note: this is called from our graphics API in strype_graphics_input_internal.js
+        // Note: this is called from our graphics API in strype_graphics_input_internal.ts
         // Returns a data: base64 URL with the content if found, or undefined if not
         loadLibraryAsset(libraryShortName: string, fileName: string) : Promise<string | undefined> {
             const fullLibraryAddress = this.libraries.find((lib) => getLibraryName(lib) === libraryShortName);
@@ -1043,13 +1046,10 @@ export default Vue.extend({
             return mostRecentMouseDetails;
         },
         graphicsCanvasKeyDown(event: KeyboardEvent) {
-            pressedKeys.set(keyMapping.get(event.key) ?? event.key.toLowerCase(), true);
+            pressedKeys[keyMapping.get(event.key) ?? event.key.toLowerCase()] = true;
         },
         graphicsCanvasKeyUp(event: KeyboardEvent) {
-            pressedKeys.set(keyMapping.get(event.key) ?? event.key.toLowerCase(), false);
-        },
-        getPressedKeys() {
-            return pressedKeys;
+            pressedKeys[keyMapping.get(event.key) ?? event.key.toLowerCase()] = false;
         },
 
         handleContextMenuOpened() {

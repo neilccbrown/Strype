@@ -4,6 +4,14 @@
 // This file contains the internal mouse+keyboard input API for the Strype graphics world.
 // These functions are not directly exposed to users, but are used by graphics.py to
 // form the actual public API.
+import {PyodideWorkerGlobalScope} from "@/workers/python_execution_type";
+import type {StrypePyodideHandlerFunctionSync} from "@/stryperuntime/worker_bridge_type";
+
+declare const globalThis: PyodideWorkerGlobalScope;
+
+const bridge : StrypePyodideHandlerFunctionSync = (req) => {
+    return globalThis.StrypePyodideWorkerBridge(req);
+};
 
 function getAndResetClickedItem() {
     const all = peaComponent.__vue__.consumeLastClickedItems();
@@ -29,8 +37,8 @@ function getMouseDetails() {
     return new Sk.builtin.list([Sk.ffi.remapToPy(d[0]), Sk.ffi.remapToPy(d[1]), Sk.ffi.remapToPy(d[2])]);
 };
 
-function getPressedKeys() {
-    return Sk.ffi.remapToPy(peaComponent.__vue__.getPressedKeys());
+export function getPressedKeys() : {[key: string]: boolean} {
+    return bridge({request: "getPressedKeys"});
 };
 
 function checkCollision(idA, idB) {

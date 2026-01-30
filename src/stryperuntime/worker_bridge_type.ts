@@ -53,6 +53,7 @@ export type StrypePyodideWorkerRequestInput =
     | { request: "canvas_clearRect"; img: RemoteCanvas, x: number; y: number; width: number; height: number }
     | { request: "canvas_setFill"; img: RemoteCanvas, fill: string }
     | { request: "canvas_setStroke"; img: RemoteCanvas, stroke: string }
+    | { request: "getPressedKeys"}
 ;
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -96,6 +97,7 @@ export type StrypePyodideWorkerRequestOutput = {
     canvas_clearRect: undefined; // Really, void, but we can't have that type here
     canvas_setFill: undefined; // Really, void, but we can't have that type here
     canvas_setStroke: undefined; // Really, void, but we can't have that type here
+    getPressedKeys: {[key: string]: boolean};
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

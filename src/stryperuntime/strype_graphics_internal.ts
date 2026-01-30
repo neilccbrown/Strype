@@ -4,15 +4,11 @@
 // This file contains the internal graphics API for the Strype graphics world.
 // These functions are not directly exposed to users, but are used by graphics.py to
 // form the actual public API.
-
-// From https://stackoverflow.com/questions/996505/lru-cache-implementation-in-javascript
-import {PersistentImageManager} from "@/stryperuntime/image_and_collisions";
-import type { PyProxy } from "pyodide/ffi";
-import type {PyodideAPI} from "pyodide";
+import type {PyProxy} from "pyodide/ffi";
 import type {RemoteCanvas, RemoteImage, StrypePyodideHandlerFunctionSync} from "./worker_bridge_type";
 import {PyodideWorkerGlobalScope} from "@/workers/python_execution_type";
 
-
+// From https://stackoverflow.com/questions/996505/lru-cache-implementation-in-javascript
 class LRU {
     max : number;
     cache : Map<string, number>;

@@ -900,7 +900,7 @@ def key_pressed(keyname):
     :param keyname: The name of the key to check.
     :return: True if the key is currently pressed down, False otherwise.
     """
-    return _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys())[keyname.lower()]
+    return _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys().to_py())[keyname.lower()]
 
 def set_background(image_or_color, scale_to_fit = False):
     # type: (Image | str, bool) -> None
