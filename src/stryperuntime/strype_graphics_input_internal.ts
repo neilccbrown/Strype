@@ -5,7 +5,8 @@
 // These functions are not directly exposed to users, but are used by graphics.py to
 // form the actual public API.
 import {PyodideWorkerGlobalScope} from "@/workers/python_execution_type";
-import type {StrypePyodideHandlerFunctionSync} from "@/stryperuntime/worker_bridge_type";
+import type {PersistentImageHandle, StrypePyodideHandlerFunctionSync} from "@/stryperuntime/worker_bridge_type";
+import {PyProxy} from "pyodide/ffi";
 
 declare const globalThis: PyodideWorkerGlobalScope;
 
@@ -24,51 +25,43 @@ function getAndResetClickedItem() {
         }
     }
     return Sk.ffi.remapToPy(null);
-};
+}
 function getAndResetClickDetails() {
     const d = peaComponent.__vue__.consumeLastClickDetails();
     // Should be an array of four numbers so no special mapping consideration needed:
     return Sk.ffi.remapToPy(d);
-};
+}
 
 function getMouseDetails() {
     const d = peaComponent.__vue__.getMouseDetails();
     // Should be an array of two numbers and a boolean array so need special mapping consideration:
     return new Sk.builtin.list([Sk.ffi.remapToPy(d[0]), Sk.ffi.remapToPy(d[1]), Sk.ffi.remapToPy(d[2])]);
-};
+}
 
 export function getPressedKeys() : {[key: string]: boolean} {
     return bridge({request: "getPressedKeys"});
-};
+}
 
-function checkCollision(idA, idB) {
-    return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageManager().checkCollision(idA, idB));
-};
+export function checkCollision(idA : number, idB : number) : boolean {
+    return globalThis.persistentImageManager.checkCollision(idA, idB);
+}
 
-function getAllTouchingAssociated(id) {
-    // The return value is awkward here because we want to give back a Python list
-    // but without converting the objects within, so we don't use remapToPy:
-    return new Sk.builtin.list(peaComponent.__vue__.getPersistentImageManager().getAllOverlapping(id));
-};
+export function getAllTouchingAssociated(id : number) : number[] {
+    return globalThis.persistentImageManager.getAllOverlapping(id);
+}
 
-function getAllAt(x, y) {
-    // The return value is awkward here because we want to give back a Python list
-    // but without converting the objects within, so we don't use remapToPy:
-    return new Sk.builtin.list(peaComponent.__vue__.getPersistentImageManager().calculateAllOverlappingAtPos(x, y).map((p) => p.associatedObject).filter((o) => o != null));
-};
+export function getAllAt(x : number, y : number) : number[] {
+    return globalThis.persistentImageManager.calculateAllOverlappingAtPos(x, y).map((p) => p.id);
+}
 
-function getAllActors(id) {
-    // The return value is awkward here because we want to give back a Python list
-    // but without converting the objects within, so we don't use remapToPy:
-    return new Sk.builtin.list(peaComponent.__vue__.getPersistentImageManager().getAllActors());
-};
+export function getAllActors() : number[] {
+    return globalThis.persistentImageManager.getAllActors();
+}
 
-function getAllNearbyAssociated(id, radius) {
-    // The return value is awkward here because we want to give back a Python list
-    // but without converting the objects within, so we don't use remapToPy:
-    return new Sk.builtin.list(peaComponent.__vue__.getPersistentImageManager().getAllNearby(id, Sk.ffi.remapToJs(radius)));
-};
+export function getAllNearbyAssociated(id : number, radius : number) : number[] {
+    return globalThis.persistentImageManager.getAllNearby(id, radius);
+}
 
-function setCollidable(id, collidable) {
-    peaComponent.__vue__.getPersistentImageManager().setPersistentImageCollidable(Sk.ffi.remapToJs(id), Sk.ffi.remapToJs(collidable));
-};
+export function setCollidable(id : number, collidable : boolean) : void {
+    globalThis.persistentImageManager.setPersistentImageCollidable(id, collidable);
+}

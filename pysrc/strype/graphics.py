@@ -434,6 +434,9 @@ class Image:
         _strype_graphics_internal.canvas_downloadPNG(self.__image, filename)
         Image.__last_download = _time.time()
 
+_actorsInWorld = dict()
+# type: dict[int, Actor]
+
 class Actor:
     """
     An Actor is an item in the world with a specific image, position, rotation and scale.  If an actor is created,
@@ -465,13 +468,14 @@ class Actor:
         :param tag: A optional tag for the actor (usually a string) for use in detecting touching actors.
         """
         if isinstance(image, Image):
-            self.__id = _strype_graphics_internal.addImage(image._Image__image, self)
+            self.__id = _strype_graphics_internal.addImage(image._Image__image, True)
             self.__editable_image = image
         elif isinstance(image, str):
-            self.__id = _strype_graphics_internal.addImage(_strype_graphics_internal.loadAndWaitForImage(image), self)
+            self.__id = _strype_graphics_internal.addImage(_strype_graphics_internal.loadAndWaitForImage(image), True)
             self.__editable_image = None
         else:
             raise TypeError("Actor constructor parameter must be Image")
+        _actorsInWorld[self.__id] = self
         self.__say = None
         self.__tag = tag
         _strype_graphics_internal.setImageLocation(self.__id, x, y)
@@ -528,6 +532,7 @@ class Actor:
         _strype_graphics_internal.removeImage(self.__id)
         # Also remove any speech bubble:
         self.say("")
+        del _actorsInWorld[self.__id]
 
     def get_x(self):
         # type: () -> int
@@ -658,7 +663,7 @@ class Actor:
         :param tag: The tag of the actor to check for touching, or None to check all actors.
         :return: The :class:`Actor` we are touching, if any, or None if we are not touching any actor. 
         """
-        return next(reversed(self.get_all_touching(tag)), None)
+        return next(iter([_actorsInWorld.get(a) for a in reversed(self.get_all_touching(tag)) if _actorsInWorld.get(a) is not None]), None)
 
     def get_all_touching(self, tag = None):
         # type: (Any | None) -> list[Actor]
@@ -670,7 +675,7 @@ class Actor:
         :param tag: The tag to use to filter the returned actors (or None to return all actors)
         :return: A list of all touching actors.
         """
-        return [a for a in _strype_input_internal.getAllTouchingAssociated(self.__id) if tag is None or tag == a.get_tag()]
+        return [_actorsInWorld.get(a) for a in _strype_input_internal.getAllTouchingAssociated(self.__id) if _actorsInWorld.get(a) is not None and (tag is None or tag == _actorsInWorld.get(a).get_tag())]
     
     def remove_touching(self, tag = None):
         # type: (Any | None) -> None
@@ -699,7 +704,7 @@ class Actor:
         :param tag: The tag to use to filter the actors (or None to consider all actors)
         :return: A list of all actors within a given range.
         """
-        return [a for a in _strype_input_internal.getAllNearbyAssociated(self.__id, distance) if tag is None or tag == a.get_tag()]
+        return [_actorsInWorld.get(a) for a in _strype_input_internal.getAllNearbyAssociated(self.__id, distance) if _actorsInWorld.get(a) is not None and (tag is None or tag == _actorsInWorld.get(a).get_tag())]
 
     def get_image(self):
         # type: () -> Image
@@ -775,9 +780,7 @@ class Actor:
             sayImg.set_stroke("#555555FF")
             sayImg.draw_rounded_rect(2, 2, textDimensions.width + 2 * padding - 4, textDimensions.height + 2 * padding - 4, padding)
             sayImg._draw_part_of_image(textOnlyImg, padding, padding, 0, 0, textDimensions.width, textDimensions.height)
-            # Note: we used to pass None for associated object, but None is a non-null Javascript Skulpt object wrapping a null value
-            # To make this object outside of collisions entirely, we just omit the second parameter:
-            self.__say = _strype_graphics_internal.addImage(sayImg._Image__image)
+            self.__say = _strype_graphics_internal.addImage(sayImg._Image__image, False)
             self._update_say_position()
             
     def _update_say_position(self):
@@ -998,7 +1001,7 @@ def get_actors(tag = None):
         :param tag: The tag to use to filter the returned actors (or None to return all actors)
         :return: A list of all actors (that have not been removed via the `remove()` call).
         """
-    return [a for a in _strype_input_internal.getAllActors() if tag is None or tag == a.get_tag()]
+    return [_actorsInWorld.get(a) for a in _strype_input_internal.getAllActors() if _actorsInWorld.get(a) is not None and (tag is None or tag == _actorsInWorld.get(a).get_tag())]
 
 def get_actor_at(x, y, tag = None):
     # type: (float, float, Any | None) -> (Actor|None)
@@ -1012,7 +1015,7 @@ def get_actor_at(x, y, tag = None):
         :param tag: An optional tag used to constrain which actors to consider (if None, consider all actors).
         :return: An actor touching the given position, or None if there is none. 
     """
-    all = _strype_input_internal.getAllAt(x, y)
+    all = [_actorsInWorld.get(a) for a in _strype_input_internal.getAllAt(x, y) if _actorsInWorld.get(a) is not None]
     if tag is None:
         with_tag = all
     else:

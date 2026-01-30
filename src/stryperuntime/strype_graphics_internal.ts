@@ -4,8 +4,7 @@
 // This file contains the internal graphics API for the Strype graphics world.
 // These functions are not directly exposed to users, but are used by graphics.py to
 // form the actual public API.
-import type {PyProxy} from "pyodide/ffi";
-import type {RemoteCanvas, RemoteImage, StrypePyodideHandlerFunctionSync} from "./worker_bridge_type";
+import {RemoteCanvas, RemoteImage, StrypePyodideHandlerFunctionSync} from "./worker_bridge_type";
 import {PyodideWorkerGlobalScope} from "@/workers/python_execution_type";
 
 // From https://stackoverflow.com/questions/996505/lru-cache-implementation-in-javascript
@@ -90,10 +89,9 @@ export function loadAndWaitForImage(filename: string) : RemoteImage {
 }
 export function setBackground(img : RemoteImage) {
     globalThis.persistentImageManager.setBackground(img);
-}
-// Note, assoc parameter may be missing (and thus undefined): 
-export function addImage(image: RemoteImage, assoc : PyProxy) : number {
-    return globalThis.persistentImageManager.addPersistentImage(image, assoc);
+} 
+export function addImage(image: RemoteImage, collidable: boolean) : number {
+    return globalThis.persistentImageManager.addPersistentImage(image, collidable);
 }
 export function updateImage(id: number, image: RemoteImage) : void {
     globalThis.persistentImageManager.setPersistentImageImage(id, image);

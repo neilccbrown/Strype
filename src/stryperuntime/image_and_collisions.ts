@@ -1,6 +1,5 @@
 import {System, Box, Point} from "detect-collisions";
 import {makeImageHandle, makePersistentImageHandle, RemoteCanvas, RemoteImage, StrypePersistentImageStateUpdate} from "@/stryperuntime/worker_bridge_type";
-import {PyProxy} from "pyodide/ffi";
 
 export interface PersistentImage {
     id: number,
@@ -11,7 +10,6 @@ export interface PersistentImage {
     scale: number, // 1.0 means same size as original image
     collisionBox: Box | null, // The item in the collision detection system.  Null if the object is not collidable
     dirty: boolean,
-    associatedObject: any | null, // The object to remember for this PersistentImage (so far, this is the Actor from the strype.graphics Python module)
 }
 
 export const WORLD_WIDTH = 800;
@@ -46,7 +44,6 @@ export class PersistentImageManager {
             scale: 1.0,
             collisionBox: null,
             dirty: true,
-            associatedObject: null,
         };
         this.persistentImages.set(0, bk);
         this.notify({request: "add", id: makePersistentImageHandle(0), x: bk.x, y: bk.y, rotation: bk.rotation, scale: bk.scale, image: bk.img.handle});
@@ -67,11 +64,11 @@ export class PersistentImageManager {
         this.notify({request: "update", id: makePersistentImageHandle(p.id), image: p.img.handle, x: p.x, y: p.y, scale: p.scale, rotation: p.rotation});
     }
 
-    public addPersistentImage(imageOrCanvas : RemoteImage | RemoteCanvas, associatedObject?: PyProxy): number {
+    public addPersistentImage(imageOrCanvas : RemoteImage | RemoteCanvas, collidable: boolean): number {
         this.persistentImagesDirty = true;
         const id = this.nextPersistentImageId++;
-        const box = associatedObject ? this.collisionSystem.createBox({x:0, y:0}, imageOrCanvas.width, imageOrCanvas.height, {isCentered: true}) : null;
-        const newImage = {id, img: imageOrCanvas, x: 0, y: 0, rotation: 0, scale: 1, collisionBox : box, dirty: false, associatedObject: associatedObject};
+        const box = collidable ? this.collisionSystem.createBox({x:0, y:0}, imageOrCanvas.width, imageOrCanvas.height, {isCentered: true}) : null;
+        const newImage = {id, img: imageOrCanvas, x: 0, y: 0, rotation: 0, scale: 1, collisionBox : box, dirty: false};
         this.persistentImages.set(id, newImage);
         if (box != null) {
             this.boxToImageMap.set(box, newImage);
@@ -244,29 +241,30 @@ export class PersistentImageManager {
         }
     }
     
-    // Gets the associatedObject of all items which overlap the given persistent image id.
-    public getAllOverlapping(id: number) : any[] {
-        const r : any[] = [];
+    // Gets the idof all items which overlap the given persistent image id.
+    public getAllOverlapping(id: number) : number[] {
+        const r : number[] = [];
         const box = this.persistentImages.get(id)?.collisionBox;
         if (box) {
             this.collisionSystem.checkOne(box, (response) => {
                 const pimg = this.boxToImageMap.get(response.b as Box);
-                if (pimg) {
-                    r.push(pimg.associatedObject);
+                if (pimg != null) {
+                    r.push(pimg.id);
                 }
             });
         }
         return r;
     }
     
-    public getAllActors() : any[] {
-        return Array.from(this.persistentImages.values()).map((p) => p.associatedObject).filter((x) => x != null);
+    // Gets ids of all actors in the world:
+    public getAllActors() : number[] {
+        return Array.from(this.persistentImages.values()).map((p) => p.id);
     }
 
     // Gets the associatedObject of all items which have centres within the specific radius of the given persistent image id.
-    public getAllNearby(id: number, radius: number) : any[] {
+    public getAllNearby(id: number, radius: number) : number[] {
         const us = this.persistentImages.get(id);
-        const all: PersistentImage[] = [];
+        const all: number[] = [];
         if (us) {
             const candidates = this.collisionSystem.search({
                 minX: us.x - radius,
@@ -285,7 +283,7 @@ export class PersistentImageManager {
                     const pimg = this.boxToImageMap.get(body);
                     // Don't include ourselves in the results:
                     if (pimg && pimg.id != id) {
-                        all.push(pimg.associatedObject);
+                        all.push(pimg.id);
                     }
                 }
             });

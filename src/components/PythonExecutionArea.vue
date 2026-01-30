@@ -562,12 +562,16 @@ export default Vue.extend({
                     const asyncBridge : StrypePyodideHandlerFunctionAsync = async (req) => {
                         switch (req.request) {
                         case "loadImage": {
+                            this.isRunningStrypeGraphics = true;
+                            this.peaDisplayTabIndex = PEATabIndexes.graphics;
                             return await renderer.loadImage(req.url);
                         }
                         case "loadLibraryAsset": {
                             return await v.loadLibraryAsset(req.libraryShortName, req.fileName);
                         }
                         case "makeOffscreenCanvas": {
+                            this.isRunningStrypeGraphics = true;
+                            this.peaDisplayTabIndex = PEATabIndexes.graphics;
                             return await renderer.makeCanvas(req.width, req.height);
                         }
                         case "canvas_drawImagePart": {
@@ -846,10 +850,9 @@ export default Vue.extend({
         },
         
         // Note: this is called from our graphics API in strype_graphics_input_internal.ts
-        getPersistentImageManager() : PersistentImageManager {
+        getPersistentImageManager() : void {
             this.isRunningStrypeGraphics = true;
             this.peaDisplayTabIndex = PEATabIndexes.graphics;
-            return persistentImageManager;
         },
 
         // Note: this is called from our graphics API in strype_graphics_input_internal.ts
@@ -935,7 +938,6 @@ export default Vue.extend({
                     targetContext?.translate(mapX(obj.x), mapY(obj.y));
                     targetContext?.rotate(-obj.rotation * Math.PI / 180);
                     targetContext?.scale(obj.scale, obj.scale);
-                    console.log("Drawing at " + obj.scale + " with " + this.scaleToFit);
                     targetContext?.drawImage(obj.img, -0.5 * obj.img.width, -0.5 * obj.img.height);
                     targetContext?.restore();
                 } 
@@ -1009,7 +1011,8 @@ export default Vue.extend({
 
             if (adjustedX >= -graphicsCanvasLogicalWidth / 2 && adjustedX <= graphicsCanvasLogicalWidth / 2 - 1 &&
                 adjustedY >= -graphicsCanvasLogicalHeight / 2 && adjustedY <= graphicsCanvasLogicalHeight / 2 - 1) {
-                mostRecentClickedItems = this.getPersistentImageManager().calculateAllOverlappingAtPos(adjustedX, adjustedY);
+                // TODO
+                //mostRecentClickedItems = this.getPersistentImageManager().calculateAllOverlappingAtPos(adjustedX, adjustedY);
                 mostRecentClickDetails = [adjustedX, adjustedY, event.button, event.detail];
                 mostRecentMouseDetails[2][event.button] = true;
             }
