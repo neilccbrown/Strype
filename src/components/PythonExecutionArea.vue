@@ -577,12 +577,57 @@ export default Vue.extend({
                             this.peaDisplayTabIndex = PEATabIndexes.graphics;
                             return await renderer.makeCanvas(req.width, req.height);
                         }
+                        case "canvas_setFill": {
+                            renderer.getCanvasContext(req.img.handle).fillStyle = req.fill;
+                            return undefined;
+                        }
+                        case "canvas_setStroke": {
+                            renderer.getCanvasContext(req.img.handle).strokeStyle = req.stroke;
+                            return undefined;
+                        }
                         case "canvas_drawImagePart": {
                             renderer.getCanvasContext(req.dest.handle).drawImage(req.src.handle.handleKind == "Canvas" ? renderer.getCanvas(req.src.handle) : renderer.getImage(req.src.handle), req.sx, req.sy, req.sw, req.sh, req.dx, req.dy, req.sw * req.scale, req.sh * req.scale);
                             return undefined;
                         }
                         case "canvas_clearRect": {
                             renderer.getCanvasContext(req.img.handle).clearRect(req.x, req.y, req.width, req.height);
+                            return undefined;
+                        }
+                        case "canvas_drawRect": {
+                            renderer.getCanvasContext(req.img.handle).fillRect(req.x, req.y, req.width, req.height);
+                            return undefined;
+                        }
+                        case "canvas_drawLine": {
+                            const ctx = renderer.getCanvasContext(req.img.handle);
+                            ctx.beginPath();
+                            ctx.moveTo(req.x, req.y);
+                            ctx.lineTo(req.x2, req.y2);
+                            ctx.stroke();
+                            return undefined;
+                        }
+                        case "canvas_drawArc": {
+                            const ctx = renderer.getCanvasContext(req.img.handle);
+                            ctx.beginPath();
+                            ctx.ellipse(req.x, req.y, req.width, req.height, 0, req.angleStartRad, req.angleStartRad + req.angleDeltaRad, false);
+                            ctx.fill();
+                            ctx.stroke();
+                            return undefined;
+                        }
+                        case "canvas_drawPolygon": {
+                            const xys = req.xyPairs;
+                            const ctx = renderer.getCanvasContext(req.img.handle);
+                            ctx.beginPath();
+                            // If we move to the last point, we can lineTo the rest and have the right behaviour:
+                            ctx.moveTo(xys[xys.length - 1][0], xys[xys.length - 1][1]);
+                            xys.forEach((xy) => {
+                                ctx.lineTo(xy[0], xy[1]);
+                            });
+                            ctx.fill();
+                            ctx.stroke();
+                            return undefined;
+                        }
+                        case "canvas_drawPixels": {
+                            renderer.getCanvasContext(req.img.handle).putImageData(new ImageData(req.pixelRGBA, req.width, req.height), req.x, req.y);
                             return undefined;
                         }
                         case "getPressedKeys": {
@@ -598,7 +643,12 @@ export default Vue.extend({
                             else {
                                 console.error("Missing audioContext or soundManager");
                             }
+                            return undefined;
                         }
+                        default:
+                            // Trick to give a compile-time error if a case is missing above:
+                            const _exhaustive: never = req;
+                            return _exhaustive;
                         }
                     };
                     

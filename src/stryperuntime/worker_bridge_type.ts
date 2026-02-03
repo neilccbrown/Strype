@@ -3,6 +3,7 @@ type SerializablePrimitive =
     | string
     | number
     | boolean
+    | Uint8ClampedArray
     | null
     | undefined;
 
@@ -51,8 +52,13 @@ export type StrypePyodideWorkerRequestInput =
     | { request: "makeOffscreenCanvas"; width: number; height: number }
     | { request: "canvas_drawImagePart"; dest: RemoteCanvas, src : RemoteImage | RemoteCanvas, dx : number, dy : number, sx : number, sy : number, sw: number, sh : number, scale : number }
     | { request: "canvas_clearRect"; img: RemoteCanvas, x: number; y: number; width: number; height: number }
+    | { request: "canvas_drawRect"; img: RemoteCanvas, x: number; y: number; width: number; height: number }
+    | { request: "canvas_drawArc"; img: RemoteCanvas, x: number; y: number; width: number; height: number; angleStartRad: number; angleDeltaRad: number; }
+    | { request: "canvas_drawLine"; img: RemoteCanvas, x: number; y: number; x2: number; y2: number }
+    | { request: "canvas_drawPolygon"; img: RemoteCanvas, xyPairs: number[][] }
     | { request: "canvas_setFill"; img: RemoteCanvas, fill: string }
     | { request: "canvas_setStroke"; img: RemoteCanvas, stroke: string }
+    | { request: "canvas_drawPixels", img: RemoteCanvas, x: number; y: number; width: number; height: number; pixelRGBA: Uint8ClampedArray }
     | { request: "getPressedKeys"}
     | { request: "loadSound"; url: string }
     | { request: "startSound"; sound: RemoteSound }
@@ -101,14 +107,20 @@ export type RemoteSound = {
     numSamples: number;
 };
 
+// All the single items with just "undefined" are really void, but we can't have that type here as a member
 export type StrypePyodideWorkerRequestOutput = {
     loadImage: RemoteImage;
     loadLibraryAsset: string | undefined;
     makeOffscreenCanvas: RemoteCanvas;
-    canvas_drawImagePart: undefined; // Really, void, but we can't have that type here
-    canvas_clearRect: undefined; // Really, void, but we can't have that type here
-    canvas_setFill: undefined; // Really, void, but we can't have that type here
-    canvas_setStroke: undefined; // Really, void, but we can't have that type here
+    canvas_drawImagePart: undefined;
+    canvas_clearRect: undefined;
+    canvas_drawRect: undefined;
+    canvas_drawArc: undefined;
+    canvas_drawPolygon: undefined;
+    canvas_drawLine: undefined;
+    canvas_drawPixels: undefined;
+    canvas_setFill: undefined;
+    canvas_setStroke: undefined;
     getPressedKeys: {[key: string]: boolean};
     loadSound: RemoteSound;
     startSound: undefined; // Really, void, but we can't have that type here

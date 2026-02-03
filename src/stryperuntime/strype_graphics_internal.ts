@@ -144,9 +144,8 @@ export function htmlImageToCanvas(imageElement : RemoteImage) : RemoteCanvas {
 export function getCanvasDimensions(img : RemoteCanvas) : number[] {
     return [img.width, img.height];
 }
-export function canvas_fillRect(img, x, y, width, height) {
-    const ctx = img.getContext("2d");
-    return ctx.fillRect(x, y, width, height);
+export function canvas_drawRect(img: RemoteCanvas, x : number, y : number, width : number, height : number) {
+    bridge({request:"canvas_drawRect", img, x, y, width, height});
 }
 export function canvas_clearRect(img: RemoteCanvas, x : number, y : number, width : number, height : number) : void {
     bridge({request:"canvas_clearRect", img, x, y, width, height});
@@ -167,28 +166,21 @@ export function canvas_getPixel(img, x, y) {
         new Sk.builtin.int_(p.data[2]),
         new Sk.builtin.int_(p.data[3])]);
 }
-export function canvas_setPixel(img, x, y, colorTuple) {
-    const ctx = img.getContext("2d");
-    const p = Sk.ffi.remapToJs(colorTuple);
-    ctx.putImageData(new ImageData(new Uint8ClampedArray([p[0], p[1], p[2], p[3]]), 1, 1), x, y);
+export function canvas_setPixel(img : RemoteCanvas, x : number, y : number, colorRGBA : number[]) : void {
+    bridge({request: "canvas_drawPixels", img, x, y, width: 1, height: 1, pixelRGBA: new Uint8ClampedArray(colorRGBA)});
 }
 export function canvas_getAllPixels(img) {
     const ctx = img.getContext("2d");
     return Sk.ffi.remapToPy(ctx.getImageData(0, 0, img.width, img.height).data);
 }
-export function canvas_setAllPixelsRGBA(img, pixels) {
-    const ctx = img.getContext("2d");
-    ctx.putImageData(new ImageData(new Uint8ClampedArray(Sk.ffi.remapToJs(pixels)), img.width, img.height), 0, 0);
+export function canvas_setAllPixelsRGBA(img: RemoteCanvas, pixels : number[]) : void {
+    bridge({request: "canvas_drawPixels", img, x: 0, y: 0, width: img.width, height: img.height, pixelRGBA: new Uint8ClampedArray(pixels)});
 }
-export function canvas_drawImagePart(dest: RemoteCanvas, src : RemoteImage | RemoteCanvas, dx : number, dy : number, sx : number, sy : number, sw : number, sh : number, scale : number) {
+export function canvas_drawImagePart(dest: RemoteCanvas, src : RemoteImage | RemoteCanvas, dx : number, dy : number, sx : number, sy : number, sw : number, sh : number, scale : number) : void {
     bridge({request: "canvas_drawImagePart", dest, src, sx, sy, sw, sh, dx, dy, scale});
 }
-export function canvas_line(dest, x, y, ex, ey) {
-    const ctx = dest.getContext("2d");
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(ex, ey);
-    ctx.stroke();
+export function canvas_line(img: RemoteCanvas, x : number, y : number, x2 : number, y2 : number) : void {
+    bridge({request: "canvas_drawLine", img, x, y, x2, y2});
 }
 export function canvas_roundedRect(img, x, y, width, height, cornerSize) {
     const ctx = img.getContext("2d");
@@ -203,27 +195,14 @@ export function canvas_roundedRect(img, x, y, width, height, cornerSize) {
     ctx.fill();
     ctx.stroke();
 }
-function toRadians(deg) {
+function toRadians(deg : number) : number {
     return deg * Math.PI / 180;
 }
-export function canvas_arc(img, x, y, width, height, angleStart, angleDelta) {
-    const ctx = img.getContext("2d");
-    ctx.beginPath();
-    ctx.ellipse(x, y, width, height, 0, toRadians(angleStart), toRadians(angleStart + angleDelta), false);
-    ctx.fill();
-    ctx.stroke();
+export function canvas_arc(img : RemoteCanvas, x : number, y : number, width : number, height : number, angleStartDeg : number, angleDeltaDeg : number) : void {
+    bridge({request: "canvas_drawArc", img, x, y, width, height, angleStartRad: toRadians(angleStartDeg), angleDeltaRad: toRadians(angleDeltaDeg)});
 }
-export function polygon_xy_pairs(img, xy_pairs_py) {
-    let xys = Sk.ffi.remapToJs(xy_pairs_py);
-    const ctx = img.getContext("2d");
-    ctx.beginPath();
-    // If we move to the last point, we can lineTo the rest and have the right behaviour:
-    ctx.moveTo(xys[xys.length - 1][0], xys[xys.length - 1][1]);
-    xys.forEach((xy) => {
-        ctx.lineTo(xy[0], xy[1]);
-    });
-    ctx.fill();
-    ctx.stroke();
+export function polygon_xy_pairs(img : RemoteCanvas, xyPairs : number[][]) : void {
+    bridge({request: "canvas_drawPolygon", img, xyPairs});
 }
 
 export function canvas_loadFont(provider, fontName) {

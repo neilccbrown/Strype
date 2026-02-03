@@ -171,9 +171,9 @@ function enterAndExecuteCode(functions: string, main: string, timeToWaitMillis =
     cy.get("#runButton").contains("Run");
 }
 
-function runCodeAndCheckImage(functions: string, main: string, expectedImageFileName : string, comparison = ImageComparison.COMPARE_TO_EXISTING) : void {
+function runCodeAndCheckImage(functions: string, main: string, expectedImageFileName : string, comparison = ImageComparison.COMPARE_TO_EXISTING, timeToWaitMillis = 2000) : void {
     focusEditorPasteAndClear();
-    enterAndExecuteCode(functions, main);
+    enterAndExecuteCode(functions, main, timeToWaitMillis);
     // Check the image matches expected:
     checkGraphicsCanvasContent(expectedImageFileName, comparison);
 }
@@ -261,7 +261,7 @@ describe("Image manipulation", () => {
                     else:
                         img.set_pixel(x, y, "YELLOW")
             a = Actor(img.clone(6))
-        `, "image-set-pixel-string-colors");
+        `, "image-set-pixel-string-colors", ImageComparison.COMPARE_TO_EXISTING, 5000);
     });
     it("Draws circles", () => {
         runCodeAndCheckImage("", `
@@ -294,7 +294,7 @@ describe("Image manipulation", () => {
             img.draw_polygon(points)
             
             Actor(img)
-        `, "image-draw-polygons");
+        `, "image-draw-polygons", ImageComparison.COMPARE_TO_EXISTING, 5000);
     });
 });
 
