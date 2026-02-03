@@ -663,7 +663,7 @@ class Actor:
         :param tag: The tag of the actor to check for touching, or None to check all actors.
         :return: The :class:`Actor` we are touching, if any, or None if we are not touching any actor. 
         """
-        return next(iter([_actorsInWorld.get(a) for a in reversed(self.get_all_touching(tag)) if _actorsInWorld.get(a) is not None]), None)
+        return next(reversed(self.get_all_touching(tag)), None)
 
     def get_all_touching(self, tag = None):
         # type: (Any | None) -> list[Actor]
