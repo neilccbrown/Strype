@@ -8,14 +8,21 @@ import ConditionalCompile from "vite-plugin-conditional-compiler";
 import fs from "fs";
 import { zipDir } from "./scripts/zip-dir.js";
 import checker from 'vite-plugin-checker';
+import {randomUUID} from "node:crypto";
 
 function zipPysrcPlugin() {
-    const run = () =>
-        zipDir({
+    const run = async () => {
+        // Important to write to a unique filename (which includes pysrc.zip for the check below to avoid infinite loop),
+        // then rename atomically, in case multiple calls to this function overlap:
+        const tempZip = path.resolve(`temp-.${randomUUID()}-pysrc.zip`);
+        await zipDir({
             rootDir: "pysrc",
             subdirs: ["strype", "python_runner"],
-            outFile: path.resolve("public/pysrc.zip")
+            outFile: tempZip
         })
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await fs.promises.rename(tempZip, path.resolve("public/pysrc.zip"));
+    };
 
     return {
         name: "zip-pysrc",
@@ -30,8 +37,11 @@ function zipPysrcPlugin() {
 
             server.watcher.add("pysrc/**");
 
-            server.watcher.on("change", async () => {
-                await run()
+            server.watcher.on("change", async (file) => {
+                // Avoid an infinite regeneration loop when pysrc.zip is added:
+                if (!file.includes("pysrc.zip")) {
+                    await run();
+                }
             });
         }
     }

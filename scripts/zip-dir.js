@@ -19,6 +19,7 @@ export async function zipDir({ rootDir, subdirs, outFile }) {
     // wrap in a promise to await both close and any errors
     await new Promise((resolve, reject) => {
         output.on("close", resolve);
+        output.on("error", reject);
         archive.on("error", reject);
         archive.finalize().catch(reject);
     });
