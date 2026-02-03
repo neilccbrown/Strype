@@ -63,7 +63,7 @@ import { mapStores } from "pinia";
 import {adjustContextMenuPosition, checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getStrypeCommandComponentRefId, hasPrecompiledCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight} from "@/helpers/editor";
 import i18n from "@/i18n";
 import {defaultEmptyStrypeLayoutDividerSettings, Position, PythonExecRunningState, StrypePEALayoutData, StrypePEALayoutMode} from "@/types/types";
-import { PersistentImage, PersistentImageManager, WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
+import { Sprite, WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
 import Menu from "@/components/Menu.vue";
 import CommandsComponent from "@/components/Commands.vue";
 import SVGIcon from "@/components/SVGIcon.vue";
@@ -93,7 +93,7 @@ let domContext : CanvasRenderingContext2D | null = null;
 let targetContext : OffscreenCanvasRenderingContext2D | null = null;
 let targetCanvas : OffscreenCanvas | null = null;
 let audioContext : AudioContext | null = null; // Important we don't initialise here, for permission reasons
-let mostRecentClickedItems : PersistentImage[] = []; // All the items under the mouse cursor at last click
+let mostRecentClickedItems : Sprite[] = []; // All the items under the mouse cursor at last click
 let mostRecentClickDetails : number[] | null = null; // Array of four numbers: x, y, button, click_count
 let mostRecentMouseDetails : [number, number, [boolean, boolean, boolean]] = [0, 0, [false, false, false]]; // X, Y, three button states
 let pressedKeys : {[key: string]: boolean} = {};
@@ -704,9 +704,9 @@ export default Vue.extend({
                     if (finishedWithError) {
                         this.updateTurtleListeningEvents();
                         // Don't draw last state if we finished with an error because we may be in an inconsistent state:
-                        persistentImageManager.resetDirty();
-                        for (let persistentImage of persistentImageManager.getPersistentImages()) {
-                            persistentImage.dirty = false;
+                        SpriteManager.resetDirty();
+                        for (let Sprite of SpriteManager.getSprites()) {
+                            Sprite.dirty = false;
                         }
                     }
                     if(!this.isTurtleListeningEvents) {
@@ -909,12 +909,12 @@ export default Vue.extend({
             this.isRunningStrypeGraphics = false;
             pressedKeys = {};
             // Important not to use the accessor here as that will switch to the tab:
-            //persistentImageManager.clear();
+            //SpriteManager.clear();
             this.redrawCanvas();
         },
         
         // Note: this is called from our graphics API in strype_graphics_input_internal.ts
-        getPersistentImageManager() : void {
+        getSpriteManager() : void {
             this.isRunningStrypeGraphics = true;
             this.peaDisplayTabIndex = PEATabIndexes.graphics;
         },
@@ -1059,7 +1059,7 @@ export default Vue.extend({
             if (adjustedX >= -graphicsCanvasLogicalWidth / 2 && adjustedX <= graphicsCanvasLogicalWidth / 2 - 1 &&
                 adjustedY >= -graphicsCanvasLogicalHeight / 2 && adjustedY <= graphicsCanvasLogicalHeight / 2 - 1) {
                 // TODO
-                //mostRecentClickedItems = this.getPersistentImageManager().calculateAllOverlappingAtPos(adjustedX, adjustedY);
+                //mostRecentClickedItems = this.getSpriteManager().calculateAllOverlappingAtPos(adjustedX, adjustedY);
                 mostRecentClickDetails = [adjustedX, adjustedY, event.button, event.detail];
                 mostRecentMouseDetails[2][event.button] = true;
             }
@@ -1082,7 +1082,7 @@ export default Vue.extend({
         graphicsCanvasMouseUp(event: PointerEvent) {
             mostRecentMouseDetails[2][event.button] = false;
         },
-        consumeLastClickedItems() : PersistentImage[] {
+        consumeLastClickedItems() : Sprite[] {
             const r = mostRecentClickedItems;
             mostRecentClickedItems = [];
             return r;

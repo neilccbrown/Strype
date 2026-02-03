@@ -88,48 +88,48 @@ export function loadAndWaitForImage(filename: string) : RemoteImage {
     }
 }
 export function setBackground(img : RemoteImage) {
-    globalThis.persistentImageManager.setBackground(img);
+    globalThis.spriteManager.setBackground(img);
 } 
 export function addImage(image: RemoteImage, collidable: boolean) : number {
-    return globalThis.persistentImageManager.addPersistentImage(image, collidable);
+    return globalThis.spriteManager.addSprite(image, collidable);
 }
 export function updateImage(id: number, image: RemoteImage) : void {
-    globalThis.persistentImageManager.setPersistentImageImage(id, image);
+    globalThis.spriteManager.setSpriteImage(id, image);
 }
 export function imageExists(image : number) : boolean {
-    return globalThis.persistentImageManager.hasPersistentImage(image);
+    return globalThis.spriteManager.hasSprite(image);
 }
 export function getImageSize (img : number)  : {width: number, height: number} | undefined {
-    return globalThis.persistentImageManager.getPersistentImageSize(img);
+    return globalThis.spriteManager.getSpriteSize(img);
 }
 export function setImageLocation(img : number, x : number, y : number) : void {
-    globalThis.persistentImageManager.setPersistentImageLocation(img, x, y);
+    globalThis.spriteManager.setSpriteLocation(img, x, y);
 }
 export function setImageRotation(img : number, r : number) : void {
-    globalThis.persistentImageManager.setPersistentImageRotation(img, r);
+    globalThis.spriteManager.setSpriteRotation(img, r);
 }
 export function setImageScale(img : number, s : number) : void {
-    globalThis.persistentImageManager.setPersistentImageScale(img, s);
+    globalThis.spriteManager.setSpriteScale(img, s);
 }
 export function getImageLocation(img : number): { x: number; y: number } | undefined {
-    return globalThis.persistentImageManager.getPersistentImageLocation(img);
+    return globalThis.spriteManager.getSpriteLocation(img);
 }
 export function getImageRotation(img : number): number | undefined {
-    return globalThis.persistentImageManager.getPersistentImageRotation(img);
+    return globalThis.spriteManager.getSpriteRotation(img);
 }
 export function getImageScale(img : number) : number | undefined {
-    return globalThis.persistentImageManager.getPersistentImageScale(img);
+    return globalThis.spriteManager.getSpriteScale(img);
 }
 export function removeImage(img: number) : void {
-    globalThis.persistentImageManager.removePersistentImage(img);
+    globalThis.spriteManager.removeSprite(img);
 }
 // Removes an image after a timeout.  Can be cancelled with cancelRemoveImageAfter (passing same img)
 export function removeImageAfter(img : number, secs : number) : void {
-    globalThis.persistentImageManager.removePersistentImageAfter(img, secs);
+    globalThis.spriteManager.removeSpriteAfter(img, secs);
 }
 
 export function makeImageEditable(img : number) {
-    return globalThis.persistentImageManager.editImage(img);
+    return globalThis.spriteManager.editImage(img);
 }
 
 

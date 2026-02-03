@@ -73,8 +73,8 @@ type Handle<B extends string> = { handleKind: B, handle: number };
 export type ImageHandle = Handle<"Image">;
 export type CanvasHandle = Handle<"Canvas">;
 export type SoundHandle = Handle<"Sound">;
-// A PersistentImage is used for anything that needs rendering, i.e. actors but also backgrounds, say bubbles.
-export type PersistentImageHandle = Handle<"PersistentImage">;
+// A Sprite is used for anything that needs rendering, i.e. actors but also backgrounds, say bubbles.
+export type SpriteHandle = Handle<"Sprite">;
 
 export function makeImageHandle(n: number): ImageHandle {
     return {handle: n, handleKind: "Image"};
@@ -85,8 +85,8 @@ export function makeCanvasHandle(n: number): CanvasHandle {
 export function makeSoundHandle(n: number): SoundHandle {
     return {handle: n, handleKind: "Sound"};
 }
-export function makePersistentImageHandle(n: number): PersistentImageHandle {
-    return {handle: n, handleKind: "PersistentImage"};
+export function makeSpriteHandle(n: number): SpriteHandle {
+    return {handle: n, handleKind: "Sprite"};
 }
 
 export type RemoteImage = {
@@ -141,13 +141,13 @@ export type StrypePyodideHandlerFunctionAsync =
 
 export type StrypePyodideHandlerFunctionVoid = (req: StrypePyodideWorkerRequestInput) => void;
 
-// These updates are sent from the Pyodide-thread PersistentImageManager to the renderer so it can render the state when it wants
-export type StrypePersistentImageStateUpdate =
+// These updates are sent from the Pyodide-thread SpriteManager to the renderer so it can render the state when it wants
+export type StrypeSpriteStateUpdate =
     | {request: "clear"}
-    | {request: "add", id: PersistentImageHandle, x: number, y: number, rotation: number, scale: number, image: ImageHandle | CanvasHandle}
-    | {request: "remove", id: PersistentImageHandle}
-    | {request: "update", id: PersistentImageHandle, x: number, y: number, rotation: number, scale: number, image: ImageHandle | CanvasHandle}
+    | {request: "add", id: SpriteHandle, x: number, y: number, rotation: number, scale: number, image: ImageHandle | CanvasHandle}
+    | {request: "remove", id: SpriteHandle}
+    | {request: "update", id: SpriteHandle, x: number, y: number, rotation: number, scale: number, image: ImageHandle | CanvasHandle}
 ;
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-type CheckStrypePersistentImageStateUpdate = Expect<IsSerializable<StrypePersistentImageStateUpdate>>;
+type CheckStrypeSpriteStateUpdate = Expect<IsSerializable<StrypeSpriteStateUpdate>>;

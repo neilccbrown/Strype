@@ -5,7 +5,7 @@ import { loadPyodideAndPackage, makeRunnerCallback, OutputPart, pyodideExpose, P
 import * as Comlink from "comlink";
 import { strype_bridge } from "@/stryperuntime/pyodide_bridge";
 import {StrypePyodideHandlerFunctionSync, StrypePyodideHandlerFunctionVoid, StrypePyodideWorkerRequestInput, StrypePyodideWorkerRequestOutput} from "@/stryperuntime/worker_bridge_type";
-import {PersistentImageManager} from "@/stryperuntime/image_and_collisions";
+import {SpriteManager} from "@/stryperuntime/image_and_collisions";
 import {PyodideWorkerGlobalScope} from "@/workers/python_execution_type";
 
 // We only specify updatePort here as we don't want other files using it directly:
@@ -85,7 +85,7 @@ StrypePyodideRunner()`);
         });
         runner.set_callback(callback);
         self.StrypePyodideWorkerBridge = bridgeSync;
-        self.persistentImageManager = new PersistentImageManager((u) => self.updatePort.postMessage(u));
+        self.spriteManager = new SpriteManager((u) => self.updatePort.postMessage(u));
         self.pyodide = pyodide;
         await runner.run_async(pythonCode, {});
         return error;

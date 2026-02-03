@@ -444,10 +444,10 @@ class Actor:
     """
     
     # Private attributes:
-    # __id: the identifier of the PersistentImage that represents this actor on screen.  Should never be None
+    # __id: the identifier of the Sprite that represents this actor on screen.  Should never be None
     # __editable_image: the editable image of this actor, if the user has ever called get_image() on us.
     # __tag: the user-supplied tag of the actor.  Useful to leave the type flexible, we just pass it in and out.
-    # __say: the identifier of the PersistentImage with the current speech bubble for this actor.  Is None when there is no current speech.
+    # __say: the identifier of the Sprite with the current speech bubble for this actor.  Is None when there is no current speech.
     # Note that __say can be removed on the Javascript side without our code executing, due to a timeout.  So
     # whenever we use it, we should check it's still actually present.
     

@@ -1,32 +1,32 @@
-// This is the mirror of PersistentImageManager that lives on another thread, listens to updates and
+// This is the mirror of SpriteManager that lives on another thread, listens to updates and
 // updates local state to allow rendering:
-import {CanvasHandle, ImageHandle, makeCanvasHandle, makeImageHandle, RemoteCanvas, RemoteImage, StrypePersistentImageStateUpdate} from "@/stryperuntime/worker_bridge_type";
+import {CanvasHandle, ImageHandle, makeCanvasHandle, makeImageHandle, RemoteCanvas, RemoteImage, StrypeSpriteStateUpdate} from "@/stryperuntime/worker_bridge_type";
 
 export class Renderer  {
     // Always has a single black 808x606 image first for the default background:
     private loadedImages : ImageBitmap[]  = [];
     private canvases : OffscreenCanvas[] = [];
     // Mirrored (as in echoed, not as in horizontally flipped) from the Pyodide thread:
-    // image is really an index into the loadedImages array
-    private persistentImages : Map<number, {x: number, y: number, rotation: number, scale: number, image: ImageHandle | CanvasHandle}> = new Map();
+    // image is really an index into the loadedImages/canvases arrays
+    private sprites : Map<number, {x: number, y: number, rotation: number, scale: number, image: ImageHandle | CanvasHandle}> = new Map();
     private dirty = false;
     
     constructor(recvUpdates: MessagePort) {
         recvUpdates.onmessage = (e) => {
-            const update = e.data as StrypePersistentImageStateUpdate;
+            const update = e.data as StrypeSpriteStateUpdate;
             switch (update.request) {
             case "clear": {
                 // Delete everything except the first black background:
                 this.loadedImages.splice(1);
-                this.persistentImages.clear();
+                this.sprites.clear();
             }
                 break;
             case "add": case "update": {
-                this.persistentImages.set(update.id.handle, {x: update.x, y: update.y, rotation: update.rotation, scale: update.scale, image: update.image});
+                this.sprites.set(update.id.handle, {x: update.x, y: update.y, rotation: update.rotation, scale: update.scale, image: update.image});
             }
                 break;
             case "remove": {
-                this.persistentImages.delete(update.id.handle);
+                this.sprites.delete(update.id.handle);
             }
                 break;
             }
@@ -84,7 +84,7 @@ export class Renderer  {
     }
 
     getItemsToDraw() : {x: number, y: number, rotation: number, scale: number, img: ImageBitmap | OffscreenCanvas}[] {
-        return Array.from(this.persistentImages.values()).map((p) => {
+        return Array.from(this.sprites.values()).map((p) => {
             return {...p, img: p.image.handleKind == "Image" ? this.loadedImages[p.image.handle] : this.canvases[p.image.handle]};
         });
     }
