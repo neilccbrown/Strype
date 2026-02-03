@@ -5,8 +5,17 @@
 // These functions are not directly exposed to users, but are used by sound.py to
 // form the actual public API.
 
-function playAudioBuffer(audioBuffer) {
-    peaComponent.__vue__.playAudioBuffer(audioBuffer);
+import {RemoteSound, StrypePyodideHandlerFunctionSync} from "@/stryperuntime/worker_bridge_type";
+import {PyodideWorkerGlobalScope} from "@/workers/python_execution_type";
+
+declare const globalThis: PyodideWorkerGlobalScope;
+
+const bridge : StrypePyodideHandlerFunctionSync = (req) => {
+    return globalThis.StrypePyodideWorkerBridge(req);
+};
+
+export function startAudioBuffer(sound : RemoteSound) : undefined {
+    return bridge({request: "startSound", sound});
 };
 function playAudioBufferAndWait(audioBuffer) {
     /*
@@ -27,70 +36,12 @@ function playAudioBufferAndWait(audioBuffer) {
 function stopAudioBuffer(audioBuffer) {
     peaComponent.__vue__.stopAudioBuffer(audioBuffer);
 };
-function createAudioBuffer(seconds, samplesPerSecond) {
+function createAudioBuffer(seconds : number, samplesPerSecond : number) {
     return new AudioBuffer({length: Math.round(seconds * samplesPerSecond), sampleRate: samplesPerSecond});
 };
-function loadAndWaitForAudioBuffer(path) {
-    /*
-    path = Sk.ffi.remapToJs(path);
-    const audioContext = peaComponent.__vue__.getAudioContext();
-    let susp = new Sk.misceval.Suspension();
-    function susp.resume () {
-        if (susp.data["error"]) {
-            throw new Sk.builtin.IOError(susp.data["error"].message);
-        }
-        return susp.ret;
-    };
-    let promise;
-    if (path.startsWith("data:") || path.startsWith(":")) {
-        const decode = (dataURL) => 
-            audioContext.decodeAudioData(Uint8Array.from(atob(dataURL.split(",")[1]), (char) => char.charCodeAt(0)).buffer)
-                .then((b) => {
-                    if (!b) {
-                        susp.data["error"] = Error("Cannot load audio file \"" + path + "\"");
-                    }
-                    else {
-                        susp.ret = b;
-                    }
-                });
-        
-        const match = /^:([^:]+):(.+)$/.exec(path);
-        if (match) {
-            // If it's some prefix between two colons, it's a library asset:
-            const libraryName = match[1];
-            const fileName = match[2];
-            promise = peaComponent.__vue__.loadLibraryAsset(libraryName, fileName).then(async (dataURL) => {
-                return await decode(dataURL ?? path);
-            }).catch((error) => {
-                // Propagate the error to the outer promise
-                susp.data["error"] = error;
-            });
-        }
-        else {
-            promise = decode(path);
-        }
-    }
-    else {
-        promise = fetch("./sounds/" + path)
-            .then((d) => d.arrayBuffer())
-            .then((b) => audioContext.decodeAudioData(b))
-            .then((b) => {
-                if (!b) {
-                    susp.data["error"] = Error("Cannot load audio file \"" + path + "\"");
-                }
-                else {
-                    susp.ret = b;
-                }
-            });
-    }
-    susp.data = {
-        type: "Sk.promise",
-        promise: promise,
-    };
-    return susp;
-    
-     */
-}; 
+export function loadAndWaitForAudioBuffer(path : string) : RemoteSound {
+    return bridge({request: "loadSound", url: path});
+}
 function getSamples(buffer) {
     if (buffer.numberOfChannels > 1) {
         throw new Error("Cannot get samples from stereo sound; convert to mono first");
@@ -116,11 +67,11 @@ function setSamples(buffer, floatArray, offset) {
         buffer.copyToChannel(floats, 0, offset);
     }
 };
-function getNumSamples(buffer) {
-    return Sk.ffi.remapToPy(buffer.length);
+export function getNumSamples(sound : RemoteSound) : number {
+    return sound.numSamples;
 };
-function getSampleRate(buffer) {
-    return Sk.ffi.remapToPy(buffer.sampleRate);
+export function getSampleRate(sound : RemoteSound) : number {
+    return sound.sampleRate;
 };
 function downloadWAV(src, filenameStem) {
     filenameStem = Sk.ffi.remapToJs(filenameStem);

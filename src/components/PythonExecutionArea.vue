@@ -84,6 +84,7 @@ import { handleErrorTrace, setSInputConsole, sInput } from "@/helpers/execPython
 import { ErrorDetails } from "@/workers/python-execution";
 import {StrypePyodideHandlerFunctionAsync, StrypePyodideWorkerRequestInput} from "@/stryperuntime/worker_bridge_type";
 import {Renderer} from "@/stryperuntime/renderer";
+import {SoundManager} from "@/stryperuntime/sound_manager";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
@@ -101,6 +102,7 @@ const bufferToSource = new Map<AudioBuffer, AudioBufferSourceNode>(); // Used to
 
 const updateChannel = new MessageChannel();
 const renderer = new Renderer(updateChannel.port2);
+let soundManager : SoundManager | null = null;
 
 
 // We draw our actual graphics canvas (for strype.graphics) at the size it is on the page,
@@ -462,7 +464,7 @@ export default Vue.extend({
                 useStore().pythonExecRunningState = PythonExecRunningState.Running;
                 // Important to call this when responding to a click, because browser won't allow
                 // sound to start unless we create it in response to a user action:
-                audioContext = new AudioContext();
+                soundManager = new SoundManager(new AudioContext());
                 this.execPythonCode();
                 return;
             case PythonExecRunningState.Running:
@@ -584,6 +586,9 @@ export default Vue.extend({
                         }
                         case "getPressedKeys": {
                             return pressedKeys;
+                        }
+                        case "loadSound": {
+                            return (soundManager as SoundManager).loadSound(req.url);
                         }
                         }
                     };

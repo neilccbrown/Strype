@@ -54,6 +54,8 @@ export type StrypePyodideWorkerRequestInput =
     | { request: "canvas_setFill"; img: RemoteCanvas, fill: string }
     | { request: "canvas_setStroke"; img: RemoteCanvas, stroke: string }
     | { request: "getPressedKeys"}
+    | { request: "loadSound"; url: string }
+    | { request: "startSound"; sound: RemoteSound }
 ;
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -64,6 +66,7 @@ type CheckStrypePyodideWorkerRequestInput = Expect<IsSerializable<StrypePyodideW
 type Handle<B extends string> = { handleKind: B, handle: number };
 export type ImageHandle = Handle<"Image">;
 export type CanvasHandle = Handle<"Canvas">;
+export type SoundHandle = Handle<"Sound">;
 // A PersistentImage is used for anything that needs rendering, i.e. actors but also backgrounds, say bubbles.
 export type PersistentImageHandle = Handle<"PersistentImage">;
 
@@ -72,6 +75,9 @@ export function makeImageHandle(n: number): ImageHandle {
 }
 export function makeCanvasHandle(n: number): CanvasHandle {
     return {handle: n, handleKind: "Canvas"};
+}
+export function makeSoundHandle(n: number): SoundHandle {
+    return {handle: n, handleKind: "Sound"};
 }
 export function makePersistentImageHandle(n: number): PersistentImageHandle {
     return {handle: n, handleKind: "PersistentImage"};
@@ -89,6 +95,12 @@ export type RemoteCanvas = {
     height: number;
 };
 
+export type RemoteSound = {
+    handle: SoundHandle;
+    sampleRate: number;
+    numSamples: number;
+};
+
 export type StrypePyodideWorkerRequestOutput = {
     loadImage: RemoteImage;
     loadLibraryAsset: string | undefined;
@@ -98,6 +110,8 @@ export type StrypePyodideWorkerRequestOutput = {
     canvas_setFill: undefined; // Really, void, but we can't have that type here
     canvas_setStroke: undefined; // Really, void, but we can't have that type here
     getPressedKeys: {[key: string]: boolean};
+    loadSound: RemoteSound;
+    startSound: undefined; // Really, void, but we can't have that type here
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

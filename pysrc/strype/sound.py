@@ -60,7 +60,7 @@ class Sound:
         """
         Starts playing the sound from the start, but returns immediately without waiting for the sound to finish playing.
         """
-        _strype_sound_internal.playAudioBuffer(self.__buffer)
+        _strype_sound_internal.startAudioBuffer(self.__buffer)
 
     def play_and_wait(self):
         # type: () -> None
