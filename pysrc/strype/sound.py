@@ -151,6 +151,6 @@ def load_sound(source):
     """
     # If they mistakenly try to load a sound (e.g. a literal) just let it through:
     if isinstance(source, Sound):
-        return Sound
+        return source
     buffer = _strype_sound_internal.loadAndWaitForAudioBuffer(source)
     return Sound(buffer, -4242)

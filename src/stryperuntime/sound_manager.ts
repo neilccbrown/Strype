@@ -3,6 +3,7 @@ import {makeSoundHandle, RemoteSound} from "@/stryperuntime/worker_bridge_type";
 export class SoundManager {
     private audioContext : AudioContext;
     private loadedSounds: AudioBuffer[] = [];
+    private bufferToSource = new Map<AudioBuffer, AudioBufferSourceNode>(); // Used to stop playing sounds
     
     constructor(private ctx: AudioContext) {
         this.audioContext = ctx;
@@ -53,5 +54,27 @@ export class SoundManager {
             this.loadedSounds.push(buffer);
             return {handle: makeSoundHandle(h), numSamples: buffer.length, sampleRate: buffer.sampleRate};
         });
+    }
+
+    playAudioBuffer(index: number, audioContext : AudioContext) : Promise<void> | null {
+        const audioBuffer = this.loadedSounds[index];
+        if (audioBuffer) {
+            const source = audioContext.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(audioContext.destination);
+            // eslint-disable-next-line @typescript-eslint/no-this-alias
+            const sm = this;
+            return new Promise(function (resolve, reject) {
+                source.onended = (ev) => {
+                    sm.bufferToSource.delete(audioBuffer);
+                    resolve();
+                };
+                sm.bufferToSource.set(audioBuffer, source);
+                source.start();
+            });
+        }
+        else {
+            return null;
+        }
     }
 }

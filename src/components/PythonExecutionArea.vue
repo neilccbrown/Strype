@@ -98,7 +98,7 @@ let mostRecentClickDetails : number[] | null = null; // Array of four numbers: x
 let mostRecentMouseDetails : [number, number, [boolean, boolean, boolean]] = [0, 0, [false, false, false]]; // X, Y, three button states
 let pressedKeys : {[key: string]: boolean} = {};
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
-const bufferToSource = new Map<AudioBuffer, AudioBufferSourceNode>(); // Used to stop playing sounds
+
 
 const updateChannel = new MessageChannel();
 const renderer = new Renderer(updateChannel.port2);
@@ -464,7 +464,8 @@ export default Vue.extend({
                 useStore().pythonExecRunningState = PythonExecRunningState.Running;
                 // Important to call this when responding to a click, because browser won't allow
                 // sound to start unless we create it in response to a user action:
-                soundManager = new SoundManager(new AudioContext());
+                audioContext = new AudioContext();
+                soundManager = new SoundManager(audioContext);
                 this.execPythonCode();
                 return;
             case PythonExecRunningState.Running:
@@ -589,6 +590,14 @@ export default Vue.extend({
                         }
                         case "loadSound": {
                             return (soundManager as SoundManager).loadSound(req.url);
+                        }
+                        case "startSound": {
+                            if (soundManager && audioContext) {
+                                soundManager.playAudioBuffer(req.sound.handle.handle, audioContext);
+                            }
+                            else {
+                                console.error("Missing audioContext or soundManager");
+                            }
                         }
                         }
                     };
@@ -970,24 +979,7 @@ export default Vue.extend({
             }
         },
 
-        playAudioBuffer(audioBuffer : AudioBuffer) : Promise<void> | null {
-            if (audioContext) {
-                const source = audioContext.createBufferSource();
-                source.buffer = audioBuffer;
-                source.connect(audioContext.destination);
-                return new Promise(function (resolve, reject) {
-                    source.onended = (ev) => {
-                        bufferToSource.delete(audioBuffer);
-                        resolve();
-                    };
-                    bufferToSource.set(audioBuffer, source);
-                    source.start();
-                });
-            }
-            else {
-                return null;
-            }
-        },
+        
         stopAudioBuffer(audioBuffer: AudioBuffer) : void {
             const source = bufferToSource.get(audioBuffer);
             if (source) {
