@@ -756,7 +756,7 @@ describe("Saying", () => {
     });
 });
 
-describe.only("Show text", () => {
+describe("Show text", () => {
     if (Cypress.env("mode") == "microbit") {
         // Graphics tests can't run in microbit
         return;
