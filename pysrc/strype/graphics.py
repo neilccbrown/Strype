@@ -469,10 +469,10 @@ class Actor:
         :param tag: A optional tag for the actor (usually a string) for use in detecting touching actors.
         """
         if isinstance(image, Image):
-            self.__id = _strype_graphics_internal.addImage(image._Image__image, True)
+            self.__id = _strype_graphics_internal.addSprite(image._Image__image, True)
             self.__editable_image = image
         elif isinstance(image, str):
-            self.__id = _strype_graphics_internal.addImage(_strype_graphics_internal.loadAndWaitForImage(image), True)
+            self.__id = _strype_graphics_internal.addSprite(_strype_graphics_internal.loadAndWaitForImage(image), True)
             self.__editable_image = None
         else:
             raise TypeError("Actor constructor parameter must be Image")
@@ -722,7 +722,7 @@ class Actor:
         if self.__editable_image is None:
             # The -42, -42 sizing indicates we will set the image ourselves afterwards:
             self.__editable_image = Image(-42, -42)
-            self.__editable_image._Image__image = _strype_graphics_internal.makeImageEditable(self.__id) 
+            self.__editable_image._Image__image = _strype_graphics_internal.makeImageEditableForSprite(self.__id) 
         return self.__editable_image
     
     def set_image(self, image):
@@ -781,7 +781,7 @@ class Actor:
             sayImg.set_stroke("#555555FF")
             sayImg.draw_rounded_rect(2, 2, textDimensions.width + 2 * padding - 4, textDimensions.height + 2 * padding - 4, padding)
             sayImg._draw_part_of_image(textOnlyImg, padding, padding, 0, 0, textDimensions.width, textDimensions.height)
-            self.__say = _strype_graphics_internal.addImage(sayImg._Image__image, False)
+            self.__say = _strype_graphics_internal.addSprite(sayImg._Image__image, False)
             self._update_say_position()
             
     def _update_say_position(self):

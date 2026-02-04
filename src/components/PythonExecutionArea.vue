@@ -583,6 +583,18 @@ export default Vue.extend({
                         case "loadSound": {
                             return {request: req.request, response: (soundManager as SoundManager).loadSound(req.url)};
                         }
+                        case "ensureCanvas": {
+                            if (req.img.handle.handleKind == "Image") {
+                                // Ideally we'd remove the old Image but we don't actually have a mechanism for that at the moment:
+                                const img = renderer.getImage(req.img.handle);
+                                const c = renderer.makeCanvas(img.width, img.height);
+                                renderer.getCanvasContext(c.handle).drawImage(img, 0, 0);
+                                return {request: req.request, response: Promise.resolve(c)};
+                            }
+                            else {
+                                return {request: req.request, response: Promise.resolve(req.img as RemoteCanvas)};
+                            }
+                        }
                         default:
                             // Trick to give a compile-time error if a case is missing above:
                             const _exhaustive: never = req;

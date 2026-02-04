@@ -106,7 +106,7 @@ export class SpriteManager {
         setTimeout(() => this.removeSprite(id), secs * 1000);
     }
 
-    public setSpriteImage(id: number, imageOrCanvas : RemoteImage): void {
+    public setSpriteImage(id: number, imageOrCanvas : RemoteImage | RemoteCanvas): void {
         const obj = this.sprites.get(id);
         if (obj != undefined) {
             obj.img = imageOrCanvas;
@@ -295,20 +295,13 @@ export class SpriteManager {
         return all;
     }
     
-    // If this Sprite is not already editable, makes an OffScreenCanvas for editing, draws on the existing
+    // If this Sprite's image is not already editable, makes an OffScreenCanvas for editing, draws on the existing
     // image, and returns this new OffScreenCanvas.  Returns null if it can't find the Sprite with the given id
-    public editImage(id : number) : OffscreenCanvas | null {
-        const pimg = this.sprites.get(id);
-        if (pimg != null) {
-            if (pimg.img instanceof HTMLImageElement) {
-                const c = new OffscreenCanvas(pimg.img.width, pimg.img.height);
-                (c.getContext("2d") as OffscreenCanvasRenderingContext2D).drawImage(pimg.img, 0, 0);
-                pimg.img = c;
-                return c;
-            }
-            else if (pimg.img instanceof OffscreenCanvas) {
-                return pimg.img;
-            }
+    public editImage(id : number, ensureCanvas : (r : RemoteImage | RemoteCanvas) => RemoteCanvas) : RemoteCanvas | null {
+        const sprite = this.sprites.get(id);
+        if (sprite != null) {
+            sprite.img = ensureCanvas(sprite.img);
+            
         }
         return null;
     }

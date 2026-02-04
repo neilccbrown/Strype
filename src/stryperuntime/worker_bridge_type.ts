@@ -44,6 +44,7 @@ export type SyncStrypePyodideWorkerRequest =
     | { request: "loadImage"; url: string }
     | { request: "loadLibraryAsset"; libraryShortName: string; fileName: string }
     | { request: "makeOffscreenCanvas"; width: number; height: number }
+    | { request: "ensureCanvas"; img: RemoteCanvas | RemoteImage }
     | { request: "getPressedKeys"}
     | { request: "loadSound"; url: string }
 ;

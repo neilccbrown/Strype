@@ -86,7 +86,7 @@ export function loadAndWaitForImage(filename: string) : RemoteImage {
 export function setBackground(img : RemoteImage) {
     globalThis.spriteManager.setBackground(img);
 } 
-export function addImage(image: RemoteImage, collidable: boolean) : number {
+export function addSprite(image: RemoteImage, collidable: boolean) : number {
     return globalThis.spriteManager.addSprite(image, collidable);
 }
 export function updateImage(id: number, image: RemoteImage) : void {
@@ -124,8 +124,13 @@ export function removeImageAfter(img : number, secs : number) : void {
     globalThis.spriteManager.removeSpriteAfter(img, secs);
 }
 
-export function makeImageEditable(img : number) {
-    return globalThis.spriteManager.editImage(img);
+export function makeImageEditableForSprite(spriteId : number) : RemoteCanvas | null {
+    return globalThis.spriteManager.editImage(spriteId, (r : RemoteImage | RemoteCanvas) : RemoteCanvas => {
+        const canvas = bridge({request: "ensureCanvas", img: r});
+        // This will also send the change through to the main thread via the usual state-mirroring channel:
+        globalThis.spriteManager.setSpriteImage(spriteId, canvas);
+        return canvas;
+    });
 }
 
 
