@@ -386,7 +386,8 @@ class Image:
         
         :param points: A list of pairs of (x, y) coordinates.
         """
-        _strype_graphics_internal.polygon_xy_pairs(self.__image, points)
+        # Need to convert tuple into list:
+        _strype_graphics_internal.polygon_xy_pairs(self.__image, [list(xy) for xy in points])
 
     def clone(self, scale = 1.0):
         # type: (float) -> Image
