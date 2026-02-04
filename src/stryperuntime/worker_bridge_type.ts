@@ -64,7 +64,7 @@ type PromisedResponse<T> = T extends {request: infer REQ; response: infer RESP }
 export type AsyncStrypePyodideWorkerRequest =
     | { request: "canvas_drawImagePart"; dest: RemoteCanvas, src : RemoteImage | RemoteCanvas, dx : number, dy : number, sx : number, sy : number, sw: number, sh : number, scale : number }
     | { request: "canvas_clearRect"; img: RemoteCanvas, x: number; y: number; width: number; height: number }
-    | { request: "canvas_drawRect"; img: RemoteCanvas, x: number; y: number; width: number; height: number }
+    | { request: "canvas_fillWhole"; img: RemoteCanvas }
     | { request: "canvas_drawArc"; img: RemoteCanvas, x: number; y: number; width: number; height: number; angleStartRad: number; angleDeltaRad: number; }
     | { request: "canvas_drawLine"; img: RemoteCanvas, x: number; y: number; x2: number; y2: number }
     | { request: "canvas_drawPolygon"; img: RemoteCanvas, xyPairs: number[][] }

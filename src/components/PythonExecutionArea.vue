@@ -619,8 +619,8 @@ export default Vue.extend({
                             renderer.getCanvasContext(req.img.handle).clearRect(req.x, req.y, req.width, req.height);
                             return undefined;
                         }
-                        case "canvas_drawRect": {
-                            renderer.getCanvasContext(req.img.handle).fillRect(req.x, req.y, req.width, req.height);
+                        case "canvas_fillWhole": {
+                            renderer.getCanvasContext(req.img.handle).fillRect(0, 0, req.img.width, req.img.height);
                             return undefined;
                         }
                         case "canvas_drawLine": {

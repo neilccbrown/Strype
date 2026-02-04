@@ -145,8 +145,8 @@ export function htmlImageToCanvas(imageElement : RemoteImage) : RemoteCanvas {
 export function getCanvasDimensions(img : RemoteCanvas) : number[] {
     return [img.width, img.height];
 }
-export function canvas_drawRect(img: RemoteCanvas, x : number, y : number, width : number, height : number) {
-    asyncBridge({request:"canvas_drawRect", img, x, y, width, height});
+export function canvas_fillWhole(img: RemoteCanvas) {
+    asyncBridge({request:"canvas_filLWhole", img});
 }
 export function canvas_clearRect(img: RemoteCanvas, x : number, y : number, width : number, height : number) : void {
     asyncBridge({request:"canvas_clearRect", img, x, y, width, height});
