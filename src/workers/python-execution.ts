@@ -57,6 +57,9 @@ StrypePyodideRunner()`);
             if (reply.request != req.request) {
                 throw new Error(`Internal error: Pyodide worker received ${reply.request} but had asked for ${req.request}`);
             }
+            else if (reply.hasOwnProperty("error")) {
+                throw new Error(reply.error);
+            }
             else {
                 // I think Typescript should be able to infer reply is ResponseFor<R> because of the if check, but apparently not:
                 return reply as ResponseFor<R>;

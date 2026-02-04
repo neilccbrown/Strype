@@ -705,6 +705,14 @@ export default Vue.extend({
                                     catch (e) {
                                         console.error(e);
                                     }
+                                }).catch(async (err) => {
+                                    await navigator.serviceWorker.ready;
+                                    try {
+                                        await client.writeMessage({request: resp.request, error: err.toString()});
+                                    }
+                                    catch (e) {
+                                        console.error(e);
+                                    }
                                 });
                             }),
                             Comlink.proxy(asyncBridge)
