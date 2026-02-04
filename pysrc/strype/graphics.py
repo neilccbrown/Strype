@@ -143,7 +143,6 @@ class Image:
         """
         Fill the image with the current fill color (see `set_fill`).
         """
-        dim = _strype_graphics_internal.getCanvasDimensions(self.__image)
         _strype_graphics_internal.canvas_fillWhole(self.__image)
 
     def set_fill(self, color):
