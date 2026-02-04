@@ -575,7 +575,7 @@ export default Vue.extend({
                         case "makeOffscreenCanvas": {
                             this.isRunningStrypeGraphics = true;
                             this.peaDisplayTabIndex = PEATabIndexes.graphics;
-                            return {request: req.request, response: renderer.makeCanvas(req.width, req.height)};
+                            return {request: req.request, response: Promise.resolve(renderer.makeCanvas(req.width, req.height))};
                         }
                         case "getPressedKeys": {
                             return {request: req.request, response: Promise.resolve(pressedKeys)};

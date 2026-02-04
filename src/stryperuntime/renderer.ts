@@ -57,7 +57,7 @@ export class Renderer  {
         return {handle: makeImageHandle(this.loadedImages.length - 1), width: imageBitmap.width, height: imageBitmap.height};
     }
 
-    async makeCanvas(width: number, height: number) : Promise<RemoteCanvas> {
+    makeCanvas(width: number, height: number) : RemoteCanvas {
         const canvas = new OffscreenCanvas(width, height);
         this.canvases.push(canvas);
         return {handle: makeCanvasHandle(this.canvases.length - 1), width, height};
