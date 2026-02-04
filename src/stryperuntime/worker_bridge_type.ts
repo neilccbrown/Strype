@@ -54,6 +54,7 @@ export type SyncStrypePyodideWorkerResponse =
     | { request: "loadImage"; response: RemoteImage;}
     | { request: "loadLibraryAsset"; response: string | undefined; }
     | { request: "makeOffscreenCanvas"; response: RemoteCanvas; }
+    | { request: "ensureCanvas"; response: RemoteCanvas; }
     | { request: "getPressedKeys"; response: {[key: string]: boolean} }
     | { request: "loadSound"; response: RemoteSound;}
 ;
@@ -67,10 +68,12 @@ export type AsyncStrypePyodideWorkerRequest =
     | { request: "canvas_fillWhole"; img: RemoteCanvas }
     | { request: "canvas_drawArc"; img: RemoteCanvas, x: number; y: number; width: number; height: number; angleStartRad: number; angleDeltaRad: number; }
     | { request: "canvas_drawLine"; img: RemoteCanvas, x: number; y: number; x2: number; y2: number }
+    | { request: "canvas_drawRoundedRect", img: RemoteCanvas, x: number; y: number; width: number; height: number; cornerSize: number; }
     | { request: "canvas_drawPolygon"; img: RemoteCanvas, xyPairs: number[][] }
     | { request: "canvas_setFill"; img: RemoteCanvas, fill: string }
     | { request: "canvas_setStroke"; img: RemoteCanvas, stroke: string }
     | { request: "canvas_drawPixels", img: RemoteCanvas, x: number; y: number; width: number; height: number; pixelRGBA: Uint8ClampedArray }
+    | { request: "canvas_downloadPNG", img: RemoteCanvas, filenameStem: string }
     | { request: "startSound"; sound: RemoteSound }
 ;
 

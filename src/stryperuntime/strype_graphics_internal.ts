@@ -184,18 +184,8 @@ export function canvas_drawImagePart(dest: RemoteCanvas, src : RemoteImage | Rem
 export function canvas_line(img: RemoteCanvas, x : number, y : number, x2 : number, y2 : number) : void {
     asyncBridge({request: "canvas_drawLine", img, x, y, x2, y2});
 }
-export function canvas_roundedRect(img, x, y, width, height, cornerSize) {
-    const ctx = img.getContext("2d");
-    ctx.beginPath();
-    let radii = Sk.ffi.remapToJs(cornerSize);
-    if (radii == 0) {
-        ctx.rect(x, y, width, height);
-    }
-    else {
-        ctx.roundRect(x, y, width, height, radii);
-    }
-    ctx.fill();
-    ctx.stroke();
+export function canvas_roundedRect(img : RemoteCanvas, x : number, y : number, width : number, height : number, cornerSize : number) {
+    asyncBridge({request: "canvas_drawRoundedRect", img, x, y, width, height, cornerSize});
 }
 function toRadians(deg : number) : number {
     return deg * Math.PI / 180;
@@ -357,43 +347,7 @@ export function canvas_drawText(dest, text, x, y, fontSize, maxWidth = 0, maxHei
     return Sk.ffi.remapToPy({width: details.width, height: details.height});
 }
 
-// Skulpt can't access our common.ts code so we have to copy this here:
-function getDateTimeFormatted(dt) {
-    // Returned "YYYY-MM-DD_HH-mm-ss" format string representation of a date
-    const rawMonthOneIndexedVal = dt.getMonth() + 1;
-    const rawDayVal = dt.getDate();
-    const rawHoursVal = dt.getHours();
-    const rawMinsVal = dt.getMinutes();
-    const rawSecsVal = dt.getSeconds();
-    return `${dt.getFullYear()}-${((rawMonthOneIndexedVal) < 10) ? "0" + rawMonthOneIndexedVal : rawMonthOneIndexedVal }-${(rawDayVal < 10) ? "0" + rawDayVal : rawDayVal}_${(rawHoursVal < 10) ? "0" + rawHoursVal : rawHoursVal}-${(rawMinsVal < 10) ? "0" + rawMinsVal : rawMinsVal}-${(rawSecsVal < 10) ? "0" + rawSecsVal : rawSecsVal}`;
-}
-
-export function canvas_downloadPNG(src, filenameStem) {
-    /*
-    filenameStem = Sk.ffi.remapToJs(filenameStem);
-    // convertToBlob gives a promise, so we use Skulpt's suspensions to block until it has completed:
-    let susp = new Sk.misceval.Suspension();
-    function susp.resume () {
-        if (susp.data["error"]) {
-            throw new Sk.builtin.IOError(susp.data["error"].message);
-        }
-        return susp.ret;
-    }
-    susp.data = {
-        type: "Sk.promise",
-        promise: new Promise(function (resolve, reject) {
-            src.convertToBlob().then((blob) => {
-                if(blob){
-                    saveAs(blob, `${filenameStem}_${getDateTimeFormatted(new Date(Date.now()))}.png`);
-                    resolve();
-                }
-                else {
-                    reject("Unknown error saving image");
-                }
-            });
-        }),
-    }
-    return susp;
-     */
+export function canvas_downloadPNG(src : RemoteCanvas, filenameStem : string) {
+    asyncBridge({request: "canvas_downloadPNG", img: src, filenameStem});
 }
 

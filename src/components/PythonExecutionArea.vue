@@ -652,11 +652,32 @@ export default Vue.extend({
                             ctx.stroke();
                             return undefined;
                         }
+                        case "canvas_drawRoundedRect": {
+                            const ctx = renderer.getCanvasContext(req.img.handle);
+                            ctx.beginPath();
+                            let radii = req.cornerSize;
+                            if (radii == 0) {
+                                ctx.rect(req.x, req.y, req.width, req.height);
+                            }
+                            else {
+                                ctx.roundRect(req.x, req.y, req.width, req.height, radii);
+                            }
+                            ctx.fill();
+                            ctx.stroke();
+                            return;
+                        }
                         case "canvas_drawPixels": {
                             renderer.getCanvasContext(req.img.handle).putImageData(new ImageData(req.pixelRGBA, req.width, req.height), req.x, req.y);
                             return undefined;
                         }
-                        
+                        case "canvas_downloadPNG": {
+                            renderer.getCanvas(req.img.handle).convertToBlob().then((blob) => {
+                                if (blob) {
+                                    saveAs(blob, `${req.filenameStem}_${getDateTimeFormatted(new Date(Date.now()))}.png`);
+                                } 
+                            });
+                            return;
+                        }
                         case "startSound": {
                             if (soundManager && audioContext) {
                                 soundManager.playAudioBuffer(req.sound.handle.handle, audioContext);
