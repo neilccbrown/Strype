@@ -11,7 +11,12 @@ import checker from 'vite-plugin-checker';
 import {randomUUID} from "node:crypto";
 
 function zipPysrcPlugin() {
+    let running = false;
     const run = async () => {
+        if (running) {
+            return;
+        }
+        running = true;
         // Important to write to a unique filename (which includes pysrc.zip for the check below to avoid infinite loop),
         // then rename atomically, in case multiple calls to this function overlap:
         const tempZip = path.resolve(`temp-${randomUUID()}-pysrc.zip`);
@@ -25,6 +30,7 @@ function zipPysrcPlugin() {
         // On Windows, we must remove first before we can do the rename:
         await fs.promises.rm(dest, { force: true })
         await fs.promises.rename(tempZip, dest);
+        running = false;
     };
 
     return {
