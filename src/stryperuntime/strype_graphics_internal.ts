@@ -6,6 +6,7 @@
 // form the actual public API.
 import {RemoteCanvas, RemoteImage, SyncStrypePyodideHandlerFunction} from "./worker_bridge_type";
 import { asyncBridge, PyodideWorkerGlobalScope, syncBridge } from "@/workers/python_execution_type";
+import { PyProxy } from "pyodide/ffi";
 
 // From https://stackoverflow.com/questions/996505/lru-cache-implementation-in-javascript
 class LRU {
@@ -202,8 +203,10 @@ function toRadians(deg : number) : number {
 export function canvas_arc(img : RemoteCanvas, x : number, y : number, width : number, height : number, angleStartDeg : number, angleDeltaDeg : number) : void {
     asyncBridge({request: "canvas_drawArc", img, x, y, width, height, angleStartRad: toRadians(angleStartDeg), angleDeltaRad: toRadians(angleDeltaDeg)});
 }
-export function polygon_xy_pairs(img : RemoteCanvas, xyPairs : number[][]) : void {
-    asyncBridge({request: "canvas_drawPolygon", img, xyPairs});
+export function polygon_xy_pairs(img : RemoteCanvas, xyPairs : PyProxy) : void {
+    // Usually we don't need to call toJs manually, but with this nested array it comes as a PyProxy so we need to convert:
+    const xyPairsPlain = xyPairs.toJs() as number[][];
+    asyncBridge({request: "canvas_drawPolygon", img, xyPairs: xyPairsPlain});
 }
 
 export function canvas_loadFont(provider, fontName) {
