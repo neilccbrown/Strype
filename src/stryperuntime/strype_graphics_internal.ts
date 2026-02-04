@@ -244,6 +244,13 @@ export function canvas_setAllPixelsRGBA(img: RemoteCanvas, pixels : number[]) : 
     markDirty(img, cache);
 }
 export function canvas_drawImagePart(dest: RemoteCanvas, src : RemoteImage | RemoteCanvas, dx : number, dy : number, sx : number, sy : number, sw : number, sh : number, scale : number) : void {
+    if (!isRemoteImage(src)) {
+        // Force flush any pending pixel writes without evicting:
+        const cached = pixelsCache.get(src.handle.handle);
+        if (cached) {
+            cached.update.flush();
+        }
+    }
     aboutToDrawOnImage(dest);
     asyncBridge({request: "canvas_drawImagePart", dest, src, sx, sy, sw, sh, dx, dy, scale});
 }

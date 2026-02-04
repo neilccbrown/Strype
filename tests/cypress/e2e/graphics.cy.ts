@@ -247,6 +247,8 @@ describe("Image manipulation", () => {
         return;
     }
     it("Setting pixels using string colors", () => {
+        // Note that this test is implicitly testing the performance because it will only wait a few seconds
+        // for the program to finish:
         runCodeAndCheckImage("", `
             img = Image(100, 100)
             img.set_fill("white")
@@ -262,8 +264,22 @@ describe("Image manipulation", () => {
                     else:
                         img.set_pixel(x, y, "YELLOW")
             a = Actor(img.clone(6))
-        `, "image-set-pixel-string-colors");
+        `, "image-set-pixel-string-colors", ImageComparison.COMPARE_TO_EXISTING, 5000);
     });
+    it("Modifies pixels from original values", () => {
+        // Note that this test is implicitly testing the performance because it will only wait a few seconds
+        // for the program to finish:
+        runCodeAndCheckImage("", `
+        cat = Actor("cat-test.jpg")
+        img = cat.get_image()
+        for x in range(img.get_width()):
+            for y in range(img.get_height()):
+                p = img.get_pixel(x, y)
+                img.set_pixel(x, y, Color(p.red + 150, p.green + 150, p.blue + 150))
+        # Should display automatically
+        `, "image-lighten-cat", ImageComparison.COMPARE_TO_EXISTING, 5000);
+    });
+    
     it("Draws circles", () => {
         runCodeAndCheckImage("", `
             img = Image(800, 600)
