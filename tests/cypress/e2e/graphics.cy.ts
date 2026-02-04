@@ -83,7 +83,8 @@ function checkImageMatch(expectedImageFileName: string, actual : PNG, comparison
             // calculating a percent diff
             const diffPercent = (numDiffPixels / (width * height) * 100);
 
-            expect(diffPercent).to.be.below(10);
+            // We need to use cy.then because otherwise if the test fails, it can cancel the pending cy.writeFile calls from earlier:
+            cy.then(() => expect(diffPercent).to.be.below(10));
         });
     }
     else {
@@ -261,7 +262,7 @@ describe("Image manipulation", () => {
                     else:
                         img.set_pixel(x, y, "YELLOW")
             a = Actor(img.clone(6))
-        `, "image-set-pixel-string-colors", ImageComparison.COMPARE_TO_EXISTING, 5000);
+        `, "image-set-pixel-string-colors");
     });
     it("Draws circles", () => {
         runCodeAndCheckImage("", `
@@ -294,7 +295,7 @@ describe("Image manipulation", () => {
             img.draw_polygon(points)
             
             Actor(img)
-        `, "image-draw-polygons", ImageComparison.COMPARE_TO_EXISTING, 5000);
+        `, "image-draw-polygons");
     });
 });
 
