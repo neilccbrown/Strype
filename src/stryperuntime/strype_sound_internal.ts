@@ -5,17 +5,13 @@
 // These functions are not directly exposed to users, but are used by sound.py to
 // form the actual public API.
 
-import {RemoteSound, StrypePyodideHandlerFunctionSync} from "@/stryperuntime/worker_bridge_type";
-import {PyodideWorkerGlobalScope} from "@/workers/python_execution_type";
+import {RemoteSound, SyncStrypePyodideHandlerFunction} from "@/stryperuntime/worker_bridge_type";
+import { asyncBridge, PyodideWorkerGlobalScope, syncBridge } from "@/workers/python_execution_type";
 
 declare const globalThis: PyodideWorkerGlobalScope;
 
-const bridge : StrypePyodideHandlerFunctionSync = (req) => {
-    return globalThis.StrypePyodideWorkerBridge(req);
-};
-
-export function startAudioBuffer(sound : RemoteSound) : undefined {
-    return bridge({request: "startSound", sound});
+export function startAudioBuffer(sound : RemoteSound) : void {
+    asyncBridge({request: "startSound", sound});
 };
 function playAudioBufferAndWait(audioBuffer) {
     /*
@@ -40,7 +36,7 @@ function createAudioBuffer(seconds : number, samplesPerSecond : number) {
     return new AudioBuffer({length: Math.round(seconds * samplesPerSecond), sampleRate: samplesPerSecond});
 };
 export function loadAndWaitForAudioBuffer(path : string) : RemoteSound {
-    return bridge({request: "loadSound", url: path});
+    return syncBridge({request: "loadSound", url: path});
 }
 function getSamples(buffer) {
     if (buffer.numberOfChannels > 1) {

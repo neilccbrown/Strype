@@ -4,9 +4,9 @@ import { loadPyodide } from "pyodide";
 import { loadPyodideAndPackage, makeRunnerCallback, OutputPart, pyodideExpose, PyodideExtras, PyodideFatalErrorReloader } from "pyodide-worker-runner";
 import * as Comlink from "comlink";
 import { strype_bridge } from "@/stryperuntime/pyodide_bridge";
-import {StrypePyodideHandlerFunctionSync, StrypePyodideHandlerFunctionVoid, StrypePyodideWorkerRequestInput, StrypePyodideWorkerRequestOutput} from "@/stryperuntime/worker_bridge_type";
-import {SpriteManager} from "@/stryperuntime/image_and_collisions";
-import {PyodideWorkerGlobalScope} from "@/workers/python_execution_type";
+import { AsyncStrypePyodideWorkerRequest, ResponseFor, SyncStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse } from "@/stryperuntime/worker_bridge_type";
+import { SpriteManager } from "@/stryperuntime/image_and_collisions";
+import { PyodideWorkerGlobalScope } from "@/workers/python_execution_type";
 
 // We only specify updatePort here as we don't want other files using it directly:
 declare const self: PyodideWorkerGlobalScope & { updatePort: MessagePort };
@@ -35,7 +35,8 @@ const executePython = pyodideExpose(async (
     pythonCode: string,
     printStdout: Comlink.Remote<(output: string) => void>,
     requestInput: Comlink.Remote<(prompt: string) => void>,
-    bridge: Comlink.Remote<StrypePyodideHandlerFunctionVoid>
+    syncRequest: Comlink.Remote<(req: SyncStrypePyodideWorkerRequest) => void>,
+    asyncRequest: Comlink.Remote<(req: AsyncStrypePyodideWorkerRequest) => void>
 ) : Promise<ErrorDetails | null> => {
     return await reloader.withPyodide(async (pyodide : PyodideInterface) => {
         const runner = pyodide.runPython(`from python_runner import PyodideRunner
@@ -50,12 +51,16 @@ class StrypePyodideRunner(PyodideRunner):
         filtered = [dict(filename=frame.filename, lineno=frame.lineno) for frame in list(dropwhile(lambda f: f.filename != self.filename, tbe.stack))]
         return dict(error_type=type(exc).__name__, error_message=str(exc), traceback=filtered, text=type(exc).__name__ + ": " + str(exc))
 StrypePyodideRunner()`);
-        const bridgeSync: StrypePyodideHandlerFunctionSync = <K extends StrypePyodideWorkerRequestInput["request"]>(
-            req: Extract<StrypePyodideWorkerRequestInput, { request: K }>
-        ) : StrypePyodideWorkerRequestOutput[K]  => {
-            bridge(req);
-            const reply = extras.readMessage() as StrypePyodideWorkerRequestOutput[K];
-            return reply;
+        const bridgeSync: SyncStrypePyodideHandlerFunction = <R extends SyncStrypePyodideWorkerRequest> (req : R) : ResponseFor<R> => {
+            syncRequest(req);
+            const reply = extras.readMessage() as SyncStrypePyodideWorkerResponse;
+            if (reply.request != req.request) {
+                throw new Error(`Internal error: Pyodide worker received ${reply.request} but had asked for ${req.request}`);
+            }
+            else {
+                // I think Typescript should be able to infer reply is ResponseFor<R> because of the if check, but apparently not:
+                return reply as ResponseFor<R>;
+            }
         };        
         
         let error : ErrorDetails | null = null;
@@ -84,7 +89,8 @@ StrypePyodideRunner()`);
             },
         });
         runner.set_callback(callback);
-        self.StrypePyodideWorkerBridge = bridgeSync;
+        self.syncStrypePyodideWorkerBridge = bridgeSync;
+        self.asyncStrypePyodideWorkerBridge = asyncRequest;
         self.spriteManager = new SpriteManager((u) => self.updatePort.postMessage(u));
         self.pyodide = pyodide;
         await runner.run_async(pythonCode, {});

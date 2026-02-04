@@ -4,8 +4,8 @@
 // This file contains the internal graphics API for the Strype graphics world.
 // These functions are not directly exposed to users, but are used by graphics.py to
 // form the actual public API.
-import {RemoteCanvas, RemoteImage, StrypePyodideHandlerFunctionSync} from "./worker_bridge_type";
-import {PyodideWorkerGlobalScope} from "@/workers/python_execution_type";
+import {RemoteCanvas, RemoteImage, SyncStrypePyodideHandlerFunction} from "./worker_bridge_type";
+import { asyncBridge, PyodideWorkerGlobalScope, syncBridge } from "@/workers/python_execution_type";
 
 // From https://stackoverflow.com/questions/996505/lru-cache-implementation-in-javascript
 class LRU {
@@ -46,10 +46,6 @@ class LRU {
 
 declare const globalThis: PyodideWorkerGlobalScope;
 
-const bridge : StrypePyodideHandlerFunctionSync = (req) => {
-    return globalThis.StrypePyodideWorkerBridge(req);
-};
-
 // There is no standard way in HTML to synchronously load images,
 // but we need to be able to do this in order to use the image's attributes
 // (particularly its width and height) after loading.  So we use Skulpt's
@@ -65,26 +61,26 @@ export function loadAndWaitForImage(filename: string) : RemoteImage {
     let match;
     if (/^https?:/.test(filename) || /^\/\//.test(filename)) {
         // Absolute:
-        return bridge({request: "loadImage", url: filename});
+        return syncBridge({request: "loadImage", url: filename});
     }
     else if (!/:/.test(filename) && /^[^./]+\.[^/]+\/.+/.test(filename)) {
         // Absolute partial:
-        return bridge({request: "loadImage", url: "https://" + filename});
+        return syncBridge({request: "loadImage", url: "https://" + filename});
     }
     else if (/^data:/.test(filename) && !/^data:image\/svg+xml/.test(filename)) {
         // Base64 data image:
-        return bridge({request: "loadImage", url: filename});
+        return syncBridge({request: "loadImage", url: filename});
     }
     else if ((match = /^:([^:]+):(.+)$/.exec(filename))) {
         // If it's some other prefix between two colons, it's a library asset:
         const libraryShortName = match[1];
         const fileName = match[2];
-        const viaLibrary = bridge({request: "loadLibraryAsset", libraryShortName, fileName}) ?? filename;
-        return bridge({request: "loadImage", url: viaLibrary});
+        const viaLibrary = syncBridge({request: "loadLibraryAsset", libraryShortName, fileName}) ?? filename;
+        return syncBridge({request: "loadImage", url: viaLibrary});
     }
     else {
         // Relative path:
-        return bridge({request: "loadImage", url: "./graphics_images/" + filename});
+        return syncBridge({request: "loadImage", url: "./graphics_images/" + filename});
     }
 }
 export function setBackground(img : RemoteImage) {
@@ -134,7 +130,7 @@ export function makeImageEditable(img : number) {
 
 
 export function makeCanvasOfSize(width : number, height : number) : RemoteCanvas {
-    return bridge({request: "makeOffscreenCanvas", width, height});
+    return syncBridge({request: "makeOffscreenCanvas", width, height});
 }
 export function htmlImageToCanvas(imageElement : RemoteImage) : RemoteCanvas {
     const c = makeCanvasOfSize(imageElement.width, imageElement.height);
@@ -145,17 +141,17 @@ export function getCanvasDimensions(img : RemoteCanvas) : number[] {
     return [img.width, img.height];
 }
 export function canvas_drawRect(img: RemoteCanvas, x : number, y : number, width : number, height : number) {
-    bridge({request:"canvas_drawRect", img, x, y, width, height});
+    asyncBridge({request:"canvas_drawRect", img, x, y, width, height});
 }
 export function canvas_clearRect(img: RemoteCanvas, x : number, y : number, width : number, height : number) : void {
-    bridge({request:"canvas_clearRect", img, x, y, width, height});
+    asyncBridge({request:"canvas_clearRect", img, x, y, width, height});
 }
 export function canvas_setFill(img : RemoteCanvas, color : string | null) {
     // Note 8 zeroes: this is fully transparent, not black:
-    bridge({request:"canvas_setFill", img, fill: color == null ? "#00000000" : color});
+    asyncBridge({request:"canvas_setFill", img, fill: color == null ? "#00000000" : color});
 }
 export function canvas_setStroke(img : RemoteCanvas, color : string | null) {
-    bridge({request:"canvas_setStroke", img, stroke: color == null ? "#00000000" : color});
+    asyncBridge({request:"canvas_setStroke", img, stroke: color == null ? "#00000000" : color});
 }
 export function canvas_getPixel(img, x, y) {
     const ctx = img.getContext("2d");
@@ -167,20 +163,20 @@ export function canvas_getPixel(img, x, y) {
         new Sk.builtin.int_(p.data[3])]);
 }
 export function canvas_setPixel(img : RemoteCanvas, x : number, y : number, colorRGBA : number[]) : void {
-    bridge({request: "canvas_drawPixels", img, x, y, width: 1, height: 1, pixelRGBA: new Uint8ClampedArray(colorRGBA)});
+    asyncBridge({request: "canvas_drawPixels", img, x, y, width: 1, height: 1, pixelRGBA: new Uint8ClampedArray(colorRGBA)});
 }
 export function canvas_getAllPixels(img) {
     const ctx = img.getContext("2d");
     return Sk.ffi.remapToPy(ctx.getImageData(0, 0, img.width, img.height).data);
 }
 export function canvas_setAllPixelsRGBA(img: RemoteCanvas, pixels : number[]) : void {
-    bridge({request: "canvas_drawPixels", img, x: 0, y: 0, width: img.width, height: img.height, pixelRGBA: new Uint8ClampedArray(pixels)});
+    asyncBridge({request: "canvas_drawPixels", img, x: 0, y: 0, width: img.width, height: img.height, pixelRGBA: new Uint8ClampedArray(pixels)});
 }
 export function canvas_drawImagePart(dest: RemoteCanvas, src : RemoteImage | RemoteCanvas, dx : number, dy : number, sx : number, sy : number, sw : number, sh : number, scale : number) : void {
-    bridge({request: "canvas_drawImagePart", dest, src, sx, sy, sw, sh, dx, dy, scale});
+    asyncBridge({request: "canvas_drawImagePart", dest, src, sx, sy, sw, sh, dx, dy, scale});
 }
 export function canvas_line(img: RemoteCanvas, x : number, y : number, x2 : number, y2 : number) : void {
-    bridge({request: "canvas_drawLine", img, x, y, x2, y2});
+    asyncBridge({request: "canvas_drawLine", img, x, y, x2, y2});
 }
 export function canvas_roundedRect(img, x, y, width, height, cornerSize) {
     const ctx = img.getContext("2d");
@@ -199,10 +195,10 @@ function toRadians(deg : number) : number {
     return deg * Math.PI / 180;
 }
 export function canvas_arc(img : RemoteCanvas, x : number, y : number, width : number, height : number, angleStartDeg : number, angleDeltaDeg : number) : void {
-    bridge({request: "canvas_drawArc", img, x, y, width, height, angleStartRad: toRadians(angleStartDeg), angleDeltaRad: toRadians(angleDeltaDeg)});
+    asyncBridge({request: "canvas_drawArc", img, x, y, width, height, angleStartRad: toRadians(angleStartDeg), angleDeltaRad: toRadians(angleDeltaDeg)});
 }
 export function polygon_xy_pairs(img : RemoteCanvas, xyPairs : number[][]) : void {
-    bridge({request: "canvas_drawPolygon", img, xyPairs});
+    asyncBridge({request: "canvas_drawPolygon", img, xyPairs});
 }
 
 export function canvas_loadFont(provider, fontName) {

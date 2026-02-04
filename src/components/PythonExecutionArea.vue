@@ -82,7 +82,7 @@ import { makeServiceWorkerChannel } from "sync-message";
 import * as Comlink from "comlink";
 import { handleErrorTrace, setSInputConsole, sInput } from "@/helpers/execPythonCode";
 import { ErrorDetails } from "@/workers/python-execution";
-import {StrypePyodideHandlerFunctionAsync, StrypePyodideWorkerRequestInput} from "@/stryperuntime/worker_bridge_type";
+import { AsyncStrypePyodideHandlerFunction, SyncPromiseStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse } from "@/stryperuntime/worker_bridge_type";
 import {Renderer} from "@/stryperuntime/renderer";
 import {SoundManager} from "@/stryperuntime/sound_manager";
 
@@ -562,21 +562,35 @@ export default Vue.extend({
                     // eslint-disable-next-line @typescript-eslint/no-this-alias
                     const v = this; 
                     
-                    const asyncBridge : StrypePyodideHandlerFunctionAsync = async (req) => {
+                    const syncBridgePromise : SyncPromiseStrypePyodideHandlerFunction = (req) => {
                         switch (req.request) {
                         case "loadImage": {
                             this.isRunningStrypeGraphics = true;
                             this.peaDisplayTabIndex = PEATabIndexes.graphics;
-                            return await renderer.loadImage(req.url);
+                            return {request: req.request, response: renderer.loadImage(req.url)};
                         }
                         case "loadLibraryAsset": {
-                            return await v.loadLibraryAsset(req.libraryShortName, req.fileName);
+                            return {request: req.request, response: v.loadLibraryAsset(req.libraryShortName, req.fileName)};
                         }
                         case "makeOffscreenCanvas": {
                             this.isRunningStrypeGraphics = true;
                             this.peaDisplayTabIndex = PEATabIndexes.graphics;
-                            return await renderer.makeCanvas(req.width, req.height);
+                            return {request: req.request, response: renderer.makeCanvas(req.width, req.height)};
                         }
+                        case "getPressedKeys": {
+                            return {request: req.request, response: Promise.resolve(pressedKeys)};
+                        }
+                        case "loadSound": {
+                            return {request: req.request, response: (soundManager as SoundManager).loadSound(req.url)};
+                        }
+                        default:
+                            // Trick to give a compile-time error if a case is missing above:
+                            const _exhaustive: never = req;
+                            return _exhaustive;
+                        }
+                    };
+                    const asyncBridge : AsyncStrypePyodideHandlerFunction = (req) => {
+                        switch (req.request) {
                         case "canvas_setFill": {
                             renderer.getCanvasContext(req.img.handle).fillStyle = req.fill;
                             return undefined;
@@ -630,12 +644,7 @@ export default Vue.extend({
                             renderer.getCanvasContext(req.img.handle).putImageData(new ImageData(req.pixelRGBA, req.width, req.height), req.x, req.y);
                             return undefined;
                         }
-                        case "getPressedKeys": {
-                            return pressedKeys;
-                        }
-                        case "loadSound": {
-                            return (soundManager as SoundManager).loadSound(req.url);
-                        }
+                        
                         case "startSound": {
                             if (soundManager && audioContext) {
                                 soundManager.playAudioBuffer(req.sound.handle.handle, audioContext);
@@ -671,17 +680,22 @@ export default Vue.extend({
                                     }
                                 });
                             }),
-                            Comlink.proxy((req : StrypePyodideWorkerRequestInput) => {
-                                asyncBridge(req).then(async (r : any) => {
+                            Comlink.proxy((req : SyncStrypePyodideWorkerRequest) => {
+                                const resp = syncBridgePromise(req);
+                                if (req.request != resp.request) {
+                                    console.error(`Internal error: request ${req.request} did not match the response ${resp.request}`);
+                                }
+                                resp.response.then(async (r : any) => {
                                     await navigator.serviceWorker.ready;
                                     try {
-                                        await client.writeMessage(r);
+                                        await client.writeMessage({request: resp.request, response: r});
                                     }
                                     catch (e) {
                                         console.error(e);
                                     }
                                 });
-                            })
+                            }),
+                            Comlink.proxy(asyncBridge)
                         ) as Promise<ErrorDetails | null>).then((possibleError) => {
                             if (possibleError != null) {
                                 handleErrorTrace(possibleError.text, possibleError.traceback, () => {}, parser.getFramePositionMap());
