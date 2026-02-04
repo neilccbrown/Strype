@@ -14,14 +14,17 @@ function zipPysrcPlugin() {
     const run = async () => {
         // Important to write to a unique filename (which includes pysrc.zip for the check below to avoid infinite loop),
         // then rename atomically, in case multiple calls to this function overlap:
-        const tempZip = path.resolve(`temp-.${randomUUID()}-pysrc.zip`);
+        const tempZip = path.resolve(`temp-${randomUUID()}-pysrc.zip`);
         await zipDir({
             rootDir: "pysrc",
             subdirs: ["strype", "python_runner"],
             outFile: tempZip
         })
         await new Promise(resolve => setTimeout(resolve, 500));
-        await fs.promises.rename(tempZip, path.resolve("public/pysrc.zip"));
+        const dest = path.resolve("public/pysrc.zip");
+        // On Windows, we must remove first before we can do the rename:
+        await fs.promises.rm(dest, { force: true })
+        await fs.promises.rename(tempZip, dest);
     };
 
     return {
