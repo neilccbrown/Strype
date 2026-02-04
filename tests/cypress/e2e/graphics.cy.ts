@@ -293,6 +293,9 @@ describe("Image manipulation", () => {
             for p in range(5):
                 points = points + [(500 + 200*math.cos(math.radians(p * 360 / 5)), 300 + 200*math.sin(math.radians(p * 360 / 5)))] 
             img.draw_polygon(points)
+            img.set_stroke("blue")
+            img.set_fill("yellow")
+            img.draw_rounded_rect(50, 450, 150, 100, 20)
             
             Actor(img)
         `, "image-draw-polygons");
