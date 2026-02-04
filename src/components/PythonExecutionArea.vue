@@ -82,7 +82,7 @@ import { makeServiceWorkerChannel } from "sync-message";
 import * as Comlink from "comlink";
 import { handleErrorTrace, setSInputConsole, sInput } from "@/helpers/execPythonCode";
 import { ErrorDetails } from "@/workers/python-execution";
-import { AsyncStrypePyodideHandlerFunction, SyncPromiseStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse } from "@/stryperuntime/worker_bridge_type";
+import { AsyncStrypePyodideHandlerFunction, decodeRGBA, encodeRGBA, isRemoteImage, SyncPromiseStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse } from "@/stryperuntime/worker_bridge_type";
 import {Renderer} from "@/stryperuntime/renderer";
 import {SoundManager} from "@/stryperuntime/sound_manager";
 
@@ -584,7 +584,7 @@ export default Vue.extend({
                             return {request: req.request, response: (soundManager as SoundManager).loadSound(req.url)};
                         }
                         case "ensureCanvas": {
-                            if (req.img.handle.handleKind == "Image") {
+                            if (isRemoteImage(req.img)) {
                                 // Ideally we'd remove the old Image but we don't actually have a mechanism for that at the moment:
                                 const img = renderer.getImage(req.img.handle);
                                 const c = renderer.makeCanvas(img.width, img.height);
@@ -592,8 +592,12 @@ export default Vue.extend({
                                 return {request: req.request, response: Promise.resolve(c)};
                             }
                             else {
-                                return {request: req.request, response: Promise.resolve(req.img as RemoteCanvas)};
+                                return {request: req.request, response: Promise.resolve(req.img)};
                             }
+                        }
+                        case "canvas_getAllPixelsRGBA": {
+                            const ctx = renderer.getCanvasContext(req.img.handle);
+                            return {request: req.request, response: Promise.resolve(encodeRGBA(ctx.getImageData(0, 0, req.img.width, req.img.height).data))};
                         }
                         default:
                             // Trick to give a compile-time error if a case is missing above:
@@ -667,7 +671,7 @@ export default Vue.extend({
                             return;
                         }
                         case "canvas_drawPixels": {
-                            renderer.getCanvasContext(req.img.handle).putImageData(new ImageData(req.pixelRGBA, req.width, req.height), req.x, req.y);
+                            renderer.getCanvasContext(req.img.handle).putImageData(new ImageData(decodeRGBA(req.pixelRGBA), req.width, req.height), req.x, req.y);
                             return undefined;
                         }
                         case "canvas_downloadPNG": {

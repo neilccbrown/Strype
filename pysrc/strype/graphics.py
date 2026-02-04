@@ -199,7 +199,7 @@ class Image:
         if isinstance(color, str):
             color = color_from_string(color)
         
-        _strype_graphics_internal.canvas_setPixel(self.__image, x, y, [color.red, color.green, color.blue, color.alpha])
+        _strype_graphics_internal.canvas_setPixel(self.__image, x, y, color.red, color.green, color.blue, color.alpha)
 
     def _bulk_get_pixels(self):
         # type: () -> list[int]

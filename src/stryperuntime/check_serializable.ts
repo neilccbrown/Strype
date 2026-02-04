@@ -4,7 +4,6 @@ type SerializablePrimitive =
     | string
     | number
     | boolean
-    | Uint8ClampedArray
     | null
     | undefined;
 
@@ -17,6 +16,7 @@ type NonSerializableObject =
     | Date
     | ImageBitmap
     | OffscreenCanvas
+    | Uint8ClampedArray // This is serializable but it serializes as number[] so we should use that type instead    
     | Blob
     | File
     | Map<any, any>

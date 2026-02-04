@@ -4,20 +4,23 @@
 // This file contains the internal graphics API for the Strype graphics world.
 // These functions are not directly exposed to users, but are used by graphics.py to
 // form the actual public API.
-import {RemoteCanvas, RemoteImage, SyncStrypePyodideHandlerFunction} from "./worker_bridge_type";
+import { decodeRGBA, encodeRGBA, isRemoteImage, makeCanvasHandle, RemoteCanvas, RemoteImage, SyncStrypePyodideHandlerFunction } from "./worker_bridge_type";
 import { asyncBridge, PyodideWorkerGlobalScope, syncBridge } from "@/workers/python_execution_type";
 import { PyProxy } from "pyodide/ffi";
+import { DebouncedFunc, throttle } from "lodash";
 
 // From https://stackoverflow.com/questions/996505/lru-cache-implementation-in-javascript
-class LRU {
+class LRU<K extends string | number, V> {
     max : number;
-    cache : Map<string, number>;
-    constructor(max = 10) {
+    cache : Map<K, V>;
+    onEvict : (key: K, value: V) => void;
+    constructor(max = 10, onEvict : (key: K, value: V) => void = () => {}) {
         this.max = max;
         this.cache = new Map();
+        this.onEvict = onEvict;
     }
 
-    get(key : string) {
+    get(key : K) : V | undefined {
         let item = this.cache.get(key);
         if (item !== undefined) {
             // refresh key
@@ -27,23 +30,77 @@ class LRU {
         return item;
     }
 
-    set(key : string, val : number) {
+    // If this set evicts an item, it is passed to onEvict
+    set(key : K, val : V) : void {
         // refresh key
         if (this.cache.has(key)) {
             this.cache.delete(key);
         }
         // evict oldest
         else if (this.cache.size === this.max) {
-            this.cache.delete(this.first());
+            const evictKey = this.firstKey();
+            const evictVal = this.cache.get(evictKey);
+            this.cache.delete(evictKey);
+            if (evictVal !== undefined) {
+                this.onEvict(evictKey, evictVal);
+            }
         }
         this.cache.set(key, val);
     }
+    
+    // Evicts the given item, and passes it to onEvict if it existed
+    evict(key: K) {
+        const evictVal = this.cache.get(key);
+        if (evictVal !== undefined) {
+            this.onEvict(key, evictVal);
+        }
+        this.cache.delete(key);
+    }
 
-    first() : string {
+    firstKey() : K {
         return this.cache.keys().next().value;
     }
 }
 
+// Saves the pixels for the last three images
+// Note that although the type is DebouncedFunc, we use throttle not debounce (see cachePixelsOf below)
+// We don't need a dirty flag because each markDirty call queues up update(), and we don't need a separate dirty flag.
+type CachedPixels = { width: number; height: number; pixelsRGBA: Uint8ClampedArray, update: DebouncedFunc<() => void> };
+const pixelsCache = new LRU<number, CachedPixels>(3, (key, value) => value.update.flush());
+
+function aboutToDrawOnImage(img : RemoteCanvas) : void {
+    // Evict automatically flushes the pixels if we have a dirty cache, then removes from cache:
+    pixelsCache.evict(img.handle.handle);
+}
+
+function cachePixelsOf(img: RemoteCanvas) : CachedPixels {
+    const existing = pixelsCache.get(img.handle.handle);
+    if (existing !== undefined) {
+        return existing;
+    }
+    // Note we want throttle not debounce for update
+    // (see https://css-tricks.com/debouncing-throttling-explained-examples/ )
+    // With debounce, if the user loops round forever updating pixels more frequently than the threshold,
+    // we will never send the updated pixels and they'll never show on screen.  Whereas with throttle, they
+    // will be shown on screen but we limit how often we send updates.
+    const pixelsRGBA = decodeRGBA(syncBridge({request: "canvas_getAllPixelsRGBA", img}));
+    const data = {
+        width: img.width,
+        height: img.height,
+        pixelsRGBA,
+        // These set calls are quite expensive so we do them max 10 times a second:
+        update: throttle(() => {
+            asyncBridge({request: "canvas_drawPixels", img, x: 0, y: 0, width: img.width, height: img.height, pixelRGBA: encodeRGBA(pixelsRGBA)});
+        }, 1000/10),
+    };
+    pixelsCache.set(img.handle.handle, data);
+    return data;
+}
+
+function markDirty(canvas: RemoteCanvas, img: CachedPixels) {
+    // All we need to do here is queue up an invocation of the update() function:
+    img.update();
+}
 
 declare const globalThis: PyodideWorkerGlobalScope;
 
@@ -147,9 +204,11 @@ export function getCanvasDimensions(img : RemoteCanvas) : number[] {
     return [img.width, img.height];
 }
 export function canvas_fillWhole(img: RemoteCanvas) {
+    aboutToDrawOnImage(img);
     asyncBridge({request:"canvas_fillWhole", img});
 }
 export function canvas_clearRect(img: RemoteCanvas, x : number, y : number, width : number, height : number) : void {
+    aboutToDrawOnImage(img);
     asyncBridge({request:"canvas_clearRect", img, x, y, width, height});
 }
 export function canvas_setFill(img : RemoteCanvas, color : string | null) {
@@ -159,41 +218,52 @@ export function canvas_setFill(img : RemoteCanvas, color : string | null) {
 export function canvas_setStroke(img : RemoteCanvas, color : string | null) {
     asyncBridge({request:"canvas_setStroke", img, stroke: color == null ? "#00000000" : color});
 }
-export function canvas_getPixel(img, x, y) {
-    const ctx = img.getContext("2d");
-    const p = ctx.getImageData(x, y, 1, 1);
-    return new Sk.builtin.tuple([
-        new Sk.builtin.int_(p.data[0]),
-        new Sk.builtin.int_(p.data[1]),
-        new Sk.builtin.int_(p.data[2]),
-        new Sk.builtin.int_(p.data[3])]);
+export function canvas_getPixel(img : RemoteCanvas, x : number, y : number) {
+    // We cache as it's rare that a call to this is isolated; usually it's in a loop:
+    const cache = cachePixelsOf(img);
+    const baseIndex = (y * img.width + x) * 4; // RGBA are 4 values per pixel 
+    // We can't slice, as we want number[] not a Uint8ClampedArray:
+    return [cache.pixelsRGBA[baseIndex], cache.pixelsRGBA[baseIndex + 1], cache.pixelsRGBA[baseIndex + 2], cache.pixelsRGBA[baseIndex + 3]];
 }
-export function canvas_setPixel(img : RemoteCanvas, x : number, y : number, colorRGBA : number[]) : void {
-    asyncBridge({request: "canvas_drawPixels", img, x, y, width: 1, height: 1, pixelRGBA: new Uint8ClampedArray(colorRGBA)});
+export function canvas_setPixel(img : RemoteCanvas, x : number, y : number, r : number, g: number, b: number, a: number) : void {
+    // We cache as it's rare that a call to this is isolated; usually it's in a loop:
+    const cache = cachePixelsOf(img);
+    const baseIndex = (y * img.width + x) * 4; // RGBA are 4 values per pixel
+    cache.pixelsRGBA[baseIndex] = r;
+    cache.pixelsRGBA[baseIndex+1] = g;
+    cache.pixelsRGBA[baseIndex+2] = b;
+    cache.pixelsRGBA[baseIndex+3] = a;
+    markDirty(img, cache);
 }
-export function canvas_getAllPixels(img) {
-    const ctx = img.getContext("2d");
-    return Sk.ffi.remapToPy(ctx.getImageData(0, 0, img.width, img.height).data);
+export function canvas_getAllPixels(img : RemoteCanvas) : Uint8ClampedArray {
+    return cachePixelsOf(img).pixelsRGBA;
 }
 export function canvas_setAllPixelsRGBA(img: RemoteCanvas, pixels : number[]) : void {
-    asyncBridge({request: "canvas_drawPixels", img, x: 0, y: 0, width: img.width, height: img.height, pixelRGBA: new Uint8ClampedArray(pixels)});
+    const cache = cachePixelsOf(img);
+    cache.pixelsRGBA.set(pixels);
+    markDirty(img, cache);
 }
 export function canvas_drawImagePart(dest: RemoteCanvas, src : RemoteImage | RemoteCanvas, dx : number, dy : number, sx : number, sy : number, sw : number, sh : number, scale : number) : void {
+    aboutToDrawOnImage(dest);
     asyncBridge({request: "canvas_drawImagePart", dest, src, sx, sy, sw, sh, dx, dy, scale});
 }
 export function canvas_line(img: RemoteCanvas, x : number, y : number, x2 : number, y2 : number) : void {
+    aboutToDrawOnImage(img);
     asyncBridge({request: "canvas_drawLine", img, x, y, x2, y2});
 }
 export function canvas_roundedRect(img : RemoteCanvas, x : number, y : number, width : number, height : number, cornerSize : number) {
+    aboutToDrawOnImage(img);
     asyncBridge({request: "canvas_drawRoundedRect", img, x, y, width, height, cornerSize});
 }
 function toRadians(deg : number) : number {
     return deg * Math.PI / 180;
 }
 export function canvas_arc(img : RemoteCanvas, x : number, y : number, width : number, height : number, angleStartDeg : number, angleDeltaDeg : number) : void {
+    aboutToDrawOnImage(img);
     asyncBridge({request: "canvas_drawArc", img, x, y, width, height, angleStartRad: toRadians(angleStartDeg), angleDeltaRad: toRadians(angleDeltaDeg)});
 }
 export function polygon_xy_pairs(img : RemoteCanvas, xyPairs : PyProxy) : void {
+    aboutToDrawOnImage(img);
     // Usually we don't need to call toJs manually, but with this nested array it comes as a PyProxy so we need to convert:
     const xyPairsPlain = xyPairs.toJs() as number[][];
     asyncBridge({request: "canvas_drawPolygon", img, xyPairs: xyPairsPlain});
@@ -244,7 +314,7 @@ myFont.load().then((font) => {
 // Since this is quite expensive, we cache it in case users repeatedly redraw the same text:
 // The map can only really use string keys, so we assemble the key into a string of the format:
 // $fontSize:$maxWidth:$maxHeight:$text
-const textMeasureCache = new LRU(1000);
+const textMeasureCache = new LRU<string, number>(1000);
 
 const lineHeightMultiplier = 1.2;
 
@@ -315,6 +385,7 @@ function calculateTextToFit(ctx, text, fontSize, maxWidth, maxHeight, font) {
 // fits inside maxWidth and maxHeight.  Note that it is invalid to supply maxHeight > 0 with maxWidth = 0.
 // Returns a Python dict with fields "width" and "height" with the actual width and height
 export function canvas_drawText(dest, text, x, y, fontSize, maxWidth = 0, maxHeight = 0, fontName = null) {
+    aboutToDrawOnImage(img);
     // Must remap the string to Javascript:
     text = Sk.ffi.remapToJs(text);
     fontName = Sk.ffi.remapToJs(fontName);
@@ -348,6 +419,11 @@ export function canvas_drawText(dest, text, x, y, fontSize, maxWidth = 0, maxHei
 }
 
 export function canvas_downloadPNG(src : RemoteCanvas, filenameStem : string) {
+    // Force flush any pending pixel writes without evicting:
+    const cached = pixelsCache.get(src.handle.handle);
+    if (cached) {
+        cached.update.flush();
+    }
     asyncBridge({request: "canvas_downloadPNG", img: src, filenameStem});
 }
 

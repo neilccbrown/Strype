@@ -45,6 +45,7 @@ export type SyncStrypePyodideWorkerRequest =
     | { request: "loadLibraryAsset"; libraryShortName: string; fileName: string }
     | { request: "makeOffscreenCanvas"; width: number; height: number }
     | { request: "ensureCanvas"; img: RemoteCanvas | RemoteImage }
+    | { request: "canvas_getAllPixelsRGBA"; img: RemoteCanvas }
     | { request: "getPressedKeys"}
     | { request: "loadSound"; url: string }
 ;
@@ -55,6 +56,7 @@ export type SyncStrypePyodideWorkerResponse =
     | { request: "loadLibraryAsset"; response: string | undefined; }
     | { request: "makeOffscreenCanvas"; response: RemoteCanvas; }
     | { request: "ensureCanvas"; response: RemoteCanvas; }
+    | { request: "canvas_getAllPixelsRGBA"; response: string } // See encodeRGBA/decodeRGBA below
     | { request: "getPressedKeys"; response: {[key: string]: boolean} }
     | { request: "loadSound"; response: RemoteSound;}
 ;
@@ -72,7 +74,7 @@ export type AsyncStrypePyodideWorkerRequest =
     | { request: "canvas_drawPolygon"; img: RemoteCanvas, xyPairs: number[][] }
     | { request: "canvas_setFill"; img: RemoteCanvas, fill: string }
     | { request: "canvas_setStroke"; img: RemoteCanvas, stroke: string }
-    | { request: "canvas_drawPixels", img: RemoteCanvas, x: number; y: number; width: number; height: number; pixelRGBA: Uint8ClampedArray }
+    | { request: "canvas_drawPixels", img: RemoteCanvas, x: number; y: number; width: number; height: number; pixelRGBA: string } // See encodeRGBA/decodeRGBA below
     | { request: "canvas_downloadPNG", img: RemoteCanvas, filenameStem: string }
     | { request: "startSound"; sound: RemoteSound }
 ;
@@ -85,6 +87,28 @@ type CheckSyncStrypePyodideWorkerRequest = Expect<IsSerializable<SyncStrypePyodi
 type CheckSyncStrypePyodideWorkerResponse = Expect<IsSerializable<SyncStrypePyodideWorkerResponse>>;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 type CheckAsyncStrypePyodideWorkerRequest = Expect<IsSerializable<AsyncStrypePyodideWorkerRequest>>;
+
+// We sometimes want to send Uint8ClampedArray.  If we do that with JSON it is quite slow as it converts
+// to an array of numbers and encodes each one with commas etc, and must parse it all back again.
+// Instead we can turn the values directly into strings by storing the 0-255 values into a character in the string
+// which works because each string character is 2 bytes so can take the 0-255 values.
+export function decodeRGBA(str: string): Uint8ClampedArray {
+    const u8 = new Uint8ClampedArray(str.length);
+    for (let i = 0; i < str.length; i++) {
+        u8[i] = str.charCodeAt(i);
+    }
+    return u8;
+}
+
+export function encodeRGBA(u8: Uint8ClampedArray): string {
+    const chunk = 0x8000;
+    const parts: string[] = [];
+    for (let i = 0; i < u8.length; i += chunk) {
+        parts.push(String.fromCharCode(...u8.subarray(i, i + chunk)));
+    }
+    return parts.join("");
+}
+
 
 // A Handle type which is used to refer to something on the other thread using a simple number
 // (typically an index into an array).  We also need to store the type of the handle because:
@@ -126,6 +150,10 @@ export type RemoteCanvas = {
     width: number;
     height: number;
 };
+
+export function isRemoteImage(req: RemoteImage | RemoteCanvas): req is RemoteImage {
+    return req.handle.handleKind === "Image";
+}
 
 export type RemoteSound = {
     handle: SoundHandle;

@@ -72,6 +72,8 @@ export class Renderer  {
     }
     
     getCanvasContext(c : CanvasHandle) : OffscreenCanvasRenderingContext2D {
+        // We assume we're going to do something that needs a repaint:
+        this.dirty = true;
         return this.canvases[c.handle].getContext("2d") as OffscreenCanvasRenderingContext2D;
     }
 
