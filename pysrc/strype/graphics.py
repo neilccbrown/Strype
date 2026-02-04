@@ -108,7 +108,7 @@ class Image:
     """
 
     # Attributes:
-    # __image: A Javascript OffscreenCanvas, but from the Python end it is only
+    # __image: A RemoteCanvas, but from the Python end it is only
     #          passed back to Javascript calls.
 
     # Tracks the rate limiting for downloads:

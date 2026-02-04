@@ -301,7 +301,7 @@ export class SpriteManager {
         const sprite = this.sprites.get(id);
         if (sprite != null) {
             sprite.img = ensureCanvas(sprite.img);
-            
+            return sprite.img;
         }
         return null;
     }

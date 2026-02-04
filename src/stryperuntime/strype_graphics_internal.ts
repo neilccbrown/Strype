@@ -127,7 +127,7 @@ export function removeImageAfter(img : number, secs : number) : void {
 
 export function makeImageEditableForSprite(spriteId : number) : RemoteCanvas | null {
     return globalThis.spriteManager.editImage(spriteId, (r : RemoteImage | RemoteCanvas) : RemoteCanvas => {
-        const canvas = bridge({request: "ensureCanvas", img: r});
+        const canvas = syncBridge({request: "ensureCanvas", img: r});
         // This will also send the change through to the main thread via the usual state-mirroring channel:
         globalThis.spriteManager.setSpriteImage(spriteId, canvas);
         return canvas;
