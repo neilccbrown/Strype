@@ -82,7 +82,7 @@ import { makeServiceWorkerChannel } from "sync-message";
 import * as Comlink from "comlink";
 import { handleErrorTrace, setSInputConsole, sInput } from "@/helpers/execPythonCode";
 import { ErrorDetails } from "@/workers/python-execution";
-import { AsyncStrypePyodideHandlerFunction, AsyncStrypePyodideWorkerRequest, decodeRGBA, encodeRGBA, isRemoteImage, SyncPromiseStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse } from "@/stryperuntime/worker_bridge_type";
+import { AsyncStrypePyodideHandlerFunction, AsyncStrypePyodideWorkerRequest, decodeRGBA, encodeRGBA, isRemoteImage, SyncOrAsyncStrypePyodideWorkerRequest, SyncPromiseStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse } from "@/stryperuntime/worker_bridge_type";
 import {Renderer} from "@/stryperuntime/renderer";
 import {SoundManager} from "@/stryperuntime/sound_manager";
 // We only import the type because the library itself is loaded from index.html 
@@ -734,6 +734,16 @@ export default Vue.extend({
                         }
                     };
                     
+                    // Apparently we can use a promise as a queue to ensure we process the requests in order,
+                    // and not try to service another while one is still going (especially sync ones which may yield,
+                    // and risk having an async processed in the mean time).
+                    let requestQueue = Promise.resolve();
+                    function serialize(fn: () => void | Promise<void>) {
+                        requestQueue = requestQueue.then(() => fn()).catch((err) => {
+                            console.error("Error in serialized function:", err);
+                        });
+                    }
+                    
                     renderer.initialise().then(() => {
                         (client.call(
                             client.workerProxy.executePython,
@@ -753,30 +763,35 @@ export default Vue.extend({
                                     }
                                 });
                             }),
-                            Comlink.proxy((req : SyncStrypePyodideWorkerRequest) => {
-                                const resp = syncBridgePromise(req);
-                                if (req.request != resp.request) {
-                                    console.error(`Internal error: request ${req.request} did not match the response ${resp.request}`);
+                            Comlink.proxy((asreq : SyncOrAsyncStrypePyodideWorkerRequest) => serialize(() => { 
+                                if (asreq.kind == "async") {
+                                    asyncBridge(asreq.request);
                                 }
-                                resp.response.then(async (r : any) => {
-                                    await navigator.serviceWorker.ready;
-                                    try {
-                                        await client.writeMessage({request: resp.request, response: r});
+                                else {
+                                    const req = asreq.request;
+                                    const resp = syncBridgePromise(req);
+                                    if (req.request != resp.request) {
+                                        console.error(`Internal error: request ${req.request} did not match the response ${resp.request}`);
                                     }
-                                    catch (e) {
-                                        console.error(e);
-                                    }
-                                }).catch(async (err) => {
-                                    await navigator.serviceWorker.ready;
-                                    try {
-                                        await client.writeMessage({request: resp.request, error: err.toString()});
-                                    }
-                                    catch (e) {
-                                        console.error(e);
-                                    }
-                                });
-                            }),
-                            Comlink.proxy(asyncBridge)
+                                    resp.response.then(async (r: any) => {
+                                        await navigator.serviceWorker.ready;
+                                        try {
+                                            await client.writeMessage({request: resp.request, response: r});
+                                        }
+                                        catch (e) {
+                                            console.error(e);
+                                        }
+                                    }).catch(async (err) => {
+                                        await navigator.serviceWorker.ready;
+                                        try {
+                                            await client.writeMessage({request: resp.request, error: err.toString()});
+                                        }
+                                        catch (e) {
+                                            console.error(e);
+                                        }
+                                    });
+                                }
+                            }))
                         ) as Promise<ErrorDetails | null>).then((possibleError) => {
                             if (possibleError != null) {
                                 handleErrorTrace(possibleError.text, possibleError.traceback, () => {}, parser.getFramePositionMap());

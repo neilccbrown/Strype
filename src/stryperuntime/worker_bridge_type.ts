@@ -92,6 +92,10 @@ type CheckSyncStrypePyodideWorkerResponse = Expect<IsSerializable<SyncStrypePyod
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 type CheckAsyncStrypePyodideWorkerRequest = Expect<IsSerializable<AsyncStrypePyodideWorkerRequest>>;
 
+export type SyncOrAsyncStrypePyodideWorkerRequest =
+    | { kind: "sync", request: SyncStrypePyodideWorkerRequest }
+    | { kind: "async", request: AsyncStrypePyodideWorkerRequest }
+
 // We sometimes want to send Uint8ClampedArray.  If we do that with JSON it is quite slow as it converts
 // to an array of numbers and encodes each one with commas etc, and must parse it all back again.
 // Instead we can turn the values directly into strings by storing the 0-255 values into a character in the string

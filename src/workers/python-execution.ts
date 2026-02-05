@@ -4,7 +4,7 @@ import { loadPyodide } from "pyodide";
 import { loadPyodideAndPackage, makeRunnerCallback, OutputPart, pyodideExpose, PyodideExtras, PyodideFatalErrorReloader } from "pyodide-worker-runner";
 import * as Comlink from "comlink";
 import { strype_bridge } from "@/stryperuntime/pyodide_bridge";
-import { AsyncStrypePyodideWorkerRequest, ResponseFor, SyncStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse } from "@/stryperuntime/worker_bridge_type";
+import { AsyncStrypePyodideWorkerRequest, ResponseFor, SyncOrAsyncStrypePyodideWorkerRequest, SyncStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse } from "@/stryperuntime/worker_bridge_type";
 import { SpriteManager } from "@/stryperuntime/image_and_collisions";
 import { PyodideWorkerGlobalScope } from "@/workers/python_execution_type";
 
@@ -35,8 +35,8 @@ const executePython = pyodideExpose(async (
     pythonCode: string,
     printStdout: Comlink.Remote<(output: string) => void>,
     requestInput: Comlink.Remote<(prompt: string) => void>,
-    syncRequest: Comlink.Remote<(req: SyncStrypePyodideWorkerRequest) => void>,
-    asyncRequest: Comlink.Remote<(req: AsyncStrypePyodideWorkerRequest) => void>
+    // Important all requests (sync and async) go through one function to avoid them racing each other:
+    otherRequest: Comlink.Remote<(req: SyncOrAsyncStrypePyodideWorkerRequest) => void>
 ) : Promise<ErrorDetails | null> => {
     return await reloader.withPyodide(async (pyodide : PyodideInterface) => {
         const runner = pyodide.runPython(`from python_runner import PyodideRunner
@@ -52,7 +52,7 @@ class StrypePyodideRunner(PyodideRunner):
         return dict(error_type=type(exc).__name__, error_message=str(exc), traceback=filtered, text=type(exc).__name__ + ": " + str(exc))
 StrypePyodideRunner()`);
         const bridgeSync: SyncStrypePyodideHandlerFunction = <R extends SyncStrypePyodideWorkerRequest> (req : R) : ResponseFor<R> => {
-            syncRequest(req);
+            otherRequest({kind: "sync", request: req});
             const reply = extras.readMessage() as SyncStrypePyodideWorkerResponse;
             if (reply.request != req.request) {
                 throw new Error(`Internal error: Pyodide worker received ${reply.request} but had asked for ${req.request}`);
@@ -93,7 +93,7 @@ StrypePyodideRunner()`);
         });
         runner.set_callback(callback);
         self.syncStrypePyodideWorkerBridge = bridgeSync;
-        self.asyncStrypePyodideWorkerBridge = asyncRequest;
+        self.asyncStrypePyodideWorkerBridge = (r) => otherRequest({kind: "async", request: r});
         self.spriteManager = new SpriteManager((u) => self.updatePort.postMessage(u));
         self.pyodide = pyodide;
         await runner.run_async(pythonCode, {});
