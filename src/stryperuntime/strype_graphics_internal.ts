@@ -8,59 +8,9 @@ import { decodeRGBA, encodeRGBA, isRemoteImage, makeCanvasHandle, RemoteCanvas, 
 import { asyncBridge, PyodideWorkerGlobalScope, syncBridge } from "@/workers/python_execution_type";
 import { PyProxy } from "pyodide/ffi";
 import { DebouncedFunc, throttle } from "lodash";
+import { LRU } from "@/helpers/lruCache";
+import { sayFont } from "@/helpers/textDrawing";
 
-// From https://stackoverflow.com/questions/996505/lru-cache-implementation-in-javascript
-class LRU<K extends string | number, V> {
-    max : number;
-    cache : Map<K, V>;
-    onEvict : (key: K, value: V) => void;
-    constructor(max = 10, onEvict : (key: K, value: V) => void = () => {}) {
-        this.max = max;
-        this.cache = new Map();
-        this.onEvict = onEvict;
-    }
-
-    get(key : K) : V | undefined {
-        let item = this.cache.get(key);
-        if (item !== undefined) {
-            // refresh key
-            this.cache.delete(key);
-            this.cache.set(key, item);
-        }
-        return item;
-    }
-
-    // If this set evicts an item, it is passed to onEvict
-    set(key : K, val : V) : void {
-        // refresh key
-        if (this.cache.has(key)) {
-            this.cache.delete(key);
-        }
-        // evict oldest
-        else if (this.cache.size === this.max) {
-            const evictKey = this.firstKey();
-            const evictVal = this.cache.get(evictKey);
-            this.cache.delete(evictKey);
-            if (evictVal !== undefined) {
-                this.onEvict(evictKey, evictVal);
-            }
-        }
-        this.cache.set(key, val);
-    }
-    
-    // Evicts the given item, and passes it to onEvict if it existed
-    evict(key: K) {
-        const evictVal = this.cache.get(key);
-        if (evictVal !== undefined) {
-            this.onEvict(key, evictVal);
-        }
-        this.cache.delete(key);
-    }
-
-    firstKey() : K {
-        return this.cache.keys().next().value;
-    }
-}
 
 // Saves the pixels for the last three images
 // Note that although the type is DebouncedFunc, we use throttle not debounce (see cachePixelsOf below)
@@ -213,10 +163,10 @@ export function canvas_clearRect(img: RemoteCanvas, x : number, y : number, widt
 }
 export function canvas_setFill(img : RemoteCanvas, color : string | null) {
     // Note 8 zeroes: this is fully transparent, not black:
-    asyncBridge({request:"canvas_setFill", img, fill: color == null ? "#00000000" : color});
+    asyncBridge({request:"canvas_setFill", img, fill: color ?? "#00000000"});
 }
 export function canvas_setStroke(img : RemoteCanvas, color : string | null) {
-    asyncBridge({request:"canvas_setStroke", img, stroke: color == null ? "#00000000" : color});
+    asyncBridge({request:"canvas_setStroke", img, stroke: color ?? "#00000000"});
 }
 export function canvas_getPixel(img : RemoteCanvas, x : number, y : number) {
     // We cache as it's rare that a call to this is isolated; usually it's in a loop:
@@ -276,153 +226,24 @@ export function polygon_xy_pairs(img : RemoteCanvas, xyPairs : PyProxy) : void {
     asyncBridge({request: "canvas_drawPolygon", img, xyPairs: xyPairsPlain});
 }
 
-export function canvas_loadFont(provider, fontName) {
-    /*
-    provider = Sk.ffi.remapToJs(provider);
-    if (provider.toLowerCase() != "google") {
-        throw new Error("Provider " + provider + " not supported.  Currently only 'google' is supported.");
-    }
-    const susp = new Sk.misceval.Suspension();
-    function susp.resume () {
-        return susp.ret;
-    }
-    susp.data = {
-        type: "Sk.promise",
-        promise: new Promise(function (resolve, reject) {
-            WebFont.load({
-                google: {
-                    families: [Sk.ffi.remapToJs(fontName)],
-                },
-                active: function() {
-                    susp.ret = Sk.ffi.remapToPy(true);
-                    resolve();
-                },
-                inactive: function() {
-                    susp.ret = Sk.ffi.remapToPy(false);
-                    reject(Error("Font failed to load."));
-                },
-            });
-        }),
-    }
-    return susp;
-     */
-}
-
-const sayFont="\"Klee One\", sans-serif";
-// Load font:
-const myFont = new FontFace(
-    "Klee One",
-    "url(fonts/klee-one-v12-latin-regular.woff2)"
-);
-
-myFont.load().then((font) => {
-    document.fonts.add(font);
-});
-// Since this is quite expensive, we cache it in case users repeatedly redraw the same text:
-// The map can only really use string keys, so we assemble the key into a string of the format:
-// $fontSize:$maxWidth:$maxHeight:$text
-const textMeasureCache = new LRU<string, number>(1000);
-
-const lineHeightMultiplier = 1.2;
-
-// Returns an item of the following type (but we're in Javascript so can't actually type it):
-// interface {
-//    lines: string[],
-//    fontSize: number,
-//    width: number,
-//    height: number,
-// }
-function calculateTextToFit(ctx, text, fontSize, maxWidth, maxHeight, font) {
-    let lines = [];
-    const paragraphs = text.split("\n");  // Split the text by '\n' to respect forced line breaks.
-    let textHeight = 0;
-    let longestWidth = 0;
-
-    // Minimum font size of 8 pixels:
-    for (;fontSize >= 8; fontSize -= 1) {
-        ctx.font = `${fontSize}px ${font}`;
-        
-        paragraphs.forEach((paragraph) => {
-            let currentLine = "";
-            // The brackets make it retain the whitespace parts in the array as a "word".  This way,
-            // if the user asks for us to write "But....       I don't know." then we'll actually render
-            // the long space.
-            const words = paragraph.split(/(\s+)/);
-
-            if (maxWidth > 0) {
-                for (let i = 0; i < words.length; i++) {
-                    const currentLinePlusNextWord = currentLine + words[i];
-                    const metrics = ctx.measureText(currentLinePlusNextWord);
-                    const testWidth = metrics.width;
-
-                    // If it's too long, start a new line:
-                    if (testWidth > maxWidth && currentLine.length > 0) {
-                        lines.push(currentLine);
-                        // If it's a single space at the start of a line, discard it:
-                        currentLine = words[i] === " " ? "" : words[i];
-                    }
-                    else {
-                        // currentLinePlusNextWord includes the previous part, so just overwrite currentLine with it:
-                        currentLine = currentLinePlusNextWord;
-                    }
-                    longestWidth = Math.max(longestWidth, testWidth);
-                }
-                lines.push(currentLine.trim()); // Push the last line of the paragraph
-            }
-            else {
-                lines.push(paragraph); // No wrapping if maxWidth is <= 0
-                longestWidth = Math.max(longestWidth, ctx.measureText(paragraph).width);
-            }
-        });
-
-        let lineHeight = fontSize * lineHeightMultiplier;
-        textHeight = lines.length * lineHeight;
-        
-        if (maxHeight <= 0 || textHeight <= maxHeight) {
-            break;
-        }
-        // Otherwise we go round again, reducing the font size...
-    }
-    return {lines: lines, fontSize: fontSize, width: longestWidth, height: textHeight}
+export function canvas_loadFont(provider : string, fontName : string) {
+    return syncBridge({request: "loadFont", provider, fontName});
 }
 
 // Draws the given text on canvas dest at top-left of x, y with given fontSize in pixels.
 // If the text would be larger than maxWidth (and maxWidth is > 0) then it will be wrapped at white space in the text.
 // If the text would then be larger than maxHeight (and maxHeight is > 0), its font size will be reduced until it
 // fits inside maxWidth and maxHeight.  Note that it is invalid to supply maxHeight > 0 with maxWidth = 0.
-// Returns a Python dict with fields "width" and "height" with the actual width and height
-export function canvas_drawText(dest, text, x, y, fontSize, maxWidth = 0, maxHeight = 0, fontName = null) {
+// Returns a Python two-item array with the actual width and height
+export function canvas_drawText(img : RemoteCanvas, text : string, x : number, y : number, fontSize : number, maxWidth : number, maxHeight : number, fontName : string | null) : number[] {
     aboutToDrawOnImage(img);
-    // Must remap the string to Javascript:
-    text = Sk.ffi.remapToJs(text);
-    fontName = Sk.ffi.remapToJs(fontName);
     if (fontName != null) {
         fontName = fontName + ", sans-serif";
     }
     else {
         fontName = sayFont;
     }
-    fontSize = Sk.ffi.remapToJs(fontSize);
-    maxWidth = Sk.ffi.remapToJs(maxWidth);
-    maxHeight = Sk.ffi.remapToJs(maxHeight);
-    const ctx = dest.getContext("2d");
-    const key = `${fontSize}:${maxWidth}:${maxHeight}:${text}:${fontName}`;
-    let details = textMeasureCache.get(key);
-    if (!details) {
-        details = calculateTextToFit(ctx, text, fontSize, maxWidth, maxHeight, fontName);
-        textMeasureCache.set(key, details);
-    }
-    ctx.font = `${details.fontSize}px ${fontName}`;
-    
-    // Render each line of text on the canvas at (x, y)
-    for (let i = 0; i < details.lines.length; i++) {
-        // Since we are passing the baseline, we always add an extra 1 * fontSize to get from the top-left
-        // down to the baseline, then add i * lineHeightMultiplier from there:
-        let actualY = y + details.fontSize * (1 + i * lineHeightMultiplier);
-        ctx.strokeText(details.lines[i], x, actualY);
-        ctx.fillText(details.lines[i], x, actualY); 
-    }
-    return Sk.ffi.remapToPy({width: details.width, height: details.height});
+    return syncBridge({request: "canvas_drawText", img, text, x, y, fontSize, maxWidth, maxHeight, fontName});
 }
 
 export function canvas_downloadPNG(src : RemoteCanvas, filenameStem : string) {

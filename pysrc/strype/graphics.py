@@ -299,7 +299,7 @@ class Image:
             loaded = _strype_graphics_internal.canvas_loadFont("google", font_family)
             if not loaded:
                 raise Exception("Could not load font " + font_family)
-        dim = _strype_graphics_internal.canvas_drawText(self.__image, text, x, y, font_size, max_width, max_height, font_family)
+        dim = _strype_graphics_internal.canvas_drawText(self.__image, text, x, y, font_size, max_width, max_height, font_family).to_py()
         return _Dimension(dim['width'], dim['height'])
         
     def draw_rounded_rect(self, x, y, width, height, corner_size = 10):
@@ -772,6 +772,7 @@ class Actor:
             textOnlyImg.set_fill("white")
             textOnlyImg.fill()
             textOnlyImg.set_fill("black")
+            textOnlyImg.set_stroke(None)
             textDimensions = textOnlyImg.draw_text(text, 0, 0, font_size, max_width, max_height, font_family)
             # Now we prepare an image of the right size plus padding:
             sayImg = Image(textDimensions.width + 2 * padding, textDimensions.height + 2 * padding)
@@ -787,8 +788,8 @@ class Actor:
         # type: () -> None
         # Update the speech bubble position to be relative to our new position and scale:
         if self.__say is not None and _strype_graphics_internal.imageExists(self.__say):
-            say_dim = _strype_graphics_internal.getImageSize(self.__say)
-            our_dim = _strype_graphics_internal.getImageSize(self.__id)
+            say_dim = _strype_graphics_internal.getImageSize(self.__say).to_py()
+            our_dim = _strype_graphics_internal.getImageSize(self.__id).to_py()
             scale = _strype_graphics_internal.getImageScale(self.__id)
             width = our_dim['width'] * scale
             height = our_dim['height'] * scale

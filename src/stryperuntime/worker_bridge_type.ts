@@ -43,9 +43,11 @@ import { Expect, IsSerializable } from "@/stryperuntime/check_serializable";
 export type SyncStrypePyodideWorkerRequest =
     | { request: "loadImage"; url: string }
     | { request: "loadLibraryAsset"; libraryShortName: string; fileName: string }
+    | { request: "loadFont"; provider: string; fontName: string }
     | { request: "makeOffscreenCanvas"; width: number; height: number }
     | { request: "ensureCanvas"; img: RemoteCanvas | RemoteImage }
     | { request: "canvas_getAllPixelsRGBA"; img: RemoteCanvas }
+    | { request: "canvas_drawText", img: RemoteCanvas, text: string, x: number, y: number, fontSize: number, maxWidth: number, maxHeight: number, fontName: string }
     | { request: "getPressedKeys"}
     | { request: "loadSound"; url: string }
 ;
@@ -54,9 +56,11 @@ export type SyncStrypePyodideWorkerRequest =
 export type SyncStrypePyodideWorkerResponse =
     | { request: "loadImage"; response: RemoteImage;}
     | { request: "loadLibraryAsset"; response: string | undefined; }
+    | { request: "loadFont"; response: boolean; }
     | { request: "makeOffscreenCanvas"; response: RemoteCanvas; }
     | { request: "ensureCanvas"; response: RemoteCanvas; }
     | { request: "canvas_getAllPixelsRGBA"; response: string } // See encodeRGBA/decodeRGBA below
+    | { request: "canvas_drawText"; response: { width: number; height: number; } }
     | { request: "getPressedKeys"; response: {[key: string]: boolean} }
     | { request: "loadSound"; response: RemoteSound;}
 ;

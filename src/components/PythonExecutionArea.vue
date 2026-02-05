@@ -82,9 +82,12 @@ import { makeServiceWorkerChannel } from "sync-message";
 import * as Comlink from "comlink";
 import { handleErrorTrace, setSInputConsole, sInput } from "@/helpers/execPythonCode";
 import { ErrorDetails } from "@/workers/python-execution";
-import { AsyncStrypePyodideHandlerFunction, decodeRGBA, encodeRGBA, isRemoteImage, SyncPromiseStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse } from "@/stryperuntime/worker_bridge_type";
+import { AsyncStrypePyodideHandlerFunction, AsyncStrypePyodideWorkerRequest, decodeRGBA, encodeRGBA, isRemoteImage, SyncPromiseStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse } from "@/stryperuntime/worker_bridge_type";
 import {Renderer} from "@/stryperuntime/renderer";
 import {SoundManager} from "@/stryperuntime/sound_manager";
+// We only import the type because the library itself is loaded from index.html 
+import type WebFont from "webfontloader";
+import { drawText } from "@/helpers/textDrawing";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
@@ -99,11 +102,9 @@ let mostRecentMouseDetails : [number, number, [boolean, boolean, boolean]] = [0,
 let pressedKeys : {[key: string]: boolean} = {};
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
 
-
 const updateChannel = new MessageChannel();
 const renderer = new Renderer(updateChannel.port2);
 let soundManager : SoundManager | null = null;
-
 
 // We draw our actual graphics canvas (for strype.graphics) at the size it is on the page,
 // given the 4:3 aspect ratio.  But we also have a logical size that is constant, which is 800x600.
@@ -112,6 +113,17 @@ let soundManager : SoundManager | null = null;
 // expanded the canvas
 const graphicsCanvasLogicalWidth = WORLD_WIDTH;
 const graphicsCanvasLogicalHeight = WORLD_HEIGHT;
+
+// Load say font:
+const myFont = new FontFace(
+    "Klee One",
+    `url(${import.meta.env.BASE_URL}fonts/klee-one-v12-latin-regular.woff2)`
+);
+
+myFont.load().then((font) => {
+    document.fonts.add(font);
+});
+
 
 async function getAssetFileFromLibrary(fullLibraryAddress: string, fileName: string) {
     // First, try filename as-is:
@@ -582,6 +594,30 @@ export default Vue.extend({
                         }
                         case "loadSound": {
                             return {request: req.request, response: (soundManager as SoundManager).loadSound(req.url)};
+                        }
+                        case "loadFont": {
+                            return {
+                                request: req.request, response: new Promise<boolean>((resolve, reject) => {
+                                    if (req.provider.toLowerCase() != "google") {
+                                        reject(new Error("Provider " + req.provider + " not supported.  Currently only 'google' is supported."));
+                                        return;
+                                    }
+                                    WebFont.load({
+                                        google: {
+                                            families: [req.fontName],
+                                        },
+                                        active: function() {
+                                            resolve(true);
+                                        },
+                                        inactive: function() {
+                                            reject(new Error("Font failed to load."));
+                                        },
+                                    });
+                                }),
+                            };
+                        }
+                        case "canvas_drawText": {
+                            return {request: req.request, response: Promise.resolve(drawText(renderer.getCanvasContext(req.img.handle), req.text, req.x, req.y, req.fontSize, req.maxWidth, req.maxHeight, req.fontName)) };
                         }
                         case "ensureCanvas": {
                             if (isRemoteImage(req.img)) {

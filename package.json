@@ -111,6 +111,7 @@
         "@types/textarea-caret": "^3.0.0",
         "@types/timed-cache": "^2.0.3",
         "@types/w3c-web-usb": "^1.0.6",
+        "@types/webfontloader": "^1.6.38",
         "@typescript-eslint/eslint-plugin": "^8.53.0",
         "@typescript-eslint/parser": "^8.53.0",
         "@vue/eslint-config-standard": "^9.0.1",
