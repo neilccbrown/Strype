@@ -84,7 +84,7 @@ function checkImageMatch(expectedImageFileName: string, actual : PNG, comparison
             const diffPercent = (numDiffPixels / (width * height) * 100);
 
             // We need to use cy.then because otherwise if the test fails, it can cancel the pending cy.writeFile calls from earlier:
-            cy.then(() => expect(diffPercent).to.be.below(10));
+            cy.then(() => expect(diffPercent).to.be.below(3));
         });
     }
     else {
