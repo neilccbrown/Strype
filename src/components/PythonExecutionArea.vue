@@ -1130,12 +1130,13 @@ export default Vue.extend({
             // Actually copy the resulting off-screen image to the DOM canvas:
             // When the graphics tab has never been selected, the off-screen image can be empty
             // which gives an error:
-            if (c.width > 0 && c.height > 0) {
+            if (c.width > 0 && c.height > 0 && domContext) {
                 // Important on Safari to clear the canvas first, otherwise the new frame
                 // gets blended on top.  Firefox and Chrome don't do this by default (different alpha blending mode?):
-                domContext?.clearRect(0, 0, domCanvas.width, domCanvas.height);
+                domContext.fillStyle = "black";
+                domContext.fillRect(0, 0, domCanvas.width, domCanvas.height);
                 // The target canvas can be smaller than the real one, and we want to centre it:
-                domContext?.drawImage(c, (domCanvas.width - (targetCanvas?.width ?? 0)) / 2, (domCanvas.height - (targetCanvas?.height ?? 0)) / 2);
+                domContext.drawImage(c, (domCanvas.width - (targetCanvas?.width ?? 0)) / 2, (domCanvas.height - (targetCanvas?.height ?? 0)) / 2);
             }
         },
 

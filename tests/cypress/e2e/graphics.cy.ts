@@ -76,7 +76,7 @@ function checkImageMatch(expectedImageFileName: string, actual : PNG, comparison
             const diff = new PNG({width, height});
 
             // calling pixelmatch return how many pixels are different
-            const numDiffPixels = pixelmatch(expected.data, actual.data, diff.data, width, height, {threshold: 0.05});
+            const numDiffPixels = pixelmatch(expected.data, actual.data, diff.data, width, height, {threshold: 0.1, includeAA: false});
 
             cy.writeFile(`tests/cypress/expected-screenshots/diff/${expectedImageFileName}.png`, PNG.sync.write(diff));
 
@@ -84,7 +84,7 @@ function checkImageMatch(expectedImageFileName: string, actual : PNG, comparison
             const diffPercent = (numDiffPixels / (width * height) * 100);
 
             // We need to use cy.then because otherwise if the test fails, it can cancel the pending cy.writeFile calls from earlier:
-            cy.then(() => expect(diffPercent).to.be.below(5));
+            cy.then(() => expect(diffPercent).to.be.below(3));
         });
     }
     else {
