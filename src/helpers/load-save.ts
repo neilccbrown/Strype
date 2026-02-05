@@ -1,4 +1,4 @@
-import { AppName, AppPlatform, AppSPYFullPrefix, AppSPYSaveVersion } from "@/main";
+import { AppName, AppPlatform, AppSPYFullPrefix, AppSPYSaveVersion } from "@/helpers/appContext";
 import { parseCodeAndGetParseElements } from "@/parser/parser";
 import { useStore } from "@/store/store";
 import {StrypeLayoutDividerSettings, StrypePEALayoutMode} from "@/types/types";

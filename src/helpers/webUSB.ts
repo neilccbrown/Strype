@@ -6,7 +6,7 @@ import { useStore } from "@/store/store";
 import Compiler from "@/compiler/compiler";
 import { parseCodeAndGetParseElements } from "@/parser/parser";
 import { getAppSimpleMsgDlgId } from "./editor";
-import { vm } from "@/main";
+import { vm } from "@/helpers/appContext";
 import i18n from "@/i18n";
 import { cloneDeep } from "lodash";
 
