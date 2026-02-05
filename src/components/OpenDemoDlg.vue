@@ -58,7 +58,7 @@ import MenuComponent from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import {Demo, DemoGroup, getBuiltinDemos, getThirdPartyLibraryDemos} from "@/helpers/demos";
 import Parser from "@/parser/parser";
-import {AppSPYPrefix} from "@/main";
+import {AppSPYPrefix} from "@/helpers/appContext";
 import {escapeRegExp} from "lodash";
 import { BvModalEvent } from "bootstrap-vue";
 import { getMenuLeftPaneUID } from "@/helpers/editor";

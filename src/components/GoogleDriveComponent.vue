@@ -20,7 +20,7 @@ import CloudDriveHandlerComponent from "@/components/CloudDriveHandler.vue";
 import { MessageDefinitions, StrypeSyncTarget } from "@/types/types";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker.vue";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
-import { AppSPYFullPrefix } from "@/main";
+import { AppSPYFullPrefix } from "@/helpers/appContext";
 import { getCloudLoginErrorModalDlgId } from "@/helpers/editor";
 
 //////////////////////

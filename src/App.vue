@@ -144,7 +144,7 @@ import axios from "axios";
 import scssVars from "@/assets/style/_export.module.scss";
 import {loadDivider} from "@/helpers/load-save";
 import FrameHeader from "@/components/FrameHeader.vue";
-import { projectDocumentationFrameId } from "./main";
+import { projectDocumentationFrameId } from "./helpers/appContext";
 import {inflateRaw} from "pako";
 import { Base64 } from "js-base64";
 
