@@ -4,7 +4,7 @@
  * At the moment, we only support file IO in the cloud (due to restrictions on 
  * the browser's access to the host file system).
  */
-import { vm } from "@/main";
+import { vm } from "@/helpers/appContext";
 import path from "path-browserify";
 import { getCloudDriveHandlerComponentRefId, getMenuLeftPaneUID } from "./editor";
 import CloudDriveHandlerComponent from "@/components/CloudDriveHandler.vue";

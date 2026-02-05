@@ -88,7 +88,7 @@ import scssVars from "@/assets/style/_export.module.scss";
 import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
 import {drawSoundOnCanvas} from "@/helpers/media";
 import { isMacOSPlatform } from "@/helpers/common";
-import { projectDocumentationFrameId } from "@/main";
+import { projectDocumentationFrameId } from "@/helpers/appContext";
 
 // Default time to keep in cache: 5 minutes.
 const soundPreviewImages = new Cache<LoadedMedia>({ defaultTtl: 5 * 60 * 1000 });
