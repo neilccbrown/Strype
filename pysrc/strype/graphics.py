@@ -848,7 +848,8 @@ def load_image(name):
         return name
     # Make an internal empty image then load it:
     img = Image(-42, -42)
-    img._Image__image = _strype_graphics_internal.htmlImageToCanvas(_strype_graphics_internal.loadAndWaitForImage(name))
+    loaded_image = _strype_graphics_internal.loadAndWaitForImage(name)
+    img._Image__image = _strype_graphics_internal.htmlImageToCanvas(loaded_image)
     return img
 
 def get_clicked_actor():

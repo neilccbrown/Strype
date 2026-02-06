@@ -19,46 +19,41 @@ export function playAudioBufferAndWait(sound: RemoteSound) : void {
 export function stopAudioBuffer(sound : RemoteSound) : void {
     asyncBridge({request: "stopSound", sound});
 }
-export function createAudioBuffer(seconds : number, samplesPerSecond : number) : RemoteSound {
-    return syncBridge(({request: "createEmptyMonoSound", numSamples: Math.round(seconds * samplesPerSecond), samplesPerSecond}));
+export function createAudioBuffer(seconds : number, sampleRate : number) : RemoteSound {
+    return syncBridge(({request: "createEmptyMonoSound", numSamples: Math.round(seconds * sampleRate), sampleRate}));
 }
 export function loadAndWaitForAudioBuffer(path : string) : RemoteSound {
     return syncBridge({request: "loadSound", url: path});
 }
-function getSamples(sound : RemoteSound) : number[] {
+export function getSamples(sound : RemoteSound) : number[] {
     if (sound.numberOfChannels > 1) {
         throw new Error("Cannot get samples from stereo sound; convert to mono first");
     }
     else {
         return syncBridge({request: "getMonoSoundSampleValues", sound});
     }
-};
-function setSamples(sound: RemoteSound, values : number[], targetOffset : number) {
+}
+export function setSamples(sound: RemoteSound, values : number[], targetOffset : number) : void {
     if (sound.numberOfChannels > 1) {
         throw new Error("Cannot set samples in stereo sound; convert to mono first");
     }
     else {
         // Simple case of mono sound:
         asyncBridge({request: "setMonoSoundSampleValues", sound, values, targetOffset});
-        
-        
     }
-};
+}
 export function getNumSamples(sound : RemoteSound) : number {
     return sound.numSamples;
-};
+}
 export function getSampleRate(sound : RemoteSound) : number {
     return sound.sampleRate;
-};
-function downloadWAV(sound : RemoteSound, filenameStem : string) {
+}
+export function downloadWAV(sound : RemoteSound, filenameStem : string) : void {
     asyncBridge({request: "downloadWAV", sound, filenameStem});
-};
-function copy(sound : RemoteSound) {
+}
+export function copy(sound : RemoteSound) : RemoteSound {
     return syncBridge({request: "cloneSound", sound, toMono: false});
 }
-function copyToMono(sound: RemoteSound) {
-    /*
-    
-    
-     */
-};
+export function copyToMono(sound: RemoteSound) : RemoteSound {
+    return syncBridge({request: "cloneSound", sound, toMono: true});
+}

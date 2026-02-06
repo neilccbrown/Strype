@@ -50,7 +50,7 @@ export type SyncStrypePyodideWorkerRequest =
     | { request: "canvas_drawText", img: RemoteCanvas, text: string, x: number, y: number, fontSize: number, maxWidth: number, maxHeight: number, fontName: string }
     | { request: "getPressedKeys"}
     | { request: "loadSound"; url: string }
-    | { request: "createEmptyMonoSound"; numSamples: number; samplesPerSecond: number; }
+    | { request: "createEmptyMonoSound"; numSamples: number; sampleRate: number; }
     | { request: "playSoundAndWait"; sound: RemoteSound }
     | { request: "getMonoSoundSampleValues"; sound: RemoteSound }
     | { request: "cloneSound"; sound: RemoteSound; toMono: boolean } // If toMono is false, clone with same number of channels

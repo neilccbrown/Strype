@@ -5,6 +5,7 @@ class Sound:
     # Tracks the rate limiting for downloads:
     __last_download = _time.time()
     # type: float
+    # There is a __buffer member which is of type RemoteSound
     
     def __init__(self, seconds, samples_per_second = 44100):
         # type: (float, float) -> None
@@ -15,10 +16,10 @@ class Sound:
         :param seconds: A numeric value to indicate the sound's length in seconds. 
         :param samples_per_second: If the first parameter is a number, this is the sampling rate in samples per second. 
         """
-        if samples_per_second == -4242: # Magic number used internally to indicate source is already an audio buffer
+        if samples_per_second == -4242: # Magic number used internally to indicate source is already a RemoteSOund
             # Important this clause is first, because if it's a Javascript object, performing
             # Python isinstance checks will give an error.  Which is why we use a magic number rather than
-            # inspecting the type of source_or_seconds ourselves:
+            # inspecting the type of seconds ourselves:
             self.__buffer = seconds
         elif isinstance(seconds, (int, float)):
             self.__buffer = _strype_sound_internal.createAudioBuffer(seconds, samples_per_second)

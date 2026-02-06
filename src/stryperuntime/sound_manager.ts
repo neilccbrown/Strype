@@ -57,7 +57,7 @@ export class SoundManager {
         });
     }
 
-    playAudioBuffer(index: number) : Promise<void> | null {
+    playAudioBuffer(index: number) : Promise<void> {
         const audioBuffer = this.loadedSounds[index];
         if (audioBuffer) {
             const source = this.audioContext.createBufferSource();
@@ -75,7 +75,7 @@ export class SoundManager {
             });
         }
         else {
-            return null;
+            return Promise.resolve();
         }
     }
 
@@ -88,8 +88,8 @@ export class SoundManager {
         // It's not an error if source is null, it either means the sound hasn't been playing, or it already finished
     }
 
-    createMonoSound(numSamples: number, samplesPerSecond: number) : number {
-        const audioBuffer = new AudioBuffer({length: numSamples, sampleRate: samplesPerSecond, numberOfChannels: 1});
+    createMonoSound(numSamples: number, sampleRate: number) : number {
+        const audioBuffer = new AudioBuffer({length: numSamples, sampleRate: sampleRate, numberOfChannels: 1});
         this.loadedSounds.push(audioBuffer);
         return this.loadedSounds.length - 1;
     }

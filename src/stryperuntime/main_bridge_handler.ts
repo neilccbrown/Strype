@@ -30,8 +30,8 @@ export const handleSyncRequests : (renderer : Renderer, soundManager : SoundMana
         return {request: req.request, response: soundManager.loadSound(req.url)};
     }
     case "createEmptyMonoSound": {
-        const soundIndex = soundManager.createMonoSound(req.numSamples, req.samplesPerSecond);
-        return {request: req.request, response: Promise.resolve({sound: makeSoundHandle(soundIndex), numberOfChannels: 1, numSamples: req.numSamples, samplesPerSecond: req.samplesPerSecond })};
+        const soundIndex = soundManager.createMonoSound(req.numSamples, req.sampleRate);
+        return {request: req.request, response: Promise.resolve({handle: makeSoundHandle(soundIndex), numberOfChannels: 1, numSamples: req.numSamples, sampleRate: req.sampleRate })};
     }
     case "playSoundAndWait": {
         return {request: req.request, response: soundManager.playAudioBuffer(req.sound.handle.handle)?.then(()  => true)};
@@ -41,7 +41,7 @@ export const handleSyncRequests : (renderer : Renderer, soundManager : SoundMana
     }
     case "cloneSound": {
         return {request: req.request, response: soundManager.cloneSound(req.sound.handle.handle, req.toMono).then((cloneIndex) => {
-            return {sound: makeSoundHandle(cloneIndex), numberOfChannels: req.toMono ? 1 : req.sound.numberOfChannels, numSamples: req.sound.numSamples, sampleRate : req.sound.sampleRate};
+            return {handle: makeSoundHandle(cloneIndex), numberOfChannels: req.toMono ? 1 : req.sound.numberOfChannels, numSamples: req.sound.numSamples, sampleRate : req.sound.sampleRate};
         })};
     }
     case "loadFont": {
