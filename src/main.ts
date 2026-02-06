@@ -16,6 +16,7 @@ import { setVM } from "./helpers/appContext";
 import {getPEATabContentContainerDivId} from "./helpers/editor";
 // #v-endif
 
+// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 // We have to register the service worker ourselves so that it works in dev.
 // (If we used the Vite PWA auto-register it would only work in production.)
 if ("serviceWorker" in navigator) {
@@ -34,6 +35,7 @@ if ("serviceWorker" in navigator) {
 else {
     console.error("No service worker support");
 }
+// #v-endif
 
 
 // Set the SCSS variables for the tests here
