@@ -56,12 +56,12 @@ export class SoundManager {
         });
     }
 
-    playAudioBuffer(index: number, audioContext : AudioContext) : Promise<void> | null {
+    playAudioBuffer(index: number) : Promise<void> | null {
         const audioBuffer = this.loadedSounds[index];
         if (audioBuffer) {
-            const source = audioContext.createBufferSource();
+            const source = this.audioContext.createBufferSource();
             source.buffer = audioBuffer;
-            source.connect(audioContext.destination);
+            source.connect(this.audioContext.destination);
             // eslint-disable-next-line @typescript-eslint/no-this-alias
             const sm = this;
             return new Promise(function (resolve, reject) {
