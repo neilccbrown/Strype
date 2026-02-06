@@ -99,6 +99,11 @@ let pressedKeys : {[key: string]: boolean} = {};
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
 
 const updateChannel = new MessageChannel();
+// We initialise this out here to make it load earlier:
+const pythonWorker = new Worker(new URL("@/workers/python-execution.ts", import.meta.url), {type: "module"});
+// Must post it the update channel before wrapping in Pyodide:
+pythonWorker.postMessage({updatePort: updateChannel.port1}, [updateChannel.port1]);
+
 const renderer = new Renderer(updateChannel.port2);
 let soundManager : SoundManager | null = null;
 
@@ -175,9 +180,6 @@ export default Vue.extend({
     },
     
     mounted(){
-        const pythonWorker = new Worker(new URL("@/workers/python-execution.ts", import.meta.url), {type: "module"});
-        // Must post it the update channel before wrapping in Pyodide:
-        pythonWorker.postMessage({updatePort: updateChannel.port1}, [updateChannel.port1]);
         const channel = makeServiceWorkerChannel({scope: import.meta.env.BASE_URL});
         this.pythonClient = new PyodideClient(() => pythonWorker, channel);
         this.pythonClient.call(
