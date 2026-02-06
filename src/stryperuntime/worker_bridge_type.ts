@@ -50,6 +50,10 @@ export type SyncStrypePyodideWorkerRequest =
     | { request: "canvas_drawText", img: RemoteCanvas, text: string, x: number, y: number, fontSize: number, maxWidth: number, maxHeight: number, fontName: string }
     | { request: "getPressedKeys"}
     | { request: "loadSound"; url: string }
+    | { request: "createEmptyMonoSound"; numSamples: number; samplesPerSecond: number; }
+    | { request: "playSoundAndWait"; sound: RemoteSound }
+    | { request: "getMonoSoundSampleValues"; sound: RemoteSound }
+    | { request: "cloneSound"; sound: RemoteSound; toMono: boolean } // If toMono is false, clone with same number of channels
 ;
 
 // All types above should map into this type:
@@ -63,11 +67,17 @@ export type SyncStrypePyodideWorkerResponse =
     | { request: "canvas_drawText"; response: { width: number; height: number; } }
     | { request: "getPressedKeys"; response: {[key: string]: boolean} }
     | { request: "loadSound"; response: RemoteSound;}
+    | { request: "createEmptyMonoSound"; response: RemoteSound; }
+    | { request: "playSoundAndWait"; response: boolean; } // We don't need a return value as such, we're just using the response to wait
+    | { request: "getMonoSoundSampleValues"; response: number[] }
+    | { request: "cloneSound"; response: RemoteSound;}
 ;
 
 // Wraps the response field of a type in a promise:
 type PromisedResponse<T> = T extends {request: infer REQ; response: infer RESP } ? {request: REQ; response: Promise<RESP>} : never;
 
+// Async here is not about promises etc, but rather that we don't need a response and we don't wait for a response after sending the request.
+// The requests are still done in order without overlapping by the main thread (incl not overlapping any sync requests)
 export type AsyncStrypePyodideWorkerRequest =
     | { request: "canvas_drawImagePart"; dest: RemoteCanvas, src : RemoteImage | RemoteCanvas, dx : number, dy : number, sx : number, sy : number, sw: number, sh : number, scale : number }
     | { request: "canvas_clearRect"; img: RemoteCanvas, x: number; y: number; width: number; height: number }
@@ -81,6 +91,9 @@ export type AsyncStrypePyodideWorkerRequest =
     | { request: "canvas_drawPixels", img: RemoteCanvas, x: number; y: number; width: number; height: number; pixelRGBA: string } // See encodeRGBA/decodeRGBA below
     | { request: "canvas_downloadPNG", img: RemoteCanvas, filenameStem: string }
     | { request: "startSound"; sound: RemoteSound }
+    | { request: "stopSound"; sound: RemoteSound }
+    | { request: "setMonoSoundSampleValues"; sound: RemoteSound; values: number[]; targetOffset: number }
+    | { request: "downloadWAV"; sound: RemoteSound; filenameStem: string }
 ;
 
 // These are not used so we need to disable warnings, but they give errors if we've messed up above and tried
@@ -167,6 +180,7 @@ export type RemoteSound = {
     handle: SoundHandle;
     sampleRate: number;
     numSamples: number;
+    numberOfChannels: number;
 };
 
 export type ResponseFor<R extends SyncStrypePyodideWorkerRequest> =

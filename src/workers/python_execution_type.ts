@@ -1,4 +1,4 @@
-import type { AsyncStrypePyodideHandlerFunction, ResponseFor, SyncStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse } from "@/stryperuntime/worker_bridge_type";
+import type { AsyncStrypePyodideHandlerFunction, ResponseFor, SyncStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest } from "@/stryperuntime/worker_bridge_type";
 import {SpriteManager} from "@/stryperuntime/image_and_collisions";
 import type {PyodideAPI} from "pyodide";
 
@@ -8,7 +8,7 @@ export interface PyodideWorkerGlobalScope extends WorkerGlobalScope {
     asyncStrypePyodideWorkerBridge: AsyncStrypePyodideHandlerFunction;
     spriteManager : SpriteManager;
     pyodide: PyodideAPI;
-};
+}
 
 export function syncBridge<R extends SyncStrypePyodideWorkerRequest>(
     req: R

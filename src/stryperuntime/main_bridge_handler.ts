@@ -1,6 +1,6 @@
 // This file has the parts of the code which handle requests from the Pyodide worker by executing code on the main thread
 
-import { AsyncStrypePyodideHandlerFunction, decodeRGBA, encodeRGBA, isRemoteImage, SyncPromiseStrypePyodideHandlerFunction } from "@/stryperuntime/worker_bridge_type";
+import { AsyncStrypePyodideHandlerFunction, decodeRGBA, encodeRGBA, isRemoteImage, makeSoundHandle, SyncPromiseStrypePyodideHandlerFunction } from "@/stryperuntime/worker_bridge_type";
 import { Renderer } from "@/stryperuntime/renderer";
 import { SoundManager } from "@/stryperuntime/sound_manager";
 import { drawText } from "@/helpers/textDrawing";
@@ -27,7 +27,22 @@ export const handleSyncRequests : (renderer : Renderer, soundManager : SoundMana
         return {request: req.request, response: Promise.resolve(pressedKeys)};
     }
     case "loadSound": {
-        return {request: req.request, response: (soundManager as SoundManager).loadSound(req.url)};
+        return {request: req.request, response: soundManager.loadSound(req.url)};
+    }
+    case "createEmptyMonoSound": {
+        const soundIndex = soundManager.createMonoSound(req.numSamples, req.samplesPerSecond);
+        return {request: req.request, response: Promise.resolve({sound: makeSoundHandle(soundIndex), numberOfChannels: 1, numSamples: req.numSamples, samplesPerSecond: req.samplesPerSecond })};
+    }
+    case "playSoundAndWait": {
+        return {request: req.request, response: soundManager.playAudioBuffer(req.sound.handle.handle)?.then(()  => true)};
+    }
+    case "getMonoSoundSampleValues": {
+        return {request: req.request, response: Promise.resolve(Array.from(soundManager.getMonoSamples(req.sound.handle.handle)))};
+    }
+    case "cloneSound": {
+        return {request: req.request, response: soundManager.cloneSound(req.sound.handle.handle, req.toMono).then((cloneIndex) => {
+            return {sound: makeSoundHandle(cloneIndex), numberOfChannels: req.toMono ? 1 : req.sound.numberOfChannels, numSamples: req.sound.numSamples, sampleRate : req.sound.sampleRate};
+        })};
     }
     case "loadFont": {
         return {
@@ -76,6 +91,7 @@ export const handleSyncRequests : (renderer : Renderer, soundManager : SoundMana
     }
 };
 
+// Ironically, almost all the "async" (fire-and-forget) requests are executed synchronously in one step, it's just that we don't need to know the result 
 export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundManager) => AsyncStrypePyodideHandlerFunction = (renderer, soundManager) => (req) => {
     switch (req.request) {
     case "canvas_setFill": {
@@ -154,13 +170,22 @@ export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundMan
         return;
     }
     case "startSound": {
-        if (soundManager) {
-            soundManager.playAudioBuffer(req.sound.handle.handle);
-        }
-        else {
-            console.error("Missing soundManager");
-        }
-        return undefined;
+        soundManager.playAudioBuffer(req.sound.handle.handle);
+        return;
+    }
+    case "stopSound": {
+        soundManager.stopAudioBuffer(req.sound.handle.handle);
+        return;
+    }
+    case "setMonoSoundSampleValues": {
+        soundManager.setMonoSoundSampleValues(req.sound.handle.handle, req.values, req.targetOffset);
+        return;
+    }
+    case "downloadWAV": {
+        const wavArrayBuffer = soundManager.getAsWAV(req.sound.handle.handle);
+        const blob = new Blob([wavArrayBuffer], { type: "audio/wav" });
+        saveAs(blob, `${req.filenameStem}_${getDateTimeFormatted(new Date(Date.now()))}.png`);
+        return;
     }
     default:
         // Trick to give a compile-time error if a case is missing above:

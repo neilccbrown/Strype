@@ -12,55 +12,36 @@ declare const globalThis: PyodideWorkerGlobalScope;
 
 export function startAudioBuffer(sound : RemoteSound) : void {
     asyncBridge({request: "startSound", sound});
-};
-function playAudioBufferAndWait(audioBuffer) {
-    /*
-    let susp = new Sk.misceval.Suspension();
-    function susp.resume () {
-        if (susp.data["error"]) {
-            throw new Sk.builtin.IOError(susp.data["error"].message);
-        }
-    };
-    susp.data = {
-        type: "Sk.promise",
-        promise: peaComponent.__vue__.playAudioBuffer(audioBuffer),
-    };
-    return susp;
-    
-     */
-};
-function stopAudioBuffer(audioBuffer) {
-    peaComponent.__vue__.stopAudioBuffer(audioBuffer);
-};
-function createAudioBuffer(seconds : number, samplesPerSecond : number) {
-    return new AudioBuffer({length: Math.round(seconds * samplesPerSecond), sampleRate: samplesPerSecond});
-};
+}
+export function playAudioBufferAndWait(sound: RemoteSound) : void {
+    syncBridge(({request: "playSoundAndWait", sound}));
+}
+export function stopAudioBuffer(sound : RemoteSound) : void {
+    asyncBridge({request: "stopSound", sound});
+}
+export function createAudioBuffer(seconds : number, samplesPerSecond : number) : RemoteSound {
+    return syncBridge(({request: "createEmptyMonoSound", numSamples: Math.round(seconds * samplesPerSecond), samplesPerSecond}));
+}
 export function loadAndWaitForAudioBuffer(path : string) : RemoteSound {
     return syncBridge({request: "loadSound", url: path});
 }
-function getSamples(buffer) {
-    if (buffer.numberOfChannels > 1) {
+function getSamples(sound : RemoteSound) : number[] {
+    if (sound.numberOfChannels > 1) {
         throw new Error("Cannot get samples from stereo sound; convert to mono first");
     }
     else {
-        // Simple case of mono sound: just return the data
-        return Sk.ffi.remapToPy(buffer.getChannelData(0));
+        return syncBridge({request: "getMonoSoundSampleValues", sound});
     }
 };
-function setSamples(buffer, floatArray, offset) {
-    if (buffer.numberOfChannels > 1) {
+function setSamples(sound: RemoteSound, values : number[], targetOffset : number) {
+    if (sound.numberOfChannels > 1) {
         throw new Error("Cannot set samples in stereo sound; convert to mono first");
     }
     else {
-        // Simple case of mono sound: 
-        const floats = new Float32Array(Sk.ffi.remapToJs(floatArray));
-        if (offset < 0 || offset >= buffer.length) {
-            throw new Error("Invalid offset when setting samples: " + offset + " (sound length is " + buffer.length + ")");
-        }
-        if (offset + floats.length > buffer.length) {
-            throw new Error("Setting samples would go beyond end of sound, offset: " + offset + " + number of samples: " + floats.length + " > sound length: " + buffer.length);
-        }
-        buffer.copyToChannel(floats, 0, offset);
+        // Simple case of mono sound:
+        asyncBridge({request: "setMonoSoundSampleValues", sound, values, targetOffset});
+        
+        
     }
 };
 export function getNumSamples(sound : RemoteSound) : number {
@@ -69,60 +50,15 @@ export function getNumSamples(sound : RemoteSound) : number {
 export function getSampleRate(sound : RemoteSound) : number {
     return sound.sampleRate;
 };
-function downloadWAV(src, filenameStem) {
-    filenameStem = Sk.ffi.remapToJs(filenameStem);
-    peaComponent.__vue__.downloadWAV(src, filenameStem);
+function downloadWAV(sound : RemoteSound, filenameStem : string) {
+    asyncBridge({request: "downloadWAV", sound, filenameStem});
 };
-function copy(audioBuffer) {
-    const audioContext = peaComponent.__vue__.getAudioContext();
-    const numberOfChannels = audioBuffer.numberOfChannels;
-    const copiedBuffer = audioContext.createBuffer(
-        numberOfChannels,
-        audioBuffer.length,
-        audioBuffer.sampleRate
-    );
-
-    for (let channel = 0; channel < numberOfChannels; channel++) {
-        const sourceData = audioBuffer.getChannelData(channel);
-        const targetData = copiedBuffer.getChannelData(channel);
-        targetData.set(sourceData);
-    }
-
-    return copiedBuffer;
-};
-function copyToMono(audioBuffer) {
+function copy(sound : RemoteSound) {
+    return syncBridge({request: "cloneSound", sound, toMono: false});
+}
+function copyToMono(sound: RemoteSound) {
     /*
-    // From https://gist.github.com/chrisguttandin/e49764f9c29376780f2eb1f7d22b54e4
-    const downmixContext = new OfflineAudioContext(
-        1,
-        audioBuffer.length,
-        audioBuffer.sampleRate
-    );
-    const bufferSource = new AudioBufferSourceNode(downmixContext, {
-        buffer: audioBuffer,
-    });
-    bufferSource.start(0);
-    bufferSource.connect(downmixContext.destination);
-
-    let susp = new Sk.misceval.Suspension();
-    function susp.resume () {
-        if (susp.data["error"]) {
-            throw new Sk.builtin.IOError(susp.data["error"].message);
-        }
-        return susp.ret;
-    };
-    susp.data = {
-        type: "Sk.promise",
-        promise: downmixContext.startRendering().then((b) => {
-            if (!b) {
-                susp.data["error"] = Error("Cannot convert to mono for unknown reason");
-            }
-            else  {
-                susp.ret = b;
-            }
-        }),
-    };
-    return susp;
+    
     
      */
 };

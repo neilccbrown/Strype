@@ -4,7 +4,7 @@ import { loadPyodide } from "pyodide";
 import { loadPyodideAndPackage, makeRunnerCallback, OutputPart, pyodideExpose, PyodideExtras, PyodideFatalErrorReloader } from "pyodide-worker-runner";
 import * as Comlink from "comlink";
 import { strype_bridge } from "@/stryperuntime/pyodide_bridge";
-import { AsyncStrypePyodideWorkerRequest, ResponseFor, SyncOrAsyncStrypePyodideWorkerRequest, SyncStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse } from "@/stryperuntime/worker_bridge_type";
+import { ResponseFor, SyncOrAsyncStrypePyodideWorkerRequest, SyncStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse } from "@/stryperuntime/worker_bridge_type";
 import { SpriteManager } from "@/stryperuntime/image_and_collisions";
 import { PyodideWorkerGlobalScope } from "@/workers/python_execution_type";
 

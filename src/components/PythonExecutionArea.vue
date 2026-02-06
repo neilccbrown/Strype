@@ -73,16 +73,14 @@ import scssVars from "@/assets/style/_export.module.scss";
 import {getLibraryName, getRawFileFromLibraries} from "@/helpers/libraryManager";
 import VueContext, { VueContextConstructor } from "vue-context";
 import {getDateTimeFormatted} from "@/helpers/common";
-import audioBufferToWav from "audiobuffer-to-wav";
-import { saveAs } from "file-saver";
 import {bufferToBase64} from "@/helpers/media";
-import turtleImgURL from "@/assets/images/turtle.png" ;
+import turtleImgURL from "@/assets/images/turtle.png";
 import { PyodideClient } from "pyodide-worker-runner";
 import { makeServiceWorkerChannel } from "sync-message";
 import * as Comlink from "comlink";
 import { handleErrorTrace, setSInputConsole, sInput } from "@/helpers/execPythonCode";
 import { ErrorDetails } from "@/workers/python-execution";
-import { AsyncStrypePyodideHandlerFunction, AsyncStrypePyodideWorkerRequest, decodeRGBA, encodeRGBA, isRemoteImage, SyncOrAsyncStrypePyodideWorkerRequest, SyncPromiseStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse } from "@/stryperuntime/worker_bridge_type";
+import { SyncOrAsyncStrypePyodideWorkerRequest } from "@/stryperuntime/worker_bridge_type";
 import {Renderer} from "@/stryperuntime/renderer";
 import {SoundManager} from "@/stryperuntime/sound_manager";
 import { handleAsyncRequests, handleSyncRequests } from "@/stryperuntime/main_bridge_handler";
@@ -898,12 +896,6 @@ export default Vue.extend({
             return audioContext;
         },
         
-        downloadWAV(src: AudioBuffer, filenameStem: string) : void {
-            const wavArrayBuffer = audioBufferToWav(src);
-            const blob = new Blob([wavArrayBuffer], { type: "audio/wav" });
-            saveAs(blob, `${filenameStem}_${getDateTimeFormatted(new Date(Date.now()))}.png`);
-        },
-        
         redrawCanvasIfNeeded() : void {
             // Draws canvas if anything has changed:
             if (renderer.isDirty()) {
@@ -980,15 +972,6 @@ export default Vue.extend({
                 // The target canvas can be smaller than the real one, and we want to centre it:
                 domContext.drawImage(c, (domCanvas.width - (targetCanvas?.width ?? 0)) / 2, (domCanvas.height - (targetCanvas?.height ?? 0)) / 2);
             }
-        },
-
-        
-        stopAudioBuffer(audioBuffer: AudioBuffer) : void {
-            const source = bufferToSource.get(audioBuffer);
-            if (source) {
-                source.stop();
-            }
-            // It's not an error if source is null, it either means the sound hasn't been playing, or it already finished
         },
         getLogicalMouseCoords(event: PointerEvent) {
             const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
