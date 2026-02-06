@@ -185,7 +185,25 @@ export function preparePasteMediaData(event: ClipboardEvent, callBackOnDataDimAn
             const isImage = itemType.startsWith("image");
             const isAudio = itemType.startsWith("audio");
             if (file && (isImage || isAudio)) {
-                readFileAsyncAsData(file).then(isImage ? readImageSizeFromDataURI : (s) => Promise.resolve({dataURI: s, width: -1, height: -1})).then((v) => withData({...v, itemType}));
+                readFileAsyncAsData(file).then(async (s) => {
+                    if (isImage) {
+                        let updatedItemType = itemType;
+                        if (itemType == "image/svg+xml") {
+                            // Turn the data URI back into the plain text then convert to PNG:
+                            const base64 = s.split(",")[1];
+                            const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+                            s = new TextDecoder("utf-8").decode(bytes);
+                            s = await svgToPngDataUri(s);
+                            updatedItemType = "image/png";
+                        }
+                        const imageAndSize = await readImageSizeFromDataURI(s);
+                        return {...imageAndSize, itemType: updatedItemType};
+                    }
+                    else {
+                        // It's a sound, width and height don't really exist:
+                        return {dataURI: s, width: -1, height: -1, itemType};
+                    }
+                }).then(withData);
                 return true;
             }
         }
