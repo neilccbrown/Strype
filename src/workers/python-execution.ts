@@ -13,9 +13,6 @@ declare const self: PyodideWorkerGlobalScope & { updatePort: MessagePort };
 
 async function loadOnly() : Promise<PyodideInterface> {
     const pyodide = await loadPyodideAndPackage({url: `${import.meta.env.BASE_URL}pysrc.zip`, format: "zip"}, loadPyodide);
-    // TEMP:
-    pyodide.setDebug(true);
-    console.log("Loaded pyodide and package");
     
     pyodide.registerJsModule("strype_bridge", strype_bridge);
     
