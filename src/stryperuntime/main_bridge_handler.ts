@@ -1,6 +1,6 @@
 // This file has the parts of the code which handle requests from the Pyodide worker by executing code on the main thread
 
-import { AsyncStrypePyodideHandlerFunction, decodeRGBA, encodeRGBA, isRemoteImage, makeSoundHandle, SyncPromiseStrypePyodideHandlerFunction } from "@/stryperuntime/worker_bridge_type";
+import { AsyncStrypePyodideHandlerFunction, decodeRGBA, encodeRGBA, isRemoteImage, makeSoundHandle, SpriteHandle, SyncPromiseStrypePyodideHandlerFunction } from "@/stryperuntime/worker_bridge_type";
 import { Renderer } from "@/stryperuntime/renderer";
 import { SoundManager } from "@/stryperuntime/sound_manager";
 import { drawText } from "@/helpers/textDrawing";
@@ -9,22 +9,44 @@ import type WebFont from "webfontloader";
 import { saveAs } from "file-saver";
 import { getDateTimeFormatted } from "@/helpers/common";
 
+interface SyncRequestCallbacks {
+    getPressedKeys : () => {[key: string]: boolean},
+    loadLibraryAsset : (libraryShortName: string, fileName: string) => Promise<string | undefined>,
+    switchToGraphicsTab: () => void,
+    getMouseDetails: () => {x : number, y: number, buttonsPressed: boolean[] },
+    consumeLastClickDetails: () => { x: number, y: number, button: number, clickCount: number } | null,
+    consumeLastClickedItems: () => SpriteHandle[],
+}
+
 // Takes the details we need for handling then returns a function which takes a synchronous request and gives back the response in a Promise:
-export const handleSyncRequests : (renderer : Renderer, soundManager : SoundManager, pressedKeys : {[key: string]: boolean}, loadLibraryAsset : (libraryShortName: string, fileName: string) => Promise<string | undefined>, switchToGraphicsTab: () => void) => SyncPromiseStrypePyodideHandlerFunction = (renderer, soundManager, pressedKeys, loadLibraryAsset, switchToGraphicsTab) => (req) => {
+export const handleSyncRequests : (
+    renderer : Renderer,
+    soundManager : SoundManager,
+    callbacks : SyncRequestCallbacks,
+) => SyncPromiseStrypePyodideHandlerFunction = (renderer, soundManager, callbacks) => (req) => {
     switch (req.request) {
     case "loadImage": {
-        switchToGraphicsTab();
+        callbacks.switchToGraphicsTab();
         return {request: req.request, response: renderer.loadImage(req.url)};
     }
     case "loadLibraryAsset": {
-        return {request: req.request, response: loadLibraryAsset(req.libraryShortName, req.fileName)};
+        return {request: req.request, response: callbacks.loadLibraryAsset(req.libraryShortName, req.fileName)};
     }
     case "makeOffscreenCanvas": {
-        switchToGraphicsTab();
+        callbacks.switchToGraphicsTab();
         return {request: req.request, response: Promise.resolve(renderer.makeCanvas(req.width, req.height))};
     }
     case "getPressedKeys": {
-        return {request: req.request, response: Promise.resolve(pressedKeys)};
+        return {request: req.request, response: Promise.resolve(callbacks.getPressedKeys())};
+    }
+    case "getMouseDetails": {
+        return {request: req.request, response: Promise.resolve(callbacks.getMouseDetails())};
+    }
+    case "consumeLastClickedItems": {
+        return {request: req.request, response: Promise.resolve(callbacks.consumeLastClickedItems())};
+    }
+    case "consumeLastClickDetails": {
+        return {request: req.request, response: Promise.resolve(callbacks.consumeLastClickDetails())};
     }
     case "loadSound": {
         return {request: req.request, response: soundManager.loadSound(req.url)};

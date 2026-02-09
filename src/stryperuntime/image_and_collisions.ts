@@ -13,17 +13,23 @@ export interface Sprite {
     rotation: number, // degrees
     scale: number, // 1.0 means same size as original image
     collisionBox: Box | null, // The item in the collision detection system.  Null if the object is not collidable
-    dirty: boolean,
 }
 
 export const WORLD_WIDTH = 800;
 export const WORLD_HEIGHT = 600;
 
+// The SpriteManager is primarily designed for use direct from Pyodide, on the web worker thread.  However,
+// we need to do our drawing and collision detection on the main thread.  The fastest way to do this is to mirror
+// all updates from the web worker into the main thread, and have two instances of SpriteManager; one in the web worker
+// and one in the main thread.  The web worker one uses the notify member to send updates across an async channel,
+// while the main thread passes a do-nothing function for notify, and updates solely via updates received on the async channel.
+// Be mindful when editing this class that it needs to work on both threads, and be mindful when using it as to which
+// instance of SpriteManager you're using.
 export class SpriteManager {
     // Special case: ID 0 is always the background persistent image, and inserted first in the map to make it
     // first in the iteration order.  By default it is an 800x600 white image.
     private sprites = new Map<number, Sprite>();
-    private spritesDirty = false; // This relates to whether the map has had addition/removal, need to check each entry to see whether they are dirty
+    private dirty = false; // Have their been any sprites added, removed or had their values changed since last call to resetDirty()?
     private nextSpriteId = 1;
     private collisionSystem = new System();
     // A map to be able to look up the Sprite when we find an intersecting Box during collision detection:
@@ -47,11 +53,10 @@ export class SpriteManager {
             rotation: 0,
             scale: 1.0,
             collisionBox: null,
-            dirty: true,
         };
         this.sprites.set(0, bk);
-        this.notify({request: "add", id: makeSpriteHandle(0), x: bk.x, y: bk.y, rotation: bk.rotation, scale: bk.scale, image: bk.img.handle});
-        this.spritesDirty = true;
+        this.notify({request: "add", id: makeSpriteHandle(0), x: bk.x, y: bk.y, rotation: bk.rotation, scale: bk.scale, image: bk.img, collidable: false});
+        this.dirty = true;
         this.collisionSystem.clear();
     }
     
@@ -65,20 +70,20 @@ export class SpriteManager {
     }
 
     private sendUpdateFor(p: Sprite) {
-        this.notify({request: "update", id: makeSpriteHandle(p.id), image: p.img.handle, x: p.x, y: p.y, scale: p.scale, rotation: p.rotation});
+        this.notify({request: "update", id: makeSpriteHandle(p.id), image: p.img, x: p.x, y: p.y, scale: p.scale, rotation: p.rotation, collidable: p.collisionBox != null});
     }
 
-    public addSprite(imageOrCanvas : RemoteImage | RemoteCanvas, collidable: boolean): number {
-        this.spritesDirty = true;
-        const id = this.nextSpriteId++;
+    public addSprite(imageOrCanvas : RemoteImage | RemoteCanvas, collidable: boolean, forceId?: number): number {
+        this.dirty = true;
+        const id = forceId ?? this.nextSpriteId++;
         const box = collidable ? this.collisionSystem.createBox({x:0, y:0}, imageOrCanvas.width, imageOrCanvas.height, {isCentered: true}) : null;
-        const newImage = {id, img: imageOrCanvas, x: 0, y: 0, rotation: 0, scale: 1, collisionBox : box, dirty: false};
+        const newImage = {id, img: imageOrCanvas, x: 0, y: 0, rotation: 0, scale: 1, collisionBox : box};
         this.sprites.set(id, newImage);
         if (box != null) {
             this.boxToImageMap.set(box, newImage);
         }
         
-        this.notify({request: "add", id: makeSpriteHandle(id), x: newImage.x, y: newImage.y, rotation: newImage.rotation, scale: newImage.scale, image: imageOrCanvas.handle});
+        this.notify({request: "add", id: makeSpriteHandle(id), x: newImage.x, y: newImage.y, rotation: newImage.rotation, scale: newImage.scale, image: imageOrCanvas, collidable});
         return id;
     }
 
@@ -92,7 +97,7 @@ export class SpriteManager {
             return;
         }
         
-        this.spritesDirty = true;
+        this.dirty = true;
         const box = this.sprites.get(id)?.collisionBox;
         if (box != undefined) {
             this.collisionSystem.remove(box);
@@ -108,9 +113,9 @@ export class SpriteManager {
 
     public setSpriteImage(id: number, imageOrCanvas : RemoteImage | RemoteCanvas): void {
         const obj = this.sprites.get(id);
-        if (obj != undefined) {
+        if (obj != undefined && obj.img != imageOrCanvas) {
             obj.img = imageOrCanvas;
-            obj.dirty = true;
+            this.dirty = true;
             if (obj.collisionBox != null) {
                 // To update box size, easiest to re-add:
                 this.setSpriteCollidable(id, false);
@@ -126,7 +131,7 @@ export class SpriteManager {
         if (obj != undefined && (obj.x != x || obj.y != y)) {
             obj.x = Math.max(-WORLD_WIDTH/2 + 1, Math.min(x, WORLD_WIDTH/2));
             obj.y = Math.max(-WORLD_HEIGHT/2 + 1, Math.min(y, WORLD_HEIGHT/2));
-            obj.dirty = true;
+            this.dirty = true;
             obj.collisionBox?.setPosition(x, y);
             obj.collisionBox?.updateBody();
             this.sendUpdateFor(obj);
@@ -137,7 +142,7 @@ export class SpriteManager {
         const obj = this.sprites.get(id);
         if (obj != undefined && obj.rotation != rotation) {
             obj.rotation = rotation;
-            obj.dirty = true;
+            this.dirty = true;
             obj.collisionBox?.setAngle(rotation * Math.PI / 180);
             obj.collisionBox?.updateBody();
             this.sendUpdateFor(obj);
@@ -148,7 +153,7 @@ export class SpriteManager {
         const obj = this.sprites.get(id);
         if (obj != undefined && obj.scale != scale) {
             obj.scale = scale;
-            obj.dirty = true;
+            this.dirty = true;
             obj.collisionBox?.setScale(scale);
             obj.collisionBox?.updateBody();
             this.sendUpdateFor(obj);
@@ -166,12 +171,14 @@ export class SpriteManager {
                 box.updateBody();
                 obj.collisionBox = box;
                 this.boxToImageMap.set(box, obj);
+                this.sendUpdateFor(obj);
             }
             else if (!collidable && obj.collisionBox) {
                 // Need to remove a collision box:
                 this.collisionSystem.remove(obj.collisionBox);
                 this.boxToImageMap.delete(obj.collisionBox);
                 obj.collisionBox = null;
+                this.sendUpdateFor(obj);
             }
         }
     }
@@ -207,13 +214,17 @@ export class SpriteManager {
         return obj?.scale;
     }
     
+    public markDirty() : void {
+        this.dirty = true;
+    }
+    
     public isDirty() : boolean {
-        return this.spritesDirty || Array.from(this.sprites.values()).some((p) => p.dirty);
+        return this.dirty;
     }
 
     // Note: doesn't reset the individual images' dirty state
     public resetDirty() : void {
-        this.spritesDirty = true;
+        this.dirty = false;
     }
     
     public getSprites() : IterableIterator<Sprite> {
@@ -301,6 +312,7 @@ export class SpriteManager {
         const sprite = this.sprites.get(id);
         if (sprite != null) {
             sprite.img = ensureCanvas(sprite.img);
+            this.sendUpdateFor(sprite);
             return sprite.img;
         }
         return null;

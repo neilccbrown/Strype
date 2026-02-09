@@ -48,7 +48,10 @@ export type SyncStrypePyodideWorkerRequest =
     | { request: "ensureCanvas"; img: RemoteCanvas | RemoteImage }
     | { request: "canvas_getAllPixelsRGBA"; img: RemoteCanvas }
     | { request: "canvas_drawText", img: RemoteCanvas, text: string, x: number, y: number, fontSize: number, maxWidth: number, maxHeight: number, fontName: string }
-    | { request: "getPressedKeys"}
+    | { request: "getPressedKeys" }
+    | { request: "getMouseDetails" }
+    | { request: "consumeLastClickDetails" }
+    | { request: "consumeLastClickedItems" }
     | { request: "loadSound"; url: string }
     | { request: "createEmptyMonoSound"; numSamples: number; sampleRate: number; }
     | { request: "playSoundAndWait"; sound: RemoteSound }
@@ -66,6 +69,9 @@ export type SyncStrypePyodideWorkerResponse =
     | { request: "canvas_getAllPixelsRGBA"; response: string } // See encodeRGBA/decodeRGBA below
     | { request: "canvas_drawText"; response: { width: number; height: number; } }
     | { request: "getPressedKeys"; response: {[key: string]: boolean} }
+    | { request: "getMouseDetails", response: {x : number, y: number, buttonsPressed: boolean[] } }
+    | { request: "consumeLastClickDetails", response: { x: number, y: number, button: number, clickCount: number } | null }
+    | { request: "consumeLastClickedItems", response: SpriteHandle[] }
     | { request: "loadSound"; response: RemoteSound;}
     | { request: "createEmptyMonoSound"; response: RemoteSound; }
     | { request: "playSoundAndWait"; response: boolean; } // We don't need a return value as such, we're just using the response to wait
@@ -207,9 +213,9 @@ export type AsyncStrypePyodideHandlerFunction = (req : AsyncStrypePyodideWorkerR
 // before it catches up, so I don't think it matters particularly.  We could revisit the design if it becomes a problem in practice
 export type StrypeSpriteStateUpdate =
     | {request: "clear"}
-    | {request: "add", id: SpriteHandle, x: number, y: number, rotation: number, scale: number, image: ImageHandle | CanvasHandle}
+    | {request: "add", id: SpriteHandle, x: number, y: number, rotation: number, scale: number, image: RemoteImage | RemoteCanvas, collidable: boolean}
     | {request: "remove", id: SpriteHandle}
-    | {request: "update", id: SpriteHandle, x: number, y: number, rotation: number, scale: number, image: ImageHandle | CanvasHandle}
+    | {request: "update", id: SpriteHandle, x: number, y: number, rotation: number, scale: number, image: RemoteImage | RemoteCanvas, collidable: boolean}
 ;
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

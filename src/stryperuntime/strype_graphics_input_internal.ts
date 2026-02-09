@@ -5,31 +5,26 @@
 // These functions are not directly exposed to users, but are used by graphics.py to
 // form the actual public API.
 import { PyodideWorkerGlobalScope, syncBridge } from "@/workers/python_execution_type";
+import { SpriteHandle } from "@/stryperuntime/worker_bridge_type";
 
 declare const globalThis: PyodideWorkerGlobalScope;
 
-function getAndResetClickedItem() {
-    const all = peaComponent.__vue__.consumeLastClickedItems();
-    for (let i = all.length - 1; i >= 0; i--) {
-        let assoc = all[i].associatedObject;
-        // We don't have an associatedObject for some Sprite, e.g. the say speech bubbles.
-        if (assoc) {
-            // This already is a Python object so mustn't remap:
-            return assoc;
-        }
-    }
-    return Sk.ffi.remapToPy(null);
+export function getAndResetClickedItems() : number[] {
+    return syncBridge({request: "consumeLastClickedItems"}).map((h : SpriteHandle) => h.handle);
 }
-function getAndResetClickDetails() {
-    const d = peaComponent.__vue__.consumeLastClickDetails();
-    // Should be an array of four numbers so no special mapping consideration needed:
-    return Sk.ffi.remapToPy(d);
+export function getAndResetClickDetails() : number[] | undefined {
+    const d = syncBridge({request: "consumeLastClickDetails"});
+    if (d == null) {
+        return undefined;
+    }
+    // Flatten it to array for easy return to Python:
+    return [d.x, d.y, d.button, d.clickCount];
 }
 
-function getMouseDetails() {
-    const d = peaComponent.__vue__.getMouseDetails();
-    // Should be an array of two numbers and a boolean array so need special mapping consideration:
-    return new Sk.builtin.list([Sk.ffi.remapToPy(d[0]), Sk.ffi.remapToPy(d[1]), Sk.ffi.remapToPy(d[2])]);
+export function getMouseDetails() : [number, number, boolean[]] {
+    const d = syncBridge({request: "getMouseDetails"});
+    // Should be an array of two numbers and a boolean array:
+    return [d.x, d.y, d.buttonsPressed];
 }
 
 export function getPressedKeys() : {[key: string]: boolean} {

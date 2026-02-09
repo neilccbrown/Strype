@@ -63,7 +63,7 @@ import { mapStores } from "pinia";
 import {adjustContextMenuPosition, checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getStrypeCommandComponentRefId, hasPrecompiledCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight} from "@/helpers/editor";
 import i18n from "@/i18n";
 import {defaultEmptyStrypeLayoutDividerSettings, Position, PythonExecRunningState, StrypePEALayoutData, StrypePEALayoutMode} from "@/types/types";
-import { Sprite, WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
+import { WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
 import Menu from "@/components/Menu.vue";
 import CommandsComponent from "@/components/Commands.vue";
 import SVGIcon from "@/components/SVGIcon.vue";
@@ -80,7 +80,7 @@ import { makeServiceWorkerChannel } from "sync-message";
 import * as Comlink from "comlink";
 import { handleErrorTrace, setSInputConsole, sInput } from "@/helpers/execPythonCode";
 import { ErrorDetails } from "@/workers/python-execution";
-import { SyncOrAsyncStrypePyodideWorkerRequest } from "@/stryperuntime/worker_bridge_type";
+import { SpriteHandle, SyncOrAsyncStrypePyodideWorkerRequest } from "@/stryperuntime/worker_bridge_type";
 import {Renderer} from "@/stryperuntime/renderer";
 import {SoundManager} from "@/stryperuntime/sound_manager";
 import { handleAsyncRequests, handleSyncRequests } from "@/stryperuntime/main_bridge_handler";
@@ -92,9 +92,9 @@ let domContext : CanvasRenderingContext2D | null = null;
 let targetContext : OffscreenCanvasRenderingContext2D | null = null;
 let targetCanvas : OffscreenCanvas | null = null;
 let audioContext : AudioContext | null = null; // Important we don't initialise here, for permission reasons
-let mostRecentClickedItems : Sprite[] = []; // All the items under the mouse cursor at last click
-let mostRecentClickDetails : number[] | null = null; // Array of four numbers: x, y, button, click_count
-let mostRecentMouseDetails : [number, number, [boolean, boolean, boolean]] = [0, 0, [false, false, false]]; // X, Y, three button states
+let mostRecentClickedItems : SpriteHandle[] = []; // All the items under the mouse cursor at last click
+let mostRecentClickDetails : { x: number, y: number, button: number, clickCount: number } | null = null; // x, y, button, click_count
+let mostRecentMouseDetails : {x: number, y: number, buttonsPressed: boolean[]} = {x:0, y:0, buttonsPressed: [false, false, false]}; // X, Y, three button states
 let pressedKeys : {[key: string]: boolean} = {};
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
 
@@ -547,7 +547,7 @@ export default Vue.extend({
                 // Clear input:
                 mostRecentClickedItems = [];
                 mostRecentClickDetails = null;
-                mostRecentMouseDetails = [0, 0, [false, false, false]];
+                mostRecentMouseDetails = {x: 0, y: 0, buttonsPressed: [false, false, false]};
                 pressedKeys = {};
                 window.addEventListener("keydown", this.graphicsCanvasKeyDown);
                 window.addEventListener("keyup", this.graphicsCanvasKeyUp);
@@ -569,9 +569,16 @@ export default Vue.extend({
                 if (this.pythonClient != null) {
                     const client = this.pythonClient;
                     
-                    const syncBridgePromise = handleSyncRequests(renderer, soundManager as SoundManager, pressedKeys, this.loadLibraryAsset, () => {
-                        this.isRunningStrypeGraphics = true;
-                        this.peaDisplayTabIndex = PEATabIndexes.graphics;
+                    const syncBridgePromise = handleSyncRequests(renderer, soundManager as SoundManager, {
+                        getPressedKeys: () => pressedKeys,
+                        loadLibraryAsset: this.loadLibraryAsset,
+                        switchToGraphicsTab: () => {
+                            this.isRunningStrypeGraphics = true;
+                            this.peaDisplayTabIndex = PEATabIndexes.graphics;
+                        },
+                        getMouseDetails: this.getMouseDetails,
+                        consumeLastClickedItems: this.consumeLastClickedItems,
+                        consumeLastClickDetails: this.consumeLastClickDetails,
                     });
                     
                     const asyncBridge = handleAsyncRequests(renderer, soundManager as SoundManager);
@@ -586,62 +593,60 @@ export default Vue.extend({
                         });
                     }
                     
-                    renderer.initialise().then(() => {
-                        (client.call(
-                            client.workerProxy.executePython,
-                            userCode,
-                            Comlink.proxy((output: string) => {
-                                pythonConsole.value = pythonConsole.value + output;
-                            }),
-                            Comlink.proxy((prompt: string) => {
-                                sInput(prompt).then(async (s : string) => {
-                                    // We send the output back via writeMessage rather than a direct return:
+                    (client.call(
+                        client.workerProxy.executePython,
+                        userCode,
+                        Comlink.proxy((output: string) => {
+                            pythonConsole.value = pythonConsole.value + output;
+                        }),
+                        Comlink.proxy((prompt: string) => {
+                            sInput(prompt).then(async (s : string) => {
+                                // We send the output back via writeMessage rather than a direct return:
+                                await navigator.serviceWorker.ready;
+                                try {
+                                    await client.writeMessage(s);
+                                }
+                                catch (e) {
+                                    console.error(e);
+                                }
+                            });
+                        }),
+                        Comlink.proxy((asreq : SyncOrAsyncStrypePyodideWorkerRequest) => serialize(() => { 
+                            if (asreq.kind == "async") {
+                                asyncBridge(asreq.request);
+                            }
+                            else {
+                                const req = asreq.request;
+                                const resp = syncBridgePromise(req);
+                                if (req.request != resp.request) {
+                                    console.error(`Internal error: request ${req.request} did not match the response ${resp.request}`);
+                                }
+                                resp.response.then(async (r: any) => {
                                     await navigator.serviceWorker.ready;
                                     try {
-                                        await client.writeMessage(s);
+                                        await client.writeMessage({request: resp.request, response: r});
+                                    }
+                                    catch (e) {
+                                        console.error(e);
+                                    }
+                                }).catch(async (err) => {
+                                    await navigator.serviceWorker.ready;
+                                    try {
+                                        await client.writeMessage({request: resp.request, error: err.toString()});
                                     }
                                     catch (e) {
                                         console.error(e);
                                     }
                                 });
-                            }),
-                            Comlink.proxy((asreq : SyncOrAsyncStrypePyodideWorkerRequest) => serialize(() => { 
-                                if (asreq.kind == "async") {
-                                    asyncBridge(asreq.request);
-                                }
-                                else {
-                                    const req = asreq.request;
-                                    const resp = syncBridgePromise(req);
-                                    if (req.request != resp.request) {
-                                        console.error(`Internal error: request ${req.request} did not match the response ${resp.request}`);
-                                    }
-                                    resp.response.then(async (r: any) => {
-                                        await navigator.serviceWorker.ready;
-                                        try {
-                                            await client.writeMessage({request: resp.request, response: r});
-                                        }
-                                        catch (e) {
-                                            console.error(e);
-                                        }
-                                    }).catch(async (err) => {
-                                        await navigator.serviceWorker.ready;
-                                        try {
-                                            await client.writeMessage({request: resp.request, error: err.toString()});
-                                        }
-                                        catch (e) {
-                                            console.error(e);
-                                        }
-                                    });
-                                }
-                            }))
-                        ) as Promise<ErrorDetails | null>).then((possibleError) => {
-                            if (possibleError != null) {
-                                handleErrorTrace(possibleError.text, possibleError.traceback, () => {}, parser.getFramePositionMap());
                             }
-                            useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
-                            this.isRunningStrypeGraphics = false;
-                            setPythonExecAreaLayoutButtonPos();
-                        });
+                        }))
+                    ) as Promise<ErrorDetails | null>).then((possibleError) => {
+                        if (possibleError != null) {
+                            handleErrorTrace(possibleError.text, possibleError.traceback, () => {}, parser.getFramePositionMap());
+                        }
+                        useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
+                        this.isRunningStrypeGraphics = false;
+                        setPythonExecAreaLayoutButtonPos();
                     });
                 }
 
@@ -861,7 +866,7 @@ export default Vue.extend({
             this.isRunningStrypeGraphics = false;
             pressedKeys = {};
             // Important not to use the accessor here as that will switch to the tab:
-            //SpriteManager.clear();
+            renderer.clear();
             this.redrawCanvas();
         },
         
@@ -996,10 +1001,11 @@ export default Vue.extend({
 
             if (adjustedX >= -graphicsCanvasLogicalWidth / 2 && adjustedX <= graphicsCanvasLogicalWidth / 2 - 1 &&
                 adjustedY >= -graphicsCanvasLogicalHeight / 2 && adjustedY <= graphicsCanvasLogicalHeight / 2 - 1) {
-                // TODO
-                //mostRecentClickedItems = this.getSpriteManager().calculateAllOverlappingAtPos(adjustedX, adjustedY);
-                mostRecentClickDetails = [adjustedX, adjustedY, event.button, event.detail];
-                mostRecentMouseDetails[2][event.button] = true;
+                mostRecentClickedItems = renderer.calculateAllOverlappingAtPos(adjustedX, adjustedY);
+                mostRecentClickDetails = {x: adjustedX, y: adjustedY, button: event.button, clickCount: event.detail};
+                if (event.button < mostRecentMouseDetails.buttonsPressed.length) {
+                    mostRecentMouseDetails.buttonsPressed[event.button] = true;
+                }
             }
             
             // If we're running, don't propagate it into a right-click menu, for example:
@@ -1013,24 +1019,26 @@ export default Vue.extend({
             const {adjustedX, adjustedY} = this.getLogicalMouseCoords(event);
             if (adjustedX >= -graphicsCanvasLogicalWidth / 2 && adjustedX <= graphicsCanvasLogicalWidth / 2 - 1 &&
                 adjustedY >= -graphicsCanvasLogicalHeight / 2 && adjustedY <= graphicsCanvasLogicalHeight / 2 - 1) {
-                mostRecentMouseDetails[0] = adjustedX;
-                mostRecentMouseDetails[1] = adjustedY;
+                mostRecentMouseDetails.x = adjustedX;
+                mostRecentMouseDetails.y = adjustedY;
             }
         },
         graphicsCanvasMouseUp(event: PointerEvent) {
-            mostRecentMouseDetails[2][event.button] = false;
+            if (event.button < mostRecentMouseDetails.buttonsPressed.length) {
+                mostRecentMouseDetails.buttonsPressed[event.button] = false;
+            }
         },
-        consumeLastClickedItems() : Sprite[] {
+        consumeLastClickedItems() : SpriteHandle[] {
             const r = mostRecentClickedItems;
             mostRecentClickedItems = [];
             return r;
         },
-        consumeLastClickDetails() : number[] | null {
+        consumeLastClickDetails() : { x: number, y: number, button: number, clickCount: number } | null {
             const d = mostRecentClickDetails;
             mostRecentClickDetails = null;
             return d;
         },
-        getMouseDetails(): [number, number, [boolean, boolean, boolean]] {
+        getMouseDetails(): {x: number, y: number, buttonsPressed: boolean[]} {
             return mostRecentMouseDetails;
         },
         graphicsCanvasKeyDown(event: KeyboardEvent) {
