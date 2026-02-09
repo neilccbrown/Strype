@@ -243,7 +243,8 @@ export function canvas_drawText(img : RemoteCanvas, text : string, x : number, y
     else {
         fontName = sayFont;
     }
-    return syncBridge({request: "canvas_drawText", img, text, x, y, fontSize, maxWidth, maxHeight, fontName});
+    const widthHeight = syncBridge({request: "canvas_drawText", img, text, x, y, fontSize, maxWidth, maxHeight, fontName});
+    return [widthHeight.width, widthHeight.height];
 }
 
 export function canvas_downloadPNG(src : RemoteCanvas, filenameStem : string) {
