@@ -1,12 +1,13 @@
 import {makeSoundHandle, RemoteSound} from "@/stryperuntime/worker_bridge_type";
 import audioBufferToWav from "audiobuffer-to-wav";
 
+// A main thread class for handling all the sounds which Python code has asked us to load or play or stop
 export class SoundManager {
     private audioContext : AudioContext;
     private loadedSounds: AudioBuffer[] = [];
     private bufferToSource = new Map<AudioBuffer, AudioBufferSourceNode>(); // Used to stop playing sounds
     
-    constructor(private ctx: AudioContext) {
+    constructor(ctx: AudioContext) {
         this.audioContext = ctx;
     }
     

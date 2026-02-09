@@ -60,6 +60,8 @@ export type SyncStrypePyodideWorkerRequest =
 ;
 
 // All types above should map into this type:
+// Note that if there is an error, it is sent with an "error" string field; we can't easily specify this in the type without
+// cluttering it up (as the error could be for any request) so we do that part dynamically without telling Typescript.
 export type SyncStrypePyodideWorkerResponse =
     | { request: "loadImage"; response: RemoteImage;}
     | { request: "loadLibraryAsset"; response: string | undefined; }
@@ -111,6 +113,7 @@ type CheckSyncStrypePyodideWorkerResponse = Expect<IsSerializable<SyncStrypePyod
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 type CheckAsyncStrypePyodideWorkerRequest = Expect<IsSerializable<AsyncStrypePyodideWorkerRequest>>;
 
+// We combine sync and async requests into one object for a call to the handler function:
 export type SyncOrAsyncStrypePyodideWorkerRequest =
     | { kind: "sync", request: SyncStrypePyodideWorkerRequest }
     | { kind: "async", request: AsyncStrypePyodideWorkerRequest }
@@ -127,6 +130,7 @@ export function decodeRGBA(str: string): Uint8ClampedArray {
     return u8;
 }
 
+// Opposite of decodeRGBA above
 export function encodeRGBA(u8: Uint8ClampedArray): string {
     const chunk = 0x8000;
     const parts: string[] = [];

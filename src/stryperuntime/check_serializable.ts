@@ -1,5 +1,7 @@
-
-// All the types must be serialisable via JSON, so we verify this:
+// All the types in our Pyodide web worker <-> main thread protocol must be serialisable via JSON, so we verify this
+// using helpers in this file.
+// Typescript can almost do this, but not quite as cleanly as you'd like.  First we give whitelisted
+// definitely-serialisable items:
 type SerializablePrimitive =
     | string
     | number
@@ -31,6 +33,8 @@ type NotSerializable<T> = {
     TYPE: T;
 };
 
+// Checks if type is whitelisted, and if so it's fine, otherwise blacklisted is definitely bad, otherwise
+// check if it's an object that all its members are serialisable (which will recurse if necessary).
 type VerifySerializable<T> =
     T extends SerializablePrimitive
         ? T

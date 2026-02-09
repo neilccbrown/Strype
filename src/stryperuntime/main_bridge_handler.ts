@@ -1,14 +1,16 @@
-// This file has the parts of the code which handle requests from the Pyodide worker by executing code on the main thread
+// This file has the parts of the code which executes on the main thread to handle requests from the Pyodide web worker
 
 import { AsyncStrypePyodideHandlerFunction, decodeRGBA, encodeRGBA, isRemoteImage, makeSoundHandle, SpriteHandle, SyncPromiseStrypePyodideHandlerFunction } from "@/stryperuntime/worker_bridge_type";
 import { Renderer } from "@/stryperuntime/renderer";
 import { SoundManager } from "@/stryperuntime/sound_manager";
 import { drawText } from "@/helpers/textDrawing";
-// We only import the type because the library itself is loaded from index.html 
+// We only import the type because the library itself is loaded from index.html: 
 import type WebFont from "webfontloader";
 import { saveAs } from "file-saver";
 import { getDateTimeFormatted } from "@/helpers/common";
 
+// These are callbacks passed from PythonExecutionArea.vue to do things that are tied to the DOM or wider Strype state.
+// This means we don't have to make reference to the PythonExecutionArea component itself.
 interface SyncRequestCallbacks {
     getPressedKeys : () => {[key: string]: boolean},
     loadLibraryAsset : (libraryShortName: string, fileName: string) => Promise<string | undefined>,
@@ -113,7 +115,7 @@ export const handleSyncRequests : (
     }
 };
 
-// Ironically, almost all the "async" (fire-and-forget) requests are executed synchronously in one step, it's just that we don't need to know the result 
+// Ironically, almost all the "Async" (fire-and-forget) requests are executed synchronously in one step, it's just that we don't need to know the result 
 export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundManager) => AsyncStrypePyodideHandlerFunction = (renderer, soundManager) => (req) => {
     switch (req.request) {
     case "canvas_setFill": {

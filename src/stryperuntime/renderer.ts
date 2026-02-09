@@ -1,8 +1,9 @@
-// This is the mirror of SpriteManager that lives on another thread, listens to updates and
-// updates local state to allow rendering:
 import { CanvasHandle, ImageHandle, isRemoteImage, makeCanvasHandle, makeImageHandle, makeSpriteHandle, RemoteCanvas, RemoteImage, SpriteHandle, StrypeSpriteStateUpdate } from "@/stryperuntime/worker_bridge_type";
 import { SpriteManager } from "@/stryperuntime/image_and_collisions";
 
+// A main thread class which keeps a SpriteManager that mirrors the state from the Pyodide web worker thread, and
+// also has the actual ImageBitmap/OffscreenCanvas object references.  When asked, can render its mirror of the 
+// Pyodide web worker state by combining all this together.
 export class Renderer  {
     // Always has a single black 808x606 image first for the default background:
     private loadedImages : ImageBitmap[]  = [];
@@ -10,7 +11,8 @@ export class Renderer  {
     // Mirrored (as in echoed, not as in horizontally flipped) from the Pyodide thread:
     // The image/canvas handles here are not "remote", they are an index into the loadedImages/canvases arrays above
     // We need to use SpriteManager rather than just a simple map because we need the collision detection to also
-    // run on the main thread to ask about which sprites were under mouse clicks.
+    // run on the main thread to ask about which sprites were under mouse clicks.  The dirty state is also held
+    // by the SpriteManager, and set to dirty when we get an update, but cleared when we render:
     private sprites : SpriteManager; 
     
     constructor(recvUpdates: MessagePort) {

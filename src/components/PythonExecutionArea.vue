@@ -88,6 +88,8 @@ import { handleAsyncRequests, handleSyncRequests } from "@/stryperuntime/main_br
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
 
+// It is awkward to have complex non-reactive types as members of the PythonExecutionArea component, and since
+// there is only ever one component, we can just have them as top-level members:
 let domContext : CanvasRenderingContext2D | null = null;
 let targetContext : OffscreenCanvasRenderingContext2D | null = null;
 let targetCanvas : OffscreenCanvas | null = null;
@@ -98,6 +100,7 @@ let mostRecentMouseDetails : {x: number, y: number, buttonsPressed: boolean[]} =
 let pressedKeys : {[key: string]: boolean} = {};
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
 
+// The channel used to send Sprite updates asynchronously, outside of the main requests:
 const updateChannel = new MessageChannel();
 // We initialise this out here to make it load earlier:
 const pythonWorker = new Worker(new URL("@/workers/python-execution.ts", import.meta.url), {type: "module"});
@@ -105,7 +108,7 @@ const pythonWorker = new Worker(new URL("@/workers/python-execution.ts", import.
 pythonWorker.postMessage({updatePort: updateChannel.port1}, [updateChannel.port1]);
 
 const renderer = new Renderer(updateChannel.port2);
-let soundManager : SoundManager | null = null;
+let soundManager : SoundManager | null = null; // Can't initialise this year as we need permissions for audio context
 
 // We draw our actual graphics canvas (for strype.graphics) at the size it is on the page,
 // given the 4:3 aspect ratio.  But we also have a logical size that is constant, which is 800x600.
@@ -473,7 +476,7 @@ export default Vue.extend({
             case PythonExecRunningState.NotRunning:
                 useStore().pythonExecRunningState = PythonExecRunningState.Running;
                 // Important to call this when responding to a click, because browser won't allow
-                // sound to start unless we create it in response to a user action:
+                // sound to start unless we create it in direct response to a user action:
                 audioContext = new AudioContext();
                 soundManager = new SoundManager(audioContext);
                 this.execPythonCode();

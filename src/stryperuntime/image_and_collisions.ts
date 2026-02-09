@@ -7,7 +7,7 @@ import {makeImageHandle, makeSpriteHandle, RemoteCanvas, RemoteImage, StrypeSpri
 //   - The background of the world is a Sprite but has no corresponding Actor.
 export interface Sprite {
     id: number,
-    img: RemoteImage | RemoteCanvas,
+    img: RemoteImage | RemoteCanvas, // Can be read-only (RemoteImage) or writable (RemoteCanvas)
     x: number,
     y: number,
     rotation: number, // degrees
