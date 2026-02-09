@@ -1,14 +1,9 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-// Disabled until we convert to Typescript and export everything
-
 // This file contains the internal sound/music API for Strype.
 // These functions are not directly exposed to users, but are used by sound.py to
 // form the actual public API.
 
-import {RemoteSound, SyncStrypePyodideHandlerFunction} from "@/stryperuntime/worker_bridge_type";
-import { asyncBridge, PyodideWorkerGlobalScope, syncBridge } from "@/workers/python_execution_type";
-
-declare const globalThis: PyodideWorkerGlobalScope;
+import {RemoteSound} from "@/stryperuntime/worker_bridge_type";
+import { asyncBridge, syncBridge } from "@/workers/python_execution_type";
 
 export function startAudioBuffer(sound : RemoteSound) : void {
     asyncBridge({request: "startSound", sound});

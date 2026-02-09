@@ -1,8 +1,9 @@
+// A least-recently-used cache that evicts old keys when we reach the specified number of items in the cache.
 // Adapted from https://stackoverflow.com/questions/996505/lru-cache-implementation-in-javascript
 export class LRU<K extends string | number, V> {
-    max : number;
-    cache : Map<K, V>;
-    onEvict : (key: K, value: V) => void;
+    max : number; // The maximum number of items to keep in cache
+    cache : Map<K, V>; // The actual cache
+    onEvict : (key: K, value: V) => void; // Run this when we evict an item from the cache
     constructor(max = 10, onEvict : (key: K, value: V) => void = () => {}) {
         this.max = max;
         this.cache = new Map();
@@ -27,7 +28,7 @@ export class LRU<K extends string | number, V> {
         }
         // evict oldest
         else if (this.cache.size === this.max) {
-            const evictKey = this.firstKey();
+            const evictKey = this.oldestKey();
             const evictVal = this.cache.get(evictKey);
             this.cache.delete(evictKey);
             if (evictVal !== undefined) {
@@ -46,7 +47,8 @@ export class LRU<K extends string | number, V> {
         this.cache.delete(key);
     }
 
-    firstKey() : K {
+    // Used to find the oldest key, to evict.  Oldest one is first one added, which is first in Map:
+    oldestKey() : K {
         return this.cache.keys().next().value;
     }
 }

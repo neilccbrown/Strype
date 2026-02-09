@@ -425,8 +425,7 @@ class Image:
         # download of 100 files before they realised what has happened.  I'm not sure if browsers will
         # protect against this.  So we protect against this by limiting downloads to only happening every
         # 2 seconds.  It's easier to do this on the Python side than on the Javascript side (where we'd have
-        # to mess with promises and Skulpt suspensions.  This is already wrapped up into the Python time
-        # module anyway:        
+        # to mess with promises and so on.  This is already wrapped up into the Python time module anyway:        
         now = _time.time()
         # If it's less than 2 seconds since last download, wait:
         if now < Image.__last_download + 2:

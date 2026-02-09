@@ -1,10 +1,7 @@
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-unused-vars */
-// Disabled until we convert to Typescript and export everything
-
 // This file contains the internal graphics API for the Strype graphics world.
 // These functions are not directly exposed to users, but are used by graphics.py to
 // form the actual public API.
-import { decodeRGBA, encodeRGBA, isRemoteImage, makeCanvasHandle, RemoteCanvas, RemoteImage, SyncStrypePyodideHandlerFunction } from "./worker_bridge_type";
+import { decodeRGBA, encodeRGBA, isRemoteImage, RemoteCanvas, RemoteImage } from "./worker_bridge_type";
 import { asyncBridge, PyodideWorkerGlobalScope, syncBridge } from "@/workers/python_execution_type";
 import { PyProxy } from "pyodide/ffi";
 import { DebouncedFunc, throttle } from "lodash";
@@ -12,17 +9,23 @@ import { LRU } from "@/helpers/lruCache";
 import { sayFont } from "@/helpers/textDrawing";
 
 
-// Saves the pixels for the last three images
+// Saves the pixels for the last three images that have been read from.  This speeds up get_pixel/set_pixel loops
+// over an Image quite a bit (although still slow if in a tight loop as even Javascript calls carry overhead).
+// We evict from this cache if we use any Canvas methods as it changes pixels outside of our purview.
 // Note that although the type is DebouncedFunc, we use throttle not debounce (see cachePixelsOf below)
 // We don't need a dirty flag because each markDirty call queues up update(), and we don't need a separate dirty flag.
 type CachedPixels = { width: number; height: number; pixelsRGBA: Uint8ClampedArray, update: DebouncedFunc<() => void> };
 const pixelsCache = new LRU<number, CachedPixels>(3, (key, value) => value.update.flush());
 
+// Called if we are about to draw on an image using a canvas, e.g. drawing a line, a circle, filling, clearing.  This
+// will mean our pixel cache is completely invalid in ways we usually can't predict (we don't want to try to also
+// draw the circle in the RGBA array for the image; we just refetch again from main thread later if needed).
 function aboutToDrawOnImage(img : RemoteCanvas) : void {
     // Evict automatically flushes the pixels if we have a dirty cache, then removes from cache:
     pixelsCache.evict(img.handle.handle);
 }
 
+// Caches the full pixels of an image from the main thread into our cache here on the web worker thread.
 function cachePixelsOf(img: RemoteCanvas) : CachedPixels {
     const existing = pixelsCache.get(img.handle.handle);
     if (existing !== undefined) {
@@ -47,6 +50,7 @@ function cachePixelsOf(img: RemoteCanvas) : CachedPixels {
     return data;
 }
 
+// Mark the cache as dirty (i.e. we have changed it at our end, and we need to send to main thread). 
 function markDirty(canvas: RemoteCanvas, img: CachedPixels) {
     // All we need to do here is queue up an invocation of the update() function:
     img.update();
@@ -56,11 +60,8 @@ declare const globalThis: PyodideWorkerGlobalScope;
 
 // There is no standard way in HTML to synchronously load images,
 // but we need to be able to do this in order to use the image's attributes
-// (particularly its width and height) after loading.  So we use Skulpt's
-// suspension mechanism to pause Skulpt execution until the promise which loads
-// the image has executed.  This effectively makes it seem like the user
-// code has loaded the image synchronously.
-// This code is adapted from Skulpt's src/lib/image.js
+// (particularly its width and height) after loading.  So we use have to
+// use a Sync request to the main thread to do it async on our behalf:
 export function loadAndWaitForImage(filename: string) : RemoteImage {
     // Try to detect if it's a relative path or absolute URL.  We are fairly lenient
     // and permissive, so our rule is: if it starts with http: or https: or // we 
@@ -91,7 +92,7 @@ export function loadAndWaitForImage(filename: string) : RemoteImage {
         return syncBridge({request: "loadImage", url: "./graphics_images/" + filename});
     }
 }
-export function setBackground(img : RemoteImage) {
+export function setBackground(img : RemoteImage) : void {
     globalThis.spriteManager.setBackground(img);
 } 
 export function addSprite(image: RemoteImage, collidable: boolean) : number {
@@ -153,7 +154,7 @@ export function htmlImageToCanvas(imageElement : RemoteImage) : RemoteCanvas {
 export function getCanvasDimensions(img : RemoteCanvas) : number[] {
     return [img.width, img.height];
 }
-export function canvas_fillWhole(img: RemoteCanvas) {
+export function canvas_fillWhole(img: RemoteCanvas) : void {
     aboutToDrawOnImage(img);
     asyncBridge({request:"canvas_fillWhole", img});
 }
@@ -161,14 +162,14 @@ export function canvas_clearRect(img: RemoteCanvas, x : number, y : number, widt
     aboutToDrawOnImage(img);
     asyncBridge({request:"canvas_clearRect", img, x, y, width, height});
 }
-export function canvas_setFill(img : RemoteCanvas, color : string | null) {
+export function canvas_setFill(img : RemoteCanvas, color : string | null) : void {
     // Note 8 zeroes: this is fully transparent, not black:
     asyncBridge({request:"canvas_setFill", img, fill: color ?? "#00000000"});
 }
-export function canvas_setStroke(img : RemoteCanvas, color : string | null) {
+export function canvas_setStroke(img : RemoteCanvas, color : string | null) : void {
     asyncBridge({request:"canvas_setStroke", img, stroke: color ?? "#00000000"});
 }
-export function canvas_getPixel(img : RemoteCanvas, x : number, y : number) {
+export function canvas_getPixel(img : RemoteCanvas, x : number, y : number) : number[] {
     // We cache as it's rare that a call to this is isolated; usually it's in a loop:
     const cache = cachePixelsOf(img);
     const baseIndex = (y * img.width + x) * 4; // RGBA are 4 values per pixel 
@@ -208,7 +209,7 @@ export function canvas_line(img: RemoteCanvas, x : number, y : number, x2 : numb
     aboutToDrawOnImage(img);
     asyncBridge({request: "canvas_drawLine", img, x, y, x2, y2});
 }
-export function canvas_roundedRect(img : RemoteCanvas, x : number, y : number, width : number, height : number, cornerSize : number) {
+export function canvas_roundedRect(img : RemoteCanvas, x : number, y : number, width : number, height : number, cornerSize : number) : void {
     aboutToDrawOnImage(img);
     asyncBridge({request: "canvas_drawRoundedRect", img, x, y, width, height, cornerSize});
 }
@@ -226,7 +227,7 @@ export function polygon_xy_pairs(img : RemoteCanvas, xyPairs : PyProxy) : void {
     asyncBridge({request: "canvas_drawPolygon", img, xyPairs: xyPairsPlain});
 }
 
-export function canvas_loadFont(provider : string, fontName : string) {
+export function canvas_loadFont(provider : string, fontName : string) : boolean {
     return syncBridge({request: "loadFont", provider, fontName});
 }
 
@@ -247,7 +248,7 @@ export function canvas_drawText(img : RemoteCanvas, text : string, x : number, y
     return [widthHeight.width, widthHeight.height];
 }
 
-export function canvas_downloadPNG(src : RemoteCanvas, filenameStem : string) {
+export function canvas_downloadPNG(src : RemoteCanvas, filenameStem : string) : void {
     // Force flush any pending pixel writes without evicting:
     const cached = pixelsCache.get(src.handle.handle);
     if (cached) {
