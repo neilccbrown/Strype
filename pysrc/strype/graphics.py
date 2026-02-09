@@ -892,6 +892,8 @@ def get_mouse():
     c = _strype_input_internal.getMouseDetails()
     return _MouseDetails(c[0], c[1], c[2][0], c[2][1], c[2][2])
 
+_cached_pressed_keys = {}
+_last_pressed_keys_fetch = 0
 
 def key_pressed(keyname):
     # type: (str) -> bool
@@ -905,7 +907,16 @@ def key_pressed(keyname):
     :param keyname: The name of the key to check.
     :return: True if the key is currently pressed down, False otherwise.
     """
-    return _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys().to_py())[keyname.lower()]
+    
+    # We cache this to avoid expensive round trips to the other thread.  We cache in Python
+    # to even avoid the overhead of a Javascript call when possible, as this function might be called multiple
+    # times in each animation frame:
+    now = round(_time.time() * 1000)
+    # If they do a 30 fps game we'll fetch once per animation frame, more often than that (or multiple times in same frame) and we'll use cache:
+    if now - _last_pressed_keys_fetch > 30:
+        _cached_pressed_keys = _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys().to_py())
+        _last_pressed_keys_fetch = now
+    return _cached_pressed_keys[keyname.lower()]
 
 def set_background(image_or_color, scale_to_fit = False):
     # type: (Image | str, bool) -> None

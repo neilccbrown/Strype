@@ -33,7 +33,6 @@ function getMouseDetails() {
 }
 
 export function getPressedKeys() : {[key: string]: boolean} {
-    // TODO cache this for a limited time
     return syncBridge({request: "getPressedKeys"});
 }
 
