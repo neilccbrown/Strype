@@ -299,8 +299,8 @@ class Image:
             loaded = _strype_graphics_internal.canvas_loadFont("google", font_family)
             if not loaded:
                 raise Exception("Could not load font " + font_family)
-        dim = _strype_graphics_internal.canvas_drawText(self.__image, text, x, y, font_size, max_width, max_height, font_family).to_py()
-        return _Dimension(dim['width'], dim['height'])
+        dim = _strype_graphics_internal.canvas_drawText(self.__image, text, x, y, font_size, max_width, max_height, font_family)
+        return _Dimension(dim[0], dim[1])
         
     def draw_rounded_rect(self, x, y, width, height, corner_size = 10):
         # type: (float, float, float, float, float) -> None
