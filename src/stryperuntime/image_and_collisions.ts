@@ -1,5 +1,5 @@
 import {System, Box, Point} from "detect-collisions";
-import {makeImageHandle, makeSpriteHandle, RemoteCanvas, RemoteImage, StrypeSpriteStateUpdate} from "@/stryperuntime/worker_bridge_type";
+import {isRemoteImage, makeImageHandle, makeSpriteHandle, RemoteCanvas, RemoteImage, StrypeSpriteStateUpdate} from "@/stryperuntime/worker_bridge_type";
 
 // A Sprite is an item with an image, X Y position and rotation that is drawn on screen.
 // Note that there is not a 1-to-1 correspondence between Actors and Sprites because:
@@ -311,8 +311,10 @@ export class SpriteManager {
     public editImage(id : number, ensureCanvas : (r : RemoteImage | RemoteCanvas) => RemoteCanvas) : RemoteCanvas | null {
         const sprite = this.sprites.get(id);
         if (sprite != null) {
-            sprite.img = ensureCanvas(sprite.img);
-            this.sendUpdateFor(sprite);
+            if (isRemoteImage(sprite.img)) {
+                sprite.img = ensureCanvas(sprite.img);
+                this.sendUpdateFor(sprite);
+            }
             return sprite.img;
         }
         return null;
