@@ -104,8 +104,9 @@ export type AsyncStrypePyodideWorkerRequest =
     | { request: "downloadWAV"; sound: RemoteSound; filenameStem: string }
 ;
 
-// These are not used so we need to disable warnings, but they give errors if we've messed up above and tried
-// to send a type we are not allowed to send:
+// These "types" are not used so we need to disable warnings.  Really they are not types but rather
+// tests/assertions about other types. These lines will give errors if we've messed up above and tried
+// to send a type we are not allowed to send in the protocol definitions:
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 type CheckSyncStrypePyodideWorkerRequest = Expect<IsSerializable<SyncStrypePyodideWorkerRequest>>;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

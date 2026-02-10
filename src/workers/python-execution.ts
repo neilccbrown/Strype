@@ -69,6 +69,7 @@
 //   "Async" (see above) so fast, but queries (mainly: what colour is this pixel) are "Sync" meaning they need a reply
 //   and are slow.
 
+// Tell Typescript we are on a web worker, so we can access web worker bits but not the DOM:
 /// <reference lib="webworker" />
 import type { PyodideInterface } from "pyodide";
 import { loadPyodide } from "pyodide";
