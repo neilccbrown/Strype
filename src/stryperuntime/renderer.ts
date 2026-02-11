@@ -15,10 +15,28 @@ export class Renderer  {
     // by the SpriteManager, and set to dirty when we get an update, but cleared when we render:
     private sprites : SpriteManager; 
     
-    constructor(recvUpdates: MessagePort) {
+    constructor() {
         // The notify parameter is to send updates to the main thread, but we are the main thread!
         // So no need to do anything when this sprite manager changes:
         this.sprites = new SpriteManager(() => {});
+        
+        // We have one special image to begin with for the default background; a black 808x606 image:
+        const width = 808;
+        const height = 606;
+
+        const canvas = new OffscreenCanvas(width, height);
+        const ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D;
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, width, height);
+
+        const bitmap = canvas.transferToImageBitmap();
+
+        this.loadedImages.push(bitmap);
+    }
+    
+    // Sets the receiver for the MessagePort to update this renderer.  Will only
+    // receive on the port, not send.
+    setMessageChannel(recvUpdates : MessagePort) : void {
         recvUpdates.onmessage = (e) => {
             const update = e.data as StrypeSpriteStateUpdate;
             switch (update.request) {
@@ -27,7 +45,7 @@ export class Renderer  {
                 this.loadedImages.splice(1);
                 this.sprites.clear();
                 break;
-            }    
+            }
             case "add": {
                 this.sprites.addSprite(update.image, update.collidable, update.id.handle);
                 // Note: deliberate fall-through here into the update.
@@ -50,19 +68,6 @@ export class Renderer  {
             }
             }
         };
-        
-        // We have one special image to begin with for the default background; a black 808x606 image:
-        const width = 808;
-        const height = 606;
-
-        const canvas = new OffscreenCanvas(width, height);
-        const ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D;
-        ctx.fillStyle = "black";
-        ctx.fillRect(0, 0, width, height);
-
-        const bitmap = canvas.transferToImageBitmap();
-
-        this.loadedImages.push(bitmap);
     }
 
     async loadImage(url: string) : Promise<RemoteImage> {

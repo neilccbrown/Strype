@@ -1,4 +1,3 @@
-
 <template>
     <div :id="peaComponentId" :class="{'pea-component': true, [scssVars.expandedPEAClassName]: isExpandedPEA, 'no-43-ratio-collapsed-PEA': !hasDefault43Ratio && !isExpandedPEA}" ref="peaComponent" @mousedown="handlePEAMouseDown">
         <div :id="controlsDivId" :class="{'pea-controls-div': true, 'expanded-PEA-controls': isExpandedPEA}">           
@@ -9,7 +8,7 @@
             <!-- IMPORTANT: keep this div with "invisible" text for proper layout rendering, it replaces the tabs -->
             <span v-if="!isTabsLayout" :class="scssVars.peaNoTabsPlaceholderSpanClassName">c+g</span>
             <div class="flex-padding"/>            
-            <button id="runButton" ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}" :disabled="!pythonWorkerReady">
+            <button id="runButton" ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}" :disabled="!isPythonWorkerReady">
                 <img v-if="!isPythonExecuting" :src="faviconURL" class="pea-play-img">
                 <span v-else class="python-running">{{runCodeButtonIconText}}</span>
                 <span>{{runCodeButtonLabel}}</span>
@@ -57,33 +56,31 @@
 
 <script lang="ts">
 import Vue from "vue";
-import { useStore } from "@/store/store";
+import {useStore} from "@/store/store";
 import Parser from "@/parser/parser";
-import { mapStores } from "pinia";
+import {mapStores} from "pinia";
 import {adjustContextMenuPosition, checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getStrypeCommandComponentRefId, hasPrecompiledCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight} from "@/helpers/editor";
 import i18n from "@/i18n";
 import {defaultEmptyStrypeLayoutDividerSettings, Position, PythonExecRunningState, StrypePEALayoutData, StrypePEALayoutMode} from "@/types/types";
-import { WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
+import {WORLD_HEIGHT, WORLD_WIDTH} from "@/stryperuntime/image_and_collisions";
 import Menu from "@/components/Menu.vue";
 import CommandsComponent from "@/components/Commands.vue";
 import SVGIcon from "@/components/SVGIcon.vue";
-import {Splitpanes, Pane} from "splitpanes";
-import { debounce } from "lodash";
+import {Pane, Splitpanes} from "splitpanes";
+import {debounce} from "lodash";
 import scssVars from "@/assets/style/_export.module.scss";
 import {getLibraryName, getRawFileFromLibraries} from "@/helpers/libraryManager";
-import VueContext, { VueContextConstructor } from "vue-context";
+import VueContext, {VueContextConstructor} from "vue-context";
 import {getDateTimeFormatted} from "@/helpers/common";
 import {bufferToBase64} from "@/helpers/media";
 import turtleImgURL from "@/assets/images/turtle.png";
-import { PyodideClient } from "pyodide-worker-runner";
-import { makeServiceWorkerChannel } from "sync-message";
 import * as Comlink from "comlink";
-import { handleErrorTrace, setSInputConsole, sInput } from "@/helpers/execPythonCode";
-import { ErrorDetails } from "@/workers/python-execution";
-import { SpriteHandle, SyncOrAsyncStrypePyodideWorkerRequest } from "@/stryperuntime/worker_bridge_type";
-import {Renderer} from "@/stryperuntime/renderer";
+import {handleErrorTrace, setSInputConsole, sInput} from "@/helpers/execPythonCode";
+import {ErrorDetails} from "@/workers/python-execution";
+import {SpriteHandle, SyncOrAsyncStrypePyodideWorkerRequest} from "@/stryperuntime/worker_bridge_type";
 import {SoundManager} from "@/stryperuntime/sound_manager";
-import { handleAsyncRequests, handleSyncRequests } from "@/stryperuntime/main_bridge_handler";
+import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
+import {getPythonClient, isPythonWorkerReady, renderer, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
@@ -100,14 +97,6 @@ let mostRecentMouseDetails : {x: number, y: number, buttonsPressed: boolean[]} =
 let pressedKeys : {[key: string]: boolean} = {};
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
 
-// The channel used to send Sprite updates asynchronously, outside of the main requests:
-const updateChannel = new MessageChannel();
-// We initialise this out here to make it load earlier:
-const pythonWorker = new Worker(new URL("@/workers/python-execution.ts", import.meta.url), {type: "module"});
-// Must post it the update channel before wrapping in Pyodide:
-pythonWorker.postMessage({updatePort: updateChannel.port1}, [updateChannel.port1]);
-
-const renderer = new Renderer(updateChannel.port2);
 let soundManager : SoundManager | null = null; // Can't initialise this year as we need permissions for audio context
 
 // We draw our actual graphics canvas (for strype.graphics) at the size it is on the page,
@@ -177,21 +166,14 @@ export default Vue.extend({
                 {iconName: "PEA-layout-split-expanded", mode: StrypePEALayoutMode.splitExpanded},
             ] as StrypePEALayoutData[],
             highlightPythonRunningState: false, // a flag used to trigger a CSS highlight of the PEA running state
-            pythonClient: null as PyodideClient | null,
-            pythonWorkerReady: false, // Is Pyodide loaded and ready to execute?
         };
+    },
+
+    setup() {
+        return { isPythonWorkerReady }; // Make property known to Vue for use in template
     },
     
     mounted(){
-        const channel = makeServiceWorkerChannel({scope: import.meta.env.BASE_URL});
-        this.pythonClient = new PyodideClient(() => pythonWorker, channel);
-        this.pythonClient.call(
-            this.pythonClient.workerProxy.onReady,
-            Comlink.proxy(() => {
-                this.pythonWorkerReady = true;
-            })
-        );
-        
         // Just to prevent any inconsistency with a uncompatible state, set a state value here and we'll know we won't get in some error
         useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
         
@@ -410,7 +392,7 @@ export default Vue.extend({
         },
         
         runCodeButtonLabel(): string {
-            if (!this.pythonWorkerReady) {
+            if (!isPythonWorkerReady.value) {
                 return " " + i18n.t("PEA.loading");
             }
             switch (useStore().pythonExecRunningState) {
@@ -482,6 +464,8 @@ export default Vue.extend({
                 this.execPythonCode();
                 return;
             case PythonExecRunningState.Running:
+                terminateAndRestartPyodide();
+                useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                 // There are 2 possible scenarios, which depends on the user code:
                 // 1) the code contains some "event" listening functions but is written in a way that Turtle execution ends (Skulpt) and still listens:
                 // 2) there is no "event" listening function in the code, or the code is written in a way that Turtle execution keeps pending (Skulpt)
@@ -496,9 +480,6 @@ export default Vue.extend({
                     return;
                 }
 
-                // Case 2): Skulpt checks this property regularly while running, via a callback,
-                // so just setting the variable is enough to "request" a stop 
-                useStore().pythonExecRunningState = PythonExecRunningState.RunningAwaitingStop;
                 return;
             case PythonExecRunningState.RunningAwaitingStop:
                 // Else, nothing more we can do at the moment, just waiting for Skulpt to see it
@@ -569,89 +550,89 @@ export default Vue.extend({
 
                 setSInputConsole(pythonConsole);
                 
-                if (this.pythonClient != null) {
-                    const client = this.pythonClient;
-                    
-                    const syncBridgePromise = handleSyncRequests(renderer, soundManager as SoundManager, {
-                        getPressedKeys: () => pressedKeys,
-                        loadLibraryAsset: this.loadLibraryAsset,
-                        switchToGraphicsTab: () => {
-                            this.isRunningStrypeGraphics = true;
-                            this.peaDisplayTabIndex = PEATabIndexes.graphics;
-                        },
-                        getMouseDetails: this.getMouseDetails,
-                        consumeLastClickedItems: this.consumeLastClickedItems,
-                        consumeLastClickDetails: this.consumeLastClickDetails,
+                // getPythonClient() can change value if restarted so important we take one
+                // const reference to it for the duration of a Python run: 
+                const client = getPythonClient();
+                
+                const syncBridgePromise = handleSyncRequests(renderer, soundManager as SoundManager, {
+                    getPressedKeys: () => pressedKeys,
+                    loadLibraryAsset: this.loadLibraryAsset,
+                    switchToGraphicsTab: () => {
+                        this.isRunningStrypeGraphics = true;
+                        this.peaDisplayTabIndex = PEATabIndexes.graphics;
+                    },
+                    getMouseDetails: this.getMouseDetails,
+                    consumeLastClickedItems: this.consumeLastClickedItems,
+                    consumeLastClickDetails: this.consumeLastClickDetails,
+                });
+                
+                const asyncBridge = handleAsyncRequests(renderer, soundManager as SoundManager);
+                
+                // Apparently we can use a promise as a queue to ensure we process the requests in order,
+                // and not try to service another while one is still going (especially sync ones which may yield,
+                // and risk having an async processed in the mean time).
+                let requestQueue = Promise.resolve();
+                function serialize(fn: () => void | Promise<void>) {
+                    requestQueue = requestQueue.then(() => fn()).catch((err) => {
+                        console.error("Error in serialized function:", err);
                     });
-                    
-                    const asyncBridge = handleAsyncRequests(renderer, soundManager as SoundManager);
-                    
-                    // Apparently we can use a promise as a queue to ensure we process the requests in order,
-                    // and not try to service another while one is still going (especially sync ones which may yield,
-                    // and risk having an async processed in the mean time).
-                    let requestQueue = Promise.resolve();
-                    function serialize(fn: () => void | Promise<void>) {
-                        requestQueue = requestQueue.then(() => fn()).catch((err) => {
-                            console.error("Error in serialized function:", err);
+                }
+                
+                (client.call(
+                    client.workerProxy.executePython,
+                    userCode,
+                    Comlink.proxy((output: string) => {
+                        pythonConsole.value = pythonConsole.value + output;
+                    }),
+                    Comlink.proxy((prompt: string) => {
+                        sInput(prompt).then(async (s : string) => {
+                            // We send the output back via writeMessage rather than a direct return:
+                            await navigator.serviceWorker.ready;
+                            try {
+                                await client.writeMessage(s);
+                            }
+                            catch (e) {
+                                console.error(e);
+                            }
                         });
-                    }
-                    
-                    (client.call(
-                        client.workerProxy.executePython,
-                        userCode,
-                        Comlink.proxy((output: string) => {
-                            pythonConsole.value = pythonConsole.value + output;
-                        }),
-                        Comlink.proxy((prompt: string) => {
-                            sInput(prompt).then(async (s : string) => {
-                                // We send the output back via writeMessage rather than a direct return:
+                    }),
+                    Comlink.proxy((asreq : SyncOrAsyncStrypePyodideWorkerRequest) => serialize(() => { 
+                        if (asreq.kind == "async") {
+                            asyncBridge(asreq.request);
+                        }
+                        else {
+                            const req = asreq.request;
+                            const resp = syncBridgePromise(req);
+                            if (req.request != resp.request) {
+                                console.error(`Internal error: request ${req.request} did not match the response ${resp.request}`);
+                            }
+                            resp.response.then(async (r: any) => {
                                 await navigator.serviceWorker.ready;
                                 try {
-                                    await client.writeMessage(s);
+                                    await client.writeMessage({request: resp.request, response: r});
+                                }
+                                catch (e) {
+                                    console.error(e);
+                                }
+                            }).catch(async (err) => {
+                                await navigator.serviceWorker.ready;
+                                try {
+                                    await client.writeMessage({request: resp.request, error: err.toString()});
                                 }
                                 catch (e) {
                                     console.error(e);
                                 }
                             });
-                        }),
-                        Comlink.proxy((asreq : SyncOrAsyncStrypePyodideWorkerRequest) => serialize(() => { 
-                            if (asreq.kind == "async") {
-                                asyncBridge(asreq.request);
-                            }
-                            else {
-                                const req = asreq.request;
-                                const resp = syncBridgePromise(req);
-                                if (req.request != resp.request) {
-                                    console.error(`Internal error: request ${req.request} did not match the response ${resp.request}`);
-                                }
-                                resp.response.then(async (r: any) => {
-                                    await navigator.serviceWorker.ready;
-                                    try {
-                                        await client.writeMessage({request: resp.request, response: r});
-                                    }
-                                    catch (e) {
-                                        console.error(e);
-                                    }
-                                }).catch(async (err) => {
-                                    await navigator.serviceWorker.ready;
-                                    try {
-                                        await client.writeMessage({request: resp.request, error: err.toString()});
-                                    }
-                                    catch (e) {
-                                        console.error(e);
-                                    }
-                                });
-                            }
-                        }))
-                    ) as Promise<ErrorDetails | null>).then((possibleError) => {
-                        if (possibleError != null) {
-                            handleErrorTrace(possibleError.text, possibleError.traceback, () => {}, parser.getFramePositionMap());
                         }
-                        useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
-                        this.isRunningStrypeGraphics = false;
-                        setPythonExecAreaLayoutButtonPos();
-                    });
-                }
+                    }))
+                ) as Promise<ErrorDetails | null>).then((possibleError) => {
+                    if (possibleError != null) {
+                        handleErrorTrace(possibleError.text, possibleError.traceback, () => {}, parser.getFramePositionMap());
+                    }
+                    useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
+                    this.isRunningStrypeGraphics = false;
+                    setPythonExecAreaLayoutButtonPos();
+                });
 
                 // Trigger the actual Python code execution launch
                 /*
@@ -868,7 +849,6 @@ export default Vue.extend({
             }
             this.isRunningStrypeGraphics = false;
             pressedKeys = {};
-            // Important not to use the accessor here as that will switch to the tab:
             renderer.clear();
             this.redrawCanvas();
         },
@@ -965,7 +945,6 @@ export default Vue.extend({
                     let dheight = obj.scale * obj.img.height;
                     targetContext?.drawImage(obj.img, mapX(obj.x) - dwidth*0.5, mapY(obj.y)-dheight*0.5, dwidth, dheight);
                 }
-                //obj.dirty = false;
             }
             renderer.resetDirty();
             // Restore the scale:
