@@ -1,151 +1,167 @@
 import {System, Box, Point} from "detect-collisions";
+import {isRemoteImage, makeImageHandle, makeSpriteHandle, RemoteCanvas, RemoteImage, StrypeSpriteStateUpdate} from "@/stryperuntime/worker_bridge_type";
 
-export interface PersistentImage {
+// A Sprite is an item with an image, X Y position and rotation that is drawn on screen.
+// Note that there is not a 1-to-1 correspondence between Actors and Sprites because:
+//   - The .say() method of an Actor uses a Sprite for the speech bubble so an Actor may have multiple Sprites
+//   - The background of the world is a Sprite but has no corresponding Actor.
+export interface Sprite {
     id: number,
-    img: HTMLImageElement | OffscreenCanvas,
+    img: RemoteImage | RemoteCanvas, // Can be read-only (RemoteImage) or writable (RemoteCanvas)
     x: number,
     y: number,
     rotation: number, // degrees
     scale: number, // 1.0 means same size as original image
     collisionBox: Box | null, // The item in the collision detection system.  Null if the object is not collidable
-    dirty: boolean,
-    associatedObject: any | null, // The object to remember for this PersistentImage (so far, this is the Actor from the strype.graphics Python module)
 }
 
 export const WORLD_WIDTH = 800;
 export const WORLD_HEIGHT = 600;
 
-export class PersistentImageManager {
+// The SpriteManager is primarily designed for use direct from Pyodide, on the web worker thread.  However,
+// we need to do our drawing and collision detection on the main thread.  The fastest way to do this is to mirror
+// all updates from the web worker into the main thread, and have two instances of SpriteManager; one in the web worker
+// and one in the main thread.  The web worker one uses the notify member to send updates across an async channel,
+// while the main thread passes a do-nothing function for notify, and updates solely via updates received on the async channel.
+// Be mindful when editing this class that it needs to work on both threads, and be mindful when using it as to which
+// instance of SpriteManager you're using.
+export class SpriteManager {
     // Special case: ID 0 is always the background persistent image, and inserted first in the map to make it
     // first in the iteration order.  By default it is an 800x600 white image.
-    private persistentImages = new Map<number, PersistentImage>();
-    private persistentImagesDirty = false; // This relates to whether the map has had addition/removal, need to check each entry to see whether they are dirty
-    private nextPersistentImageId = 1;
+    private sprites = new Map<number, Sprite>();
+    private dirty = false; // Have their been any sprites added, removed or had their values changed since last call to resetDirty()?
+    private nextSpriteId = 1;
     private collisionSystem = new System();
-    // A map to be able to look up the PersistentImage when we find an intersecting Box during collision detection:
-    private boxToImageMap = new Map<Box, PersistentImage>();
+    // A map to be able to look up the Sprite when we find an intersecting Box during collision detection:
+    private boxToImageMap = new Map<Box, Sprite>();
+    private notify: (update: StrypeSpriteStateUpdate) => void;
     
-    constructor() {
+    constructor(notify: (update: StrypeSpriteStateUpdate) => void) {
+        this.notify = notify;
         this.clear();
     }
     
     public clear() : void {
-        this.persistentImages.clear();
-        // Set background to plain black image:
-        // We use an oversize image to avoid slivers of other colour appearing at the edges
-        // due to the size not being perfectly 800 x 600 on the actual webpage,
-        // which means we are scaling and using anti-aliased sub-pixel rendering: 
-        const black_808_606 = new OffscreenCanvas(808, 606);
-        const ctx = black_808_606.getContext("2d");
-        if (ctx != null) {
-            (ctx as OffscreenCanvasRenderingContext2D).fillStyle = "black";
-            (ctx as OffscreenCanvasRenderingContext2D).fillRect(0, 0, 808, 606);
-        }
-        this.persistentImages.set(0, {
+        this.notify({request: "clear"});
+        this.sprites.clear();
+        const bk = {
             id: 0,
-            img: black_808_606,
+            img: {width: 808, height: 606, handle: makeImageHandle(0)}, // Special identifier indicating a black image
             // Since we go from -399 to 400, -299 to 300, the actual centre is 0.5, 0.5:
             x: 0.5,
             y: 0.5,
             rotation: 0,
             scale: 1.0,
             collisionBox: null,
-            dirty: true,
-            associatedObject: null,
-        });
-        this.persistentImagesDirty = true;
+        };
+        this.sprites.set(0, bk);
+        this.notify({request: "add", id: makeSpriteHandle(0), x: bk.x, y: bk.y, rotation: bk.rotation, scale: bk.scale, image: bk.img, collidable: false});
+        this.dirty = true;
         this.collisionSystem.clear();
     }
     
-    public setBackground(imageOrCanvas : OffscreenCanvas) : void {
-        const bk = this.persistentImages.get(0);
+    public setBackground(imageOrCanvas : RemoteImage) : void {
+        const bk = this.sprites.get(0);
+        // Should always be present but keep Typescript happy:
         if (bk) {
             bk.img = imageOrCanvas;
+            this.sendUpdateFor(bk);
         }
     }
 
-    // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-    public addPersistentImage(imageOrCanvas : HTMLImageElement | OffscreenCanvas, associatedObject?: any): number {
-        this.persistentImagesDirty = true;
-        const box = associatedObject ? this.collisionSystem.createBox({x:0, y:0}, imageOrCanvas.width, imageOrCanvas.height, {isCentered: true}) : null;
-        const newImage = {id: this.nextPersistentImageId, img: imageOrCanvas, x: 0, y: 0, rotation: 0, scale: 1, collisionBox : box, dirty: false, associatedObject: associatedObject};
-        this.persistentImages.set(this.nextPersistentImageId, newImage);
+    private sendUpdateFor(p: Sprite) {
+        this.notify({request: "update", id: makeSpriteHandle(p.id), image: p.img, x: p.x, y: p.y, scale: p.scale, rotation: p.rotation, collidable: p.collisionBox != null});
+    }
+
+    public addSprite(imageOrCanvas : RemoteImage | RemoteCanvas, collidable: boolean, forceId?: number): number {
+        this.dirty = true;
+        const id = forceId ?? this.nextSpriteId++;
+        const box = collidable ? this.collisionSystem.createBox({x:0, y:0}, imageOrCanvas.width, imageOrCanvas.height, {isCentered: true}) : null;
+        const newImage = {id, img: imageOrCanvas, x: 0, y: 0, rotation: 0, scale: 1, collisionBox : box};
+        this.sprites.set(id, newImage);
         if (box != null) {
             this.boxToImageMap.set(box, newImage);
         }
-        return this.nextPersistentImageId++;
+        
+        this.notify({request: "add", id: makeSpriteHandle(id), x: newImage.x, y: newImage.y, rotation: newImage.rotation, scale: newImage.scale, image: imageOrCanvas, collidable});
+        return id;
     }
 
-    public hasPersistentImage(id: number) : boolean {
-        return this.persistentImages.has(id);
+    public hasSprite(id: number) : boolean {
+        return this.sprites.has(id);
     }
     
-    public removePersistentImage(id: number): void {
+    public removeSprite(id: number): void {
         if (id <= 0) {
             // Don't remove the background image:
             return;
         }
         
-        this.persistentImagesDirty = true;
-        const box = this.persistentImages.get(id)?.collisionBox;
+        this.dirty = true;
+        const box = this.sprites.get(id)?.collisionBox;
         if (box != undefined) {
             this.collisionSystem.remove(box);
             this.boxToImageMap.delete(box);
         }
-        this.persistentImages.delete(id);
+        this.sprites.delete(id);
+        this.notify({request: "remove", id: makeSpriteHandle(id)});
     }
 
-    public removePersistentImageAfter(id: number, secs: number): void {
-        setTimeout(() => this.removePersistentImage(id), secs * 1000);
+    public removeSpriteAfter(id: number, secs: number): void {
+        setTimeout(() => this.removeSprite(id), secs * 1000);
     }
 
-    public setPersistentImageImage(id: number, imageOrCanvas : HTMLImageElement | OffscreenCanvas): void {
-        const obj = this.persistentImages.get(id);
-        if (obj != undefined) {
+    public setSpriteImage(id: number, imageOrCanvas : RemoteImage | RemoteCanvas): void {
+        const obj = this.sprites.get(id);
+        if (obj != undefined && obj.img != imageOrCanvas) {
             obj.img = imageOrCanvas;
-            obj.dirty = true;
+            this.dirty = true;
             if (obj.collisionBox != null) {
                 // To update box size, easiest to re-add:
-                this.setPersistentImageCollidable(id, false);
-                this.setPersistentImageCollidable(id, true);
+                this.setSpriteCollidable(id, false);
+                this.setSpriteCollidable(id, true);
                 
             }
+            this.sendUpdateFor(obj);
         }
     }
 
-    public setPersistentImageLocation(id: number, x: number, y: number): void {
-        const obj = this.persistentImages.get(id);
+    public setSpriteLocation(id: number, x: number, y: number): void {
+        const obj = this.sprites.get(id);
         if (obj != undefined && (obj.x != x || obj.y != y)) {
             obj.x = Math.max(-WORLD_WIDTH/2 + 1, Math.min(x, WORLD_WIDTH/2));
             obj.y = Math.max(-WORLD_HEIGHT/2 + 1, Math.min(y, WORLD_HEIGHT/2));
-            obj.dirty = true;
+            this.dirty = true;
             obj.collisionBox?.setPosition(x, y);
             obj.collisionBox?.updateBody();
+            this.sendUpdateFor(obj);
         }
     }
     
-    public setPersistentImageRotation(id: number, rotation: number): void {
-        const obj = this.persistentImages.get(id);
+    public setSpriteRotation(id: number, rotation: number): void {
+        const obj = this.sprites.get(id);
         if (obj != undefined && obj.rotation != rotation) {
             obj.rotation = rotation;
-            obj.dirty = true;
+            this.dirty = true;
             obj.collisionBox?.setAngle(rotation * Math.PI / 180);
             obj.collisionBox?.updateBody();
+            this.sendUpdateFor(obj);
         }
     }
     
-    public setPersistentImageScale(id: number, scale: number): void {
-        const obj = this.persistentImages.get(id);
+    public setSpriteScale(id: number, scale: number): void {
+        const obj = this.sprites.get(id);
         if (obj != undefined && obj.scale != scale) {
             obj.scale = scale;
-            obj.dirty = true;
+            this.dirty = true;
             obj.collisionBox?.setScale(scale);
             obj.collisionBox?.updateBody();
+            this.sendUpdateFor(obj);
         }
     }
     
-    public setPersistentImageCollidable(id: number, collidable: boolean): void {
-        const obj = this.persistentImages.get(id);
+    public setSpriteCollidable(id: number, collidable: boolean): void {
+        const obj = this.sprites.get(id);
         if (obj) {
             if (collidable && !obj.collisionBox) {
                 // Need to add a collision box:
@@ -155,19 +171,21 @@ export class PersistentImageManager {
                 box.updateBody();
                 obj.collisionBox = box;
                 this.boxToImageMap.set(box, obj);
+                this.sendUpdateFor(obj);
             }
             else if (!collidable && obj.collisionBox) {
                 // Need to remove a collision box:
                 this.collisionSystem.remove(obj.collisionBox);
                 this.boxToImageMap.delete(obj.collisionBox);
                 obj.collisionBox = null;
+                this.sendUpdateFor(obj);
             }
         }
     }
     
     // Gets the image size, ignoring rotation and scale
-    public getPersistentImageSize(id: number) : {width: number, height: number} | undefined {
-        const obj = this.persistentImages.get(id);
+    public getSpriteSize(id: number) : {width: number, height: number} | undefined {
+        const obj = this.sprites.get(id);
         if (obj != undefined) {
             return {width : obj.img.width, height : obj.img.height};
         }
@@ -176,8 +194,8 @@ export class PersistentImageManager {
         }
     }
 
-    public getPersistentImageLocation(id: number) : {x: number, y : number} | undefined {
-        const obj = this.persistentImages.get(id);
+    public getSpriteLocation(id: number) : {x: number, y : number} | undefined {
+        const obj = this.sprites.get(id);
         if (obj != undefined) {
             return {x : obj.x, y : obj.y};
         }
@@ -186,33 +204,37 @@ export class PersistentImageManager {
         }
     }
     
-    public getPersistentImageRotation(id: number) : number | undefined {
-        const obj = this.persistentImages.get(id);
+    public getSpriteRotation(id: number) : number | undefined {
+        const obj = this.sprites.get(id);
         return obj?.rotation;
     }
     
-    public getPersistentImageScale(id: number) : number | undefined {
-        const obj = this.persistentImages.get(id);
+    public getSpriteScale(id: number) : number | undefined {
+        const obj = this.sprites.get(id);
         return obj?.scale;
     }
     
+    public markDirty() : void {
+        this.dirty = true;
+    }
+    
     public isDirty() : boolean {
-        return this.persistentImagesDirty || Array.from(this.persistentImages.values()).some((p) => p.dirty);
+        return this.dirty;
     }
 
     // Note: doesn't reset the individual images' dirty state
     public resetDirty() : void {
-        this.persistentImagesDirty = true;
+        this.dirty = false;
     }
     
-    public getPersistentImages() : IterableIterator<PersistentImage> {
-        return this.persistentImages.values();
+    public getSprites() : IterableIterator<Sprite> {
+        return this.sprites.values();
     }
     
-    public calculateAllOverlappingAtPos(x: number, y: number) : PersistentImage[] {
+    public calculateAllOverlappingAtPos(x: number, y: number) : Sprite[] {
         const collisionPoint = new Point({x:x, y:y});
         this.collisionSystem.insert(collisionPoint);
-        const all : PersistentImage[] = [];
+        const all : Sprite[] = [];
         this.collisionSystem.checkOne(collisionPoint, (found) => {
             const pimg = this.boxToImageMap.get(found.b as Box);
             if (pimg) {
@@ -224,8 +246,8 @@ export class PersistentImageManager {
     }
     
     public checkCollision(idA: number, idB: number) : boolean {
-        const boxA = this.persistentImages.get(idA)?.collisionBox;
-        const boxB = this.persistentImages.get(idB)?.collisionBox;
+        const boxA = this.sprites.get(idA)?.collisionBox;
+        const boxB = this.sprites.get(idB)?.collisionBox;
         if (boxA && boxB) {
             return this.collisionSystem.checkCollision(boxA, boxB);
         }
@@ -234,29 +256,30 @@ export class PersistentImageManager {
         }
     }
     
-    // Gets the associatedObject of all items which overlap the given persistent image id.
-    public getAllOverlapping(id: number) : any[] {
-        const r : any[] = [];
-        const box = this.persistentImages.get(id)?.collisionBox;
+    // Gets the idof all items which overlap the given persistent image id.
+    public getAllOverlapping(id: number) : number[] {
+        const r : number[] = [];
+        const box = this.sprites.get(id)?.collisionBox;
         if (box) {
             this.collisionSystem.checkOne(box, (response) => {
                 const pimg = this.boxToImageMap.get(response.b as Box);
-                if (pimg) {
-                    r.push(pimg.associatedObject);
+                if (pimg != null) {
+                    r.push(pimg.id);
                 }
             });
         }
         return r;
     }
     
-    public getAllActors() : any[] {
-        return Array.from(this.persistentImages.values()).map((p) => p.associatedObject).filter((x) => x != null);
+    // Gets ids of all actors in the world:
+    public getAllActors() : number[] {
+        return Array.from(this.sprites.values()).map((p) => p.id);
     }
 
     // Gets the associatedObject of all items which have centres within the specific radius of the given persistent image id.
-    public getAllNearby(id: number, radius: number) : any[] {
-        const us = this.persistentImages.get(id);
-        const all: PersistentImage[] = [];
+    public getAllNearby(id: number, radius: number) : number[] {
+        const us = this.sprites.get(id);
+        const all: number[] = [];
         if (us) {
             const candidates = this.collisionSystem.search({
                 minX: us.x - radius,
@@ -275,7 +298,7 @@ export class PersistentImageManager {
                     const pimg = this.boxToImageMap.get(body);
                     // Don't include ourselves in the results:
                     if (pimg && pimg.id != id) {
-                        all.push(pimg.associatedObject);
+                        all.push(pimg.id);
                     }
                 }
             });
@@ -283,20 +306,16 @@ export class PersistentImageManager {
         return all;
     }
     
-    // If this PersistentImage is not already editable, makes an OffScreenCanvas for editing, draws on the existing
-    // image, and returns this new OffScreenCanvas.  Returns null if it can't find the PersistentImage with the given id
-    public editImage(id : number) : OffscreenCanvas | null {
-        const pimg = this.persistentImages.get(id);
-        if (pimg != null) {
-            if (pimg.img instanceof HTMLImageElement) {
-                const c = new OffscreenCanvas(pimg.img.width, pimg.img.height);
-                (c.getContext("2d") as OffscreenCanvasRenderingContext2D).drawImage(pimg.img, 0, 0);
-                pimg.img = c;
-                return c;
+    // If this Sprite's image is not already editable, makes an OffScreenCanvas for editing, draws on the existing
+    // image, and returns this new OffScreenCanvas.  Returns null if it can't find the Sprite with the given id
+    public editImage(id : number, ensureCanvas : (r : RemoteImage | RemoteCanvas) => RemoteCanvas) : RemoteCanvas | null {
+        const sprite = this.sprites.get(id);
+        if (sprite != null) {
+            if (isRemoteImage(sprite.img)) {
+                sprite.img = ensureCanvas(sprite.img);
+                this.sendUpdateFor(sprite);
             }
-            else if (pimg.img instanceof OffscreenCanvas) {
-                return pimg.img;
-            }
+            return sprite.img;
         }
         return null;
     }

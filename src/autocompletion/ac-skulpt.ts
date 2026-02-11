@@ -9,9 +9,9 @@ declare const Sk: any;
 export const OUR_PUBLIC_LIBRARY_FILES : string[] = [
     /* #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE  */
     "strype/__init__.py",
-    "strype/strype_graphics_internal.js", "strype/graphics.py",
-    "strype/strype_sound_internal.js", "strype/sound.py",
-    "strype/strype_graphics_input_internal.js",
+    "strype/strype_graphics_internal.ts", "strype/graphics.py",
+    "strype/strype_sound_internal.ts", "strype/sound.py",
+    "strype/strype_graphics_input_internal.ts",
     /* #v-endif  */
 ];
 export const OUR_PUBLIC_LIBRARY_MODULES = OUR_PUBLIC_LIBRARY_FILES.map((f) => f.substring(0, f.lastIndexOf(".")).replace("/", ".")).filter((f) => !f.includes("internal") && !f.includes("__init__"));

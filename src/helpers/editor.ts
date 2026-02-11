@@ -7,7 +7,7 @@ import {getContentForACPrefix} from "@/autocompletion/acManager";
 import scssVars  from "@/assets/style/_export.module.scss";
 import html2canvas, { Options } from "html2canvas";
 import CaretContainer from "@/components/CaretContainer.vue";
-import { vm } from "@/main";
+import { vm } from "@/helpers/appContext";
 import Vue from "vue";
 import Frame from "@/components/Frame.vue";
 import FrameContainer from "@/components/FrameContainer.vue";

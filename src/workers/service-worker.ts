@@ -1,14 +1,10 @@
 /// <reference lib="webworker" />
 import { serviceWorkerFetchListener } from "sync-message";
+// Note: this worker is built before development run and production build and placed into
+// public/compiled-service-worker.js.  Should you edit this file (which should be rare),
+// you will need to restart the development server to see the changes.
 
 declare let self: ServiceWorkerGlobalScope;
-
-// Required for InjectManifest (see vue.config.js), even though we don't actually use the variable
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const unused = self.__WB_MANIFEST || [];
-
 
 self.addEventListener("activate", (event) => {
     // Claim clients immediately so pages are controlled without reload

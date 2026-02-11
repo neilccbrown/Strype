@@ -1,7 +1,7 @@
 import { saveAs } from "file-saver";
 import { compileBlob } from "./compile";
 import { parseCodeAndGetParseElements } from "@/parser/parser";
-import {vm} from "@/main";
+import {vm} from "@/helpers/appContext";
 import { useStore } from "@/store/store";
 import { MessageDefinitions } from "@/types/types";
 import { getAppSimpleMsgDlgId } from "./editor";

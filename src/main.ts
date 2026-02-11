@@ -7,59 +7,36 @@ import "bootstrap/dist/css/bootstrap.css";
 import "bootstrap-vue/dist/bootstrap-vue.css";
 import vBlur from "v-blur";
 import AsyncComputed from "vue-async-computed";
-import { StrypePlatform } from "./types/types";
 import scssVars  from "@/assets/style/_export.module.scss";
 import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "./helpers/sharedIdCssWithTests";
 import {getAppLangSelectId, getEditorID, getEditorMenuUID, getFrameBodyUID, getFrameContainerUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getImportFileInputId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNewProjectLinkId, getSaveProjectLinkId, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, getShareProjectLinkId} from "./helpers/editor";
-// This import is not used directly here, but it triggers the registration of the service worker:
-import "./registerServiceWorker";
+import { setVM } from "./helpers/appContext";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 /* IFTRUE_isPython */
 import {getPEATabContentContainerDivId} from "./helpers/editor";
 // #v-endif
 
-// Version of the application to check code's import compatibility in the editor
-// note: that is not an offical software version of Strype, just a way to help us dealing with compatibility issues.
-// it MUST be kept as an integer matching value
-export const AppVersion = "6";
-// The version used in the new .spy file format.  We may increment this in future
-// if we introduce a breaking change to that file format.
-export const AppSPYSaveVersion = "1";
-export const AppName = "Strype";
-// The prefix to use in comments directly after the "#" to indicate a Strype
-// special directive or metadata:
-export const AppSPYPrefix = "(=>";
-export const AppSPYFullPrefix = "#" + AppSPYPrefix;
-let appPlatform = StrypePlatform.standard;
-// #v-ifdef MODE == VITE_MICROBIT_MODE
-appPlatform = StrypePlatform.microbit;
-// #v-endif
-export const AppPlatform = appPlatform;
-
-// The project defintion slot isn't attached to a "real" frame.
-// We declare the fake frame ID we used for it here.
-export const projectDocumentationFrameId = -10;
-
-let localeBuildDate = "";
-export function getLocaleBuildDate(): string {
-    // This method returns the build date, set in vite.config.js.
-    // To avoid calling the formatter every time, we keep a local
-    // variable with the formatted date value for the web session.
-    if(localeBuildDate.length > 0) {
-        return localeBuildDate;
-    }
-    else{
-        try{
-            const buildDateTicks = new Date(__BUILD_DATE_TICKS__);
-            localeBuildDate = new Date(buildDateTicks).toLocaleDateString(navigator.language);
-            return localeBuildDate;
+// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+// We have to register the service worker ourselves so that it works in dev.
+// (If we used the Vite PWA auto-register it would only work in production.)
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", async () => {
+        // Note: service-worker.js is our desired name, the dev-sw.js is the one PWA always uses in dev mode.
+        const swUrl = import.meta.env.BASE_URL + "compiled-service-worker.js";
+        try {
+            const registration = await navigator.serviceWorker.register(swUrl, {type: "module", scope: import.meta.env.BASE_URL});
+            console.log("SW registered:", registration);
         }
-        catch{
-            // Just in case something was wrong in our config file!
-            return "N/A";
+        catch (err) {
+            console.error(`SW registration failed for ${swUrl} because:`, err);
         }
-    }
+    });
 }
+else {
+    console.error("No service worker support");
+}
+// #v-endif
+
 
 // Set the SCSS variables for the tests here
 (window as any)[WINDOW_STRYPE_SCSSVARS_PROPNAME] = scssVars;
@@ -98,9 +75,10 @@ Vue.use(vBlur);
 Vue.use(PiniaVuePlugin);
 const pinia = createPinia();
 
-export const vm = new Vue({
+const vm = new Vue({
     pinia,
     i18n,
     render: (h) => h(App),
 });
+setVM(vm);
 vm.$mount("#app");
