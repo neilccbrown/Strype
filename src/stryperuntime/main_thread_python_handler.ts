@@ -19,7 +19,6 @@ export const isPythonWorkerReady = ref(false);
 let pythonWorker : Worker = makeNewPyodideWorker();
 let pythonClient = makePyodideClient(pythonWorker);
 
-
 function makeNewPyodideWorker() : Worker {
     // The channel used to send Sprite updates asynchronously, outside of the main requests:
     // (channels cannot be re-used/re-transferred so we need a new one for each Pyodide worker
@@ -44,8 +43,15 @@ function makePyodideClient(pythonWorker: Worker) : PyodideClient {
     return pythonClient;
 }
 
+// Pyodide does have built-in support for "interrupting" an execution,
+// but to do that from another thread it requires SharedArrayBuffer, which needs
+// cross-origin isolation which would break things like Google Drive.  So we must
+// terminate the worker.  It does mean the stop is instant and "clean" (next
+// execution won't carry over any state).
 export function terminateAndRestartPyodide() : void {
+    // This is apparently instant, so we can immediately assume Pyodide has stopped:
     pythonWorker.terminate();
+    // Then we must make a new Pyodide worker ready for a potential future run:
     isPythonWorkerReady.value = false;
     pythonWorker = makeNewPyodideWorker();
     pythonClient = makePyodideClient(pythonWorker);
