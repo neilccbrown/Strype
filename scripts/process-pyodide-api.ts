@@ -81,7 +81,6 @@ function getPythonCodeForTypeAndDocumentation(userCode: string, module: string |
 }
 
 // Stub for Strype Javascript parts:
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const strype_bridge = {
     strype_graphics_input_internal: {},
     strype_graphics_internal: {},
