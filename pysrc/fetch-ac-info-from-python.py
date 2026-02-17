@@ -128,9 +128,10 @@ def get_class_and_func(ac_result, imp_mod):
         class_path = parts[:i]
         method_name = parts[i]
         try:
-            cls = attrgetter('.'.join(class_path))(imp_mod)
-            func = inspect.getfullargspec(attrgetter(method_name)(imp_mod))
-            return cls, func
+            clsName = '.'.join(class_path)
+            cls = attrgetter(clsName)(imp_mod)
+            func = inspect.getfullargspec(attrgetter(method_name)(cls))
+            return clsName, func
         except AttributeError:
             continue
     return None, inspect.getfullargspec(attrgetter(ac_result)(imp_mod))  # fallback
