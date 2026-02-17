@@ -9,6 +9,7 @@ import {getAvailablePyPyiFromLibrary, getPossibleImports, getTextFileFromLibrari
 import Parser from "@/parser/parser";
 import {extractPYI} from "@/helpers/python-pyi";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
+import {AcResultsWithCategorySchema} from "@/types/ac-types-zod";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import {OUR_PUBLIC_LIBRARY_MODULES, pythonBuiltins} from "@/autocompletion/pythonBuiltins";
 import pythonAPI from "@/autocompletion/python-api.json";
@@ -21,7 +22,6 @@ TPyParser.defineModule("turtle", turtleMod, "pyi");
 // #v-else
 import microbitPythonAPI from "@/autocompletion/microbit-api.json";
 import microbitDescriptions from "@/autocompletion/microbit.json";
-import {AcResultsWithCategorySchema} from "@/types/ac-types-zod";
 // Import all the micro:bit PYI files and load the modules in TigerPython.
 // If these files need update, replace "audio.pyi" in the root folder
 // by the one in /microbit/ because it seems reimports don't work well.
