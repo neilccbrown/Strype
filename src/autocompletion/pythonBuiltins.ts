@@ -28,3 +28,8 @@ export const pythonBuiltins : Record<string, { type: "module", documentation?: s
     "types": {type: "module", documentation: "Dynamic type creation and names for built-in types.", version: 0},
     //"turtle": {type: "module", documentation: "Implementation of the Turtle graphics.", version: 0},
 };
+
+export const OUR_PUBLIC_LIBRARY_MODULES = [
+    "strype.graphics",
+    "strype.sound",
+];
