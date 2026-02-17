@@ -133,7 +133,6 @@ import { mapStores } from "pinia";
 import { getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos, getFrameBelowCaretPosition, checkCodeErrors, calculateNextCollapseState } from "./helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import { VueContextConstructor } from "vue-context";
-import { BACKEND_SKULPT_DIV_ID } from "@/autocompletion/ac-skulpt";
 import {pasteMixedPython} from "@/helpers/pythonToFrames";
 import CloudDriveHandlerComponent from "@/components/CloudDriveHandler.vue";
 import { BvEvent, BvModalEvent } from "bootstrap-vue";

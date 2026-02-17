@@ -11,7 +11,7 @@ import {extractPYI} from "@/helpers/python-pyi";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import {OUR_PUBLIC_LIBRARY_MODULES, pythonBuiltins} from "@/autocompletion/pythonBuiltins";
-import skulptPythonAPI from "@/autocompletion/skulpt-api.json";
+import pythonAPI from "@/autocompletion/python-api.json";
 import graphicsMod from "pysrc/strype/graphics.py";
 import soundMod from "pysrc/strype/sound.py";
 import turtleMod from "pysrc/pyi/turtle.pyi";
@@ -309,7 +309,7 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
             }
         }
         // #v-else
-        const allSkulptItems : AcResultType[] = skulptPythonAPI[module as keyof typeof skulptPythonAPI] as AcResultType[];
+        const allSkulptItems : AcResultType[] = pythonAPI[module as keyof typeof pythonAPI] as AcResultType[];
         if (allSkulptItems) {
             soFar[module] = [...allSkulptItems.filter((x) => !x.acResult.startsWith("_"))];
         }
@@ -365,7 +365,7 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
             }
             // #v-else
             const allSkulptItems : AcResultType[] =
-                (skulptPythonAPI[realModule as keyof typeof skulptPythonAPI] as AcResultType[])
+                (pythonAPI[realModule as keyof typeof pythonAPI] as AcResultType[])
                     ?? availableLibraries[realModule];
             if (allSkulptItems) {
                 allItems = [...allSkulptItems.filter((x) => !x.acResult.startsWith("_"))];
@@ -429,7 +429,7 @@ export async function getAvailableItemsForImportFromModule(module: string) : Pro
         return [...allMicrobitItems, star];
     }
     // #v-else
-    const allSkulptItems: AcResultType[] = skulptPythonAPI[module as keyof typeof skulptPythonAPI] as AcResultType[];
+    const allSkulptItems: AcResultType[] = pythonAPI[module as keyof typeof pythonAPI] as AcResultType[];
     if (allSkulptItems) {
         return [...allSkulptItems, star];
     }
@@ -461,7 +461,7 @@ export async function getAvailableItemsForImportFromModule(module: string) : Pro
 export function getBuiltins() : AcResultType[] {
     // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
     // Must return a clone as caller may later modify the list:
-    return [...skulptPythonAPI[""] as AcResultType[]];
+    return [...pythonAPI[""] as AcResultType[]];
     // #v-else
     // Must return a clone as caller may later modify the list:
     return [...microbitPythonAPI[""] as AcResultType[]];
