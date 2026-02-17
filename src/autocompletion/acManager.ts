@@ -13,9 +13,9 @@ import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFr
 import { pythonBuiltins } from "@/autocompletion/pythonBuiltins";
 import skulptPythonAPI from "@/autocompletion/skulpt-api.json";
 import {OUR_PUBLIC_LIBRARY_MODULES} from "@/autocompletion/ac-skulpt";
-import graphicsMod from "@/../pysrc/strype/graphics.py?raw";
-import soundMod from "@/../pysrc/strype/sound.py?raw";
-import turtleMod from "@/../pysrc/pyi/turtle.pyi?raw";
+import graphicsMod from "pysrc/strype/graphics.py";
+import soundMod from "pysrc/strype/sound.py";
+import turtleMod from "pysrc/pyi/turtle.pyi";
 TPyParser.defineModule("strype.graphics", extractPYI(graphicsMod), "pyi");
 TPyParser.defineModule("strype.sound", extractPYI(soundMod), "pyi");
 TPyParser.defineModule("turtle", turtleMod, "pyi");
