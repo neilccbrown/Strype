@@ -300,7 +300,7 @@ export default Vue.extend({
         },
 
         getSkulptBackendTurtleDivId(): string {
-            return BACKEND_SKULPT_DIV_ID;
+            return "TODOremovethismethodwhenturtlereplaced";
         },
 
         isPythonExecuting(): boolean {
