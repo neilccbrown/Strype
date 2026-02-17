@@ -7,7 +7,6 @@ import i18n from "@/i18n";
 import {Signature, TPyParser} from "tigerpython-parser";
 import {getAvailablePyPyiFromLibrary, getPossibleImports, getTextFileFromLibraries} from "@/helpers/libraryManager";
 import Parser from "@/parser/parser";
-import { z } from "zod";
 import {extractPYI} from "@/helpers/python-pyi";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
@@ -23,6 +22,7 @@ TPyParser.defineModule("turtle", turtleMod, "pyi");
 // #v-else
 import microbitPythonAPI from "@/autocompletion/microbit-api.json";
 import microbitDescriptions from "@/autocompletion/microbit.json";
+import {AcResultsWithCategorySchema} from "@/types/ac-types-zod";
 // Import all the micro:bit PYI files and load the modules in TigerPython.
 // If these files need update, replace "audio.pyi" in the root folder
 // by the one in /microbit/ because it seems reimports don't work well.
@@ -420,48 +420,6 @@ export async function getAvailableModulesForImport() : Promise<AcResultsWithCate
     // #v-endif
     return {[""]: updatedAPIModules};
 }
-
-const SignatureArgSchema = z.object({
-    name: z.string(),
-    defaultValue: z.string().nullable(),
-    argType: z.string().nullable(),
-});
-
-const SignatureVarArgSchema = z.object({
-    name: z.string(),
-    argType: z.string().nullable(),
-});
-
-const SignatureSchema = z.object({
-    positionalOnlyArgs: z.array(SignatureArgSchema),
-    positionalOrKeywordArgs: z.array(SignatureArgSchema),
-    varArgs: SignatureVarArgSchema.nullable(),
-    keywordOnlyArgs: z.array(SignatureArgSchema),
-    varKwargs: SignatureVarArgSchema.nullable(),
-    firstParamIsSelfOrCls: z.boolean(),
-});
-
-
-// Define AcResultType
-const AcResultTypeSchema = z.object({
-    acResult: z.string(),
-    documentation: z.string(),
-    type: z.array(z.enum(["function", "module", "variable", "type"])),
-    params: z
-        .array(
-            z.object({
-                name: z.string(),
-                defaultValue: z.string().optional(),
-                hide: z.boolean().optional(),
-            })
-        )
-        .optional(),
-    signature: SignatureSchema.optional(),
-    version: z.number(),
-});
-
-// Define AcResultsWithCategory: a record of category → array of AcResultType
-const AcResultsWithCategorySchema = z.record(z.array(AcResultTypeSchema));
 
 
 export async function getAvailableItemsForImportFromModule(module: string) : Promise<AcResultType[]> {
