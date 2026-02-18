@@ -151,14 +151,10 @@ export default defineConfig(({mode}) => {
             // So that we still have compilation of imports like: import { STRYPE_LOCATION } from "@/helpers/pythonToFrames"
             alias: {
                 "@": path.resolve(__dirname, "src"),
-                // We also want pysrc to be usable without prefix because it is used in preprocessing via esbuild in that way:
-                pysrc: path.resolve(__dirname, 'pysrc'),
             },
         },
 
         optimizeDeps: { exclude: ["pyodide"] },
-
-        assetsInclude: ["pysrc/**/*.py", "pysrc/**/*.pyi"],
 
         worker: { format: 'es' },
     };

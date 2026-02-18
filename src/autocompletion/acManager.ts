@@ -13,9 +13,9 @@ import {AcResultsWithCategorySchema} from "@/types/ac-types-zod";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import {OUR_PUBLIC_LIBRARY_MODULES, pythonBuiltins} from "@/autocompletion/pythonBuiltins";
 import pythonAPI from "@/autocompletion/python-api.json";
-import graphicsMod from "pysrc/strype/graphics.py";
-import soundMod from "pysrc/strype/sound.py";
-import turtleMod from "pysrc/pyi/turtle.pyi";
+import graphicsMod from "@/../pysrc/strype/graphics.py?raw";
+import soundMod from "@/../pysrc/strype/sound.py?raw";
+import turtleMod from "@/../pysrc/pyi/turtle.pyi?raw";
 TPyParser.defineModule("strype.graphics", extractPYI(graphicsMod), "pyi");
 TPyParser.defineModule("strype.sound", extractPYI(soundMod), "pyi");
 TPyParser.defineModule("turtle", turtleMod, "pyi");
