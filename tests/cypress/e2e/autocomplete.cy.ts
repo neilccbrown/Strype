@@ -55,16 +55,13 @@ describe("Built-ins", () => {
     it("Shows text when no documentation available", () => {
         focusEditorAC();
         // Add a function frame and trigger auto-complete:
-        const targetNoDocs = Cypress.env("mode") === "microbit" ? "function" : "buffer";
+        const targetNoDocs = Cypress.env("mode") === "microbit" ? "function" : "quit";
         cy.get("body").type(" " + targetNoDocs);
         cy.wait(500);
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel).should("be.visible");
-            // buffer is a Skulpt-only function with no documentation available:
-            // function is a type with no docs (note: used "ellipsis" before, but with new API it has 2 entries)
-            
-            checkExactlyOneItem(acIDSel, BUILTIN, targetNoDocs + (Cypress.env("mode") === "microbit" ? "()" : ""));
+            checkExactlyOneItem(acIDSel, BUILTIN, targetNoDocs + (Cypress.env("mode") === "microbit" ? "()" : "(self, code)"));
             cy.get("body").type("{downarrow}");
             // Check docs are showing even though there's no documentation:
             const acIDDoc = acIDSel.replace("#", "#popupAC").replace("_AutoCompletion", "documentation");
