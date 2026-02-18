@@ -91,6 +91,7 @@
         "zod": "^3.25.32"
     },
     "devDependencies": {
+        "@estruyf/github-actions-reporter": "^1.11.0",
         "@microsoft/microsoft-graph-types": "^2.40.0",
         "@pinia/testing": "^0.0.14",
         "@playwright/test": "^1.52.0",
