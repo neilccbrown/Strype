@@ -6,13 +6,6 @@
 // has changed.  The resulting file is checked in to Git since it won't change
 // often.  (This script just outputs on console, which goes to stdout; the path
 // of the resulting file is set in package.json where the NPM task is defined.)
-//
-// Note that Skulpt can only run in a browser because it looks for e.g. the window
-// object.  So in order to run it we must use a fake browser environment.
-// This is done from the package.json command, which uses browser-run to run
-// the Typescript (after it has been compiled to Javascript and bundled into a
-// single file).
-
 import {OUR_PUBLIC_LIBRARY_MODULES, pythonBuiltins} from "../src/autocompletion/pythonBuiltins";
 import {AcResultsWithCategory, AcResultType} from "../src/types/ac-types";
 import {getAvailablePyPyiFromLibrary, getTextFileFromLibraries} from "../src/helpers/libraryManager";
@@ -24,10 +17,10 @@ import fs from "node:fs/promises";
 import pythonInspectionCode from "pysrc/fetch-ac-info-from-python.py";
 
 /*
- * Prepare code to be run by Skulpt in order to find out completions for autocomplete.
+ * Prepare code to be run by Pyodide in order to find out completions for autocomplete.
  * Calls dir() on the given context then puts the results as a list of string into the "acs" variable.
  * 
- * @param userCode -> The user code to run in Skulpt before asking for completions
+ * @param userCode -> The user code to run in Pyodide before asking for completions
  * @param contextAC -> Anything before the dot in the text before the current cursor position, to call dir() on.
  */
 function getPythonCodeForNamesInContext(userCode: string, contextAC: string): string {
@@ -97,8 +90,7 @@ async function loadPyodideAndPackage(
     let packageBuffer: ArrayBuffer;
     [pyodide, packageBuffer] = await Promise.all([
         pRetry(() => pyodideLoader({
-            indexURL: "node_modules/pyodide/", //pathToFileURL(path.resolve("./node_modules/pyodide/")).href,
-            //stdLibURL: pathToFileURL(path.resolve("./node_modules/pyodide/python_stdlib.zip")).href,
+            indexURL: "node_modules/pyodide/",
         }), {retries: 3}),
         pRetry(() => fs.readFile(packagePath).then((b) => b.buffer), {retries: 3}),
     ]);
@@ -108,7 +100,11 @@ async function loadPyodideAndPackage(
     const sys = pyodide.pyimport("sys");
     sys.path.append(extractDir);
 
-    // Important to suppress log on console.log by blanking messageCallback:
+    // Pyodide does not include the "test" package by default, so since we want to
+    // investigate it for autocomplete, we must load the package.  However, Pyodide
+    // has an annoying behaviour that it logs "Loading"/"Loaded" messages on loadPackage,
+    // see https://github.com/pyodide/pyodide/blob/ddf33cb6bec70fe295af3ef38769bba1dbb77459/src/js/load-package.ts#L294
+    // The easiest way to suppress this is by blanking messageCallback during this load call:
     await pyodide.loadPackage("test", {messageCallback: () => {}});
     pyodide.registerJsModule("strype_bridge", strype_bridge);
 
@@ -152,11 +148,12 @@ else {
     modulesPromise = Promise.resolve([{name: ""}].concat(...Object.keys(pythonBuiltins).filter((k) => pythonBuiltins[k].type === "module").concat(OUR_PUBLIC_LIBRARY_MODULES).map((m) => ({name: m}))));
 }
 
-// The challenge with Skulpt is that everything is in a Promise, but we have to be careful that we pull out
-// the global acs variable before running the next Skulpt.  We can't await the Promise because the "browser-run"
-// environment we are in does not support top-level await.  So instead, we just make an absolutely huge
-// promise chain that adds each item to the list until there is nothing left to process, then we output them
-// all and tell the browser to exit:
+// The challenge with Skulpt used to be that everything is in a Promise, and that
+// in browser-run, we couldn't await the Promise because it did not support top-level await.
+// So instead, we made an absolutely huge promise chain that adds each item to the list until
+// there is nothing left to process, then we output them all at the end.
+// We've now switched to Node so we could rewrite it all into actual awaits, but it works
+// so seemed a bit unnecessary.
 
 
 // Get the class methods for a particular Python class, then pass the list of names to the "andThen" function.
@@ -217,7 +214,7 @@ async function getModuleMembersOneByOne(modules: Module[], next : number, soFar 
         return;
     }
     
-    // Ask Skulpt about the module's contents:
+    // Ask Pyodide about the module's contents:
     const modName = modules[next].name != "" ? modules[next].name : "builtins";
     const codeToRun = getPythonCodeForNamesInContext("import " + modName + "\n", modName);
     const acs = await pyodide.runPythonAsync(codeToRun + "\nacs") as string[];
@@ -248,7 +245,7 @@ function sortOutput(data: AcResultsWithCategory): AcResultsWithCategory {
 
 const builtinModules = Object.keys(pythonBuiltins);
 const allContent : AcResultsWithCategory = library ? {} : {"": builtinModules.map((n) => n.endsWith("_$rw$") ? n.replace("_$rw$", ""): n).filter((func) => !func.includes("$")).map((s) => ({acResult: s, documentation: "", type: [], version: 0}))};
-// Add Skulpt's builtin functions to the default module:
+// Add Pyodide's builtin functions to the default module:
 const fetchForModules = async () => {
     modulesPromise.then((modules) => getModuleMembersOneByOne(modules, 0, allContent, () => {
         // Outputting the results to console actually goes to stdout, which the surrounding
