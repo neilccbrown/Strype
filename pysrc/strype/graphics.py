@@ -2,7 +2,6 @@ from strype_bridge import strype_graphics_internal as _strype_graphics_internal,
 import math as _math
 import collections as _collections
 import re as _re
-import sys as _sys
 import time as _time
 
 # This file is automatically processed to extract types for TigerPython, using the "# type" annotations
@@ -36,6 +35,7 @@ def _round_and_clamp_0_255(number):
     # type: (float) -> int
     return min(max(int(round(number)), 0), 255)
 
+# Note: there is a Cypress test which uses this, if you rename it, adjust that test (search "_bk_image") 
 _bk_image = None
 #type: Image | None
 

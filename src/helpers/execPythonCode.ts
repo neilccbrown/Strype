@@ -2,7 +2,6 @@
 
 import { LineAndSlotPositions } from "@/types/types";
 import { useStore } from "@/store/store";
-import { skulptReadPythonLib } from "@/autocompletion/ac-skulpt";
 import i18n from "@/i18n";
 import Vue from "vue";
 import { CustomEventTypes, setPythonExecAreaLayoutButtonPos } from "./editor";
@@ -273,7 +272,7 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
 
     Sk.configure({
         output:outf, 
-        read:skulptReadPythonLib(libraryAddresses),
+        //read:skulptReadPythonLib(libraryAddresses),
         fileopen: skulptOpenFileIO,
         fileclose: skulptCloseFileIO, // This is an added property in Skulpt for fileIO
         fileNotWritableErr: i18n.t("errorMessage.fileIO.fileNotWritableErr"), // This is an added property in Skulpt for fileIO

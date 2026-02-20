@@ -5,6 +5,7 @@
     "module": "esnext",
     "esModuleInterop": true,
     "moduleResolution": "Node",
-    "outDir": "compiled"
+    "outDir": "compiled",
+    "skipLibCheck": true      
   }
 }

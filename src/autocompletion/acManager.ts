@@ -7,13 +7,12 @@ import i18n from "@/i18n";
 import {Signature, TPyParser} from "tigerpython-parser";
 import {getAvailablePyPyiFromLibrary, getPossibleImports, getTextFileFromLibraries} from "@/helpers/libraryManager";
 import Parser from "@/parser/parser";
-import { z } from "zod";
 import {extractPYI} from "@/helpers/python-pyi";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
+import {AcResultsWithCategorySchema} from "@/types/ac-types-zod";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
-import { pythonBuiltins } from "@/autocompletion/pythonBuiltins";
-import skulptPythonAPI from "@/autocompletion/skulpt-api.json";
-import {OUR_PUBLIC_LIBRARY_MODULES} from "@/autocompletion/ac-skulpt";
+import {OUR_PUBLIC_LIBRARY_MODULES, pythonBuiltins} from "@/autocompletion/pythonBuiltins";
+import pythonAPI from "@/autocompletion/python-api.json";
 import graphicsMod from "@/../pysrc/strype/graphics.py?raw";
 import soundMod from "@/../pysrc/strype/sound.py?raw";
 import turtleMod from "@/../pysrc/pyi/turtle.pyi?raw";
@@ -310,7 +309,7 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
             }
         }
         // #v-else
-        const allSkulptItems : AcResultType[] = skulptPythonAPI[module as keyof typeof skulptPythonAPI] as AcResultType[];
+        const allSkulptItems : AcResultType[] = pythonAPI[module as keyof typeof pythonAPI] as AcResultType[];
         if (allSkulptItems) {
             soFar[module] = [...allSkulptItems.filter((x) => !x.acResult.startsWith("_"))];
         }
@@ -366,7 +365,7 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
             }
             // #v-else
             const allSkulptItems : AcResultType[] =
-                (skulptPythonAPI[realModule as keyof typeof skulptPythonAPI] as AcResultType[])
+                (pythonAPI[realModule as keyof typeof pythonAPI] as AcResultType[])
                     ?? availableLibraries[realModule];
             if (allSkulptItems) {
                 allItems = [...allSkulptItems.filter((x) => !x.acResult.startsWith("_"))];
@@ -421,48 +420,6 @@ export async function getAvailableModulesForImport() : Promise<AcResultsWithCate
     return {[""]: updatedAPIModules};
 }
 
-const SignatureArgSchema = z.object({
-    name: z.string(),
-    defaultValue: z.string().nullable(),
-    argType: z.string().nullable(),
-});
-
-const SignatureVarArgSchema = z.object({
-    name: z.string(),
-    argType: z.string().nullable(),
-});
-
-const SignatureSchema = z.object({
-    positionalOnlyArgs: z.array(SignatureArgSchema),
-    positionalOrKeywordArgs: z.array(SignatureArgSchema),
-    varArgs: SignatureVarArgSchema.nullable(),
-    keywordOnlyArgs: z.array(SignatureArgSchema),
-    varKwargs: SignatureVarArgSchema.nullable(),
-    firstParamIsSelfOrCls: z.boolean(),
-});
-
-
-// Define AcResultType
-const AcResultTypeSchema = z.object({
-    acResult: z.string(),
-    documentation: z.string(),
-    type: z.array(z.enum(["function", "module", "variable", "type"])),
-    params: z
-        .array(
-            z.object({
-                name: z.string(),
-                defaultValue: z.string().optional(),
-                hide: z.boolean().optional(),
-            })
-        )
-        .optional(),
-    signature: SignatureSchema.optional(),
-    version: z.number(),
-});
-
-// Define AcResultsWithCategory: a record of category → array of AcResultType
-const AcResultsWithCategorySchema = z.record(z.array(AcResultTypeSchema));
-
 
 export async function getAvailableItemsForImportFromModule(module: string) : Promise<AcResultType[]> {
     const star : AcResultType = {"acResult": "*", "documentation": "All items from module", "version": 0, "type": []};
@@ -472,7 +429,7 @@ export async function getAvailableItemsForImportFromModule(module: string) : Pro
         return [...allMicrobitItems, star];
     }
     // #v-else
-    const allSkulptItems: AcResultType[] = skulptPythonAPI[module as keyof typeof skulptPythonAPI] as AcResultType[];
+    const allSkulptItems: AcResultType[] = pythonAPI[module as keyof typeof pythonAPI] as AcResultType[];
     if (allSkulptItems) {
         return [...allSkulptItems, star];
     }
@@ -504,7 +461,7 @@ export async function getAvailableItemsForImportFromModule(module: string) : Pro
 export function getBuiltins() : AcResultType[] {
     // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
     // Must return a clone as caller may later modify the list:
-    return [...skulptPythonAPI[""] as AcResultType[]];
+    return [...pythonAPI[""] as AcResultType[]];
     // #v-else
     // Must return a clone as caller may later modify the list:
     return [...microbitPythonAPI[""] as AcResultType[]];

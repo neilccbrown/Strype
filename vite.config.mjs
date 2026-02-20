@@ -47,8 +47,10 @@ function zipPysrcPlugin() {
             server.watcher.add("pysrc/**");
 
             server.watcher.on("change", async (file) => {
-                // Avoid an infinite regeneration loop when pysrc.zip is added:
-                if (!file.includes("pysrc.zip")) {
+                // Avoid an infinite regeneration loop when pysrc.zip is added,
+                // and only regenerate when the pysrc dir changes, not when other files
+                // are changed.
+                if (!file.includes("pysrc.zip") && file.includes("pysrc")) {
                     await run();
                 }
             });

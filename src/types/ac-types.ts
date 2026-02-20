@@ -1,5 +1,5 @@
 // Types for the autocomplete.  These are in a separate file because they are imported
-// by the process-skulpt-api.ts script, which cannot import the full types.ts file.
+// by the process-pyodide-api.ts script, which cannot import the full types.ts file.
 
 interface SignatureArg {
     name: string;
