@@ -77,6 +77,7 @@ Current team:
 - Pierre Weill-Tessier (King's College London)
 
 Other contributors:
+- Clemens Bachmann and Dennis Komm (Turtle implementation, from WebTigerPython)
 - Tobias Kohn (<a href="https://github.com/Tobias-Kohn/TigerPython-Parser" target="_blank">TigerPython parser</a>)
 - Babis Kyfonidis
 - Zak Singh
