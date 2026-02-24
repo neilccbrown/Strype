@@ -123,11 +123,11 @@ class StrypePyodideRunner(PyodideRunner):
 StrypePyodideRunner()`);
         const bridgeSync: SyncStrypePyodideHandlerFunction = <R extends SyncStrypePyodideWorkerRequest> (req : R) : ResponseFor<R> => {
             otherRequest({kind: "sync", request: req});
-            const reply = extras.readMessage() as SyncStrypePyodideWorkerResponse;
+            const reply = extras.readMessage() as (SyncStrypePyodideWorkerResponse | {request: string, error: string});
             if (reply.request != req.request) {
                 throw new Error(`Internal error: Pyodide worker received ${reply.request} but had asked for ${req.request}`);
             }
-            else if (reply.hasOwnProperty("error")) {
+            else if ("error" in reply) {
                 throw new Error(reply.error);
             }
             else {
