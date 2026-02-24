@@ -123,7 +123,7 @@ export type SyncOrAsyncStrypePyodideWorkerRequest =
 // to an array of numbers and encodes each one with commas etc, and must parse it all back again.
 // Instead we can turn the values directly into strings by storing the 0-255 values into a character in the string
 // which works because each string character is 2 bytes so can take the 0-255 values.
-export function decodeRGBA(str: string): Uint8ClampedArray {
+export function decodeStringToUint8(str: string): Uint8ClampedArray {
     const u8 = new Uint8ClampedArray(str.length);
     for (let i = 0; i < str.length; i++) {
         u8[i] = str.charCodeAt(i);
@@ -132,7 +132,7 @@ export function decodeRGBA(str: string): Uint8ClampedArray {
 }
 
 // Opposite of decodeRGBA above
-export function encodeRGBA(u8: Uint8ClampedArray): string {
+export function encodeUint8ToString(u8: Uint8ClampedArray): string {
     const chunk = 0x8000;
     const parts: string[] = [];
     for (let i = 0; i < u8.length; i += chunk) {

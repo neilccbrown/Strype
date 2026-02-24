@@ -1,6 +1,6 @@
 // This file has the parts of the code which executes on the main thread to handle requests from the Pyodide web worker
 
-import { AsyncStrypePyodideHandlerFunction, decodeRGBA, encodeRGBA, isRemoteImage, makeSoundHandle, SpriteHandle, SyncPromiseStrypePyodideHandlerFunction } from "@/stryperuntime/worker_bridge_type";
+import { AsyncStrypePyodideHandlerFunction, decodeStringToUint8, encodeUint8ToString, isRemoteImage, makeSoundHandle, SpriteHandle, SyncPromiseStrypePyodideHandlerFunction } from "@/stryperuntime/worker_bridge_type";
 import { Renderer } from "@/stryperuntime/renderer";
 import { SoundManager } from "@/stryperuntime/sound_manager";
 import { drawText } from "@/helpers/textDrawing";
@@ -106,7 +106,7 @@ export const handleSyncRequests : (
     }
     case "canvas_getAllPixelsRGBA": {
         const ctx = renderer.getCanvasContext(req.img.handle);
-        return {request: req.request, response: Promise.resolve(encodeRGBA(ctx.getImageData(0, 0, req.img.width, req.img.height).data))};
+        return {request: req.request, response: Promise.resolve(encodeUint8ToString(ctx.getImageData(0, 0, req.img.width, req.img.height).data))};
     }
     default:
         // Trick to give a compile-time error if a case is missing above:
@@ -182,7 +182,7 @@ export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundMan
         return;
     }
     case "canvas_drawPixels": {
-        renderer.getCanvasContext(req.img.handle).putImageData(new ImageData(decodeRGBA(req.pixelRGBA), req.width, req.height), req.x, req.y);
+        renderer.getCanvasContext(req.img.handle).putImageData(new ImageData(decodeStringToUint8(req.pixelRGBA), req.width, req.height), req.x, req.y);
         return undefined;
     }
     case "canvas_downloadPNG": {
