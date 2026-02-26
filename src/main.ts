@@ -1,7 +1,7 @@
 import { createApp } from "vue";
 import App from "@/App.vue";
 //import {createPinia/*, PiniaVuePlugin*/} from "pinia";
-//import i18n from "@/i18n";
+import i18n from "@/i18n";
 //import { BootstrapVue } from "bootstrap-vue";
 import "bootstrap/dist/css/bootstrap.css";
 import "bootstrap-vue/dist/bootstrap-vue.css";
@@ -43,6 +43,8 @@ import {getPEATabContentContainerDivId} from "./helpers/editor";
 
 // New way of creating the App in Vue 3: using createApp()
 const app = createApp(App);
+
+app.use(i18n);
 
 // Mount the app
 app.mount("#app");
