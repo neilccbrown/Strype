@@ -98,6 +98,7 @@ export type AsyncStrypePyodideWorkerRequest =
     | { request: "canvas_setStroke"; img: RemoteCanvas, stroke: string }
     | { request: "canvas_drawPixels", img: RemoteCanvas, x: number; y: number; width: number; height: number; pixelRGBA: string } // See encodeRGBA/decodeRGBA below
     | { request: "canvas_downloadPNG", img: RemoteCanvas, filenameStem: string }
+    | { request: "turtle", buffer: [string, string, any][]}
     | { request: "startSound"; sound: RemoteSound }
     | { request: "stopSound"; sound: RemoteSound }
     | { request: "setMonoSoundSampleValues"; sound: RemoteSound; values: number[]; targetOffset: number }

@@ -382,127 +382,146 @@
 
 import time as _time
 import math as _math
-#from runner.runner import defaultrunner
+# Named this way to avoid having to change the code too much from WebTigerPython, in case we want to diff
+# changes in future:
+from strype_bridge import strype_turtle_internal as defaultrunner
 import typing as _typing
 #from TigerPython import Color, makeColor as make_color # TODO fix this, ideally use Strype's color
+from strype.graphics import Color, color_from_string as _color_from_string
 import inspect as _inspect
 import sys as _sys
 # from typeguard import typechecked
 
-# NCCB: This is a paste from WebTigerPython's param.py
+# NCCB: This is a paste from WebTigerPython's param.py, but to minimise namespace pollution we prefix
+# all the items with an underscore
 ###################################################################################################
-MAKE = 'makeTurtle'
-INITCANVAS = 'initCanvas'
-GETMODE = "getMode"
-SETMODE = "setMode"
-SCREENCOLOR = 'screenColor'
-CLEAR = 'clear'
-CLEARSCREEN = 'clearScreen'
-SAVEPLAYGROUND = 'savePlayground'
-CLEAN = 'clean'
-GETPIXELCOLOR = 'getPixelColor'
-KEYPRESSED = "keyPressed"
-KEYCODEPRESSED = "keyCodePressed"
-WINDOWDIMS = 'getWindowDims'
-ADDSTATUSBAR = 'addStatusBar'
-SETSTATUSTEXT = 'setStatusText'
-TRACER = 'tracer'
-UPDATE = 'update'
+_MAKE = 'makeTurtle'
+_INITCANVAS = 'initCanvas'
+_GETMODE = "getMode"
+_SETMODE = "setMode"
+_SCREENCOLOR = 'screenColor'
+_CLEAR = 'clear'
+_CLEARSCREEN = 'clearScreen'
+# NCCB: Removed _SAVEPLAYGROUND = 'savePlayground'
+_CLEAN = 'clean'
+_GETPIXELCOLOR = 'getPixelColor'
+_KEYPRESSED = "keyPressed"
+_KEYCODEPRESSED = "keyCodePressed"
+_WINDOWDIMS = 'getWindowDims'
+_TRACER = 'tracer'
+_UPDATE = 'update'
 
 # Move and draw
-MOVE = 'moveTurtle'
-ROTATE = 'rotateTurtle'
-SETPOSITION = 'setposition'
-TELEPORT = 'teleport'
-SETX = 'setx'
-SETY = 'sety'
-SETHEADING = 'setheading'
-CIRCLE = 'circle'
-DOT = 'dot'
-STAMP = 'stamp'
-CLEARSTAMP = 'clearstamp'
-CLEARSTAMPS = 'clearstamps'
-SPEED = 'speed'
+_MOVE = 'moveTurtle'
+_ROTATE = 'rotateTurtle'
+_SETPOSITION = 'setposition'
+_TELEPORT = 'teleport'
+_SETX = 'setx'
+_SETY = 'sety'
+_SETHEADING = 'setheading'
+_CIRCLE = 'circle'
+_DOT = 'dot'
+_STAMP = 'stamp'
+_CLEARSTAMP = 'clearstamp'
+_CLEARSTAMPS = 'clearstamps'
+_SPEED = 'speed'
 
 # Tell Turtle's state
-POSITION = 'position'
-TOWARDS = 'towards'
-XCOR = 'xcor'
-YCOR = 'ycor'
-HEADING = 'heading'
-DISTANCE = 'distance'
+_POSITION = 'position'
+_TOWARDS = 'towards'
+_XCOR = 'xcor'
+_YCOR = 'ycor'
+_HEADING = 'heading'
+_DISTANCE = 'distance'
 
 # Drawing state
-PEN = 'pen'
-PENSIZE = 'pensize'
-ISDOWN = 'isdown'
+_PEN = 'pen'
+_PENSIZE = 'pensize'
+_ISDOWN = 'isdown'
 
 # Color control
-PENCOLOR = 'pencolor'
-FILLCOLOR = 'fillcolor'
-GETCOLOR = 'getcolor'
+_PENCOLOR = 'pencolor'
+_FILLCOLOR = 'fillcolor'
+_GETCOLOR = 'getcolor'
 
 # Filling
-FILLING = 'filling'
-BEGINFILL = 'begin_fill'
-ENDFILL = 'end_fill'
+_FILLING = 'filling'
+_BEGINFILL = 'begin_fill'
+_ENDFILL = 'end_fill'
 
 # More drawing control
-WRITE = 'write'
+_WRITE = 'write'
 
 # Visibility
-HIDETURTLE = 'hideTurtle'
-ISVISIBLE = 'isvisible'
+_HIDETURTLE = 'hideTurtle'
+_ISVISIBLE = 'isvisible'
 
 # Appearance
-SHAPE = 'shape'
-ISSHAPE = 'isshape'
-GETSHAPE = 'getshape'
-RESIZEMODE = 'resizemode'
-SHAPESIZE = 'shapesize'
-SHEARFACTOR = 'shearfactor'
-SETTILTANGLE = 'settiltangle'
-TILTANGLE = 'tiltangle'
-TILT = 'tilt'
-SHAPETRANSFORM = 'shapetransform'
-GET_SHAPEPOLY = 'get_shapepoly'
+_SHAPE = 'shape'
+_ISSHAPE = 'isshape'
+_GETSHAPE = 'getshape'
+_RESIZEMODE = 'resizemode'
+_SHAPESIZE = 'shapesize'
+_SHEARFACTOR = 'shearfactor'
+_SETTILTANGLE = 'settiltangle'
+_TILTANGLE = 'tiltangle'
+_TILT = 'tilt'
+_SHAPETRANSFORM = 'shapetransform'
+_GET_SHAPEPOLY = 'get_shapepoly'
 
 # Events
-GETEVENTLOG = 'getEventLog'
-SETEVENTMODE = 'setEventMode'
-FOCUS = 'focus'
+_GETEVENTLOG = 'getEventLog'
+_SETEVENTMODE = 'setEventMode'
+_FOCUS = 'focus'
 
 # Settings and special methods
-MODE = 'mode'
-COLORMODE = 'colormode'
-GETCANVAS = 'getcanvas'
-GETSHAPES = 'getshapes'
-REGISTER_SHAPE = 'register_shape'
-TURTLES = 'turtles'
-WINDOW_HEIGHT = 'window_height'
-WINDOW_WIDTH = 'window_width'
+_MODE = 'mode'
+_COLORMODE = 'colormode'
+_GETCANVAS = 'getcanvas'
+_GETSHAPES = 'getshapes'
+_REGISTER_SHAPE = 'register_shape'
+_TURTLES = 'turtles'
+_WINDOW_HEIGHT = 'window_height'
+_WINDOW_WIDTH = 'window_width'
 
 ###################################################################################################
 
-BUFFER_SIZE = 1
-TURTLE_BUFFER = []
-VALID_MODES = ['standard', 'logo']
-EVENT_FUNC_DICT = dict()
-CURRENT_TURTLE_ID = 0
+# NCCB simplified version of make_color:
+def make_color(*args):
+    if len(args) == 1:
+        if type(args[0]) == Color:
+            return args[0]
+        elif type(args[0]) == str:
+            return _color_from_string(args[0])
+        elif type(args[0]) in [tuple, list]:
+            return make_color(*args[0])
+        else:
+            raise TypeError(f"invalid argument(s) for 'makeColor()': {args}")
+    else:
+        return Color(*args)
+def _pixi_color(c):
+    return [c.red, c.green, c.blue, c.alpha]
+
+
+_BUFFER_SIZE = 1
+_TURTLE_BUFFER = []
+_VALID_MODES = ['standard', 'logo']
+_EVENT_FUNC_DICT = dict()
+_CURRENT_TURTLE_ID = 0
 
 
 def reset(dispatch=True):
     if dispatch and Screen().auto_repaint:
         Screen().update()
     else:
-        global TURTLE_BUFFER
-        TURTLE_BUFFER = []
-    global BUFFER_SIZE
-    BUFFER_SIZE = 1
-    global CURRENT_TURTLE_ID
-    CURRENT_TURTLE_ID = 0
-    global EVENT_FUNC_DICT
-    EVENT_FUNC_DICT = dict()
+        global _TURTLE_BUFFER
+        _TURTLE_BUFFER = []
+    global _BUFFER_SIZE
+    _BUFFER_SIZE = 1
+    global _CURRENT_TURTLE_ID
+    _CURRENT_TURTLE_ID = 0
+    global _EVENT_FUNC_DICT
+    _EVENT_FUNC_DICT = dict()
     Turtle._fullCircle = 360
     Screen()._turtlesList.clear()
     Turtle.__resetTurtleClass__()
@@ -512,9 +531,9 @@ def _dispatch_buffer():
     '''
     Sends content of the buffer to PIXIJS to execute turtle movement on the Canvas
     '''
-    if len(TURTLE_BUFFER) > 0:
-        turtleBufferTmp = TURTLE_BUFFER.copy()
-        TURTLE_BUFFER.clear()
+    if len(_TURTLE_BUFFER) > 0:
+        turtleBufferTmp = _TURTLE_BUFFER.copy()
+        _TURTLE_BUFFER.clear()
         return defaultrunner.callback('turtle', data=turtleBufferTmp)
 
 
@@ -523,8 +542,8 @@ def _add_action(command, args=None, id=None):
     Adds an action to the turtle buffer. the buffer is dispatched when a limit is reached.
     Normally buffersize is 1. However, for animations, this is needed for performance.
     '''
-    TURTLE_BUFFER.append([command, args, id])
-    if len(TURTLE_BUFFER) >= BUFFER_SIZE:
+    _TURTLE_BUFFER.append([command, args, id])
+    if len(_TURTLE_BUFFER) >= _BUFFER_SIZE:
         _dispatch_buffer()
 
 
@@ -537,9 +556,9 @@ def _return_action(command, args=None, id=None):
 
 def _dispatch_return_action(command, args=None, id=None):
     _dispatch_buffer()
-    TURTLE_BUFFER.append([command, args, id])
-    turtleBufferTmp = TURTLE_BUFFER.copy()
-    TURTLE_BUFFER.clear()
+    _TURTLE_BUFFER.append([command, args, id])
+    turtleBufferTmp = _TURTLE_BUFFER.copy()
+    _TURTLE_BUFFER.clear()
     return defaultrunner.callback('turtle', data=turtleBufferTmp)
 
 
@@ -574,7 +593,7 @@ class _Screen:
 
     def __init__(self):
         if Turtle._screen is None:
-            _add_action(INITCANVAS)
+            _add_action(_INITCANVAS)
 
     # Canvas Functions
     def clearscreen(self):
@@ -585,8 +604,8 @@ class _Screen:
     clear = clearscreen
 
     def bgcolor(self, *args):
-        color = make_color(*args)._export_pixi()
-        _add_action(SCREENCOLOR, color)
+        color = _pixi_color(make_color(*args))
+        _add_action(_SCREENCOLOR, color)
 
     def bgpic(self, *args):
         raise NotImplementedError()
@@ -611,7 +630,7 @@ class _Screen:
             raise Exception("delay can only be used with positive numbers")
         if self.auto_repaint:
             _dispatch_buffer()
-        if len(EVENT_FUNC_DICT) > 0:
+        if len(_EVENT_FUNC_DICT) > 0:
             self._handle_events(False)
         end = _time.time()
         duration = max(duration - (end - start), 0)
@@ -621,23 +640,23 @@ class _Screen:
         """
         rendert den Bildschirm (nach dem Ausschalten des automatischen Rendering)
         """
-        _add_action(UPDATE)
+        _add_action(_UPDATE)
         _dispatch_buffer()
 
     def tracer(self, n=0, delay=0, hideturtle=False):
-        global BUFFER_SIZE
+        global _BUFFER_SIZE
         if hideturtle:
             n = 1
             for turtle in self._turtlesList:
                 turtle.speed(100)
             self.auto_repaint = True
         elif n > 0:
-            BUFFER_SIZE = n
+            _BUFFER_SIZE = n
             self.auto_repaint = True
         else:
-            BUFFER_SIZE = _sys.maxsize
+            _BUFFER_SIZE = _sys.maxsize
             self.auto_repaint = False
-        _add_action(TRACER, [n, delay])
+        _add_action(_TRACER, [n, delay])
 
     keydict = {
         "Right": "ArrowRight",
@@ -659,7 +678,7 @@ class _Screen:
         update_func(funcstr, fun, False)
 
     def listen(self):
-        _add_action(FOCUS)
+        _add_action(_FOCUS)
         _dispatch_buffer()
 
     def ontimer(self, *args):
@@ -670,20 +689,20 @@ class _Screen:
         for event in events:
             eventstr = event['name'] + event['key']
             pos = event['pos'] if 'pos' in event else None
-            if eventstr in EVENT_FUNC_DICT:
+            if eventstr in _EVENT_FUNC_DICT:
                 if pos:
-                    EVENT_FUNC_DICT[eventstr](pos[0], pos[1])
+                    _EVENT_FUNC_DICT[eventstr](pos[0], pos[1])
                 else:
-                    EVENT_FUNC_DICT[eventstr]()
+                    _EVENT_FUNC_DICT[eventstr]()
             eventstrany = event['name'] + 'any'
-            if eventstrany in EVENT_FUNC_DICT:
-                EVENT_FUNC_DICT[eventstrany](event['key'])
+            if eventstrany in _EVENT_FUNC_DICT:
+                _EVENT_FUNC_DICT[eventstrany](event['key'])
         _dispatch_buffer()
 
     def mainloop(self):
         _dispatch_buffer()
         set_event_mode(True)
-        while len(EVENT_FUNC_DICT) > 0:
+        while len(_EVENT_FUNC_DICT) > 0:
             self._handle_events(True)
         set_event_mode(False)
 
@@ -693,11 +712,11 @@ class _Screen:
         Select turtle mode. Valid modes are "standard" and "logo".
         '''
         if mode is None:
-            return _dispatch_return_action(GETMODE)
-        elif mode in VALID_MODES:
-            _add_action(SETMODE, mode)
+            return _dispatch_return_action(_GETMODE)
+        elif mode in _VALID_MODES:
+            _add_action(_SETMODE, mode)
         else:
-            raise ValueError(f"mode \"{mode}\" must be in {VALID_MODES}")
+            raise ValueError(f"mode \"{mode}\" must be in {_VALID_MODES}")
 
     def colormode(self, *args):
         raise NotImplementedError()
@@ -716,10 +735,10 @@ class _Screen:
         return self._turtlesList
 
     def window_height(self, *args):
-        return _dispatch_return_action(WINDOWDIMS)[1]
+        return _dispatch_return_action(_WINDOWDIMS)[1]
 
     def window_width(self, *args):
-        return _dispatch_return_action(WINDOWDIMS)[0]
+        return _dispatch_return_action(_WINDOWDIMS)[0]
 
     # input methods
     def textinput(self, title: str, prompt: str = ''):
@@ -757,12 +776,6 @@ class _Screen:
         # we append a 0 for consistencty, however onmove is not mapped to a button
         funcstr = 'move'
         update_func(funcstr, fun, add)
-
-    def add_status_bar(self, height):
-        _add_action(ADDSTATUSBAR, height)
-
-    def set_status_text(self, text):
-        _add_action(SETSTATUSTEXT, text)
 
     def get_key(self):
         self.listen()
@@ -851,19 +864,19 @@ class Turtle:
         if undobuffersize:
             raise NotImplementedError()
         Screen()._turtlesList.append(self)
-        global CURRENT_TURTLE_ID
-        self.id = CURRENT_TURTLE_ID
-        CURRENT_TURTLE_ID += 1
-        _add_action(MAKE, id=self.id)
+        global _CURRENT_TURTLE_ID
+        self.id = _CURRENT_TURTLE_ID
+        _CURRENT_TURTLE_ID += 1
+        _add_action(_MAKE, id=self.id)
         if not isvisible:
-            _add_action(HIDETURTLE, 1, self.id)
+            _add_action(_HIDETURTLE, 1, self.id)
         if shape:
-            if _dispatch_return_action(ISSHAPE, shape, id=self.id) or shape == "circle":
-                _add_action(SHAPE, shape, self.id)
+            if _dispatch_return_action(_ISSHAPE, shape, id=self.id) or shape == "circle":
+                _add_action(_SHAPE, shape, self.id)
             else:
                 raise NameError("invalid shape name")
         else:
-            _add_action(SHAPE, "classic", self.id)
+            _add_action(_SHAPE, "classic", self.id)
 
     @classmethod
     def __resetTurtleClass__(cls):
@@ -871,10 +884,10 @@ class Turtle:
         cls._screen = None
 
     def clear(self, color=None):
-        _add_action(CLEAR, id=self.id)
+        _add_action(_CLEAR, id=self.id)
 
     def clean(self, color=None):
-        _add_action(CLEAN, id=self.id)
+        _add_action(_CLEAN, id=self.id)
 
     # Move and draw
     # @typechecked
@@ -882,15 +895,15 @@ class Turtle:
         '''
         move turtle steps pixels forward
         '''
-        _add_action(MOVE, steps, self.id)
+        _add_action(_MOVE, steps, self.id)
     fd = forward
 
     def backward(self, steps: float):
         '''
         move turtle steps pixels back
         '''
-        # return defaultrunner.callback('turtle', data=[MOVE, -steps])
-        _add_action(MOVE, -steps, self.id)
+        # return defaultrunner.callback('turtle', data=[_MOVE, -steps])
+        _add_action(_MOVE, -steps, self.id)
     back = backward
     bk = backward
 
@@ -899,8 +912,8 @@ class Turtle:
         rotate Turtle by deg to the right
         '''
         rad = (deg/self._fullCircle) * _math.pi * 2
-        # return defaultrunner.callback('turtle', data=[ROTATE, deg])
-        _add_action(ROTATE, rad, self.id)
+        # return defaultrunner.callback('turtle', data=[_ROTATE, deg])
+        _add_action(_ROTATE, rad, self.id)
     rt = right
 
     def left(self, deg: float):
@@ -908,8 +921,8 @@ class Turtle:
         rotate Turtle by deg to the left
         '''
         rad = (deg/self._fullCircle) * _math.pi * 2
-        # return defaultrunner.callback('turtle', data=[ROTATE, -deg])
-        _add_action(ROTATE, -rad, self.id)
+        # return defaultrunner.callback('turtle', data=[_ROTATE, -deg])
+        _add_action(_ROTATE, -rad, self.id)
     lt = left
 
     def setposition(self, x: _typing.Union[float, _typing.Tuple[float, float]], y: _typing.Optional[float] = None):
@@ -918,9 +931,9 @@ class Turtle:
         '''
         if isinstance(x, _typing.Tuple) or isinstance(x, _typing.List) and len(x) == 2 and y == None:
             x, y = x
-            _add_action(SETPOSITION, [x, -y], self.id)
+            _add_action(_SETPOSITION, [x, -y], self.id)
         elif isinstance(x, (float, int)) and isinstance(y, (float, int)):
-            _add_action(SETPOSITION, [x, -y], self.id)
+            _add_action(_SETPOSITION, [x, -y], self.id)
         else:
             raise TypeError("invalid argument types")
     setpos = setposition
@@ -931,9 +944,9 @@ class Turtle:
         '''
         if isinstance(x, _typing.Tuple) and y == None:
             x, y = x
-            _add_action(TELEPORT, [x, -y, fill_gap], self.id)
+            _add_action(_TELEPORT, [x, -y, fill_gap], self.id)
         elif isinstance(x, (float, int)) and isinstance(y, (float, int)):
-            _add_action(TELEPORT, [x, -y, fill_gap], self.id)
+            _add_action(_TELEPORT, [x, -y, fill_gap], self.id)
         else:
             raise TypeError("invalid argument types")
 
@@ -941,20 +954,20 @@ class Turtle:
         '''
         set the absolute position of the x-coordinate of the turtle
         '''
-        _add_action(SETX, x, self.id)
+        _add_action(_SETX, x, self.id)
 
     def sety(self, y: float):
         '''
         set the absolute position of the x-coordinate of the turtle
         '''
-        _add_action(SETY, -y, self.id)
+        _add_action(_SETY, -y, self.id)
 
     def setheading(self, deg: float):
         '''
         set the absolute heading of the turtle
         '''
         rad = (deg/self._fullCircle) * _math.pi * 2
-        _add_action(SETHEADING, rad, self.id)
+        _add_action(_SETHEADING, rad, self.id)
     seth = setheading
 
     def home(self):
@@ -972,7 +985,7 @@ class Turtle:
             rad = (extent/self._fullCircle) * _math.pi * 2
         else:
             rad = _math.pi*2
-        _add_action(CIRCLE, [radius, rad, steps], self.id)
+        _add_action(_CIRCLE, [radius, rad, steps], self.id)
 
     def dot(self, diameter=None):
         '''
@@ -982,19 +995,19 @@ class Turtle:
             raise Exception("diameter has to be positive")
         if diameter == None:
             diameter = -1
-        _add_action(DOT, diameter, self.id)
+        _add_action(_DOT, diameter, self.id)
 
     def stamp(self):
         '''
         stamp a copy of the turtle shape onto the canvas at the current position. return a stamp_id for that stamp
         '''
-        return _dispatch_return_action(STAMP, id=self.id)
+        return _dispatch_return_action(_STAMP, id=self.id)
 
     def clearstamp(self, stamp_id: int):
         '''
         delete stamp with given stampid
         '''
-        _add_action(CLEARSTAMP, stamp_id, self.id)
+        _add_action(_CLEARSTAMP, stamp_id, self.id)
 
     def clearstamps(self, stamp_ids: _typing.Optional[int] = None):
         '''
@@ -1002,7 +1015,7 @@ class Turtle:
         -2 deletes the last two stamps
         2 deletes the first two stamps
         '''
-        _add_action(CLEARSTAMPS, stamp_ids, self.id)
+        _add_action(_CLEARSTAMPS, stamp_ids, self.id)
 
     def undo(self, *args):
         raise NotImplementedError()
@@ -1012,7 +1025,7 @@ class Turtle:
         sets the speed of the turtle movement 
         :param newSpeed: (1 to 1000, default 500) With speed (-1) the turtle moves the fastest (without animation)
         '''
-        _add_action(SPEED, newSpeed, self.id)
+        _add_action(_SPEED, newSpeed, self.id)
 
     # Tell Turtle's state
 
@@ -1020,7 +1033,7 @@ class Turtle:
         '''
         returns the coordinates of the current turtle position
         '''
-        posArray = _dispatch_return_action(POSITION, id=self.id)
+        posArray = _dispatch_return_action(_POSITION, id=self.id)
         x = float(posArray[0])
         y = float(-posArray[1])
         return (x, y)
@@ -1032,11 +1045,11 @@ class Turtle:
         '''
         if isinstance(x, _typing.Tuple) or isinstance(x, _typing.List) and len(x) == 2 and y == None:
             x, y = x
-            angle = _dispatch_return_action(TOWARDS, [x, -y], id=self.id)
+            angle = _dispatch_return_action(_TOWARDS, [x, -y], id=self.id)
             angle = (angle*self._fullCircle)/(_math.pi*2)
             return angle
         elif isinstance(x, (float, int)) and isinstance(y, (float, int)):
-            angle = _dispatch_return_action(TOWARDS, [x, -y], id=self.id)
+            angle = _dispatch_return_action(_TOWARDS, [x, -y], id=self.id)
             angle = (angle*self._fullCircle)/(_math.pi*2)
             return angle
         else:
@@ -1046,14 +1059,14 @@ class Turtle:
         '''
         return the global x-coordinate
         '''
-        x = float(_dispatch_return_action(XCOR, id=self.id))
+        x = float(_dispatch_return_action(_XCOR, id=self.id))
         return float(x)
 
     def ycor(self):
         '''
         return the global y-coordinate
         '''
-        y = float(-_dispatch_return_action(YCOR, id=self.id))
+        y = float(-_dispatch_return_action(_YCOR, id=self.id))
         return float(y)
 
     def heading(self):
@@ -1061,7 +1074,7 @@ class Turtle:
         return the current heading of the turtle
         the turtle's heading is zero at the start
         '''
-        pixiheading = _dispatch_return_action(HEADING, id=self.id)
+        pixiheading = _dispatch_return_action(_HEADING, id=self.id)
         pixiheading = (pixiheading*self._fullCircle)/(_math.pi*2)
         return _round(-pixiheading % self._fullCircle)
 
@@ -1071,9 +1084,9 @@ class Turtle:
         '''
         if isinstance(x, _typing.Tuple) and y == None:
             x, y = x
-            return float(_dispatch_return_action(DISTANCE, [x, -y], self.id))
+            return float(_dispatch_return_action(_DISTANCE, [x, -y], self.id))
         elif isinstance(x, (float, int)) and isinstance(y, (float, int)):
-            return float(_dispatch_return_action(DISTANCE, [x, -y], self.id))
+            return float(_dispatch_return_action(_DISTANCE, [x, -y], self.id))
         else:
             raise TypeError("invalid argument types")
 
@@ -1095,7 +1108,7 @@ class Turtle:
         '''
         pull the pen down - drawing when moving
         '''
-        _add_action(PEN, True, self.id)
+        _add_action(_PEN, True, self.id)
     pd = pendown
     down = pendown
 
@@ -1103,7 +1116,7 @@ class Turtle:
         '''
         pull the pen up - no drawing when moving
         '''
-        _add_action(PEN, False, self.id)
+        _add_action(_PEN, False, self.id)
     pu = penup
     up = penup
 
@@ -1111,14 +1124,14 @@ class Turtle:
         '''
         change the width of the pen
         '''
-        _add_action(PENSIZE, width, self.id)
+        _add_action(_PENSIZE, width, self.id)
     width = pensize
 
     def isdown(self):
         '''
         return a boolean which tells if the turtle is drawing
         '''
-        return _dispatch_return_action(ISDOWN, id=self.id)
+        return _dispatch_return_action(_ISDOWN, id=self.id)
 
     def color(self, *args):
         '''
@@ -1154,7 +1167,7 @@ class Turtle:
             if len(args) == 1:
                 args = args[0]
             self._pencolor = color
-            _add_action(PENCOLOR, color._export_pixi(), self.id)
+            _add_action(_PENCOLOR, _pixi_color(color), self.id)
 
     def fillcolor(self, *args):
         '''
@@ -1168,54 +1181,54 @@ class Turtle:
             if len(args) == 1:
                 args = args[0]
             self._fillcolor = color
-            _add_action(FILLCOLOR, color._export_pixi(), self.id)
+            _add_action(_FILLCOLOR, _pixi_color(color), self.id)
 
     # Filling
     def filling(self):
         '''
         check if begin_fill was called
         '''
-        return _dispatch_return_action(FILLING, id=self.id)
+        return _dispatch_return_action(_FILLING, id=self.id)
 
     def begin_fill(self):
         '''
         start recording all drawing-functions to be filled
         '''
-        _add_action(BEGINFILL, id=self.id)
+        _add_action(_BEGINFILL, id=self.id)
 
     def end_fill(self):
         '''
         fill the shape drawn after the last call to begin_fill
         '''
-        _add_action(ENDFILL, id=self.id)
+        _add_action(_ENDFILL, id=self.id)
 
     # More drawing control
     def write(self, text: str, move=False, align='left', font=('arial', 8, 'normal')):
         '''
         writes text on the canvas at the turtle position.
         '''
-        _add_action(WRITE, [text, move, align, font], self.id)
+        _add_action(_WRITE, [text, move, align, font], self.id)
 
     # Visibility
     def showturtle(self):
         '''
         Makes the turtle visible. Sets speed to 20.
         '''
-        _add_action(HIDETURTLE, 0, self.id)
+        _add_action(_HIDETURTLE, 0, self.id)
     st = showturtle
 
     def hideturtle(self):
         '''
         Makes the turtle invisible. Sets speed to -1.
         '''
-        _add_action(HIDETURTLE, 1, self.id)
+        _add_action(_HIDETURTLE, 1, self.id)
     ht = hideturtle
 
     def isvisible(self):
         '''
         return True if the turtle is shown, False if it’s hidden
         '''
-        return _dispatch_return_action(ISVISIBLE, id=self.id)
+        return _dispatch_return_action(_ISVISIBLE, id=self.id)
 
     # Appearance
     def shape(self, shape: str = None):
@@ -1239,12 +1252,12 @@ class Turtle:
         'turtle'
         """
         if shape:
-            if _dispatch_return_action(ISSHAPE, shape, id=self.id) or shape == "circle":
-                _add_action(SHAPE, shape, self.id)
+            if _dispatch_return_action(_ISSHAPE, shape, id=self.id) or shape == "circle":
+                _add_action(_SHAPE, shape, self.id)
             else:
                 raise NameError("invalid shape name")
         else:
-            return _dispatch_return_action(GETSHAPE, id=self.id)
+            return _dispatch_return_action(_GETSHAPE, id=self.id)
 
     def resizemode(self, rmode: str = None):
         raise NotImplementedError()
@@ -1280,7 +1293,7 @@ class Turtle:
         ((50, -20), (30, 20), (-50, 20), (-30, -20))
 
         """
-        return _dispatch_return_action(GET_SHAPEPOLY, id=self.id)
+        return _dispatch_return_action(_GET_SHAPEPOLY, id=self.id)
 
     # Special Methods
     def begin_poly(self, *args):
@@ -1319,7 +1332,7 @@ class Turtle:
         return the color the turtle is standing on
         '''
         color = list(
-            map(float, _dispatch_return_action(GETPIXELCOLOR, id=self.id)))
+            map(float, _dispatch_return_action(_GETPIXELCOLOR, id=self.id)))
         return make_color(*color)
 
     def get_pixel_color_str(self):
@@ -1327,41 +1340,37 @@ class Turtle:
         return the color string of the color the turtle is standing on
         '''
         return self.get_pixel_color().colorstr
-
-    def save_playground(self, fileName=None, imgType=None):
-        if imgType == "png" or imgType == "jpeg" or imgType == "webp" or imgType == None:
-            _add_action(SAVEPLAYGROUND, [fileName, imgType], id=self.id)
-        else:
-            raise TypeError("invalid image type")
+    
+    # NCCB: Removed TigerPython's save_playground method
 
 
 Pen = Turtle
 
 
 def get_event_log(blocking: bool = True):
-    eventLog = _return_action(GETEVENTLOG, blocking)
+    eventLog = _return_action(_GETEVENTLOG, blocking)
     return eventLog.to_py()
 
 
 def set_event_mode(state: bool):
-    _return_action(SETEVENTMODE, state)
+    _return_action(_SETEVENTMODE, state)
 
 
 def update_func(funcstr: str, fun, add=False):
     if fun:
         if add:
-            func1 = EVENT_FUNC_DICT[funcstr]
+            func1 = _EVENT_FUNC_DICT[funcstr]
             func2 = fun
 
             def newfunc(*args):
                 func1(*args)
                 func2(*args)
-            EVENT_FUNC_DICT[funcstr] = newfunc
+            _EVENT_FUNC_DICT[funcstr] = newfunc
         else:
-            EVENT_FUNC_DICT[funcstr] = fun
+            _EVENT_FUNC_DICT[funcstr] = fun
     else:
         try:
-            EVENT_FUNC_DICT.pop(funcstr)
+            _EVENT_FUNC_DICT.pop(funcstr)
         except:
             pass
 
@@ -1450,8 +1459,12 @@ def getmethparlist(ob):
     # bit of a hack for methods - turn it into a function
     # but we drop the "self" param.
     # Try and build one for Python defined functions
+    
+    # NCCB: modified this to drop annotations as we had issues with "_typing.Optional" turning
+    # into "Optional" and then not being found.  We don't even need the annotations in the proxied version, anyway.
     func_sig = orig_sig.replace(
-        parameters=list(orig_sig.parameters.values())[1:],
+        parameters=[p.replace(annotation=_inspect._empty) for p in list(orig_sig.parameters.values())[1:]],
+        return_annotation=_inspect._empty,
     )
 
     call_args = []
@@ -1511,6 +1524,7 @@ def _make_global_funcs(functions, cls, obj, init, docrevise):
                 continue
             defstr = __func_body.format(obj=obj, init=init, name=methodname,
                                         paramslist=pl1, argslist=pl2)
+            globals_dict = globals()
             exec(defstr, globals())
             globals()[methodname].__doc__ = docrevise(method.__doc__)
         except:

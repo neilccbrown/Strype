@@ -81,6 +81,7 @@ import {SpriteHandle, SyncOrAsyncStrypePyodideWorkerRequest} from "@/stryperunti
 import {SoundManager} from "@/stryperuntime/sound_manager";
 import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
 import {getPythonClient, isPythonWorkerReady, renderer, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
+import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
@@ -97,7 +98,11 @@ let mostRecentMouseDetails : {x: number, y: number, buttonsPressed: boolean[]} =
 let pressedKeys : {[key: string]: boolean} = {};
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
 
-let soundManager : SoundManager | null = null; // Can't initialise this year as we need permissions for audio context
+let soundManager : SoundManager | null = null; // Can't initialise this here as we need permissions for audio context
+const turtleCanvas = new OffscreenCanvas(800, 600);
+const turtlePixiHandler = new TurtlePixiHandler(turtleCanvas);
+turtlePixiHandler.setCanvasSize(800, 600);
+turtlePixiHandler.setPixiSize(800, 600);
 
 // We draw our actual graphics canvas (for strype.graphics) at the size it is on the page,
 // given the 4:3 aspect ratio.  But we also have a logical size that is constant, which is 800x600.
@@ -566,7 +571,7 @@ export default Vue.extend({
                     consumeLastClickDetails: this.consumeLastClickDetails,
                 });
                 
-                const asyncBridge = handleAsyncRequests(renderer, soundManager as SoundManager);
+                const asyncBridge = handleAsyncRequests(renderer, soundManager as SoundManager, turtlePixiHandler);
                 
                 // Apparently we can use a promise as a queue to ensure we process the requests in order,
                 // and not try to service another while one is still going (especially sync ones which may yield,
@@ -960,6 +965,10 @@ export default Vue.extend({
                 domContext.fillRect(0, 0, domCanvas.width, domCanvas.height);
                 // The target canvas can be smaller than the real one, and we want to centre it:
                 domContext.drawImage(c, (domCanvas.width - (targetCanvas?.width ?? 0)) / 2, (domCanvas.height - (targetCanvas?.height ?? 0)) / 2);
+
+                // Draw turtle on, too (TODO only if turtle used):
+                turtlePixiHandler.animate();
+                domContext.drawImage(turtleCanvas, (domCanvas.width - (turtleCanvas.width)) / 2, (domCanvas.height - (turtleCanvas.height)) / 2);
             }
         },
         getLogicalMouseCoords(event: PointerEvent) {

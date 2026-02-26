@@ -8,6 +8,7 @@ import { drawText } from "@/helpers/textDrawing";
 import type WebFont from "webfontloader";
 import { saveAs } from "file-saver";
 import { getDateTimeFormatted } from "@/helpers/common";
+import { handleTurtle, TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 
 // These are callbacks passed from PythonExecutionArea.vue to do things that are tied to the DOM or wider Strype state.
 // This means we don't have to make reference to the PythonExecutionArea component itself.
@@ -116,7 +117,7 @@ export const handleSyncRequests : (
 };
 
 // Ironically, almost all the "Async" (fire-and-forget) requests are executed synchronously in one step, it's just that we don't need to know the result 
-export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundManager) => AsyncStrypePyodideHandlerFunction = (renderer, soundManager) => (req) => {
+export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundManager, turtle: TurtlePixiHandler) => AsyncStrypePyodideHandlerFunction = (renderer, soundManager, turtle: TurtlePixiHandler) => (req) => {
     switch (req.request) {
     case "canvas_setFill": {
         renderer.getCanvasContext(req.img.handle).fillStyle = req.fill;
@@ -191,6 +192,10 @@ export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundMan
                 saveAs(blob, `${req.filenameStem}_${getDateTimeFormatted(new Date(Date.now()))}.png`);
             }
         });
+        return;
+    }
+    case "turtle": {
+        handleTurtle(turtle, req.buffer);
         return;
     }
     case "startSound": {
