@@ -1,7 +1,7 @@
 <!-- this acts as a wrapper around the bootstrap modals, to have centralised control and customisation -->
 <template>
     <BModal no-close-on-backdrop :no-header-close="!showCloseBtn" :id="dlgId" :title="dlgTitle" @shown="onShown" @hidden="onHidden"
-        :ok-title="okTitle" :cancel-title="cancelTitle" :size="size" :modal-class="cssClass" :focus="elementToFocusId">
+        :ok-title="okTitle" :cancel-title="cancelTitle" :size="size" :modal-class="cssClass" :focus="elementToFocusId" no-animation>
         <slot/>
         <!-- When no footer should be shown, we still use an empty div content (but a content nonetheless) to have the right visual rendering:
              the BModal property "no-footer" can be used, but it also removes the divider below the dialog content, making the style weird.
