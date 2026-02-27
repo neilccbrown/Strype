@@ -97,6 +97,8 @@ function testRoundTripImportAndDownload(filepath: string) {
             expect(matching.length).to.eq(0);
         });
 
+        // We make sure our loading has completed before saving, so that the save mechanism is based on an loaded file...
+        cy.wait(1000);
         checkDownloadedFileEquals(strypeElIds, spy.replaceAll("\r\n", "\n"), filepath.split("/").pop() ?? "My project.spy");
     });
 }
@@ -229,6 +231,7 @@ describe("Tests saving layout metadata", () => {
         focusEditorPasteAndClear();
         cy.get("#" + strypeElIds.getPEATabContentContainerDivId()).trigger("mouseenter");
         cy.get("div[title='" + en.PEA["PEA-layout-tabs-expanded"] + "']").click();
+        cy.wait(1000);
         cy.get("div[title='" + en.PEA["PEA-layout-tabs-collapsed"] + "']").click();
 
         // Since the default code contains a project doc, we need to include it to the code

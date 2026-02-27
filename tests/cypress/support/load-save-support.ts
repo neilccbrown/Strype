@@ -15,7 +15,7 @@ export function checkDownloadedFileEquals(strypeElIds: {[varName: string]: (...a
     if (firstSave) {
         // For testing, we always want to save to this device:
         cy.contains(en.appMessage.targetFS).click({force: true});
-        cy.contains(en.buttonLabel.ok).click({force: true});
+        cy.contains("button:visible", en.buttonLabel.ok).click();
     }
 
     cy.readFile(destFile).then((p : string) => {
