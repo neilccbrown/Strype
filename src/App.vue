@@ -645,7 +645,7 @@ export default defineComponent({
 
     mounted() {
         // Register the callback needed by the Settings store
-        this.settingsStore.saveSettingInLocalStorageHandler = (r: SaveRequestReason) => this.autoSaveStateToWebLocalStorage;
+        this.settingsStore.saveSettingInLocalStorageHandler = this.autoSaveStateToWebLocalStorage;
 
         // When the App is ready, we want to either open a project present in the local storage,
         // or open a shared project that is given by the URL (this takes priority over local storage).
