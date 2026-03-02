@@ -266,7 +266,7 @@ test.describe("Check graphics works when shared with turtle", () => {
         await page.waitForTimeout(1000);
         await page.click(".pea-toggle-layout-buttons-container > div:nth-child(2)");
         await page.waitForTimeout(1000);
-        await page.locator(".expanded-PEA-splitter-overlay.strype-split-theme.splitpanes.splitpanes--horizontal > .splitpanes__splitter").hover();
+        await page.locator(".expanded-PEA-splitter-overlay.strype-split-theme > .splitpanes.splitpanes--horizontal > .splitpanes__splitter").hover();
         await page.mouse.down();
         await page.mouse.move(500, 200);
         await page.mouse.up();
@@ -311,7 +311,7 @@ test.describe("Check graphics works when shared with turtle", () => {
         await page.waitForTimeout(1000);
         await page.click(".pea-toggle-layout-buttons-container > div:nth-child(2)");
         await page.waitForTimeout(1000);
-        await page.locator(".expanded-PEA-splitter-overlay.strype-split-theme.splitpanes.splitpanes--horizontal > .splitpanes__splitter").hover();
+        await page.locator(".expanded-PEA-splitter-overlay.strype-split-theme > .splitpanes.splitpanes--horizontal > .splitpanes__splitter").hover();
         await page.mouse.down();
         await page.mouse.move(500, 200);
         await page.mouse.up();
@@ -355,7 +355,7 @@ test.describe("Check graphics works when shared with turtle", () => {
         await page.waitForTimeout(1000);
         await page.click(".pea-toggle-layout-buttons-container > div:nth-child(2)");
         await page.waitForTimeout(1000);
-        await page.locator(".expanded-PEA-splitter-overlay.strype-split-theme.splitpanes.splitpanes--horizontal > .splitpanes__splitter").hover();
+        await page.locator(".expanded-PEA-splitter-overlay.strype-split-theme > .splitpanes.splitpanes--horizontal > .splitpanes__splitter").hover();
         await page.mouse.down();
         await page.mouse.move(500, 200);
         await page.mouse.up();

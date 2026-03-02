@@ -2,13 +2,10 @@ import {Page, test, expect} from "@playwright/test";
 import path from "path";
 import {assertStateOfIfFrame, checkFrameXorTextCursor, checkTextSlotCursorPos, doPagePaste, getDefaultStrypeProjectDocumentationFullLine, pressN} from "../support/editor";
 import fs from "fs";
-import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "@/helpers/sharedIdCssWithTests";
-import {createBrowserProxy} from "../support/proxy";
 import {readFileSync} from "node:fs";
 import {save} from "../support/loading-saving";
 
 let scssVars: {[varName: string]: string};
-let strypeElIds: {[varName: string]: (...args: any[]) => string};
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && process.platform === "win32") {
         // On Windows+Webkit it just can't seem to load the page for some reason:
@@ -17,7 +14,6 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
-    strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
     await page.evaluate(() => {
         (window as any).Playwright = true;
     });
@@ -35,9 +31,13 @@ async function clickId(page: Page, getIdClientSide: () => void) {
 async function loadPY(page: Page, filepath: string) {
     await clickId(page, () => (window as any)["StrypeHTMLELementsIDsGlobals"].getEditorMenuUID());
     await clickId(page, () => (window as any)["StrypeHTMLELementsIDsGlobals"].getLoadProjectLinkId());
-    // The "button" for the target selection is now a div element.
-    await page.locator("#" + await strypeElIds.getImportFileInputId()).setInputFiles(path.join(__dirname, filepath));
-    await clickId(page, () => (window as any)["StrypeHTMLELementsIDsGlobals"].getLoadFromFSStrypeButtonId());
+    const [fileChooser] = await Promise.all([
+        page.waitForEvent("filechooser"),
+        // The "button" for the target selection is now a div element.
+        clickId(page, () => (window as any)["StrypeHTMLELementsIDsGlobals"].getLoadFromFSStrypeButtonId()),
+    ]);
+    await fileChooser.setFiles(path.join(__dirname, filepath));
+
     // Wait for everything to settle:
     await page.waitForTimeout(2000);
     // Check it actually loaded:
