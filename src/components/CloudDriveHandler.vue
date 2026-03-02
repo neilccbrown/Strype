@@ -629,6 +629,8 @@ export default defineComponent({
                             this.appStore.strypeProjectLocationAlias = strypeLocationAlias;
                             this.appStore.strypeProjectLocationPath = strypeProjectLocationPath;
                             this.appStore.projectLastSaveDate = lastSaveDate;
+                            // And we make sure we show the project is unmodified
+                            this.appStore.isEditorContentModified = false;
                         }
                         // Users may have changed the file name directly on Drive, so we make sure at this stage we get the project with that same name
                         // (At this stage, we shouldn't have an undefined name, but for safety we use the default project name if so.)

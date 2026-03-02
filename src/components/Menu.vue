@@ -1281,6 +1281,8 @@ export default defineComponent({
                 this.appStore.strypeProjectLocation = fileLocation;
             }
             this.appStore.projectLastSaveDate = lastSaveDate;
+            // Make sure we show the project is unmodified
+            this.appStore.isEditorContentModified = false;
         },
 
         resetProject(): void {
