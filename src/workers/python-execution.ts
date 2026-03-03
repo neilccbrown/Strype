@@ -79,6 +79,7 @@ import { strype_bridge } from "@/stryperuntime/pyodide_bridge";
 import { ResponseFor, SyncOrAsyncStrypePyodideWorkerRequest, SyncStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse } from "@/stryperuntime/worker_bridge_type";
 import { SpriteManager } from "@/stryperuntime/image_and_collisions";
 import { PyodideWorkerGlobalScope } from "@/workers/python_execution_type";
+import {getFSForEmscripten} from "@/stryperuntime/pyodide-emscripten-cloud-fs";
 
 // We only specify updatePort here as we don't want other files using it directly:
 declare const self: PyodideWorkerGlobalScope & { updatePort: MessagePort };
@@ -88,6 +89,14 @@ async function loadOnly() : Promise<PyodideInterface> {
     
     // Register our strype.graphics etc modules with Pyodide by pointing it to the Javascript:
     pyodide.registerJsModule("strype_bridge", strype_bridge);
+    
+    // Register our file system for cloud access.  We create it here to save time and to make
+    // sure we only create it (and the dir /cloud) once, but since the user can save to a new location between
+    // Pyodide initialising and Pyodide running, we always create the /cloud file system, but we dynamically decide
+    // whether to mount and "cd /cloud" before running, and we give a runtime error if the user tries to access the file system
+    // while not saved to the cloud.
+    pyodide.FS.filesystems.CLOUDFS = getFSForEmscripten(pyodide);
+    pyodide.FS.mkdir("/cloud");
     
     return pyodide;
 }
@@ -103,6 +112,7 @@ export interface ErrorDetails {
 const executePython = pyodideExpose(async (
     extras: PyodideExtras,
     pythonCode: string,
+    startInSlashCloud: boolean,
     printStdout: Comlink.Remote<(output: string) => void>,
     requestInput: Comlink.Remote<(prompt: string) => void>,
     // Important all requests (sync and async) go through one function to avoid them racing each other:
@@ -134,7 +144,33 @@ StrypePyodideRunner()`);
                 // I think Typescript should be able to infer reply is ResponseFor<R> because of the if check, but apparently not:
                 return reply as ResponseFor<R>;
             }
-        };        
+        };
+
+        // Set the global fields used by Javascript code (and by the pyodide cloud file mounting, just below): 
+        self.syncStrypePyodideWorkerBridge = bridgeSync;
+        self.asyncStrypePyodideWorkerBridge = (r) => otherRequest({kind: "async", request: r});
+        self.spriteManager = new SpriteManager((u) => self.updatePort.postMessage(u));
+        self.pyodide = pyodide;
+        
+
+        // If we are offering the cloud file system, we start there by default:
+        if (startInSlashCloud) {
+            // Try unmounting in case we're running a second time:
+            try {
+                pyodide.FS.unmount("/cloud");
+            }
+            catch {
+                // Ignore any errors
+            }
+            try {
+                // We have done the mkdir("/cloud") in the one time Pyodide initialisation, earlier.
+                pyodide.FS.mount(pyodide.FS.filesystems.CLOUDFS, {}, "/cloud");
+                pyodide.FS.chdir("/cloud");
+            }
+            catch (e) {
+                console.error("Problem mounting cloud file system: ", e);
+            }
+        }
         
         let error : ErrorDetails | null = null;
         const callback = makeRunnerCallback(extras, {
@@ -162,11 +198,6 @@ StrypePyodideRunner()`);
             },
         });
         runner.set_callback(callback);
-        // Set the global fields used by Javascript code: 
-        self.syncStrypePyodideWorkerBridge = bridgeSync;
-        self.asyncStrypePyodideWorkerBridge = (r) => otherRequest({kind: "async", request: r});
-        self.spriteManager = new SpriteManager((u) => self.updatePort.postMessage(u));
-        self.pyodide = pyodide;
         await runner.run_async(pythonCode, {});
         return error;
     });

@@ -517,7 +517,7 @@ export default Vue.extend({
             });
         },
 
-        readFileContentForIO(fileId: string, isBinaryMode: boolean, filePath: string): Promise<string | Uint8Array | {success: boolean, errorMsg: string}> {
+        readFileContentForIO(fileId: string, filePath: string): Promise<Uint8Array> {
             // This method is used by FileIO to get a file string content.
             // It relies on the Google File Id passed as argument, and the callback method for handling succes or failure is also passed as arguments.
             // The argument "filePath" is only used for error message.
@@ -530,13 +530,9 @@ export default Vue.extend({
                 if(resp.status != 200){
                     return Promise.reject(resp.status); 
                 }
-                return (isBinaryMode) 
-                    ? resp.arrayBuffer().then((buffer) => {
-                        return new Uint8Array(buffer);
-                    }) 
-                    : resp.text().then((text) => {
-                        return text;
-                    });
+                return resp.arrayBuffer().then((buffer) => {
+                    return new Uint8Array(buffer);
+                });
             },
             // Case of errors
             (resp) => {

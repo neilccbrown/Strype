@@ -1,13 +1,15 @@
 // This file has the parts of the code which executes on the main thread to handle requests from the Pyodide web worker
 
-import { AsyncStrypePyodideHandlerFunction, decodeStringToUint8, encodeUint8ToString, isRemoteImage, makeSoundHandle, SpriteHandle, SyncPromiseStrypePyodideHandlerFunction } from "@/stryperuntime/worker_bridge_type";
-import { Renderer } from "@/stryperuntime/renderer";
-import { SoundManager } from "@/stryperuntime/sound_manager";
-import { drawText } from "@/helpers/textDrawing";
+import {AsyncStrypePyodideHandlerFunction, CloudFileId, decodeStringToUint8, encodeUint8ToString, isRemoteImage, makeSoundHandle, SpriteHandle, SyncPromiseStrypePyodideHandlerFunction} from "@/stryperuntime/worker_bridge_type";
+import {Renderer} from "@/stryperuntime/renderer";
+import {SoundManager} from "@/stryperuntime/sound_manager";
+import {drawText} from "@/helpers/textDrawing";
 // We only import the type because the library itself is loaded from index.html: 
 import type WebFont from "webfontloader";
-import { saveAs } from "file-saver";
-import { getDateTimeFormatted } from "@/helpers/common";
+import {saveAs} from "file-saver";
+import {getDateTimeFormatted} from "@/helpers/common";
+import {cloudCloseFile, cloudLookupFile, cloudOpenFile, cloudReadFile} from "@/helpers/skulptFileIO";
+import {useStore} from "@/store/store";
 
 // These are callbacks passed from PythonExecutionArea.vue to do things that are tied to the DOM or wider Strype state.
 // This means we don't have to make reference to the PythonExecutionArea component itself.
@@ -107,6 +109,29 @@ export const handleSyncRequests : (
     case "canvas_getAllPixelsRGBA": {
         const ctx = renderer.getCanvasContext(req.img.handle);
         return {request: req.request, response: Promise.resolve(encodeUint8ToString(ctx.getImageData(0, 0, req.img.width, req.img.height).data))};
+    }
+    case "file_lookup": {
+        return {request: req.request, response: cloudLookupFile(req.parent, req.name)};
+    }
+    case "file_open" : {
+        return {request: req.request, response: cloudOpenFile(req.id, req.flags)};
+    }
+    case "file_read": {
+        return {request: req.request, response: cloudReadFile(req.id, req.from, req.length, req.filePath).then((arr) => encodeUint8ToString(arr))};
+    }
+    case "file_close": {
+        return {request: req.request, response: cloudCloseFile(req.id)};
+    }
+    case "file_getRoot": {
+        return {request: req.request, response: new Promise<CloudFileId>((resolve, reject)  => {
+            const loc = useStore().strypeProjectLocation;
+            if (!loc || typeof(loc) != "string") {
+                reject("Project not saved in cloud, so cannot access cloud files.");
+            }
+            else {
+                resolve({cloudFileId: loc});
+            }
+        })};
     }
     default:
         // Trick to give a compile-time error if a case is missing above:

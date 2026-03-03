@@ -142,7 +142,7 @@ export interface CloudDriveComponent {
     searchCloudDriveElements: (elementName: string, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>) => Promise<CloudDriveFile[]>,
     //FileIO
     checkIsCloudDriveFileReadonly: (file: CloudDriveFile) => boolean,
-    readFileContentForIO: (fileId: string, isBinaryMode: boolean, filePath: string) => Promise<string | Uint8Array | { success: boolean, errorMsg: string }>,
+    readFileContentForIO: (fileId: string, filePath: string) => Promise<Uint8Array>,
     writeFileContentForIO: (fileContent: string | Uint8Array, fileInfos: { filePath: string, fileName?: string, fileId?: string, folderId?: string }) => Promise<string>,
 }
 

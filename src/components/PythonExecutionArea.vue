@@ -581,6 +581,7 @@ export default Vue.extend({
                 (client.call(
                     client.workerProxy.executePython,
                     userCode,
+                    typeof(this.appStore.strypeProjectLocation) === "string",
                     Comlink.proxy((output: string) => {
                         pythonConsole.value = pythonConsole.value + output;
                     }),

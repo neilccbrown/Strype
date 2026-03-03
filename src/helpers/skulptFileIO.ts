@@ -12,10 +12,21 @@ import MenuComponent from "@/components/Menu.vue";
 import { useStore } from "@/store/store";
 import i18n from "@/i18n";
 import { CloudDriveComponent, CloudDriveFile, CloudFileWithMetaData, CloudFolder, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
+import {CloudFileId} from "@/stryperuntime/worker_bridge_type";
+import {LRU} from "@/helpers/lruCache";
 
 declare const Sk: any;
 // Will be set later as we need to make sure Vue application has started...
 let cloudDriveHandlerComponent: InstanceType<typeof CloudDriveHandlerComponent>;
+
+function getCloud() : CloudDriveHandlerComponent {
+    // Initialisator of the variable
+    if(cloudDriveHandlerComponent == undefined){
+        cloudDriveHandlerComponent = ((vm.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).$refs[getCloudDriveHandlerComponentRefId()] as InstanceType<typeof CloudDriveHandlerComponent>);
+    }
+    // I think ideally under Vue 3 we should be able to remove the "as unknown"
+    return cloudDriveHandlerComponent as unknown as CloudDriveHandlerComponent;
+}
 
 const cloudFilesMap: CloudFileWithMetaData[] = [];
 
@@ -60,6 +71,62 @@ const concatFileContentParts = (part1: string | Uint8Array, part2: string | Uint
         return newConcatArray;
     }
 };
+
+
+export function cloudLookupFile(parent: CloudFileId, name: string) : Promise<{fileId: CloudFileId, isDir: boolean}> {
+    // If we are not connected to a cloud file system, then we raise an error:
+    if(!isSyncTargetCloudDrive(useStore().syncTarget)){
+        return Promise.reject(i18n.t("errorMessage.fileIO.notConnectedToCloud") as string);
+    }
+    
+    const cloud : CloudDriveHandlerComponent = getCloud();
+
+    return cloud.searchCloudDriveElements(useStore().syncTarget, name, parent.cloudFileId, false, {orderBy: cloud.modifiedDataSearchOptionName, fileFields: cloud.fileMoreFieldsForIO})
+        .then((cloudFolderFiles) => {
+            // The search succeeded and we expect only one folder to be found (if any, so we'll use the first one returned).
+            // We can save that folder in the cache and either return it's ID if we don't have other folder to resolve, or continue resolving otherwise.
+            if(cloudFolderFiles.length > 0){
+                return Promise.resolve({fileId: {cloudFileId: cloudFolderFiles[0].id}, isDir: cloudFolderFiles[0].isDir});
+            }
+            else{
+                return Promise.reject(undefined);
+            }
+        },
+        (error) => Promise.reject(error.result));
+}
+
+export function cloudOpenFile(file: CloudFileId, flags: number) : Promise<boolean> {
+    // There's not actually anything to do here; cloud files are generally read/written
+    // in their entirety, so there's not really a concept of holding them open.
+    // But it's nice to have functions that mirror the Pyodide API in case of future changes.
+    return Promise.resolve(true);
+}
+
+export function cloudCloseFile(file: CloudFileId) : Promise<boolean> {
+    // This is not ideal (but won't cause any problems) if the user has opened the file twice, but we 
+    // aim for the simple case:
+    cloudFileContent.evict(file.cloudFileId);
+    return Promise.resolve(true);
+}
+
+
+
+// The key in the cache is the CloudFileId
+const cloudFileContent = new LRU<string, Uint8Array>(5);
+
+export async function cloudReadFile(file: CloudFileId, fromByte: number, lengthBytes: number, filePath: string) : Promise<Uint8Array> {
+    // Prefer cache:
+    const fullContent = 
+        cloudFileContent.get(file.cloudFileId)
+        ?? await getCloud().readFileContentForIO(useStore().syncTarget, file.cloudFileId, filePath);
+    // Ironically, we only retain the full file if it is small enough, because big files
+    // will clog up the RAM.  10MB seems like a suitable limit:
+    if (fullContent.length < 10 * 1048576) {
+        cloudFileContent.set(file.cloudFileId, fullContent);
+    }
+    // Now we have to slice it for the return:
+    return fullContent.slice(fromByte, fromByte + lengthBytes);
+}
 
 // Entry point for matching a file in the user code to a Cloud Drive.
 // This is a promise that returns an object with a property "succeeded", boolean value, and "errorMsg" for passing the error message.
@@ -278,22 +345,6 @@ export const skulptCloseFileIO = (skFile: SkulptFile): {succeeded: boolean, erro
     else{
         return finaliseClose();
     }
-};
-
-// Read method, with retrieves the content of a file on Cloud Drive.
-// The content is either a string content for text modes, bytes for binary modes.
-// On failure, the content contains the error message.
-const skupltReadFileIO = (filePath: string, isBinary: boolean): Promise<string|Uint8Array> => {
-    // We retrieve the Cloud Drive file ID - it should be valid as no call to this when a file is closed in Skulpt should happen.
-    const fileId = cloudFilesMap.find((mapEntry) => mapEntry.filePath == filePath)?.id??"";
-    return new Promise<string|Uint8Array>((resolve, reject) => {
-        cloudDriveHandlerComponent.readFileContentForIO(useStore().syncTarget, fileId, isBinary, filePath)
-            .then((fileContent) => {
-                resolve(fileContent as string|Uint8Array);
-            }, (error) => {
-                reject(error);
-            });       
-    });
 };
 
 // This method is a handler for the internal Skulpt write (to external file).
