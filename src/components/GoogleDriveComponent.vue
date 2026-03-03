@@ -9,6 +9,7 @@
         :pick-folder-cancelled="onPickFolderCancelled" @unsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" :dev-key="devKey" :oauth-token="oauthToken"/>
 </template>
 <script lang="ts">
+/// <reference types="@types/gapi.client.drive-v3" />
 //////////////////////
 //      Imports     //
 //////////////////////
@@ -508,8 +509,11 @@ export default Vue.extend({
             return gapi.client.request({
                 path: "https://www.googleapis.com/drive/v3/files",
                 params: {...orderByParam, ...fileFieldsParam, "q": `name${(searchAllSPYFiles) ? " contains '*.spy'": "='" + elementName +"'"} and parents='${elementLocationId}' and trashed=false`},
-            }).then((response) => {    
-                return JSON.parse(response.body).files as CloudDriveFile[];
+            }).then((response) => {
+                const fullInfo = JSON.parse(response.body).files as gapi.client.drive.File[]; 
+                return fullInfo.map((gdf) => {
+                    return {name: gdf.name as string, id: gdf.id as string, isDir: gdf.mimeType === "application/vnd.google-apps.folder"};
+                });
             });
         },
 

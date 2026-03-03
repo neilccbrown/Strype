@@ -746,16 +746,16 @@ export default Vue.extend({
                 throw new Error(`Graph API request failed: ${resp.status} ${resp.statusText}`);
             }
 
-            const data = await resp.json();
+            const data = await resp.json() as {value: DriveItem[]};
             if(searchAllSPYFiles){
                 // We just make sure all the results are SPY files...
                 return Promise.resolve(data.value.filter((entry: BaseItem) => (entry.name??"").endsWith("."+strypeFileExtension))
-                    .map((strypeFileItem: BaseItem) => ({name: strypeFileItem.name, id: strypeFileItem.id} as CloudDriveFile)));
+                    .map((strypeFileItem: DriveItem) => ({name: strypeFileItem.name as string, id: strypeFileItem.id as string, isDir: false})));
             }
             else{
                 // We have requested on single element, we just get it from the results.
                 return Promise.resolve(data.value.filter((entry: BaseItem) => (entry.name??"") == elementName)
-                    .map((strypeFileItem: BaseItem) => ({name: strypeFileItem.name, id: strypeFileItem.id} as CloudDriveFile)));
+                    .map((strypeFileItem: DriveItem) => ({name: strypeFileItem.name as string, id: strypeFileItem.id as string, isDir: !!strypeFileItem.folder})));
             }
         },
 

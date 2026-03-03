@@ -41,7 +41,8 @@ export enum CloudFileSharingStatus {
 export interface CloudDriveFile {
     name: string, // The file name (not including path)
     id: string, // The file ID on the Drive
-    content: string | Uint8Array, // The file content when opened
+    content?: string | Uint8Array, // The file content when opened
+    isDir: boolean,
 }
 
 export interface CloudFileWithMetaData extends CloudDriveFile {
