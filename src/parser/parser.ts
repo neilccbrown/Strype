@@ -358,7 +358,9 @@ export default class Parser {
             
             // Before returning, we update the line counter used for the frame mapping in the parser:
             // +1 except if we are in a multiline comment (and not excluding them) when we then return the number of lines
-            this.line += ((this.excludeLoopsAndCommentsAndCloseTry) ? 1 : ((commentContent.includes("\n")) ? commentContent.split("\n").length : 1));
+            const number = (this.excludeLoopsAndCommentsAndCloseTry) ? 1 : ((commentContent.includes("\n")) ? commentContent.split("\n").length : 1);
+            console.log("Adding " + number + " for " + statement.frameType.type);
+            this.line += number;
 
             const passLine = indentation + "pass" + "\n";
             
@@ -398,7 +400,9 @@ export default class Parser {
                     if (useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields.length > 1 || (useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields[0] as BaseSlot).code.trim().length > 0) {
                         if (label.newLine ?? false) {
                             // If we are in a free text documentation situation (in functions or classes docs), we need to account for all the line breaks this comment can contain.
-                            this.line += ((((useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields[0] as BaseSlot).code.trim().length > 0)) ? ((useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields[0] as BaseSlot).code.split("\n").length) : 1);
+                            const number = (((useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields[0] as BaseSlot).code.trim().length > 0)) ? ((useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields[0] as BaseSlot).code.split("\n").length) : 1;
+                            console.log("Adding " + number + " for free text doc");
+                            this.line += number;
                             // Newlines indent below, e.g. comments in funcdef frames:
                             output += "\n" + indentation + "    ";
                         }
@@ -451,6 +455,7 @@ export default class Parser {
         // We increment the line by 1 (next line) except when we are in an EMPTY block frame, as the empty "body" is replaced by "pass" in the parser,
         // that should be counted as a line (so we increment by 2)
         const incrementValue = (statement.frameType.allowChildren && statement.childrenIds.length == 0) ? 2 : 1;
+        console.log("Adding " + incrementValue + " after " + statement.frameType.type);
         this.line += incrementValue;
 
         return output;

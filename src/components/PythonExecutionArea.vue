@@ -577,6 +577,7 @@ export default Vue.extend({
                         console.error("Error in serialized function:", err);
                     });
                 }
+                console.log(userCode);
                 
                 (client.call(
                     client.workerProxy.executePython,
@@ -628,6 +629,10 @@ export default Vue.extend({
                     }))
                 ) as Promise<ErrorDetails | null>).then((possibleError) => {
                     if (possibleError != null) {
+                        const m = parser.getFramePositionMap();
+                        userCode.split("\n").forEach((text, lineNo) => {
+                            console.log(`#${lineNo}: ${text} # => ${lineNo in m ? useStore().frameObjects[m[lineNo].frameId].frameType.type : "none"}`);
+                        });
                         handleErrorTrace(possibleError.text, possibleError.traceback, () => {}, parser.getFramePositionMap());
                     }
                     useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
