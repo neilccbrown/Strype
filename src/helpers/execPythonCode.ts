@@ -193,7 +193,6 @@ export function handleErrorTrace(errorType : string, traceback: { filename: stri
 
 
     let frameId = -1;
-    console.log("Mapping", JSON.stringify(lineFrameMapping));
     if (errorLine > 0) {
         // Skulpt starts indexing at 1, we use 0 for TigerPython, so we need to offset the line number
         const locatableError = lineFrameMapping[errorLine - 1] !== undefined;
