@@ -154,7 +154,9 @@ export function handleErrorTrace(errorType : string, traceback: { filename: stri
     if (traceback) {
         let lastmodule = "";
         console.log("Traceback", Array.from(traceback.entries()).map((e) => e[1].filename + "@" + e[1].lineno));
-        for (const [index, entry] of traceback.entries()) {
+        // Note that Pyodide has a traceback with the innermost call last (Skulpt had the opposite),
+        // so we must reverse it for the loop:
+        for (const [index, entry] of traceback.reverse().entries()) {
             const filename = entry.filename as string;
             if (filename == "<stdin>.py" || filename == "/home/pyodide/my_program.py") {
                 errorLine = entry.lineno;
