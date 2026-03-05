@@ -954,7 +954,7 @@ export class TurtlePixiHandler {
         return this.pixiApp.ticker.speed;
     }
 
-    async update() {
+    update() {
         if (!this.autoRepaint) {
             this.turtles.forEach((turtle) => {
                 if (turtle.repaintShape) {

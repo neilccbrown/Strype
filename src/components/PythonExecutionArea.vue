@@ -559,7 +559,7 @@ export default Vue.extend({
                 // const reference to it for the duration of a Python run: 
                 const client = getPythonClient();
                 
-                const syncBridgePromise = handleSyncRequests(renderer, soundManager as SoundManager, {
+                const syncBridgePromise = handleSyncRequests(renderer, soundManager as SoundManager, turtlePixiHandler, {
                     getPressedKeys: () => pressedKeys,
                     loadLibraryAsset: this.loadLibraryAsset,
                     switchToGraphicsTab: () => {
@@ -571,7 +571,7 @@ export default Vue.extend({
                     consumeLastClickDetails: this.consumeLastClickDetails,
                 });
                 
-                const asyncBridge = handleAsyncRequests(renderer, soundManager as SoundManager, turtlePixiHandler);
+                const asyncBridge = handleAsyncRequests(renderer, soundManager as SoundManager);
                 
                 // Apparently we can use a promise as a queue to ensure we process the requests in order,
                 // and not try to service another while one is still going (especially sync ones which may yield,
@@ -967,6 +967,7 @@ export default Vue.extend({
                 domContext.drawImage(c, (domCanvas.width - (targetCanvas?.width ?? 0)) / 2, (domCanvas.height - (targetCanvas?.height ?? 0)) / 2);
 
                 // Draw turtle on, too (TODO only if turtle used):
+                turtlePixiHandler.update();
                 turtlePixiHandler.animate();
                 domContext.drawImage(turtleCanvas, (domCanvas.width - (turtleCanvas.width)) / 2, (domCanvas.height - (turtleCanvas.height)) / 2);
             }

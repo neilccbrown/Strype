@@ -25,8 +25,9 @@ interface SyncRequestCallbacks {
 export const handleSyncRequests : (
     renderer : Renderer,
     soundManager : SoundManager,
+    turtle: TurtlePixiHandler,
     callbacks : SyncRequestCallbacks,
-) => SyncPromiseStrypePyodideHandlerFunction = (renderer, soundManager, callbacks) => (req) => {
+) => SyncPromiseStrypePyodideHandlerFunction = (renderer, soundManager, turtle, callbacks) => (req) => {
     switch (req.request) {
     case "loadImage": {
         callbacks.switchToGraphicsTab();
@@ -109,6 +110,9 @@ export const handleSyncRequests : (
         const ctx = renderer.getCanvasContext(req.img.handle);
         return {request: req.request, response: Promise.resolve(encodeRGBA(ctx.getImageData(0, 0, req.img.width, req.img.height).data))};
     }
+    case "turtle": {
+        return {request: req.request, response: handleTurtle(turtle, req.buffer).then(() => true)};
+    }
     default:
         // Trick to give a compile-time error if a case is missing above:
         const _exhaustive: never = req;
@@ -117,7 +121,7 @@ export const handleSyncRequests : (
 };
 
 // Ironically, almost all the "Async" (fire-and-forget) requests are executed synchronously in one step, it's just that we don't need to know the result 
-export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundManager, turtle: TurtlePixiHandler) => AsyncStrypePyodideHandlerFunction = (renderer, soundManager, turtle: TurtlePixiHandler) => (req) => {
+export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundManager) => AsyncStrypePyodideHandlerFunction = (renderer, soundManager) => (req) => {
     switch (req.request) {
     case "canvas_setFill": {
         renderer.getCanvasContext(req.img.handle).fillStyle = req.fill;
@@ -192,10 +196,6 @@ export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundMan
                 saveAs(blob, `${req.filenameStem}_${getDateTimeFormatted(new Date(Date.now()))}.png`);
             }
         });
-        return;
-    }
-    case "turtle": {
-        handleTurtle(turtle, req.buffer);
         return;
     }
     case "startSound": {
