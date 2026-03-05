@@ -728,7 +728,7 @@ export default Vue.extend({
             onSuccess();
         },
 
-        async searchCloudDriveElements(elementName: string, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]>{
+        async searchCloudDriveElements(elementName: string | undefined, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]>{
             // Make a search query on OneDrive, with the provided query parameter.
             // Returns the elements found in the Drive listed by the HTTPRequest object obtained with the Graph API.
             // Note: we do not use the "search()" tool because it retrieves all entries recursively where called 
@@ -754,7 +754,7 @@ export default Vue.extend({
             }
             else{
                 // We have requested on single element, we just get it from the results.
-                return Promise.resolve(data.value.filter((entry: BaseItem) => (entry.name??"") == elementName)
+                return Promise.resolve(data.value.filter((entry: BaseItem) => elementName == undefined || (entry.name??"") == elementName)
                     .map((strypeFileItem: DriveItem) => ({name: strypeFileItem.name as string, id: strypeFileItem.id as string, isDir: !!strypeFileItem.folder})));
             }
         },

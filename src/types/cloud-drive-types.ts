@@ -139,7 +139,7 @@ export interface CloudDriveComponent {
     shareCloudDriveFile: (saveFileId: string) => Promise<boolean>,
     restoreCloudDriveFileSharingStatus: (saveFileId: string) => Promise<void>,
     getPublicShareLink: (saveFileId: string) => Promise<{ respStatus: number, webLink: string }>,
-    searchCloudDriveElements: (elementName: string, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>) => Promise<CloudDriveFile[]>,
+    searchCloudDriveElements: (elementName: string | undefined, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>) => Promise<CloudDriveFile[]>,
     //FileIO
     checkIsCloudDriveFileReadonly: (file: CloudDriveFile) => boolean,
     readFileContentForIO: (fileId: string, filePath: string) => Promise<Uint8Array>,

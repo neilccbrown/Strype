@@ -501,14 +501,25 @@ export default Vue.extend({
             });
         },
 
-        searchCloudDriveElements(elementName: string, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]>{
+        searchCloudDriveElements(elementName: string | undefined, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]>{
             // Make a search query on Google Drive, with the provided query parameter.
             // Returns the elements found in the Drive listed by the HTTPRequest object obtained with the call to gapi.client.request(). 
             const orderByParam = (searchOptions?.orderBy) ? {orderBy: searchOptions.orderBy} : {};
             const fileFieldsParam = (searchOptions?.fileFields) ? {fields: searchOptions?.fileFields} : {};
+            const baseQuery = `parents='${elementLocationId}' and trashed=false`;
+            let query: string;
+            if (searchAllSPYFiles) {
+                query = `name contains '*.spy' and ${baseQuery}`;
+            }
+            else if (elementName != undefined) {
+                query = "name='" + elementName + "' and " + baseQuery;
+            }
+            else {
+                query = baseQuery;
+            }
             return gapi.client.request({
                 path: "https://www.googleapis.com/drive/v3/files",
-                params: {...orderByParam, ...fileFieldsParam, "q": `name${(searchAllSPYFiles) ? " contains '*.spy'": "='" + elementName +"'"} and parents='${elementLocationId}' and trashed=false`},
+                params: {...orderByParam, ...fileFieldsParam, "q": query},
             }).then((response) => {
                 const fullInfo = JSON.parse(response.body).files as gapi.client.drive.File[]; 
                 return fullInfo.map((gdf) => {

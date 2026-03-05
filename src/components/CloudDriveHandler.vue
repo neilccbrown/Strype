@@ -710,7 +710,7 @@ export default Vue.extend({
             this.saveFileId = undefined;
         },
 
-        searchCloudDriveElements(cloudTarget: StrypeSyncTarget, fileName: string, fileLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]> {
+        searchCloudDriveElements(cloudTarget: StrypeSyncTarget, fileName: string | undefined, fileLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]> {
             return this.getSpecificCloudDriveComponent(cloudTarget)?.searchCloudDriveElements(fileName, fileLocationId,searchAllSPYFiles, searchOptions)??Promise.reject("No Cloud target!"); // We should never get to the reject clause here, keep TS happy
         },
         
