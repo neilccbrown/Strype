@@ -9,8 +9,8 @@ export interface FSNode {
     mode: number;
     parent: FSNode | null;
     mount: any;
-    node_ops: any;
-    stream_ops: any;
+    node_ops: FSNodeOpsFile | FSNodeOpsDir;
+    stream_ops: FSStreamOpsFile | FSStreamOpsDir;
     size?: number;
     contents?: Uint8Array;
     // These are not part of Emscripten's type but we add them and use them:
@@ -31,16 +31,35 @@ export interface FSStream {
     [key: string]: any;
 }
 
+export interface FSAttr {
+    dev: number;       // Device ID
+    ino: number;       // Inode number
+    mode: number;      // File mode (file type + permissions)
+    nlink: number;     // Number of hard links
+    uid: number;       // User ID
+    gid: number;       // Group ID
+    rdev: number;      // Device ID (if special file)
+    size: number;      // File size in bytes
+    atime: Date;       // Last access time
+    mtime: Date;       // Last modification time
+    ctime: Date;       // Last status change time
+    blksize: number;   // Block size
+    blocks: number;    // Number of 512B blocks allocated
+}
 
-export interface FSNodeOps {
-    getattr(node: FSNode): any;
+export interface FSNodeOpsFile {
+    getattr(node: FSNode): FSAttr;
+}
+export interface FSNodeOpsDir {
+    getattr(node: FSNode): FSAttr;
     lookup(parent: FSNode, name: string): FSNode;
     mknod(parent: FSNode, name: string, mode: number, dev: number): FSNode;
-    unlink(parent: FSNode, name: string): void;
+    // We don't provide this but Emscripten would support it:
+    // unlink(parent: FSNode, name: string): void;
     readdir(node: FSNode): string[];
 }
 
-export interface FSStreamOps {
+export interface FSStreamOpsFile {
     open(stream: FSStream): void;
     read(
         stream: FSStream,
@@ -57,6 +76,11 @@ export interface FSStreamOps {
         position: number
     ): number;
     close(stream: FSStream): void;
+    llseek(stream: FSStream, offset: number, whence: number): number;
+}
+
+export interface FSStreamOpsDir {
+    llseek(stream: FSStream, offset: number, whence: number): number;
 }
 
 export interface EmscriptenFileSystemPlugin {
@@ -67,6 +91,6 @@ export interface EmscriptenFileSystemPlugin {
         mode: number,
         dev: number
     ): FSNode;
-    node_ops: FSNodeOps;
-    stream_ops: FSStreamOps;
+    node_ops: FSNodeOpsDir;
+    stream_ops: FSStreamOpsDir;
 }

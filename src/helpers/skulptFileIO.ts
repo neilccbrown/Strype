@@ -95,6 +95,21 @@ export function cloudLookupFile(parent: CloudFileId, name: string) : Promise<{fi
         (error) => Promise.reject(error.result));
 }
 
+export function cloudListDir(parent: CloudFileId) : Promise<string[]> {
+    // If we are not connected to a cloud file system, then we raise an error:
+    if(!isSyncTargetCloudDrive(useStore().syncTarget)){
+        return Promise.reject(i18n.t("errorMessage.fileIO.notConnectedToCloud") as string);
+    }
+    const cloud : CloudDriveHandlerComponent = getCloud();
+
+    return cloud.searchCloudDriveElements(useStore().syncTarget, undefined, parent.cloudFileId, false, {})
+        .then((cloudFolderFiles) => {
+            return Promise.resolve(cloudFolderFiles.map((cloudFolderFile) => cloudFolderFile.name));
+        },
+        (error) => Promise.reject(error.result));
+}
+
+
 export function cloudOpenFile(file: CloudFileId, flags: number) : Promise<boolean> {
     // There's not actually anything to do here; cloud files are generally read/written
     // in their entirety, so there's not really a concept of holding them open.

@@ -63,6 +63,7 @@ export type SyncStrypePyodideWorkerRequest =
     | { request: "file_read"; id: CloudFileId; from: number; length: number, filePath: string }
     //| { request: "file_write"; handle: RemoteCloudFile }
     | { request: "file_lookup"; parent: CloudFileId; name: string }
+    | { request: "file_listDir"; parent: CloudFileId }
     | { request: "file_getRoot"; }
 ;
 
@@ -91,6 +92,7 @@ export type SyncStrypePyodideWorkerResponse =
     | { request: "file_read"; response: string; } // Uint8 encoded into string
     //| { request: "file_write"; response: boolean; } // TODO work out response
     | { request: "file_lookup"; response: {fileId: CloudFileId, isDir: boolean;} }
+    | { request: "file_listDir"; response: string[] }
     //| { request: "file_createNode"; response: CloudFileId }
     | { request: "file_getRoot"; response: CloudFileId }
 ;

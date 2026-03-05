@@ -8,7 +8,7 @@ import {drawText} from "@/helpers/textDrawing";
 import type WebFont from "webfontloader";
 import {saveAs} from "file-saver";
 import {getDateTimeFormatted} from "@/helpers/common";
-import {cloudCloseFile, cloudLookupFile, cloudOpenFile, cloudReadFile} from "@/helpers/skulptFileIO";
+import {cloudCloseFile, cloudListDir, cloudLookupFile, cloudOpenFile, cloudReadFile} from "@/helpers/skulptFileIO";
 import {useStore} from "@/store/store";
 
 // These are callbacks passed from PythonExecutionArea.vue to do things that are tied to the DOM or wider Strype state.
@@ -112,6 +112,9 @@ export const handleSyncRequests : (
     }
     case "file_lookup": {
         return {request: req.request, response: cloudLookupFile(req.parent, req.name)};
+    }
+    case "file_listDir": {
+        return {request: req.request, response: cloudListDir(req.parent)};
     }
     case "file_open" : {
         return {request: req.request, response: cloudOpenFile(req.id, req.flags)};

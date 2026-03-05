@@ -2,10 +2,10 @@
 // thread via our communication protocols in worker_bridge_type.  The actual implementation of handling
 // these methods is in main_thread_python_handler.ts
 
-import {EmscriptenFileSystemPlugin, FSNode, FSNodeOps, FSStream, FSStreamOps} from "@/types/emscripten-fs-types";
+import {EmscriptenFileSystemPlugin, FSAttr, FSNode, FSNodeOpsDir, FSNodeOpsFile, FSStream, FSStreamOpsDir, FSStreamOpsFile} from "@/types/emscripten-fs-types";
 import {syncBridge} from "@/workers/python_execution_type";
 import {PyodideAPI} from "pyodide";
-import {CloudStreamHandle, decodeStringToUint8} from "@/stryperuntime/worker_bridge_type";
+import {decodeStringToUint8} from "@/stryperuntime/worker_bridge_type";
 
 // Gets full file path by stitching together all parent paths:
 function getFullFilePath(node: FSNode) : string {
@@ -18,14 +18,55 @@ function getFullFilePath(node: FSNode) : string {
 }
 
 // Pyodide/Emscripten doesn't expose these constants so we must replicate them here:
-const S_IFDIR = 0o040000;
+const S_IFDIR = 0o040000; // This means directory
+const S_IFREG = 0o100000; // This means regular file (i.e. not dir)
+const SEEK_SET = 0;
+const SEEK_CUR = 1;
+const SEEK_END = 2;
+const EINVAL = 22;
+function isDir(mode: number) {
+    return (mode & S_IFDIR) != 0;
+}
+
+function llseek(stream : FSStream, offset : number, whence : number) {
+    var position = offset;
+    if (whence === SEEK_CUR) {
+        position += stream.position;
+    } else if (whence === SEEK_END) {
+        if (!isDir(stream.node.mode)) {
+            position += (stream.node as any)?.usedBytes ?? 0;
+        }
+    }
+    if (position < 0) {
+        throw new Error("Errno: " + EINVAL + " Invalid seek position");
+    }
+    return position;
+}
 
 // Note that this function is run during Pyodide initialisation and should not actually contact the cloud, yet,
 // nor make any syncBridge/asyncBridge calls directly.  All of that should only happen when the file system is
+function getattr(node: FSNode) : FSAttr {
+    const size = isDir(node.mode) ? 4096 : (node.size ?? 0);
+    return {
+        dev: 0,
+        ino: node.id,
+        mode: node.mode,
+        nlink: 1,
+        uid: 0,
+        gid: 0,
+        rdev: 0,
+        size: size,
+        atime: new Date(0),
+        mtime: new Date(0),
+        ctime: new Date(0),
+        blksize: 4096,
+        blocks: Math.ceil(size / 4096),
+    };
+}
+
 // actually accessed during the user's Python execution.
 export function getFSForEmscripten(pyodide: PyodideAPI) : EmscriptenFileSystemPlugin {
-    // TODO supply different ops for files and directories
-    const STREAM_OPS : FSStreamOps = {
+    const FILE_STREAM_OPS : FSStreamOpsFile = {
         open(stream: FSStream) {
             // As I understand it, this is the main open call.  What I found confusing is that it takes a FSStream and
             // returns void, where I had expected that it would take a path and a mode, and return an FSStream.  But
@@ -42,21 +83,31 @@ export function getFSForEmscripten(pyodide: PyodideAPI) : EmscriptenFileSystemPl
             syncBridge({request: "file_close", id: stream.node.strypeCloudFileId});
         },
         // TODO add write support
+        llseek,
     };
-    const NODE_OPS : FSNodeOps = {
+    const DIR_STREAM_OPS : FSStreamOpsDir = { llseek };
+    const FILE_NODE_OPS : FSNodeOpsFile = {
+        getattr,
+    };
+    const DIR_NODE_OPS : FSNodeOpsDir = {
         lookup(parent: FSNode, name: string): FSNode {
             const r = syncBridge({request: "file_lookup", parent: parent.strypeCloudFileId, name});
-            console.log("Looked up " + name + ", got: ", JSON.stringify(r));
-            const node = pyodide.FS.createNode(parent, name, (r.isDir ? S_IFDIR : 0) | 0o777, 0);
+            const node = pyodide.FS.createNode(parent, name, (r.isDir ? S_IFDIR : S_IFREG) | 0o777, 0);
             node.strypeCloudFileId = r.fileId;
             if (r.isDir) {
+                node.node_ops = DIR_NODE_OPS;
+                node.stream_ops = DIR_STREAM_OPS;
             }
             else {
-                node.node_ops = NODE_OPS;
-                node.stream_ops = STREAM_OPS;
+                node.node_ops = FILE_NODE_OPS;
+                node.stream_ops = FILE_STREAM_OPS;
             }
             return node;
         },
+        readdir(node: FSNode): string[] {
+            return syncBridge({request: "file_listDir", parent: node.strypeCloudFileId});
+        },
+        getattr,
         /* TODO
         mknod(parent: FSNode, name: string, mode: number, dev: number): FSNode {
             const fileId = syncBridge({request: "file_createNode", parent: parent.strypeCloudFileId, name, mode, dev});
@@ -65,7 +116,6 @@ export function getFSForEmscripten(pyodide: PyodideAPI) : EmscriptenFileSystemPl
             return node;
         },
          */
-        // TODO the rest
     };
     
     
@@ -79,7 +129,8 @@ export function getFSForEmscripten(pyodide: PyodideAPI) : EmscriptenFileSystemPl
             // Emscripten uses the fact that the root's parent is itself:
             root.parent = root;
             root.strypeCloudFileId = syncBridge({request: "file_getRoot"});
-            root.node_ops = NODE_OPS;
+            root.node_ops = DIR_NODE_OPS;
+            root.stream_ops = DIR_STREAM_OPS;
             return root;
         },
         createNode(parent: FSNode | null, name: string, mode: number, dev: number): FSNode {
@@ -87,12 +138,12 @@ export function getFSForEmscripten(pyodide: PyodideAPI) : EmscriptenFileSystemPl
             // Note that this doesn't actually make a file, it just makes an FSNode
             // object that reflects an existing file.
             // Making a file/directory is done by mknod in the node ops.
-            // TODO set different ops for files and directories:
-            node.node_ops = NODE_OPS;
-            node.stream_ops = STREAM_OPS;
+            const dir = isDir(mode);
+            node.node_ops = dir ? DIR_NODE_OPS : FILE_NODE_OPS;
+            node.stream_ops = dir ? DIR_STREAM_OPS : FILE_STREAM_OPS;
             return node;
         },
-        node_ops: NODE_OPS,
-        stream_ops: STREAM_OPS,
+        node_ops: DIR_NODE_OPS,
+        stream_ops: DIR_STREAM_OPS,
     };
 }
