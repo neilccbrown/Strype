@@ -2,16 +2,26 @@
     <div/>
 </template>
 <script lang="ts">
-import Vue, { PropType } from "vue";
+import { defineComponent, PropType } from "vue";
 import {useStore, settingsStore} from "@/store/store";
 import { mapStores } from "pinia";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { CustomEventTypes } from "@/helpers/editor";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 
 // Derived from https://medium.com/timeless/google-picker-with-vue-2a39de7f36e
 
-export default Vue.extend({
+export default defineComponent({
     name: "GoogleDriveFilePicker",
+
+    created() {
+        // Expose this component that other components might need.
+        // Vue 3 has deprecated direct access to components.
+        // (we don't set it in setup() because we want to have this accessible, and the component created!)
+        vueComponentsAPIHandler.googleDriveFilePickerComponentAPI = {
+            startPicking: this.startPicking,            
+        };
+    },
     
     props: {
         devKey : String,
@@ -64,7 +74,7 @@ export default Vue.extend({
                 const allStrypeDocsView = new google.picker.DocsView();
                 // The setLabel and setQuery functions are (no longer?) officially existing on the type DocsView -- we cast to "any" to bypass errors
                 (allStrypeDocsView as any).setQuery("title:*.spy");
-                (allStrypeDocsView as any).setLabel((this.$i18n.t("appMessage.gdriveAllStrypeFiles") as string));
+                (allStrypeDocsView as any).setLabel((this.$t("appMessage.gdriveAllStrypeFiles") as string));
                 allStrypeDocsView.setIncludeFolders(true);
                 allStrypeDocsView.setMode(google.picker.DocsViewMode.LIST);
                 docsViews.push(allStrypeDocsView);
@@ -75,7 +85,7 @@ export default Vue.extend({
                 const pythonFilesDocsView = new google.picker.DocsView();
                 // The setLabel and setQuery functions are (no longer?) officially existing on the type DocsView -- we cast to "any" to bypass errors
                 (pythonFilesDocsView as any).setQuery("title:*.py");
-                (pythonFilesDocsView as any).setLabel((this.$i18n.t("appMessage.gdriveAllPythonFiles") as string));
+                (pythonFilesDocsView as any).setLabel((this.$t("appMessage.gdriveAllPythonFiles") as string));
                 pythonFilesDocsView.setIncludeFolders(true);
                 pythonFilesDocsView.setMode(google.picker.DocsViewMode.LIST);
                 docsViews.push(pythonFilesDocsView);
@@ -104,7 +114,7 @@ export default Vue.extend({
                 rootDocsView.setMimeTypes("application/vnd.google-apps.folder");
             }    
             // The setLabel function is (no longer?) officially existing on the type DocsView -- we cast to "any" to bypass errors
-            (rootDocsView as any).setLabel((this.$i18n.t("appMessage.gdriveTab") as string));
+            (rootDocsView as any).setLabel((this.$t("appMessage.gdriveTab") as string));
 
             // Add views at 4th and 5th positions depending on the action
             docsViews.push((this.isSaveAction) ? rootDocsView : sharedDocsView);
@@ -115,10 +125,10 @@ export default Vue.extend({
                 .disableFeature(google.picker.Feature.MULTISELECT_ENABLED)
                 .disableFeature(google.picker.Feature.NAV_HIDDEN)
                 .setLocale(this.settingsStore.locale??"en")
-                .setOAuthToken(this.oauthToken)
-                .setDeveloperKey(this.devKey)
+                .setOAuthToken(this.oauthToken??"")
+                .setDeveloperKey(this.devKey??"")
                 .setCallback(this.pickerCallback)
-                .setTitle(this.$i18n.t((this.isSaveAction) ? "appMessage.selectFolder" : "appMessage.selectStrypeFile") as string);        
+                .setTitle(this.$t((this.isSaveAction) ? "appMessage.selectFolder" : "appMessage.selectStrypeFile") as string);        
             docsViews.forEach((view) => pickerBuilder.addView(view));  
             pickerBuilder.build().setVisible(true);
         },

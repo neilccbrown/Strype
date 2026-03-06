@@ -5,13 +5,15 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import { defineComponent } from "vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
-import { BvModalEvent } from "bootstrap-vue";
+import { BvTriggerableEvent } from "bootstrap-vue-next";
+import { eventBus } from "@/helpers/appContext";
+import { CustomEventTypes } from "@/helpers/editor";
 
-export default Vue.extend({
+export default defineComponent({
     name: "SimpleMsgModalDlg",
 
     components:{
@@ -26,12 +28,12 @@ export default Vue.extend({
 
     created() {        
         // Register the event listener for the dialog here
-        this.$root.$on("bv::modal::hide", this.onHideModalDlg);  
+        eventBus.on(CustomEventTypes.strypeModalHidden, this.onHideModalDlg);  
     },
 
     beforeDestroy(){
         // Remove the event listener for the dialog here, just in case...
-        this.$root.$off("bv::modal::hide", this.onHideModalDlg);
+        eventBus.off(CustomEventTypes.strypeModalHidden, this.onHideModalDlg);
     },
 
     computed:{
@@ -43,8 +45,8 @@ export default Vue.extend({
     },
 
     methods:{
-        onHideModalDlg(event: BvModalEvent, id: string){
-            if(id == this.dlgId && this.hideActionListener != undefined){
+        onHideModalDlg(event: BvTriggerableEvent){
+            if(event.componentId == this.dlgId && this.hideActionListener != undefined){
                 this.hideActionListener();
             }
         },

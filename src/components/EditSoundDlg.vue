@@ -17,17 +17,15 @@
             @mousemove.native="handleMouseMove"
         ></cropper>
         <div class="EditSoundDlg-button-wrapper">
-            <b-button class="EditSoundDlg-play-button" :variant="playStopVariant" @click="doPlayStopPreview">{{playStopLabel}}</b-button>
+            <BButton class="EditSoundDlg-play-button" :variant="playStopVariant" @click="doPlayStopPreview">{{playStopLabel}}</BButton>
         </div>
-        <div class="d-flex justify-content-center mt" style="margin-top: 10px;">
+        <div class="d-flex justify-content-center" style="margin-top: 10px;">
             <div class="d-flex position-relative" style="font-size: 80%;">
-                <div class="d-flex flex-column text-right me-4" style="min-width: 250px; padding-right: 5px;">
+                <div class="d-flex flex-column text-end" style="min-width: 250px; padding-right: 5px;">
                     <div>{{$t(isMacOSPlatform() ? "media.cursorTimeMac" : "media.cursorTimeWin")}}</div>
                     <div>{{$t(isMacOSPlatform() ? "media.cursorHeightMac" : "media.cursorHeightWin")}}</div>
                 </div>
-                <!-- Divider -->
-                <div class="position-absolute top-0 bottom-0 start-50 translate-middle-x bg-secondary" style="width: 1px;"></div>
-                <div class="d-flex flex-column text-left ms-4" style="min-width: 250px; padding-left: 5px;">
+                <div class="d-flex flex-column text-start" style="min-width: 250px; padding-left: 5px;">
                     <div>{{cursorTime || "-"}}</div>
                     <div>{{cursorHeight || "-"}}</div>
                 </div>
@@ -43,38 +41,42 @@
         <span class="EditSoundDlg-sizeInfo">{{$t("media.soundChangedLength")}} {{currentSoundLength}} {{$t("media.soundSeconds")}}</span>
         <span class="EditSoundDlg-sizeInfo">{{$t("media.soundAverageVolume")}} {{Math.round(volumeRMS * 10 * 100)}}%</span>
         <div class="EditSoundDlg-button-wrapper">
-            <b-button class="EditSoundDlg-normalise-button" variant="info" @click="doNormaliseVolume">{{$t("media.soundNormaliseVolume")}}</b-button>
+            <BButton class="EditSoundDlg-normalise-button EditSoundImageDlg-info-btn" @click="doNormaliseVolume">{{$t("media.soundNormaliseVolume")}}</BButton>
         </div>
     </ModalDlg>
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import Vue, { defineComponent } from "vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { Cropper } from "vue-advanced-cropper";
 import "vue-advanced-cropper/dist/style.css";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
-import { BvModalEvent } from "bootstrap-vue";
 import {drawSoundOnCanvas, getRMS, audioBufferToDataURL} from "@/helpers/media";
 import {TranslateResult} from "vue-i18n";
 import {isMacOSPlatform} from "@/helpers/common";
+import { BButton, BvTriggerableEvent } from "bootstrap-vue-next";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { eventBus } from "@/helpers/appContext";
+import { CustomEventTypes } from "@/helpers/editor";
 
 const previewImageWidth = 300;
 const previewImageHeight = 100;
 
-export default Vue.extend({
+export default defineComponent({
     name: "EditSoundDlg",
 
     components:{
         Cropper,
         ModalDlg,
+        BButton,
     },
 
     props:{
         dlgId: String,
         dlgTitle: String,
-        soundToEdit: AudioBuffer,
+        soundToEdit: {type: AudioBuffer, required: true},
     },
     
     data: function() {
@@ -94,13 +96,20 @@ export default Vue.extend({
     },
 
     created() {
+        // Expose this component that other components might need.
+        // Vue 3 has deprecated direct access to components.
+        // (we don't set it in setup() because we want to have this accessible, and the component created!)
+        vueComponentsAPIHandler.editSoundDlgComponentAPI = {
+            getUpdatedMedia: this.getUpdatedMedia,
+        };
+
         // Register the event listener for the dialog here
-        this.$root.$on("bv::modal::hide", this.onHideModalDlg);
+        eventBus.on(CustomEventTypes.strypeModalHidden, this.onHideModalDlg);
     },
 
     beforeDestroy(){
         // Remove the event listener for the dialog here, just in case...
-        this.$root.$off("bv::modal::hide", this.onHideModalDlg);
+        eventBus.off(CustomEventTypes.strypeModalHidden, this.onHideModalDlg);
     },
 
     mounted() {
@@ -127,7 +136,7 @@ export default Vue.extend({
 
     methods:{
         isMacOSPlatform,
-        onHideModalDlg(event: BvModalEvent, id: string){
+        onHideModalDlg(event: BvTriggerableEvent){
             if (this.stopPreview != null) {
                 this.stopPreview();
             }
@@ -231,7 +240,7 @@ export default Vue.extend({
             });
         },
         handleMouseMove(event: MouseEvent) {
-            const cropper = this.$refs.cropper as Cropper;
+            const cropper = this.$refs.cropper as InstanceType<typeof Cropper>;
             const imageElement = cropper?.$el.querySelector("img");
 
             if (cropper && imageElement && imageElement.complete) {
@@ -284,7 +293,7 @@ export default Vue.extend({
             this.volumeRMS = getRMS(this.soundToEdit, volumeFactor, this.crop.firstSampleIncl, this.crop.lastSampleExcl);
             // But retain same crop (have to do this after cropper has updated the image):
             Vue.nextTick(() => {
-                (this.$refs.cropper as Cropper).setCoordinates({
+                (this.$refs.cropper as InstanceType<typeof Cropper>).setCoordinates({
                     left: this.crop.leftPixel,
                     width: this.crop.widthPixels,
                     top: 0,
@@ -302,7 +311,7 @@ export default Vue.extend({
                 this.volumeScaleLogPercent = 0;
                 this.crop = {firstSampleIncl: 0, lastSampleExcl: this.soundToEdit.length, leftPixel: 0, widthPixels: previewImageWidth};
                 this.currentSoundLength = this.soundToEdit.duration.toFixed(3); 
-            }
+            }           
         },
     },
 });

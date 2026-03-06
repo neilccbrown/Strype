@@ -130,7 +130,7 @@ function enterImports() {
 }
 function executeCode(switchToGraphics = true) {
     if (switchToGraphics) {
-        cy.contains("a", "Graphics").click();
+        cy.contains("button.pea-display-tab", "Graphics").click();
     }
     cy.get("#runButton").contains("Run");
     cy.get("#runButton").click();

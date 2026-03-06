@@ -73,12 +73,12 @@ export function checkDownloadedCodeEquals(fullCode: string, format: "py" | "spy"
     }
     else {
         cy.contains(en.appMenu.saveProject).click({force: true});
-        cy.wait(500);
+        cy.wait(1000);
         // For testing, we always want to save to this device:
         cy.get("#saveStrypeFileNameInput").clear();
         cy.get("#saveStrypeFileNameInput").type("main");
         cy.contains(en.appMessage.targetFS).click({force: true});
-        cy.contains(en.buttonLabel.ok).click({force: true});
+        cy.contains("button:visible", en.buttonLabel.ok).click();
     }
     
     cy.wait(1000);
@@ -124,6 +124,9 @@ export function testRoundTripPasteAndDownload(code: string, extraSetup?: string 
         afterPaste();
     }
     
+    // We make sure our pasting has completed before saving, so that the save mechanism is based on an loaded file...
+    cy.wait(1000);
+
     checkDownloadedCodeEquals(expected ?? code, format ?? "py");
     // Refocus the editor and go to the bottom:
     cy.get("#" + strypeElIds.getFrameUID(-3)).focus();

@@ -17,15 +17,13 @@
             @change="change"
             @mousemove.native="handleMouseMove"            
         ></cropper>
-        <div class="d-flex justify-content-center mt" style="margin-top: 10px;">
+        <div class="d-flex justify-content-center" style="margin-top: 10px;">
             <div class="d-flex position-relative" style="font-size: 80%;">
-                <div class="d-flex flex-column text-right me-4" style="min-width: 250px; padding-right: 5px;">
+                <div class="d-flex flex-column text-end" style="min-width: 250px; padding-right: 5px;">
                     <div>{{$t(isMacOSPlatform() ? "media.cursorPosMac" : "media.cursorPosWin")}}</div>
                     <div>{{$t(isMacOSPlatform() ? "media.cursorColorMac" : "media.cursorColorWin")}}</div>
-                </div>
-                <!-- Divider -->
-                <div class="position-absolute top-0 bottom-0 start-50 translate-middle-x bg-secondary" style="width: 1px;"></div>
-                <div class="d-flex flex-column text-left ms-4" style="min-width: 250px; padding-left: 5px;">
+                </div>              
+                <div class="d-flex flex-column text-start" style="min-width: 250px; padding-left: 5px;">
                     <div>{{cursorPos || "-"}}</div>
                     <div>{{cursorColor || "-"}}</div>
                 </div>
@@ -33,9 +31,9 @@
             </div>
         </div>
         <div class="d-flex justify-content-center align-items-center" style="font-size: 90%; gap: 20px;margin-top: 15px;">
-            <b-button class="EditImageDlg-flip-horizontal-button" variant="info" @click="doFlipHorizontal"><i class="fa fa-arrows-h"></i> {{$t("media.imageFlipHorizontal")}}</b-button>
-            <b-button class="EditImageDlg-flip-vertical-button" variant="info" @click="doFlipVertical"><i class="fa fa-arrows-v"></i> {{$t("media.imageFlipVertical")}}</b-button>
-            <b-button class="EditImageDlg-rotate-button" variant="info" @click="doRotate90"><i class="fa fa-undo fa-flip-horizontal"></i> {{$t("media.imageRotate")}}</b-button>
+            <BButton class="EditImageDlg-flip-horizontal-button EditSoundImageDlg-info-btn" @click="doFlipHorizontal"><i class="fa fa-arrows-h"></i> {{$t("media.imageFlipHorizontal")}}</BButton>
+            <BButton class="EditImageDlg-flip-vertical-button EditSoundImageDlg-info-btn" @click="doFlipVertical"><i class="fa fa-arrows-v"></i> {{$t("media.imageFlipVertical")}}</BButton>
+            <BButton class="EditImageDlg-rotate-button EditSoundImageDlg-info-btn" @click="doRotate90"><i class="fa fa-undo fa-flip-horizontal"></i> {{$t("media.imageRotate")}}</BButton>
         </div>
         <span class="EditImageDlg-header">{{$t("media.imageScale")}}</span>
         <div class="EditImageDlg-scale">
@@ -49,32 +47,36 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import { defineComponent } from "vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { Cropper } from "vue-advanced-cropper";
 import "vue-advanced-cropper/dist/style.css";
 import pica from "pica";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
-import { BvModalEvent } from "bootstrap-vue";
 import {debounce} from "lodash";
 import {isMacOSPlatform} from "@/helpers/common";
+import { eventBus } from "@/helpers/appContext";
+import { BButton, BvTriggerableEvent } from "bootstrap-vue-next";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { CustomEventTypes } from "@/helpers/editor";
 
 const picaInstance = pica();
 
-export default Vue.extend({
+export default defineComponent({
     name: "EditImageDlg",
 
     components:{
         Cropper,
         ModalDlg,
+        BButton,
     },
 
     props:{
         dlgId: String,
         dlgTitle: String,
         imgToEdit: String, /* Base 64 string */
-        showImgPreview:{type: Function}, /* Takes new base64 string as input, null to cancel preview */
+        showImgPreview:{type: Function, required: true}, /* Takes new base64 string as input, null to cancel preview */
     },
     
     data: function() {
@@ -90,14 +92,21 @@ export default Vue.extend({
     },
 
     created() {
+        // Expose this component that other components might need.
+        // Vue 3 has deprecated direct access to components.
+        // (we don't set it in setup() because we want to have this accessible, and the component created!)
+        vueComponentsAPIHandler.editImageDlgComponentAPI = {
+            getUpdatedMedia: this.getUpdatedMedia,
+        };
+
         // Register the event listener for the dialog here
-        this.$root.$on("bv::modal::hide", this.onHideModalDlg);
+        eventBus.on(CustomEventTypes.strypeModalHidden, this.onHideModalDlg);
         this.updatePreview = debounce(this.updatePreview, 500);
     },
 
     beforeDestroy(){
         // Remove the event listener for the dialog here, just in case...
-        this.$root.$off("bv::modal::hide", this.onHideModalDlg);
+        eventBus.off(CustomEventTypes.strypeModalHidden, this.onHideModalDlg);
     },
     
     mounted() {
@@ -118,7 +127,7 @@ export default Vue.extend({
 
     methods:{
         isMacOSPlatform,
-        onHideModalDlg(event: BvModalEvent, id: string){
+        onHideModalDlg(event: BvTriggerableEvent){
             this.showImgPreview(null);
         },
         updatePreview() {
@@ -162,7 +171,7 @@ export default Vue.extend({
             this.updatePreview();
         },
         getUpdatedMedia() : Promise<{code: string, mediaType: string}> {
-            const { canvas } = (this.$refs.cropper as Cropper).getResult();
+            const { canvas } = (this.$refs.cropper as InstanceType<typeof Cropper>).getResult();
             if (!canvas) {
                 return Promise.reject("Loading");
             }
@@ -184,7 +193,7 @@ export default Vue.extend({
             });
         },
         handleMouseMove(event: MouseEvent) {
-            const cropper = this.$refs.cropper as Cropper;
+            const cropper = this.$refs.cropper as InstanceType<typeof Cropper>;
             const imageElement = cropper?.$el.querySelector("img");
 
             if (cropper && imageElement && imageElement.complete) {
@@ -243,13 +252,13 @@ export default Vue.extend({
         },
 
         doFlipHorizontal() {
-            (this.$refs.cropper as Cropper).flip(true, false);
+            (this.$refs.cropper as InstanceType<typeof Cropper>).flip(true, false);
         },
         doFlipVertical() {
-            (this.$refs.cropper as Cropper).flip(false, true);
+            (this.$refs.cropper as InstanceType<typeof Cropper>).flip(false, true);
         },
         doRotate90() {
-            (this.$refs.cropper as Cropper).rotate(90);
+            (this.$refs.cropper as InstanceType<typeof Cropper>).rotate(90);
         },
     },
     watch: {
@@ -307,5 +316,10 @@ export default Vue.extend({
     font-size: 80%;
     display: block;
     text-align: center;
+}
+// Shared styling with EditSoundDlg buttons
+.EditSoundImageDlg-info-btn {
+    background-color: #17a2b8 !important;
+    border-color: #17a2b8;
 }
 </style>

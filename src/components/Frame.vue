@@ -47,17 +47,18 @@
                 :wasLastRuntimeError="wasLastRuntimeError"
                 :onFocus="showFrameParseErrorPopupOnHeaderFocus"
             />
-            <b-popover
+            <BPopover
                 v-if="hasRuntimeError || wasLastRuntimeError || hasParsingError"
-                ref="errorPopover"
+                :id="errorPopoverUID"
                 :target="frameHeaderId"
                 :title="errorPopupTitle"
-                triggers="hover"
+                hover
                 :content="errorPopupContent"
-                :custom-class="(hasRuntimeError || hasParsingError) ? 'error-popover modified-title-popover': 'error-popover'"
-                placement="left"
+                :title-class="{'title-popover': true, 'modified-title-popover': (hasRuntimeError || hasParsingError)}"
+                body-class="error-popover"
+                placement="right"
             >
-            </b-popover>
+            </BPopover>
             <FrameBody
                 v-if="allowChildren && bodyVisible"
                 :ref="getFrameBodyRef"
@@ -93,40 +94,73 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue from "vue";
+import Vue, { defineComponent } from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
-import LabelSlotsStructureComponent from "@/components/LabelSlotsStructure.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
+import FrameBody from "@/components/FrameBody.vue";
+import JointFrames from "@/components/JointFrames.vue";
 import { DefaultFramesDefinition, CaretPosition, CollapsedState, CurrentFrame, FrozenState, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName, ContainerTypesIdentifiers } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent, frameOrChildHasErrors, calculateNextCollapseState } from "@/helpers/storeMethods";
-import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getCaretUID, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID, getFrameLabelSlotsStructureUID } from "@/helpers/editor";
+import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID, getFrameLabelSlotsStructureUID } from "@/helpers/editor";
 import { mapStores } from "pinia";
-import { BPopover } from "bootstrap-vue";
+import { BPopover, useToggle } from "bootstrap-vue-next";
 import html2canvas from "html2canvas";
 import { saveAs } from "file-saver";
 import scssVars from "@/assets/style/_export.module.scss";
 import {getDateTimeFormatted, isMacOSPlatform, removeIf} from "@/helpers/common";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { eventBus } from "@/helpers/appContext";
 
 //////////////////////
 //     Component    //
 //////////////////////
-export default Vue.extend({
+export default defineComponent({
     name: "Frame",
+
+    setup(componentInstance){
+        // Move the Options API style computed properties here if we need them setup:
+        const errorPopoverUID = "errorPopover_frame_" + componentInstance.frameId;
+
+        // Expose useToogle() of Bootstrap Vue Next inside setup (otherwise we get an error, even if it works)
+        const toggleErrorPopover = useToggle(errorPopoverUID);
+        return { errorPopoverUID, toggleErrorPopover };
+    },
+
+    created() {
+        // Expose this component that other components might need.
+        // Vue 3 has deprecated direct access to components.
+        // (we don't set it in setup() because we want to have this accessible, and the component created!)
+        const apiMethods = {
+            changeToggledCaretPosition: this.changeToggledCaretPosition,
+            handleClick: this.handleClick,
+        };
+        
+        if(vueComponentsAPIHandler.frameComponentAPI == null){    
+            vueComponentsAPIHandler.frameComponentAPI = {
+                forInstance: {
+                    [this.frameId]: apiMethods,
+                },
+            };
+        }
+        else{
+            vueComponentsAPIHandler.frameComponentAPI.forInstance[this.frameId] = apiMethods;
+        }
+    },
 
     components: {
         FrameHeader,
         VueContext,
         CaretContainer,
-        // Loaded like that because of circular references of components
-        FrameBody: () => import("@/components/FrameBody.vue"),
-        JointFrames: () => import("@/components/JointFrames.vue"),
+        BPopover,
+        FrameBody,
+        JointFrames,
     },
 
     props: {
         // NOTE that type declarations here start with a Capital Letter!!! (different to types.ts!)
-        frameId: Number, // Unique Indentifier for each Frame
+        frameId: {type: Number, required: true}, // Unique Indentifier for each Frame
         isDisabled: Boolean,
         isBeingDragged: Boolean,
         frameType: {
@@ -337,19 +371,19 @@ export default Vue.extend({
         isInFrameWithKeyboard(isInFrame: boolean, wasInFrame: boolean) {
             // If we just got the text cursor, and there is/was a runtime error in the frame, we show the popup
             if(!wasInFrame && isInFrame && (this.hasRuntimeError || this.wasLastRuntimeError)){
-                (this.$refs.errorPopover as InstanceType<typeof BPopover>).$emit("open");
+                this.toggleErrorPopover.show();
             }
 
-            // If we lost the text cursor, and there is/was a runtime error in the frame, we hide the popup
-            if(wasInFrame && !isInFrame){
-                (this.$refs.errorPopover as InstanceType<typeof BPopover>)?.$emit("close");
+            // If we lost the text cursor, and there is/was a runtime error in the frame, we hide the popup (if it existed)
+            if(wasInFrame && !isInFrame && document.getElementById(this.errorPopoverUID)?.classList.contains("show")){
+                this.toggleErrorPopover.hide();
             }
         },
     },
 
     mounted() {
-        this.$root.$on(CustomEventTypes.cutFrameSelection, this.cutIfFirstInSelection);
-        this.$root.$on(CustomEventTypes.copyFrameSelection, this.copyIfFirstInSelection);
+        eventBus.on(CustomEventTypes.cutFrameSelection, this.cutIfFirstInSelection);
+        eventBus.on(CustomEventTypes.copyFrameSelection, this.copyIfFirstInSelection);
 
         // Observe when the context menu when the context menu is closed
         // in order to reset the enforced selection flag
@@ -368,9 +402,6 @@ export default Vue.extend({
 
         // The frame header can listen for events from the editable slots focus to manage header level error messages
         document.getElementById(this.frameHeaderId)?.addEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);
-
-        // Register the caret container component at the upmost level for drag and drop
-        this.$root.$refs[getCaretUID(this.caretPosition.below, this.frameId)] = this.$refs[getCaretContainerRef()];
     },
 
     destroyed() {
@@ -381,11 +412,9 @@ export default Vue.extend({
         // however, just to keep things tidy, let's clear the frame focus event listener when the frame is destroyed
         document.getElementById(this.frameHeaderId)?.removeEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);
         
-        // Remove the registration of the caret container component at the upmost level for drag and drop
-        // ONLY if the frame is really removed from the state (because for a very strange reason, when reloading
-        // a page and overwriting the frames with a state, the initial state's frame are destroyed after registered).
-        if(this.appStore.frameObjects[this.frameId] == undefined){
-            delete this.$root.$refs[getCaretUID(this.caretPosition.below, this.frameId)];
+        // Remove the component's API instance
+        if(vueComponentsAPIHandler.frameComponentAPI?.forInstance[this.frameId]){
+            delete vueComponentsAPIHandler.frameComponentAPI?.forInstance[this.frameId];
         }
     },
 
@@ -447,7 +476,7 @@ export default Vue.extend({
         },
 
         handleContextMenuHover(event: MouseEvent) {
-            this.$root.$emit(CustomEventTypes.contextMenuHovered, event.target as HTMLElement);
+            eventBus.emit(CustomEventTypes.contextMenuHovered, event.target as HTMLElement);
         },
 
         closeContextMenu(){
@@ -483,24 +512,24 @@ export default Vue.extend({
             // If there's a windows and Mac shortcut they are put in an array:
             this.frameContextMenuItems = [
                 // Important these first three are in the same order as the enum CollapsedState:
-                {name: this.$i18n.t("contextMenu.collapseHeader") as string, method: this.collapseToHeader, actionName: FrameContextMenuActionName.collapseToHeader},
-                {name: this.$i18n.t("contextMenu.collapseDocumentation") as string, method: this.collapseToDocumentation, actionName: FrameContextMenuActionName.collapseToDocumentation},
-                {name: this.$i18n.t("contextMenu.collapseFull") as string, method: this.collapseToFull, actionName: FrameContextMenuActionName.collapseToFull},
-                {name: this.$i18n.t("contextMenu.freeze") as string, method: this.freeze, actionName: FrameContextMenuActionName.freeze},
-                {name: this.$i18n.t("contextMenu.unfreeze") as string, method: this.unfreeze, actionName: FrameContextMenuActionName.unfreeze},
+                {name: this.$t("contextMenu.collapseHeader") as string, method: this.collapseToHeader, actionName: FrameContextMenuActionName.collapseToHeader},
+                {name: this.$t("contextMenu.collapseDocumentation") as string, method: this.collapseToDocumentation, actionName: FrameContextMenuActionName.collapseToDocumentation},
+                {name: this.$t("contextMenu.collapseFull") as string, method: this.collapseToFull, actionName: FrameContextMenuActionName.collapseToFull},
+                {name: this.$t("contextMenu.freeze") as string, method: this.freeze, actionName: FrameContextMenuActionName.freeze},
+                {name: this.$t("contextMenu.unfreeze") as string, method: this.unfreeze, actionName: FrameContextMenuActionName.unfreeze},
                 {name: "", method: () => {}, type: "divider"},
-                {name: this.$i18n.t("contextMenu.cut") as string, method: this.cut, actionName: FrameContextMenuActionName.cut, shortcut: [(this.$i18n.t("shortcut.ctrlPlus") as string) + "X", "⌘X"]},
-                {name: this.$i18n.t("contextMenu.copy") as string, method: this.copy, actionName: FrameContextMenuActionName.copy, shortcut: [(this.$i18n.t("shortcut.ctrlPlus") as string) + "C", "⌘C"]},
-                {name: this.$i18n.t("contextMenu.downloadAsImg") as string, method: this.downloadAsImg},
-                {name: this.$i18n.t("contextMenu.duplicate") as string, method: this.duplicate},
+                {name: this.$t("contextMenu.cut") as string, method: this.cut, actionName: FrameContextMenuActionName.cut, shortcut: [(this.$t("shortcut.ctrlPlus") as string) + "X", "⌘X"]},
+                {name: this.$t("contextMenu.copy") as string, method: this.copy, actionName: FrameContextMenuActionName.copy, shortcut: [(this.$t("shortcut.ctrlPlus") as string) + "C", "⌘C"]},
+                {name: this.$t("contextMenu.downloadAsImg") as string, method: this.downloadAsImg},
+                {name: this.$t("contextMenu.duplicate") as string, method: this.duplicate},
                 {name: "", method: () => {}, type: "divider"},
-                {name: this.$i18n.t("contextMenu.pasteAbove") as string, method: this.pasteAbove},
-                {name: this.$i18n.t("contextMenu.pasteBelow") as string, method: this.pasteBelow},
+                {name: this.$t("contextMenu.pasteAbove") as string, method: this.pasteAbove},
+                {name: this.$t("contextMenu.pasteBelow") as string, method: this.pasteBelow},
                 {name: "", method: () => {}, type: "divider"},
-                {name: this.$i18n.t("contextMenu.disable") as string, method: this.disable},
+                {name: this.$t("contextMenu.disable") as string, method: this.disable},
                 {name: "", method: () => {}, type: "divider"},
-                {name: this.$i18n.t("contextMenu.delete") as string, method: this.delete, actionName: FrameContextMenuActionName.delete, shortcut: this.$i18n.t("shortcut.delete") as string},
-                {name: this.$i18n.t("contextMenu.deleteOuter") as string, method: this.deleteOuter}];
+                {name: this.$t("contextMenu.delete") as string, method: this.delete, actionName: FrameContextMenuActionName.delete, shortcut: this.$t("shortcut.delete") as string},
+                {name: this.$t("contextMenu.deleteOuter") as string, method: this.deleteOuter}];
 
             // Not all frames can be collapsed; only show menu items that are possible for at least one of the frames,
             // disable the item if all frames are already in that state, and show the dot shortcut next to whatever it would do:
@@ -525,7 +554,7 @@ export default Vue.extend({
             let nextWouldBe;
             // Important to do this before next step as we might then remove some:
             if (combinedCollapse.states.size === 1) {
-                const commonState : CollapsedState = combinedCollapse.states.keys().next().value;
+                const commonState = combinedCollapse.states.keys().next().value as CollapsedState;
                 this.frameContextMenuItems[commonState as number].disabled = true;
                 nextWouldBe = calculateNextCollapseState(collapseFrames, parentIsFrozen, "dryrun").overall;
             }
@@ -544,7 +573,7 @@ export default Vue.extend({
                 else {
                     someCollapseShowing = true;
                     if (nextWouldBe as number === c) {
-                        this.frameContextMenuItems[c].shortcut = this.$i18n.t("shortcut.period") as string;
+                        this.frameContextMenuItems[c].shortcut = this.$t("shortcut.period") as string;
                     }
                 }
             }
@@ -562,7 +591,7 @@ export default Vue.extend({
                     
                     // Check if there are precompile errors on any of our slots anywhere in the frame:
                     if (errorsInFrameOrChild) {
-                        x.name = this.$i18n.t("contextMenu.cannotFreezeErrors") as string;
+                        x.name = this.$t("contextMenu.cannotFreezeErrors") as string;
                         x.disabled = true;
                     }
                     
@@ -575,7 +604,7 @@ export default Vue.extend({
                 }
                 else if (x.actionName === FrameContextMenuActionName.collapseToHeader || x.actionName === FrameContextMenuActionName.collapseToDocumentation) {
                     if (errorsInFrameOrChild) {
-                        x.name = this.$i18n.t("contextMenu.cannotCollapseErrors") as string;
+                        x.name = this.$t("contextMenu.cannotCollapseErrors") as string;
                         x.disabled = true;
                     }
                     return false;
@@ -684,7 +713,7 @@ export default Vue.extend({
                 // Note: joint frames cannot be part of a selection, so we know there would only be 1 frame
                 if(canPasteBelowFrame && isCopyJointFrame && this.appStore.frameObjects[targetPasteBelow.id].jointFrameIds.length > 0){
                     // offset the index by 1: a joint frame can never be pasted above a root, we know "paste above" won't be shown...
-                    this.frameContextMenuItems[pasteBelowOptionIndex - 1].name = this.$i18n.t("contextMenu.pasteBelowJointRoot") as string;
+                    this.frameContextMenuItems[pasteBelowOptionIndex - 1].name = this.$t("contextMenu.pasteBelowJointRoot") as string;
                 }
             }
 
@@ -745,8 +774,8 @@ export default Vue.extend({
             const anyCanDisable = this.isPartOfSelection ? this.appStore.selectedFrames.some(canDisable) : canDisable(this.frameId);
             
             const disableOrEnableOption = (!anyCanDisable && anyCanEnable) 
-                ?  {name: this.$i18n.t("contextMenu.enable"), method: this.enable, disabled: false}
-                :  {name: this.$i18n.t("contextMenu.disable"), method: this.disable, disabled: !anyCanDisable && !anyCanEnable};
+                ?  {name: this.$t("contextMenu.enable"), method: this.enable, disabled: false}
+                :  {name: this.$t("contextMenu.disable"), method: this.disable, disabled: !anyCanDisable && !anyCanEnable};
             const enableDisableIndex = this.frameContextMenuItems.findIndex((entry) => entry.method === this.enable || entry.method === this.disable);
             Vue.set(
                 this.frameContextMenuItems,
@@ -767,7 +796,7 @@ export default Vue.extend({
             // (there is a context menu if there is an active context menu and it is not a frame context menu)
             const activeContextMenu = getActiveContextMenu();
             if(activeContextMenu && activeContextMenu.id == ""){
-                this.$root.$emit(CustomEventTypes.requestCaretContextMenuClose);
+                eventBus.emit(CustomEventTypes.requestCaretContextMenuClose);
             }
 
             // When a frame context menu is opened by click, we also move the frame cursor below, if the current frame cursor isn't 
@@ -898,10 +927,8 @@ export default Vue.extend({
                 // However, since no actual slot is clicked, the change from "self" to "self," isn't triggered.
                 // We can retrieve the LabelSlotsStructure component because its ref is in the root object, and 
                 // call updatePrependText() which will now notice the right context and do its work.
-                const labelSlotsStructComponent = this.$root.$refs[getFrameLabelSlotsStructureUID(this.frameId, 1)];
-                if(labelSlotsStructComponent){
-                    (labelSlotsStructComponent as InstanceType<typeof LabelSlotsStructureComponent>).updatePrependText();
-                }
+                vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(this.frameId, 1)]
+                    ?.updatePrependText();                
                 return;
             }
 
@@ -1425,8 +1452,13 @@ export default Vue.extend({
         showFrameParseErrorPopupOnHeaderFocus(isFocusing: boolean): void{
             // We need to be able to show the frame error popup programmatically
             // (if applies) when we navigate to the error - we make sure the frame still exists.
-            if(this.appStore.frameObjects[this.frameId] && this.hasParsingError){
-                (this.$refs.errorPopover as InstanceType<typeof BPopover>).$emit((isFocusing) ? "open" : "close");
+            if(this.appStore.frameObjects[this.frameId] && (this.hasParsingError || this.hasRuntimeError || this.wasLastRuntimeError)){
+                if(isFocusing){
+                    this.toggleErrorPopover.show();
+                }
+                else{
+                    this.toggleErrorPopover.hide();
+                }
             }
         },
     },
@@ -1453,8 +1485,16 @@ export default Vue.extend({
 }
 
 // modification of default bootstrap popover classes
-.modified-title-popover .popover-header {
-    color: #d66;
+.title-popover {
+    font-weight: 500;
+    background-color: #F7F7F7 !important;
+    line-height: 1.2;
+    --bs-popover-header-padding-x: 0.75rem;
+    --bs-popover-header-padding-y: 0.5rem;
+}
+
+.modified-title-popover {
+    color: #d66 !important;
 }
 
 .blockFrameDiv {

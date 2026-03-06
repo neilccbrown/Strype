@@ -4,11 +4,11 @@
         <SimpleMsgModalDlg :dlgId="unsupportedByStrypeFilePickedModalDlgId" :hideActionListener="loadFile" />
         <ModalDlg :dlgId="saveExistingCloudProjectModalDlgId" :size="saveExistingFileDlgSize" :elementToFocusId="(checkIsFileLockedProp()) ? saveExistingFileCopyButtonId : saveExistingFileOverwriteButtonId">
             <span style="white-space:pre-wrap">{{$t((checkIsFileLockedProp())?'appMessage.cloudLockedFileAlreadyExists':'appMessage.cloudFileAlreadyExists', {drivename: getDriveName()})}}</span>
-            <!-- in order to allow 3 (customed) buttons, we use the slot "modal-footer" made available by Boostrap for the modal; to simply things, we handle both locked/unlocked files there -->
+            <!-- in order to allow 3 (customed) buttons, we use the slot "modal-footer-content" made available in the underlying BModal; to simply things, we handle both locked/unlocked files there -->
             <template #modal-footer-content="{ok, cancel}">
-                <b-button variant="secondary" @click="onSaveCloudExistingFileAction(Actions.cancel);cancel()">{{$t('buttonLabel.cancel')}}</b-button>
-                <b-button :id="saveExistingFileCopyButtonId" variant="primary" @click="onSaveCloudExistingFileAction(Actions.copy);ok()">{{$t('buttonLabel.saveProjectCopy')}}</b-button>
-                <b-button :id="saveExistingFileOverwriteButtonId" v-if="!checkIsFileLockedProp()" variant="primary" @click="onSaveCloudExistingFileAction(Actions.overwrite);ok()">{{$t('buttonLabel.overwriteProject')}}</b-button>
+                <BButton variant="secondary" @click="onSaveCloudExistingFileAction(Actions.cancel);cancel()">{{$t('buttonLabel.cancel')}}</BButton>
+                <BButton :id="saveExistingFileCopyButtonId" variant="primary" @click="onSaveCloudExistingFileAction(Actions.copy);ok()">{{$t('buttonLabel.saveProjectCopy')}}</BButton>
+                <BButton :id="saveExistingFileOverwriteButtonId" v-if="!checkIsFileLockedProp()" variant="primary" @click="onSaveCloudExistingFileAction(Actions.overwrite);ok()">{{$t('buttonLabel.overwriteProject')}}</BButton>
             </template>
         </ModalDlg>
         <!-- Each specific drive is created here, but typing inference is done in getSpecificCloudDriveComponent() -->
@@ -18,14 +18,11 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import { defineComponent } from "vue";
 import {mapStores} from "pinia";
 import {useStore} from "@/store/store";
-import Menu from "@/components/Menu.vue";
-import App from "@/App.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
-import i18n from "@/i18n";
 import { CustomEventTypes, getAppSimpleMsgDlgId, getCloudLoginErrorModalDlgId, getFrameUID, getSaveAsProjectModalDlg } from "@/helpers/editor";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { BootstrapDlgSize, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
@@ -33,7 +30,9 @@ import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileShari
 import GoogleDriveComponent from "@/components/GoogleDriveComponent.vue";
 import OneDriveComponent from "@/components/OneDriveComponent.vue";
 import { generateSPYFileContent } from "@/helpers/load-save";
-import { AppSPYFullPrefix } from "@/helpers/appContext";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { AppSPYFullPrefix, eventBus } from "@/helpers/appContext";
+import { BButton } from "bootstrap-vue-next";
 
 // This enum is used for flaging the action taken when a request to save a file on a Cloud Drive
 // has been done, and a file of the same name already exists on the Drive
@@ -43,7 +42,7 @@ enum Actions{
     cancel
 }
 
-export default Vue.extend({
+export default defineComponent({
     name: "CloudDriveHandler",
     
     components: {
@@ -51,10 +50,49 @@ export default Vue.extend({
         ModalDlg,
         GoogleDriveComponent,
         OneDriveComponent,
+        BButton,
+    },
+
+    created() {
+        // Expose this component that other components might need.
+        // Vue 3 has deprecated direct access to components.
+        // (we don't set it in setup() because we want to have this accessible, and the component created!)
+        vueComponentsAPIHandler.cloudDriveHandlerComponentAPI =  {
+            getDriveName: () => {
+                return this.getDriveName();
+            },
+            getSpecificCloudDriveComponent: this.getSpecificCloudDriveComponent,
+            getCloudAPIStatusWhenLoadedOrFailed: this.getCloudAPIStatusWhenLoadedOrFailed,
+            setGenericSignInCallBack: this.setGenericSignInCallBack,
+            updateSignInStatus: this.updateSignInStatus,
+            signInFn: () => {
+                return this.signInFn();
+            },
+            shareCloudDriveFile: this.shareCloudDriveFile,
+            getCurrentCloudFileCurrentSharingStatus: this.getCurrentCloudFileCurrentSharingStatus,
+            backupPreviousCloudFileSharingStatus: this.backupPreviousCloudFileSharingStatus,
+            restoreCloudDriveFileSharingStatus: this.restoreCloudDriveFileSharingStatus,
+            getPublicShareLink: this.getPublicShareLink,
+            getPublicSharedProjectContent: this.getPublicSharedProjectContent,
+            searchCloudDriveElements: this.searchCloudDriveElements,
+            readFileContentForIO: this.readFileContentForIO,
+            writeFileContentForIO: this.writeFileContentForIO,
+            getSaveExistingCloudProjectInfos: () => {
+                return this.saveExistingCloudProjectInfos;
+            },
+            setSaveExistingCloudProjectInfos: (v: SaveExistingCloudProjectInfos) => {
+                this.saveExistingCloudProjectInfos = v;
+            },
+            setSaveFileName: (v: string) => {
+                this.saveFileName = v;
+            },
+            saveFile: this.saveFile,
+            loadFile: this.loadFile,
+        };
     },
 
     props: {
-        openSharedProjectFileId: String,
+        openSharedProjectFileId: {type: String, required: true},
     },
 
     data: function(){
@@ -94,7 +132,7 @@ export default Vue.extend({
         },
         
         enterFileNameLabel(): string {
-            return i18n.t("appMessage.enterFileNameLabel") as string;
+            return this.$t("appMessage.enterFileNameLabel") as string;
         },
 
         saveExistingCloudProjectModalDlgId(): string {
@@ -128,17 +166,17 @@ export default Vue.extend({
             let component = null as CloudDriveComponent | null;
             if(cloudTarget == StrypeSyncTarget.gd){
                 // Google Drive
-                component = this.$refs.googleDriveComponent as InstanceType<typeof GoogleDriveComponent>;
+                component = this.$refs.googleDriveComponent as CloudDriveComponent;
             }
             else{
                 // OneDrive
-                component = this.$refs.oneDriveComponent as InstanceType<typeof OneDriveComponent>;
+                component = this.$refs.oneDriveComponent as CloudDriveComponent;
             }
             // We only update the specific Drive's method delegates when needed (that is when the cloudTarget changes)
             if(this.currentCloudTarget != cloudTarget){
                 const resetToDefault = (cloudTarget ==  StrypeSyncTarget.none || cloudTarget == StrypeSyncTarget.fs);
-                this.$set(this, "getDriveName", (resetToDefault) ? () => "" : () => (component as CloudDriveComponent).driveName);
-                this.$set(this, "checkIsFileLockedProp", (resetToDefault) ? () => false : () => (component as CloudDriveComponent).isFileLocked);
+                this.getDriveName = (resetToDefault) ? () => "" : () => (component as CloudDriveComponent).driveName;
+                this.checkIsFileLockedProp = (resetToDefault) ? () => false : () => (component as CloudDriveComponent).isFileLocked;
                 this.signInFn = (resetToDefault) ? () => {} : () => (component as CloudDriveComponent).signIn((cloudTarget: StrypeSyncTarget) => { 
                     if(this.currentAction == "load"){
                         this.doLoadFile(cloudTarget, this.openSharedProjectFileId, this.isSwappingCloudDriveTarget(cloudTarget));
@@ -172,12 +210,12 @@ export default Vue.extend({
         // After signing in or signed out the Cloud Drive:
         updateSignInStatus(cloudTarget: StrypeSyncTarget,signed: boolean) {
             if(signed){
-                this.$root.$emit(CustomEventTypes.addFunctionToEditorProjectSave, {syncTarget: cloudTarget, function: (saveReason: SaveRequestReason) => this.saveFile(cloudTarget, saveReason)});
+                eventBus.emit(CustomEventTypes.addFunctionToEditorProjectSave, {syncTarget: cloudTarget, function: (saveReason: SaveRequestReason) => this.saveFile(cloudTarget, saveReason)});
             }  
             else{
                 // If signing fails, reset to no sync
                 this.appStore.syncTarget = StrypeSyncTarget.none; 
-                this.$root.$emit(CustomEventTypes.removeFunctionToEditorProjectSave, cloudTarget);
+                eventBus.emit(CustomEventTypes.removeFunctionToEditorProjectSave, cloudTarget);
                 // At the very end, emit event for notifying the attempt to open a shared project is finished
                 this.$emit(CustomEventTypes.openSharedFileDone);
             }            
@@ -188,7 +226,7 @@ export default Vue.extend({
         testCloudConnection(cloudTarget: StrypeSyncTarget){
             const cloudDriveComponent = this.getSpecificCloudDriveComponent(cloudTarget);
             cloudDriveComponent?.testCloudConnection(() => {
-                this.$root.$emit(CustomEventTypes.addFunctionToEditorProjectSave, {syncTarget: cloudTarget, function: (saveReason: SaveRequestReason) => this.saveFile(cloudTarget, saveReason)});
+                eventBus.emit(CustomEventTypes.addFunctionToEditorProjectSave, {syncTarget: cloudTarget, function: (saveReason: SaveRequestReason) => this.saveFile(cloudTarget, saveReason)});
                 this.doLoadFile(cloudTarget, this.openSharedProjectFileId, this.isSwappingCloudDriveTarget(cloudTarget));
             }, () => {
                 cloudDriveComponent.resetOAuthToken();
@@ -287,10 +325,10 @@ export default Vue.extend({
                                     // We need to check if we're loading the new SPY format or the old one.
                                     const isSpyNewFormat = decodedURIFileContent.startsWith(AppSPYFullPrefix);
                                     const loadFn = (isSpyNewFormat) 
-                                        ? (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(decodedURIFileContent, projectName, -1, false)
+                                        ? vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(decodedURIFileContent, projectName, -1, false)
                                         : this.appStore.setStateFromJSONStr({stateJSONStr: decodedURIFileContent, showMessage: false });                            
                                     return loadFn
-                                        .then(() => {
+                                        ?.then(() => {
                                             // If we have loaded the project with the new SPY format, the project name isn't part of the file, so we need to set it explicitly
                                             if(isSpyNewFormat){
                                                 this.appStore.projectName  = projectName;
@@ -314,11 +352,11 @@ export default Vue.extend({
                             })
                             .finally(() => {
                                 // Show a message to the user that the project has (/not) been loaded
-                                (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject({key: alertMsgKey, param: alertParams});
+                                vueComponentsAPIHandler.appComponentAPI?.finaliseOpenShareProject({key: alertMsgKey, param: alertParams});
                             });
                     }
                     else{
-                        (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject({key: "errorMessage.retrievedSharedGenericProject", param: this.$i18n.t("errorMessage.cloudAPIFailed", {apiname: cloudDriveComponent.driveAPIName}) as string});
+                        vueComponentsAPIHandler.appComponentAPI?.finaliseOpenShareProject({key: "errorMessage.retrievedSharedGenericProject", param: this.$t("errorMessage.cloudAPIFailed", {apiname: cloudDriveComponent.driveAPIName}) as string});
                     }
                 });
         },
@@ -346,8 +384,8 @@ export default Vue.extend({
                 ?.catch((_) => {
                     // Something happened, we let the user know
                     const erroMsg = (typeof _ == "string") ? _ : JSON.stringify(_);
-                    this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.clouldFileRestoreSharingStatus", {drivename: cloudDriveComponent.driveName, errordetails: erroMsg}) as string;
-                    this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.clouldFileRestoreSharingStatus", {drivename: cloudDriveComponent.driveName, errordetails: erroMsg}) as string;
+                    eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
                 })
                 .finally(() => {
                     // Reset the flag we kept during the sharing action
@@ -373,7 +411,7 @@ export default Vue.extend({
                     // and the folder is "Strype". In the case we know the user didn't explictly request to save a given location so we target "Strype".
                     let isStrypeForNewCloudDriveTargetSave = saveReason == SaveRequestReason.saveProjectAtLocation 
                         && this.isSwappingCloudDriveTarget(cloudTarget)
-                        && ((this.$parent as InstanceType<typeof Menu>).currentDriveLocation == "Strype");
+                        && (vueComponentsAPIHandler.menuComponentAPI?.getCurrentDriveLocation() == "Strype");
                     const updateStrypeProjectLocation =  isStrypeForNewCloudDriveTargetSave || (typeof this.appStore.strypeProjectLocation != "string") || this.appStore.syncTarget == StrypeSyncTarget.none;
                     const createStrypeFolder = updateStrypeProjectLocation || !(this.appStore.strypeProjectLocation);
                     cloudDriveComponent?.checkDriveStrypeOrOtherFolder(createStrypeFolder, createStrypeFolder, (strypeFolderId: string | null) => {
@@ -386,7 +424,7 @@ export default Vue.extend({
                         }
 
                         // The project save method may not exist (the case when a user has loaded a read-only Drive project, then wants to save: sync is off, but connection probably still maintained)
-                        this.$root.$emit(CustomEventTypes.addFunctionToEditorProjectSave, {syncTarget: cloudTarget, function: (saveReason: SaveRequestReason) => this.saveFile(cloudTarget, saveReason)});
+                        eventBus.emit(CustomEventTypes.addFunctionToEditorProjectSave, {syncTarget: cloudTarget, function: (saveReason: SaveRequestReason) => this.saveFile(cloudTarget, saveReason)});
 
                         if(saveReason == SaveRequestReason.saveProjectAtOtherLocation){
                             cloudDriveComponent.pickFolderForSave();
@@ -408,7 +446,7 @@ export default Vue.extend({
                     else{
                         // Notify the application that if we were saving for loading now we are done
                         if(this.saveReason == SaveRequestReason.loadProject) {
-                            this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                            eventBus.emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                         }      
                     }
                 }
@@ -469,19 +507,19 @@ export default Vue.extend({
                 this.appStore.syncTarget = cloudTarget;
                 this.appStore.isEditorContentModified = false;
                 // Reset the "Save As" flag of the Menu
-                (this.$parent as InstanceType<typeof Menu>).requestSaveAs = false;
+                vueComponentsAPIHandler.menuComponentAPI?.setRequestSaveAs(false);
                 // Set the project name when we have made an explicit saving
                 if(isExplictSave || this.saveReason == SaveRequestReason.overwriteExistingProject){
                     this.appStore.projectName = this.saveFileName;
                     // We also make sure the target is clearly set in the menu: since we have several cloud drives,
                     // it is not possible that a sync target changes between open and save or between saves.
-                    (this.$parent as InstanceType<typeof Menu>).saveTargetChoice(cloudTarget);
+                    vueComponentsAPIHandler.menuComponentAPI?.saveTargetChoice(cloudTarget);
                 }               
                 // The saving date is updated in any cases
                 this.appStore.projectLastSaveDate = Date.now();     
                 // Notify the application that if we were saving for loading now we are done
-                if(this.saveReason == SaveRequestReason.loadProject || (this.$parent as InstanceType<typeof Menu>).requestOpenProjectLater) {
-                    this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                if(this.saveReason == SaveRequestReason.loadProject || vueComponentsAPIHandler.menuComponentAPI?.getRequestOpenProjectLater()) {
+                    eventBus.emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                 }                
             }, (errRespStatus: number) => {
                 // If we have an authorised error (for example, timed-out connexion) we should disconnect and warn the users
@@ -493,11 +531,11 @@ export default Vue.extend({
                     // We assume something went wrong regarding saving against the specified file id.
                     // This can notably happen if the file has been locked in the meantime that we tried to save it.
                     // We show a modal and remove saving mechanisms.
-                    this.appStore.simpleModalDlgMsg = this.$i18n.t((this.saveReason == SaveRequestReason.reloadBrowser) ? "errorMessage.driveNoFile" :"errorMessage.driveSaveFailed", {drivename: cloudDriveComponent.driveName}) as string;
-                    this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                    this.appStore.simpleModalDlgMsg = this.$t((this.saveReason == SaveRequestReason.reloadBrowser) ? "errorMessage.driveNoFile" :"errorMessage.driveSaveFailed", {drivename: cloudDriveComponent.driveName}) as string;
+                    eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
                     this.updateSignInStatus(cloudTarget,false);
                     // Reset the "Save As" flag of the Menu
-                    (this.$parent as InstanceType<typeof Menu>).requestSaveAs = false;
+                    vueComponentsAPIHandler.menuComponentAPI?.setRequestSaveAs(false);
                     // When we tried to save a project upon request by the user when the a project was reloaded in the brower, failure to connect clears off the Drive information
                     if(this.saveReason == SaveRequestReason.reloadBrowser){
                         this.appStore.currentCloudSaveFileId = undefined;
@@ -518,9 +556,9 @@ export default Vue.extend({
             this.getSpecificCloudDriveComponent(cloudTarget)?.resetOAuthToken(); 
             this.updateSignInStatus(cloudTarget, false);
             if(this.saveReason == SaveRequestReason.loadProject || this.saveReason == SaveRequestReason.unloadPage){
-                const modalMsg = (this.saveReason == SaveRequestReason.loadProject) ? this.$i18n.t("errorMessage.gdriveConnectionSaveToLoadProjFailed") : this.$i18n.t("errorMessage.gdriveConnectionSaveToUnloadPageFailed") ;
+                const modalMsg = (this.saveReason == SaveRequestReason.loadProject) ? this.$t("errorMessage.gdriveConnectionSaveToLoadProjFailed") : this.$t("errorMessage.gdriveConnectionSaveToUnloadPageFailed") ;
                 this.appStore.simpleModalDlgMsg = modalMsg as string;
-                this.$root.$emit("bv::show::modal", this.loginErrorModalDlgId);
+                eventBus.emit(CustomEventTypes.showStrypeModal, this.loginErrorModalDlgId);
                 // The signIn method will be called when the modal is dismissed
             }
             else{
@@ -551,14 +589,14 @@ export default Vue.extend({
                 const isSpyNewFormat = (otherParams.fileName?.endsWith(`.${strypeFileExtension}`)??false) && fileContent.startsWith(AppSPYFullPrefix);
                 if(isPurePython){
                     // The loading mechanisms for a Python file differs from a Strype file AND it doens't maintain a "link" to Google Drive.
-                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(fileContent, otherParams.fileName as string, lastSaveDate, false).then(() => {
+                    vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(fileContent, otherParams.fileName as string, lastSaveDate, false).then(() => {
                         this.saveFileId = undefined;
                         this.updateSignInStatus(cloudTarget, false);
                         this.appStore.strypeProjectLocation = undefined;
                         this.appStore.strypeProjectLocationAlias = "";
                         this.appStore.strypeProjectLocationPath = "";
                         this.appStore.projectLastSaveDate = lastSaveDate;
-                        (this.$parent as InstanceType<typeof Menu>).saveTargetChoice(StrypeSyncTarget.none);
+                        vueComponentsAPIHandler.menuComponentAPI?.saveTargetChoice(StrypeSyncTarget.none);
                         // Give focus to the current (focusable) frame element so interaction can happen
                         document.getElementById(getFrameUID(this.appStore.currentFrame.id))?.focus();                        
                         // At the very end, emit event for notifying the attempt to open a shared project is finished in case that Python file was shared
@@ -574,9 +612,9 @@ export default Vue.extend({
                     // Load the file content in the editor
                     const isOpenedSharedProject = (this.openSharedProjectFileId.length > 0);
                     const fileLoadFn = (isSpyNewFormat) 
-                        ? (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(fileContent, otherParams.fileName as string, lastSaveDate, false)
+                        ? vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(fileContent, otherParams.fileName as string, lastSaveDate, false)
                         : this.appStore.setStateFromJSONStr({stateJSONStr: fileContent, showMessage: !isOpenedSharedProject});
-                    fileLoadFn.then(() => {
+                    fileLoadFn?.then(() => {
                         // Give focus to the current (focusable) frame element so interaction can happen
                         document.getElementById(getFrameUID((isSpyNewFormat) ? this.appStore.getImportsFrameContainerId : this.appStore.currentFrame.id))?.click();
                         // Only update things if we could set the new state
@@ -590,16 +628,18 @@ export default Vue.extend({
                             this.appStore.strypeProjectLocationAlias = strypeLocationAlias;
                             this.appStore.strypeProjectLocationPath = strypeProjectLocationPath;
                             this.appStore.projectLastSaveDate = lastSaveDate;
+                            // And we make sure we show the project is unmodified
+                            this.appStore.isEditorContentModified = false;
                         }
                         // Users may have changed the file name directly on Drive, so we make sure at this stage we get the project with that same name
                         // (At this stage, we shouldn't have an undefined name, but for safety we use the default project name if so.)
-                        const fileNameNoExt = (fileName) ? fileName.substring(0, fileName.lastIndexOf(".")) : i18n.t("defaultProjName") as string;
+                        const fileNameNoExt = (fileName) ? fileName.substring(0, fileName.lastIndexOf(".")) : this.$t("defaultProjName") as string;
                         this.appStore.projectName = fileNameNoExt;
                         this.saveFileName = fileNameNoExt;
                         
                         // And finally register the correct target flags via the Menu 
                         // (it is necessary when switching from FS to a Drive to also update the Menu flags, which will update the state too)
-                        (this.$parent as InstanceType<typeof Menu>).saveTargetChoice((isOpenedSharedProject) ? StrypeSyncTarget.none : cloudTarget);
+                        vueComponentsAPIHandler.menuComponentAPI?.saveTargetChoice((isOpenedSharedProject) ? StrypeSyncTarget.none : cloudTarget);
 
                         // We check that the file has write access and isn't locked (in the Drive). 
                         // We use that also (regardless the access rights) to make accessed shared project READONLY.
@@ -608,11 +648,11 @@ export default Vue.extend({
                                 this.saveFileId = undefined;
                                 this.updateSignInStatus(cloudTarget, false);
                                 if(isOpenedSharedProject){
-                                    (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject({key: "appMessage.retrievedSharedGenericProject", param: fileNameNoExt});
+                                    vueComponentsAPIHandler.appComponentAPI?.finaliseOpenShareProject({key: "appMessage.retrievedSharedGenericProject", param: fileNameNoExt});
                                 }
                                 else{
-                                    this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.driveFileReadOnly", {drivename: cloudDriveComponent.driveName}) as string;
-                                    this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.driveFileReadOnly", {drivename: cloudDriveComponent.driveName}) as string;
+                                    eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
                                 }
                             }
                         });                    
@@ -623,18 +663,18 @@ export default Vue.extend({
                         // When loading a file didn't work, we only need to handle the situation of opening a shared file 
                         // (because the error message would have been shown before for normal opening from the Drive picker)
                         if(this.openSharedProjectFileId.length > 0){
-                            (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject({key: "errorMessage.retrievedSharedGenericProject", param: reason});
+                            vueComponentsAPIHandler.appComponentAPI?.finaliseOpenShareProject({key: "errorMessage.retrievedSharedGenericProject", param: reason});
                         }
                     }); 
                 }
             }, (errorRespStatus: number) => {
                 if(errorRespStatus == 404){
-                    this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.driveNoFile", {drivename: cloudDriveComponent.driveName}) as string;                    
-                    this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.driveNoFile", {drivename: cloudDriveComponent.driveName}) as string;                    
+                    eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
                 }
                 else{
-                    this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.cloudDriveError", {drivename: cloudDriveComponent.driveName, error: errorRespStatus}) as string;                    
-                    this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.cloudDriveError", {drivename: cloudDriveComponent.driveName, error: errorRespStatus}) as string;                    
+                    eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
                 }
                 // At the very end, emit event for notifying the attempt to open a shared project is finished
                 this.$emit(CustomEventTypes.openSharedFileDone);  
@@ -649,13 +689,13 @@ export default Vue.extend({
 
         onFolderToSavePickCancelled(){
             // Reset the "Save As" flag of the Menu
-            (this.$parent as InstanceType<typeof Menu>).requestSaveAs = false;
+            vueComponentsAPIHandler.menuComponentAPI?.setRequestSaveAs(false);
         },
 
         onUnsupportedByStrypeFilePicked(){
             // When a non-Strype file was picked to load, we notify the user on a modal dialog, and trigger the Drive picker again
-            this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.gdriveWrongFile") as string;
-            this.$root.$emit("bv::show::modal", this.unsupportedByStrypeFilePickedModalDlgId);
+            this.appStore.simpleModalDlgMsg = this.$t("errorMessage.gdriveWrongFile") as string;
+            eventBus.emit(CustomEventTypes.showStrypeModal, this.unsupportedByStrypeFilePickedModalDlgId);
         },
 
         lookForAvailableProjectFileName(cloudTarget: StrypeSyncTarget, strypeProjectLocation: string){
@@ -665,7 +705,7 @@ export default Vue.extend({
                 // Check if the file is locked before we propose to overwrite
                 cloudDriveComponent.checkIsFileLocked(existingFileId, () => {
                     // We show a dialog to the user to make their choice about what to do next
-                    this.$root.$emit("bv::show::modal", this.saveExistingCloudProjectModalDlgId);                        
+                    eventBus.emit(CustomEventTypes.showStrypeModal, this.saveExistingCloudProjectModalDlgId);                        
                 }, () => {
                     // We shouldn't have an issue at this stage, but if it happens, we just attempt to connect again
                     this.proceedFailedConnectionCheckOnSave(cloudTarget);
@@ -674,7 +714,7 @@ export default Vue.extend({
                 // but we save the bits we need for continuing the process later (initiate the request to copy file to false at this stage)
                 this.saveExistingCloudProjectInfos = {existingFileId: existingFileId, existingFileName: this.saveFileName, resumeProcessCallback: onSuccessCallback, isCopyFileRequested: false};                
                 
-                this.$root.$emit("bv::show::modal", this.saveExistingCloudProjectModalDlgId);
+                eventBus.emit(CustomEventTypes.showStrypeModal, this.saveExistingCloudProjectModalDlgId);
             }, onSuccessCallback, () => this.proceedFailedConnectionCheckOnSave(cloudTarget));            
         },
 
@@ -692,12 +732,12 @@ export default Vue.extend({
                 // User chose "copy": we invite the user to choose a new name in the next Vue rendering
                 this.saveExistingCloudProjectInfos.isCopyFileRequested = true;
                 this.$nextTick(() => {
-                    this.$root.$emit("bv::show::modal", getSaveAsProjectModalDlg());
+                    eventBus.emit(CustomEventTypes.showStrypeModal, getSaveAsProjectModalDlg());
                 }); 
             }
             else{
                 // If user chose "cancel": we only reset the "Save As" flag of the Menu
-                (this.$parent as InstanceType<typeof Menu>).requestSaveAs = false;
+                vueComponentsAPIHandler.menuComponentAPI?.setRequestSaveAs(false);
             }
         },
 
@@ -723,7 +763,7 @@ export default Vue.extend({
             // The argument "filePath" is only used for error message.
             // The nature of the answer depends on the reading mode: a string in normal text case, an array of bytes in binary mode.
             return this.getSpecificCloudDriveComponent(cloudTarget)?.readFileContentForIO(fileId, isBinaryMode, filePath).catch((errorMsg) => {
-                return Promise.reject({success: false, errorMsg: this.$i18n.t("errorMessage.fileIO.fetchFileError", {filename: filePath, error: errorMsg})});
+                return Promise.reject({success: false, errorMsg: this.$t("errorMessage.fileIO.fetchFileError", {filename: filePath, error: errorMsg})});
             })??Promise.reject("No Cloud target!"); // We should never get to the reject clause here, keep TS happy
         },
 
@@ -733,7 +773,7 @@ export default Vue.extend({
             // The fileName is always set because it may be used inside the error message.
             // The method returns a string promise: the file ID on success, the error message on failure.
             return this.getSpecificCloudDriveComponent(cloudTarget)?.writeFileContentForIO(fileContent, fileInfos).catch((errorMsg) => {
-                return Promise.reject(i18n.t("errorMessage.fileIO.writingFileFailed", {filename: fileInfos.filePath, error: errorMsg}));        
+                return Promise.reject(this.$t("errorMessage.fileIO.writingFileFailed", {filename: fileInfos.filePath, error: errorMsg}));        
             })??Promise.reject("No Cloud target!"); // We should never get to the reject clause here, keep TS happy
         },
         /** end FileIO */

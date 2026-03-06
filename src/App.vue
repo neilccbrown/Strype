@@ -1,127 +1,137 @@
 <template>
-    <div id="app" class="container-fluid print-full-height">
-        <div v-if="showAppProgress || setAppNotOnTop" :class="{'app-overlay-pane': true, 'app-progress-pane': showAppProgress}" @contextmenu="handleOverlayRightClick">
-            <div v-if="showAppProgress" class="app-progress-container">
-                <div class="progress">
-                    <div 
-                        class="progress-bar progress-bar-striped bg-info progress-bar-animated" 
-                        role="progressbar"
-                        style="width: 100%"
-                        aria-valuenow="100"
-                        aria-valuemin="0"
-                        aria-valuemax="100"
-                        >
-                        <span class="progress-bar-text">{{progressbarMessage}}</span>
+    <!-- With the new package for Bootstrap (for Vue 3), BApp must wrap the application content -->
+    <BApp>
+        <div>
+            <div v-if="showAppProgress || setAppNotOnTop" :class="{'app-overlay-pane': true, 'app-progress-pane': showAppProgress}" @contextmenu="handleOverlayRightClick">
+                <div v-if="showAppProgress" class="app-progress-container">
+                    <div class="progress">
+                        <div 
+                            class="progress-bar progress-bar-striped bg-info progress-bar-animated" 
+                            role="progressbar"
+                            style="width: 100%"
+                            aria-valuenow="100"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                            >
+                            <span class="progress-bar-text">{{progressbarMessage}}</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-        <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
-        <Splitpanes class="expanded-PEA-splitter-overlay strype-split-theme" v-show="isExpandedPythonExecArea" horizontal @resize=onExpandedPythonExecAreaSplitPaneResize>
-            <pane key="1" :size="100 - expandedPEAOverlaySplitterPane2Size">
-            </pane>
-            <pane ref="overlayExpandedPEAPane2Ref" key="2" :size="expandedPEAOverlaySplitterPane2Size" :min-size="peaOverlayPane2MinSize" :max-size="peaOverlayPane2MaxSize">
-            </pane>
-        </Splitpanes>
-        <!-- #v-endif-->
-        <!-- Keep the style position of the row div to get proper z order layout of the app -->
-        <div class="row" style="position: relative;">
-            <Splitpanes class="strype-split-theme" @resize=onStrypeCommandsSplitPaneResize>
-                <Pane key="1" :size="100 - editorCommandsSplitterPane2Size" min-size="33" max-size="90">
-                    <!-- These data items are to enable testing: -->
-                    <div :id="editorId" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos" class="print-full-height">
-                        <div class="top no-print">
-                            <MessageBanner 
-                                v-if="showMessage"
-                            />
-                        </div>
-                        <div class="row no-gutters" >
-                            <Menu 
-                                :id="menuUID" 
-                                :ref="menuUID"
-                                v-on:[CustomEventTypes.appShowProgressOverlay]="applyShowAppProgress"
-                                v-on:[CustomEventTypes.appResetProject]="resetStrypeProject"
-                                class="noselect no-print"
-                            />
-                            <div class="col">
-                                <div 
-                                    :id="editorUID" 
-                                    :class="{'editor-code-div noselect print-full-height':true, ...layoutClassesForStandardVersion}"
-                                    @mousedown="handleWholeEditorMouseDown"
-                                >
-                                    <FrameHeader
-                                        :id="getFrameHeaderUID(-10)"
-                                        :labels="projectDocLabels"
-                                        :frameId="-10"
-                                        :frameType="projectDocFrameType"
-                                        :isDisabled="false"
-                                        :frameAllowChildren="false"
-                                        :erroneous="false"
-                                        :wasLastRuntimeError="false"
-                                        :frameAllowedCollapsedStates="[]"
-                                        :frameAllowedFrozenStates="[]"
-                                        :onFocus="() => {}"/>
-                                    <FrameContainer
-                                        v-for="container in containerFrames"
-                                        :key="container.frameType.type + '-id:' + container.id"
-                                        :id="getFrameContainerUID(container.id)"
-                                        :ref="getFrameContainerUID(container.id)"
-                                        :frameId="container.id"
-                                        :containerLabel="container.frameType.labels[0].label"
-                                        :caretVisibility="container.caretVisibility"
-                                        :frameType="container.frameType"
+            <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
+            <!-- the container div is only here because the new version of Splitpanes doesn't get the classes -->
+            <div class="expanded-PEA-splitter-overlay strype-split-theme">
+                <Splitpanes v-show="isExpandedPythonExecArea" horizontal @resize=onExpandedPythonExecAreaSplitPaneResize>
+                    <pane key="1" :size="100 - expandedPEAOverlaySplitterPane2Size">
+                    </pane>
+                    <pane :id="overlayExpandedPEASplitterPane2Id" key="2" :size="expandedPEAOverlaySplitterPane2Size" :min-size="peaOverlayPane2MinSize" :max-size="peaOverlayPane2MaxSize">
+                    </pane>
+                </Splitpanes>
+            </div>
+            <!-- #v-endif-->
+            <!-- Keep the style position of the row div to get proper z order layout of the app -->
+            <div class="row g-0" style="position: relative;">
+                <!-- the container div is only here because the new version of Splitpanes doesn't get the classes -->
+                <div class="strype-split-theme">
+                    <Splitpanes @resize=onStrypeCommandsSplitPaneResize>
+                        <Pane key="1" :size="100 - editorCommandsSplitterPane2Size" min-size="33" max-size="90">
+                            <!-- These data items are to enable testing: -->
+                            <div :id="editorId" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos" class="print-full-height">
+                                <div class="top no-print">
+                                    <MessageBanner 
+                                        v-if="showMessage"
                                     />
                                 </div>
+                                <div class="row g-0" >
+                                    <Menu 
+                                        :id="menuUID" 
+                                        :ref="menuUID"
+                                        v-on:[CustomEventTypes.appShowProgressOverlay]="applyShowAppProgress"
+                                        v-on:[CustomEventTypes.appResetProject]="resetStrypeProject"
+                                        class="noselect no-print col flex-grow-0"
+                                    />
+                                    <div class="col">
+                                        <div 
+                                            :id="editorUID" 
+                                            :class="{'editor-code-div noselect print-full-height':true, ...layoutClassesForStandardVersion}"
+                                            @mousedown="handleWholeEditorMouseDown"
+                                        >
+                                            <FrameHeader
+                                                :id="getFrameHeaderUID(-10)"
+                                                :labels="projectDocLabels"
+                                                :frameId="-10"
+                                                :frameType="projectDocFrameType"
+                                                :isDisabled="false"
+                                                :frameAllowChildren="false"
+                                                :erroneous="false"
+                                                :wasLastRuntimeError="false"
+                                                :frameAllowedCollapsedStates="[]"
+                                                :frameAllowedFrozenStates="[]"
+                                                :onFocus="() => {}"/>
+                                            <FrameContainer
+                                                v-for="container in containerFrames"
+                                                :key="container.frameType.type + '-id:' + container.id"
+                                                :id="getFrameContainerUID(container.id)"
+                                                :ref="getFrameContainerUID(container.id)"
+                                                :frameId="container.id"
+                                                :containerLabel="container.frameType.labels[0].label"
+                                                :caretVisibility="container.caretVisibility"
+                                                :frameType="container.frameType"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                </Pane>
-                <Pane key="2" ref="editorCommandsSplitterPane2" :size="editorCommandsSplitterPane2Size" class="no-print">
-                    <Commands :id="commandsContainerId" class="noselect" :ref="strypeCommandsRefId" />
-                </Pane>
-            </SplitPanes>
-        </div>
-        <SimpleMsgModalDlg :dlgId="simpleMsgModalDlgId"/>
-        <ModalDlg :dlgId="importDiffVersionModalDlgId" :useYesNo="true">
-            <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
-        </ModalDlg>
-        <ModalDlg :dlgId="resyncToCloudDriveAtStartupModalDlgId" :useYesNo="true" :okCustomTitle="$t('buttonLabel.yesSign')" :cancelCustomTitle="$t('buttonLabel.noContinueWithout')">
-            <span style="white-space:pre-wrap" v-html="resyncToCloudDriveAtStartupDetailsMessage"></span>
-        </ModalDlg>
-        <MediaPreviewPopup ref="mediaPreviewPopup" />
-        <EditImageDlg dlgId="editImageDlg" ref="editImageDlg" :imgToEdit="imgToEditInDialog" :showImgPreview="showImgPreview" />
-        <EditSoundDlg dlgId="editSoundDlg" ref="editSoundDlg" :soundToEdit="soundToEditInDialog" />
-        <div :id="getSkulptBackendTurtleDivId" class="hidden"></div>
-        <canvas v-show="appStore.isDraggingFrame" :id="getCompanionDndCanvasId" class="companion-canvas-dnd"/>
-        <ModalDlg :dlgId="confirmResetLSOnShareProjectLoadDlgId" :autoFocusButton="'ok'" :okCustomTitle="$t('buttonLabel.continue')" :cancelCustomTitle="$t('buttonLabel.cancelLoadSharedProject')" >
-            <div>
-                <span v-html="$t('appMessage.LSOnShareProjectLoad')"/>
-                <br/>
+                        </Pane>
+                        <Pane :id="strypeEditorCommandsSplitPane2Id" key="2" :size="editorCommandsSplitterPane2Size" class="no-print">
+                            <Commands :id="commandsContainerId" class="noselect" :ref="strypeCommandsRefId" />
+                        </Pane>
+                    </SplitPanes>
+                </div>
             </div>
-        </ModalDlg>
-        <ModalDlg :dlgId="confirmNewProjectModalDlgId" :useYesNo="true">
-            <span style="white-space:pre-wrap" v-html="$t('appMessage.newProjectConfirmation')"></span>
-        </ModalDlg>
-    </div>
+            <SimpleMsgModalDlg :dlgId="simpleMsgModalDlgId"/>
+            <ModalDlg :dlgId="importDiffVersionModalDlgId" :useYesNo="true">
+                <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
+            </ModalDlg>
+            <ModalDlg :dlgId="resyncToCloudDriveAtStartupModalDlgId" :useYesNo="true" :okCustomTitle="$t('buttonLabel.yesSign')" :cancelCustomTitle="$t('buttonLabel.noContinueWithout')">
+                <span style="white-space:pre-wrap" v-html="resyncToCloudDriveAtStartupDetailsMessage"></span>
+            </ModalDlg>
+            <MediaPreviewPopup ref="mediaPreviewPopup" />
+            <EditImageDlg dlgId="editImageDlg" ref="editImageDlg" :imgToEdit="imgToEditInDialog" :showImgPreview="showImgPreview" />
+            <EditSoundDlg dlgId="editSoundDlg" ref="editSoundDlg" :soundToEdit="soundToEditInDialog as AudioBuffer" />
+            <div :id="getSkulptBackendTurtleDivId" class="hidden"></div>
+            <canvas v-show="appStore.isDraggingFrame" :id="getCompanionDndCanvasId" class="companion-canvas-dnd"/>
+            <ModalDlg :dlgId="confirmResetLSOnShareProjectLoadDlgId" :okCustomTitle="$t('buttonLabel.continue')" :cancelCustomTitle="$t('buttonLabel.cancelLoadSharedProject')" >
+                <div>
+                    <span v-html="$t('appMessage.LSOnShareProjectLoad')"/>
+                    <br/>
+                </div>
+            </ModalDlg>
+            <ModalDlg :dlgId="confirmNewProjectModalDlgId" :useYesNo="true">
+                <span style="white-space:pre-wrap" v-html="$t('appMessage.newProjectConfirmation')"></span>
+            </ModalDlg>
+        </div>
+    </BApp>
 </template>
 
 <script lang="ts">
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue from "vue";
+import Vue, { defineComponent } from "vue";
+import { useI18n } from "vue-i18n";
+import { BApp } from "bootstrap-vue-next";
 import MessageBanner from "@/components/MessageBanner.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
-import Frame from "@/components/Frame.vue";
 import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
-import {Splitpanes, Pane, PaneData} from "splitpanes";
+import {Splitpanes, Pane} from "splitpanes";
 import { useStore, settingsStore } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
-import {getFrameContainerUID, getCloudDriveHandlerComponentRefId, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID} from "./helpers/editor";
+import {getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getPEAComponentRefId } from "@/helpers/editor";
@@ -132,11 +142,8 @@ import { DAPWrapper } from "./helpers/partial-flashing";
 import { mapStores } from "pinia";
 import { getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos, getFrameBelowCaretPosition, checkCodeErrors, calculateNextCollapseState } from "./helpers/storeMethods";
 import { cloneDeep } from "lodash";
-import { VueContextConstructor } from "vue-context";
 import { BACKEND_SKULPT_DIV_ID } from "@/autocompletion/ac-skulpt";
 import {pasteMixedPython} from "@/helpers/pythonToFrames";
-import CloudDriveHandlerComponent from "@/components/CloudDriveHandler.vue";
-import { BvEvent, BvModalEvent } from "bootstrap-vue";
 import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
 import EditImageDlg from "@/components/EditImageDlg.vue";
 import EditSoundDlg from "@/components/EditSoundDlg.vue";
@@ -144,9 +151,11 @@ import axios from "axios";
 import scssVars from "@/assets/style/_export.module.scss";
 import {loadDivider} from "@/helpers/load-save";
 import FrameHeader from "@/components/FrameHeader.vue";
-import { projectDocumentationFrameId } from "./helpers/appContext";
+import { eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
 import {inflateRaw} from "pako";
 import { Base64 } from "js-base64";
+import { BvTriggerableEvent } from "bootstrap-vue-next";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 
 let autoSaveTimerId = -1;
 let projectSaveFunctionsState : ProjectSaveFunction[] = [];
@@ -154,10 +163,17 @@ let projectSaveFunctionsState : ProjectSaveFunction[] = [];
 //////////////////////
 //     Component    //
 //////////////////////
-export default Vue.extend({
+export default defineComponent({
     name: "App",
+
+    setup() {
+        // We use the Composition API style for i18n
+        const { availableLocales } = useI18n();
+        return { availableLocales };
+    },
     
     components: {
+        BApp,
         FrameHeader,
         MessageBanner,
         FrameContainer,
@@ -242,6 +258,14 @@ export default Vue.extend({
             return AllFrameTypesIdentifier.projectDocumentation;
         },
 
+        strypeEditorCommandsSplitPane2Id(): string {
+            return "strypeEditorCommandsSplitPane2";
+        },
+
+        overlayExpandedPEASplitterPane2Id(): string {
+            return "overlayExpandedPEASplitterPane2";
+        },
+
         editorCommandsSplitterPane2Size: {
             get(): number {
                 let value = (this.appStore.editorCommandsSplitterPane2Size != undefined && this.appStore.editorCommandsSplitterPane2Size[StrypePEALayoutMode.tabsCollapsed] != undefined) 
@@ -251,16 +275,16 @@ export default Vue.extend({
                 value = (this.appStore.peaLayoutMode != undefined && this.appStore.editorCommandsSplitterPane2Size != undefined && this.appStore.editorCommandsSplitterPane2Size[this.appStore.peaLayoutMode] != undefined) 
                     ? this.appStore.editorCommandsSplitterPane2Size[this.appStore.peaLayoutMode] as number
                     // When there is no set value for a given layout mode,
-                    // whe check that any change in another layout has ever been made: if yes we just keep the divider as it is, if not, we use the default value.
+                    // we check that any change in another layout has ever been made: if yes we just keep the divider as it is, if not, we use the default value.
                     : ((this.appStore.editorCommandsSplitterPane2Size != undefined)
-                        ? parseFloat(((this.$refs.editorCommandsSplitterPane2 as InstanceType<typeof Pane>).$data as PaneData).style.width.replace("%",""))
+                        ? parseFloat((document.getElementById(this.strypeEditorCommandsSplitPane2Id) as HTMLDivElement).style.width.replace("%",""))
                         : parseFloat(scssVars.editorCommandsSplitterPane2SizePercentValue));
                 // #v-endif
                 return value;
                 
             },
             set(value: number) {
-                this.onStrypeCommandsSplitPaneResize({1: {size: value}});
+                this.onStrypeCommandsSplitPaneResize({panes: [{}, {size: value}]});
             },
         },
 
@@ -293,7 +317,7 @@ export default Vue.extend({
         },
 
         resyncToCloudDriveAtStartupDetailsMessage(): string {
-            return this.$i18n.t("appMessage.resyncToCloudDriveAtStartup", {drivename: this.cloudDriveName}) as string;
+            return this.$t("appMessage.resyncToCloudDriveAtStartup", {drivename: this.cloudDriveName}) as string;
         },
 
         confirmNewProjectModalDlgId(): string {
@@ -316,16 +340,16 @@ export default Vue.extend({
                     // When there is no set value for a given layout mode,
                     // whe check that any change in another layout has ever been made: if yes we just keep the divider as it is, if not, we use the default value.
                     : ((this.appStore.peaExpandedSplitterPane2Size != undefined)
-                        ? parseFloat(((this.$refs.overlayExpandedPEAPane2Ref as InstanceType<typeof Pane>).$data as PaneData).style.height.replace("%",""))
+                        ? parseFloat((document.getElementById(this.overlayExpandedPEASplitterPane2Id) as HTMLElement).style.height.replace("%",""))
                         :  parseFloat(scssVars.peaExpandedOverlaySplitterPane2SizePercentValue));
                 // The PEA needs to react to the change of value when we are in an expanded mode
                 if(this.appStore.peaLayoutMode == StrypePEALayoutMode.tabsExpanded || this.appStore.peaLayoutMode == StrypePEALayoutMode.splitExpanded){
-                    this.$nextTick(() => this.onExpandedPythonExecAreaSplitPaneResize({1: {size: value}}));
+                    this.$nextTick(() => this.onExpandedPythonExecAreaSplitPaneResize({panes: [{}, {size: value}]}));
                 }
                 return value;
             },
             set(value: number) {
-                this.onExpandedPythonExecAreaSplitPaneResize({1: {size: value}});                    
+                this.onExpandedPythonExecAreaSplitPaneResize({panes: [{}, {size: value}]});                    
             },
         },
 
@@ -353,6 +377,17 @@ export default Vue.extend({
 
         // By means of protection against browser crashes or anything that could prevent auto-backup, we do a backup every 2 minutes
         this.setAutoSaveState();
+
+        // Expose this component that other components might need
+        // Vue 3 has deprecated direct access to components.
+        // (we don't set it in setup() because we want to have this accessible, and the component created!)
+        vueComponentsAPIHandler.appComponentAPI = {
+            applyShowAppProgress: this.applyShowAppProgress,
+            setStateFromPythonFile: this.setStateFromPythonFile,
+            finaliseOpenShareProject: this.finaliseOpenShareProject,
+            onExpandedPythonExecAreaSplitPaneResize: this.onExpandedPythonExecAreaSplitPaneResize,
+            onStrypeCommandsSplitPaneResize: this.onStrypeCommandsSplitPaneResize,
+        };
 
         // Prevent the native context menu to be shown at some places we don't want it to be shown (basically everywhere but editable slots)
         // We can't know if that is called because of a click or because of the keyboard shortcut - and it's important to know because we need to process
@@ -470,7 +505,7 @@ export default Vue.extend({
             if(!this.appStore.isEditing && !this.isPythonExecuting && (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "c" || event.key.toLowerCase() === "x")) {
                 // We emit an event to be picked up by the first frame in the current selection:
                 // The frames themselves decide whether to act based on whether they are the first frame in the selection:
-                this.$root.$emit(event.key.toLowerCase() === "c" ? CustomEventTypes.copyFrameSelection : CustomEventTypes.cutFrameSelection);
+                eventBus.emit(event.key.toLowerCase() === "c" ? CustomEventTypes.copyFrameSelection : CustomEventTypes.cutFrameSelection);
                 event.preventDefault();
                 event.stopImmediatePropagation();
                 event.stopPropagation();
@@ -527,20 +562,21 @@ export default Vue.extend({
 
             // Handle "escape" on error popover: if an error popover is showing, escape should discard the popup.
             if(event.key == "Escape" && !this.appStore.isAppMenuOpened && !this.isPythonExecuting && !this.appStore.isDraggingFrame){
-                [...document.getElementsByClassName("popover b-popover error-popover")].forEach((popup) => (popup as HTMLDivElement).style.display = "none");
+                [...document.querySelectorAll(".popover.b-popover:has(.error-popover)")].forEach((popup) => (popup as HTMLDivElement).style.display = "none");
             }
         });
 
         // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
         // Listen to the Python execution area size change events (as the editor needs to be resized too)
         document.addEventListener(CustomEventTypes.pythonExecAreaExpandCollapseChanged, (event) => {
-            this.isExpandedPythonExecArea = (event as CustomEvent).detail;
-            (this.$refs[this.strypeCommandsRefId] as InstanceType<typeof Commands>).isExpandedPEA = (event as CustomEvent).detail;
-            (this.$refs[this.strypeCommandsRefId] as InstanceType<typeof Commands>).hasPEAExpanded ||= (event as CustomEvent).detail;
+            const expandedPEAValue = (event as CustomEvent<boolean>).detail;
+            this.isExpandedPythonExecArea = expandedPEAValue;
+            vueComponentsAPIHandler.commandsComponentAPI?.setIsExpandedPEA(expandedPEAValue);
+            vueComponentsAPIHandler.commandsComponentAPI?.setLogicalORHasPEAExpanded(expandedPEAValue);
             setTimeout(() => {
                 debounceComputeAddFrameCommandContainerSize((event as CustomEvent).detail);
                 if((event as CustomEvent).detail){
-                    this.onExpandedPythonExecAreaSplitPaneResize({1: {size: this.expandedPEAOverlaySplitterPane2Size}});
+                    this.onExpandedPythonExecAreaSplitPaneResize({panes: [{}, {size: this.expandedPEAOverlaySplitterPane2Size}]});
                 }
                 else{
                     const croppedEditor = document.getElementsByClassName(scssVars.croppedEditorDivClassName);
@@ -584,7 +620,7 @@ export default Vue.extend({
             // When the window is resized, the overlay expanded PEA splitter is properly updated. However, the underlying UI is not updated
             // properly (because it isn't inside that splitter) so we need to manually update things.
             if(this.isExpandedPythonExecArea) {
-                this.onExpandedPythonExecAreaSplitPaneResize({1: {size: ((this.$refs.overlayExpandedPEAPane2Ref as InstanceType<typeof Pane>).$data as PaneData).style.height.replace("%","")}}, true);
+                this.onExpandedPythonExecAreaSplitPaneResize({panes: [{}, {size: (document.getElementById(this.overlayExpandedPEASplitterPane2Id) as HTMLElement).style.height.replace("%","")}]}, true);
             }
 
             // Re-scale the Turtle canvas.
@@ -603,8 +639,8 @@ export default Vue.extend({
             this.setAppNotOnTop = (event as CustomEvent).detail;
         });
 
-        // The events from Bootstrap modal are registered to the root app element.
-        this.$root.$on("bv::modal::hide", this.onHideModalDlg);  
+        // The events from Bootstrap modal are registered on the eventBus
+        eventBus.on(CustomEventTypes.strypeModalHidden, this.onHideModalDlg);  
     },
 
     destroyed() {
@@ -612,10 +648,13 @@ export default Vue.extend({
         document.removeEventListener("selectionchange", this.handleDocumentSelectionChange);
         document.removeEventListener("mouseup", this.checkMouseSelection);
         document.removeEventListener("wheel", this.blockScrollOnContextMenu);
-        this.$root.$off("bv::modal::hide", this.onHideModalDlg);  
+        eventBus.off(CustomEventTypes.strypeModalHidden, this.onHideModalDlg);  
     },
 
     mounted() {
+        // Register the callback needed by the Settings store
+        this.settingsStore.saveSettingInLocalStorageHandler = this.autoSaveStateToWebLocalStorage;
+
         // When the App is ready, we want to either open a project present in the local storage,
         // or open a shared project that is given by the URL (this takes priority over local storage).
         // If we need to open a shared project, when Google Drive is deteced, we may need to wait for the Google API (GAPI) to be loaded before doing anything.
@@ -631,23 +670,23 @@ export default Vue.extend({
         if(shareProjectId && sharedProjectTarget && isSyncTargetCloudDrive(parseInt(sharedProjectTarget))) {
             const loadCloudSharedProject = () => {
                 const cloudTarget = parseInt(sharedProjectTarget) as StrypeSyncTarget;
-                (this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).openSharedProjectTarget = cloudTarget;
-                (this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).openSharedProjectId = shareProjectId;
+                vueComponentsAPIHandler.menuComponentAPI?.setOpenSharedProjectTarget(cloudTarget);
+                vueComponentsAPIHandler.menuComponentAPI?.setOpenSharedProjectId(shareProjectId);
                 const afterAPILoaded = () => {
                     document.getElementById(getLoadProjectLinkId())?.click();
                 };
-                const cloudDriveHandlerComponent = (this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getCloudDriveHandlerComponentRefId()] as InstanceType<typeof CloudDriveHandlerComponent>;
+                const cloudDriveHandlerComponentAPI = vueComponentsAPIHandler.cloudDriveHandlerComponentAPI;
                 // For Google API, we wait a bit as it must have been loaded first.
-                const specifcDriveComponent = cloudDriveHandlerComponent.getSpecificCloudDriveComponent(cloudTarget);
+                const specifcDriveComponent = cloudDriveHandlerComponentAPI?.getSpecificCloudDriveComponent(cloudTarget);
                 if(cloudTarget == StrypeSyncTarget.gd){                    
-                    cloudDriveHandlerComponent.getCloudAPIStatusWhenLoadedOrFailed(StrypeSyncTarget.gd)
+                    cloudDriveHandlerComponentAPI?.getCloudAPIStatusWhenLoadedOrFailed(StrypeSyncTarget.gd)
                         ?.then((gapiState) =>{
                             // Only open the project is the GAPI is loaded, and show a message of error if it hasn't.
                             if(gapiState == CloudDriveAPIState.LOADED){
                                 afterAPILoaded();
                             }
                             else{
-                                this.finaliseOpenShareProject({key: "errorMessage.retrievedSharedGenericProject", param: this.$i18n.t("errorMessage.cloudAPIFailed",{apiname: specifcDriveComponent?.driveAPIName}) as string});
+                                this.finaliseOpenShareProject({key: "errorMessage.retrievedSharedGenericProject", param: this.$t("errorMessage.cloudAPIFailed",{apiname: specifcDriveComponent?.driveAPIName}) as string});
                             }
                         });
                 }
@@ -678,8 +717,7 @@ export default Vue.extend({
                     // Google Drive will not expose the file directly, so we can *try* to extract the file ID and then get the data with the API (without authentication).
                     // Extract the file ID and attempt a retrieving of the file with the Google Drive API (it waits a bit for the API to be loaded)
                     const sharedFileID = shareProjectId.substring(googleDrivePublicURLPreamble.length).match(/^([^/]+)\/.*$/)?.[1];
-                    ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getCloudDriveHandlerComponentRefId()] as InstanceType<typeof CloudDriveHandlerComponent>)
-                        ?.getPublicSharedProjectContent(StrypeSyncTarget.gd, sharedFileID??"");
+                    vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getPublicSharedProjectContent(StrypeSyncTarget.gd, sharedFileID??"");
                 
                 }
                 else{
@@ -701,7 +739,7 @@ export default Vue.extend({
                                     alertMsgKey = "appMessage.retrievedSharedGenericProject";
                                     alertParams = this.appStore.projectName;
                                     // A generic project is saved in memory, so we must make sure there is no target destination saved.
-                                    (this.$refs[this.menuUID] as InstanceType<typeof Menu>).saveTargetChoice(StrypeSyncTarget.none);
+                                    vueComponentsAPIHandler.menuComponentAPI?.saveTargetChoice(StrypeSyncTarget.none);
                                 },
                                 (reason) => {
                                     alertMsgKey = "errorMessage.retrievedSharedGenericProject";
@@ -715,7 +753,7 @@ export default Vue.extend({
                         })
                         .catch((error) => {
                             alertMsgKey = "errorMessage.retrievedSharedGenericProject";
-                            alertParams = `${error?.message??error.toString()}<br/><br/><b>${this.$i18n.t("appMessage.publicSharedProjectUserDownloadAttempt")}`;
+                            alertParams = `${error?.message??error.toString()}<br/><br/><b>${this.$t("appMessage.publicSharedProjectUserDownloadAttempt")}`;
                             setTimeout(() => {
                                 window.open(shareProjectId, "_blank");
                             }, 3000);                            
@@ -744,7 +782,7 @@ export default Vue.extend({
                 const binary = Base64.toUint8Array(param);
                 const spyContent = inflateRaw(binary, { to: "string" });
 
-                const loadSpy = () => this.setStateFromPythonFile(spyContent, this.$i18n.t("defaultProjName") as string, 0, false);
+                const loadSpy = () => this.setStateFromPythonFile(spyContent, this.$t("defaultProjName") as string, 0, false);
                 
                 this.checkLocalStorageHasProject().then(() => {
                     // A project exists in the local storage, we ask the user if they want to keep it (and cancel the load of the shared project)
@@ -764,19 +802,16 @@ export default Vue.extend({
         }
 
         // Register a listener to handle the context menu hovers (cf onContextMenuHover())
-        this.$root.$on(CustomEventTypes.contextMenuHovered, (menuElement: HTMLElement) => this.onContextMenuHover(menuElement));
+        eventBus.on(CustomEventTypes.contextMenuHovered, (menuElement: HTMLElement) => this.onContextMenuHover(menuElement));
 
         // Register a listener for a request to close a caret context menu (used by Frame.vue)
-        this.$root.$on(CustomEventTypes.requestCaretContextMenuClose, () => {
+        eventBus.on(CustomEventTypes.requestCaretContextMenuClose, () => {
             // We find the CaretContainer component currently active to properly close the menu using the component close() method.
-            const currentFrameComponent = getFrameComponent(this.appStore.currentFrame.id);
-            if(currentFrameComponent){
-                const currentCaretContainerComponent = getCaretContainerComponent(currentFrameComponent);
-                ((currentCaretContainerComponent.$refs.menu as unknown) as VueContextConstructor).close();
-            }
+            vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretContainerUID(this.appStore.currentFrame.caretPosition, this.appStore.currentFrame.id)]
+                .closeContextMenu();            
         });
 
-        this.$root.$on(CustomEventTypes.addFunctionToEditorProjectSave, (psf: ProjectSaveFunction) => {
+        eventBus.on(CustomEventTypes.addFunctionToEditorProjectSave, (psf: ProjectSaveFunction) => {
             // Before adding a new function to execute in the autosave mechanism, we stop the current time, and will restart it again once the function is added.
             // That is because, if the new function is added just before the next tick of the timer is due, we don't want to excecuted actions just yet to give
             // time to the user to sign in to Google Drive first, then load a potential project without saving the project that is in the editor in between.
@@ -793,7 +828,7 @@ export default Vue.extend({
             this.setAutoSaveState();
         });
 
-        this.$root.$on(CustomEventTypes.removeFunctionToEditorProjectSave, (psfSyncTarget: StrypeSyncTarget) => {
+        eventBus.on(CustomEventTypes.removeFunctionToEditorProjectSave, (psfSyncTarget: StrypeSyncTarget) => {
             const toDeleteIndex = projectSaveFunctionsState.findIndex((psf) => psf.syncTarget == psfSyncTarget);
             if(toDeleteIndex > -1){
                 window.clearInterval(autoSaveTimerId);
@@ -803,12 +838,12 @@ export default Vue.extend({
         });
 
         // Listen to event for requesting the project save now
-        this.$root.$on(CustomEventTypes.requestEditorProjectSaveNow, (saveReason: SaveRequestReason) => {
+        eventBus.on(CustomEventTypes.requestEditorProjectSaveNow, (saveReason: SaveRequestReason) => {
             // The usual behaviour is to trigger the saving functions for localStorage + any potential target (FS or GD).
             // However, if we are in a situation of requesting a save to open a new project, AND the project wasn't coming
             // from any source (FS or GD) we need to let the user perform a standard save.
             if(saveReason == SaveRequestReason.loadProject && this.appStore.syncTarget == StrypeSyncTarget.none){
-                (this.$refs[this.menuUID] as InstanceType<typeof Menu>).handleSaveMenuClick(saveReason);
+                vueComponentsAPIHandler.menuComponentAPI?.handleSaveMenuClick(undefined, saveReason);
             }
             else {
                 projectSaveFunctionsState.forEach((psf) => psf.function(saveReason));
@@ -847,7 +882,7 @@ export default Vue.extend({
                         localStorage.setItem(this.localStorageAutosaveEditorKey, stateJSONStrWithCheckpoint);
                         // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
                         if(reason==SaveRequestReason.loadProject && projectSaveFunctionsState.length == 1){
-                            this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                            eventBus.emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                         }
                     });
                 }
@@ -907,7 +942,7 @@ export default Vue.extend({
                 // and use it for Strype if we provide that locale
                 const foundLanguange = navigator.language?.toLowerCase();
                 const languageCode = (foundLanguange && foundLanguange.length > 1) ? foundLanguange.substring(0,2) : "en";
-                if(languageCode != "en" && this.$i18n.availableLocales.includes(languageCode)) {
+                if(languageCode != "en" && this.availableLocales.includes(languageCode)) {
                     strypeSessionLocale = languageCode;
                 }
             }
@@ -943,11 +978,12 @@ export default Vue.extend({
                     resolve((event as CustomEvent).detail as boolean);
                 };
                 document.addEventListener(CustomEventTypes.resetLSOnShareProjectLoadConfirmed, handleConfirmationFromDlg);
-                this.$root.$emit("bv::show::modal", this.confirmResetLSOnShareProjectLoadDlgId);
+                eventBus.emit(CustomEventTypes.showStrypeModal, this.confirmResetLSOnShareProjectLoadDlgId);                
             });
         },
 
-        onHideModalDlg(event: BvEvent, dlgId: string) {
+        onHideModalDlg(event: BvTriggerableEvent) {
+            const dlgId = event.componentId;
             if(dlgId == this.confirmResetLSOnShareProjectLoadDlgId) {
                 document.dispatchEvent(new CustomEvent(CustomEventTypes.resetLSOnShareProjectLoadConfirmed, {detail: (event.trigger == "ok")}));
             }
@@ -986,28 +1022,29 @@ export default Vue.extend({
                     // about reloading the project from that Cloud Drive again (only if we were not attempting to open a shared project via the URL)
                     if(this.appStore.currentCloudSaveFileId) {
                         // We need to have the specific Cloud Drive component loaded for getting its name and register the generic signin callback, so we do that now...
-                        const cloudHandlerVueComponent = ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getCloudDriveHandlerComponentRefId()] as InstanceType<typeof CloudDriveHandlerComponent>);
-                        cloudHandlerVueComponent.setGenericSignInCallBack(this.appStore.syncTarget, () => cloudHandlerVueComponent.saveFile(this.appStore.syncTarget, SaveRequestReason.reloadBrowser));       
-                        this.cloudDriveName = cloudHandlerVueComponent.getDriveName();
-                        const execGetCloudDriveFileFunction = (event: BvModalEvent, dlgId: string) => {
+                        const cloudHandlerComponentAPI = vueComponentsAPIHandler.cloudDriveHandlerComponentAPI;
+                        cloudHandlerComponentAPI?.setGenericSignInCallBack(this.appStore.syncTarget, () => vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.saveFile(this.appStore.syncTarget, SaveRequestReason.reloadBrowser));
+                        this.cloudDriveName = cloudHandlerComponentAPI?.getDriveName()??"";
+                        const execGetCloudDriveFileFunction = (event: BvTriggerableEvent) => {
+                            const dlgId = event.componentId;
                             if(dlgId == this.resyncToCloudDriveAtStartupModalDlgId){
                                 if(event.trigger == "ok" || event.trigger=="event"){
                                     // Initiate a connection to the Cloud Drive (for updating the Cloud Drive with local changes)
-                                    cloudHandlerVueComponent.signInFn();                                
-                                    this.$root.$off("bv::modal::hide", execGetCloudDriveFileFunction); 
+                                    cloudHandlerComponentAPI?.signInFn();                                
+                                    eventBus.off(CustomEventTypes.strypeModalHidden, execGetCloudDriveFileFunction); 
                                 }
                                 else{
                                     // We make sure we do not keep a wrong sync target!
-                                    (this.$refs[this.menuUID] as InstanceType<typeof Menu>).saveTargetChoice(StrypeSyncTarget.none);                      
+                                    vueComponentsAPIHandler.menuComponentAPI?.saveTargetChoice(StrypeSyncTarget.none);
                                 }
                             }
                         };
-                        this.$root.$on("bv::modal::hide", execGetCloudDriveFileFunction);   
-                        this.$root.$emit("bv::show::modal", this.resyncToCloudDriveAtStartupModalDlgId);
+                        eventBus.on(CustomEventTypes.strypeModalHidden, execGetCloudDriveFileFunction);   
+                        eventBus.emit(CustomEventTypes.showStrypeModal, this.resyncToCloudDriveAtStartupModalDlgId);
                     }
                     // When a file has been reloaded and it was previously saved the File System, we want to clear off any references to that file
                     else if(this.appStore.syncTarget == StrypeSyncTarget.fs){
-                        (this.$refs[this.menuUID] as InstanceType<typeof Menu>).saveTargetChoice(StrypeSyncTarget.none);
+                        vueComponentsAPIHandler.menuComponentAPI?.saveTargetChoice(StrypeSyncTarget.none);
                     }
                 }, () => {});
             }, () => {});
@@ -1039,18 +1076,18 @@ export default Vue.extend({
             const isSavedProject = this.appStore.syncTarget != StrypeSyncTarget.none && !this.appStore.isEditorContentModified;
             if(isSavedProject){
                 // (*) project is saved (to the cloud or FS) without modifications
-                this.onHideModalDlg({trigger: "ok"} as BvModalEvent, this.confirmNewProjectModalDlgId);
+                this.onHideModalDlg({trigger: "ok", componentId: this.confirmNewProjectModalDlgId } as BvTriggerableEvent);
             }
             else {
-                this.$root.$emit("bv::show::modal", this.confirmNewProjectModalDlgId);
+                eventBus.emit(CustomEventTypes.showStrypeModal, this.confirmNewProjectModalDlgId);
             }            
         },
 
         finaliseOpenShareProject(message?: {key: string, param: string}) {
             // Show a message to the user that the project has (not) been loaded, if requested
             if(message){
-                this.appStore.simpleModalDlgMsg = this.$i18n.t(message.key, {param1: message.param}) as string;
-                this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                this.appStore.simpleModalDlgMsg = this.$t(message.key, {param1: message.param}) as string;
+                eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
             }
             // And also remove the query parameters in the URL
             window.history.replaceState({}, document.title, window.location.pathname);
@@ -1066,7 +1103,7 @@ export default Vue.extend({
 
         handleWholeEditorMouseDown(){
             // Force the Strype menu to close in case it was opened
-            (this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).toggleMenuOnOff(null);
+            vueComponentsAPIHandler.menuComponentAPI?.toggleMenuOnOff(null);
         },
 
         handleDocumentSelectionChange(){
@@ -1169,16 +1206,13 @@ export default Vue.extend({
                             const menuPosition = this.ensureFrameKBShortcutContextMenu(areFramesSelected);
                             // We retrieve the element on which we need to call the menu: the first frame of the selection if some frames are selected,
                             // the current blue caret otherwise
-                            const frameComponent = getFrameComponent((areFramesSelected) ? this.appStore.selectedFrames[0] : this.appStore.currentFrame.id);
-                            if(frameComponent) {
-                                if(areFramesSelected){
-                                    (frameComponent as InstanceType<typeof Frame>).handleClick(event, menuPosition);
-                                }
-                                else{
-                                    // When there is no selection, the menu to open is for the current caret, which can either be inside a frame's body or under a frame
-                                    const caretContainerComponent = getCaretContainerComponent(frameComponent);
-                                    caretContainerComponent.handleClick(event, menuPosition);
-                                }
+                            const frameComponentId = (areFramesSelected) ? this.appStore.selectedFrames[0] : this.appStore.currentFrame.id;
+                            if(areFramesSelected){
+                                vueComponentsAPIHandler.frameComponentAPI?.forInstance[frameComponentId].handleClick(event, menuPosition);
+                            }
+                            else{
+                                // When there is no selection, the menu to open is for the current caret, which can either be inside a frame's body or under a frame
+                                vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretContainerUID(this.appStore.currentFrame.caretPosition, this.appStore.currentFrame.id)].handleClick(event, menuPosition);
                             }
                         });  
                     }
@@ -1413,7 +1447,7 @@ export default Vue.extend({
         onExpandedPythonExecAreaSplitPaneResize(event: any, calledForResize?: boolean){
             // We want to know the size of the second pane (https://antoniandre.github.io/splitpanes/#emitted-events).
             // It will dictate the size of the Python execution area (expanded, with a range between 20% and 80% of the vh)
-            const lowerPanelSize = event[1].size as number;
+            const lowerPanelSize = event.panes[1].size as number;
             if(!calledForResize){
                 // If the call isn't trigger by a window resize, we save the panel 1 size in the project
                 if(this.appStore.peaExpandedSplitterPane2Size != undefined) {
@@ -1427,7 +1461,7 @@ export default Vue.extend({
 
                 // A change of divider position triggers a modification notification only when the user actively moves the divider,
                 // we can distinguish between a sitation when the divider is position is loaded and user event by the content of the event
-                if((event?.length??0) > 1){
+                if((event?.panes?.length??0) > 1){
                     this.appStore.isEditorContentModified = true;
                 }
             }
@@ -1467,11 +1501,11 @@ export default Vue.extend({
         onStrypeCommandsSplitPaneResize(event: any, useSpecificPEALayout?: StrypePEALayoutMode){
             // Save the new size of the RHS pane of the editor/commands splitter
             if(this.appStore.editorCommandsSplitterPane2Size != undefined) {
-                Vue.set(this.appStore.editorCommandsSplitterPane2Size, useSpecificPEALayout??(this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed), event[1].size);
+                Vue.set(this.appStore.editorCommandsSplitterPane2Size, useSpecificPEALayout??(this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed), event.panes[1].size);
             }
             else {
                 // The tricky case of when the state property has never been set
-                this.appStore.editorCommandsSplitterPane2Size = {...defaultEmptyStrypeLayoutDividerSettings, [useSpecificPEALayout??(this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed)]: event[1].size};
+                this.appStore.editorCommandsSplitterPane2Size = {...defaultEmptyStrypeLayoutDividerSettings, [useSpecificPEALayout??(this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed)]: event.panes[1].size};
             }
 
             // A change of divider position triggers a modification notification only when the user actively moves the divider,
@@ -1482,7 +1516,7 @@ export default Vue.extend({
 
             // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
             // When the rightmost panel (with Strype commands) is resized, we need to also update the Turtle canvas and break the natural 4:3 ratio of the PEA
-            (this.$refs[this.strypeCommandsRefId] as InstanceType<typeof Commands>).isCommandsSplitterChanged = true;
+            vueComponentsAPIHandler.commandsComponentAPI?.setIsCommandsSplitterChanged(true);
             document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
             // #v-endif
         },
@@ -1490,7 +1524,6 @@ export default Vue.extend({
         setStateFromPythonFile(completeSource: string, fileName: string, lastSaveDate: number, requestFSFileLoadedNotification: boolean, fileLocation?: FileSystemFileHandle) : Promise<void> {
             return new Promise((resolve) => {
                 const s = pasteMixedPython(completeSource, true);
-
                 if (s != null) {
 
                     // Now we can clear other non-frame related elements
@@ -1501,7 +1534,7 @@ export default Vue.extend({
                     actOnTurtleImport();
 
                     // Clear the Python Execution Area as it could have be run before.
-                    ((this.$root.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getPEAComponentRefId()] as any).clear();
+                    vueComponentsAPIHandler.peaComponentAPI?.clear();
                     // #v-endif
                     
                     this.appStore.setDividerStates(
@@ -1513,7 +1546,7 @@ export default Vue.extend({
                         () => {
                             // Finally, we can trigger the notifcation a file from FS has been loaded.
                             if(requestFSFileLoadedNotification){
-                                (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, lastSaveDate, fileLocation);
+                                vueComponentsAPIHandler.menuComponentAPI?.onFileLoaded(fileName, lastSaveDate, fileLocation);
                             }
                             resolve();
                         },
@@ -1525,50 +1558,54 @@ export default Vue.extend({
                 }
             });
         },
-        getMediaPreviewPopupInstance() {
-            return this.$refs.mediaPreviewPopup;
-        },
         getPeaComponent() {
             return (this.$refs[this.strypeCommandsRefId] as any).$refs[getPEAComponentRefId()];
         },
         editImageInDialog(imageDataURL: string, showPreview: (dataURL: string) => void, callback: (replacement: {code: string, mediaType: string}) => void) {
-            const editImageDlg = this.$refs.editImageDlg as InstanceType<typeof EditImageDlg>;
+            const editImageDlgComponentAPI = vueComponentsAPIHandler.editImageDlgComponentAPI;
             this.imgToEditInDialog = imageDataURL;
             this.showImgPreview = showPreview;
 
-            const editedImage = (event: BvModalEvent, dlgId: string) => {
+            const editedImage = (event: BvTriggerableEvent) => {
+                const dlgId = event.componentId;
                 if((event.trigger == "ok" || event.trigger=="event") && dlgId == "editImageDlg"){
-                    //Call the callback:
-                    editImageDlg.getUpdatedMedia().then(callback);
+                    // Call the callback:
+                    editImageDlgComponentAPI?.getUpdatedMedia().then(callback);
 
-                    this.$root.$off("bv::modal::hide", editedImage);
+                    eventBus.off(CustomEventTypes.strypeModalHidden, editedImage);
+
+                    // Reset the image to edit to make sure we always start from a good start when opening modals again
+                    this.imgToEditInDialog = "";
                 }
             };
-            this.$root.$on("bv::modal::hide", editedImage);
+            eventBus.on(CustomEventTypes.strypeModalHidden, editedImage);
 
-            this.$root.$emit("bv::show::modal", "editImageDlg");
+            eventBus.emit(CustomEventTypes.showStrypeModal, "editImageDlg");
         },
         editSoundInDialog(audioBuffer: AudioBuffer, callback: (replacement: {code: string, mediaType: string}) => void) {
-            const editSoundDlg = this.$refs.editSoundDlg as InstanceType<typeof EditSoundDlg>;
+            const editSoundDlgComponentAPI = vueComponentsAPIHandler.editSoundDlgComponentAPI;
             this.soundToEditInDialog = audioBuffer;
 
-            const editedSound = (event: BvModalEvent, dlgId: string) => {
+            const editedSound = (event: BvTriggerableEvent) => {
+                const dlgId = event.componentId;
                 if((event.trigger == "ok" || event.trigger=="event") && dlgId == "editSoundDlg"){
-                    //Call the callback:
-                    editSoundDlg.getUpdatedMedia().then(callback);
+                    // Call the callback:
+                    editSoundDlgComponentAPI?.getUpdatedMedia().then(callback);
 
-                    this.$root.$off("bv::modal::hide", editedSound);
+                    eventBus.off(CustomEventTypes.strypeModalHidden, editedSound);
+
+                    // Reset the sound to edit to make sure we always start from a good start when opening modals again
+                    this.soundToEditInDialog = null;
                 }
             };
-            this.$root.$on("bv::modal::hide", editedSound);
+            eventBus.on(CustomEventTypes.strypeModalHidden, editedSound);
 
-            this.$root.$emit("bv::show::modal", "editSoundDlg");
+            eventBus.emit(CustomEventTypes.showStrypeModal, "editSoundDlg");
         },
     },
 
-    provide() : { mediaPreviewPopupInstance : any, peaComponent: any, editImageInDialog : EditImageInDialogFunction, editSoundInDialog : EditSoundInDialogFunction} {
+    provide() : { peaComponent: any, editImageInDialog : EditImageInDialogFunction, editSoundInDialog : EditSoundInDialogFunction} {
         return {
-            mediaPreviewPopupInstance: this.getMediaPreviewPopupInstance,
             peaComponent: this.getPeaComponent,
             // Note, this provides the function:
             editImageInDialog: this.editImageInDialog,
@@ -1873,11 +1910,11 @@ $divider-grey: darken($background-grey, 15%);
 	cursor: row-resize
 }
 
-.splitpanes.strype-split-theme > .splitpanes__pane {
+.strype-split-theme .splitpanes .splitpanes__pane {
 	background-color: transparent;
 }
 
-.splitpanes.strype-split-theme > .splitpanes__splitter {
+.strype-split-theme .splitpanes > .splitpanes__splitter {
     background-color: transparent;
 	-webkit-box-sizing: border-box;
 	box-sizing: border-box;
@@ -1886,15 +1923,14 @@ $divider-grey: darken($background-grey, 15%);
 	flex-shrink: 0
 }
 
-.splitpanes.strype-split-theme > .splitpanes__splitter:first-child {
+.strype-split-theme .splitpanes > .splitpanes__splitter:first-child {
 	cursor: auto
 }
 
-.strype-split-theme.splitpanes > .splitpanes .splitpanes__splitter {
+.strype-split-theme .splitpanes > .splitpanes .splitpanes__splitter {
 	z-index: 1
 }
 
-.strype-split-theme.splitpanes--vertical>.splitpanes__splitter,
 .strype-split-theme .splitpanes--vertical>.splitpanes__splitter {
 	width: 2px;
 	//border-left: 1px solid #eee;
@@ -1902,8 +1938,6 @@ $divider-grey: darken($background-grey, 15%);
 	margin-left: -1px
 }
 
-.strype-split-theme.splitpanes--vertical>.splitpanes__splitter:before,
-.strype-split-theme.splitpanes--vertical>.splitpanes__splitter:after,
 .strype-split-theme .splitpanes--vertical>.splitpanes__splitter:before,
 .strype-split-theme .splitpanes--vertical>.splitpanes__splitter:after {
 	-webkit-transform: translateY(-50%);
@@ -1913,25 +1947,20 @@ $divider-grey: darken($background-grey, 15%);
 	height: 30px
 }
 
-.strype-split-theme.splitpanes--vertical>.splitpanes__splitter:before,
 .strype-split-theme .splitpanes--vertical>.splitpanes__splitter:before {
 	margin-left: -2px
 }
 
-.strype-split-theme.splitpanes--vertical>.splitpanes__splitter:after,
 .strype-split-theme .splitpanes--vertical>.splitpanes__splitter:after {
 	margin-left: 1px
 }
 
-.strype-split-theme.splitpanes--horizontal>.splitpanes__splitter,
 .strype-split-theme .splitpanes--horizontal>.splitpanes__splitter {
 	height: 14px;
 	border-top: 1px solid transparent;
 	margin-top: -1px
 }
 
-.strype-split-theme.splitpanes--horizontal>.splitpanes__splitter:before,
-.strype-split-theme.splitpanes--horizontal>.splitpanes__splitter:after,
 .strype-split-theme .splitpanes--horizontal>.splitpanes__splitter:before,
 .strype-split-theme .splitpanes--horizontal>.splitpanes__splitter:after {
 	-webkit-transform: translateX(-50%);
@@ -1941,12 +1970,10 @@ $divider-grey: darken($background-grey, 15%);
 	height: 1px
 }
 
-.strype-split-theme.splitpanes--horizontal>.splitpanes__splitter:before,
 .strype-split-theme .splitpanes--horizontal>.splitpanes__splitter:before {
 	margin-top: -2px
 }
 
-.strype-split-theme.splitpanes--horizontal>.splitpanes__splitter:after,
 .strype-split-theme .splitpanes--horizontal>.splitpanes__splitter:after {
 	margin-top: 1px
 }

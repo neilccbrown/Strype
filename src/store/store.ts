@@ -3,23 +3,21 @@ import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, 
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
-import { AppPlatform, AppVersion, projectDocumentationFrameId, vm } from "@/helpers/appContext";
+import { AppPlatform, AppVersion, eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getStrypeCommandComponentRefId, getCaretContainerUID, isCaretContainerElement, AutoSaveKeyNames } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getCaretContainerUID, isCaretContainerElement, AutoSaveKeyNames } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
 import {cloneDeep, isEqual} from "lodash";
-import $ from "jquery";
-import { BvModalEvent } from "bootstrap-vue";
 import { TPyParser } from "tigerpython-parser";
-import AppComponent from "@/App.vue";
 import emptyState from "@/store/initial-states/empty-state";
+import { BvTriggerableEvent } from "bootstrap-vue-next";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import $ from "jquery";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
-import PEAComponent from "@/components/PythonExecutionArea.vue";
-import CommandsComponent from "@/components/Commands.vue";
-import { actOnTurtleImport, getPEAComponentRefId } from "@/helpers/editor";
+import { actOnTurtleImport } from "@/helpers/editor";
 // #v-endif
 
 function getState(): StateAppObject {
@@ -74,7 +72,7 @@ export const useStore = defineStore("app", {
 
             defsContainerId: -2,
 
-            /** END of flags that need checking when a build is done **/
+            /** END of flags that need checking when a build is done **/           
 
             currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
 
@@ -193,7 +191,7 @@ export const useStore = defineStore("app", {
 
             isContextMenuKeyboardShortcutUsed: false,
 
-            projectName: i18n.t("defaultProjName") as string,
+            projectName: i18n.global.t("defaultProjName") as string,
 
             isEditorContentModified: false,
 
@@ -296,15 +294,15 @@ export const useStore = defineStore("app", {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === RootContainerFrameDefinition.type)[0].id;
         },
         
-        getMainCodeFrameContainerId: (state) => {
+        getMainCodeFrameContainerId: (state): number => {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === MainFramesContainerDefinition.type)[0].id;
         },
 
-        getImportsFrameContainerId:(state) => {
+        getImportsFrameContainerId:(state): number => {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === ImportsContainerDefinition.type)[0].id;
         },
 
-        getDefsFrameContainerId:(state) => {
+        getDefsFrameContainerId:(state): number => {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === DefsContainerDefinition.type)[0].id;
         },
 
@@ -525,7 +523,7 @@ export const useStore = defineStore("app", {
             const errorTitle = (retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot).errorTitle;
             return (errorTitle) 
                 ? errorTitle
-                : i18n.t("errorMessage.errorTitle") as string; 
+                : i18n.global.t("errorMessage.errorTitle") as string; 
         },
 
         preCompileErrorExists: (state) => (id: string) => {
@@ -1400,7 +1398,7 @@ export const useStore = defineStore("app", {
             // Should show editing mode
             this.isEditing = false;
             if(this.focusSlotCursorInfos){
-                const labelSlotStructs = Object.values(this.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
+                const labelSlotStructs = Object.values(this.frameObjects).flatMap((frameObject: FrameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
                 const focusedSlot= (retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false) as BaseSlot);
                 if(focusedSlot){
                     focusedSlot.focused = false;
@@ -1450,7 +1448,7 @@ export const useStore = defineStore("app", {
             stateCopy.lastCriticalActionPositioning.lastCriticalCaretPosition = {id: 0, caretPosition: CaretPosition.none};
             stateCopy.lastCriticalActionPositioning.lastCriticalSlotCursorInfos = mockAnchorFocusSlotCursorInfos;
             if(this.isEditing){
-                const labelSlotStructs = Object.values(stateCopy.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
+                const labelSlotStructs = Object.values(stateCopy.frameObjects).flatMap((frameObject: FrameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
                 const focusedSlotCopy = (retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false) as BaseSlot);
                 if(focusedSlotCopy){
                     focusedSlotCopy.focused = false;
@@ -1493,7 +1491,7 @@ export const useStore = defineStore("app", {
             }
 
             // And remove any currently focused slot
-            const labelSlotStructs = Object.values(this.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
+            const labelSlotStructs = Object.values(this.frameObjects).flatMap((frameObject: FrameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
             const focusedSlot = retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false);
             if(focusedSlot){
                 focusedSlot.focused = false;
@@ -1648,7 +1646,7 @@ export const useStore = defineStore("app", {
                 stateCopy.lastCriticalActionPositioning.lastCriticalCaretPosition = {id: 0, caretPosition: CaretPosition.none};
                 stateCopy.lastCriticalActionPositioning.lastCriticalSlotCursorInfos = mockAnchorFocusSlotCursorInfos;
                 if(this.isEditing){
-                    const labelSlotStructs = Object.values(stateCopy.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
+                    const labelSlotStructs = Object.values(stateCopy.frameObjects).flatMap((frameObject: FrameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
                     const focusedSlotCopy = (retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false) as BaseSlot);
                     if(focusedSlotCopy){
                         focusedSlotCopy.focused = false;
@@ -1846,7 +1844,7 @@ export const useStore = defineStore("app", {
         setFocusEditableSlot(payload: {frameSlotInfos: SlotCoreInfos; caretPosition: CaretPosition}){            
             // First thing to do is checking if another slot had focus, and remove it that's the case
             // (as the selection has already been changed via the browser, we cannot use it)            
-            const labelSlotStructs = Object.values(this.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
+            const labelSlotStructs = Object.values(this.frameObjects).flatMap((frameObject: FrameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
             const prevFocusedSlot = retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false);
             if(prevFocusedSlot){
                 (prevFocusedSlot as BaseSlot).focused = false;
@@ -2572,10 +2570,10 @@ export const useStore = defineStore("app", {
                             if(!isVersionCorrect) {
                                 // If the version isn't correct, we ask confirmation to the user before continuing 
                                 // for ease of coding, we register a "one time" event listener on the modal
-                                const execSetStateFunction = (event: BvModalEvent, dlgId: string) => {
-                                    if((event.trigger == "ok" || event.trigger=="event") && dlgId == getImportDiffVersionModalDlgId()){
+                                const execSetStateFunction = (event: BvTriggerableEvent) => {
+                                    if((event.trigger == "ok" || event.trigger=="event") && event.componentId == getImportDiffVersionModalDlgId()){
                                         this.doSetStateFromJSONStr(newStateStr).then(() => {
-                                            vm.$root.$off("bv::modal::hide", execSetStateFunction); 
+                                            eventBus.off(CustomEventTypes.strypeModalHidden, execSetStateFunction); 
                                             resolve();          
                                         });                          
                                     }
@@ -2584,8 +2582,8 @@ export const useStore = defineStore("app", {
                                         reject(errorDetailMessage);
                                     }
                                 };
-                                vm.$root.$on("bv::modal::hide", execSetStateFunction); 
-                                vm.$root.$emit("bv::show::modal", getImportDiffVersionModalDlgId());
+                                eventBus.on(CustomEventTypes.strypeModalHidden, execSetStateFunction); 
+                                eventBus.emit(CustomEventTypes.showStrypeModal, getImportDiffVersionModalDlgId());
                             //
                             }
                             else{
@@ -2615,7 +2613,7 @@ export const useStore = defineStore("app", {
                         if(!newStateObj || typeof(newStateObj) !== "object" || Array.isArray(newStateObj)){
                             //no need to go further
                             isStateJSONStrValid=false;
-                            errorDetailMessage = i18n.t("errorMessage.dataNotObject") as string;
+                            errorDetailMessage = i18n.global.t("errorMessage.dataNotObject") as string;
                             doFinaliseCheckup();
                         }
                         else{
@@ -2624,14 +2622,14 @@ export const useStore = defineStore("app", {
                                 .then((isIntegral) => {
                                     if(!isIntegral) {
                                         isStateJSONStrValid = false;
-                                        errorDetailMessage = i18n.t("errorMessage.stateDataIntegrity") as string;
+                                        errorDetailMessage = i18n.global.t("errorMessage.stateDataIntegrity") as string;
                                     } 
                                     else {
                                         // Check 3) as 2) is validated
                                         isVersionCorrect = (newStateObj["version"] == AppVersion);
                                         if(Number.parseInt(newStateObj["version"]) > 1 && newStateObj["platform"] != AppPlatform) {
                                             isStateJSONStrValid = false;
-                                            errorDetailMessage = i18n.t("errorMessage.stateWrongPlatform") as string;
+                                            errorDetailMessage = i18n.global.t("errorMessage.stateWrongPlatform") as string;
                                         }
                                         else{
                                             // Check 4) and 5) as 3) is validated
@@ -2644,7 +2642,7 @@ export const useStore = defineStore("app", {
                                             if(!restoreSavedStateFrameTypes(newStateObj)){
                                                 // There was something wrong with the type name (it should not happen, but better check anyway)
                                                 isStateJSONStrValid = false;
-                                                errorDetailMessage = i18n.t("errorMessage.stateWrongFrameTypeName") as string;
+                                                errorDetailMessage = i18n.global.t("errorMessage.stateWrongFrameTypeName") as string;
                                             }
                                         }
                                         delete newStateObj["version"];
@@ -2657,7 +2655,7 @@ export const useStore = defineStore("app", {
                     catch {
                         // We cannot use the string arguemnt to retrieve a valid state --> inform the users
                         isStateJSONStrValid = false;
-                        errorDetailMessage = i18n.t("errorMessage.wrongDataFormat") as string;
+                        errorDetailMessage = i18n.global.t("errorMessage.wrongDataFormat") as string;
                         doFinaliseCheckup();
                     }
                 }            
@@ -2674,7 +2672,7 @@ export const useStore = defineStore("app", {
                     // If this splitter was changed, the PEA needs to be resized once the splitter has updated
                     setTimeout(() => {
                         if (this.editorCommandsSplitterPane2Size != undefined && this.editorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed] != undefined) {
-                            (vm.$children[0] as InstanceType<typeof AppComponent>).onStrypeCommandsSplitPaneResize({1: {size: this.editorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed]}}, newPEALayout);
+                            vueComponentsAPIHandler.appComponentAPI?.onStrypeCommandsSplitPaneResize({panes: [{}, {size: this.editorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed]}]}, newPEALayout);
                         }
                     }, chainedTimeOuts);
                 }
@@ -2682,7 +2680,7 @@ export const useStore = defineStore("app", {
                     setTimeout(() => {
                         this.peaLayoutMode = newPEALayout;
                         // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
-                        ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).$refs[getPEAComponentRefId()] as InstanceType<typeof PEAComponent>).togglePEALayout(newPEALayout);
+                        vueComponentsAPIHandler.peaComponentAPI?.togglePEALayout(newPEALayout);
                         // #v-endif
                     }, chainedTimeOuts += 200);
                 }
@@ -2693,7 +2691,7 @@ export const useStore = defineStore("app", {
                     if (forceSetUndefined || (newPEACommandsSplitterPane2Size && newPEACommandsSplitterPane2Size[newPEALayout] != undefined)) {
                         setTimeout(() => {
                             if (this.peaCommandsSplitterPane2Size && this.peaCommandsSplitterPane2Size[newPEALayout] != undefined) {
-                                (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).onCommandsSplitterResize({1: {size: this.peaCommandsSplitterPane2Size[newPEALayout]}});
+                                vueComponentsAPIHandler.commandsComponentAPI?.onCommandsSplitterResize({panes: [{}, {size: this.peaCommandsSplitterPane2Size[newPEALayout]}]});
                             }
                         }, (chainedTimeOuts += 200));
                     }
@@ -2710,7 +2708,7 @@ export const useStore = defineStore("app", {
                     if (forceSetUndefined || (newPEAExpandedSplitterPane2Size != undefined && newPEAExpandedSplitterPane2Size[newPEALayout] != undefined)) {
                         setTimeout(() => {
                             if (this.peaExpandedSplitterPane2Size != undefined && this.peaExpandedSplitterPane2Size[newPEALayout] != undefined) {
-                                (vm.$children[0] as InstanceType<typeof AppComponent>).onExpandedPythonExecAreaSplitPaneResize({1: {size: this.peaExpandedSplitterPane2Size[newPEALayout]}});
+                                vueComponentsAPIHandler.appComponentAPI?.onExpandedPythonExecAreaSplitPaneResize({panes: [{}, {size: this.peaExpandedSplitterPane2Size[newPEALayout]}]});
                             }
                         }, (chainedTimeOuts += 200));
                     }
@@ -2730,7 +2728,7 @@ export const useStore = defineStore("app", {
                 actOnTurtleImport();
 
                 // Clear the Python Execution Area as it could have be run before.
-                ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getPEAComponentRefId()] as InstanceType<typeof PEAComponent>).clear(); 
+                vueComponentsAPIHandler.peaComponentAPI?.clear(); 
                 
                 // With the PEA, the styling of the overall UI layout is quite complex as some things depend on the "natural"
                 // default state of the layout, and we handle some styling manually. To make things clearer, we always reset 
@@ -2750,9 +2748,8 @@ export const useStore = defineStore("app", {
                 delete newState.peaExpandedSplitterPane2Size;
                 const newPEASplitViewSplitterPane1Size = newState.peaSplitViewSplitterPane1Size;
                 delete newState.peaSplitViewSplitterPane1Size;  
-                const commandsComponent = (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>);
 
-                commandsComponent.resetPEACommmandsSplitterDefaultState().then(() => {
+                vueComponentsAPIHandler.commandsComponentAPI?.resetPEACommmandsSplitterDefaultState().then(() => {
                     this.updateState(JSON.parse(JSON.stringify(newState)));
                     // Wait a bit after we have reset everything for the UI to get ready, then affect backed up changes
                     this.setDividerStates(newEditorCommandsSplitterPane2Size, newPEALayout ?? StrypePEALayoutMode.tabsCollapsed, newPEACommandsSplitterPane2Size, newPEASplitViewSplitterPane1Size, newPEAExpandedSplitterPane2Size, resolve, true);
@@ -3185,6 +3182,9 @@ export const settingsStore = defineStore("settings", {
             // on the project's locale.
             // The default state is undefined so we can detect real undefined locale to the default English...
             locale: undefined as undefined | string,
+            // Handler for saving the settings in LocalStorage (from Vue 3, we cannot directly access the App instance via vm.$children)
+            // so we use a callback function App MUST supply instead
+            saveSettingInLocalStorageHandler: null as null | ((r: SaveRequestReason) => void),
         };
     },
 
@@ -3194,7 +3194,7 @@ export const settingsStore = defineStore("settings", {
             this.locale = lang;
 
             // Then change the UI via i18n
-            i18n.locale = lang;
+            i18n.global.locale.value = lang;
 
             // And also change TigerPython locale -- if Strype locale is not available in TigerPython, we use English instead
             const tpLangs = TPyParser.getLanguages();
@@ -3212,7 +3212,9 @@ export const settingsStore = defineStore("settings", {
             // #v-endif
 
             // Save the settings
-            (vm.$children[0] as InstanceType<typeof AppComponent>).autoSaveStateToWebLocalStorage(SaveRequestReason.saveSettings);
+            if(this.saveSettingInLocalStorageHandler){
+                this.saveSettingInLocalStorageHandler(SaveRequestReason.saveSettings);
+            }
         },
     },
 });

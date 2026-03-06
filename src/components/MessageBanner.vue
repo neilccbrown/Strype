@@ -1,5 +1,5 @@
 <template>
-    <b-modal
+    <BModal
         v-if="showModal"
         :visible="showModal"
         hide-footer
@@ -10,7 +10,7 @@
             class="w-100" 
             :src="image"
         />
-    </b-modal>
+    </BModal>
     <div
         v-else 
         :class="scssVars.messageBannerContainerClassName"
@@ -31,14 +31,19 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import { defineComponent } from "vue";
 import { useStore } from "@/store/store";
 import { MessageDefinedActions, MessageDefinitions, MessageDefinition, MessageTypes, VoidFunction} from "@/types/types";
 import { mapStores } from "pinia";
 import scssVars from "@/assets/style/_export.module.scss";
+import { BModal } from "bootstrap-vue-next";
 
-export default Vue.extend({
+export default defineComponent({
     name: "MessageBanner",
+
+    components:{
+        BModal,
+    },
 
     data: function() {
         return {

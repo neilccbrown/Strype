@@ -3,7 +3,7 @@
     <div @keydown="handleKeyEvent" @keyup="handleKeyEvent" tabindex="-1" @mousedown.self.stop.prevent>
         <CloudDriveHandler :ref="cloudDriveHandlerComponentId" :openSharedProjectFileId="openSharedProjectId" />
         <div>
-            <a href="https://strype.org/" :title="$i18n.t('appMenu.homepage')"><img class="top-left-strype-logo" src="@/assets/images/Strype-logo-128-2x.png"></a>
+            <a href="https://strype.org/" :title="$t('appMenu.homepage')"><img class="top-left-strype-logo" src="@/assets/images/Strype-logo-128-2x.png"></a>
         </div>
         <Slide 
             :isOpen="showMenu"
@@ -17,7 +17,7 @@
             <a :id="newProjectLinkId" v-if="showMenu" :class="'strype-menu-link '+ scssVars.strypeMenuItemClassName" @click="resetProject();showMenu=false;" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')"/>
             <!-- open project -->
             <a :id="loadProjectLinkId" v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLoadProjectModal">{{$t('appMenu.loadProject')}}<span class="strype-menu-kb-shortcut">{{loadProjectKBShortcut}}</span></a>
-            <ModalDlg :dlgId="loadProjectModalDlgId" showCloseBtn hideDlgBtns >
+            <ModalDlg :dlgId="loadProjectModalDlgId" showCloseBtn hideDlgBtns>
                 <div class="project-target-popup-content-container">
                     <span v-t="'appMessage.loadToTarget'" class="load-save-label"/>
                     <div :ref="loadProjectTargetButtonGpId" class="project-target-button-container">
@@ -41,16 +41,16 @@
             </ModalDlg>
             <!-- save project -->
             <a :id="saveProjectLinkId" v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="handleSaveMenuClick">{{$t('appMenu.saveProject')}}<span class="strype-menu-kb-shortcut">{{saveProjectKBShortcut}}</span></a>
-            <a v-if="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !isSynced }" @click="handleSaveAsMenuClick" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveAsProject'"/>
-            <ModalDlg :dlgId="saveProjectModalDlgId" size="lg" :autoFocusButton="'ok'">
+            <a v-if="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !isSynced }" @click="handleSaveAsMenuClick" v-t="'appMenu.saveAsProject'"/>
+            <ModalDlg :dlgId="saveProjectModalDlgId" size="lg">
                 <div class="save-project-modal-dlg-container">
-                    <div class="row">
-                        <label v-t="'appMessage.fileName'" class="load-save-label cell"/>
-                        <input :id="saveFileNameInputId" :placeholder="$t('defaultProjName')" type="text" ref="toFocus" autocomplete="off" class="cell" />
+                    <div class="modal-row">
+                        <label v-t="'appMessage.fileName'" class="load-save-label modal-cell"/>
+                        <input :id="saveFileNameInputId" :placeholder="$t('defaultProjName')" type="text" ref="toFocus" autocomplete="off" class="modal-cell" />
                     </div>
-                    <div class="row">
-                        <span v-t="'appMessage.saveToTarget'" class="load-save-label cell" />
-                        <div class="cell">
+                    <div class="modal-row">
+                        <span v-t="'appMessage.saveToTarget'" class="load-save-label modal-cell" />
+                        <div class="modal-cell">
                             <div :ref="saveProjectTargetButtonGpId" class="project-target-button-container">
                                 <div id="saveToGDStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
                                     :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncGDValue || tempSyncTarget == noSyncTargetValue}">
@@ -70,16 +70,16 @@
                             </div>
                         </div>
                     </div>
-                    <div class="row">
-                        <label v-show="showCloudSaveLocation" v-t="'appMessage.cloudLocation'" class="load-save-label cell"/>
-                        <div v-show="showCloudSaveLocation" class="cell">                        
+                    <div class="modal-row">
+                        <label v-show="showCloudSaveLocation" v-t="'appMessage.cloudLocation'" class="load-save-label modal-cell"/>
+                        <div v-show="showCloudSaveLocation" class="modal-cell">                        
                             <span class="load-save-label">{{currentDriveLocation}}</span>
-                            <b-button v-t="'buttonLabel.saveDiffLocation'" variant="outline-primary" @click="onSaveDiffLocationClick" size="sm" />
+                            <BButton v-t="'buttonLabel.saveDiffLocation'" variant="outline-primary" @click="onSaveDiffLocationClick" size="sm" />
                         </div>
                     </div>
                 </div>
             </ModalDlg>
-            <ModalDlg :dlgId="saveOnLoadModalDlgId" :autoFocusButton="'ok'" :okCustomTitle="$t('buttonLabel.saveChanges')" :cancelCustomTitle="$t('buttonLabel.discardChanges')">
+            <ModalDlg :dlgId="saveOnLoadModalDlgId" :okCustomTitle="$t('buttonLabel.saveChanges')" :cancelCustomTitle="$t('buttonLabel.discardChanges')">
                 <div>
                     <span  v-t="'appMessage.editorAskSaveChangedCode'" class="load-project-lost-span"/>
                     <br/>
@@ -118,14 +118,14 @@
             <ModalDlg :dlgId="shareProjectModalDlgId" :okCustomTitle="$t('buttonLabel.copyLink')" :okDisabled="isSharingLinkGenerationPending" :useLoadingOK="isSharingLinkGenerationPending" 
                 :dlgTitle="$t('appMessage.createShareProjectLink')" :elementToFocusId="shareCloudDriveProjectPublicRadioBtnId">
                         <div>
-                            <span class="share-mode-buttons-container-title">{{$i18n.t('appMessage.shareProjectModeLabel')}}</span>
+                            <span class="share-mode-buttons-container-title">{{$t('appMessage.shareProjectModeLabel')}}</span>
                             <div class="share-mode-buttons-container">
                                 <div class="share-mode-button-group">
                                     <input type="radio" :id="shareCloudDriveProjectPublicRadioBtnId" name="shareCloudDriveModeRadioGroup"
                                         v-model="shareProjectMode" :value="shareProjectPublicModeValue" />
                                     <div>
-                                        <label :for="shareCloudDriveProjectPublicRadioBtnId" >{{$i18n.t("appMessage.shareProjectPublicMode")}}</label>
-                                        <span>{{$i18n.t("appMessage.shareProjectPublicModeDetails") + ((isSharingPublicNotDirectDownload) ? " " + shareProjectPublicCloudDriveNotDirectDownloadLabel : "")}}</span>
+                                        <label :for="shareCloudDriveProjectPublicRadioBtnId" >{{$t("appMessage.shareProjectPublicMode")}}</label>
+                                        <span>{{$t("appMessage.shareProjectPublicModeDetails") + ((isSharingPublicNotDirectDownload) ? " " + shareProjectPublicCloudDriveNotDirectDownloadLabel : "")}}</span>
                                     </div>
                                 </div>
                                 <div class="share-mode-button-group">
@@ -196,7 +196,7 @@
                     :disabled="isUndoDisabled"
                     @click="performUndoRedo(true)"
                     class="menu-icon-entry"
-                    :title="$i18n.t('contextMenu.undo')"
+                    :title="$t('contextMenu.undo')"
                 />
             </div>
             <div class="menu-icon-div">   
@@ -206,7 +206,7 @@
                     :disabled="isRedoDisabled"
                     @click="performUndoRedo(false)"
                     class="menu-icon-entry"
-                    :title="$i18n.t('contextMenu.redo')"
+                    :title="$t('contextMenu.redo')"
                 />
             </div>
         </div> 
@@ -222,24 +222,21 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue, { getCurrentInstance, watch } from "vue";
+import { computed, defineComponent, nextTick, ref, watch } from "vue";
 import { useStore, settingsStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
 import { AppEvent, CaretPosition, CollapsedState, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, ShareProjectMode, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
 import {countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppLangSelectId, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getCloudDriveHandlerComponentRefId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNearestErrorIndex, getSaveAsProjectModalDlg, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey, getSaveProjectLinkId, getShareProjectLinkId, getNewProjectLinkId, getImportFileInputId} from "@/helpers/editor";
-import { Slide } from "vue-burger-menu";
+import { Slide } from "vue3-burger-menu";
 import { mapStores } from "pinia";
 import CloudDriveHandler from "@/components/CloudDriveHandler.vue";
 import { downloadHex, downloadPython } from "@/helpers/download";
 import { canBrowserOpenFilePicker, canBrowserSaveFilePicker, openFile, saveFile } from "@/helpers/filePicker";
 import { generateSPYFileContent } from "@/helpers/load-save";
 import ModalDlg from "@/components/ModalDlg.vue";
-import { BvModalEvent } from "bootstrap-vue";
 import { cloneDeep } from "lodash";
-import App from "@/App.vue";
 import appPackageJson from "@/../package.json";
 import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
-import { getLocaleBuildDate } from "@/helpers/appContext";
 import scssVars from "@/assets/style/_export.module.scss";
 import OpenDemoDlg from "@/components/OpenDemoDlg.vue";
 import { CloudFileSharingStatus, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
@@ -249,40 +246,81 @@ import disabledUndoImgPath from "@/assets/images/disabledUndo.svg";
 import disabledRedoImgPath from "@/assets/images/disabledRedo.svg";
 import undoImgPath from "@/assets/images/undo.svg";
 import redoImgPath from "@/assets/images/redo.svg";
+import { useI18n } from "vue-i18n";
+import { BButton, BvTriggerableEvent } from "bootstrap-vue-next";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { eventBus, getLocaleBuildDate } from "@/helpers/appContext";
 
 //////////////////////
 //     Component    //
 //////////////////////
 const defaultSharingProjectMode = ShareProjectMode.public;
-export default Vue.extend({
+export default defineComponent({
     name: "Menu",
+    
+    setup() {
+        // Move the Options API style computed properties or data here if we need them in setup:
+        // Indicator of the error index that is currently being looked at (0-based index, and reset when errors are regenerated)
+        const currentErrorNavIndex = ref(-1);
+        const errorCount = computed(() => useStore().errorCount ?? countEditorCodeErrors());
+        // Flag indicating if navigating to an error has been triggered by the user: used to inhibit reactive changes
+        const navigateToErrorRequested = ref(false);
+
+        // Moved what we had in mounted() before Vue 3 here, as Vue 3, using the composition API natively, now requires having them in setup().
+        // Composition API allows watching an array of "sources" (cf https://vuejs.org/guide/essentials/watchers.html)
+        // We need to update the current error Index when: the error count changes, navigation occurs (i.e. editing toggles, caret pos or focus pos changes)
+        // but we bypass this when we manually change the error navigation index (i.e. when the user clicks on the navigation icons)
+        watch([() => errorCount, () => useStore().isEditing, () => useStore().currentFrame.id, () => useStore().currentFrame.caretPosition, () => useStore().anchorSlotCursorInfos], () => {
+            if(!navigateToErrorRequested.value){
+                nextTick(() => {
+                    currentErrorNavIndex.value = (errorCount.value > 0) ? getNearestErrorIndex() : -1;
+                });
+            }
+        });
+
+        return { currentErrorNavIndex, errorCount, navigateToErrorRequested };
+    },
 
     components: {
         OpenDemoDlg,
         Slide,
         CloudDriveHandler,
         ModalDlg,
+        BButton,
     },
 
-    setup() {
-        const instance = getCurrentInstance() as any;
-        const vm = instance.proxy;
-
-        // Moved what we had in mounted() before Vue 3 here, as Vue 3, using the composition API natively, now requires having them in setup().
-        // Composition API allows watching an array of "sources" (cf https://vuejs.org/guide/essentials/watchers.html)
-        // We need to update the current error Index when: the error count changes, navigation occurs (i.e. editing toggles, caret pos or focus pos changes)
-        // but we bypass this when we manually change the error navigation index (i.e. when the user clicks on the navigation icons)
-        watch([() => vm.errorCount, () => useStore().isEditing, () => useStore().currentFrame.id, () => useStore().currentFrame.caretPosition, () => useStore().anchorSlotCursorInfos], () => {
-            if(!vm.navigateToErrorRequested){
-                vm.$nextTick(() => {
-                    vm.currentErrorNavIndex = (vm.errorCount > 0) ? getNearestErrorIndex() : -1;
-                });
-            }
-        });
-
-        return {};
+    created() {
+        // Expose this component that other components might need.
+        // Vue 3 has deprecated direct access to components.
+        // (we don't set it in setup() because we want to have this accessible, and the component created!)
+        vueComponentsAPIHandler.menuComponentAPI = {
+            onStrypeMenuHideModalDlg: this.onStrypeMenuHideModalDlg,
+            toggleMenuOnOff: this.toggleMenuOnOff,
+            setCurrentErrorNavIndex: (value: number) => {
+                this.currentErrorNavIndex = value;
+            },
+            goToError: this.goToError,
+            getCurrentDriveLocation: () => {
+                return this.currentDriveLocation;
+            },
+            setRequestSaveAs: (value: boolean) => {
+                this.requestSaveAs = value;
+            },
+            saveTargetChoice: this.saveTargetChoice,
+            getRequestOpenProjectLater: () => {
+                return this.requestOpenProjectLater;
+            },
+            setOpenSharedProjectTarget: (value: StrypeSyncTarget) => {
+                this.openSharedProjectTarget = value;
+            },
+            setOpenSharedProjectId: (value: string) => {
+                this.openSharedProjectId = value;
+            },
+            handleSaveMenuClick: this.handleSaveMenuClick,
+            onFileLoaded: this.onFileLoaded,
+        };
     },
-
+    
     data: function() {
         return {
             scssVars, // just to be able to use in template
@@ -299,11 +337,7 @@ export default Vue.extend({
             // Flag to know if a request to change with a different folder location for Googe Drive has been requested
             saveAtOtherLocation: false,
             // Flag to know if a "save as" request has been made
-            requestSaveAs: false,
-            // Indicator of the error index that is currently being looked at (0-based index, and reset when errors are regenerated)
-            currentErrorNavIndex: -1,
-            // Flag indicating if navigating to an error has been triggered by the user: used to inhibit reactive changes
-            navigateToErrorRequested: false,
+            requestSaveAs: false,  
             // Using the reference ID for knowing on what popup's button group we are on isnt reliable: there may be a delay between
             // the moment the dialog is closed and when we need to use the ID, so we should instead save an ID flag that is set to
             // the right button group value when the dialog is opened, and cleared when the dialog is explicitly closed by the user
@@ -360,27 +394,27 @@ export default Vue.extend({
             }
         );
 
-        // The events from Bootstrap modal are registered to the root app element.
-        this.$root.$on("bv::modal::show", this.onStrypeMenuShownModalDlg);
-        this.$root.$on("bv::modal::hide", this.onStrypeMenuHideModalDlg);      
+        // The events from Bootstrap modal are registered on eventBus.
+        eventBus.on(CustomEventTypes.strypeModalShown, this.onStrypeMenuShownModalDlg);
+        eventBus.on(CustomEventTypes.strypeModalHidden, this.onStrypeMenuHideModalDlg);      
         
         // Event listener for saving project action completion
-        this.$root.$on(CustomEventTypes.saveStrypeProjectDoneForLoad, this.openLoadProjectDlgAfterSaved);
+        eventBus.on(CustomEventTypes.saveStrypeProjectDoneForLoad, this.openLoadProjectDlgAfterSaved);
 
         // Event listener for the Cloud Drive component to listen the attempt to open a shared project is done (successfully or not)
-        (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).$on(CustomEventTypes.openSharedFileDone, () => {
+        eventBus.on(CustomEventTypes.openSharedFileDone, () => {
             this.openSharedProjectId = "";
             this.openSharedProjectTarget = StrypeSyncTarget.none;
         });        
     },
 
     beforeDestroy(){
-        // Just in case, we remove the Bootstrap modal event handler from the root app 
-        this.$root.$off("bv::modal::show", this.onStrypeMenuShownModalDlg);
-        this.$root.$off("bv::modal::hide", this.onStrypeMenuHideModalDlg);
+        // Just in case, we remove the Bootstrap modal event handler from eventBus
+        eventBus.off(CustomEventTypes.strypeModalShown, this.onStrypeMenuShownModalDlg);
+        eventBus.off(CustomEventTypes.strypeModalHidden, this.onStrypeMenuHideModalDlg);
 
         // And for the saving project action completion too
-        this.$root.$off(CustomEventTypes.saveStrypeProjectDoneForLoad, this.openLoadProjectDlgAfterSaved);
+        eventBus.off(CustomEventTypes.saveStrypeProjectDoneForLoad, this.openLoadProjectDlgAfterSaved);
     },
 
     computed: {
@@ -401,7 +435,7 @@ export default Vue.extend({
             // as the name to avoid empty options in the select HTML tool.
             const locales: Locale[] = [];
             this.$i18n.availableLocales.forEach((i18nLocale) => {
-                locales.push({code: i18nLocale, name: this.$i18n.getLocaleMessage(i18nLocale)["localeName"] as string??i18nLocale});
+                locales.push({code: i18nLocale, name: (useI18n().messages.value[i18nLocale].localeName as string)??i18nLocale});
             });
             return locales;
         },
@@ -543,7 +577,7 @@ export default Vue.extend({
         
         shareProjectWithinCloudDriveModeLabel(): string {
             if(this.isSyncingToCloud){
-                return this.$i18n.t("appMessage.shareProjectWithinCloudDriveMode", {drivename: (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).getDriveName()}) as string;
+                return this.$t("appMessage.shareProjectWithinCloudDriveMode", {drivename: vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getDriveName()??""});
             }
             else{
                 return "";
@@ -552,7 +586,7 @@ export default Vue.extend({
 
         shareProjectWithinCloudDriveModeDetailsLabel(): string {
             if(this.isSyncingToCloud){
-                return this.$i18n.t("appMessage.shareProjectWithinCloudDriveModeDetails", {drivename: (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).getDriveName()}) as string;
+                return this.$t("appMessage.shareProjectWithinCloudDriveModeDetails", {drivename: vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getDriveName()??""});
             }
             else{
                 return "";
@@ -561,7 +595,7 @@ export default Vue.extend({
 
         shareProjectPublicCloudDriveNotDirectDownloadLabel(): string {
             if(this.isSyncingToCloud){
-                return this.$i18n.t("appMessage.shareProjectPublicModeDetailsNoDirectDownload", {drivename: (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).getDriveName()}) as string;
+                return this.$t("appMessage.shareProjectPublicModeDetailsNoDirectDownload", {drivename:  vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getDriveName()??""});
             }
             else{
                 return "";
@@ -592,10 +626,6 @@ export default Vue.extend({
 
         redoImagePath(): string {
             return (this.isRedoDisabled) ? disabledRedoImgPath : redoImgPath;
-        },
-
-        errorCount(): number{
-            return this.appStore.errorCount ?? countEditorCodeErrors();
         },
 
         acceptedInputFileFormat(): string {
@@ -629,7 +659,7 @@ export default Vue.extend({
         strypeProjMIMEDescArray(): MIMEDesc[]{
             return [
                 {
-                    description: this.$i18n.t("strypeFileDesc") as string,
+                    description: this.$t("strypeFileDesc") as string,
                     accept: { "application/strype": ["."+strypeFileExtension] },
                 },
             ];
@@ -638,7 +668,7 @@ export default Vue.extend({
         pythonImportMIMEDescArray(): MIMEDesc[]{
             return [
                 {
-                    description: this.$i18n.t("pythonFileDesc") as string,
+                    description: this.$t("pythonFileDesc") as string,
                     accept: { "text/x-python": [".py"] },
                 },
             ];
@@ -681,11 +711,11 @@ export default Vue.extend({
                 // Show a modal dialog to let user save/discard their changes. Saving loop is handled with saving methods.
                 // Note that for the File System project we cannot make Strype save the file: that will require the user explicit action.
                 this.showDialogAfterSave = this.loadProjectModalDlgId;
-                this.$root.$emit("bv::show::modal", this.saveOnLoadModalDlgId);
+                eventBus.emit(CustomEventTypes.showStrypeModal, this.saveOnLoadModalDlgId);
             }
             else if(this.openSharedProjectId.length == 0) {
                 // The normal "open target" dialog
-                this.$root.$emit("bv::show::modal", this.loadProjectModalDlgId);
+                eventBus.emit(CustomEventTypes.showStrypeModal, this.loadProjectModalDlgId);
             }
             else {
                 // The case of opening a shared project: we don't need a target selection, we just try to open the project
@@ -694,7 +724,7 @@ export default Vue.extend({
         },
 
         openLoadDemoProjectModal(): void {
-            (this.$refs.openDemoDlg as InstanceType<typeof OpenDemoDlg>).updateAvailableDemos();
+            vueComponentsAPIHandler.openDemoDlgComponentAPI?.updateAvailableDemos();
             // For a very strange reason, Bootstrap doesn't link the menu link to the dialog any longer 
             // after changing "v-if" to "v-show" on the link (to be able to have the keyboard shortcut working).
             // So we open it manually here...
@@ -703,35 +733,39 @@ export default Vue.extend({
                 // Show a modal dialog to let user save/discard their changes. Saving loop is handled with saving methods.
                 // Note that for the File System project we cannot make Strype save the file: that will require the user explicit action.
                 this.showDialogAfterSave = this.loadDemoProjectModalDlgId;
-                this.$root.$emit("bv::show::modal", this.saveOnLoadModalDlgId);
+                eventBus.emit(CustomEventTypes.showStrypeModal, this.saveOnLoadModalDlgId);
             }
             else {
-                this.$root.$emit("bv::show::modal", this.loadDemoProjectModalDlgId);
+                eventBus.emit(CustomEventTypes.showStrypeModal, this.loadDemoProjectModalDlgId);
             }
         },
 
-        handleSaveMenuClick(saveReason?: SaveRequestReason): void {
+        handleSaveMenuClick(event: MouseEvent | undefined, saveReason?: SaveRequestReason): void {
+            // event here is only kept to keep TS happy
+
             // Some problem, like for the load project menu, happens because of changing v-if to v-show (it works first time, but not second time).
             // So again, we handle things manually for the menu entry click
             if(this.isSynced){
                 this.saveCurrentProject();
             }
             else{
-                this.$root.$emit("bv::show::modal", this.saveProjectModalDlgId);
+                eventBus.emit(CustomEventTypes.showStrypeModal, this.saveProjectModalDlgId);
                 // When we are saving a "browser" project (that is, not from FS or GD) we need to be able to trigger the "Open" later, so we set a flag
                 this.requestOpenProjectLater = (saveReason == SaveRequestReason.loadProject);
             }
         },
 
         handleSaveAsMenuClick(){
-            // This is only used to set the "save as" flag, saving mechanism is handled via the modal.
+            // This is used to set the "save as" flag, and open the modal; the saving mechanism is handled via the modal.
             this.requestSaveAs = true;
+            eventBus.emit(CustomEventTypes.showStrypeModal, this.saveProjectModalDlgId);
+
         },
 
         openLoadProjectDlgAfterSaved(): void {
             // Reset the flag to request opening the project later (see flag definition)
             this.requestOpenProjectLater = false;
-            this.$root.$emit("bv::show::modal", (this.showDialogAfterSave.length > 0) ? this.showDialogAfterSave : this.loadProjectModalDlgId);            
+            eventBus.emit(CustomEventTypes.showStrypeModal, (this.showDialogAfterSave.length > 0) ? this.showDialogAfterSave : this.loadProjectModalDlgId);            
         },
 
         changeTargetFocusOnMouseOver(event: MouseEvent) {
@@ -751,8 +785,7 @@ export default Vue.extend({
             else {
                 // There is no intermediate steps when the target is selected for opening a project
                 // (we first close the target selector modal, then validate)
-                this.$root.$emit("bv::hide::modal", this.loadProjectModalDlgId);
-                this.onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.loadProjectModalDlgId);
+                eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "ok", componentId: this.loadProjectModalDlgId});                
             }
         },
 
@@ -788,13 +821,13 @@ export default Vue.extend({
             const targetsToRemove = Object.values(StrypeSyncTarget)
                 .filter((t) => typeof t === "number") // filter out string keys from enum
                 .filter((t) => t !== target && t !== StrypeSyncTarget.ws); // Discard every other sync targets but "target" and WS
-            targetsToRemove.forEach((targetToRemove) =>  this.$root.$emit(CustomEventTypes.removeFunctionToEditorProjectSave, targetToRemove));
+            targetsToRemove.forEach((targetToRemove) =>  eventBus.emit(CustomEventTypes.removeFunctionToEditorProjectSave, targetToRemove));
         },
 
         saveCurrentProject(saveReason?: SaveRequestReason){
             // This method is called when sync is activated, and bypass the "save as" dialog we show to change the project name/location.
             // (note that the @click event in the template already checks if we are synced)
-            this.onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.saveProjectModalDlgId, this.appStore.projectName, saveReason);
+            this.onStrypeMenuHideModalDlg({trigger: "ok", componentId: this.saveProjectModalDlgId} as BvTriggerableEvent, this.appStore.projectName, saveReason);
             this.showMenu = false;
         },
 
@@ -805,15 +838,14 @@ export default Vue.extend({
             // so we have to replace them (with - and _ respectively).
             // That is specified by the true boolean parameter to the Base64 call:
             this.shareContentZippedBase64 = Base64.fromUint8Array(deflateRaw(generateSPYFileContent()), true);
-            this.$root.$emit("bv::show::modal", this.shareProjectChooseMethodDlgId);
+            eventBus.emit(CustomEventTypes.showStrypeModal, this.shareProjectChooseMethodDlgId);
         },
         
         copySnapshotLink() {
             // Since we made the link content when showing the dialog, all we need to do is format it and copy it to the clipboard:
             navigator.clipboard.writeText(`${window.location}?${sharedStrypeProjectIdKey}=spy:${this.shareContentZippedBase64}`);
 
-            this.$root.$emit("bv::hide::modal", this.shareProjectChooseMethodDlgId);
-            this.onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.shareProjectChooseMethodDlgId);
+            eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "ok", componentId: this.shareProjectChooseMethodDlgId});
         },
 
         copyCloudLink() {
@@ -822,27 +854,27 @@ export default Vue.extend({
                 this.publicModeProjectSharingLink = "";
                 this.shareProjectInitialCall = true;
                 // First we retrieve the current Cloud File sharing status, as we may need to restore the sharing status later
-                const cloudDriveHandlerComponent = (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>);
-                cloudDriveHandlerComponent.getCurrentCloudFileCurrentSharingStatus(this.appStore.syncTarget)
-                    .then((prevCloudFileSharingStatus: CloudFileSharingStatus) => {
+                const cloudDriveHandlerComponentAPI = vueComponentsAPIHandler.cloudDriveHandlerComponentAPI;
+                cloudDriveHandlerComponentAPI?.getCurrentCloudFileCurrentSharingStatus(this.appStore.syncTarget)
+                    .then((prevCloudFileSharingStatus) => {
                         // Save the status and then open the dialog.
-                        cloudDriveHandlerComponent.backupPreviousCloudFileSharingStatus(this.appStore.syncTarget, prevCloudFileSharingStatus).then(() => {
-                            this.$root.$emit("bv::show::modal", this.shareProjectModalDlgId);                             
+                        cloudDriveHandlerComponentAPI?.backupPreviousCloudFileSharingStatus(this.appStore.syncTarget, prevCloudFileSharingStatus).then(() => {
+                            eventBus.emit(CustomEventTypes.showStrypeModal, this.shareProjectModalDlgId);                             
                         });                       
                     })
-                    .catch((_) => {
+                    .catch((_: any) => {
                         // Something happened, we let the user know
                         const erroMsg = (typeof _ == "string") ? _ : JSON.stringify(_);
-                        this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.clouldFileRestoreSharingStatus", {drivename: cloudDriveHandlerComponent.getDriveName(), errordetails: erroMsg}) as string;
-                        this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                        this.appStore.simpleModalDlgMsg = this.$t("errorMessage.clouldFileRestoreSharingStatus", {drivename: vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getDriveName()??"", errordetails: erroMsg});
+                        eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
                     });
 
-                this.$root.$emit("bv::hide::modal", this.shareProjectChooseMethodDlgId);
-                this.onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.shareProjectChooseMethodDlgId);
+                eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "ok", componentId: this.shareProjectChooseMethodDlgId});
             }
         },
 
-        onStrypeMenuShownModalDlg(event: BvModalEvent, dlgId: string) {
+        onStrypeMenuShownModalDlg(event: BvTriggerableEvent) {
+            const dlgId = event.componentId;
             // This method handles the workflow of the menu entries' related dialog
             this.showMenu = false;
             if(dlgId == this.saveProjectModalDlgId){
@@ -857,9 +889,12 @@ export default Vue.extend({
                     const saveFileNameInputElement = (document.getElementById(this.saveFileNameInputId) as HTMLInputElement);
                     // If the save as is opened because the user requested to create a copy of a file name, we use the file stored in the save existing file infos
                     // because if there are consecutive attempts with different names (that all already exist) we want to show the last attempted name
-                    saveFileNameInputElement.value = ((this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>)?.saveExistingCloudProjectInfos.isCopyFileRequested) 
-                        ? (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).saveExistingCloudProjectInfos.existingFileName
-                        : this.appStore.projectName;
+                    const saveExistingCloudProjectInfos = vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getSaveExistingCloudProjectInfos();
+                    if(saveExistingCloudProjectInfos){
+                        saveFileNameInputElement.value = (saveExistingCloudProjectInfos.isCopyFileRequested)
+                            ? saveExistingCloudProjectInfos.existingFileName
+                            : this.appStore.projectName;
+                    }
                     saveFileNameInputElement.focus();
                     saveFileNameInputElement.click();
                 }, 500);           
@@ -873,7 +908,7 @@ export default Vue.extend({
                 }, 2000);
             }
             else if (dlgId == this.loadDemoProjectModalDlgId) {
-                (this.$refs.openDemoDlg as InstanceType<typeof OpenDemoDlg>).shown();
+                vueComponentsAPIHandler.openDemoDlgComponentAPI?.shown();
             }
             else {
                 // When the load or save project dialogs are opened, we focus the Google Drive selector by default when we don't have information about the source target
@@ -914,7 +949,7 @@ export default Vue.extend({
             // Note that for every call, we always also generate a timeout to make sure we never end up in "pending" situation -- that timeout is really generous to avoid unwanted behaviour for the user.
             const noShareActionTimeOut = 10*1000; 
             const noShareActionTimeOutHandle = setTimeout(()=>{
-                this.showErrorForShareProjectLink(this.$i18n.t("errorMessage.sharingLinkTimedout") as string);
+                this.showErrorForShareProjectLink(this.$t("errorMessage.sharingLinkTimedout") as string);
             }, noShareActionTimeOut);
 
             // With Cloud Drives, we allow two types of sharing: either sharing the Drive link (after setting the project readonly and totally public in the sharing settings)
@@ -924,16 +959,16 @@ export default Vue.extend({
                 // We only generate the link if we don't have it already (from one dialog opening)
                 if(this.publicModeProjectSharingLink.length == 0) {
                     // Before generating a link, we change the file setttings on Google Drive to make it accessible at large.
-                    const cloudDriveHandlerComponent = (this.$refs[getCloudDriveHandlerComponentRefId()] as InstanceType<typeof CloudDriveHandler>);
+                    const cloudDriveHandlerComponentAPI = vueComponentsAPIHandler.cloudDriveHandlerComponentAPI;
                     let createPermissionSucceeded = false;
-                    cloudDriveHandlerComponent.shareCloudDriveFile(this.appStore.syncTarget)
+                    cloudDriveHandlerComponentAPI?.shareCloudDriveFile(this.appStore.syncTarget)
                         .then((succeeded) => createPermissionSucceeded = succeeded)
                         .catch((errorMsg) => alertMessage = (errorMsg?.status)??errorMsg)
                         .finally(() => {
                             clearTimeout(noShareActionTimeOutHandle);
                             if(createPermissionSucceeded){
                                 // We have set the file public on the Drive, now we retrieve the sharing link.
-                                cloudDriveHandlerComponent.getPublicShareLink(this.appStore.syncTarget)
+                                cloudDriveHandlerComponentAPI?.getPublicShareLink(this.appStore.syncTarget)
                                     .then(({respStatus, webLink}) => {
                                         // We got the link or not, but we can only make it useful or show an error *if the user is still expecting this sharing mode from the dialog (if not, we just return)
                                         if(this.areShareProjectActionStillValid(forShareMode)){
@@ -942,13 +977,13 @@ export default Vue.extend({
                                             }
                                             else{
                                                 // Something happened we couldn't make the link
-                                                alertMessage = this.$i18n.t("errorMessage.cloudDrivePublicShareFailed", {error: (respStatus?.toString())??"unknown"}) as string;
+                                                alertMessage = this.$t("errorMessage.cloudDrivePublicShareFailed", {error: (respStatus?.toString())??"unknown"}) as string;
                                             }
                                         }
                                     })
                                     .catch((error: any) => {
                                         // Something happened when we tried to get the public URL of the Google Drive file.
-                                        alertMessage = this.$i18n.t("errorMessage.cloudDrivePublicShareFailed", {error: (error.status?.toString())??"unknown"}) as string;            
+                                        alertMessage = this.$t("errorMessage.cloudDrivePublicShareFailed", {error: (error.status?.toString())??"unknown"}) as string;            
                                     })
                                     .finally(() => {
                                         if((alertMessage.length > 0) && this.areShareProjectActionStillValid(forShareMode)){
@@ -959,7 +994,7 @@ export default Vue.extend({
                             else{
                                 // The project could not be made public on the Cloud Drive for some reason.
                                 if(this.areShareProjectActionStillValid(forShareMode)){
-                                    alertMessage = this.$i18n.t("errorMessage.cloudDrivePublicShareFailed", {error: (alertMessage.length > 0) ? alertMessage: "unknow"}) as string;
+                                    alertMessage = this.$t("errorMessage.cloudDrivePublicShareFailed", {error: (alertMessage.length > 0) ? alertMessage: "unknow"}) as string;
                                     this.showErrorForShareProjectLink(alertMessage);
                                 }
                             }
@@ -977,16 +1012,17 @@ export default Vue.extend({
 		
         showErrorForShareProjectLink(alertMsg: string){
             // An error occur during the creation of the sharing link: we close the sharing mode selection popup and show an alert
-            this.$root.$emit("bv::hide::modal", this.shareProjectModalDlgId);        
+            eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "cancel", componentId: this.shareProjectModalDlgId});        
             this.appStore.simpleModalDlgMsg = alertMsg;
-            this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());        
+            eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());        
         },
 
-        onStrypeMenuHideModalDlg(event: BvModalEvent, dlgId: string, forcedProjectName?: string, saveReason ?: SaveRequestReason) {
+        onStrypeMenuHideModalDlg(event: BvTriggerableEvent, forcedProjectName?: string, saveReason ?: SaveRequestReason) {
             // This method handles the workflow after acting on any modal dialog of the Strype menu entries.
             // For most cases, if there is no confirmation, nothing special happens.
             // Only exception: if the user cancelled or proceeded to save a file copy following an clash with an existing project name on Google Drive,
             // we release the flag to indicate we were doing a file copy, to avoid messing up the targets in future calls of a load/save project
+            const dlgId = event.componentId;
             if(dlgId == this.shareProjectModalDlgId){
                 if(event.trigger == "ok"){
                     // The sharing link creation has succeed and we need to have a user action to allow a copy to the clipboard, which we do here.
@@ -995,35 +1031,37 @@ export default Vue.extend({
                     navigator.clipboard.writeText((this.shareProjectMode == ShareProjectMode.public) ? this.publicModeProjectSharingLink : `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentCloudSaveFileId}`);
                     // If we have set the sharing to internal (within the Cloud Drive) then we might need to restore the previous sharing state as it was
                     if(this.shareProjectMode == ShareProjectMode.withinCloudDrive){
-                        (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>)
-                            .restoreCloudDriveFileSharingStatus(this.appStore.syncTarget)
+                        vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.restoreCloudDriveFileSharingStatus(this.appStore.syncTarget)
                             ?.finally(() => {
                                 // Reset the flag we kept during the sharing action
-                                (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>)?.backupPreviousCloudFileSharingStatus(this.appStore.syncTarget, CloudFileSharingStatus.UNKNOWN);
+                                vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.backupPreviousCloudFileSharingStatus(this.appStore.syncTarget, CloudFileSharingStatus.UNKNOWN);
                             });
                     }
                     else{
                         // Reset the flag we kept during the sharing action
-                        (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>)?.backupPreviousCloudFileSharingStatus(this.appStore.syncTarget, CloudFileSharingStatus.UNKNOWN);                         
+                        vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.backupPreviousCloudFileSharingStatus(this.appStore.syncTarget, CloudFileSharingStatus.UNKNOWN);                         
                     }
                 }
                 else{
                     // When a sharing is cancelled, we may need to clean after ourselves and restore the sharing status of the file
                     // to what it was before we intefered with the sharing on the Cloud Drive.
-                    (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).restoreCloudDriveFileSharingStatus(this.appStore.syncTarget);
+                    vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.restoreCloudDriveFileSharingStatus(this.appStore.syncTarget);
                 }
                 return;
             }
 
             if(dlgId == this.saveProjectModalDlgId){
-                (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).saveExistingCloudProjectInfos.isCopyFileRequested = false;  
+                const saveExistingCloudProjectInfos = vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getSaveExistingCloudProjectInfos();
+                if(saveExistingCloudProjectInfos){
+                    vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.setSaveExistingCloudProjectInfos({...saveExistingCloudProjectInfos, isCopyFileRequested: false});  
+                }
             }
 
             if(event.trigger == "cancel" || event.trigger == "esc"){
                 if(dlgId == this.saveOnLoadModalDlgId){
                     // Case of request to save/discard the file currently opened, before loading a new file:
                     // user chose to discard the file saving: we can trigger the file opening.
-                    this.$root.$emit("bv::show::modal", this.showDialogAfterSave);
+                    eventBus.emit(CustomEventTypes.showStrypeModal, this.showDialogAfterSave);
                     return;
                 }
 
@@ -1032,19 +1070,15 @@ export default Vue.extend({
                 this.currentModalButtonGroupIDInAction = "";
                 this.requestSaveAs = false;
             }
-            else if(event.trigger == "ok" || event.trigger == "event"){
+            else if(event.trigger == "ok"){
                 // Case of "load file"
                 if(dlgId == this.loadProjectModalDlgId){
-                    // We do not do anything if the modal is closed by a "hide" event.
-                    if(event.trigger == "event" && event.type == "hide"){
-                        return;
-                    }
                     this.currentModalButtonGroupIDInAction = this.loadProjectTargetButtonGpId;
                     this.loadProject();
                 }
                 // Case of request to save/discard the file currently opened, before loading a new file.
                 else if(dlgId == this.saveOnLoadModalDlgId){
-                    this.$root.$emit(CustomEventTypes.requestEditorProjectSaveNow, SaveRequestReason.loadProject);
+                    eventBus.emit(CustomEventTypes.requestEditorProjectSaveNow, SaveRequestReason.loadProject);
                 }
                 // Case of standard "save file"
                 else if(dlgId == this.saveProjectModalDlgId){
@@ -1054,7 +1088,7 @@ export default Vue.extend({
                     // DO NOT UPDATE THE CURRENT SYNC FLAG IN THE STATE - we only do that IF loading succeed (because it can be still cancelled or impossible to achieve)
                     let saveFileName = forcedProjectName || (document.getElementById(this.saveFileNameInputId) as HTMLInputElement).value.trim();
                     if(saveFileName.length == 0){
-                        saveFileName = this.$i18n.t("defaultProjName") as string;
+                        saveFileName = this.$t("defaultProjName") as string;
                     }
                     
                     const selectValue = this.getTargetSelectVal();
@@ -1063,8 +1097,8 @@ export default Vue.extend({
                     if(!isSyncTargetCloudDrive(selectValue)){
                         if(!canBrowserSaveFilePicker() && saveFileName.trim().match(fileNameRegex) == null){
                             // Show an error message and do nothing special
-                            this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.fileNameError") as string;
-                            this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                            this.appStore.simpleModalDlgMsg = this.$t("errorMessage.fileNameError") as string;
+                            eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
                             this.currentModalButtonGroupIDInAction = "";
                             return;
                         }
@@ -1078,7 +1112,7 @@ export default Vue.extend({
                                 this.appStore.isEditorContentModified = false;
                                 this.saveTargetChoice(StrypeSyncTarget.fs);
                                 if(saveReason == SaveRequestReason.loadProject || this.requestOpenProjectLater) {
-                                    this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                                    eventBus.emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                                 }
                             });
                         }
@@ -1091,14 +1125,14 @@ export default Vue.extend({
                             this.appStore.isEditorContentModified = false;
                             this.saveTargetChoice(StrypeSyncTarget.fs);
                             if(saveReason == SaveRequestReason.loadProject || this.requestOpenProjectLater) {
-                                this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                                eventBus.emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                             }
                         }
                     }
                     else {          
                         // If we were already syncing to a Drive, we save the current file now, except if "saving as"
                         if(!this.requestSaveAs && isSyncTargetCloudDrive(this.appStore.syncTarget)){
-                            this.$root.$emit(CustomEventTypes.requestEditorProjectSaveNow, SaveRequestReason.autosave);
+                            eventBus.emit(CustomEventTypes.requestEditorProjectSaveNow, SaveRequestReason.autosave);
                         }
                         
                         // We postpone saving slight to make sure all autosaving have completed
@@ -1109,23 +1143,19 @@ export default Vue.extend({
                                 return;
                             }
                             const saveReason = (this.saveAtOtherLocation) ? SaveRequestReason.saveProjectAtOtherLocation : SaveRequestReason.saveProjectAtLocation; 
-                            (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).saveFileName = saveFileName;
-                            (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).saveFile(selectValue,saveReason);
+                            vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.setSaveFileName(saveFileName);
+                            vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.saveFile(selectValue, saveReason);
                         }, 2000);
                         
                     }
                     this.currentModalButtonGroupIDInAction = "";
                 }
                 else if (dlgId == this.loadDemoProjectModalDlgId) {
-                    // We do not do anything if the modal is closed by a "hide" event.
-                    if(event.trigger == "event" && event.type == "hide"){
-                        return;
-                    }
-                    const selectedDemo = (this.$refs.openDemoDlg as InstanceType<typeof OpenDemoDlg>).getSelectedDemo();
+                    const selectedDemo = vueComponentsAPIHandler.openDemoDlgComponentAPI?.getSelectedDemo();
                     if (selectedDemo) {
                         selectedDemo.demoFile.then((content) => {
                             if (content) {
-                                (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content, selectedDemo.name ?? "Demo", 0, false)
+                                vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(content, selectedDemo.name ?? "Demo", 0, false)
                                     .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
                             }
                         });
@@ -1137,7 +1167,7 @@ export default Vue.extend({
         onSaveDiffLocationClick(){
             // When the button to save at a different location is called, we trigger the hiding of the modal dialog and and set the right flag about saving
             this.saveAtOtherLocation = true;
-            this.$root.$emit("bv::hide::modal", this.saveProjectModalDlgId);
+            eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "ok", componentId: this.saveProjectModalDlgId});
         },
 
         loadProject(){
@@ -1148,7 +1178,7 @@ export default Vue.extend({
             // Reset the temporary sync file flag
             this.tempSyncTarget = this.appStore.syncTarget;
             if(isSyncTargetCloudDrive(selectValue) || this.openSharedProjectId.length > 0 ){
-                (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).loadFile(selectValue);
+                vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.loadFile(selectValue);
             }            
             else{               
                 // And let the user choose a file
@@ -1158,14 +1188,14 @@ export default Vue.extend({
                         // We need to get the file content (hope for the best) and update the store
                         fileHandles[0].getFile().then((file: File) => {
                             const emitPayload: AppEvent = {requestAttention: true};
-                            emitPayload.message = this.$i18n.t("appMessage.editorFileUpload").toString();
+                            emitPayload.message = this.$t("appMessage.editorFileUpload").toString();
                             this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);
                             const reader = new FileReader();
                             reader.addEventListener("load", () => {
                                 // name is not always available so we also check if content starts with a {,
                                 // which it will do for old-style spy files:
                                 if (file.name.endsWith(".py") || !(reader.result as string).trimStart().startsWith("{")) {
-                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(reader.result as string, fileHandles[0].name, file.lastModified, true, fileHandles[0]);
+                                    vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(reader.result as string, fileHandles[0].name, file.lastModified, true, fileHandles[0]);
                                 }
                                 else {
                                     this.appStore.setStateFromJSONStr(
@@ -1194,7 +1224,7 @@ export default Vue.extend({
                 //before reading the file, we check the extension is supported for the import
                 if(files[0].name.indexOf(".") > -1 && fileImportSupportedFormats.findIndex((extension) => extension === files[0].name.substring(files[0].name.lastIndexOf(".") + 1)) > -1) {
                     const emitPayload: AppEvent = {requestAttention: true};
-                    emitPayload.message = this.$i18n.t("appMessage.editorFileUpload").toString();
+                    emitPayload.message = this.$t("appMessage.editorFileUpload").toString();
                     this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);
                     // Store the file name in a variable to use it later in the callback, for some reason using files[0].name fails in Pinia, on Safari
                     const fileName = files[0].name;
@@ -1205,7 +1235,7 @@ export default Vue.extend({
                                 // name is not always available so we also check if content starts with a {,
                                 // which it will do for spy files:
                                 if (fileName.endsWith(".py") || !content.trimStart().startsWith("{")) {
-                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content, fileName, lastModified, true);
+                                    vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(content, fileName, lastModified, true);
                                 }
                                 else {
                                     this.appStore.setStateFromJSONStr(
@@ -1242,7 +1272,7 @@ export default Vue.extend({
 
         onFileLoaded(fileName: string, lastSaveDate: number, fileLocation?: FileSystemFileHandle):void {
             this.saveTargetChoice(StrypeSyncTarget.fs);
-            this.$root.$emit(CustomEventTypes.addFunctionToEditorProjectSave, {syncTarget: StrypeSyncTarget.fs, function: (saveReason: SaveRequestReason) => this.saveCurrentProject(saveReason)});
+            eventBus.emit(CustomEventTypes.addFunctionToEditorProjectSave, {syncTarget: StrypeSyncTarget.fs, function: (saveReason: SaveRequestReason) => this.saveCurrentProject(saveReason)});
 
             // Strip the extension from the file, if it was left in. Then we can update the file name and location (if avaiable)
             const noExtFileName = (fileName.includes(".")) ? fileName.substring(0, fileName.lastIndexOf(".")) : fileName;
@@ -1251,6 +1281,8 @@ export default Vue.extend({
                 this.appStore.strypeProjectLocation = fileLocation;
             }
             this.appStore.projectLastSaveDate = lastSaveDate;
+            // Make sure we show the project is unmodified
+            this.appStore.isEditorContentModified = false;
         },
 
         resetProject(): void {
@@ -1558,11 +1590,11 @@ export default Vue.extend({
     border-spacing: 10px 10px;
 }
 
-.save-project-modal-dlg-container .row {
+.save-project-modal-dlg-container .modal-row {
     display: table-row;
 }
 
-.save-project-modal-dlg-container .cell {
+.save-project-modal-dlg-container .modal-cell {
     display: table-cell;
 }
 

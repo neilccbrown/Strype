@@ -9,10 +9,10 @@
         <!-- Make sure the click events are stopped in the links because otherwise, events pass through and mess the toggle of the caret in the editor.
              Also, the element MUST have the hover event handled for proper styling (we want hovering and selecting to go together) -->
         <vue-context ref="menu" @open="handleContextMenuOpened" @close="handleContextMenuClosed">
-            <li :action-name="pasteMenuActionName"><a v-if="showPasteMenuItem" @click.stop="paste(); closeContextMenu()" @mouseover="handleContextMenuHover">{{$i18n.t("contextMenu.paste")}}</a></li>
+            <li :action-name="pasteMenuActionName"><a v-if="showPasteMenuItem" @click.stop="paste(); closeContextMenu()" @mouseover="handleContextMenuHover">{{$t("contextMenu.paste")}}</a></li>
             <li><hr v-if="showPasteMenuItem" /></li>
             <li class="v-context__sub">
-                <a @click.stop @mouseover="handleContextMenuHover">{{$i18n.t("contextMenu.insert")}}</a>
+                <a @click.stop @mouseover="handleContextMenuHover">{{$t("contextMenu.insert")}}</a>
                 <ul class="v-context">
                     <li v-for="menuItem, index in insertFrameMenuItems" :key="`caretContextMenuItem_${frameId}_${index}`">
                         <a @click.stop="menuItem.method();closeContextMenu();" @mouseover="handleContextMenuHover">{{menuItem.name}}</a>
@@ -37,7 +37,7 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue, { PropType } from "vue";
+import Vue, { defineComponent, PropType } from "vue";
 import VueContext, { VueContextConstructor } from "vue-context";
 import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
@@ -49,18 +49,19 @@ import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/help
 import { pasteMixedPython } from "@/helpers/pythonToFrames";
 import scssVars  from "@/assets/style/_export.module.scss";
 import {detectBrowser} from "@/helpers/browser";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { eventBus } from "@/helpers/appContext";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import { getFrameDefType, SlotType, MediaDataAndDim} from "@/types/types";
 import { getFrameLabelSlotsStructureUID, getLabelSlotUID } from "@/helpers/editor";
 import { preparePasteMediaData } from "@/helpers/media";
-import LabelSlotsStructureComponent from "@/components/LabelSlotsStructure.vue";
 import { getParentOrJointParent } from "@/helpers/storeMethods";
 // #v-endif
 
 //////////////////////
 //     Component    //
 //////////////////////
-export default Vue.extend({
+export default defineComponent({
     name: "CaretContainer",
 
     components: {
@@ -68,11 +69,48 @@ export default Vue.extend({
         VueContext,
     },
 
+    created(){
+        // Expose this component that other components might need.
+        // Vue 3 has deprecated direct access to components.
+        // (we don't set it in setup() because we want to have this accessible, and the component created!)
+        const apiMethods = {
+            setAreFramesDraggedOver: (value: boolean) => {
+                this.areFramesDraggedOver = value;
+            },
+            getAreDropFramesAllowed: () => {
+                return this.areDropFramesAllowed;
+            },
+            setAreDropFramesAllowed: (value: boolean) => {
+                this.areDropFramesAllowed = value;
+            },
+            setIsDuplicateDnDAction: (value: boolean) => {
+                this.isDuplicateDnDAction = value;
+            },
+            closeContextMenu: () => {
+                ((this.$refs.menu as unknown) as VueContextConstructor).close();
+            },
+            handleClick: this.handleClick,
+            doPaste: this.doPaste,
+        };
+        
+        if(vueComponentsAPIHandler.caretContainerComponentAPI == null){    
+            vueComponentsAPIHandler.caretContainerComponentAPI = {
+                forInstance: {
+                    [this.UID]: apiMethods,
+                },
+            };
+        }
+        else{
+            vueComponentsAPIHandler.caretContainerComponentAPI.forInstance[this.UID] = apiMethods;
+        }
+    },
+
     props: {
-        frameId: Number,
+        frameId: {type: Number, required: true},
         caretVisibility: String, //Flag indicating this caret is visible or not
         caretAssignedPosition: {
             type: String as PropType<CaretPosition>,
+            required: true,
         },
         isFrameDisabled: Boolean,
     },
@@ -170,6 +208,10 @@ export default Vue.extend({
         window.removeEventListener("paste", this.pasteIfFocused);
         window.removeEventListener("keydown", this.keydownForSafariPaste);
         document.removeEventListener(CustomEventTypes.scrollCaretIntoView, this.putCaretContainerInView);
+        // Remove the component's API instance
+        if(vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[this.UID]){
+            delete vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[this.UID];
+        }
     },
 
     updated() {
@@ -249,7 +291,7 @@ export default Vue.extend({
                                     // Refactor the slots, we call the refactorisation on the LabelSlotsStructure   
                                     // Since that's our last action, we can revert the flag to allow the registration of the state for undo/redo
                                     this.appStore.ignoreStateSavingActionsForUndoRedo = false;                                   
-                                    (this.$root.$refs[getFrameLabelSlotsStructureUID(frameId, 0)] as InstanceType<typeof LabelSlotsStructureComponent>)
+                                    vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(frameId, 0)]
                                         .checkSlotRefactoring(getLabelSlotUID({frameId: frameId, labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code}), stateBeforeChanges, {doAfterCursorSet: () => {
                                             this.appStore.leftRightKey({key: "ArrowRight"}).then(() => this.appStore.leftRightKey({key: "ArrowRight"}));
                                         }});                                        
@@ -333,7 +375,7 @@ export default Vue.extend({
         },
 
         handleContextMenuHover(event: MouseEvent) {
-            this.$root.$emit(CustomEventTypes.contextMenuHovered, event.target as HTMLElement);
+            eventBus.emit(CustomEventTypes.contextMenuHovered, event.target as HTMLElement);
         },
 
         toggleCaret(): void {
@@ -420,7 +462,7 @@ export default Vue.extend({
             const framesAdded = frameIdsAfterPaste.filter((frameId) => !frameIdsBeforePaste.has(frameId));
             // Then after nextTick tell all the new frames to update their prompts:
             Vue.nextTick(() => {
-                this.$root.$emit(CustomEventTypes.updateParamPrompts, framesAdded);
+                eventBus.emit(CustomEventTypes.updateParamPrompts, framesAdded);
             });
         },
     

@@ -5,10 +5,10 @@ import * as PartialFlashingJS from "./partial-flashing";
 import { useStore } from "@/store/store"; 
 import Compiler from "@/compiler/compiler";
 import { parseCodeAndGetParseElements } from "@/parser/parser";
-import { getAppSimpleMsgDlgId } from "./editor";
-import { vm } from "@/helpers/appContext";
+import { CustomEventTypes, getAppSimpleMsgDlgId } from "./editor";
 import i18n from "@/i18n";
 import { cloneDeep } from "lodash";
+import { eventBus } from "./appContext";
 
 export function flash(callerData: Record<string, any>) : void {
     let proceed = true;
@@ -18,8 +18,8 @@ export function flash(callerData: Record<string, any>) : void {
     if (parserElements.hasErrors) {
         proceed = false;
         // Notify the user of any detected errors in the code
-        useStore().simpleModalDlgMsg = i18n.t("appMessage.preCompiledErrorNeedFix") as string;
-        vm.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+        useStore().simpleModalDlgMsg = i18n.global.t("appMessage.preCompiledErrorNeedFix") as string;
+        eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
     }
                
     if(proceed){
@@ -51,8 +51,8 @@ export function flash(callerData: Record<string, any>) : void {
         }
         else {
             // Notify the user of WebUSB is not available
-            useStore().simpleModalDlgMsg = i18n.t("appMessage.noWebUSB") as string;
-            vm.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+            useStore().simpleModalDlgMsg = i18n.global.t("appMessage.noWebUSB") as string;
+            eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
         }
     }
 }
