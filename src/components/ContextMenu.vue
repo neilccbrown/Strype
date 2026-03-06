@@ -47,13 +47,13 @@ function showContextMenu() {
 
     // With the Vue3 context menu, there are few things we cannot set directly on the menu items definitions that we would like to be used in the HTML menu entry,
     // so we do that in this part - some things are generic and will be done for every context menus, some depends on a specific menu and are taylored by the caller,
-    // which will the right props of this component(functions) we can call below.
+    // which will the right props of this component (functions) we can call below.
     setTimeout(() => {
         const contextMenu = document.querySelector(".mx-context-menu");
         if(contextMenu){
-            // Since we do not directly map our own properties to the context menu items with Vue3 context menu, 
-            // we need to add our specific properties explicitly here (action-name, mouseover).
-            // And since we are looping through the items, we also do what we need to do for "delete" (see details)
+            // Add an ARIA role attribute to the menu
+            contextMenu.setAttribute("role", "menu");
+
             props.contextMenuItemsDef.forEach((ctxMenuItemDef, itemPos) => {
                 applyOnContextMenuItems(contextMenu as HTMLElement, ctxMenuItemDef, itemPos);                 
             });
@@ -75,6 +75,9 @@ function applyOnContextMenuItems(cxtMenu: HTMLElement, ctxMenuItemDef: StrypeCon
     if(menuEntryWrapperElement && menuEntryHTMLItem){
         // Add the mouse over registration here, see App.vue for the event handler itself.
         (menuEntryHTMLItem as HTMLDivElement).onmouseenter = (event) => eventBus.emit(CustomEventTypes.contextMenuHovered, event.target as HTMLElement);
+
+        // Add an ARIA role attribute to the menu item (we could have done it attrs of the StrypeContextMenuItem items, but since we're already looping, better do so here...)
+        (menuEntryHTMLItem as HTMLDivElement).setAttribute("role", "menuitem");
                     
         // We need to register some event handlers on the menu HTML item
         if(props.doAfterShownOnMenuItem){
