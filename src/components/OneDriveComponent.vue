@@ -786,7 +786,7 @@ export default Vue.extend({
             
         },
 
-        async writeFileContentForIO(fileContent: string|Uint8Array, fileInfos: {filePath: string, fileName?: string, fileId?: string, folderId?: string}): Promise<string> {
+        async writeFileContentForIO(fileContent: string|Uint8Array, fileInfos: { filePath: string, fileName: string, folderId: string } | { filePath: string, fileId: string }): Promise<string> {
             let catchErr = null;
             const token = await this.getToken(OneDriveTokenPurpose.GRAPH_SAVE_FILE).catch((_) => {
                 catchErr = _;
@@ -797,10 +797,10 @@ export default Vue.extend({
                 return Promise.reject(catchErr);
             }
 
-            const isCreatingFile = !!(fileInfos.folderId);
+            const isCreatingFile = "folderId" in fileInfos;
             const isFileContentEmpty = fileContent.length == 0;
             const requestUrl = (isCreatingFile)
-                ? `https://graph.microsoft.com/v1.0/me/drive/items/${fileInfos.folderId}:/${encodeURI(fileInfos.fileName??"")}:/content` //the file name and the containing folder must be set by the caller!
+                ? `https://graph.microsoft.com/v1.0/me/drive/items/${fileInfos.folderId}:/${encodeURI(fileInfos.fileName)}:/content` //the file name and the containing folder must be set by the caller!
                 : ((isFileContentEmpty) 
                     ? `https://graph.microsoft.com/v1.0/me/drive/items/${fileInfos.fileId}/content` // but it may happen the content is empty, in that case we cannot use resumable upload
                     : `https://graph.microsoft.com/v1.0/me/drive/items/${fileInfos.fileId}/createUploadSession`); // the most common case when we write in the file: the content is not empty, we can use resumable upload

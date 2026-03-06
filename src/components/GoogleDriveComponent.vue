@@ -551,9 +551,9 @@ export default Vue.extend({
             });
         },
 
-        writeFileContentForIO(fileContent: string|Uint8Array, fileInfos: {filePath: string, fileName?: string, fileId?: string, folderId?: string}): Promise<string> {
+        writeFileContentForIO(fileContent: string|Uint8Array, fileInfos: { filePath: string, fileName: string, folderId: string } | { filePath: string, fileId: string }): Promise<string> {
             // Because we want to be able to read raw data, we use the fetch API to query Google Drive.
-            const isCreatingFile = !!(fileInfos.folderId);
+            const isCreatingFile = "folderId" in fileInfos;
             
             // The gapi.client.request() we have used for writing Strype projects in Drive isn't working for binary data.
             // So we use fetch() for binary files to be supported.
@@ -561,8 +561,8 @@ export default Vue.extend({
             const boundary = "2db8c22f75474a58cd13fa2d3425017015d392ce0";
             const bodyReqParams: {name?: string, parents?: [string]} = {};
             if(isCreatingFile){
-                bodyReqParams.name = fileInfos.fileName??""; // the file name must be set by the caller!
-                bodyReqParams.parents = [fileInfos.folderId??""]; // the containing folder id must be set by the caller!
+                bodyReqParams.name = fileInfos.fileName; // the file name must be set by the caller!
+                bodyReqParams.parents = [fileInfos.folderId]; // the containing folder id must be set by the caller!
             }
 
             // Construct the multipart body

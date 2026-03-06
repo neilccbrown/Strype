@@ -143,7 +143,7 @@ export interface CloudDriveComponent {
     //FileIO
     checkIsCloudDriveFileReadonly: (file: CloudDriveFile) => boolean,
     readFileContentForIO: (fileId: string, filePath: string) => Promise<Uint8Array>,
-    writeFileContentForIO: (fileContent: string | Uint8Array, fileInfos: { filePath: string, fileName?: string, fileId?: string, folderId?: string }) => Promise<string>,
+    writeFileContentForIO: (fileContent: string | Uint8Array, fileInfos: { filePath: string, fileName: string, folderId: string } | { filePath: string, fileId: string }) => Promise<string>,
 }
 
 /** Specific to OneDrive - the Graph types are imported from https://github.com/microsoftgraph/msgraph-typescript-typings*/
