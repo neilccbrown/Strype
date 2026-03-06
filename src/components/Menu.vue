@@ -259,7 +259,7 @@ export default defineComponent({
     name: "Menu",
     
     setup() {
-        // Move the Composition API style coputerd properties or data here if we need them in setup:
+        // Move the Options API style computed properties or data here if we need them in setup:
         // Indicator of the error index that is currently being looked at (0-based index, and reset when errors are regenerated)
         const currentErrorNavIndex = ref(-1);
         const errorCount = computed(() => useStore().errorCount ?? countEditorCodeErrors());

@@ -42,11 +42,10 @@ import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
 import { CaretPosition, CollapsedState, FrameObject, DefaultFramesDefinition, FramesDefinitions, FrameContainersDefinitions, getFrameDefType, AllFrameTypesIdentifier, PythonExecRunningState } from "@/types/types";
 import { mapStores } from "pinia";
-import { CustomEventTypes, getCaretContainerRef, getCaretUID, getFrameUID} from "@/helpers/editor";
+import { CustomEventTypes, getCaretContainerRef, getFrameUID} from "@/helpers/editor";
 import scssVars from "@/assets/style/_export.module.scss";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import ChildrenFrameStateToggle from "@/components/ChildrenFrameStateToggle.vue";
-import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 
 //////////////////////
 //     Component    //
@@ -69,11 +68,6 @@ export default defineComponent({
             type: Object,
             default: () => DefaultFramesDefinition,
         }, //Type of the Frame  
-    },
-
-    destroyed() {
-        // Remove the registration of the caret container component API related to this frame container
-        delete vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretUID(this.caretPosition.body, this.frameId)];
     },
 
     data: function(){

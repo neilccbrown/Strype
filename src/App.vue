@@ -24,7 +24,7 @@
                 <Splitpanes v-show="isExpandedPythonExecArea" horizontal @resize=onExpandedPythonExecAreaSplitPaneResize>
                     <pane key="1" :size="100 - expandedPEAOverlaySplitterPane2Size">
                     </pane>
-                    <pane id="overlayExpandedPEASplitterPane2" key="2" :size="expandedPEAOverlaySplitterPane2Size" :min-size="peaOverlayPane2MinSize" :max-size="peaOverlayPane2MaxSize">
+                    <pane :id="overlayExpandedPEASplitterPane2Id" key="2" :size="expandedPEAOverlaySplitterPane2Size" :min-size="peaOverlayPane2MinSize" :max-size="peaOverlayPane2MaxSize">
                     </pane>
                 </Splitpanes>
             </div>
@@ -83,7 +83,7 @@
                                 </div>
                             </div>
                         </Pane>
-                        <Pane id="strypeEditorCommandsSplitPane2" key="2" :size="editorCommandsSplitterPane2Size" class="no-print">
+                        <Pane :id="strypeEditorCommandsSplitPane2Id" key="2" :size="editorCommandsSplitterPane2Size" class="no-print">
                             <Commands :id="commandsContainerId" class="noselect" :ref="strypeCommandsRefId" />
                         </Pane>
                     </SplitPanes>
@@ -258,6 +258,14 @@ export default defineComponent({
             return AllFrameTypesIdentifier.projectDocumentation;
         },
 
+        strypeEditorCommandsSplitPane2Id(): string {
+            return "strypeEditorCommandsSplitPane2";
+        },
+
+        overlayExpandedPEASplitterPane2Id(): string {
+            return "overlayExpandedPEASplitterPane2";
+        },
+
         editorCommandsSplitterPane2Size: {
             get(): number {
                 let value = (this.appStore.editorCommandsSplitterPane2Size != undefined && this.appStore.editorCommandsSplitterPane2Size[StrypePEALayoutMode.tabsCollapsed] != undefined) 
@@ -269,7 +277,7 @@ export default defineComponent({
                     // When there is no set value for a given layout mode,
                     // we check that any change in another layout has ever been made: if yes we just keep the divider as it is, if not, we use the default value.
                     : ((this.appStore.editorCommandsSplitterPane2Size != undefined)
-                        ? parseFloat((document.querySelector("#strypeEditorCommandsSplitPane2") as HTMLDivElement).style.width.replace("%",""))
+                        ? parseFloat((document.getElementById(this.strypeEditorCommandsSplitPane2Id) as HTMLDivElement).style.width.replace("%",""))
                         : parseFloat(scssVars.editorCommandsSplitterPane2SizePercentValue));
                 // #v-endif
                 return value;
@@ -332,7 +340,7 @@ export default defineComponent({
                     // When there is no set value for a given layout mode,
                     // whe check that any change in another layout has ever been made: if yes we just keep the divider as it is, if not, we use the default value.
                     : ((this.appStore.peaExpandedSplitterPane2Size != undefined)
-                        ? parseFloat((document.getElementById("overlayExpandedPEASplitterPane2") as HTMLElement).style.height.replace("%",""))
+                        ? parseFloat((document.getElementById(this.overlayExpandedPEASplitterPane2Id) as HTMLElement).style.height.replace("%",""))
                         :  parseFloat(scssVars.peaExpandedOverlaySplitterPane2SizePercentValue));
                 // The PEA needs to react to the change of value when we are in an expanded mode
                 if(this.appStore.peaLayoutMode == StrypePEALayoutMode.tabsExpanded || this.appStore.peaLayoutMode == StrypePEALayoutMode.splitExpanded){
@@ -612,7 +620,7 @@ export default defineComponent({
             // When the window is resized, the overlay expanded PEA splitter is properly updated. However, the underlying UI is not updated
             // properly (because it isn't inside that splitter) so we need to manually update things.
             if(this.isExpandedPythonExecArea) {
-                this.onExpandedPythonExecAreaSplitPaneResize({panes: [{}, {size: (document.getElementById("overlayExpandedPEASplitterPane2") as HTMLElement).style.height.replace("%","")}]}, true);
+                this.onExpandedPythonExecAreaSplitPaneResize({panes: [{}, {size: (document.getElementById(this.overlayExpandedPEASplitterPane2Id) as HTMLElement).style.height.replace("%","")}]}, true);
             }
 
             // Re-scale the Turtle canvas.

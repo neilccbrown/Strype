@@ -30,7 +30,6 @@ import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileShari
 import GoogleDriveComponent from "@/components/GoogleDriveComponent.vue";
 import OneDriveComponent from "@/components/OneDriveComponent.vue";
 import { generateSPYFileContent } from "@/helpers/load-save";
-import { AppComponentAPI } from "@/types/vue-component-api-types";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { AppSPYFullPrefix, eventBus } from "@/helpers/appContext";
 import { BButton } from "bootstrap-vue-next";
@@ -326,10 +325,10 @@ export default defineComponent({
                                     // We need to check if we're loading the new SPY format or the old one.
                                     const isSpyNewFormat = decodedURIFileContent.startsWith(AppSPYFullPrefix);
                                     const loadFn = (isSpyNewFormat) 
-                                        ? (vueComponentsAPIHandler.appComponentAPI as AppComponentAPI).setStateFromPythonFile(decodedURIFileContent, projectName, -1, false)
+                                        ? vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(decodedURIFileContent, projectName, -1, false)
                                         : this.appStore.setStateFromJSONStr({stateJSONStr: decodedURIFileContent, showMessage: false });                            
                                     return loadFn
-                                        .then(() => {
+                                        ?.then(() => {
                                             // If we have loaded the project with the new SPY format, the project name isn't part of the file, so we need to set it explicitly
                                             if(isSpyNewFormat){
                                                 this.appStore.projectName  = projectName;
@@ -613,9 +612,9 @@ export default defineComponent({
                     // Load the file content in the editor
                     const isOpenedSharedProject = (this.openSharedProjectFileId.length > 0);
                     const fileLoadFn = (isSpyNewFormat) 
-                        ? (vueComponentsAPIHandler.appComponentAPI as AppComponentAPI).setStateFromPythonFile(fileContent, otherParams.fileName as string, lastSaveDate, false)
+                        ? vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(fileContent, otherParams.fileName as string, lastSaveDate, false)
                         : this.appStore.setStateFromJSONStr({stateJSONStr: fileContent, showMessage: !isOpenedSharedProject});
-                    fileLoadFn.then(() => {
+                    fileLoadFn?.then(() => {
                         // Give focus to the current (focusable) frame element so interaction can happen
                         document.getElementById(getFrameUID((isSpyNewFormat) ? this.appStore.getImportsFrameContainerId : this.appStore.currentFrame.id))?.click();
                         // Only update things if we could set the new state

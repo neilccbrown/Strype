@@ -60,7 +60,7 @@ export default defineComponent({
     name: "LabelSlotsStructure",
     
     setup(componentInstance){
-        // Move the Composition API style computed properties or methods here if we need them in setup:
+        // Move the Options API style computed properties or methods here if we need them in setup:
         const subSlots = computed(() => useStore().getFlatSlotBases(componentInstance.frameId, componentInstance.labelIndex));
         const labelSlotsStructDivId = computed(() => getFrameLabelSlotsStructureUID(componentInstance.frameId, componentInstance.labelIndex));
         const isFocused = () => {

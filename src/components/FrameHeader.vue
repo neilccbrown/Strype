@@ -119,6 +119,13 @@ export default defineComponent({
         }
     },
 
+    destroyed() {
+        // Remove the component's API instance
+        if(vueComponentsAPIHandler.frameHeaderComponentAPI?.forInstance[this.frameId]){
+            delete vueComponentsAPIHandler.frameHeaderComponentAPI?.forInstance[this.frameId];
+        }
+    },
+
     components: {
         ChildrenFrameStateToggle,
         LabelSlotsStructure,

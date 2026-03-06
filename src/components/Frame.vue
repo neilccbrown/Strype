@@ -103,7 +103,7 @@ import JointFrames from "@/components/JointFrames.vue";
 import { DefaultFramesDefinition, CaretPosition, CollapsedState, CurrentFrame, FrozenState, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName, ContainerTypesIdentifiers } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent, frameOrChildHasErrors, calculateNextCollapseState } from "@/helpers/storeMethods";
-import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID, getFrameLabelSlotsStructureUID, getCaretUID } from "@/helpers/editor";
+import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID, getFrameLabelSlotsStructureUID } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { BPopover, useToggle } from "bootstrap-vue-next";
 import html2canvas from "html2canvas";
@@ -120,7 +120,7 @@ export default defineComponent({
     name: "Frame",
 
     setup(componentInstance){
-        // Move the Composition API style computed properties here if we need them setup:
+        // Move the Options API style computed properties here if we need them setup:
         const errorPopoverUID = "errorPopover_frame_" + componentInstance.frameId;
 
         // Expose useToogle() of Bootstrap Vue Next inside setup (otherwise we get an error, even if it works)
@@ -412,14 +412,9 @@ export default defineComponent({
         // however, just to keep things tidy, let's clear the frame focus event listener when the frame is destroyed
         document.getElementById(this.frameHeaderId)?.removeEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);
         
-        // Remove the registration of the caret container component API related to this frame,
-        // the frame header component API related to this frame and the component API of this frame.
-        // ONLY if the frame is really removed from the state (because for a very strange reason, when reloading
-        // a page and overwriting the frames with a state, the initial state's frame are destroyed after registered).
-        if(this.appStore.frameObjects[this.frameId] == undefined){
-            delete vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretUID(this.caretPosition.below, this.frameId)];
+        // Remove the component's API instance
+        if(vueComponentsAPIHandler.frameComponentAPI?.forInstance[this.frameId]){
             delete vueComponentsAPIHandler.frameComponentAPI?.forInstance[this.frameId];
-            delete vueComponentsAPIHandler.frameHeaderComponentAPI?.forInstance[this.frameId];
         }
     },
 
@@ -933,7 +928,7 @@ export default defineComponent({
                 // We can retrieve the LabelSlotsStructure component because its ref is in the root object, and 
                 // call updatePrependText() which will now notice the right context and do its work.
                 vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(this.frameId, 1)]
-                    .updatePrependText();                
+                    ?.updatePrependText();                
                 return;
             }
 

@@ -99,7 +99,7 @@ export default defineComponent({
     name: "LabelSlot",
 
     setup(componentInstance){
-        // Move the Composition API style computed properties here if we need them setup:
+        // Move the Options API style computed properties here if we need them setup:
         const errorPopoverUID = `errorPopover_labelSlot_${componentInstance.frameId}_${componentInstance.labelSlotsIndex}_${componentInstance.slotId}`;
 
         // Expose useToogle() of Bootstrap Vue Next inside setup (otherwise we get an error, even if it works)

@@ -123,6 +123,7 @@ export default defineComponent({
     },
 
     props: {
+        // The component ID for this component (to be able to retrieve the correct component instance via the Vue Component API)
         AC_UID: {type: String, required: true},
         list: [String],
         slotId: {type: String, required: true},
