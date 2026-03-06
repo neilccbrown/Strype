@@ -125,6 +125,9 @@ export const handleSyncRequests : (
     case "file_close": {
         return {request: req.request, response: cloudCloseFile(req.id)};
     }
+    case "file_createNode": {
+        return {request: req.request, response: cloudCreate(req.parent, req.name, req.isDir, req.filePath)};
+    }
     case "file_getRoot": {
         return {request: req.request, response: new Promise<CloudFileId>((resolve, reject)  => {
             const loc = useStore().strypeProjectLocation;

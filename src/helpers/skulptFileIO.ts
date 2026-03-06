@@ -143,6 +143,24 @@ export async function cloudReadFile(file: CloudFileId, fromByte: number, lengthB
     return fullContent.slice(fromByte, fromByte + lengthBytes);
 }
 
+export async function cloudCreate(parent: CloudFileId, name: string, isDir: boolean, filePath: string) : Promise<CloudFileId> {
+    // If we are not connected to a cloud file system, then we raise an error:
+    if(!isSyncTargetCloudDrive(useStore().syncTarget)){
+        return Promise.reject(i18n.t("errorMessage.fileIO.notConnectedToCloud") as string);
+    }
+    const cloud : CloudDriveHandlerComponent = getCloud();
+    
+    if (isDir) {
+        throw new Error("Creating directories is currently unsupported.");
+    }
+    else {
+        // Write an empty file:
+        return cloud.writeFileContentForIO(useStore().syncTarget, new Uint8Array(0), {filePath: filePath, fileName: name, folderId: parent.cloudFileId}).then((id: string) => {
+            return {cloudFileId: id};
+        });
+    }
+}
+
 // Entry point for matching a file in the user code to a Cloud Drive.
 // This is a promise that returns an object with a property "succeeded", boolean value, and "errorMsg" for passing the error message.
 // On success, the file is mapped in cloudFilesMap for future references.

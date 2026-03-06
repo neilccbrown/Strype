@@ -108,14 +108,21 @@ export function getFSForEmscripten(pyodide: PyodideAPI) : EmscriptenFileSystemPl
             return syncBridge({request: "file_listDir", parent: node.strypeCloudFileId});
         },
         getattr,
-        /* TODO
         mknod(parent: FSNode, name: string, mode: number, dev: number): FSNode {
-            const fileId = syncBridge({request: "file_createNode", parent: parent.strypeCloudFileId, name, mode, dev});
+            const dir = isDir(mode);
+            const fileId = syncBridge({request: "file_createNode", parent: parent.strypeCloudFileId, name, isDir: dir, filePath: getFullFilePath(parent) + "/" + name});
             const node = pyodide.FS.createNode(parent, name, mode, dev);
             node.strypeCloudFileId = fileId;
+            if (isDir(mode)) {
+                node.node_ops = DIR_NODE_OPS;
+                node.stream_ops = DIR_STREAM_OPS;
+            }
+            else {
+                node.node_ops = FILE_NODE_OPS;
+                node.stream_ops = FILE_STREAM_OPS;
+            }
             return node;
         },
-         */
     };
     
     

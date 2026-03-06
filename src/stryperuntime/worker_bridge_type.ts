@@ -57,7 +57,7 @@ export type SyncStrypePyodideWorkerRequest =
     | { request: "playSoundAndWait"; sound: RemoteSound }
     | { request: "getMonoSoundSampleValues"; sound: RemoteSound }
     | { request: "cloneSound"; sound: RemoteSound; toMono: boolean } // If toMono is false, clone with same number of channels
-    //| { request: "file_createNode"; parent: CloudFileId, name: string, mode: number }
+    | { request: "file_createNode"; parent: CloudFileId, name: string, isDir: boolean, filePath: string }
     | { request: "file_open"; id: CloudFileId; flags: number }
     | { request: "file_close"; id: CloudFileId }
     | { request: "file_read"; id: CloudFileId; from: number; length: number, filePath: string }
@@ -93,7 +93,7 @@ export type SyncStrypePyodideWorkerResponse =
     //| { request: "file_write"; response: boolean; } // TODO work out response
     | { request: "file_lookup"; response: {fileId: CloudFileId, isDir: boolean;} }
     | { request: "file_listDir"; response: string[] }
-    //| { request: "file_createNode"; response: CloudFileId }
+    | { request: "file_createNode"; response: CloudFileId }
     | { request: "file_getRoot"; response: CloudFileId }
 ;
 
