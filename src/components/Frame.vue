@@ -16,18 +16,16 @@
             draggable="true"
             @dragstart.self="handleFrameDragStart"
         >
-            <!-- Make sure the click events are stopped in the links because otherwise, events pass through and mess the toggle of the caret in the editor.
-                Also, the element MUST have the hover event handled for proper styling (we want hovering and selecting to go together) -->
-            <vue-context :id="getFrameContextMenuUID" ref="menu" v-show="allowContextMenu" @open="handleContextMenuOpened" @close="handleContextMenuClosed">
-                <li v-for="menuItem, index in frameContextMenuItems" :key="`frameContextMenuItem_${frameId}_${index}`" :action-name="menuItem.actionName" :class="{'context-menu-item': true, 'v-context-disabled': menuItem.disabled}">
-                    <hr v-if="menuItem.type === 'divider'" />
-                    <a v-else @click.stop="!menuItem.disabled && (menuItem.method(), closeContextMenu())" @mouseover="handleContextMenuHover">
-                        <span>{{menuItem.name}}</span>
-                        <span class="context-menu-item-shortcut" v-if="menuItem.shortcut">{{typeof menuItem.shortcut === "string" ? menuItem.shortcut : menuItem.shortcut[isMacOSPlatform() ? 1 : 0]}}</span>
-                    </a>
-                </li>
-            </vue-context>
-
+            <ContextMenu 
+                :contextMenuItemsDef="frameContextMenuItems"
+                :showContextMenu="showContextMenu"
+                :showAt="showContextMenuAtCoordPos"
+                :onOpened="handleContextMenuOpened"
+                :doAfterShownOnMenuItem="registerMouseEventsForDeleteOperations"
+                :doAfterShownOnMenuItemKeyboardFocusAddedObs="registerOnKeyboardFocusAddedForDeleteOperations"
+                :doAfterShownOnMenuItemKeyboardFocusRemovedObs="registerOnKeyboardFocusRemovedForDeleteOperations"
+                :onClosed="handleContextMenuClosed"
+            />
             <FrameHeader
                 v-if="frameType.labels !== null"
                 :id="frameHeaderId"
@@ -100,10 +98,9 @@ import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
 import FrameBody from "@/components/FrameBody.vue";
 import JointFrames from "@/components/JointFrames.vue";
-import { DefaultFramesDefinition, CaretPosition, CollapsedState, CurrentFrame, FrozenState, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName, ContainerTypesIdentifiers } from "@/types/types";
-import VueContext, {VueContextConstructor}  from "vue-context";
+import { DefaultFramesDefinition, CaretPosition, CollapsedState, CurrentFrame, FrozenState, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName, ContainerTypesIdentifiers, StrypeContextMenuItem, CoordPosition } from "@/types/types";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent, frameOrChildHasErrors, calculateNextCollapseState } from "@/helpers/storeMethods";
-import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID, getFrameLabelSlotsStructureUID } from "@/helpers/editor";
+import { CustomEventTypes, getFrameBodyUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, notifyDragStarted, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID, getFrameLabelSlotsStructureUID } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { BPopover, useToggle } from "bootstrap-vue-next";
 import html2canvas from "html2canvas";
@@ -151,7 +148,6 @@ export default defineComponent({
 
     components: {
         FrameHeader,
-        VueContext,
         CaretContainer,
         BPopover,
         FrameBody,
@@ -176,15 +172,16 @@ export default defineComponent({
     data: function () {
         return {
             scssVars, // just to be able to use in template
+            // Flag used to trigger the context menu opening
+            showContextMenu: false,
             // Prepare an empty version of the menu: it will be updated as required in handleClick()
-            frameContextMenuItems: [] as {name: string; method: VoidFunction; type?: "divider", actionName?: FrameContextMenuActionName, shortcut?: string | string[], disabled?: boolean}[],
+            frameContextMenuItems: [] as StrypeContextMenuItem[],
+            showContextMenuAtCoordPos: {x: 0, y: 0} as CoordPosition,
+            // Flags for the context menu "delete" and "delete outer" states
+            allCanBeDeleted: false,
+            canDeleteOuter: false,
             // Flag to indicate a frame is selected via the context menu (differs from a user selection)
             contextMenuEnforcedSelect: false,
-            // And an associated observer used to check when the menu made hidden to change the flag above
-            // we only set the observer later as we need to access other data within the observer
-            contextMenuObserver: new MutationObserver(() => {
-                return;
-            }), 
             // We keep a data property for frame run time error, even if that's a duplication, we need to keep it because
             // when the error in the frame is lifted, the error message disappear, and we need to use it in the popup
             runtimeErrorAtLastRunMsg: "",
@@ -347,10 +344,6 @@ export default defineComponent({
             return getCaretContainerRef();
         },
 
-        getFrameContextMenuUID(): string {
-            return getFrameContextMenuUID(this.UID);
-        },
-
         isInnerDisabled(): boolean {
             // This computed property indicates whether a frame is disabled as a descendant of a disabled frame.
             // When that's the case, the whole most outer frame acts as a unit and actions/caret are for that unit.
@@ -385,29 +378,11 @@ export default defineComponent({
         eventBus.on(CustomEventTypes.cutFrameSelection, this.cutIfFirstInSelection);
         eventBus.on(CustomEventTypes.copyFrameSelection, this.copyIfFirstInSelection);
 
-        // Observe when the context menu when the context menu is closed
-        // in order to reset the enforced selection flag
-        // (we cannot solely use the menu-closed event of the component because it doesn't trigger between menu openings)
-        const contextMenuContainer = document.getElementById(getFrameContextMenuUID(this.UID));
-        if(contextMenuContainer){
-            this.contextMenuObserver = new MutationObserver((mutations) => {
-                mutations.forEach((mutationRecord) => {
-                    if((mutationRecord.target as HTMLElement).style.display == "none" ||(mutationRecord.target as HTMLElement).hidden){
-                        this.contextMenuEnforcedSelect = false;
-                    }
-                });
-            });
-            this.contextMenuObserver.observe(contextMenuContainer,{attributes: true, attributeFilter: ["style", "hidden"]});
-        }
-
         // The frame header can listen for events from the editable slots focus to manage header level error messages
         document.getElementById(this.frameHeaderId)?.addEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);
     },
 
     destroyed() {
-        // Probably not required but for safety, remove the observer set up in mounted()
-        this.contextMenuObserver.disconnect();
-
         // Same as above, not sure it is required to remove the event since anyway the event loop won't be raised
         // however, just to keep things tidy, let's clear the frame focus event listener when the frame is destroyed
         document.getElementById(this.frameHeaderId)?.removeEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);
@@ -471,18 +446,11 @@ export default defineComponent({
         },
 
         handleContextMenuClosed(){
-            this.appStore.isContextMenuKeyboardShortcutUsed=false;
-            document.dispatchEvent(new CustomEvent(CustomEventTypes.requestAppNotOnTop, {detail: false}));
-        },
-
-        handleContextMenuHover(event: MouseEvent) {
-            eventBus.emit(CustomEventTypes.contextMenuHovered, event.target as HTMLElement);
-        },
-
-        closeContextMenu(){
-            // The context menu doesn't close because we need to stop the click event propagation (cf. template), we do it here
-            ((this.$refs.menu as unknown) as VueContextConstructor).close();
+            this.appStore.isContextMenuKeyboardShortcutUsed = false;
+            this.showContextMenu = false;
+            // Reset the enforced selection flag
             this.contextMenuEnforcedSelect = false;
+            document.dispatchEvent(new CustomEvent(CustomEventTypes.requestAppNotOnTop, {detail: false}));
         },
 
         handleClick (event: MouseEvent, positionForMenu?: Position) {
@@ -509,27 +477,27 @@ export default defineComponent({
                 return;
             }
 
-            // If there's a windows and Mac shortcut they are put in an array:
+            // Prepare the base content items for the context menu (vue3-context menu) - we extend the type of ContextMenuItem to add the helper property "actioName"
             this.frameContextMenuItems = [
                 // Important these first three are in the same order as the enum CollapsedState:
-                {name: this.$t("contextMenu.collapseHeader") as string, method: this.collapseToHeader, actionName: FrameContextMenuActionName.collapseToHeader},
-                {name: this.$t("contextMenu.collapseDocumentation") as string, method: this.collapseToDocumentation, actionName: FrameContextMenuActionName.collapseToDocumentation},
-                {name: this.$t("contextMenu.collapseFull") as string, method: this.collapseToFull, actionName: FrameContextMenuActionName.collapseToFull},
-                {name: this.$t("contextMenu.freeze") as string, method: this.freeze, actionName: FrameContextMenuActionName.freeze},
-                {name: this.$t("contextMenu.unfreeze") as string, method: this.unfreeze, actionName: FrameContextMenuActionName.unfreeze},
-                {name: "", method: () => {}, type: "divider"},
-                {name: this.$t("contextMenu.cut") as string, method: this.cut, actionName: FrameContextMenuActionName.cut, shortcut: [(this.$t("shortcut.ctrlPlus") as string) + "X", "⌘X"]},
-                {name: this.$t("contextMenu.copy") as string, method: this.copy, actionName: FrameContextMenuActionName.copy, shortcut: [(this.$t("shortcut.ctrlPlus") as string) + "C", "⌘C"]},
-                {name: this.$t("contextMenu.downloadAsImg") as string, method: this.downloadAsImg},
-                {name: this.$t("contextMenu.duplicate") as string, method: this.duplicate},
-                {name: "", method: () => {}, type: "divider"},
-                {name: this.$t("contextMenu.pasteAbove") as string, method: this.pasteAbove},
-                {name: this.$t("contextMenu.pasteBelow") as string, method: this.pasteBelow},
-                {name: "", method: () => {}, type: "divider"},
-                {name: this.$t("contextMenu.disable") as string, method: this.disable},
-                {name: "", method: () => {}, type: "divider"},
-                {name: this.$t("contextMenu.delete") as string, method: this.delete, actionName: FrameContextMenuActionName.delete, shortcut: this.$t("shortcut.delete") as string},
-                {name: this.$t("contextMenu.deleteOuter") as string, method: this.deleteOuter}];
+                {label: this.$t("contextMenu.collapseHeader") as string, onClick: this.collapseToHeader, actionName: FrameContextMenuActionName.collapseToHeader, attrs: {"action-name": FrameContextMenuActionName.collapseToHeader}},
+                {label: this.$t("contextMenu.collapseDocumentation") as string, onClick: this.collapseToDocumentation, actionName: FrameContextMenuActionName.collapseToDocumentation, attrs: {"action-name": FrameContextMenuActionName.collapseToDocumentation}},
+                {label: this.$t("contextMenu.collapseFull") as string, onClick: this.collapseToFull, actionName: FrameContextMenuActionName.collapseToFull, attrs: {"action-name": FrameContextMenuActionName.collapseToFull}},
+                {label: this.$t("contextMenu.freeze") as string, onClick: this.freeze, actionName: FrameContextMenuActionName.freeze, attrs: {"action-name": FrameContextMenuActionName.freeze}},
+                {label: this.$t("contextMenu.unfreeze") as string, onClick: this.unfreeze, actionName: FrameContextMenuActionName.unfreeze, attrs: {"action-name": FrameContextMenuActionName.unfreeze}},
+                {divided: "self"},
+                {label: this.$t("contextMenu.cut") as string, onClick: this.cut, actionName: FrameContextMenuActionName.cut, attrs: {"action-name": FrameContextMenuActionName.cut}, shortcut: isMacOSPlatform() ? "⌘X" : (this.$t("shortcut.ctrlPlus") as string) + "X"},
+                {label: this.$t("contextMenu.copy") as string, onClick: this.copy, actionName: FrameContextMenuActionName.copy, attrs: {"action-name": FrameContextMenuActionName.copy}, shortcut: isMacOSPlatform() ? "⌘C" : (this.$t("shortcut.ctrlPlus") as string) + "C"},
+                {label: this.$t("contextMenu.downloadAsImg") as string, onClick: this.downloadAsImg},
+                {label: this.$t("contextMenu.duplicate") as string, onClick: this.duplicate},
+                {divided: "self"},
+                {label: this.$t("contextMenu.pasteAbove") as string, onClick: this.pasteAbove},
+                {label: this.$t("contextMenu.pasteBelow") as string, onClick: this.pasteBelow},
+                {divided: "self"},
+                {label: this.$t("contextMenu.disable") as string, onClick: this.disable},
+                {divided: "self"},
+                {label: this.$t("contextMenu.delete") as string, onClick: this.delete, actionName: FrameContextMenuActionName.delete, attrs: {"action-name": FrameContextMenuActionName.delete}, shortcut: this.$t("shortcut.delete") as string},
+                {label: this.$t("contextMenu.deleteOuter") as string, onClick: this.deleteOuter, actionName: FrameContextMenuActionName.deleteOuter}];
 
             // Not all frames can be collapsed; only show menu items that are possible for at least one of the frames,
             // disable the item if all frames are already in that state, and show the dot shortcut next to whatever it would do:
@@ -591,7 +559,7 @@ export default defineComponent({
                     
                     // Check if there are precompile errors on any of our slots anywhere in the frame:
                     if (errorsInFrameOrChild) {
-                        x.name = this.$t("contextMenu.cannotFreezeErrors") as string;
+                        x.label = this.$t("contextMenu.cannotFreezeErrors") as string;
                         x.disabled = true;
                     }
                     
@@ -604,7 +572,7 @@ export default defineComponent({
                 }
                 else if (x.actionName === FrameContextMenuActionName.collapseToHeader || x.actionName === FrameContextMenuActionName.collapseToDocumentation) {
                     if (errorsInFrameOrChild) {
-                        x.name = this.$t("contextMenu.cannotCollapseErrors") as string;
+                        x.label = this.$t("contextMenu.cannotCollapseErrors") as string;
                         x.disabled = true;
                     }
                     return false;
@@ -630,7 +598,7 @@ export default defineComponent({
                 this.appStore.isPositionAllowsFrame(targetFrameId, CaretPosition.below, false, this.frameId);
             // Note: frozen frames themselves can be duplicated, but children of frozen frames cannot:
             if(!canDuplicate || parentIsFrozen){
-                const duplicateOptionContextMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.method === this.duplicate);
+                const duplicateOptionContextMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.onClick === this.duplicate);
                 //We don't need the duplication option: remove it from the menu options if not present
                 if(duplicateOptionContextMenuPos > -1){
                     this.frameContextMenuItems.splice(
@@ -646,7 +614,7 @@ export default defineComponent({
             if(!this.appStore.isCopiedAvailable || this.isPartOfSelection){
                 // If there are no frame to copy, or the click is part of a selection of frames
                 // we just remove all paste menu entries (and the divider following them)
-                const pasteOptionContextMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.method === this.pasteAbove);
+                const pasteOptionContextMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.onClick === this.pasteAbove);
                 this.frameContextMenuItems.splice(
                     pasteOptionContextMenuPos,
                     3 //2 paste menu entries + divider
@@ -698,9 +666,9 @@ export default defineComponent({
                 const sliceNumber = (!canPasteAboveFrame && !canPasteBelowFrame)
                     ? 3 // both paste menu entries and divider
                     : 1; // one of the paste menu entries
-                const pasteBelowOptionIndex = this.frameContextMenuItems.findIndex((entry) => entry.method === this.pasteBelow);
+                const pasteBelowOptionIndex = this.frameContextMenuItems.findIndex((entry) => entry.onClick === this.pasteBelow);
                 const pasteOptionContextMenuPos = (!canPasteAboveFrame)
-                    ? this.frameContextMenuItems.findIndex((entry) => entry.method === this.pasteAbove) // position of first paste entry menu 
+                    ? this.frameContextMenuItems.findIndex((entry) => entry.onClick === this.pasteAbove) // position of first paste entry menu 
                     : pasteBelowOptionIndex; // position of second paste entry menu
                 if(!canPasteAboveFrame || ! canPasteBelowFrame){
                     this.frameContextMenuItems.splice(
@@ -713,18 +681,18 @@ export default defineComponent({
                 // Note: joint frames cannot be part of a selection, so we know there would only be 1 frame
                 if(canPasteBelowFrame && isCopyJointFrame && this.appStore.frameObjects[targetPasteBelow.id].jointFrameIds.length > 0){
                     // offset the index by 1: a joint frame can never be pasted above a root, we know "paste above" won't be shown...
-                    this.frameContextMenuItems[pasteBelowOptionIndex - 1].name = this.$t("contextMenu.pasteBelowJointRoot") as string;
+                    this.frameContextMenuItems[pasteBelowOptionIndex - 1].label = this.$t("contextMenu.pasteBelowJointRoot") as string;
                 }
             }
 
             // We only show "delete outer" if the top level frame(s) to delete are all block frames and not function definitions
-            const canDeleteOuter = (this.isPartOfSelection) 
+            this.canDeleteOuter = (this.isPartOfSelection) 
                 ? this.appStore
                     .selectedFrames
                     .every((frameId) => this.appStore.frameObjects[frameId].frameType.allowChildren && this.appStore.frameObjects[frameId].frameType.type != AllFrameTypesIdentifier.funcdef && this.frameType.type != AllFrameTypesIdentifier.classdef)
                 : this.isBlockFrame && this.frameType.type != AllFrameTypesIdentifier.funcdef && this.frameType.type != AllFrameTypesIdentifier.classdef;
-            if(!canDeleteOuter){
-                const deleteOuterOptionContextMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.method === this.deleteOuter);
+            if(!this.canDeleteOuter){
+                const deleteOuterOptionContextMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.onClick === this.deleteOuter);
                 // We don't need the delete outer option: remove it from the menu options if not present
                 if(deleteOuterOptionContextMenuPos > -1){
                     this.frameContextMenuItems.splice(
@@ -736,12 +704,12 @@ export default defineComponent({
 
             // Should we show any deleting options (Delete, Cut); requires all selected frames to be deleteable.
             // The only thing that prevents deletion is being frozen:
-            const allCanBeDeleted = !parentIsFrozen && (this.isPartOfSelection
+            this.allCanBeDeleted = !parentIsFrozen && (this.isPartOfSelection
                 ? this.appStore
                     .selectedFrames
                     .every((frameId) => this.appStore.frameObjects[frameId].frozenState != FrozenState.FROZEN)
                 : this.frozenState != FrozenState.FROZEN);
-            if (!allCanBeDeleted) {
+            if (!this.allCanBeDeleted) {
                 const cutMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.actionName === FrameContextMenuActionName.cut);
                 if(cutMenuPos > -1){
                     this.frameContextMenuItems.splice(cutMenuPos, 1);
@@ -773,10 +741,10 @@ export default defineComponent({
             const anyCanEnable = this.isPartOfSelection ? this.appStore.selectedFrames.some(canEnable) : canEnable(this.frameId);
             const anyCanDisable = this.isPartOfSelection ? this.appStore.selectedFrames.some(canDisable) : canDisable(this.frameId);
             
-            const disableOrEnableOption = (!anyCanDisable && anyCanEnable) 
-                ?  {name: this.$t("contextMenu.enable"), method: this.enable, disabled: false}
-                :  {name: this.$t("contextMenu.disable"), method: this.disable, disabled: !anyCanDisable && !anyCanEnable};
-            const enableDisableIndex = this.frameContextMenuItems.findIndex((entry) => entry.method === this.enable || entry.method === this.disable);
+            const disableOrEnableOption: StrypeContextMenuItem = (!anyCanDisable && anyCanEnable) 
+                ?  {label: this.$t("contextMenu.enable"), onClick: this.enable, disabled: false}
+                :  {label: this.$t("contextMenu.disable"), onClick: this.disable, disabled: !anyCanDisable && !anyCanEnable};
+            const enableDisableIndex = this.frameContextMenuItems.findIndex((entry) => entry.onClick === this.enable || entry.onClick === this.disable);
             Vue.set(
                 this.frameContextMenuItems,
                 enableDisableIndex,
@@ -785,20 +753,7 @@ export default defineComponent({
             
             // Overwrite readonly properties clientX and clientY (to position the menu if needed)
             setContextMenuEventClientXY(event, positionForMenu);             
-                
-            ((this.$refs.menu as unknown) as VueContextConstructor).open(event);
-            //the menu could have "forcely" been disabled by us to prevent duplicated menu showing in the editable slots
-            //so we make sure we restore the visibility of that menu
-            const contextMenu = document.getElementById(getFrameContextMenuUID(this.UID));  
-            contextMenu?.removeAttribute("hidden");
-
-            // If we have a caret context menu open somewhere we close it here 
-            // (there is a context menu if there is an active context menu and it is not a frame context menu)
-            const activeContextMenu = getActiveContextMenu();
-            if(activeContextMenu && activeContextMenu.id == ""){
-                eventBus.emit(CustomEventTypes.requestCaretContextMenuClose);
-            }
-
+       
             // When a frame context menu is opened by click, we also move the frame cursor below, if the current frame cursor isn't 
             // already part of the clicked selection
             if(this.appStore.selectedFrames.length == 0 || !this.isPartOfSelection) {
@@ -819,41 +774,66 @@ export default defineComponent({
                     this.appStore.setCurrentFrame({id: this.frameId, caretPosition: CaretPosition.below}, false);
                 }
             }
-            // We add a hover event on the delete menu entries to show cue in the UI on what the entry will act upon
-            // need to be done in the next tick to make sure the menu has been generated.
-            // The other entries are all ignored, as we will show a selection when the menu opens (if there is no selection already for that frame)
-            this.$nextTick(() => {
-                if(contextMenu){
-                    // We make sure the menu can be shown completely. 
-                    adjustContextMenuPosition(event, contextMenu, positionForMenu);
-                        
-                    //We prepare the indexes of the "delete" entries to add events on. "Delete" will always be added.
-                    const deleteEntriesIndexes = allCanBeDeleted ? [this.frameContextMenuItems.findIndex((option) => option.method == this.delete)] : [];
-                    if(canDeleteOuter){
-                        deleteEntriesIndexes.push(this.frameContextMenuItems.findIndex((option) => option.method == this.deleteOuter));
-                    }
-                    // Add the listeners for delete entries
-                    deleteEntriesIndexes.forEach((indexValue, index) => {
-                        const isDeleteOuter = (index > 0);
-                        const menuEntryElement = contextMenu.childNodes[indexValue];
-                        menuEntryElement.addEventListener("focusin", () => this.onDeleteEntryContextMenuHover(true, isDeleteOuter));
-                        menuEntryElement.addEventListener("focusout", () => this.onDeleteEntryContextMenuHover(false, isDeleteOuter));
-                    });
 
-                    // If there are no frame(s) selected by the user already in a multi selection
-                    // then we select this frame when the context menu opens.
-                    // Since it is only for presentation, we don't actually register the selected frame as a selection
-                    if(!this.isPartOfSelection){
-                        this.contextMenuEnforcedSelect = true;
-                        // Other items may however be selected so we deselect them
-                        this.appStore.unselectAllFrames();
-                    }
-                }
-            });  
-
-            //prevent default menu to show
+            // Prevent default menu to show
             event.preventDefault();
-            event.stopPropagation();  
+            event.stopPropagation();
+
+            // Open the context menu
+            this.showContextMenuAtCoordPos.x = event.x;
+            this.showContextMenuAtCoordPos.y = event.y;
+            this.showContextMenuAtCoordPos.pos = positionForMenu;
+            this.showContextMenu = true;
+        },
+
+        registerMouseEventsForDeleteOperations(ctxMenuItemDef: StrypeContextMenuItem, menuEntryWrapperElement: HTMLDivElement): void {
+            // There are 2 ways we want to show the cues: when the menu entry (wrapper) is hovered (1), or keyboard-focused (2).
+            // This adds the mouseover/out listeners for the delete/delete outer entries implementing (1).     
+            const isDeleteEntry = this.allCanBeDeleted && ctxMenuItemDef.onClick == this.delete;
+            const isDeleteOuterEntry = this.canDeleteOuter && ctxMenuItemDef.onClick == this.deleteOuter;
+            if(isDeleteEntry || isDeleteOuterEntry){                           
+                menuEntryWrapperElement.addEventListener("mouseover", () => this.onDeleteEntryContextMenuHover(true, isDeleteOuterEntry));
+                menuEntryWrapperElement.addEventListener("mouseout", () => this.onDeleteEntryContextMenuHover(false, isDeleteOuterEntry));
+
+                // Also, because we do not use focusin/focusout anymore compared to the Vue 2 context menu,
+                // we may end up with the styling maintained on the frame when the frame is recreated by a undo after the delete action.
+                // To prevent that, we make sure we always clear off the styling before we actually delete the frame.
+                const currentOnClick = ctxMenuItemDef.onClick;
+                if(currentOnClick) {
+                    // Should be defined, but keep TS happy.
+                    ctxMenuItemDef.onClick =  (event) => {
+                        this.onDeleteEntryContextMenuHover(false, isDeleteOuterEntry);
+                        currentOnClick(event);
+                    };   
+                }
+            }
+            
+            // If there are no frame(s) selected by the user already in a multi selection
+            // then we select this frame when the context menu opens.
+            // Since it is only for presentation, we don't actually register the selected frame as a selection
+            if(!this.isPartOfSelection){
+                this.contextMenuEnforcedSelect = true;
+                // Other items may however be selected so we deselect them
+                this.appStore.unselectAllFrames();
+            }
+        },
+
+        registerOnKeyboardFocusAddedForDeleteOperations(ctxMenuItemDef: StrypeContextMenuItem){
+            this.handleOnKeyboardFocusChangeForDeleteOperations(ctxMenuItemDef, true);
+        },
+
+        registerOnKeyboardFocusRemovedForDeleteOperations(ctxMenuItemDef: StrypeContextMenuItem){
+            this.handleOnKeyboardFocusChangeForDeleteOperations(ctxMenuItemDef, false);
+        },
+
+        handleOnKeyboardFocusChangeForDeleteOperations(ctxMenuItemDef: StrypeContextMenuItem, toSet: boolean){
+            // There are 2 ways we want to show the cues: when the menu entry (wrapper) is hovered (1), or keyboard-focused (2).
+            // This adds class observer callback for the delete/delete outer entries implementing (2) or remove it, depending on toSet.     
+            const isDeleteEntry = this.allCanBeDeleted && ctxMenuItemDef.actionName == FrameContextMenuActionName.delete;
+            const isDeleteOuterEntry = this.canDeleteOuter && ctxMenuItemDef.actionName == FrameContextMenuActionName.deleteOuter;
+            if(isDeleteEntry || isDeleteOuterEntry){
+                this.onDeleteEntryContextMenuHover(toSet, isDeleteOuterEntry);
+            }
         },
 
         onDeleteEntryContextMenuHover(entering: boolean, isOuterDelete: boolean): void {
@@ -1521,17 +1501,5 @@ export default defineComponent({
 .selectedTopBottom{
     border-top: 3px solid #000000 !important;
     border-bottom: 3px solid #000000 !important;
-}
-
-.context-menu-item > a {
-    display: flex !important;
-    align-items: baseline;
-}
-
-.context-menu-item-shortcut {
-    margin-left: auto;
-    padding-left: 1em;
-    font-size: 70%;
-    color: grey;
 }
 </style>

@@ -28,6 +28,7 @@
     "dependencies": {
         "@azure/msal-browser": "^4.15.0",
         "@fortawesome/free-solid-svg-icons": "^5.15.4",
+        "@imengyu/vue3-context-menu": "^1.5.4",
         "@microbit/microbit-fs": "^0.9.2",
         "@popperjs/core": "^2.11.4",
         "@types/gapi": "^0.0.42",
@@ -75,7 +76,6 @@
         "vite-plugin-conditional-compiler": "^0.4.0",
         "vue": "^3.1.0",
         "vue-advanced-cropper": "^2.8.9",
-        "vue-context": "^6.0.0",
         "vue-i18n": "^11",
         "vue3-burger-menu": "^1.1.1",
         "vue3-detect-browser": "^0.1.2",

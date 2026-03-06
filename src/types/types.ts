@@ -5,6 +5,7 @@ import scssVars from "@/assets/style/_export.module.scss";
 import quoteCircleProject from "@/assets/images/quote-circle/quote-circle-project.png";
 import quoteCircleFuncdef from "@/assets/images/quote-circle/quote-circle-funcdef.png";
 import quoteCircleClass from "@/assets/images/quote-circle/quote-circle-class.png";
+import { MenuItem } from "@imengyu/vue3-context-menu";
 
 // Re-export types from ac-types:
 // Note, important to use * here rather than individual imports, to avoid this issue with Babel:
@@ -22,6 +23,12 @@ export interface Position {
     top?: number,
     bottom?: number,
     right?: number,
+}
+
+export interface CoordPosition {
+    x: number,
+    y: number,
+    pos?: Position,
 }
 
 export interface LabelSlotsContent {
@@ -206,6 +213,12 @@ export enum SelectAllFramesAction {
     wholeContainer, // Select everything in the current container/section
     parent, // Select the parent (only)
 }
+
+// This type is an extension of the Vue3 context menu ContextMenuItem, we want to add actionName
+// on the type to use this property as an helper to work out the menu preparation (in the Frame component).
+export type StrypeContextMenuItem = MenuItem & {
+  actionName?: FrameContextMenuActionName;
+};
 
 export enum FrameContextMenuActionName {
     cut,
