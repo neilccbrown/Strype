@@ -42,7 +42,7 @@
         "@types/splitpanes": "^2.2.6",
         "@vitejs/plugin-vue": "^6",
         "@vue/compat": "^3.1.0",
-        "@wsfe/ctree": "^2.4.1",
+        "@wsfe/vue-tree": "^4.1.1",
         "audiobuffer-to-wav": "^1.0.0",
         "axios": "^0.30.2",
         "bootstrap": "^5.3.8",
