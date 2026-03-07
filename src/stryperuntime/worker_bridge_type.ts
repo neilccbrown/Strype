@@ -61,7 +61,8 @@ export type SyncStrypePyodideWorkerRequest =
     | { request: "file_open"; id: CloudFileId; flags: number }
     | { request: "file_close"; id: CloudFileId }
     | { request: "file_read"; id: CloudFileId; from: number; length: number, filePath: string }
-    //| { request: "file_write"; handle: RemoteCloudFile }
+    | { request: "file_write"; id: CloudFileId; from: number; encodedContent: string; filePath: string; }
+    | { request: "file_truncate"; id: CloudFileId; size: number; filePath: string; }
     | { request: "file_lookup"; parent: CloudFileId; name: string }
     | { request: "file_listDir"; parent: CloudFileId }
     | { request: "file_getRoot"; }
@@ -90,8 +91,9 @@ export type SyncStrypePyodideWorkerResponse =
     | { request: "file_open"; response: boolean; } // We don't need a return value as such, we're just using the response to wait
     | { request: "file_close"; response: boolean; } // We don't need a return value as such, we're just using the response to wait
     | { request: "file_read"; response: string; } // Uint8 encoded into string
-    //| { request: "file_write"; response: boolean; } // TODO work out response
-    | { request: "file_lookup"; response: {fileId: CloudFileId, isDir: boolean;} }
+    | { request: "file_write"; response: boolean; } // We don't need a return value as such, we're just using the response to wait.  Note that write may be batched, so returning doesn't mean it's fully flushed.
+    | { request: "file_lookup"; response: {fileId: CloudFileId, isDir: true;} | {fileId: CloudFileId, isDir: false; fileSize: number} | undefined }
+    | { request: "file_truncate"; response: number; } // Number is size after truncation, which could be smaller than requested if file wasn't that long
     | { request: "file_listDir"; response: string[] }
     | { request: "file_createNode"; response: CloudFileId }
     | { request: "file_getRoot"; response: CloudFileId }

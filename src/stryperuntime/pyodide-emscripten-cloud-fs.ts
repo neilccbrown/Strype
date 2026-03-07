@@ -5,7 +5,7 @@
 import {EmscriptenFileSystemPlugin, FSAttr, FSNode, FSNodeOpsDir, FSNodeOpsFile, FSStream, FSStreamOpsDir, FSStreamOpsFile} from "@/types/emscripten-fs-types";
 import {syncBridge} from "@/workers/python_execution_type";
 import {PyodideAPI} from "pyodide";
-import {decodeStringToUint8} from "@/stryperuntime/worker_bridge_type";
+import {decodeStringToUint8, encodeUint8ToString} from "@/stryperuntime/worker_bridge_type";
 
 // Gets full file path by stitching together all parent paths:
 function getFullFilePath(node: FSNode) : string {
@@ -24,6 +24,7 @@ const SEEK_SET = 0;
 const SEEK_CUR = 1;
 const SEEK_END = 2;
 const EINVAL = 22;
+const ENOENT = 44;
 function isDir(mode: number) {
     return (mode & S_IFDIR) != 0;
 }
@@ -32,7 +33,8 @@ function llseek(stream : FSStream, offset : number, whence : number) {
     var position = offset;
     if (whence === SEEK_CUR) {
         position += stream.position;
-    } else if (whence === SEEK_END) {
+    }
+    else if (whence === SEEK_END) {
         if (!isDir(stream.node.mode)) {
             position += (stream.node as any)?.usedBytes ?? 0;
         }
@@ -43,8 +45,6 @@ function llseek(stream : FSStream, offset : number, whence : number) {
     return position;
 }
 
-// Note that this function is run during Pyodide initialisation and should not actually contact the cloud, yet,
-// nor make any syncBridge/asyncBridge calls directly.  All of that should only happen when the file system is
 function getattr(node: FSNode) : FSAttr {
     const size = isDir(node.mode) ? 4096 : (node.size ?? 0);
     return {
@@ -64,6 +64,24 @@ function getattr(node: FSNode) : FSAttr {
     };
 }
 
+function setattr(node: FSNode, attr: Partial<{
+    mode: number
+    uid: number
+    gid: number
+    size: number
+    atime: Date
+    mtime: Date
+    ctime: Date
+}>): void {
+    // The only thing we actually support changing is size, which basically
+    // truncates the file:
+    if (attr.size !== undefined) {
+        node.size = syncBridge({request: "file_truncate", id: node.strypeCloudFileId, size: attr.size, filePath: getFullFilePath(node)});
+    }
+}
+
+// Note that this function is run during Pyodide initialisation and should not actually contact the cloud, yet,
+// nor make any syncBridge/asyncBridge calls directly.  All of that should only happen when the file system is
 // actually accessed during the user's Python execution.
 export function getFSForEmscripten(pyodide: PyodideAPI) : EmscriptenFileSystemPlugin {
     const FILE_STREAM_OPS : FSStreamOpsFile = {
@@ -79,19 +97,29 @@ export function getFSForEmscripten(pyodide: PyodideAPI) : EmscriptenFileSystemPl
             buffer.set(content, offset);
             return content.length;
         },
+        write(stream: FSStream, buffer: Uint8Array, offset: number, length: number, position: number): number {
+            syncBridge({request: "file_write", id: stream.node.strypeCloudFileId, from: position, encodedContent: encodeUint8ToString(buffer.slice(offset, offset + length)), filePath: getFullFilePath(stream.node)});
+            return length;
+        },
         close(stream: FSStream) {
             syncBridge({request: "file_close", id: stream.node.strypeCloudFileId});
         },
-        // TODO add write support
         llseek,
     };
     const DIR_STREAM_OPS : FSStreamOpsDir = { llseek };
     const FILE_NODE_OPS : FSNodeOpsFile = {
         getattr,
+        setattr,
+        truncate(node : FSNode, len : number) {
+            syncBridge({request: "file_truncate", id: node.strypeCloudFileId, size: len, filePath: getFullFilePath(node)});
+        },
     };
     const DIR_NODE_OPS : FSNodeOpsDir = {
         lookup(parent: FSNode, name: string): FSNode {
             const r = syncBridge({request: "file_lookup", parent: parent.strypeCloudFileId, name});
+            if (!r) {
+                throw new pyodide.FS.ErrnoError(ENOENT);
+            }
             const node = pyodide.FS.createNode(parent, name, (r.isDir ? S_IFDIR : S_IFREG) | 0o777, 0);
             node.strypeCloudFileId = r.fileId;
             if (r.isDir) {

@@ -49,6 +49,16 @@ export interface FSAttr {
 
 export interface FSNodeOpsFile {
     getattr(node: FSNode): FSAttr;
+    setattr(node: FSNode, attr: Partial<{
+        mode: number
+        uid: number
+        gid: number
+        size: number
+        atime: Date
+        mtime: Date
+        ctime: Date
+    }>) : void;
+    truncate(node : FSNode, len : number) : void;
 }
 export interface FSNodeOpsDir {
     getattr(node: FSNode): FSAttr;
