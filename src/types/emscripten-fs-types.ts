@@ -1,7 +1,7 @@
 // This file is an AI-generated Typescript types for Emscripten's filesystem types (which have no publicly available type)
 // Emscripten underpins Pyodide, so these are the file system hooks we have to provide for Pyodide.
 
-import {CloudFileId, CloudFileOrDirHandle, CloudStreamHandle} from "@/stryperuntime/worker_bridge_type";
+import {CloudFileId, CloudFileInfo} from "@/stryperuntime/worker_bridge_type";
 
 export interface FSNode {
     id: number;
@@ -15,7 +15,7 @@ export interface FSNode {
     contents?: Uint8Array;
     // These are not part of Emscripten's type but we add them and use them:
     strypeCloudFileId: CloudFileId;
-    //strypeCloudCachedChildren: Map<string, CloudFileOrDirHandle>;
+    strypeCloudCachedChildren?: CloudFileInfo[];
 }
 
 export interface FSStream {

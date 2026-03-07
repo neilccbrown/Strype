@@ -40,6 +40,8 @@
 // All of these have a corresponding entry in SyncStrypePyodideWorkerResponse, below.
 import { Expect, IsSerializable } from "@/stryperuntime/check_serializable";
 
+export type CloudFileInfo = {fileId: CloudFileId, name: string; isDir: true;} | {fileId: CloudFileId, name: string; isDir: false; fileSize: number};
+
 export type SyncStrypePyodideWorkerRequest =
     | { request: "loadImage"; url: string }
     | { request: "loadLibraryAsset"; libraryShortName: string; fileName: string }
@@ -92,9 +94,9 @@ export type SyncStrypePyodideWorkerResponse =
     | { request: "file_close"; response: boolean; } // We don't need a return value as such, we're just using the response to wait
     | { request: "file_read"; response: string; } // Uint8 encoded into string
     | { request: "file_write"; response: boolean; } // We don't need a return value as such, we're just using the response to wait.  Note that write may be batched, so returning doesn't mean it's fully flushed.
-    | { request: "file_lookup"; response: {fileId: CloudFileId, isDir: true;} | {fileId: CloudFileId, isDir: false; fileSize: number} | undefined }
+    | { request: "file_lookup"; response: CloudFileInfo | undefined }
     | { request: "file_truncate"; response: number; } // Number is size after truncation, which could be smaller than requested if file wasn't that long
-    | { request: "file_listDir"; response: string[] }
+    | { request: "file_listDir"; response: CloudFileInfo[] }
     | { request: "file_createNode"; response: CloudFileId }
     | { request: "file_getRoot"; response: CloudFileId }
 ;

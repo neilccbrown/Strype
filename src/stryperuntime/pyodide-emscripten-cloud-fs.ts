@@ -116,7 +116,9 @@ export function getFSForEmscripten(pyodide: PyodideAPI) : EmscriptenFileSystemPl
     };
     const DIR_NODE_OPS : FSNodeOpsDir = {
         lookup(parent: FSNode, name: string): FSNode {
-            const r = syncBridge({request: "file_lookup", parent: parent.strypeCloudFileId, name});
+            // Check if it's cached and prefer that:
+            const cachedInfo = parent.strypeCloudCachedChildren?.find((f) => f.name === name);
+            const r = cachedInfo ?? syncBridge({request: "file_lookup", parent: parent.strypeCloudFileId, name});
             if (!r) {
                 throw new pyodide.FS.ErrnoError(ENOENT);
             }
@@ -134,7 +136,10 @@ export function getFSForEmscripten(pyodide: PyodideAPI) : EmscriptenFileSystemPl
             return node;
         },
         readdir(node: FSNode): string[] {
-            return syncBridge({request: "file_listDir", parent: node.strypeCloudFileId});
+            const files = syncBridge({request: "file_listDir", parent: node.strypeCloudFileId});
+            // Cache the info:
+            node.strypeCloudCachedChildren = files;
+            return files.map((f) => f.name);
         },
         getattr,
         mknod(parent: FSNode, name: string, mode: number, dev: number): FSNode {
@@ -150,6 +155,9 @@ export function getFSForEmscripten(pyodide: PyodideAPI) : EmscriptenFileSystemPl
                 node.node_ops = FILE_NODE_OPS;
                 node.stream_ops = FILE_STREAM_OPS;
             }
+            // Cache in parent:
+            parent.strypeCloudCachedChildren ??= [];
+            parent.strypeCloudCachedChildren.push({fileId, name, isDir: isDir(mode), fileSize: 0});
             return node;
         },
     };

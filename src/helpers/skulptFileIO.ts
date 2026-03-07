@@ -12,7 +12,7 @@ import MenuComponent from "@/components/Menu.vue";
 import { useStore } from "@/store/store";
 import i18n from "@/i18n";
 import { CloudDriveComponent, CloudDriveFile, CloudFileWithMetaData, CloudFolder, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
-import {CloudFileId} from "@/stryperuntime/worker_bridge_type";
+import {CloudFileId, CloudFileInfo} from "@/stryperuntime/worker_bridge_type";
 
 declare const Sk: any;
 // Will be set later as we need to make sure Vue application has started...
@@ -94,7 +94,7 @@ export function cloudLookupFile(parent: CloudFileId, name: string) : Promise<{fi
         (error) => Promise.reject(error.result));
 }
 
-export function cloudListDir(parent: CloudFileId) : Promise<string[]> {
+export function cloudListDir(parent: CloudFileId) : Promise<CloudFileInfo[]> {
     // If we are not connected to a cloud file system, then we raise an error:
     if(!isSyncTargetCloudDrive(useStore().syncTarget)){
         return Promise.reject(i18n.t("errorMessage.fileIO.notConnectedToCloud") as string);
@@ -102,8 +102,15 @@ export function cloudListDir(parent: CloudFileId) : Promise<string[]> {
     const cloud : CloudDriveHandlerComponent = getCloud();
 
     return cloud.searchCloudDriveElements(useStore().syncTarget, undefined, parent.cloudFileId, false, {})
-        .then((cloudFolderFiles) => {
-            return Promise.resolve(cloudFolderFiles.map((cloudFolderFile) => cloudFolderFile.name));
+        .then((cloudFolderFiles : CloudDriveFile[]) => {
+            return Promise.resolve(cloudFolderFiles.map((cloudFolderFile) => {
+                return {
+                    fileId: {cloudFileId: cloudFolderFile.id},
+                    name: cloudFolderFile.name,
+                    isDir: cloudFolderFile.isDir,
+                    fileSize: cloudFolderFile.fileSize,
+                };
+            }));
         },
         (error) => Promise.reject(error.result));
 }
