@@ -43,6 +43,7 @@ export interface CloudDriveFile {
     id: string, // The file ID on the Drive
     content?: string | Uint8Array, // The file content when opened
     isDir: boolean,
+    fileSize: number,
 }
 
 export interface CloudFileWithMetaData extends CloudDriveFile {

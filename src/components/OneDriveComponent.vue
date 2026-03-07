@@ -755,7 +755,7 @@ export default Vue.extend({
             else{
                 // We have requested on single element, we just get it from the results.
                 return Promise.resolve(data.value.filter((entry: BaseItem) => elementName == undefined || (entry.name??"") == elementName)
-                    .map((strypeFileItem: DriveItem) => ({name: strypeFileItem.name as string, id: strypeFileItem.id as string, isDir: !!strypeFileItem.folder})));
+                    .map((strypeFileItem: DriveItem) => ({name: strypeFileItem.name as string, id: strypeFileItem.id as string, isDir: !!strypeFileItem.folder, fileSize: strypeFileItem.size ?? 0})));
             }
         },
 

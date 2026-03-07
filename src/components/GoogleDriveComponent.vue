@@ -523,7 +523,7 @@ export default Vue.extend({
             }).then((response) => {
                 const fullInfo = JSON.parse(response.body).files as gapi.client.drive.File[]; 
                 return fullInfo.map((gdf) => {
-                    return {name: gdf.name as string, id: gdf.id as string, isDir: gdf.mimeType === "application/vnd.google-apps.folder"};
+                    return {name: gdf.name as string, id: gdf.id as string, isDir: gdf.mimeType === "application/vnd.google-apps.folder", fileSize: gdf.size ?? 0};
                 });
             });
         },

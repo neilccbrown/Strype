@@ -101,6 +101,7 @@ export function getFSForEmscripten(pyodide: PyodideAPI) : EmscriptenFileSystemPl
             else {
                 node.node_ops = FILE_NODE_OPS;
                 node.stream_ops = FILE_STREAM_OPS;
+                node.size = r.fileSize;
             }
             return node;
         },
