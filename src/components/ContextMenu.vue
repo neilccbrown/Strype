@@ -38,7 +38,7 @@ watch(
 
 function showContextMenu() {
     // Trigger the context menu (we add a small offset to the X position to get the menu's first entry grabbing hover when the menu is opened)
-    ContextMenu.showContextMenu({...contextMenuDefaultOptions, x: props.showAt.x + 1, y: props.showAt.y, items: props.contextMenuItemsDef, onClose: props.onClosed});
+    ContextMenu.showContextMenu({...contextMenuDefaultOptions, x: props.showAt.x + 1, y: props.showAt.y, items: props.contextMenuItemsDef, onClose: props.onClosed, closeWhenScroll: false});
 
     // Notify the context menu is opened
     if(props.onOpened){
