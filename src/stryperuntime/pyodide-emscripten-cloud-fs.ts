@@ -97,8 +97,10 @@ export function getFSForEmscripten(pyodide: PyodideAPI) : EmscriptenFileSystemPl
             buffer.set(content, offset);
             return content.length;
         },
-        write(stream: FSStream, buffer: Uint8Array, offset: number, length: number, position: number): number {
-            syncBridge({request: "file_write", id: stream.node.strypeCloudFileId, from: position, encodedContent: encodeUint8ToString(buffer.slice(offset, offset + length)), filePath: getFullFilePath(stream.node)});
+        write(stream: FSStream, buffer: Uint8Array | Int8Array, offset: number, length: number, position: number): number {
+            // It seems Pyodide/Emscripten can give an Int8Array so we must convert to make the bytes in 0-255 range before encoding to string:
+            const u8 = new Uint8Array(buffer.buffer, offset, length);
+            syncBridge({request: "file_write", id: stream.node.strypeCloudFileId, from: position, encodedContent: encodeUint8ToString(u8), filePath: getFullFilePath(stream.node)});
             return length;
         },
         close(stream: FSStream) {
