@@ -68,6 +68,7 @@ export type SyncStrypePyodideWorkerRequest =
     | { request: "file_lookup"; parent: CloudFileId; name: string }
     | { request: "file_listDir"; parent: CloudFileId }
     | { request: "file_getRoot"; }
+    | { request: "assetFile_fetch"; url: string }
 ;
 
 // All types above should map into this type:
@@ -99,6 +100,7 @@ export type SyncStrypePyodideWorkerResponse =
     | { request: "file_listDir"; response: CloudFileInfo[] }
     | { request: "file_createNode"; response: CloudFileId }
     | { request: "file_getRoot"; response: CloudFileId }
+    | { request: "assetFile_fetch"; response: string }
 ;
 
 // Wraps the response field of a type in a promise:

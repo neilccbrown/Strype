@@ -145,6 +145,9 @@ export const handleSyncRequests : (
             }
         })};
     }
+    case "assetFile_fetch": {
+        return {request: req.request, response: fetch(req.url).then((resp) => resp.arrayBuffer()).then((arr) => encodeUint8ToString(new Uint8ClampedArray(arr)))};
+    }
     default:
         // Trick to give a compile-time error if a case is missing above:
         const _exhaustive: never = req;

@@ -8,7 +8,7 @@ import {PyodideAPI} from "pyodide";
 import {decodeStringToUint8, encodeUint8ToString} from "@/stryperuntime/worker_bridge_type";
 
 // Gets full file path by stitching together all parent paths:
-function getFullFilePath(node: FSNode) : string {
+export function getFullFilePath(node: FSNode) : string {
     let s = node.name;
     // The root of the file system has its parent as itself, so stop there:
     if (node.parent && node.parent != node) {

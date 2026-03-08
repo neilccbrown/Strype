@@ -126,4 +126,22 @@ test.describe("Check errors show", () => {
         await runToFinish(page);
         await checkConsoleContent(page, "< AttributeError: 'str' object has no attribute 'foo' >\n  From the highlighted call in your code");
     });
+    test("Check error shows for file reading", async ({page}) => {
+        await enterCode(page, ["", "", "open(\"/does/not/exist.txt\", \"r\", encoding=\"utf-8\")"]);
+        await runToFinish(page);
+        await checkConsoleContent(page, "< FileNotFoundError: [Errno 44] No such file or directory: '/does/not/exist.txt' >\n  From the highlighted call in your code");
+    });
+});
+
+test.describe("Test assets filesystem", () => {
+    test("Check reading and processing book", async ({page}) => {
+        await enterCode(page, ["", "", `
+with open("/strype/book/books/three-men-in-a-boat.txt", "r", encoding="utf-8") as file:
+    content = file.read()
+count = content.count("Montmorency")
+
+print(f'Montmorency is mentioned {count} times.')`]);
+        await runToFinish(page);
+        await checkConsoleContent(page, "Montmorency is mentioned 48 times.\n");
+    });
 });
