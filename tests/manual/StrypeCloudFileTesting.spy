@@ -1,0 +1,174 @@
+#(=> Strype:1:std
+'''Tests cloud file reading/writing.  Needs to be saved to cloud first.'''
+#(=> Section:Imports
+#!/usr/bin/env python3
+import os 
+import hashlib 
+import random 
+import string 
+#(=> Section:Definitions
+def ensure (condition,message ) :
+    if not condition  :
+        raise Exception(message) 
+def sha256 (data ) :
+    h  = hashlib.sha256() 
+    h.update(data) 
+    return h.hexdigest() 
+def random_text (size ) :
+    alphabet  = string.ascii_letters+string.digits+" \n" 
+    result  = [] 
+    i  = 0 
+    while i<size  :
+        result.append(random.choice(alphabet)) 
+        i  = i+1 
+    return "".join(result) 
+def random_bytes (size ) :
+    return os.urandom(size) 
+def test_directory_listing ( ) :
+    print("TEST: Directory listing") 
+    
+    marker_content  = "directory listing test marker\n" 
+    
+    f  = open(DIR_LIST_MARKER,"w",encoding="utf-8") 
+    f.write(marker_content) 
+    f.close() 
+    
+    entries  = os.listdir(".") 
+    ensure(DIR_LIST_MARKER in entries,"Marker file not found in directory listing") 
+    
+    f  = open(DIR_LIST_MARKER,"r",encoding="utf-8") 
+    readback  = f.read() 
+    f.close() 
+    
+    ensure(readback==marker_content,"Marker file contents mismatch") 
+    
+    print("  PASS") 
+def test_text_file_write_read ( ) :
+    print("TEST: Text file write/read") 
+    
+    text_data  = random_text(TEXT_SIZE) 
+    
+    f  = open(TEXT_FILE,"w",encoding="utf-8") 
+    f.write(text_data) 
+    f.close() 
+    
+    f  = open(TEXT_FILE,"r",encoding="utf-8") 
+    readback  = f.read() 
+    f.close() 
+    
+    ensure(readback==text_data,"Text data mismatch") 
+    
+    print("  PASS") 
+def test_binary_file_write_read ( ) :
+    print("TEST: Binary file write/read") 
+    
+    data  = random_bytes(BIN_SIZE) 
+    expected_hash  = sha256(data) 
+    
+    f  = open(BIN_FILE,"wb") 
+    f.write(data) 
+    f.close() 
+    
+    f  = open(BIN_FILE,"rb") 
+    readback  = f.read() 
+    f.close() 
+    
+    #(=> Disabled:print(f"Lengths: {len(data)} vs {len(readback)}") 
+    #(=> Disabled:print(f"Start: {data[0]} vs {readback[0]}, end: {data[-1]} vs {readback[-1]}") 
+    ensure(sha256(readback)==expected_hash,"Binary data mismatch") 
+    
+    print("  PASS") 
+def test_chunked_write_read ( ) :
+    print("TEST: Chunked write/read") 
+    
+    total_size  = BIN_SIZE 
+    data  = random_bytes(total_size) 
+    expected_hash  = sha256(data) 
+    
+    f  = open(CHUNK_FILE,"wb") 
+    
+    offset  = 0 
+    while offset<total_size  :
+        chunk  = data[offset:offset+CHUNK_SIZE] 
+        written  = f.write(chunk) 
+        ensure(written==len(chunk),"Partial write occurred") 
+        offset  = offset+written 
+    
+    f.close() 
+    
+    readback  = bytearray() 
+    
+    f  = open(CHUNK_FILE,"rb") 
+    while True  :
+        chunk  = f.read(CHUNK_SIZE) 
+        if not chunk  :
+            break
+        readback.extend(chunk) 
+    f.close() 
+    
+    ensure(sha256(readback)==expected_hash,"Chunked data mismatch") 
+    
+    print("  PASS") 
+def test_chunked_text_read ( ) :
+    print("TEST: Chunked text read") 
+    
+    data  = random_text(TEXT_SIZE) 
+    
+    f  = open(TEXT_FILE,"w",encoding="utf-8") 
+    f.write(data) 
+    f.close() 
+    
+    parts  = [] 
+    
+    f  = open(TEXT_FILE,"r",encoding="utf-8") 
+    while True  :
+        chunk  = f.read(1024) 
+        if not chunk  :
+            break
+        parts.append(chunk) 
+    f.close() 
+    
+    readback  = "".join(parts) 
+    
+    ensure(readback==data,"Chunked text read mismatch") 
+    
+    print("  PASS") 
+def main ( ) :
+    print("Filesystem test starting") 
+    print("Working directory:",os.getcwd()) 
+    print("Test file prefix:",PREFIX) 
+    print("") 
+    
+    tests  = [test_directory_listing,test_text_file_write_read,test_binary_file_write_read,test_chunked_write_read,test_chunked_text_read] 
+    
+    failures  = 0 
+    
+    for t  in tests  :
+        try :
+            t() 
+        except Exception as e  :
+            failures  = failures+1 
+            print("  FAIL:",e) 
+    
+    print("") 
+    print("Summary") 
+    
+    if failures==0  :
+        print("ALL TESTS PASSED") 
+    else :
+        print(str(failures)+" TEST(S) FAILED") 
+#(=> Section:Main
+PREFIX  = "strype_file_testing" 
+TEXT_FILE  = PREFIX+"_text.txt" 
+BIN_FILE  = PREFIX+"_binary.bin" 
+CHUNK_FILE  = PREFIX+"_chunked.bin" 
+DIR_LIST_MARKER  = PREFIX+"_dir_marker.txt" 
+
+TEXT_SIZE  = 1024*128 
+BIN_SIZE  = 1024*256 
+CHUNK_SIZE  = 4096 
+
+
+if __name__=="__main__"  :
+    main() 
+#(=> Section:End
