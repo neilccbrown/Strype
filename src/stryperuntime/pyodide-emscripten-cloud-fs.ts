@@ -12,7 +12,7 @@ function getFullFilePath(node: FSNode) : string {
     let s = node.name;
     // The root of the file system has its parent as itself, so stop there:
     if (node.parent && node.parent != node) {
-        s = getFullFilePath(node.parent) + s;
+        s = getFullFilePath(node.parent) + "/" + s;
     }
     return s;
 }
@@ -92,7 +92,7 @@ export function getFSForEmscripten(pyodide: PyodideAPI) : EmscriptenFileSystemPl
             // the user's Python open() call.
             syncBridge({request: "file_open", flags: stream.flags, id: stream.node.strypeCloudFileId});
         },
-        read(stream: FSStream, buffer: Uint8Array, offset: number, length: number, position: number): number {
+        read(stream: FSStream, buffer: Uint8Array | Int8Array, offset: number, length: number, position: number): number {
             const content = decodeStringToUint8(syncBridge({request: "file_read", id: stream.node.strypeCloudFileId, from: position, length, filePath: getFullFilePath(stream.node)}));
             buffer.set(content, offset);
             return content.length;

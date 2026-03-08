@@ -73,14 +73,14 @@ export interface FSStreamOpsFile {
     open(stream: FSStream): void;
     read(
         stream: FSStream,
-        buffer: Uint8Array,
+        buffer: Uint8Array | Int8Array,
         offset: number,
         length: number,
         position: number
     ): number;
     write(
         stream: FSStream,
-        buffer: Uint8Array,
+        buffer: Uint8Array | Int8Array,
         offset: number,
         length: number,
         position: number
