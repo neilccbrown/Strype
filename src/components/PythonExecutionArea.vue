@@ -633,6 +633,8 @@ export default Vue.extend({
                     useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                     this.isRunningStrypeGraphics = false;
                     setPythonExecAreaLayoutButtonPos();
+                    // We always restart Pyodide for a clean state:
+                    terminateAndRestartPyodide();
                 });
 
                 // Trigger the actual Python code execution launch
