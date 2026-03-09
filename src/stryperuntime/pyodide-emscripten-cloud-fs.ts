@@ -20,7 +20,7 @@ function getFullFilePath(node: FSNode) : string {
 // Pyodide/Emscripten doesn't expose these constants so we must replicate them here:
 const S_IFDIR = 0o040000; // This means directory
 const S_IFREG = 0o100000; // This means regular file (i.e. not dir)
-const SEEK_SET = 0;
+//const SEEK_SET = 0; // Currently unused
 const SEEK_CUR = 1;
 const SEEK_END = 2;
 const EINVAL = 22;
