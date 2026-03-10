@@ -10,6 +10,7 @@
 </template>
 <script lang="ts">
 /// <reference types="@types/gapi.client.drive-v3" />
+// Above line is a Typescript directive, needed for the types.  It must be at the top of the <script> block.
 //////////////////////
 //      Imports     //
 //////////////////////
@@ -523,16 +524,20 @@ export default Vue.extend({
             }).then((response) => {
                 const fullInfo = JSON.parse(response.body).files as gapi.client.drive.File[]; 
                 return fullInfo.map((gdf) => {
-                    return {name: gdf.name as string, id: gdf.id as string, isDir: gdf.mimeType === "application/vnd.google-apps.folder", fileSize: gdf.size ?? 0};
+                    let size = Number(gdf.size ?? "0");
+                    if (Number.isNaN(size)) {
+                        size = 0;
+                    }
+                    return {name: gdf.name as string, id: gdf.id as string, isDir: gdf.mimeType === "application/vnd.google-apps.folder", fileSize: size};
                 });
             });
         },
 
         readFileContentForIO(fileId: string, filePath: string): Promise<Uint8Array> {
             // This method is used by FileIO to get a file string content.
-            // It relies on the Google File Id passed as argument, and the callback method for handling succes or failure is also passed as arguments.
+            // It relies on the Google File Id passed as argument.
             // The argument "filePath" is only used for error message.
-            // The nature of the answer depends on the reading mode: a string in normal text case, an array of bytes in binary mode.
+            // The answer is an array of bytes in binary mode.
             // Because we want to be able to read raw data, we use the fetch API to query Google Drive.
             return fetch("https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media", {
                 headers: { Authorization: "Bearer "+ this.oauthToken },
