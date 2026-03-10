@@ -50,7 +50,7 @@ export async function save(page: Page, firstSave = true) : Promise<string> {
         await page.locator("span:visible").getByText(en.appMessage.targetFS).click();
         [download] = await Promise.all([
             page.waitForEvent("download"),
-            page.locator("button.btn:visible", {hasText: "OK"}).click(),
+            page.locator("button.btn:visible", {hasText: en.buttonLabel.save}).click(),
         ]);
     }
     else {
