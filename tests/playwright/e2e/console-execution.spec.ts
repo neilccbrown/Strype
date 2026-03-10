@@ -145,3 +145,22 @@ print(f'Montmorency is mentioned {count} times.')`]);
         await checkConsoleContent(page, "Montmorency is mentioned 48 times.\n");
     });
 });
+
+// Not really a console test, but relies on console output so it can be here:
+test.describe("Test sounds", () => {
+    test("Check loading and setting sounds", async ({page}) => {
+        await enterCode(page, ["from strype.sound import *", "", `
+s = Sound([-1,0,1])
+print(s.get_samples())
+s.set_samples([-0.5, 0.5])
+print(s.get_samples())
+s.set_samples([1, -1])
+print(s.get_samples())`]);
+        await runToFinish(page);
+        await checkConsoleContent(page, `
+-1,0,1
+-0.5,0.5
+1,-1
+`.trimStart());
+    });
+});
