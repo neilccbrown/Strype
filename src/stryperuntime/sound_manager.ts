@@ -6,9 +6,11 @@ export class SoundManager {
     private audioContext : AudioContext;
     private loadedSounds: AudioBuffer[] = [];
     private bufferToSource = new Map<AudioBuffer, AudioBufferSourceNode>(); // Used to stop playing sounds
+    private callbacks : { loadLibraryAsset : (libraryShortName: string, fileName: string) => Promise<string | undefined> };
     
-    constructor(ctx: AudioContext) {
+    constructor(ctx: AudioContext, callbacks : { loadLibraryAsset : (libraryShortName: string, fileName: string) => Promise<string | undefined> }) {
         this.audioContext = ctx;
+        this.callbacks = callbacks;
     }
     
     async loadSound(url: string) : Promise<RemoteSound> {
@@ -30,7 +32,7 @@ export class SoundManager {
                 // If it's some prefix between two colons, it's a library asset:
                 const libraryName = match[1];
                 const fileName = match[2];
-                promise = v.loadLibraryAsset(libraryName, fileName).then(async (dataURL : string) => {
+                promise = this.callbacks.loadLibraryAsset(libraryName, fileName).then(async (dataURL : string) => {
                     return await decode(dataURL ?? url);
                 });
             }
