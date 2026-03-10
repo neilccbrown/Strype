@@ -153,5 +153,23 @@ def load_sound(source):
     # If they mistakenly try to load a sound (e.g. a literal) just let it through:
     if isinstance(source, Sound):
         return source
-    buffer = _strype_sound_internal.loadAndWaitForAudioBuffer(source)
+    if source.startswith("http:") or source.startswith("https:") or source.startswith("data:"):
+        buffer = _strype_sound_internal.loadAndWaitForAudioBuffer(source)
+    else:
+        # We load it from our virtual file system, either the current dir or /strype/graphics/
+        # To pass it on, it's probably faster to turn it into a data URL than e.g. read bytes
+        # and pass a long list of numbers which Pyodide has to convert item by array item to Javascript: 
+        import base64
+        import mimetypes
+
+        # If both fail, it will give an informative error (no such file):
+        try:
+            with open(source, "rb") as f:
+                encoded = base64.b64encode(f.read()).decode("ascii")
+        except:
+            with open("/strype/sounds/" + source, "rb") as f:
+                encoded = base64.b64encode(f.read()).decode("ascii")
+        mime_type, _ = mimetypes.guess_type(source)
+        buffer = _strype_sound_internal.loadAndWaitForAudioBuffer(f"data:{mime_type};base64,{encoded}")
+
     return Sound(buffer, -4242)

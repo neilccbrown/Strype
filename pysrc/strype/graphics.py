@@ -470,7 +470,7 @@ class Actor:
             self.__id = _strype_graphics_internal.addSprite(image._Image__image, True)
             self.__editable_image = image
         elif isinstance(image, str):
-            self.__id = _strype_graphics_internal.addSprite(_strype_graphics_internal.loadAndWaitForImage(image), True)
+            self.__id = _strype_graphics_internal.addSprite(_load_image_bitmap(image), True)
             self.__editable_image = None
         else:
             raise TypeError("Actor constructor parameter must be Image")
@@ -833,6 +833,29 @@ class Actor:
         self.say(text, font_size, max_width, max_height)
         _strype_graphics_internal.removeImageAfter(self.__say, seconds)
 
+def _load_image_bitmap(name):
+    import re
+    # Important we check this first, so we don't list the filesystem (slow for cloud) if unneeded:
+    # This is copied from the conditions in loadAndWaitForImage, see there:
+    if name.startswith("http:") or name.startswith("https:") or name.startswith("data:") or name.startswith(":") or (":" not in name and re.match(r'^[^./]+\.[^/]+/.+', name)):
+        return _strype_graphics_internal.loadAndWaitForImage(name)
+    else:
+        # We load it from our virtual file system, either the current dir or /strype/graphics/
+        # To pass it on, it's probably faster to turn it into a data URL than e.g. read bytes
+        # and pass a long list of numbers which Pyodide has to convert item by array item to Javascript: 
+        import base64
+        import mimetypes
+
+        # If both fail, it will give an informative error (no such file):
+        try:
+            with open(name, "rb") as f:
+                encoded = base64.b64encode(f.read()).decode("ascii")
+        except:
+            with open("/strype/graphics/" + name, "rb") as f:
+                encoded = base64.b64encode(f.read()).decode("ascii")
+        mime_type, _ = mimetypes.guess_type(name)
+        return _strype_graphics_internal.loadAndWaitForImage(f"data:{mime_type};base64,{encoded}")
+
 def load_image(name):
     # type: (str) -> Image
     """
@@ -847,7 +870,7 @@ def load_image(name):
         return name
     # Make an internal empty image then load it:
     img = Image(-42, -42)
-    loaded_image = _strype_graphics_internal.loadAndWaitForImage(name)
+    loaded_image = _load_image_bitmap(name)
     img._Image__image = _strype_graphics_internal.htmlImageToCanvas(loaded_image)
     return img
 
