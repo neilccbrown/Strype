@@ -618,7 +618,7 @@ export default Vue.extend({
                             }).catch(async (err) => {
                                 await navigator.serviceWorker.ready;
                                 try {
-                                    await client.writeMessage({request: resp.request, error: JSON.stringify(err)});
+                                    await client.writeMessage({request: resp.request, error: err.toString()});
                                 }
                                 catch (e) {
                                     console.error(e);

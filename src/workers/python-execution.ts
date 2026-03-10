@@ -143,7 +143,7 @@ StrypePyodideRunner()`);
             }
             else if ("error" in reply) {
                 // We propagate to the user so they get some feedback:
-                throw (req.request.startsWith("file_") ? new pyodide.FS.ErrnoError(63, "Cloud file error:" + reply.error) :pyodide.globals.get("RuntimeError")("Internal error:" + reply.error));
+                throw (req.request.startsWith("file_") ? new pyodide.FS.ErrnoError(63, "Cloud file error:" + reply.error) : new Error("Internal error:" + reply.error));
             }
             else {
                 // I think Typescript should be able to infer reply is ResponseFor<R> because of the if check, but apparently not:
