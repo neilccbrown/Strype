@@ -78,7 +78,7 @@ export function checkDownloadedCodeEquals(fullCode: string, format: "py" | "spy"
         cy.get("#saveStrypeFileNameInput").clear();
         cy.get("#saveStrypeFileNameInput").type("main");
         cy.contains(en.appMessage.targetFS).click({force: true});
-        cy.contains("button:visible", en.buttonLabel.ok).click();
+        cy.contains("button:visible", en.buttonLabel.save).click();
     }
     
     cy.wait(1000);

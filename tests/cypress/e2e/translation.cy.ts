@@ -177,7 +177,7 @@ describe("Locale persistence", () => {
         cy.contains(getLocalisedString("appMenu.resetProject", localeForTest)).click({force: true}).then(() => {
             // Accept the change for a new project
             cy.wait(500);
-            return cy.contains("button:visible", getLocalisedString("buttonLabel.yes", localeForTest)).click({force: true}).then(() => {
+            return cy.contains("button:visible", getLocalisedString("buttonLabel.continue", localeForTest)).click({force: true}).then(() => {
                 // Check the editor contains the initial state code: we download the conversion and compare with the backed up Python file
                 changeCodeThenDownloadPy({locale: localeForTest});
                 cy.wait(500);            
