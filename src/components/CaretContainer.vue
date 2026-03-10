@@ -197,7 +197,7 @@ export default defineComponent({
         this.putCaretContainerInView();
     },
 
-    destroyed() {
+    unmounted() {
         window.removeEventListener("paste", this.pasteIfFocused);
         window.removeEventListener("keydown", this.keydownForSafariPaste);
         document.removeEventListener(CustomEventTypes.scrollCaretIntoView, this.putCaretContainerInView);

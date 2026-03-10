@@ -116,7 +116,7 @@ export default defineComponent({
         window.addEventListener("keydown", this.onKeyDown);
     },
 
-    destroyed() {
+    unmounted() {
         window.removeEventListener("keydown", this.onKeyDown);
     },
 

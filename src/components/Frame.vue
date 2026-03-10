@@ -382,7 +382,7 @@ export default defineComponent({
         document.getElementById(this.frameHeaderId)?.addEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);
     },
 
-    destroyed() {
+    unmounted() {
         // Same as above, not sure it is required to remove the event since anyway the event loop won't be raised
         // however, just to keep things tidy, let's clear the frame focus event listener when the frame is destroyed
         document.getElementById(this.frameHeaderId)?.removeEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);

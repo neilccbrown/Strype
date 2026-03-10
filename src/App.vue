@@ -666,7 +666,7 @@ export default defineComponent({
         eventBus.on(CustomEventTypes.strypeModalHidden, this.onHideModalDlg);  
     },
 
-    destroyed() {
+    unmounted() {
         // Removes the listeners
         document.removeEventListener("selectionchange", this.handleDocumentSelectionChange);
         document.removeEventListener("mouseup", this.checkMouseSelection);
