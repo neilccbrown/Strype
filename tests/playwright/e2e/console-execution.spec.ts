@@ -45,7 +45,7 @@ async function startRunning(page: Page) {
     // It should not be running:
     const button = page.locator("#runButton");
     // It can take a while for Pyodide to load up:
-    await expect(button).toHaveText("Run", {timeout: 15000});
+    await expect(button).toHaveText("Run", {timeout: 20000});
     // Click it:
     await page.click("#runButton");
     return button;
@@ -84,7 +84,7 @@ test.describe("Check console after execution", () => {
 });
 
 async function runButtonShowsRun(button: Locator) {
-    await expect(button).toHaveText("Run", {timeout: 15000});
+    await expect(button).toHaveText("Run", {timeout: 20000});
 }
 
 test.describe("Test stdin works", () => {

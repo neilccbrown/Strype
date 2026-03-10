@@ -750,7 +750,7 @@ export default Vue.extend({
             if(searchAllSPYFiles){
                 // We just make sure all the results are SPY files...
                 return Promise.resolve(data.value.filter((entry: BaseItem) => (entry.name??"").endsWith("."+strypeFileExtension))
-                    .map((strypeFileItem: DriveItem) => ({name: strypeFileItem.name as string, id: strypeFileItem.id as string, isDir: false})));
+                    .map((strypeFileItem: DriveItem) => ({name: strypeFileItem.name as string, id: strypeFileItem.id as string, isDir: false, fileSize: strypeFileItem.size ?? 0})));
             }
             else{
                 // We have requested on single element, we just get it from the results.
@@ -761,9 +761,9 @@ export default Vue.extend({
 
         async readFileContentForIO(fileId: string, filePath: string): Promise<Uint8Array> {
             // This method is used by FileIO to get a file string content.
-            // It relies on the file Id passed as argument, and the callback method for handling succes or failure is also passed as arguments.
+            // It relies on the file Id passed as argument.
             // The argument "filePath" is only used for error message.
-            // The nature of the answer depends on the reading mode: a string in normal text case, an array of bytes in binary mode.
+            // The answer is an array of bytes.
             const token = await this.getToken(OneDriveTokenPurpose.GRAPH_GET_FILE_DETAILS);
             // The drive ID is part of the file ID so we can easily extract it...
             const driveId = fileId.substring(0, fileId.indexOf("!"));

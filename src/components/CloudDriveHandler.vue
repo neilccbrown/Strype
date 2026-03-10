@@ -719,9 +719,9 @@ export default Vue.extend({
          */
         readFileContentForIO(cloudTarget: StrypeSyncTarget, fileId: string, filePath: string): Promise<Uint8Array> {
             // This method is used by FileIO to get a file string content.
-            // It relies on the Cloud File Id passed as argument, and the callback method for handling succes or failure is also passed as arguments.
+            // It relies on the Cloud File Id passed as argument.
             // The argument "filePath" is only used for error message.
-            // The nature of the answer depends on the reading mode: a string in normal text case, an array of bytes in binary mode.
+            // The return is an array of bytes.
             return this.getSpecificCloudDriveComponent(cloudTarget)?.readFileContentForIO(fileId, filePath).catch((errorMsg) => {
                 return Promise.reject(this.$i18n.t("errorMessage.fileIO.fetchFileError", {filename: filePath, error: errorMsg}));
             })??Promise.reject("No Cloud target!"); // We should never get to the reject clause here, keep TS happy

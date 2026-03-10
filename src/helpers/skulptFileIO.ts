@@ -23,6 +23,7 @@ function getCloud() : CloudDriveHandlerComponent {
     if(cloudDriveHandlerComponent == undefined){
         cloudDriveHandlerComponent = ((vm.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).$refs[getCloudDriveHandlerComponentRefId()] as InstanceType<typeof CloudDriveHandlerComponent>);
     }
+    // TODO VUE3 will need fix
     // I think ideally under Vue 3 we should be able to remove the "as unknown"
     return cloudDriveHandlerComponent as unknown as CloudDriveHandlerComponent;
 }
@@ -75,6 +76,7 @@ const concatFileContentParts = (part1: string | Uint8Array, part2: string | Uint
 export function cloudLookupFile(parent: CloudFileId, name: string) : Promise<{fileId: CloudFileId, isDir: boolean} | undefined> {
     // If we are not connected to a cloud file system, then we raise an error:
     if(!isSyncTargetCloudDrive(useStore().syncTarget)){
+        // TODO VUE3 will need fix
         return Promise.reject(i18n.t("errorMessage.fileIO.notConnectedToCloud") as string);
     }
     
@@ -97,6 +99,7 @@ export function cloudLookupFile(parent: CloudFileId, name: string) : Promise<{fi
 export function cloudListDir(parent: CloudFileId) : Promise<CloudFileInfo[]> {
     // If we are not connected to a cloud file system, then we raise an error:
     if(!isSyncTargetCloudDrive(useStore().syncTarget)){
+        // TODO VUE3 will need fix
         return Promise.reject(i18n.t("errorMessage.fileIO.notConnectedToCloud") as string);
     }
     const cloud : CloudDriveHandlerComponent = getCloud();
@@ -272,12 +275,14 @@ export async function cloudReadFile(file: CloudFileId, fromByte: number, lengthB
 export async function cloudCreate(parent: CloudFileId, name: string, isDir: boolean, filePath: string) : Promise<CloudFileId> {
     // If we are not connected to a cloud file system, then we raise an error:
     if(!isSyncTargetCloudDrive(useStore().syncTarget)){
+        // TODO VUE3 will need fix
         return Promise.reject(i18n.t("errorMessage.fileIO.notConnectedToCloud") as string);
     }
     const cloud : CloudDriveHandlerComponent = getCloud();
     
     if (isDir) {
-        throw new Error("Creating directories is currently unsupported.");
+        // TODO VUE3 will need fix
+        return Promise.reject(i18n.t("errorMessage.fileIO.cannotCreateDirectory") as string);
     }
     else {
         // Write an empty file (this will be awaited by the caller):
