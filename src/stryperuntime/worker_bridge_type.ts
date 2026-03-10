@@ -56,6 +56,7 @@ export type SyncStrypePyodideWorkerRequest =
     | { request: "consumeLastClickedItems" }
     | { request: "loadSound"; url: string }
     | { request: "createEmptyMonoSound"; numSamples: number; sampleRate: number; }
+    | { request: "createMonoSound"; encodedSamples: string; sampleRate: number; }
     | { request: "playSoundAndWait"; sound: RemoteSound }
     | { request: "getMonoSoundSampleValues"; sound: RemoteSound }
     | { request: "cloneSound"; sound: RemoteSound; toMono: boolean } // If toMono is false, clone with same number of channels
@@ -88,6 +89,7 @@ export type SyncStrypePyodideWorkerResponse =
     | { request: "consumeLastClickedItems", response: SpriteHandle[] }
     | { request: "loadSound"; response: RemoteSound;}
     | { request: "createEmptyMonoSound"; response: RemoteSound; }
+    | { request: "createMonoSound"; response: RemoteSound; }
     | { request: "playSoundAndWait"; response: boolean; } // We don't need a return value as such, we're just using the response to wait
     | { request: "getMonoSoundSampleValues"; response: number[] }
     | { request: "cloneSound"; response: RemoteSound;}
@@ -122,7 +124,7 @@ export type AsyncStrypePyodideWorkerRequest =
     | { request: "canvas_downloadPNG", img: RemoteCanvas, filenameStem: string }
     | { request: "startSound"; sound: RemoteSound }
     | { request: "stopSound"; sound: RemoteSound }
-    | { request: "setMonoSoundSampleValues"; sound: RemoteSound; values: number[]; targetOffset: number }
+    | { request: "setMonoSoundSampleValues"; sound: RemoteSound; encodedSamples: string }
     | { request: "downloadWAV"; sound: RemoteSound; filenameStem: string }
 ;
 
@@ -153,7 +155,7 @@ export function decodeStringToUint8(str: string): Uint8ClampedArray {
     return u8;
 }
 
-// Opposite of decodeRGBA above
+// Opposite of decodeStringToUint8 above
 export function encodeUint8ToString(u8: Uint8ClampedArray | Uint8Array): string {
     const chunk = 0x8000;
     const parts: string[] = [];

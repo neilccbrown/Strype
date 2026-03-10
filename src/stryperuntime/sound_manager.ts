@@ -96,22 +96,49 @@ export class SoundManager {
         this.loadedSounds.push(audioBuffer);
         return this.loadedSounds.length - 1;
     }
+    
+    createMonoSoundFromSamples(samples: Float32Array, sampleRate: number) : number {
+        const audioBuffer = this.makeAudioBufferFromSamples(samples, sampleRate);
+
+        this.loadedSounds.push(audioBuffer);
+        return this.loadedSounds.length - 1;
+
+    }
+
+    private makeAudioBufferFromSamples(samples: Float32Array, sampleRate: number) {
+        const length = samples.length;
+        // Create a mono AudioBuffer
+        const audioBuffer = this.audioContext.createBuffer(1, length, sampleRate);
+
+        // Get the channel data array
+        const channel = audioBuffer.getChannelData(0);
+
+        // Copy samples (clamp just to be safe)
+        for (let i = 0; i < length; i++) {
+            const s = samples[i];
+            channel[i] = Math.max(-1, Math.min(1, s));
+        }
+        return audioBuffer;
+    }
 
     getMonoSamples(index: number) : Float32Array {
         const buffer = this.loadedSounds[index];
         return buffer.getChannelData(0);
     }
 
-    setMonoSoundSampleValues(index: number, values: number[], offset: number) : void {
+    setMonoSoundSampleValues(index: number, values: Float32Array) : void {
         const buffer = this.loadedSounds[index];
-        const floats = new Float32Array(values);
-        if (offset < 0 || offset >= buffer.length) {
-            throw new Error("Invalid offset when setting samples: " + offset + " (sound length is " + buffer.length + ")");
+        // If it's the same number of samples we can just replace:
+        if (values.length == buffer.length) {
+            buffer.copyToChannel(values, 0, 0);
         }
-        if (offset + floats.length > buffer.length) {
-            throw new Error("Setting samples would go beyond end of sound, offset: " + offset + " + number of samples: " + floats.length + " > sound length: " + buffer.length);
+        else {
+            // Otherwise we must make a new AudioBuffer and replace.
+            this.bufferToSource.delete(buffer);
+            // This is invisible to the Python side of things as they use the index as the ID:
+            this.loadedSounds[index] = this.makeAudioBufferFromSamples(values, buffer.sampleRate);
+            
         }
-        buffer.copyToChannel(floats, 0, offset);
     }
 
     getAsWAV(index: number) : ArrayBuffer {
