@@ -164,7 +164,7 @@ export default defineComponent({
         }
     },
 
-    beforeDestroy() {
+    beforeUnmounts() {
         this.appStore.removePreCompileErrors(this.UID);
     },
 

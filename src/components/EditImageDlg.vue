@@ -104,7 +104,7 @@ export default defineComponent({
         this.updatePreview = debounce(this.updatePreview, 500);
     },
 
-    beforeDestroy(){
+    beforeUnmount(){
         // Remove the event listener for the dialog here, just in case...
         eventBus.off(CustomEventTypes.strypeModalHidden, this.onHideModalDlg);
     },

@@ -107,7 +107,7 @@ export default defineComponent({
         eventBus.on(CustomEventTypes.strypeModalHidden, this.onHideModalDlg);
     },
 
-    beforeDestroy(){
+    beforeUnmount(){
         // Remove the event listener for the dialog here, just in case...
         eventBus.off(CustomEventTypes.strypeModalHidden, this.onHideModalDlg);
     },

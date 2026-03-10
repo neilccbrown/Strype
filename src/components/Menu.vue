@@ -408,7 +408,7 @@ export default defineComponent({
         });        
     },
 
-    beforeDestroy(){
+    beforeUnmount(){
         // Just in case, we remove the Bootstrap modal event handler from eventBus
         eventBus.off(CustomEventTypes.strypeModalShown, this.onStrypeMenuShownModalDlg);
         eventBus.off(CustomEventTypes.strypeModalHidden, this.onStrypeMenuHideModalDlg);
