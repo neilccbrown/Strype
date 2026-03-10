@@ -625,7 +625,7 @@ class Actor:
         y = self.get_exact_y()
         if x is None or y is None:
             return False
-        return x < (-399 + distance) or x > (400 - distance) or y < (-299 + distance) or y > (300 - distance)
+        return x <= (-399 + distance) or x >= (400 - distance) or y <= (-299 + distance) or y >= (300 - distance)
    
     def is_touching(self, actor_or_tag):
         # type: (Actor | Any) -> bool
