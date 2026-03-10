@@ -91,7 +91,7 @@
             </div>
             <SimpleMsgModalDlg :dlgId="simpleMsgModalDlgId"/>
             <ModalDlg :dlgId="importDiffVersionModalDlgId" :okCustomTitle="$t('buttonLabel.continue')">
-                <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
+                <span>{{ $t("appMessage.editorFileUploadWrongVersion") }}</span>                
             </ModalDlg>
             <ModalDlg :dlgId="resyncToCloudDriveAtStartupModalDlgId" :elementToFocusId="resyncSaveToCloudDriveAtStartupButtonId" size="lg">
                 <span style="white-space:pre-wrap" v-html="resyncToCloudDriveAtStartupDetailsMessage"></span>

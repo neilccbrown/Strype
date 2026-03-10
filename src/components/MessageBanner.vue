@@ -15,17 +15,14 @@
         v-else 
         :class="scssVars.messageBannerContainerClassName"
     >
-        <span 
-            v-if="message.message"
-            v-t="message.message"></span>
-        <span :class="scssVars.messageBannerCrossClassName" v-on:click="close">&#x2716;</span>
-        
+        <span v-if="message.message">{{ (message.message.path)? $t(message.message.path, message.message.args) : $t(message.message) }}</span>
+        <span :class="scssVars.messageBannerCrossClassName" v-on:click="close">&#x2716;</span>        
         <br/>
         <button 
             v-for="(button,index) in message.buttons"
             :key="'messageButton-'+index"
             v-on:click="onButtonClick(button.action)"
-            v-t="button.label">
+        > {{ $t(button.label) }}
         </button>
     </div>
 </template>

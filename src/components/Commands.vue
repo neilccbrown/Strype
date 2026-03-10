@@ -12,8 +12,8 @@
                             <div @mouseover="getLastProjectSavedDateTooltip" :title="lastProjectSavedDateTooltip">
                                 <img v-if="isProjectFromCloudDrive" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/> 
                                 <img v-else-if="isProjectFromFS" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/> 
-                                <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag" v-t="'appMessage.savedCloudFile'" />
-                                <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" v-t="'appMessage.modifCloudFile'" :class="{'modifed-label-span': isProjectNotSourced}" />                     
+                                <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag">{{ $t("appMessage.savedCloudFile") }}</span>
+                                <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" :class="{'modifed-label-span': isProjectNotSourced}">{{ $t("appMessage.modifCloudFile") }}</span>
                             </div>
                         </div>     
                         <div @mousedown.prevent.stop @mouseup.prevent.stop>
@@ -86,14 +86,14 @@
                     aria-valuemin="0"
                     aria-valuemax="100"
                     >
-                    <span v-t="'action.uploadingToMicrobit'" class="progress-bar-text"></span>
+                    <span class="progress-bar-text">{{ $t("action.uploadingToMicrobit") }}</span>
                 </div>
             </div>
             <div class="commands-container">    
                 <iframe id="mbSimulatorIframe" src="https://python-simulator.usermbit.org/v/0.1/simulator.html?color=%2300FF00" frameborder="0" scrolling="no" sandbox="allow-scripts allow-same-origin"></iframe>
                 <br>
-                <button type="button" @click="runToMicrobit" v-t="'buttonLabel.runOnMicrobit'" class="btn btn-secondary cmd-button"/>
-                <button v-if="isMBSimulatorRunning" type="button" @click="stopMBSimulator" v-t="'buttonLabel.stopMBSimulator'" class="btn btn-secondary cmd-button stop-mb-sim-btn "/>
+                <button type="button" @click="runToMicrobit" class="btn btn-secondary cmd-button">{{ $t("buttonLabel.runOnMicrobit") }}</button>
+                <button v-if="isMBSimulatorRunning" type="button" @click="stopMBSimulator" class="btn btn-secondary cmd-button stop-mb-sim-btn ">{{ $t("buttonLabel.stopMBSimulator") }}</button>
             </div>
         </div>
         <SimpleMsgModalDlg :dlgId="startMBSimulatorlDlgId" />
