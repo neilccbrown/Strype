@@ -728,7 +728,7 @@ export default Vue.extend({
             onSuccess();
         },
 
-        async searchCloudDriveElements(elementName: string, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]>{
+        async searchCloudDriveElements(elementName: string | undefined, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]>{
             // Make a search query on OneDrive, with the provided query parameter.
             // Returns the elements found in the Drive listed by the HTTPRequest object obtained with the Graph API.
             // Note: we do not use the "search()" tool because it retrieves all entries recursively where called 
@@ -746,24 +746,24 @@ export default Vue.extend({
                 throw new Error(`Graph API request failed: ${resp.status} ${resp.statusText}`);
             }
 
-            const data = await resp.json();
+            const data = await resp.json() as {value: DriveItem[]};
             if(searchAllSPYFiles){
                 // We just make sure all the results are SPY files...
                 return Promise.resolve(data.value.filter((entry: BaseItem) => (entry.name??"").endsWith("."+strypeFileExtension))
-                    .map((strypeFileItem: BaseItem) => ({name: strypeFileItem.name, id: strypeFileItem.id} as CloudDriveFile)));
+                    .map((strypeFileItem: DriveItem) => ({name: strypeFileItem.name as string, id: strypeFileItem.id as string, isDir: false, fileSize: strypeFileItem.size ?? 0})));
             }
             else{
                 // We have requested on single element, we just get it from the results.
-                return Promise.resolve(data.value.filter((entry: BaseItem) => (entry.name??"") == elementName)
-                    .map((strypeFileItem: BaseItem) => ({name: strypeFileItem.name, id: strypeFileItem.id} as CloudDriveFile)));
+                return Promise.resolve(data.value.filter((entry: BaseItem) => elementName == undefined || (entry.name??"") == elementName)
+                    .map((strypeFileItem: DriveItem) => ({name: strypeFileItem.name as string, id: strypeFileItem.id as string, isDir: !!strypeFileItem.folder, fileSize: strypeFileItem.size ?? 0})));
             }
         },
 
-        async readFileContentForIO(fileId: string, isBinaryMode: boolean, filePath: string): Promise<string | Uint8Array | {success: boolean, errorMsg: string}> {
+        async readFileContentForIO(fileId: string, filePath: string): Promise<Uint8Array> {
             // This method is used by FileIO to get a file string content.
-            // It relies on the file Id passed as argument, and the callback method for handling succes or failure is also passed as arguments.
+            // It relies on the file Id passed as argument.
             // The argument "filePath" is only used for error message.
-            // The nature of the answer depends on the reading mode: a string in normal text case, an array of bytes in binary mode.
+            // The answer is an array of bytes.
             const token = await this.getToken(OneDriveTokenPurpose.GRAPH_GET_FILE_DETAILS);
             // The drive ID is part of the file ID so we can easily extract it...
             const driveId = fileId.substring(0, fileId.indexOf("!"));
@@ -775,13 +775,9 @@ export default Vue.extend({
                     return Promise.reject(resp.status);
                 }
                 else{
-                    return (isBinaryMode) 
-                        ? resp.arrayBuffer().then((buffer) => {
-                            return new Uint8Array(buffer);
-                        }) 
-                        : resp.text().then((text) => {
-                            return text;
-                        });
+                    return resp.arrayBuffer().then((buffer) => {
+                        return new Uint8Array(buffer);
+                    });
                 } 
             }
             catch(err){
@@ -790,7 +786,7 @@ export default Vue.extend({
             
         },
 
-        async writeFileContentForIO(fileContent: string|Uint8Array, fileInfos: {filePath: string, fileName?: string, fileId?: string, folderId?: string}): Promise<string> {
+        async writeFileContentForIO(fileContent: string|Uint8Array, fileInfos: { filePath: string, fileName: string, folderId: string } | { filePath: string, fileId: string }): Promise<string> {
             let catchErr = null;
             const token = await this.getToken(OneDriveTokenPurpose.GRAPH_SAVE_FILE).catch((_) => {
                 catchErr = _;
@@ -801,10 +797,10 @@ export default Vue.extend({
                 return Promise.reject(catchErr);
             }
 
-            const isCreatingFile = !!(fileInfos.folderId);
+            const isCreatingFile = "folderId" in fileInfos;
             const isFileContentEmpty = fileContent.length == 0;
             const requestUrl = (isCreatingFile)
-                ? `https://graph.microsoft.com/v1.0/me/drive/items/${fileInfos.folderId}:/${encodeURI(fileInfos.fileName??"")}:/content` //the file name and the containing folder must be set by the caller!
+                ? `https://graph.microsoft.com/v1.0/me/drive/items/${fileInfos.folderId}:/${encodeURI(fileInfos.fileName)}:/content` //the file name and the containing folder must be set by the caller!
                 : ((isFileContentEmpty) 
                     ? `https://graph.microsoft.com/v1.0/me/drive/items/${fileInfos.fileId}/content` // but it may happen the content is empty, in that case we cannot use resumable upload
                     : `https://graph.microsoft.com/v1.0/me/drive/items/${fileInfos.fileId}/createUploadSession`); // the most common case when we write in the file: the content is not empty, we can use resumable upload

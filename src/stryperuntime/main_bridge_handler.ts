@@ -1,13 +1,15 @@
 // This file has the parts of the code which executes on the main thread to handle requests from the Pyodide web worker
 
-import { AsyncStrypePyodideHandlerFunction, decodeRGBA, encodeRGBA, isRemoteImage, makeSoundHandle, SpriteHandle, SyncPromiseStrypePyodideHandlerFunction } from "@/stryperuntime/worker_bridge_type";
-import { Renderer } from "@/stryperuntime/renderer";
-import { SoundManager } from "@/stryperuntime/sound_manager";
-import { drawText } from "@/helpers/textDrawing";
+import {AsyncStrypePyodideHandlerFunction, CloudFileId, decodeStringToUint8, encodeUint8ToString, isRemoteImage, makeSoundHandle, SpriteHandle, SyncPromiseStrypePyodideHandlerFunction} from "@/stryperuntime/worker_bridge_type";
+import {Renderer} from "@/stryperuntime/renderer";
+import {SoundManager} from "@/stryperuntime/sound_manager";
+import {drawText} from "@/helpers/textDrawing";
 // We only import the type because the library itself is loaded from index.html: 
 import type WebFont from "webfontloader";
-import { saveAs } from "file-saver";
-import { getDateTimeFormatted } from "@/helpers/common";
+import {saveAs} from "file-saver";
+import {getDateTimeFormatted} from "@/helpers/common";
+import {cloudCloseFile, cloudCreate, cloudListDir, cloudLookupFile, cloudOpenFile, cloudReadFile, cloudTruncateFile, cloudWriteFile} from "@/helpers/skulptFileIO";
+import {useStore} from "@/store/store";
 
 // These are callbacks passed from PythonExecutionArea.vue to do things that are tied to the DOM or wider Strype state.
 // This means we don't have to make reference to the PythonExecutionArea component itself.
@@ -106,7 +108,42 @@ export const handleSyncRequests : (
     }
     case "canvas_getAllPixelsRGBA": {
         const ctx = renderer.getCanvasContext(req.img.handle);
-        return {request: req.request, response: Promise.resolve(encodeRGBA(ctx.getImageData(0, 0, req.img.width, req.img.height).data))};
+        return {request: req.request, response: Promise.resolve(encodeUint8ToString(ctx.getImageData(0, 0, req.img.width, req.img.height).data))};
+    }
+    case "file_lookup": {
+        return {request: req.request, response: cloudLookupFile(req.parent, req.name)};
+    }
+    case "file_listDir": {
+        return {request: req.request, response: cloudListDir(req.parent)};
+    }
+    case "file_open" : {
+        return {request: req.request, response: cloudOpenFile(req.id, req.flags)};
+    }
+    case "file_read": {
+        return {request: req.request, response: cloudReadFile(req.id, req.from, req.length, req.filePath).then((arr) => encodeUint8ToString(arr))};
+    }
+    case "file_write": {
+        return {request: req.request, response: cloudWriteFile(req.id, decodeStringToUint8(req.encodedContent),  req.from, req.filePath).then(() => true)};
+    }
+    case "file_close": {
+        return {request: req.request, response: cloudCloseFile(req.id)};
+    }
+    case "file_truncate": {
+        return {request: req.request, response: cloudTruncateFile(req.id, req.size, req.filePath)};
+    }
+    case "file_createNode": {
+        return {request: req.request, response: cloudCreate(req.parent, req.name, req.isDir, req.filePath)};
+    }
+    case "file_getRoot": {
+        return {request: req.request, response: new Promise<CloudFileId>((resolve, reject)  => {
+            const loc = useStore().strypeProjectLocation;
+            if (!loc || typeof(loc) != "string") {
+                reject("Project not saved in cloud, so cannot access cloud files.");
+            }
+            else {
+                resolve({cloudFileId: loc});
+            }
+        })};
     }
     default:
         // Trick to give a compile-time error if a case is missing above:
@@ -182,7 +219,7 @@ export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundMan
         return;
     }
     case "canvas_drawPixels": {
-        renderer.getCanvasContext(req.img.handle).putImageData(new ImageData(decodeRGBA(req.pixelRGBA), req.width, req.height), req.x, req.y);
+        renderer.getCanvasContext(req.img.handle).putImageData(new ImageData(decodeStringToUint8(req.pixelRGBA), req.width, req.height), req.x, req.y);
         return undefined;
     }
     case "canvas_downloadPNG": {

@@ -40,6 +40,8 @@
 // All of these have a corresponding entry in SyncStrypePyodideWorkerResponse, below.
 import { Expect, IsSerializable } from "@/stryperuntime/check_serializable";
 
+export type CloudFileInfo = {fileId: CloudFileId, name: string; isDir: true;} | {fileId: CloudFileId, name: string; isDir: false; fileSize: number};
+
 export type SyncStrypePyodideWorkerRequest =
     | { request: "loadImage"; url: string }
     | { request: "loadLibraryAsset"; libraryShortName: string; fileName: string }
@@ -57,6 +59,15 @@ export type SyncStrypePyodideWorkerRequest =
     | { request: "playSoundAndWait"; sound: RemoteSound }
     | { request: "getMonoSoundSampleValues"; sound: RemoteSound }
     | { request: "cloneSound"; sound: RemoteSound; toMono: boolean } // If toMono is false, clone with same number of channels
+    | { request: "file_createNode"; parent: CloudFileId, name: string, isDir: boolean, filePath: string }
+    | { request: "file_open"; id: CloudFileId; flags: number }
+    | { request: "file_close"; id: CloudFileId }
+    | { request: "file_read"; id: CloudFileId; from: number; length: number, filePath: string }
+    | { request: "file_write"; id: CloudFileId; from: number; encodedContent: string; filePath: string; }
+    | { request: "file_truncate"; id: CloudFileId; size: number; filePath: string; }
+    | { request: "file_lookup"; parent: CloudFileId; name: string }
+    | { request: "file_listDir"; parent: CloudFileId }
+    | { request: "file_getRoot"; }
 ;
 
 // All types above should map into this type:
@@ -79,6 +90,15 @@ export type SyncStrypePyodideWorkerResponse =
     | { request: "playSoundAndWait"; response: boolean; } // We don't need a return value as such, we're just using the response to wait
     | { request: "getMonoSoundSampleValues"; response: number[] }
     | { request: "cloneSound"; response: RemoteSound;}
+    | { request: "file_open"; response: boolean; } // We don't need a return value as such, we're just using the response to wait
+    | { request: "file_close"; response: boolean; } // We don't need a return value as such, we're just using the response to wait
+    | { request: "file_read"; response: string; } // Uint8 encoded into string
+    | { request: "file_write"; response: boolean; } // We don't need a return value as such, we're just using the response to wait.  Note that write may be batched, so returning doesn't mean it's fully flushed.
+    | { request: "file_lookup"; response: CloudFileInfo | undefined }
+    | { request: "file_truncate"; response: number; } // Number is size after truncation, which could be smaller than requested if file wasn't that long
+    | { request: "file_listDir"; response: CloudFileInfo[] }
+    | { request: "file_createNode"; response: CloudFileId }
+    | { request: "file_getRoot"; response: CloudFileId }
 ;
 
 // Wraps the response field of a type in a promise:
@@ -123,7 +143,7 @@ export type SyncOrAsyncStrypePyodideWorkerRequest =
 // to an array of numbers and encodes each one with commas etc, and must parse it all back again.
 // Instead we can turn the values directly into strings by storing the 0-255 values into a character in the string
 // which works because each string character is 2 bytes so can take the 0-255 values.
-export function decodeRGBA(str: string): Uint8ClampedArray {
+export function decodeStringToUint8(str: string): Uint8ClampedArray {
     const u8 = new Uint8ClampedArray(str.length);
     for (let i = 0; i < str.length; i++) {
         u8[i] = str.charCodeAt(i);
@@ -132,7 +152,7 @@ export function decodeRGBA(str: string): Uint8ClampedArray {
 }
 
 // Opposite of decodeRGBA above
-export function encodeRGBA(u8: Uint8ClampedArray): string {
+export function encodeUint8ToString(u8: Uint8ClampedArray | Uint8Array): string {
     const chunk = 0x8000;
     const parts: string[] = [];
     for (let i = 0; i < u8.length; i += chunk) {
@@ -152,6 +172,8 @@ export type CanvasHandle = Handle<"Canvas">;
 export type SoundHandle = Handle<"Sound">;
 // A Sprite is used for anything that needs rendering, i.e. actors but also backgrounds, say() bubbles.
 export type SpriteHandle = Handle<"Sprite">;
+// This is the id as used by CloudDriveFile.id, this is issued by the cloud server and meaningful to them but not to us
+export type CloudFileId = { cloudFileId: string };
 
 // Simple constructor functions:
 export function makeImageHandle(n: number): ImageHandle {

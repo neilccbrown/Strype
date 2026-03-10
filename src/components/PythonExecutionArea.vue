@@ -581,6 +581,7 @@ export default Vue.extend({
                 (client.call(
                     client.workerProxy.executePython,
                     userCode,
+                    typeof(this.appStore.strypeProjectLocation) === "string",
                     Comlink.proxy((output: string) => {
                         pythonConsole.value = pythonConsole.value + output;
                     }),
@@ -617,7 +618,7 @@ export default Vue.extend({
                             }).catch(async (err) => {
                                 await navigator.serviceWorker.ready;
                                 try {
-                                    await client.writeMessage({request: resp.request, error: err.toString()});
+                                    await client.writeMessage({request: resp.request, error: JSON.stringify(err)});
                                 }
                                 catch (e) {
                                     console.error(e);
@@ -632,6 +633,8 @@ export default Vue.extend({
                     useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                     this.isRunningStrypeGraphics = false;
                     setPythonExecAreaLayoutButtonPos();
+                    // We always restart Pyodide for a clean state:
+                    terminateAndRestartPyodide();
                 });
 
                 // Trigger the actual Python code execution launch

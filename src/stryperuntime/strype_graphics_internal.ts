@@ -1,7 +1,7 @@
 // This file contains the internal graphics API for the Strype graphics world.
 // These functions are not directly exposed to users, but are used by graphics.py to
 // form the actual public API.
-import { decodeRGBA, encodeRGBA, isRemoteImage, RemoteCanvas, RemoteImage } from "./worker_bridge_type";
+import { decodeStringToUint8, encodeUint8ToString, isRemoteImage, RemoteCanvas, RemoteImage } from "./worker_bridge_type";
 import { asyncBridge, PyodideWorkerGlobalScope, syncBridge } from "@/workers/python_execution_type";
 import { PyProxy } from "pyodide/ffi";
 import { DebouncedFunc, throttle } from "lodash";
@@ -36,14 +36,14 @@ function cachePixelsOf(img: RemoteCanvas) : CachedPixels {
     // With debounce, if the user loops round forever updating pixels more frequently than the threshold,
     // we will never send the updated pixels and they'll never show on screen.  Whereas with throttle, they
     // will be shown on screen but we limit how often we send updates.
-    const pixelsRGBA = decodeRGBA(syncBridge({request: "canvas_getAllPixelsRGBA", img}));
+    const pixelsRGBA = decodeStringToUint8(syncBridge({request: "canvas_getAllPixelsRGBA", img}));
     const data = {
         width: img.width,
         height: img.height,
         pixelsRGBA,
         // These set calls are quite expensive so we do them max 10 times a second:
         update: throttle(() => {
-            asyncBridge({request: "canvas_drawPixels", img, x: 0, y: 0, width: img.width, height: img.height, pixelRGBA: encodeRGBA(pixelsRGBA)});
+            asyncBridge({request: "canvas_drawPixels", img, x: 0, y: 0, width: img.width, height: img.height, pixelRGBA: encodeUint8ToString(pixelsRGBA)});
         }, 1000/10),
     };
     pixelsCache.set(img.handle.handle, data);
