@@ -266,7 +266,7 @@ export default defineComponent({
                     }
                     else{
                         // Open the internally shared project
-                        return cloudDriveComponent.onFileToLoadPicked(StrypeSyncTarget.od, openSharedProjectFileId);
+                        return cloudDriveComponent.onFileToLoadPicked(cloudTarget, openSharedProjectFileId);
                     }
                 }
                 else{
