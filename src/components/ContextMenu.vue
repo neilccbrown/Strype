@@ -30,6 +30,8 @@ const props = defineProps<{
 watch(
     () => props.showContextMenu,
     (newVal, _) => {
+        // We only need to handle the case when the menu shows, as the Vue 3 context menu component already handles
+        // what we need to be removed when the menu is disused.
         if(newVal){
             showContextMenu();            
         }
@@ -37,7 +39,9 @@ watch(
 );
 
 function showContextMenu() {
-    // Trigger the context menu (we add a small offset to the X position to get the menu's first entry grabbing hover when the menu is opened)
+    // Trigger the context menu (we add a small offset to the X position to avoid the mouse position staying over the first menu entry (HTML) element,
+    // when the menu is opened, because otherwise, we won't get the hover event being raised for that first element since the event registration callback
+    // wouldn't be called "later".
     ContextMenu.showContextMenu({...contextMenuDefaultOptions, x: props.showAt.x + 1, y: props.showAt.y, items: props.contextMenuItemsDef, onClose: props.onClosed, closeWhenScroll: false});
 
     // Notify the context menu is opened
@@ -102,14 +106,11 @@ function applyOnContextMenuItems(cxtMenu: HTMLElement, ctxMenuItemDef: StrypeCon
                                 }
                             });
                         }
-                        if(props?.doAfterShownOnMenuItemKeyboardFocusAddedObs){
-                            props.doAfterShownOnMenuItemKeyboardFocusAddedObs(ctxMenuItemDef);
-                        }
+                        props.doAfterShownOnMenuItemKeyboardFocusAddedObs?.(ctxMenuItemDef);
+                        
                     }
                     else{
-                        if(props?.doAfterShownOnMenuItemKeyboardFocusRemovedObs){
-                            props.doAfterShownOnMenuItemKeyboardFocusRemovedObs(ctxMenuItemDef);
-                        };
+                        props.doAfterShownOnMenuItemKeyboardFocusRemovedObs?.(ctxMenuItemDef);
                     }
                 }
             }

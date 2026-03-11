@@ -178,8 +178,8 @@ export default defineComponent({
             frameContextMenuItems: [] as StrypeContextMenuItem[],
             showContextMenuAtCoordPos: {x: 0, y: 0} as CoordPosition,
             // Flags for the context menu "delete" and "delete outer" states
-            allCanBeDeleted: false,
-            canDeleteOuter: false,
+            contextMenuAllCanBeDeleted: false,
+            contextMenuCanDeleteOuter: false,
             // Flag to indicate a frame is selected via the context menu (differs from a user selection)
             contextMenuEnforcedSelect: false,
             // We keep a data property for frame run time error, even if that's a duplication, we need to keep it because
@@ -686,12 +686,12 @@ export default defineComponent({
             }
 
             // We only show "delete outer" if the top level frame(s) to delete are all block frames and not function definitions
-            this.canDeleteOuter = (this.isPartOfSelection) 
+            this.contextMenuCanDeleteOuter = (this.isPartOfSelection) 
                 ? this.appStore
                     .selectedFrames
                     .every((frameId) => this.appStore.frameObjects[frameId].frameType.allowChildren && this.appStore.frameObjects[frameId].frameType.type != AllFrameTypesIdentifier.funcdef && this.frameType.type != AllFrameTypesIdentifier.classdef)
                 : this.isBlockFrame && this.frameType.type != AllFrameTypesIdentifier.funcdef && this.frameType.type != AllFrameTypesIdentifier.classdef;
-            if(!this.canDeleteOuter){
+            if(!this.contextMenuCanDeleteOuter){
                 const deleteOuterOptionContextMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.onClick === this.deleteOuter);
                 // We don't need the delete outer option: remove it from the menu options if not present
                 if(deleteOuterOptionContextMenuPos > -1){
@@ -704,12 +704,12 @@ export default defineComponent({
 
             // Should we show any deleting options (Delete, Cut); requires all selected frames to be deleteable.
             // The only thing that prevents deletion is being frozen:
-            this.allCanBeDeleted = !parentIsFrozen && (this.isPartOfSelection
+            this.contextMenuAllCanBeDeleted = !parentIsFrozen && (this.isPartOfSelection
                 ? this.appStore
                     .selectedFrames
                     .every((frameId) => this.appStore.frameObjects[frameId].frozenState != FrozenState.FROZEN)
                 : this.frozenState != FrozenState.FROZEN);
-            if (!this.allCanBeDeleted) {
+            if (!this.contextMenuAllCanBeDeleted) {
                 const cutMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.actionName === FrameContextMenuActionName.cut);
                 if(cutMenuPos > -1){
                     this.frameContextMenuItems.splice(cutMenuPos, 1);
@@ -789,8 +789,8 @@ export default defineComponent({
         registerMouseEventsForDeleteOperations(ctxMenuItemDef: StrypeContextMenuItem, menuEntryWrapperElement: HTMLDivElement): void {
             // There are 2 ways we want to show the cues: when the menu entry (wrapper) is hovered (1), or keyboard-focused (2).
             // This adds the mouseover/out listeners for the delete/delete outer entries implementing (1).     
-            const isDeleteEntry = this.allCanBeDeleted && ctxMenuItemDef.onClick == this.delete;
-            const isDeleteOuterEntry = this.canDeleteOuter && ctxMenuItemDef.onClick == this.deleteOuter;
+            const isDeleteEntry = this.contextMenuAllCanBeDeleted && ctxMenuItemDef.onClick == this.delete;
+            const isDeleteOuterEntry = this.contextMenuCanDeleteOuter && ctxMenuItemDef.onClick == this.deleteOuter;
             if(isDeleteEntry || isDeleteOuterEntry){                           
                 menuEntryWrapperElement.addEventListener("mouseover", () => this.onDeleteEntryContextMenuHover(true, isDeleteOuterEntry));
                 menuEntryWrapperElement.addEventListener("mouseout", () => this.onDeleteEntryContextMenuHover(false, isDeleteOuterEntry));
@@ -829,8 +829,8 @@ export default defineComponent({
         handleOnKeyboardFocusChangeForDeleteOperations(ctxMenuItemDef: StrypeContextMenuItem, toSet: boolean){
             // There are 2 ways we want to show the cues: when the menu entry (wrapper) is hovered (1), or keyboard-focused (2).
             // This adds class observer callback for the delete/delete outer entries implementing (2) or remove it, depending on toSet.     
-            const isDeleteEntry = this.allCanBeDeleted && ctxMenuItemDef.actionName == FrameContextMenuActionName.delete;
-            const isDeleteOuterEntry = this.canDeleteOuter && ctxMenuItemDef.actionName == FrameContextMenuActionName.deleteOuter;
+            const isDeleteEntry = this.contextMenuAllCanBeDeleted && ctxMenuItemDef.actionName == FrameContextMenuActionName.delete;
+            const isDeleteOuterEntry = this.contextMenuCanDeleteOuter && ctxMenuItemDef.actionName == FrameContextMenuActionName.deleteOuter;
             if(isDeleteEntry || isDeleteOuterEntry){
                 this.onDeleteEntryContextMenuHover(toSet, isDeleteOuterEntry);
             }
