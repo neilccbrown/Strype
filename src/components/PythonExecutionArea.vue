@@ -21,7 +21,7 @@
             <div :class="{'strype-PEA-split-theme': true, 'with-expanded-PEA': isExpandedPEA, 'tabs-PEA': isTabsLayout}">
                 <Splitpanes :horizontal="!isExpandedPEA" @resize="onSplitterPane1Resize">
                     <pane :id="graphicsSplitPaneId" key="1" v-show="isGraphicsAreaShowing" :size="(isTabsLayout) ? 100 : currentSplitterPane1Size" min-size="5">
-                        <div :id="graphicsContainerDivId" @wheel.stop :class="{'pea-graphics-container': true, hidden: graphicsTemporaryHidden}" @contextmenu="showContextMenu($event)">
+                        <div :id="graphicsContainerDivId" @wheel.stop :class="{'pea-graphics-container': true, hidden: graphicsTemporaryHidden}" @contextmenu="handleContextMenu">
                             <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @mousedown.stop="graphicsCanvasMouseDown" @mouseup.stop="graphicsCanvasMouseUp" @mousemove="graphicsCanvasMouseMove"></canvas>
                             <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
                                 <div :id="graphicsDivId" ref="pythonTurtleDiv" class="pea-graphics-div"></div>
@@ -52,9 +52,13 @@
                 </div>
             </div>
         </div>
-        <vue-context ref="menu" @open="handleContextMenuOpened" @close="handleContextMenuClosed" id="PEAcontextmenu">
-            <li><a @click.stop="screenshotGraphicsArea(); closeContextMenu()" @mouseover="handleContextMenuHover">{{$t("contextMenu.screenshotGraphics")}}</a></li>
-        </vue-context>
+        <ContextMenu 
+            :contextMenuItemsDef="frameContextMenuItems"
+            :showContextMenu="showContextMenu"
+            :showAt="showContextMenuAtCoordPos"
+            :onOpened="handleContextMenuOpened"            
+            :onClosed="handleContextMenuClosed"
+        />
     </div>
 </template>
 
@@ -64,22 +68,20 @@ import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
 import { execPythonCode } from "@/helpers/execPythonCode";
 import { mapStores } from "pinia";
-import {adjustContextMenuPosition, checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, hasPrecompiledCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight} from "@/helpers/editor";
-import {defaultEmptyStrypeLayoutDividerSettings, Position, PythonExecRunningState, StrypePEALayoutData, StrypePEALayoutMode} from "@/types/types";
+import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, hasPrecompiledCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
+import { CoordPosition, defaultEmptyStrypeLayoutDividerSettings, PythonExecRunningState, StrypeContextMenuItem, StrypePEALayoutData, StrypePEALayoutMode } from "@/types/types";
 import { PersistentImage, PersistentImageManager, WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
 import SVGIcon from "@/components/SVGIcon.vue";
-import {Splitpanes, Pane} from "splitpanes";
+import { Splitpanes, Pane } from "splitpanes";
 import { debounce } from "lodash";
 import scssVars from "@/assets/style/_export.module.scss";
-import {getLibraryName, getRawFileFromLibraries} from "@/helpers/libraryManager";
-import VueContext, { VueContextConstructor } from "vue-context";
-import {getDateTimeFormatted} from "@/helpers/common";
+import { getLibraryName, getRawFileFromLibraries } from "@/helpers/libraryManager";
+import { getDateTimeFormatted } from "@/helpers/common";
 import audioBufferToWav from "audiobuffer-to-wav";
 import { saveAs } from "file-saver";
-import {bufferToBase64} from "@/helpers/media";
+import { bufferToBase64 } from "@/helpers/media";
 import turtleImgURL from "@/assets/images/turtle.png" ;
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
-import { eventBus } from "@/helpers/appContext";
 import { BTab, BTabs } from "bootstrap-vue-next";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
@@ -122,7 +124,6 @@ export default defineComponent({
         Splitpanes,
         Pane,
         SVGIcon,
-        VueContext,
         BTabs, BTab,
     },
 
@@ -200,6 +201,11 @@ export default defineComponent({
                 {iconName: "PEA-layout-split-expanded", mode: StrypePEALayoutMode.splitExpanded},
             ] as StrypePEALayoutData[],
             highlightPythonRunningState: false, // a flag used to trigger a CSS highlight of the PEA running state
+            // Flag used to trigger the context menu opening
+            showContextMenu: false,
+            // Prepare an empty version of the menu: it will be updated as required in handleClick()
+            frameContextMenuItems: [] as StrypeContextMenuItem[],
+            showContextMenuAtCoordPos: {x: 0, y: 0} as CoordPosition,
         };
     },
     
@@ -1016,15 +1022,11 @@ export default defineComponent({
 
         handleContextMenuClosed(){
             this.appStore.isContextMenuKeyboardShortcutUsed=false;
+            this.showContextMenu = false;
             document.dispatchEvent(new CustomEvent(CustomEventTypes.requestAppNotOnTop, {detail: false}));
         },
 
-        closeContextMenu() {
-            // The context menu doesn't close because we need to stop the click event propagation (cf. template), we do it here
-            ((this.$refs.menu as unknown) as VueContextConstructor).close();
-        },
-
-        showContextMenu (event: MouseEvent, positionForMenu?: Position): void {
+        handleContextMenu(event: MouseEvent): void {
             // Do not show any menu if the user's code is being executed
             if(this.isPythonExecuting){
                 return;
@@ -1037,20 +1039,13 @@ export default defineComponent({
             this.appStore.contextMenuShownId = "PEAcontextmenu";
             
             // Overwrite readonly properties clientX and clientY (to position the menu if needed)
-            setContextMenuEventClientXY(event, positionForMenu);
-            ((this.$refs.menu as unknown) as VueContextConstructor).open(event);
-
-            this.$nextTick(() => {
-                const contextMenu = document.getElementById("PEAcontextmenu");
-                if(contextMenu){
-                    // We make sure the menu can be shown completely. 
-                    adjustContextMenuPosition(event, contextMenu, positionForMenu);
-                }
-            });
-        },
-
-        handleContextMenuHover(event: MouseEvent) {
-            eventBus.emit(CustomEventTypes.contextMenuHovered, event.target as HTMLElement);
+            setContextMenuEventClientXY(event);
+           
+            // Create the menu content here and open it
+            this.frameContextMenuItems = [{label: this.$t("contextMenu.screenshotGraphics"), onClick: this.screenshotGraphicsArea}];
+            this.showContextMenuAtCoordPos.x = event.x;
+            this.showContextMenuAtCoordPos.y = event.y;
+            this.showContextMenu = true;
         },
 
         async screenshotGraphicsArea() {

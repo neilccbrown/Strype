@@ -6,20 +6,13 @@
         :key="UID"
         :id="UID"
     >
-        <!-- Make sure the click events are stopped in the links because otherwise, events pass through and mess the toggle of the caret in the editor.
-             Also, the element MUST have the hover event handled for proper styling (we want hovering and selecting to go together) -->
-        <vue-context ref="menu" @open="handleContextMenuOpened" @close="handleContextMenuClosed">
-            <li :action-name="pasteMenuActionName"><a v-if="showPasteMenuItem" @click.stop="paste(); closeContextMenu()" @mouseover="handleContextMenuHover">{{$t("contextMenu.paste")}}</a></li>
-            <li><hr v-if="showPasteMenuItem" /></li>
-            <li class="v-context__sub">
-                <a @click.stop @mouseover="handleContextMenuHover">{{$t("contextMenu.insert")}}</a>
-                <ul class="v-context">
-                    <li v-for="menuItem, index in insertFrameMenuItems" :key="`caretContextMenuItem_${frameId}_${index}`">
-                        <a @click.stop="menuItem.method();closeContextMenu();" @mouseover="handleContextMenuHover">{{menuItem.name}}</a>
-                    </li>
-                </ul>
-            </li>
-        </vue-context>
+        <ContextMenu 
+            :contextMenuItemsDef="frameContextMenuItems"
+            :showContextMenu="showContextMenu"
+            :showAt="showContextMenuAtCoordPos"
+            :onOpened="handleContextMenuOpened"           
+            :onClosed="handleContextMenuClosed"
+        />
         <Caret
             :class="scssVars.navigationPositionClassName + ' ' + scssVars.caretClassName"
             :id="caretUID"
@@ -38,11 +31,10 @@
 //      Imports     //
 //////////////////////
 import Vue, { defineComponent, PropType } from "vue";
-import VueContext, { VueContextConstructor } from "vue-context";
 import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
-import { AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, PythonExecRunningState, FrameContextMenuActionName, CurrentFrame, CollapsedState } from "@/types/types";
-import { getCaretUID, adjustContextMenuPosition, setContextMenuEventClientXY, getAddFrameCmdElementUID, CustomEventTypes, getCaretContainerUID } from "@/helpers/editor";
+import { AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, PythonExecRunningState, FrameContextMenuActionName, CurrentFrame, CollapsedState, StrypeContextMenuItem, CoordPosition } from "@/types/types";
+import { getCaretUID, setContextMenuEventClientXY, getAddFrameCmdElementUID, CustomEventTypes, getCaretContainerUID } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { cloneDeep } from "lodash";
 import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
@@ -66,7 +58,6 @@ export default defineComponent({
 
     components: {
         Caret,
-        VueContext,
     },
 
     created(){
@@ -85,9 +76,6 @@ export default defineComponent({
             },
             setIsDuplicateDnDAction: (value: boolean) => {
                 this.isDuplicateDnDAction = value;
-            },
-            closeContextMenu: () => {
-                ((this.$refs.menu as unknown) as VueContextConstructor).close();
             },
             handleClick: this.handleClick,
             doPaste: this.doPaste,
@@ -188,10 +176,15 @@ export default defineComponent({
             CustomEventTypes, // just for using in template
             scssVars, // just to be able to use in template
             showPasteMenuItem: false,
-            insertFrameMenuItems: [] as {name: string, method: VoidFunction, actionName ?: FrameContextMenuActionName}[],
+            insertFrameMenuItems: [] as StrypeContextMenuItem[],
             areFramesDraggedOver: false,
             areDropFramesAllowed: true,
             isDuplicateDnDAction: false,
+            // Flag used to trigger the context menu opening
+            showContextMenu: false,
+            // Prepare an empty version of the menu: it will be updated as required in handleClick()
+            frameContextMenuItems: [] as StrypeContextMenuItem[],
+            showContextMenuAtCoordPos: {x: 0, y: 0} as CoordPosition,
         };
     },
 
@@ -212,13 +205,6 @@ export default defineComponent({
         if(vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[this.UID]){
             delete vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[this.UID];
         }
-    },
-
-    updated() {
-        // Close the context menu if there is edition or loss of blue caret (for when a frame context menu is present, see Frame.vue)
-        if(this.isEditing || this.caretAssignedPosition == CaretPosition.none){
-            ((this.$refs.menu as unknown) as VueContextConstructor).close();
-        }        
     },
     
     methods: {
@@ -337,12 +323,8 @@ export default defineComponent({
 
         handleContextMenuClosed(){
             this.appStore.isContextMenuKeyboardShortcutUsed=false;
+            this.showContextMenu = false;
             document.dispatchEvent(new CustomEvent(CustomEventTypes.requestAppNotOnTop, {detail: false}));
-        },
-
-        closeContextMenu() {
-            // The context menu doesn't close because we need to stop the click event propagation (cf. template), we do it here
-            ((this.$refs.menu as unknown) as VueContextConstructor).close();
         },
 
         handleClick (event: MouseEvent, positionForMenu?: Position): void {
@@ -363,19 +345,17 @@ export default defineComponent({
 
             // Overwrite readonly properties clientX and clientY (to position the menu if needed)
             setContextMenuEventClientXY(event, positionForMenu);
-            ((this.$refs.menu as unknown) as VueContextConstructor).open(event);
 
-            this.$nextTick(() => {
-                const contextMenu = document.getElementById(this.UID);  
-                if(contextMenu){
-                    // We make sure the menu can be shown completely. 
-                    adjustContextMenuPosition(event, contextMenu, positionForMenu);
-                }
-            });           
-        },
-
-        handleContextMenuHover(event: MouseEvent) {
-            eventBus.emit(CustomEventTypes.contextMenuHovered, event.target as HTMLElement);
+            // Create the menu content here and open it
+            this.frameContextMenuItems.splice(0);
+            if(this.showPasteMenuItem){
+                this.frameContextMenuItems.push({label: this.$t("contextMenu.paste"), onClick: this.paste}, {divided: "self"});
+            }
+            this.frameContextMenuItems.push({label: this.$t("contextMenu.insert"), children: this.insertFrameMenuItems});                                    
+            this.showContextMenuAtCoordPos.x = event.x;
+            this.showContextMenuAtCoordPos.y = event.y;
+            this.showContextMenuAtCoordPos.pos = positionForMenu;
+            this.showContextMenu = true;
         },
 
         toggleCaret(): void {
@@ -472,7 +452,7 @@ export default defineComponent({
             this.insertFrameMenuItems = [];
             const addFrameCommands = this.appStore.generateAvailableFrameCommands(this.appStore.currentFrame.id, this.appStore.currentFrame.caretPosition);
             Object.values(addFrameCommands).forEach((addFrameCmdDef) => {
-                this.insertFrameMenuItems.push({name: addFrameCmdDef[0].description, method: () => {
+                this.insertFrameMenuItems.push({label: addFrameCmdDef[0].description, onClick: () => {
                     // This method is called by the submenu and it triggers a click on the AddFrameCommand component,
                     // but we delay it enough so the chain of key events (if applicable) related to the menu terminates,
                     // because otherwise that chain and the key event chain from adding a frame interfer.

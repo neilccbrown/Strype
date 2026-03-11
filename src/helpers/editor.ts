@@ -35,7 +35,6 @@ export enum CustomEventTypes {
     appResetProject = "appResetProject",
     appShowProgressOverlay = "appShowProgressOverlay",
     contextMenuHovered = "contextMenuHovered",
-    requestCaretContextMenuClose="requestCaretContextMenuClose",
     requestAppNotOnTop="requestAppNotOnTop",
     editorAddFrameCommandsUpdated = "frameCommandsUpdated",
     frameContentEdited = "frameContentEdited",
@@ -534,25 +533,15 @@ export function getCommandsRightPaneContainerId(): string {
 
 export function getActiveContextMenu(): HTMLElement | null {
     // Helper method to get the currently active context menu. 
-    // Explanation: menus have a "v-context" class, and role "menu" (for the root menu in submenus),
-    // we want the menus that are not closed or hidden nor empty
-    const foundNoneHiddenContextMenu = document.querySelector(".v-context[role='menu']:not([style*='display: none;']):not([hidden])");
-    if(foundNoneHiddenContextMenu && foundNoneHiddenContextMenu.childElementCount == 0){
+    // Explanation: menus have a "mx-context-menu" class,
+    // we want the menus that are not closed or hidden nor empty*.
+    // (*) we consider a menu is empty if no sub element of class
+    // "mx-context-menu-item-wrapper" is found (we ignore separators, there is no menu just with separators)
+    const foundNoneHiddenContextMenu = document.querySelector(".mx-context-menu:not([style*='display: none;']):not([hidden])");
+    if(foundNoneHiddenContextMenu && foundNoneHiddenContextMenu.querySelectorAll(".mx-context-menu-item-wrapper").length == 0){
         return null;
     }
     return foundNoneHiddenContextMenu as HTMLElement | null;    
-}
-
-export function isContextMenuItemSelected(): boolean {
-    // Helper menu to know if a context menu has an option selected (in other words, the menu is having the focus).
-    // We first look if a menu is active, then if it is, we 
-    const aShowingContextMenu = getActiveContextMenu();
-    if(aShowingContextMenu != null){
-        return (aShowingContextMenu.querySelector("a:focus") != null);
-    }
-    else {
-        return false;
-    }
 }
 
 export function setContextMenuEventClientXY(event: MouseEvent, positionForMenu?: Position): void {
@@ -568,10 +557,8 @@ export function setContextMenuEventClientXY(event: MouseEvent, positionForMenu?:
 
 }
 
-export function adjustContextMenuPosition(event: MouseEvent, contextMenu: HTMLElement, positionForMenu?: Position): void {
+export function adjustContextMenuPosition(contextMenu: HTMLElement, positionForMenu?: Position): void {
     // These situations can happen:
-    // - we didn't provide any positioning request (case of click): we check the bottom of temporary (invisible) menu is in view
-    //   if not, we slide the menu so that the bottom position is at the click
     // - we provided a positioning request (case of KB shortcut) AND we passed the "top" property in our position: keep as is
     // - we provided a positioning request (case of KB shortcut) AND we passed the "bottom" property in our position: 
     //   we slide the menu so that the actual height of the menu is deducted from the "bottom" property value 
@@ -581,33 +568,12 @@ export function adjustContextMenuPosition(event: MouseEvent, contextMenu: HTMLEl
             const newMenuTopPosition = positionForMenu.bottom - contextMenu.getBoundingClientRect().height;
             contextMenu.style.top = newMenuTopPosition+"px";
         }
-    }
-    else if(event.pageY + contextMenu.getBoundingClientRect().height > (document.getElementById(getEditorMiddleUID())?.getBoundingClientRect().height??0)){
-        const newMenuTopPosition = event.pageY - contextMenu.getBoundingClientRect().height;
-        contextMenu.style.top = newMenuTopPosition+"px";
-    }
-}
-
-export function handleContextMenuKBInteraction(keyDownStr: string): void {
-    // This helper method handles the keyboard interaction with the frames/caret context menu.
-    // Vue-context only handles escape and up/down interaction, we need to work out the rest...
-    // Note that the CSS styling for this menu is both using custom classes and overwriting exisitng classes of the component (cf Frame.vue)
-    const contextMenuElement = getActiveContextMenu();
-    if(contextMenuElement){
-        if (keyDownStr.toLowerCase() == "enter"){
-            useStore().ignoreKeyEvent = true; // So the enter key up event won't be picked up by Commands.vue
-            (document.activeElement as HTMLElement)?.click();
-            // A submenu parent item would typically not do anything special at click, but we want to get the submenu open
-            if(document.activeElement?.parentElement?.classList.contains("v-context__sub")){
-                // We simulate a right arrow hit which would open the submenu and get into it (we need to do this on the root menu)
-                document.activeElement.dispatchEvent(
-                    new KeyboardEvent("keydown", {
-                        bubbles: true,
-                        keyCode: 39, // yes, that's deprecated, but the library uses that...
-                    })
-                );
-            }
-        }   
+        if(positionForMenu.left != undefined){            
+            contextMenu.style.left = positionForMenu.left+"px";
+        }
+        if(positionForMenu.top != undefined){            
+            contextMenu.style.top = positionForMenu.top+"px";
+        }
     }
 }
 

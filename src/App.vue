@@ -131,7 +131,7 @@ import {Splitpanes, Pane} from "splitpanes";
 import { useStore, settingsStore } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
-import {getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID } from "./helpers/editor";
+import {getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getPEAComponentRefId } from "@/helpers/editor";
@@ -402,9 +402,10 @@ export default defineComponent({
             if(activeContextMenu != null){
                 // All key hits in the context menu should result in the menu closing.
                 // If a keyboard shortcut of the menu has been used, we process it.
+                // Note that with the Vue3 context menu, the action-name is set to the menu item wrapper, which is not a direct child of the menu.
                 // (Enter is already handled when a menu item is selected, so we don't worry about it.)
                 const activeModifierKeys = {[ModifierKeyCode.ctrl]: event.ctrlKey, [ModifierKeyCode.meta]: event.metaKey, [ModifierKeyCode.shift]: event.shiftKey, [ModifierKeyCode.alt]: event.altKey};
-                const menuItemForKBShortcut = Array.from(activeContextMenu.children).find((menuItemEl) => {
+                const menuItemForKBShortcut = Array.from(activeContextMenu.querySelectorAll("[action-name]")).find((menuItemEl) => {
                     const menuItemActionName = menuItemEl.getAttribute("action-name");
                     if(menuItemActionName){
                         const menuItemShortcut = frameContextMenuShortcuts.find((frameCtxtMenuShorcut) => frameCtxtMenuShorcut.actionName.toString() == menuItemActionName);
@@ -456,12 +457,12 @@ export default defineComponent({
                 });
 
                 if(menuItemForKBShortcut){
-                    // We found one menu entry matching the hit keyboard shortcut, we simulate a click (which will close the menu) on the underlying <a>
-                    ((menuItemForKBShortcut as HTMLLIElement).children[0] as HTMLAnchorElement)?.click();
+                    // We found one menu entry matching the hit keyboard shortcut, we simulate a click (which will close the menu) on the element
+                    (menuItemForKBShortcut.children[0] as HTMLDivElement)?.click();
                 }
-                else if((!event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) && (event.key != "Enter" || (event.key == "Enter" && !isContextMenuItemSelected()))){
-                    // Note: that's not an ideal way of using the Keyboard Event, but the source code for VueContext uses keycodes...
-                    activeContextMenu.dispatchEvent(new KeyboardEvent("keydown", {keyCode: 27}));
+                else if((!event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) && event.key != "Enter"){
+                    // Any other keys but those handled by the context menu already (like arrows and enter) close the menu
+                    activeContextMenu.dispatchEvent(new KeyboardEvent("keydown", {key: "Escape"}));
                 }
                 else{
                     // An element from the menu is activated via "Enter", or a modifier key is pressed alone, we don't interfere.
@@ -477,7 +478,7 @@ export default defineComponent({
             // We need to register if the keyboard shortcut has been used to get the context menu
             // so we set the flag here. It will be reset when the context menu actions are consumed.
             // Case for allowing macOS to have a context menu shortcut:
-            if(this.appStore.selectedFrames.length > 0 &&  (event.key == " " || event.key.toLowerCase() == "enter") && !isContextMenuItemSelected()){
+            if(this.appStore.selectedFrames.length > 0 &&  (event.key == " " || event.key.toLowerCase() == "enter")){
                 // Wait a bit to process keys before showing the context menu
                 setTimeout(() => {
                     this.appStore.isContextMenuKeyboardShortcutUsed = true;
@@ -803,13 +804,6 @@ export default defineComponent({
 
         // Register a listener to handle the context menu hovers (cf onContextMenuHover())
         eventBus.on(CustomEventTypes.contextMenuHovered, (menuElement: HTMLElement) => this.onContextMenuHover(menuElement));
-
-        // Register a listener for a request to close a caret context menu (used by Frame.vue)
-        eventBus.on(CustomEventTypes.requestCaretContextMenuClose, () => {
-            // We find the CaretContainer component currently active to properly close the menu using the component close() method.
-            vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretContainerUID(this.appStore.currentFrame.caretPosition, this.appStore.currentFrame.id)]
-                .closeContextMenu();            
-        });
 
         eventBus.on(CustomEventTypes.addFunctionToEditorProjectSave, (psf: ProjectSaveFunction) => {
             // Before adding a new function to execute in the autosave mechanism, we stop the current time, and will restart it again once the function is added.
@@ -1228,13 +1222,6 @@ export default defineComponent({
                     event.stopImmediatePropagation();
                     event.preventDefault();
                 }
-                else{
-                    const currentCustomMenuId: string = this.appStore.contextMenuShownId;
-                    if(currentCustomMenuId.length > 0){
-                        const customMenu = document.getElementById(getFrameContextMenuUID(currentCustomMenuId));
-                        customMenu?.setAttribute("hidden", "true");
-                    }
-                }
             }
         },
 
@@ -1401,16 +1388,15 @@ export default defineComponent({
             const lastSelectedTargetElement = (isTargetFrames) 
                 ? document.getElementById(getFrameUID(this.appStore.selectedFrames.at(-1) as number)) 
                 : document.querySelector(`.${scssVars.caretContainerClassName}:has(> .${scssVars.navigationPositionClassName}.${scssVars.caretClassName}:not(.${scssVars.invisibleClassName}))`);
-            // For the editor, we need to get whole editor container, not the space in the middle that is adapted to the viewport
-            const editorViewingElement = document.getElementById(getEditorMiddleUID());
-            const editorElement = editorViewingElement?.children[0];
+            // For the editor, we need to get the whole editor container, not the space in the middle that is adapted to the viewport
+            const editorElement = document.getElementById(getEditorMiddleUID());
             const positionToReturn: Position = {};
-            if(firstSelectedTargetElement && lastSelectedTargetElement && editorElement && editorViewingElement){
-                if(firstSelectedTargetElement.getBoundingClientRect().top + menuHeightSpace < editorElement.getBoundingClientRect().bottom){
+            if(firstSelectedTargetElement && lastSelectedTargetElement && editorElement){
+                if(firstSelectedTargetElement.getBoundingClientRect().top + menuHeightSpace + menuOffsetY < editorElement.getBoundingClientRect().height){
                     // The menu can be shown from the top of the selection, we just make sure we give enough visibility below the top of the frame
                     const positionOfBottomMenu = firstSelectedTargetElement.getBoundingClientRect().top + menuHeightSpace;
-                    if(positionOfBottomMenu > editorViewingElement.getBoundingClientRect().height || firstSelectedTargetElement.getBoundingClientRect().top < 0){
-                        editorViewingElement.scroll(0, firstSelectedTargetElement.getBoundingClientRect().top);
+                    if(positionOfBottomMenu > editorElement.getBoundingClientRect().height || firstSelectedTargetElement.getBoundingClientRect().top < 0){
+                        editorElement.scroll(0, firstSelectedTargetElement.getBoundingClientRect().top);
                     }
                     positionToReturn.top = firstSelectedTargetElement.getBoundingClientRect().top + menuOffsetY;                                      
                     positionToReturn.left = firstSelectedTargetElement.getBoundingClientRect().left + menuOffsetX;
@@ -1418,8 +1404,8 @@ export default defineComponent({
                 else{
                     // The menu cannot be shown from the top of the selection
                     const positionOfTopMenu = lastSelectedTargetElement.getBoundingClientRect().bottom - menuHeightSpace;
-                    if(positionOfTopMenu < 0 || lastSelectedTargetElement.getBoundingClientRect().bottom > editorViewingElement.getBoundingClientRect().height){
-                        editorViewingElement.scroll(0, positionOfTopMenu);
+                    if(positionOfTopMenu < 0 || lastSelectedTargetElement.getBoundingClientRect().bottom > editorElement.getBoundingClientRect().height){
+                        editorElement.scroll(0, positionOfTopMenu);
                     }
                     positionToReturn.bottom = lastSelectedTargetElement.getBoundingClientRect().bottom;     
                     positionToReturn.left = lastSelectedTargetElement.getBoundingClientRect().left + menuOffsetX;
@@ -1437,10 +1423,16 @@ export default defineComponent({
         },
 
         onContextMenuHover(menuTarget: HTMLElement) {
-            // When a context menu entry is hovered, we want to make it as selected. 
+            // When a context menu entry is hovered, we want to make it as it was selected via the keyboard. 
             // If we didn't, then there would be a confusion between a selected item with the keyboard, and another hovered item with the mouse.
-            // Doing so guarantee that only 1 element is selected in the menu
-            menuTarget.focus();
+            // Doing so guarantee that only 1 element is selected in the menu.
+            // (Note that we don't need to worry about hovering out: the context menu handles that natively already.    )
+            // We remove the current "keyboard-focus" class if any, and set it on the currently hovered item, unless that item is a group and opened.
+            const currentlyKBFocusedEntry = document.querySelector(".mx-context-menu-item.keyboard-focus");
+            currentlyKBFocusedEntry?.classList.remove("keyboard-focus");
+            if(!menuTarget.classList.contains("open")){
+                menuTarget.classList.add("keyboard-focus");
+            }
         },
 
         // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
@@ -1714,105 +1706,6 @@ body.#{$strype-classname-dragging-frame} {
 
 .flex-padding {
     flex-grow: 2;
-}
-
-/**
- * Style defined for the context menus (based on CSS templates from the Vue-Context component library)
- * (note that the method onContextMenuHover() in this component handle conflicts between selection and hovering)
- */
-$black: #333;
-$hover-blue: #5a7bfc;
-$background-grey: #ecf0f1;
-$divider-grey: darken($background-grey, 15%);
-
-.v-context,
-.v-context ul {
-    background-color: $background-grey;
-    display:block;
-    margin:0;
-    padding: 0;
-    min-width:10rem;
-    z-index:600;
-    position:fixed;
-    list-style:none;
-    max-height:calc(100% - 50px);
-    overflow-y:auto;
-    border-color: transparent;
-    border-bottom-width: 0px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-        "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-        sans-serif;
-    box-shadow: 0 3px 6px 0 rgba($black, 0.2);
-    border-radius: 4px;
-}
-
-.v-context > li,
-.v-context ul > li {
-    margin:0;
-    position:relative
-}
-
-.v-context > li > a,
-.v-context ul > li > a {
-    display:block;
-    padding: 5px 10px;
-    color:$black !important;
-    text-decoration:none;
-    white-space:nowrap;
-    background-color:transparent;
-    border:0
-}
-
-.v-context > li.v-context-disabled > a,
-.v-context ul > li.v-context-disabled > a {
-    color: grey !important;
-}
-
-.v-context > li > a:focus,
-.v-context ul > li > a:focus,
-.#{$strype-classname-ac-item}.#{$strype-classname-ac-item-selected} {
-    text-decoration:none;
-    color:white !important;
-    background-color: $hover-blue;
-}
-
-.v-context:focus,
-.v-context > li > a:focus,
-.v-context ul:focus,
-.v-context ul > li > a:focus{
-    outline:0
-}
-
-.v-context__sub > a:after{
-    content:"\203A";
-    float:right;
-    padding-left:1rem
-}
-
-.v-context__sub > ul{
-    display:none
-}
-
-.v-context > li {
-    &:first-of-type {
-      margin-top: 4px;
-    }
-
-    &:last-of-type {
-      margin-bottom: 4px;
-    }
-  }
-
-.v-context > ul > li > hr,
-.v-context > li > hr{
-    box-sizing: content-box;
-    height: 1px;
-    background-color: $divider-grey;
-    padding: 3px 0;
-    margin: 0;
-    background-clip: content-box;
-    pointer-events: none;
-    border: none;
 }
 
 // Styling of the expanded Python execution area splitter overlay (used to simulate a splitter above the Python execution area)

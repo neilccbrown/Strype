@@ -88,8 +88,8 @@ export interface CloudDriveItemPickerItem {
     hasVisitedFolder?: boolean // this is for the internal behaviour of the Picker, to know if we need to fetch the folder content (see CloudDriveItemPicker.vue)
 }
 
-export interface CTreeItemPickerItem extends CloudDriveItemPickerItem{
-    children: CTreeItemPickerItem[],
+export interface VTreeItemPickerItem extends CloudDriveItemPickerItem{
+    children: VTreeItemPickerItem[],
 }
 /* end picker related stuff */
 

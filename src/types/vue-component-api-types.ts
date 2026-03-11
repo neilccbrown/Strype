@@ -90,7 +90,6 @@ export type CaretContainerComponentAPI = {
       getAreDropFramesAllowed: () => boolean,
       setAreDropFramesAllowed: (v: boolean) => void,
       setIsDuplicateDnDAction: (v: boolean) => void,
-      closeContextMenu: () => void,
       handleClick: (event: MouseEvent, positionForMenu?: Position) => void,
       doPaste: (pasteAt?: "start" | "end" | "caret") => void,
   }
