@@ -59,6 +59,12 @@ export const handleSyncRequests : (
         const soundIndex = soundManager.createMonoSound(req.numSamples, req.sampleRate);
         return {request: req.request, response: Promise.resolve({handle: makeSoundHandle(soundIndex), numberOfChannels: 1, numSamples: req.numSamples, sampleRate: req.sampleRate })};
     }
+    case "createMonoSound": {
+        const bytes = decodeStringToUint8(req.encodedSamples);
+        const samples = new Float32Array(bytes.buffer);
+        const soundIndex = soundManager.createMonoSoundFromSamples(samples, req.sampleRate);
+        return {request: req.request, response: Promise.resolve({handle: makeSoundHandle(soundIndex), numberOfChannels: 1, numSamples: samples.length, sampleRate: req.sampleRate })};
+    }
     case "playSoundAndWait": {
         return {request: req.request, response: soundManager.playAudioBuffer(req.sound.handle.handle)?.then(()  => true)};
     }
@@ -144,6 +150,9 @@ export const handleSyncRequests : (
                 resolve({cloudFileId: loc});
             }
         })};
+    }
+    case "assetFile_fetch": {
+        return {request: req.request, response: fetch(req.url).then((resp) => resp.arrayBuffer()).then((arr) => encodeUint8ToString(new Uint8ClampedArray(arr)))};
     }
     default:
         // Trick to give a compile-time error if a case is missing above:
@@ -239,7 +248,9 @@ export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundMan
         return;
     }
     case "setMonoSoundSampleValues": {
-        soundManager.setMonoSoundSampleValues(req.sound.handle.handle, req.values, req.targetOffset);
+        const bytes = decodeStringToUint8(req.encodedSamples);
+        const samples = new Float32Array(bytes.buffer);
+        soundManager.setMonoSoundSampleValues(req.sound.handle.handle, samples);
         return;
     }
     case "downloadWAV": {

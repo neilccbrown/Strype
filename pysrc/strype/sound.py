@@ -7,24 +7,27 @@ class Sound:
     # type: float
     # There is a __buffer member which is of type RemoteSound
     
-    def __init__(self, seconds, samples_per_second = 44100):
+    def __init__(self, samples, samples_per_second = 44100):
         # type: (float, float) -> None
         """
-        Creates a new silent/empty sound object.  The first parameter indicates
-        a length in seconds, and the optional second parameter indicates the sample rate (samples per second).
+        Creates a new soond object.  The first parameter is a list of samples from -1 to +1,
+        and the optional second parameter indicates the sample rate (samples per second).
                  
-        :param seconds: A numeric value to indicate the sound's length in seconds. 
-        :param samples_per_second: If the first parameter is a number, this is the sampling rate in samples per second. 
+        :param samples: A list of sound samples with values ranging from -1 to +1.
+        :param samples_per_second: The sampling rate in samples per second. 
         """
         if samples_per_second == -4242: # Magic number used internally to indicate source is already a RemoteSOund
             # Important this clause is first, because if it's a Javascript object, performing
             # Python isinstance checks will give an error.  Which is why we use a magic number rather than
             # inspecting the type of seconds ourselves:
-            self.__buffer = seconds
-        elif isinstance(seconds, (int, float)):
-            self.__buffer = _strype_sound_internal.createAudioBuffer(seconds, samples_per_second)
+            self.__buffer = samples
+        elif isinstance(samples, list):
+            self.__buffer = _strype_sound_internal.createAudioBufferFromSamples(samples, samples_per_second)
+        elif isinstance(samples, (int, float)):
+            # For backwards compatibility: passing a number gives a silent buffer of that many seconds:
+            self.__buffer = _strype_sound_internal.createAudioBuffer(samples, samples_per_second)
         else:
-            raise TypeError(f"Sound length must be a number, but was: {type(seconds)}")
+            raise TypeError(f"Samples should be a list, but was: {type(samples)}")
     
     def get_num_samples(self):
         # type: () -> float
@@ -44,17 +47,16 @@ class Sound:
         """
         return _strype_sound_internal.getSamples(self.__buffer)
 
-    def set_samples(self, sample_list, copy_to_sample_index):
-        # type: (list[float], int) -> None
+    def set_samples(self, sample_list):
+        # type: (list[float]) -> None
         """
-        Copies the given list of sample values (which should each be in the range -1 to +1, with 0 as the middle)
-        to the given point in the destination sound.  It is okay if the list does not reach to the end of the sound,
-        but you will get an error if the list reaches beyond the end of the sound.
+        Replaces the contents of this sound with the given list of sample values (which should each be in the range -1 to +1, with 0 as the middle).
+        This may change the length of the sound if the number of samples is different to the original
+        number of samples.
         
-        :param sample_list: The list of numbers (each in the range -1 to +1) to copy to the sound, one per sample.
-        :param copy_to_sample_index: The index at which to start copying the sounds into
+        :param sample_list: The list of numbers (each in the range -1 to +1) to use for the sound, one per sample.
         """
-        _strype_sound_internal.setSamples(self.__buffer, sample_list, copy_to_sample_index)
+        _strype_sound_internal.setSamples(self.__buffer, sample_list)
 
     def play(self):
         # type: () -> None
@@ -153,5 +155,23 @@ def load_sound(source):
     # If they mistakenly try to load a sound (e.g. a literal) just let it through:
     if isinstance(source, Sound):
         return source
-    buffer = _strype_sound_internal.loadAndWaitForAudioBuffer(source)
+    if source.startswith("http:") or source.startswith("https:") or source.startswith("data:"):
+        buffer = _strype_sound_internal.loadAndWaitForAudioBuffer(source)
+    else:
+        # We load it from our virtual file system, either the current dir or /strype/graphics/
+        # To pass it on, it's probably faster to turn it into a data URL than e.g. read bytes
+        # and pass a long list of numbers which Pyodide has to convert item by array item to Javascript: 
+        import base64
+        import mimetypes
+
+        # If both fail, it will give an informative error (no such file):
+        try:
+            with open(source, "rb") as f:
+                encoded = base64.b64encode(f.read()).decode("ascii")
+        except:
+            with open("/strype/sounds/" + source, "rb") as f:
+                encoded = base64.b64encode(f.read()).decode("ascii")
+        mime_type, _ = mimetypes.guess_type(source)
+        buffer = _strype_sound_internal.loadAndWaitForAudioBuffer(f"data:{mime_type};base64,{encoded}")
+
     return Sound(buffer, -4242)

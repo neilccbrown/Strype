@@ -16,6 +16,8 @@ export interface FSNode {
     // These are not part of Emscripten's type but we add them and use them:
     strypeCloudFileId: CloudFileId;
     strypeCloudCachedChildren?: CloudFileInfo[];
+    assetsChildren : Record<string, FSNode>;
+    assetsContent : Uint8ClampedArray;
 }
 
 export interface FSStream {
@@ -49,7 +51,7 @@ export interface FSAttr {
 
 export interface FSNodeOpsFile {
     getattr(node: FSNode): FSAttr;
-    setattr(node: FSNode, attr: Partial<{
+    setattr?(node: FSNode, attr: Partial<{
         mode: number
         uid: number
         gid: number
@@ -58,12 +60,12 @@ export interface FSNodeOpsFile {
         mtime: Date
         ctime: Date
     }>) : void;
-    truncate(node : FSNode, len : number) : void;
+    truncate?(node : FSNode, len : number) : void;
 }
 export interface FSNodeOpsDir {
     getattr(node: FSNode): FSAttr;
     lookup(parent: FSNode, name: string): FSNode;
-    mknod(parent: FSNode, name: string, mode: number, dev: number): FSNode;
+    mknod?(parent: FSNode, name: string, mode: number, dev: number): FSNode;
     // We don't provide this but Emscripten would support it:
     // unlink(parent: FSNode, name: string): void;
     readdir(node: FSNode): string[];
@@ -78,7 +80,7 @@ export interface FSStreamOpsFile {
         length: number,
         position: number
     ): number;
-    write(
+    write?(
         stream: FSStream,
         buffer: Uint8Array | Int8Array,
         offset: number,
@@ -95,7 +97,7 @@ export interface FSStreamOpsDir {
 
 export interface EmscriptenFileSystemPlugin {
     mount(mount: any): FSNode;
-    createNode(
+    createNode?(
         parent: FSNode | null,
         name: string,
         mode: number,

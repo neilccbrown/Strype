@@ -460,7 +460,7 @@ export default Vue.extend({
                 // Important to call this when responding to a click, because browser won't allow
                 // sound to start unless we create it in direct response to a user action:
                 audioContext = new AudioContext();
-                soundManager = new SoundManager(audioContext);
+                soundManager = new SoundManager(audioContext, this);
                 this.execPythonCode();
                 return;
             case PythonExecRunningState.Running:
@@ -618,7 +618,7 @@ export default Vue.extend({
                             }).catch(async (err) => {
                                 await navigator.serviceWorker.ready;
                                 try {
-                                    await client.writeMessage({request: resp.request, error: JSON.stringify(err)});
+                                    await client.writeMessage({request: resp.request, error: err.toString()});
                                 }
                                 catch (e) {
                                     console.error(e);

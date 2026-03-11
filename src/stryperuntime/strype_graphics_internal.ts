@@ -73,7 +73,7 @@ export function loadAndWaitForImage(filename: string) : RemoteImage {
         return syncBridge({request: "loadImage", url: filename});
     }
     else if (!/:/.test(filename) && /^[^./]+\.[^/]+\/.+/.test(filename)) {
-        // Absolute partial:
+        // Absolute partial (spotted by dot before slash):
         return syncBridge({request: "loadImage", url: "https://" + filename});
     }
     else if (/^data:/.test(filename) && !/^data:image\/svg+xml/.test(filename)) {
@@ -87,10 +87,8 @@ export function loadAndWaitForImage(filename: string) : RemoteImage {
         const viaLibrary = syncBridge({request: "loadLibraryAsset", libraryShortName, fileName}) ?? filename;
         return syncBridge({request: "loadImage", url: viaLibrary});
     }
-    else {
-        // Relative path:
-        return syncBridge({request: "loadImage", url: "./graphics_images/" + filename});
-    }
+    // Filename handling should have been done by caller, so we should never reach here:
+    throw new Error(`Unable to load image: ${filename}`);
 }
 export function setBackground(img : RemoteImage) : void {
     globalThis.spriteManager.setBackground(img);

@@ -91,7 +91,7 @@ describe("Graphics library", () => {
     });
 
     it("Shows completions for image literal", () => {
-        cy.readFile("public/graphics_images/cat-test.jpg", null).then((catJPEG) => {
+        cy.readFile("src/assetsFilesystem/graphics/cat-test.jpg", null).then((catJPEG) => {
             focusEditorAC();
             // Add graphics import:
             cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
@@ -112,7 +112,7 @@ describe("Graphics library", () => {
     });
 
     it("Shows completions for audio literal", () => {
-        cy.readFile("public/sounds/cat-test-meow.wav", null).then((catWAV) => {
+        cy.readFile("src/assetsFilesystem/sounds/cat-test-meow.wav", null).then((catWAV) => {
             focusEditorAC();
             // Add graphics import:
             cy.get("body").type("{uparrow}{uparrow}fstrype.sound{rightarrow}*{rightarrow}{downarrow}{downarrow}");

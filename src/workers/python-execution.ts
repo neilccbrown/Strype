@@ -80,6 +80,7 @@ import { ResponseFor, SyncOrAsyncStrypePyodideWorkerRequest, SyncStrypePyodideHa
 import { SpriteManager } from "@/stryperuntime/image_and_collisions";
 import { PyodideWorkerGlobalScope } from "@/workers/python_execution_type";
 import {getFSForEmscripten} from "@/stryperuntime/pyodide-emscripten-cloud-fs";
+import {createLazyFetchAssetsFS} from "@/stryperuntime/pyodide-emscripten-assets-fs";
 
 // We only specify updatePort here as we don't want other files using it directly:
 declare const self: PyodideWorkerGlobalScope & { updatePort: MessagePort };
@@ -97,6 +98,9 @@ async function loadOnly() : Promise<PyodideInterface> {
     // while not saved to the cloud.
     pyodide.FS.filesystems.CLOUDFS = getFSForEmscripten(pyodide);
     pyodide.FS.mkdir("/cloud");
+    
+    pyodide.FS.filesystems.ASSETSFS = createLazyFetchAssetsFS(pyodide);
+    pyodide.FS.mkdir("/strype");
     
     return pyodide;
 }
@@ -139,7 +143,7 @@ StrypePyodideRunner()`);
             }
             else if ("error" in reply) {
                 // We propagate to the user so they get some feedback:
-                throw (req.request.startsWith("file_") ? new pyodide.FS.ErrnoError(63, "Cloud file error:" + reply.error) :pyodide.globals.get("RuntimeError")("Internal error:" + reply.error));
+                throw (req.request.startsWith("file_") ? new pyodide.FS.ErrnoError(63, "Cloud file error:" + reply.error) : new Error("Internal error:" + reply.error));
             }
             else {
                 // I think Typescript should be able to infer reply is ResponseFor<R> because of the if check, but apparently not:
@@ -172,6 +176,7 @@ StrypePyodideRunner()`);
                 console.error("Problem mounting cloud file system: ", e);
             }
         }
+        pyodide.FS.mount(pyodide.FS.filesystems.ASSETSFS, {}, "/strype");
         
         let error : ErrorDetails | null = null;
         const callback = makeRunnerCallback(extras, {

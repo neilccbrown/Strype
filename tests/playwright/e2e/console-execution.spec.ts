@@ -126,4 +126,41 @@ test.describe("Check errors show", () => {
         await runToFinish(page);
         await checkConsoleContent(page, "< AttributeError: 'str' object has no attribute 'foo' >\n  From the highlighted call in your code");
     });
+    test("Check error shows for file reading", async ({page}) => {
+        await enterCode(page, ["", "", "open(\"/does/not/exist.txt\", \"r\", encoding=\"utf-8\")"]);
+        await runToFinish(page);
+        await checkConsoleContent(page, "< FileNotFoundError: [Errno 44] No such file or directory: '/does/not/exist.txt' >\n  From the highlighted call in your code");
+    });
+});
+
+test.describe("Test assets filesystem", () => {
+    test("Check reading and processing book", async ({page}) => {
+        await enterCode(page, ["", "", `
+with open("/strype/book/books/three-men-in-a-boat.txt", "r", encoding="utf-8") as file:
+    content = file.read()
+count = content.count("Montmorency")
+
+print(f'Montmorency is mentioned {count} times.')`]);
+        await runToFinish(page);
+        await checkConsoleContent(page, "Montmorency is mentioned 48 times.\n");
+    });
+});
+
+// Not really a console test, but relies on console output so it can be here:
+test.describe("Test sounds", () => {
+    test("Check loading and setting sounds", async ({page}) => {
+        await enterCode(page, ["from strype.sound import *", "", `
+s = Sound([-1,0,1])
+print(s.get_samples())
+s.set_samples([-0.5, 0.5])
+print(s.get_samples())
+s.set_samples([1, -1])
+print(s.get_samples())`]);
+        await runToFinish(page);
+        await checkConsoleContent(page, `
+-1,0,1
+-0.5,0.5
+1,-1
+`.trimStart());
+    });
 });
