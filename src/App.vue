@@ -90,11 +90,17 @@
                 </div>
             </div>
             <SimpleMsgModalDlg :dlgId="simpleMsgModalDlgId"/>
-            <ModalDlg :dlgId="importDiffVersionModalDlgId" :useYesNo="true">
+            <ModalDlg :dlgId="importDiffVersionModalDlgId" :okCustomTitle="$t('buttonLabel.continue')">
                 <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
             </ModalDlg>
-            <ModalDlg :dlgId="resyncToCloudDriveAtStartupModalDlgId" :useYesNo="true" :okCustomTitle="$t('buttonLabel.yesSign')" :cancelCustomTitle="$t('buttonLabel.noContinueWithout')">
+            <ModalDlg :dlgId="resyncToCloudDriveAtStartupModalDlgId" :elementToFocusId="resyncSaveToCloudDriveAtStartupButtonId" size="lg">
                 <span style="white-space:pre-wrap" v-html="resyncToCloudDriveAtStartupDetailsMessage"></span>
+                <!-- in order to allow 3 (customed) buttons, we use the slot "modal-footer-content" made available in the underlying BModal -->
+                <template #modal-footer-content="{ok, cancel}">
+                    <BButton variant="secondary" @click="cancel()">{{$t('buttonLabel.noContinueWithout')}}</BButton>
+                    <BButton :id="resyncLoadFromCloudDriveAtStartupButtonId" variant="primary" @click="resyncToCloudDriveAtStartup(true ,ok);">{{resyncLoadFromCloudDriveAtStartupButtonLabel}}</BButton>
+                    <BButton :id="resyncSaveToCloudDriveAtStartupButtonId" variant="primary" @click="resyncToCloudDriveAtStartup(false, ok);">{{resyncSaveToCloudDriveAtStartupButtonLabel}}</BButton>
+                </template>
             </ModalDlg>
             <MediaPreviewPopup ref="mediaPreviewPopup" />
             <EditImageDlg dlgId="editImageDlg" ref="editImageDlg" :imgToEdit="imgToEditInDialog" :showImgPreview="showImgPreview" />
@@ -107,7 +113,7 @@
                     <br/>
                 </div>
             </ModalDlg>
-            <ModalDlg :dlgId="confirmNewProjectModalDlgId" :useYesNo="true">
+            <ModalDlg :dlgId="confirmNewProjectModalDlgId" :okCustomTitle="$t('buttonLabel.continue')">
                 <span style="white-space:pre-wrap" v-html="$t('appMessage.newProjectConfirmation')"></span>
             </ModalDlg>
         </div>
@@ -129,7 +135,7 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore, settingsStore } from "@/store/store";
-import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState } from "@/types/types";
+import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState, LoadRequestReason } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
 import {getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
@@ -318,6 +324,22 @@ export default defineComponent({
 
         resyncToCloudDriveAtStartupDetailsMessage(): string {
             return this.$t("appMessage.resyncToCloudDriveAtStartup", {drivename: this.cloudDriveName}) as string;
+        },
+
+        resyncSaveToCloudDriveAtStartupButtonId(): string {
+            return "resyncSaveToCloudAtStartupButton";
+        },
+
+        resyncLoadFromCloudDriveAtStartupButtonId(): string {
+            return "resyncLoadFromCloudAtStartupButton";
+        },
+
+        resyncLoadFromCloudDriveAtStartupButtonLabel(): string {
+            return this.$t("buttonLabel.loadFromCloudDrive", {drivename: this.cloudDriveName});
+        },
+
+        resyncSaveToCloudDriveAtStartupButtonLabel(): string {
+            return this.$t("buttonLabel.saveToCloudDrive", {drivename: this.cloudDriveName});
         },
 
         confirmNewProjectModalDlgId(): string {
@@ -1015,25 +1037,24 @@ export default defineComponent({
                     // When a file had been reloaded and it was previously synced with a Cloud Drive, we want to ask the user
                     // about reloading the project from that Cloud Drive again (only if we were not attempting to open a shared project via the URL)
                     if(this.appStore.currentCloudSaveFileId) {
-                        // We need to have the specific Cloud Drive component loaded for getting its name and register the generic signin callback, so we do that now...
+                        // We need to have the specific Cloud Drive component loaded for getting its name,so we do that now...
                         const cloudHandlerComponentAPI = vueComponentsAPIHandler.cloudDriveHandlerComponentAPI;
-                        cloudHandlerComponentAPI?.setGenericSignInCallBack(this.appStore.syncTarget, () => vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.saveFile(this.appStore.syncTarget, SaveRequestReason.reloadBrowser));
+                        // This makes sure we had set things properly when getting the Drive name below)
+                        cloudHandlerComponentAPI?.getSpecificCloudDriveComponent(this.appStore.syncTarget);
                         this.cloudDriveName = cloudHandlerComponentAPI?.getDriveName()??"";
-                        const execGetCloudDriveFileFunction = (event: BvTriggerableEvent) => {
+
+                        // Register a "temporary" cancel action listener. For OK, actions are handled explicitly in this.resyncToCloudDriveAtStartup()
+                        const resetCloudDriveSyncTargetFunction = (event: BvTriggerableEvent) => {
                             const dlgId = event.componentId;
                             if(dlgId == this.resyncToCloudDriveAtStartupModalDlgId){
-                                if(event.trigger == "ok" || event.trigger=="event"){
-                                    // Initiate a connection to the Cloud Drive (for updating the Cloud Drive with local changes)
-                                    cloudHandlerComponentAPI?.signInFn();                                
-                                    eventBus.off(CustomEventTypes.strypeModalHidden, execGetCloudDriveFileFunction); 
-                                }
-                                else{
+                                if(event.trigger == "cancel"){
                                     // We make sure we do not keep a wrong sync target!
                                     vueComponentsAPIHandler.menuComponentAPI?.saveTargetChoice(StrypeSyncTarget.none);
-                                }
+                                    eventBus.off(CustomEventTypes.strypeModalHidden, resetCloudDriveSyncTargetFunction); 
+                                }                               
                             }
                         };
-                        eventBus.on(CustomEventTypes.strypeModalHidden, execGetCloudDriveFileFunction);   
+                        eventBus.on(CustomEventTypes.strypeModalHidden, resetCloudDriveSyncTargetFunction);   
                         eventBus.emit(CustomEventTypes.showStrypeModal, this.resyncToCloudDriveAtStartupModalDlgId);
                     }
                     // When a file has been reloaded and it was previously saved the File System, we want to clear off any references to that file
@@ -1042,6 +1063,21 @@ export default defineComponent({
                     }
                 }, () => {});
             }, () => {});
+        },
+
+        resyncToCloudDriveAtStartup(isLoadingRequested: boolean, dialogOK: VoidFunction){
+            // First validate the OK action of the modal:
+            dialogOK();
+            
+            if(isLoadingRequested){          
+                // Request load, the signin will be handled there.         
+                vueComponentsAPIHandler?.cloudDriveHandlerComponentAPI?.loadFile(this.appStore.syncTarget, LoadRequestReason.reloadBrowser);
+            }
+            else {
+                // Initiate a connection to the Cloud Drive (for updating the Cloud Drive with local changes)
+                vueComponentsAPIHandler?.cloudDriveHandlerComponentAPI?.setGenericSignInCallBack(this.appStore.syncTarget, () => vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.saveFile(this.appStore.syncTarget, SaveRequestReason.reloadBrowser));
+                vueComponentsAPIHandler?.cloudDriveHandlerComponentAPI?.signInFn();
+            }         
         },
 
         applyShowAppProgress(event: AppEvent) {

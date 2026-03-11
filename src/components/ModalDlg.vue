@@ -55,7 +55,6 @@ export default defineComponent({
             required: false,
         },       
         elementToFocusId: String,
-        useYesNo: Boolean, // by default, the values of the buttons are OK and Cancel, this flag allows using Yes/No (in combination with okOnly) if needed
         cssClass: String,
     },
 
@@ -83,11 +82,11 @@ export default defineComponent({
         ...mapStores(useStore),
 
         okTitle(): string {
-            return this.okCustomTitle ?? (this.$t((this.useYesNo) ? "buttonLabel.yes" : "buttonLabel.ok") as string);
+            return this.okCustomTitle ?? this.$t("buttonLabel.ok");
         },
         
         cancelTitle(): string {
-            return this.cancelCustomTitle ?? (this.$t((this.useYesNo) ? "buttonLabel.no" : "buttonLabel.cancel") as string);
+            return this.cancelCustomTitle ?? this.$t("buttonLabel.cancel");
         },
     },
 

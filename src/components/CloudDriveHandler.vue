@@ -25,7 +25,7 @@ import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { CustomEventTypes, getAppSimpleMsgDlgId, getCloudLoginErrorModalDlgId, getFrameUID, getSaveAsProjectModalDlg } from "@/helpers/editor";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
-import { BootstrapDlgSize, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
+import { BootstrapDlgSize, LoadRequestReason, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
 import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileSharingStatus, isSyncTargetCloudDrive, SaveExistingCloudProjectInfos } from "@/types/cloud-drive-types";
 import GoogleDriveComponent from "@/components/GoogleDriveComponent.vue";
 import OneDriveComponent from "@/components/OneDriveComponent.vue";
@@ -104,6 +104,7 @@ export default defineComponent({
             genericSignInCallBack: () => {}, // a callback function a caller to this component can set for specific callback after signing in to the Cloud provider
             currentAction: null as "generic-sign-in" | "load" | "save" | null, // flag the request current action for async workflow;
             saveReason: SaveRequestReason.unloadPage, // flag the reason of the save action
+            loadReason: LoadRequestReason.standardUserLoad, // flag the reason of the load action
             saveFileName: "", // The file name, will be set via the Menu when a name is provided for saving, or when loading a project            
             Actions, // this is required to be accessible in the template
             saveExistingCloudProjectInfos: {} as SaveExistingCloudProjectInfos,
@@ -179,7 +180,7 @@ export default defineComponent({
                 this.checkIsFileLockedProp = (resetToDefault) ? () => false : () => (component as CloudDriveComponent).isFileLocked;
                 this.signInFn = (resetToDefault) ? () => {} : () => (component as CloudDriveComponent).signIn((cloudTarget: StrypeSyncTarget) => { 
                     if(this.currentAction == "load"){
-                        this.doLoadFile(cloudTarget, this.openSharedProjectFileId, this.isSwappingCloudDriveTarget(cloudTarget));
+                        this.doLoadFile(cloudTarget, this.loadReason, this.openSharedProjectFileId, this.isSwappingCloudDriveTarget(cloudTarget));
                     }
                     else if(this.currentAction == "save"){
                         this.saveFile(cloudTarget, this.saveReason);
@@ -227,14 +228,14 @@ export default defineComponent({
             const cloudDriveComponent = this.getSpecificCloudDriveComponent(cloudTarget);
             cloudDriveComponent?.testCloudConnection(() => {
                 eventBus.emit(CustomEventTypes.addFunctionToEditorProjectSave, {syncTarget: cloudTarget, function: (saveReason: SaveRequestReason) => this.saveFile(cloudTarget, saveReason)});
-                this.doLoadFile(cloudTarget, this.openSharedProjectFileId, this.isSwappingCloudDriveTarget(cloudTarget));
+                this.doLoadFile(cloudTarget, LoadRequestReason.standardUserLoad, this.openSharedProjectFileId, this.isSwappingCloudDriveTarget(cloudTarget));
             }, () => {
                 cloudDriveComponent.resetOAuthToken();
                 this.signInFn();
             });
         },
         
-        doLoadFile(cloudTarget: StrypeSyncTarget, openSharedProjectFileId: string, isSwappingCloudDriveTarget: boolean): Promise<void>{
+        doLoadFile(cloudTarget: StrypeSyncTarget, loadReason: LoadRequestReason, openSharedProjectFileId: string, isSwappingCloudDriveTarget: boolean): Promise<void>{
             // If a user is attempting to open a project explicitly from the cloud (i.e. not via a shared project):
             // When we load for the very first time, we may not have a Drive location to look for. In that case, we look for a Strype folder existence 
             // (however we do not create it here, we would do this on a save action). If a location is already set*, we make sure it still exists. 
@@ -252,7 +253,14 @@ export default defineComponent({
                                 return cloudDriveComponent.getFolderNameFromId(strypeFolderId).then((folderNameAndPath) => {
                                     this.appStore.strypeProjectLocationAlias = folderNameAndPath.name;
                                     this.appStore.strypeProjectLocationPath = folderNameAndPath.path??"";
-                                    return cloudDriveComponent.openFilePicker(strypeFolderId);
+                                    // The picker is only requested when doing an explicit (default) loading
+                                    if(loadReason == LoadRequestReason.standardUserLoad){
+                                        return cloudDriveComponent.openFilePicker(strypeFolderId);
+                                    }
+                                    else {
+                                        // ... the other case for LoadRequestReason.reloadBrowser
+                                        return cloudDriveComponent.onFileToLoadPicked(cloudTarget, this.appStore.currentCloudSaveFileId??"" );
+                                    }
                                 });
                             }
                             else{
@@ -279,8 +287,9 @@ export default defineComponent({
             }
         },
 
-        loadFile(cloudTarget: StrypeSyncTarget) {
+        loadFile(cloudTarget: StrypeSyncTarget, loadReason?: LoadRequestReason) {
             this.currentAction = "load";
+            this.loadReason = loadReason ?? LoadRequestReason.standardUserLoad;
 
             // We might not have a value in cloudTarget when we reload the picker after a file with unsupported extension has been selected,
             // in that case we use the current target
@@ -576,7 +585,7 @@ export default defineComponent({
             let otherParams = {fileName: fileName};
             const cloudDriveComponent = this.getSpecificCloudDriveComponent(cloudTarget);
             cloudDriveComponent?.loadPickedFileId(id, otherParams, (fileNameFromDrive: string, fileModifiedDateTime: string) => {
-                if(this.openSharedProjectFileId.length > 0){
+                if(this.openSharedProjectFileId.length > 0 || this.loadReason == LoadRequestReason.reloadBrowser){
                     otherParams.fileName = fileNameFromDrive;
                     fileName = fileNameFromDrive;
                 }
