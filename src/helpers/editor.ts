@@ -6,7 +6,7 @@ import { splitByRegexMatches, strypeFileExtension } from "./common";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
 import scssVars  from "@/assets/style/_export.module.scss";
 import html2canvas, { Options } from "html2canvas";
-import Vue from "vue";
+import Vue, { nextTick } from "vue";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import { debounce } from "lodash";
 // #v-endif
@@ -1216,7 +1216,7 @@ export function notifyDragEnded():void {
         vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretContainerUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)].setAreDropFramesAllowed(true);
     }
     // Reset flags in the next tick to let UI update properly
-    Vue.nextTick(() => {
+    nextTick(() => {
         currentCaretDropPosId = "", currentCaretDropPosFrameId = 0, currentCaretDropPosCaretPos =  CaretPosition.none, 
         newCaretDropPosFrameId = 0, newCaretDropPosCaretPos = CaretPosition.none;
     });    

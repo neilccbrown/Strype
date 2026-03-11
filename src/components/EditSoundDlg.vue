@@ -47,7 +47,7 @@
 </template>
 
 <script lang="ts">
-import Vue, { defineComponent } from "vue";
+import { defineComponent } from "vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { Cropper } from "vue-advanced-cropper";
 import "vue-advanced-cropper/dist/style.css";
@@ -292,7 +292,7 @@ export default defineComponent({
             this.imgPreview = drawSoundOnCanvas(this.soundToEdit, previewImageWidth, previewImageHeight, volumeFactor);
             this.volumeRMS = getRMS(this.soundToEdit, volumeFactor, this.crop.firstSampleIncl, this.crop.lastSampleExcl);
             // But retain same crop (have to do this after cropper has updated the image):
-            Vue.nextTick(() => {
+            this.$nextTick(() => {
                 (this.$refs.cropper as InstanceType<typeof Cropper>).setCoordinates({
                     left: this.crop.leftPixel,
                     width: this.crop.widthPixels,

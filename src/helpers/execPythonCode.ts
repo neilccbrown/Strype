@@ -4,7 +4,7 @@ import { LineAndSlotPositions } from "@/types/types";
 import { useStore } from "@/store/store";
 import { skulptReadPythonLib } from "@/autocompletion/ac-skulpt";
 import i18n from "@/i18n";
-import Vue from "vue";
+import Vue, { nextTick } from "vue";
 import { CustomEventTypes, setPythonExecAreaLayoutButtonPos } from "./editor";
 import { clearFileIOCaches, skulptCloseFileIO, skulptInteralFileWrite, skulptOpenFileIO } from "./skulptFileIO";
 
@@ -22,7 +22,7 @@ let codeExecStateRunningCheckFn: () => boolean | undefined;
 function outf(text: string) { 
     consoleTextArea.value = consoleTextArea.value + text; 
     // Scroll to bottom:
-    Vue.nextTick(() => {
+    nextTick(() => {
         consoleTextArea.scrollTop = consoleTextArea.scrollHeight;
     });
 }
@@ -297,7 +297,7 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         }
         handleExecutionFinished(true);
         // We will have added text either way, now scroll to bottom:
-        Vue.nextTick(() => {
+        nextTick(() => {
             consoleTextArea.scrollTop = consoleTextArea.scrollHeight;
         });
     });

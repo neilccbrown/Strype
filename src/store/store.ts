@@ -1,4 +1,4 @@
-import Vue from "vue";
+import Vue, { nextTick} from "vue";
 import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia, ModifierKeyCode } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
@@ -911,7 +911,7 @@ export const useStore = defineStore("app", {
             );
 
             // Scroll caret into view when navigating with keyboard:
-            Vue.nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
+            nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
 
             // Only frame containers (sections) are collapsable, so we don't need to check if a destination frame itself is collapsed,
             // but we do need to check if the target container is - and expand it if needed.
@@ -937,7 +937,7 @@ export const useStore = defineStore("app", {
 
             // By default, scroll the new caret into view:
             if (scrollIntoView) {
-                Vue.nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
+                nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
             }
         },
 
@@ -1408,14 +1408,14 @@ export const useStore = defineStore("app", {
             this.projectLastSaveDate = -1;
 
             // We check the errors in the code applied to the that new state
-            Vue.nextTick().then(() => {
+            nextTick().then(() => {
                 this.wasLastRuntimeErrorFrameId = undefined,
                 checkEditorCodeErrors();
                 // To make sure that the error navigator gets updated properly (reactivity) we first set the error count to -1 and then count again in next tick so it notified
                 // because when we load a file, we update the error count value in the state but this error check won't be notified if there are actually
                 // still the same number of errors...
                 useStore().errorCount = -1;
-                Vue.nextTick().then(() => useStore().errorCount = countEditorCodeErrors());                
+                nextTick().then(() => useStore().errorCount = countEditorCodeErrors());                
             }); 
         },
 
@@ -1569,7 +1569,7 @@ export const useStore = defineStore("app", {
                 }); 
 
                 // We make sure the current selection of the document is in sync with what we have in the store
-                Vue.nextTick(() => {
+                nextTick(() => {
                     // Set the right current frame in any case
                     const newCaretId = this.lastCriticalActionPositioning.lastCriticalCaretPosition.id;
                     if(getAvailableNavigationPositions().map((e)=>e.frameId).includes(newCaretId) && this.frameObjects[newCaretId]){
@@ -1578,7 +1578,7 @@ export const useStore = defineStore("app", {
                             "caretVisibility",
                             this.lastCriticalActionPositioning.lastCriticalCaretPosition.caretPosition
                         );
-                        Vue.nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
+                        nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
                     }
                     if(this.focusSlotCursorInfos && this.anchorSlotCursorInfos){
                         this.setSlotTextCursors(this.focusSlotCursorInfos, this.focusSlotCursorInfos);
@@ -1765,7 +1765,7 @@ export const useStore = defineStore("app", {
                 // the component gets created again.
                 // Remove the frame from its parent
                 sourceContainerFrame.childrenIds.splice(sourceContainerFrame.childrenIds.indexOf(draggedFrameId), 1);
-                Vue.nextTick(() => {
+                nextTick(() => {
                     // Append it to the destination list
                     const destFrameListInsertIndex = (destinationCaretPos == CaretPosition.body) ? 0 : destContainerFrame.childrenIds.indexOf(destinationCaretFrameId) + 1;
                     destContainerFrame.childrenIds.splice(destFrameListInsertIndex, 0, draggedFrameId);
@@ -1779,7 +1779,7 @@ export const useStore = defineStore("app", {
             });
 
             //save the state changes for undo/redo after all changes changing the order has been done
-            Vue.nextTick(() => {
+            nextTick(() => {
                 this.saveStateChanges(this.stateBeforeChanges);
 
                 //clear the stateBeforeChanges flag off
@@ -2074,7 +2074,7 @@ export const useStore = defineStore("app", {
                         : {id: this.frameObjects[newFrame.parentId].childrenIds[index - 1], caretPosition: CaretPosition.below};       
                     this.setCurrentFrame(newPos);
                 }
-                await Vue.nextTick();
+                await nextTick();
                 availablePositions = getAvailableNavigationPositions();
                 this.isWrappingFrame = false;
             }
@@ -2444,7 +2444,7 @@ export const useStore = defineStore("app", {
                 // (as the slot may have not yet be renderered in the UI, for example when adding a new frame, we do it later)
                 // If we are reaching a comment frame, coming from the blue caret underneath, we neeed to check if there is a terminating line return:
                 // if that's the case, we do not get just after it, but before it; see LabelSlot.vue onEnterOrTabKeyUp() for why.
-                Vue.nextTick(() => {
+                nextTick(() => {
                     let textCursorPos = (directionDelta == 1) ? 0 : (document.getElementById(getLabelSlotUID(nextSlotCoreInfos))?.textContent?.replace(/\u200B/, "")?.length)??0;
                     const isCommentFrame = this.frameObjects[nextSlotCoreInfos.frameId as number].frameType.type == AllFrameTypesIdentifier.comment;
                     if(isCommentFrame && (document.getElementById(getLabelSlotUID(nextSlotCoreInfos))?.textContent??"").endsWith("\n") && directionDelta == -1){
@@ -2474,7 +2474,7 @@ export const useStore = defineStore("app", {
                 );
 
                 // Scroll it into view:
-                Vue.nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
+                nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
 
                 this.setSlotTextCursors(undefined, undefined);
        
