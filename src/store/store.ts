@@ -501,10 +501,7 @@ export const useStore = defineStore("app", {
                 
                 // remove any empty commands (forbidden) for this shortcut
                 if( filteredCommands[frameShortcut].length === 0){
-                    Vue.delete(
-                        filteredCommands,
-                        frameShortcut
-                    );                    
+                    delete filteredCommands[frameShortcut];                    
                 }
             }
             
@@ -763,7 +760,7 @@ export const useStore = defineStore("app", {
             Object.keys(this.frameObjects).forEach((frameId) => {
                 const frameIdInt = parseInt(frameId);
                 if(frameIdInt > 0) {
-                    Vue.delete(this.frameObjects, frameId);
+                    delete this.frameObjects[parseInt(frameId)];
                 }
                 else if(frameIdInt < 0){
                     // The frame section containers are not cleared, but their children are!
@@ -839,10 +836,7 @@ export const useStore = defineStore("app", {
                         );
                     }
                     //and finally, delete the frame
-                    Vue.delete(
-                        this.frameObjects,
-                        payload.frameToDeleteId
-                    );
+                    this.frameObjects[payload.frameToDeleteId];
                 }
             }
         },
@@ -1560,10 +1554,7 @@ export const useStore = defineStore("app", {
                             statePartToChange[property] = undefined;
                         }
                         else{
-                            Vue.delete(
-                                statePartToChange,
-                                property
-                            );   
+                            delete statePartToChange[property];
                         }              
                     }
                 });
@@ -1572,10 +1563,7 @@ export const useStore = defineStore("app", {
                 arraysToClean.forEach((arrayToClean) => {
                     for(let arrayIndex = arrayToClean.length; arrayIndex >=0; arrayIndex--){
                         if(arrayToClean[arrayIndex] === null){
-                            Vue.delete(
-                                arrayToClean,
-                                arrayIndex
-                            );
+                            delete arrayToClean[arrayIndex];
                         }
                     }
                 }); 

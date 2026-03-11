@@ -268,10 +268,7 @@ export const removeFrameInFrameList = (frameId: number): void => {
     );
 
     //Now we can delete the frame from the list of frameObjects
-    Vue.delete(
-        useStore().frameObjects,
-        frameId
-    );
+    delete useStore().frameObjects[frameId];
 };
 
 // Returns the parentId of the frame or if it is a joint frame returns the parentId of the JointParent.
@@ -790,11 +787,11 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
             error: "",
         }
     );
-    Vue.delete(slot,"errorTitle");
+    delete (slot as BaseSlot).errorTitle;
 
     // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
     // If the frame of this slot has a runtime error, we also clear it
-    Vue.delete(useStore().frameObjects[slotInfos.frameId], "runTimeError");
+    delete useStore().frameObjects[slotInfos.frameId].runTimeError;
     // #v-endif
 
     // Check for precompiled errors (empty slots)
