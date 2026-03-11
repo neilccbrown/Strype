@@ -465,7 +465,7 @@ export default Vue.extend({
                 // Important to call this when responding to a click, because browser won't allow
                 // sound to start unless we create it in direct response to a user action:
                 audioContext = new AudioContext();
-                soundManager = new SoundManager(audioContext);
+                soundManager = new SoundManager(audioContext, this);
                 this.execPythonCode();
                 return;
             case PythonExecRunningState.Running:
@@ -586,6 +586,7 @@ export default Vue.extend({
                 (client.call(
                     client.workerProxy.executePython,
                     userCode,
+                    typeof(this.appStore.strypeProjectLocation) === "string",
                     Comlink.proxy((output: string) => {
                         pythonConsole.value = pythonConsole.value + output;
                     }),
@@ -637,6 +638,8 @@ export default Vue.extend({
                     useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                     this.isRunningStrypeGraphics = false;
                     setPythonExecAreaLayoutButtonPos();
+                    // We always restart Pyodide for a clean state:
+                    terminateAndRestartPyodide();
                 });
 
                 // Trigger the actual Python code execution launch

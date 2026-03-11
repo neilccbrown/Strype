@@ -1,13 +1,15 @@
 // This file has the parts of the code which executes on the main thread to handle requests from the Pyodide web worker
 
-import { AsyncStrypePyodideHandlerFunction, decodeRGBA, encodeRGBA, isRemoteImage, makeSoundHandle, SpriteHandle, SyncPromiseStrypePyodideHandlerFunction } from "@/stryperuntime/worker_bridge_type";
-import { Renderer } from "@/stryperuntime/renderer";
-import { SoundManager } from "@/stryperuntime/sound_manager";
-import { drawText } from "@/helpers/textDrawing";
+import {AsyncStrypePyodideHandlerFunction, CloudFileId, decodeStringToUint8, encodeUint8ToString, isRemoteImage, makeSoundHandle, SpriteHandle, SyncPromiseStrypePyodideHandlerFunction} from "@/stryperuntime/worker_bridge_type";
+import {Renderer} from "@/stryperuntime/renderer";
+import {SoundManager} from "@/stryperuntime/sound_manager";
+import {drawText} from "@/helpers/textDrawing";
 // We only import the type because the library itself is loaded from index.html: 
 import type WebFont from "webfontloader";
-import { saveAs } from "file-saver";
-import { getDateTimeFormatted } from "@/helpers/common";
+import {saveAs} from "file-saver";
+import {getDateTimeFormatted} from "@/helpers/common";
+import {cloudCloseFile, cloudCreate, cloudListDir, cloudLookupFile, cloudOpenFile, cloudReadFile, cloudTruncateFile, cloudWriteFile} from "@/helpers/skulptFileIO";
+import {useStore} from "@/store/store";
 import { handleTurtle, TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 
 // These are callbacks passed from PythonExecutionArea.vue to do things that are tied to the DOM or wider Strype state.
@@ -59,6 +61,12 @@ export const handleSyncRequests : (
         const soundIndex = soundManager.createMonoSound(req.numSamples, req.sampleRate);
         return {request: req.request, response: Promise.resolve({handle: makeSoundHandle(soundIndex), numberOfChannels: 1, numSamples: req.numSamples, sampleRate: req.sampleRate })};
     }
+    case "createMonoSound": {
+        const bytes = decodeStringToUint8(req.encodedSamples);
+        const samples = new Float32Array(bytes.buffer);
+        const soundIndex = soundManager.createMonoSoundFromSamples(samples, req.sampleRate);
+        return {request: req.request, response: Promise.resolve({handle: makeSoundHandle(soundIndex), numberOfChannels: 1, numSamples: samples.length, sampleRate: req.sampleRate })};
+    }
     case "playSoundAndWait": {
         return {request: req.request, response: soundManager.playAudioBuffer(req.sound.handle.handle)?.then(()  => true)};
     }
@@ -108,7 +116,45 @@ export const handleSyncRequests : (
     }
     case "canvas_getAllPixelsRGBA": {
         const ctx = renderer.getCanvasContext(req.img.handle);
-        return {request: req.request, response: Promise.resolve(encodeRGBA(ctx.getImageData(0, 0, req.img.width, req.img.height).data))};
+        return {request: req.request, response: Promise.resolve(encodeUint8ToString(ctx.getImageData(0, 0, req.img.width, req.img.height).data))};
+    }
+    case "file_lookup": {
+        return {request: req.request, response: cloudLookupFile(req.parent, req.name)};
+    }
+    case "file_listDir": {
+        return {request: req.request, response: cloudListDir(req.parent)};
+    }
+    case "file_open" : {
+        return {request: req.request, response: cloudOpenFile(req.id, req.flags)};
+    }
+    case "file_read": {
+        return {request: req.request, response: cloudReadFile(req.id, req.from, req.length, req.filePath).then((arr) => encodeUint8ToString(arr))};
+    }
+    case "file_write": {
+        return {request: req.request, response: cloudWriteFile(req.id, decodeStringToUint8(req.encodedContent),  req.from, req.filePath).then(() => true)};
+    }
+    case "file_close": {
+        return {request: req.request, response: cloudCloseFile(req.id)};
+    }
+    case "file_truncate": {
+        return {request: req.request, response: cloudTruncateFile(req.id, req.size, req.filePath)};
+    }
+    case "file_createNode": {
+        return {request: req.request, response: cloudCreate(req.parent, req.name, req.isDir, req.filePath)};
+    }
+    case "file_getRoot": {
+        return {request: req.request, response: new Promise<CloudFileId>((resolve, reject)  => {
+            const loc = useStore().strypeProjectLocation;
+            if (!loc || typeof(loc) != "string") {
+                reject("Project not saved in cloud, so cannot access cloud files.");
+            }
+            else {
+                resolve({cloudFileId: loc});
+            }
+        })};
+    }
+    case "assetFile_fetch": {
+        return {request: req.request, response: fetch(req.url).then((resp) => resp.arrayBuffer()).then((arr) => encodeUint8ToString(new Uint8ClampedArray(arr)))};
     }
     case "turtle": {
         return {request: req.request, response: handleTurtle(turtle, req.buffer).then(() => true)};
@@ -187,7 +233,7 @@ export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundMan
         return;
     }
     case "canvas_drawPixels": {
-        renderer.getCanvasContext(req.img.handle).putImageData(new ImageData(decodeRGBA(req.pixelRGBA), req.width, req.height), req.x, req.y);
+        renderer.getCanvasContext(req.img.handle).putImageData(new ImageData(decodeStringToUint8(req.pixelRGBA), req.width, req.height), req.x, req.y);
         return undefined;
     }
     case "canvas_downloadPNG": {
@@ -207,7 +253,9 @@ export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundMan
         return;
     }
     case "setMonoSoundSampleValues": {
-        soundManager.setMonoSoundSampleValues(req.sound.handle.handle, req.values, req.targetOffset);
+        const bytes = decodeStringToUint8(req.encodedSamples);
+        const samples = new Float32Array(bytes.buffer);
+        soundManager.setMonoSoundSampleValues(req.sound.handle.handle, samples);
         return;
     }
     case "downloadWAV": {

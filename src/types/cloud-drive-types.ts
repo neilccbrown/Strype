@@ -41,7 +41,9 @@ export enum CloudFileSharingStatus {
 export interface CloudDriveFile {
     name: string, // The file name (not including path)
     id: string, // The file ID on the Drive
-    content: string | Uint8Array, // The file content when opened
+    content?: string | Uint8Array, // The file content when opened
+    isDir: boolean,
+    fileSize: number,
 }
 
 export interface CloudFileWithMetaData extends CloudDriveFile {
@@ -138,11 +140,11 @@ export interface CloudDriveComponent {
     shareCloudDriveFile: (saveFileId: string) => Promise<boolean>,
     restoreCloudDriveFileSharingStatus: (saveFileId: string) => Promise<void>,
     getPublicShareLink: (saveFileId: string) => Promise<{ respStatus: number, webLink: string }>,
-    searchCloudDriveElements: (elementName: string, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>) => Promise<CloudDriveFile[]>,
+    searchCloudDriveElements: (elementName: string | undefined, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>) => Promise<CloudDriveFile[]>,
     //FileIO
     checkIsCloudDriveFileReadonly: (file: CloudDriveFile) => boolean,
-    readFileContentForIO: (fileId: string, isBinaryMode: boolean, filePath: string) => Promise<string | Uint8Array | { success: boolean, errorMsg: string }>,
-    writeFileContentForIO: (fileContent: string | Uint8Array, fileInfos: { filePath: string, fileName?: string, fileId?: string, folderId?: string }) => Promise<string>,
+    readFileContentForIO: (fileId: string, filePath: string) => Promise<Uint8Array>,
+    writeFileContentForIO: (fileContent: string | Uint8Array, fileInfos: { filePath: string, fileName: string, folderId: string } | { filePath: string, fileId: string }) => Promise<string>,
 }
 
 /** Specific to OneDrive - the Graph types are imported from https://github.com/microsoftgraph/msgraph-typescript-typings*/
