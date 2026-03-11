@@ -42,7 +42,7 @@
             <!-- save project -->
             <a :id="saveProjectLinkId" v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="handleSaveMenuClick">{{$t('appMenu.saveProject')}}<span class="strype-menu-kb-shortcut">{{saveProjectKBShortcut}}</span></a>
             <a v-if="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !isSynced }" @click="handleSaveAsMenuClick" v-t="'appMenu.saveAsProject'"/>
-            <ModalDlg :dlgId="saveProjectModalDlgId" size="lg">
+            <ModalDlg :dlgId="saveProjectModalDlgId" :okCustomTitle="$t('buttonLabel.save')" size="lg">
                 <div class="save-project-modal-dlg-container">
                     <div class="modal-row">
                         <label v-t="'appMessage.fileName'" class="load-save-label modal-cell"/>

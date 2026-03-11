@@ -4,6 +4,7 @@
             :dlg-title="$t('demos.dialogTitle')"
             showCloseBtn
             css-class="open-demo-dlg"
+            :okCustomTitle="$t('buttonLabel.choose')"
             :ok-disabled="!(selectedDemoCategoryIndex >= 0 && selectedDemoCategoryIndex < availableDemos.length && selectedDemoItemIndex >= 0 && selectedDemoItemIndex < demosInCurrentCategory.length)" >
         <div class="d-flex" style="height: 400px;">
             <!-- Left Pane: List Group -->

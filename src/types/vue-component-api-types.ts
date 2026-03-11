@@ -18,7 +18,7 @@
  **/
 
 import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileSharingStatus, SaveExistingCloudProjectInfos } from "@/types/cloud-drive-types";
-import { AppEvent, Position, SaveRequestReason, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
+import { AppEvent, LoadRequestReason, Position, SaveRequestReason, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import { LoadedMedia } from "@/types/types";
 import { PersistentImage, PersistentImageManager } from "@/stryperuntime/image_and_collisions";
@@ -80,7 +80,7 @@ export type CloudDriveHandlerComponentAPI = {
   setSaveExistingCloudProjectInfos: (v: SaveExistingCloudProjectInfos) => void,
   setSaveFileName: (v: string) => void,
   saveFile: (cloudTarget: StrypeSyncTarget, saveReason: SaveRequestReason) => void,
-  loadFile: (cloudTarget: StrypeSyncTarget) => void,
+  loadFile: (cloudTarget: StrypeSyncTarget, loadReason?: LoadRequestReason) => void,
 }
 
 export type CaretContainerComponentAPI = {

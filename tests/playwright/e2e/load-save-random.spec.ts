@@ -405,6 +405,7 @@ async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: s
     const dom = await getFramesFromDOM(page);
     expect(dom).toEqual(sections);
     const savePath = await save(page);
+    await page.waitForTimeout(2000);
     await newProject(page);
     
     // Log for debugging purposes:

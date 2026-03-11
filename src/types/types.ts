@@ -1166,6 +1166,11 @@ export enum SaveRequestReason {
     saveSettings, // for saving Strype settings
 }
 
+export enum LoadRequestReason {
+    standardUserLoad, // the default loading mechanism: a user opens a Cloud Drive project
+    reloadBrowser, // for Cloud Drive: when a project was previously saved in the drive and the browser is reloaded and the user requested to load the Cloud Drive changes to local.
+}
+
 export interface ProjectSaveFunction {
     syncTarget: StrypeSyncTarget,
     function: (saveReason: SaveRequestReason) => void;

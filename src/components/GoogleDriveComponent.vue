@@ -50,7 +50,7 @@ export default defineComponent({
             gapiLoadedState: CloudDriveAPIState.UNLOADED,
             client: null as google.accounts.oauth2.TokenClient | null, // The Google Identity client
             oauthToken : null as string | null,
-            devKey: "AIzaSyDKjPl4foVEM8iCMTkgu_FpedJ604vbm6E",            
+            devKey: "AIzaSyDKjPl4foVEM8iCMTkgu_FpedJ604vbm6E",
             signInCallBack: (cloudTarget: StrypeSyncTarget) => {},
         };
     },
