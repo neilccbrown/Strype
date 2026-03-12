@@ -44,15 +44,7 @@ export default defineConfig(({mode}) => {
     return {       
         plugins: [
             ConditionalCompile(),
-            vue({
-                template: {
-                    compilerOptions: {
-                        compatConfig: {
-                            MODE: 2,
-                        },
-                    },
-                },
-            }),
+            vue(),
             Components({
                 resolvers: [BootstrapVueNextResolver()],
             }),
