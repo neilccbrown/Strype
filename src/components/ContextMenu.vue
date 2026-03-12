@@ -132,6 +132,7 @@ function applyOnContextMenuItems(cxtMenu: HTMLElement, ctxMenuItemDef: StrypeCon
 </script>
 
 <style lang="scss">
+@use "sass:color";
 /**
  * Style defined for the context menus (based on CSS templates of the Vue3 Contenxt Menu package)
  * (note that the method onContextMenuHover() in App.vue handles conflicts between selection and hovering)
@@ -139,7 +140,7 @@ function applyOnContextMenuItems(cxtMenu: HTMLElement, ctxMenuItemDef: StrypeCon
 $black: #333;
 $hover-blue: #5a7bfc;
 $background-grey: #ecf0f1;
-$divider-grey: darken($background-grey, 15%);
+$divider-grey: color.adjust($background-grey, $lightness: -15%);
 
 .mx-context-menu {
     --mx-menu-text: #{$black};

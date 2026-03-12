@@ -55,9 +55,9 @@ export default defineConfig(({mode}) => {
             preprocessorOptions: {
                 scss: {
                     additionalData: `
-                        @import "@/assets/style/variables.scss";
+                        @use "@/assets/style/variables" as *;
                     ` + (process.env.VITE_GITHUB_PAGE ?  `
-                        @import "@/assets/style/test-watermark.scss";
+                        @use "@/assets/style/test-watermark" as *;
                     ` : ""),
                 },
             },
