@@ -92,7 +92,7 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue, { defineComponent } from "vue";
+import { defineComponent } from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
@@ -437,8 +437,7 @@ export default defineComponent({
 
         onFrameContentEdited() {
             // When the frame content has been changed, we clear the potential runtime error
-            // needs a Vue.set() to keep reactivity
-            Vue.set(this.appStore.frameObjects[this.frameId],"runTimeError", "");
+            this.appStore.frameObjects[this.frameId].runTimeError = "";
         },
 
         handleContextMenuOpened() {
@@ -741,15 +740,11 @@ export default defineComponent({
             const anyCanEnable = this.isPartOfSelection ? this.appStore.selectedFrames.some(canEnable) : canEnable(this.frameId);
             const anyCanDisable = this.isPartOfSelection ? this.appStore.selectedFrames.some(canDisable) : canDisable(this.frameId);
             
-            const disableOrEnableOption: StrypeContextMenuItem = (!anyCanDisable && anyCanEnable) 
-                ?  {label: this.$t("contextMenu.enable"), onClick: this.enable, disabled: false}
-                :  {label: this.$t("contextMenu.disable"), onClick: this.disable, disabled: !anyCanDisable && !anyCanEnable};
+            const disableOrEnableOption = (!anyCanDisable && anyCanEnable) 
+                ?  {label: this.$t("contextMenu.enable") as string, onClick: this.enable, disabled: false}
+                :  {label: this.$t("contextMenu.disable") as string, onClick: this.disable, disabled: !anyCanDisable && !anyCanEnable};
             const enableDisableIndex = this.frameContextMenuItems.findIndex((entry) => entry.onClick === this.enable || entry.onClick === this.disable);
-            Vue.set(
-                this.frameContextMenuItems,
-                enableDisableIndex,
-                disableOrEnableOption
-            );
+            this.frameContextMenuItems.splice(enableDisableIndex, 1, disableOrEnableOption);
             
             // Overwrite readonly properties clientX and clientY (to position the menu if needed)
             setContextMenuEventClientXY(event, positionForMenu);             

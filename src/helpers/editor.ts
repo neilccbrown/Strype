@@ -6,7 +6,7 @@ import { splitByRegexMatches, strypeFileExtension } from "./common";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
 import scssVars  from "@/assets/style/_export.module.scss";
 import html2canvas, { Options } from "html2canvas";
-import Vue, { nextTick } from "vue";
+import { nextTick } from "vue";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import { debounce } from "lodash";
 // #v-endif
@@ -1130,8 +1130,7 @@ export function notifyDragStarted(frameId?: number):void {
             renderingCanvas.height = frameElRect.height * companionImgScalingRatio;
         } 
         // Set the "being dragged flag" for this frame -- as the object property is option, we need to use 
-        // Vue.set() to ensure reactivity works on frame objects where isBeingDragged is not definged
-        Vue.set(useStore().frameObjects[frameId],"isBeingDragged",true);
+        useStore().frameObjects[frameId].isBeingDragged = true;
         // If the we are dragging a single frame and that frame is a comment, there is a small issue with
         // the companion image: the background will be transparent (as the frame's) so to make it visually
         // easier to see, we retrieve the dragged frame parent's body background to set it in the companion image.
@@ -1151,7 +1150,7 @@ export function notifyDragStarted(frameId?: number):void {
         renderingCanvas.width = (html2canvasOptions.width as number) * companionImgScalingRatio;
         renderingCanvas.height = (html2canvasOptions.height as number) * companionImgScalingRatio;
         useStore().selectedFrames.forEach((selectedFrameId) => {
-            Vue.set(useStore().frameObjects[selectedFrameId],"isBeingDragged", true);
+            useStore().frameObjects[selectedFrameId].isBeingDragged = true;
         });
     }
     

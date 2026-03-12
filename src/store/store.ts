@@ -1,4 +1,4 @@
-import Vue, { nextTick} from "vue";
+import { nextTick} from "vue";
 import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia, ModifierKeyCode } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
@@ -745,11 +745,7 @@ export const useStore = defineStore("app", {
 
         updateStateBeforeChanges(release: boolean) {
             //if the flag release is true, we clear the current stateBeforeChanges value
-            Vue.set(
-                this,
-                "stateBeforeChanges",
-                (release) ? {} : cloneDeep(this.$state)
-            );
+            this.stateBeforeChanges = (release) ? {} : cloneDeep(this.$state);
         },
 
         clearAllFrames() {
@@ -843,11 +839,7 @@ export const useStore = defineStore("app", {
 
         setEditableFocus(payload: EditableFocusPayload) {
             // Use Vue.set here because "focused" may not yet exist on the object (it's an optional field)
-            Vue.set(
-                retrieveSlotFromSlotInfos(payload),
-                "focused",
-                payload.focused
-            );
+            (retrieveSlotFromSlotInfos(payload) as BaseSlot).focused = payload.focused;
         },
 
         changeCaretWithKeyboard(key: string, isLevelScopeChange?: boolean) {  
@@ -862,11 +854,7 @@ export const useStore = defineStore("app", {
             } 
 
             // Turn off previous caret 
-            Vue.set(
-                this.frameObjects[currId],
-                "caretVisibility",
-                CaretPosition.none
-            );
+            this.frameObjects[currId].caretVisibility = CaretPosition.none;
 
             const currentCaret: CurrentFrame = {id: currId, caretPosition: currPosition};
             const availablePositions = getAvailableNavigationPositions();
@@ -904,11 +892,7 @@ export const useStore = defineStore("app", {
             this.currentFrame.id = nextCaret.id;
             this.currentFrame.caretPosition = nextCaret.caretPosition;
 
-            Vue.set(
-                this.frameObjects[nextCaret.id],
-                "caretVisibility",
-                nextCaret.caretPosition
-            );
+            this.frameObjects[nextCaret.id].caretVisibility = nextCaret.caretPosition;
 
             // Scroll caret into view when navigating with keyboard:
             nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
@@ -920,20 +904,12 @@ export const useStore = defineStore("app", {
         },
 
         setCurrentFrame(newCurrentFrame: CurrentFrame, scrollIntoView = true) {
-            Vue.set(
-                this.frameObjects[this.currentFrame.id],
-                "caretVisibility",
-                CaretPosition.none
-            );
+            this.frameObjects[this.currentFrame.id].caretVisibility = CaretPosition.none;
 
             this.currentFrame.id = newCurrentFrame.id;
             this.currentFrame.caretPosition = newCurrentFrame.caretPosition;
 
-            Vue.set(
-                this.frameObjects[newCurrentFrame.id],
-                "caretVisibility",
-                newCurrentFrame.caretPosition
-            );
+            this.frameObjects[newCurrentFrame.id].caretVisibility = newCurrentFrame.caretPosition;
 
             // By default, scroll the new caret into view:
             if (scrollIntoView) {
@@ -1238,7 +1214,7 @@ export const useStore = defineStore("app", {
         },
 
         setFrameErroneous(frameId: number, errMsg: string) {
-            Vue.set(this.frameObjects[frameId], "atParsingError", errMsg);
+            this.frameObjects[frameId].atParsingError = errMsg;
         },
 
         setSlotErroneous(frameSlotInfos: SlotInfos) {
@@ -1248,19 +1224,11 @@ export const useStore = defineStore("app", {
             // Sometimes we need to extend the error, if more than one different errors are on the same slot
             if(!existingErrorBits.includes(frameSlotInfos.error??"")){
                 const newError = (existingError === "" || frameSlotInfos.error === "") ? frameSlotInfos.error: (existingError +"\n" + frameSlotInfos.error);
-                // As error-related properties are optional, we need to use Vue.set(), since they may not exist on the object yet
-                Vue.set(
-                    slotObject,
-                    "error",
-                    newError
-                );
+                // As error-related properties are optional
+                slotObject.error = newError;
 
                 if(frameSlotInfos.errorTitle){
-                    Vue.set(
-                        slotObject,
-                        "errorTitle",
-                        frameSlotInfos.errorTitle
-                    );
+                    slotObject.errorTitle = frameSlotInfos.errorTitle;
                 }
             }           
         },
@@ -1282,10 +1250,10 @@ export const useStore = defineStore("app", {
             // the whole tree.  So we check if the two objects are (deep) equal before
             // we update, to avoid unnecessary updates and renders:
             if (!isEqual(this.anchorSlotCursorInfos, anchorCursorInfos)) {
-                Vue.set(this, "anchorSlotCursorInfos", anchorCursorInfos);
+                this.anchorSlotCursorInfos = anchorCursorInfos;
             }
             if (!isEqual(this.focusSlotCursorInfos, focusCursorInfos)) {
-                Vue.set(this, "focusSlotCursorInfos", focusCursorInfos);
+                this.focusSlotCursorInfos = focusCursorInfos;
             }
             if(!anchorCursorInfos || !focusCursorInfos){
                 // Force the selection on the page to be reset too
@@ -1339,21 +1307,13 @@ export const useStore = defineStore("app", {
                 nextAvailableId = Math.max.apply({},(Object.keys(this.copiedFrames).concat(Object.keys(this.copiedFrames))).map(Number)) + 1;
             });
 
-            Vue.set( 
-                this,
-                "copiedSelectionFrameIds",  
-                topLevelCopiedFrames
-            );
+            this.copiedSelectionFrameIds = topLevelCopiedFrames;
         },
 
         updateState(newState: Record<string, unknown>){
             //this method complete changes the state with a new state object
             Object.keys(this.$state).forEach((property) => {
-                Vue.set(
-                    this,
-                    property,
-                    newState[property]
-                );
+                (this as any)[property] = newState[property];
             } );
 
             // The frame cursor cannot be left inside a collapsed frame container (section),
@@ -1374,11 +1334,7 @@ export const useStore = defineStore("app", {
             
             //copied frames are cleared
             this.copiedFrameId = -100;
-            Vue.set(
-                this,
-                "copiedFrames",
-                {}
-            );
+            this.copiedFrames = {};
             this.copiedSelectionFrameIds.splice(0);
 
             //context menu indicator is cleared
@@ -1477,11 +1433,7 @@ export const useStore = defineStore("app", {
             // Clear the current blue caret, whichever the new value will be so we do not get 2 carets if the current and new values differ
             const oldCaretId = this.currentFrame.id;
             if(getAvailableNavigationPositions().map((e)=>e.frameId).includes(oldCaretId) && this.frameObjects[oldCaretId]){
-                Vue.set(
-                    this.frameObjects[oldCaretId],
-                    "caretVisibility",
-                    CaretPosition.none
-                );
+                this.frameObjects[oldCaretId].caretVisibility = CaretPosition.none;
             }
 
             // And remove any currently focused slot
@@ -1522,11 +1474,7 @@ export const useStore = defineStore("app", {
                         lastPartIsArray = isArrayPart;
                         //if a part doesn't exist, we create it with an empty object value
                         if(statePartToChange[part] === undefined){
-                            Vue.set(
-                                statePartToChange,
-                                part,
-                                (isArrayPart) ? [] : {}
-                            );
+                            statePartToChange[part] = (isArrayPart) ? [] : {};
                         }
                         statePartToChange = statePartToChange[part];
                     });
@@ -1536,11 +1484,7 @@ export const useStore = defineStore("app", {
                     //   because deletion would offset the indexing during the loop, so we will clean the array later.
                     // - For objects, we check if the element is null: if so, it's fine to remove it directly
                     if(lastPartIsArray || !lastPartIsArray && changeEntry.value != null){
-                        Vue.set(
-                            statePartToChange,
-                            property,
-                            changeEntry.value
-                        );
+                        statePartToChange[property] = changeEntry.value;
 
                         //if we "delete" something in an array, flag this array for clearning
                         if(lastPartIsArray && changeEntry.value===null && arraysToClean.indexOf(statePartToChange) === -1){
@@ -1573,11 +1517,7 @@ export const useStore = defineStore("app", {
                     // Set the right current frame in any case
                     const newCaretId = this.lastCriticalActionPositioning.lastCriticalCaretPosition.id;
                     if(getAvailableNavigationPositions().map((e)=>e.frameId).includes(newCaretId) && this.frameObjects[newCaretId]){
-                        Vue.set(
-                            this.frameObjects[newCaretId],
-                            "caretVisibility",
-                            this.lastCriticalActionPositioning.lastCriticalCaretPosition.caretPosition
-                        );
+                        this.frameObjects[newCaretId].caretVisibility = this.lastCriticalActionPositioning.lastCriticalCaretPosition.caretPosition;
                         nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
                     }
                     if(this.focusSlotCursorInfos && this.anchorSlotCursorInfos){
@@ -1662,11 +1602,7 @@ export const useStore = defineStore("app", {
             const allFrameIds = [payload.frameId];
             allFrameIds.push(...getAllChildrenAndJointFramesIds(payload.frameId));
             allFrameIds.forEach((frameId) => {
-                Vue.set(
-                    this.frameObjects[frameId],
-                    "isDisabled",
-                    payload.isDisabling
-                );
+                this.frameObjects[frameId].isDisabled = payload.isDisabling;
 
                 // If disabling [resp. enabling], we also need to remove [resp. add] potential errors of empty editable slots
                 // As disabling a frame could impact other places of the code, we actually just run for error checks on the code itself.
@@ -1701,28 +1637,16 @@ export const useStore = defineStore("app", {
         },
 
         flushCopiedFrames(){
-            Vue.set(
-                this,
-                "copiedFrames",
-                {}
-            );
+            this.copiedFrames = {};
 
             this.copiedFrameId = -100;
             
-            Vue.set(
-                this,
-                "copiedSelectionFrameIds",
-                []
-            );
+            this.copiedSelectionFrameIds = [];
         },
 
         setCollapseStatuses(statuses: Record<number, CollapsedState>) {
             Object.entries(statuses).forEach(([frameId, collapsed]) => 
-                Vue.set(
-                    this.frameObjects[Number(frameId)],
-                    "collapsedState",
-                    collapsed
-                ));
+                this.frameObjects[Number(frameId)].collapsedState = collapsed);
             // A change of collapse status triggers a modification notification
             this.isEditorContentModified = true;
         },
@@ -1734,11 +1658,7 @@ export const useStore = defineStore("app", {
         },
 
         setFrozenStatus(payload: {frameId: number; frozen: FrozenState}) {
-            Vue.set(
-                this.frameObjects[payload.frameId],
-                "frozenState",
-                payload.frozen
-            );
+            this.frameObjects[payload.frameId].frozenState = payload.frozen;
             // A change of freeze status triggers a modification notification
             this.isEditorContentModified = true;
         },
@@ -1977,22 +1897,14 @@ export const useStore = defineStore("app", {
                 defaultChildFrame.parentId = newFrame.id;
                 defaultChildFrame.jointParentId = 0;
                 newFrame.childrenIds.push(defaultChildFrame.id);
-                Vue.set(
-                    this.frameObjects,
-                    defaultChildFrame.id,
-                    defaultChildFrame
-                );
+                this.frameObjects[defaultChildFrame.id] = defaultChildFrame;
             });
             newFrame.frameType.defaultJointTypes?.forEach((defaultJointFrame) => {
                 defaultJointFrame.id = (++nextAvailableId);
                 defaultJointFrame.jointParentId = newFrame.id;
                 defaultJointFrame.parentId = 0;
                 newFrame.jointFrameIds.push(defaultJointFrame.id);
-                Vue.set(
-                    this.frameObjects,
-                    defaultJointFrame.id,
-                    defaultJointFrame
-                );
+                this.frameObjects[defaultJointFrame.id] = defaultJointFrame;
             });
 
             // In the special case a hidden shorthand frame addition, we add the code content in the first slot of the frame (by design)
@@ -2009,11 +1921,7 @@ export const useStore = defineStore("app", {
 
             // Add the new frame to the list
             // "Vue.set" is used as Vue cannot catch the change by doing : state.frameObjects[fobj.id] = fobj
-            Vue.set(
-                this.frameObjects,
-                newFrame.id,
-                newFrame
-            );
+            this.frameObjects[newFrame.id] = newFrame;
         
             // As the new frame isn't yet added to the DOM, we need a list to store its navigational positions,
             // which will then be merged to the existing caret positions
@@ -2414,11 +2322,7 @@ export const useStore = defineStore("app", {
             }
 
             // irrespective to where we are going to, we need to make sure to hide current caret
-            Vue.set(
-                this.frameObjects[this.currentFrame.id],
-                "caretVisibility",
-                CaretPosition.none
-            );
+            this.frameObjects[this.currentFrame.id].caretVisibility = CaretPosition.none;
 
             // If next position is an editable slot
             if(nextPosition.isSlotNavigationPosition){
@@ -2467,11 +2371,7 @@ export const useStore = defineStore("app", {
             else{
                 // else we set editFlag to false as we are moving to a caret position
                 this.isEditing = false;
-                Vue.set(
-                    this.frameObjects[nextPosition.frameId],
-                    "caretVisibility",
-                    nextPosition.caretPosition
-                );
+                this.frameObjects[nextPosition.frameId].caretVisibility = nextPosition.caretPosition as CaretPosition;
 
                 // Scroll it into view:
                 nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
@@ -2770,11 +2670,7 @@ export const useStore = defineStore("app", {
 
             // Add the copied objects to the FrameObjects
             Object.keys(copiedFrames).map(Number).forEach((id: number)=> {
-                Vue.set(
-                    this.frameObjects,
-                    id,
-                    copiedFrames[id]
-                );
+                this.frameObjects[id] = copiedFrames[id];
             });
             
             const topFrame = copiedFrames[Object.keys(copiedFrames).map(Number)[0]];
@@ -2868,11 +2764,7 @@ export const useStore = defineStore("app", {
             
             // Add the copied objects to the FrameObjects
             Object.keys(copiedFrames).map(Number).forEach((id: number)=> {
-                Vue.set(
-                    this.frameObjects,
-                    id,
-                    copiedFrames[id]
-                );
+                this.frameObjects[id] = copiedFrames[id];
             });
             this.updateNextAvailableId();            
 

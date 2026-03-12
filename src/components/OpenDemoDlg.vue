@@ -53,7 +53,7 @@
 </template>
 <script lang="ts">
 
-import Vue, { defineComponent } from "vue";
+import { defineComponent } from "vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import {Demo, DemoGroup, getBuiltinDemos, getThirdPartyLibraryDemos} from "@/helpers/demos";
 import Parser from "@/parser/parser";
@@ -152,7 +152,7 @@ export default defineComponent({
                 };
                 r.push(details);
                 img.then((url) => {
-                    Vue.set(details, "imgURL", url);
+                    details.imgURL = url;
                 });
             }
             this.demosInCurrentCategory = r;

@@ -3,7 +3,7 @@ import i18n from "@/i18n";
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
 import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameLabel, FrameObject, FrozenState, getFrameDefType, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
-import Vue, { nextTick} from "vue";
+import { nextTick} from "vue";
 import { checkEditorCodeErrors, countEditorCodeErrors, getCaretContainerUID, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID } from "./editor";
 import { cloneDeep, isEqual } from "lodash";
 import scssVars from "@/assets/style/_export.module.scss";
@@ -999,8 +999,8 @@ export function calculateNextCollapseState(frameList: FrameObject[], parentIsFro
         const nextState = cycleToNextPossible(prev.overallState, currentAndPossibleStates);
         const nextPossible = changeWherePossible(frameList, nextState);
         if (reason != "dryrun") {
-            Vue.set(prev, "overallState", nextState);
-            Vue.set(prev, "lastStates", nextPossible);
+            prev.overallState = nextState;
+            prev.lastStates = nextPossible;
         }
         return {overall: nextState, individual: nextPossible};
     }

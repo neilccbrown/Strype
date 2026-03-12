@@ -124,7 +124,7 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue, { defineComponent } from "vue";
+import { defineComponent } from "vue";
 import { useI18n } from "vue-i18n";
 import { BApp } from "bootstrap-vue-next";
 import MessageBanner from "@/components/MessageBanner.vue";
@@ -1529,7 +1529,7 @@ export default defineComponent({
         onStrypeCommandsSplitPaneResize(event: any, useSpecificPEALayout?: StrypePEALayoutMode){
             // Save the new size of the RHS pane of the editor/commands splitter
             if(this.appStore.editorCommandsSplitterPane2Size != undefined) {
-                Vue.set(this.appStore.editorCommandsSplitterPane2Size, useSpecificPEALayout??(this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed), event.panes[1].size);
+                this.appStore.editorCommandsSplitterPane2Size[useSpecificPEALayout??(this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed)] = event.panes[1].size;
             }
             else {
                 // The tricky case of when the state property has never been set
