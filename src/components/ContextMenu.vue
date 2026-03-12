@@ -151,6 +151,7 @@ $divider-grey: darken($background-grey, 15%);
     --mx-menu-shortcut-text: gray;
     --mx-menu-shortcut-text-active: white;
     --mx-menu-active-backgroud: #{$hover-blue};
+    --mx-menu-shortcut-backgroud-disabled: #{$background-grey};
     margin:0 !important;
     padding: 0 !important;
     box-shadow: 0 3px 6px 0 rgba($black, 0.2) !important;

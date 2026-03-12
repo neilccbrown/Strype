@@ -1462,11 +1462,11 @@ export default defineComponent({
             // When a context menu entry is hovered, we want to make it as it was selected via the keyboard. 
             // If we didn't, then there would be a confusion between a selected item with the keyboard, and another hovered item with the mouse.
             // Doing so guarantee that only 1 element is selected in the menu.
-            // (Note that we don't need to worry about hovering out: the context menu handles that natively already.    )
+            // (Note that we don't need to worry about hovering out: the context menu handles that natively already.)
             // We remove the current "keyboard-focus" class if any, and set it on the currently hovered item, unless that item is a group and opened.
             const currentlyKBFocusedEntry = document.querySelector(".mx-context-menu-item.keyboard-focus");
             currentlyKBFocusedEntry?.classList.remove("keyboard-focus");
-            if(!menuTarget.classList.contains("open")){
+            if(!menuTarget.classList.contains("open") && !menuTarget.classList.contains("disabled")){
                 menuTarget.classList.add("keyboard-focus");
             }
         },
