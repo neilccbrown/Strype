@@ -181,4 +181,11 @@ $divider-grey: darken($background-grey, 15%);
 .mx-context-menu-item-sperator { //yes, the typo is in their source code...
     padding: 2px 0 !important;
 }
+
+// Autocompletion menu styling
+.#{$strype-classname-ac-item}.#{$strype-classname-ac-item-selected} {
+    text-decoration:none;
+    color:white !important;
+    background-color: $hover-blue;
+}
 </style>

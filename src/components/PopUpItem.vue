@@ -65,7 +65,7 @@ export default defineComponent({
     white-space: pre-line !important;
 }
 
-// Style related to the context menu are in App.vue
+// Style related to the context menu are in ContextMenu.vue
 
 // Indent lines after the first:
 .ac-indent-wrapped {
