@@ -14,7 +14,6 @@
             minWidth="1"
             minHeight="100"
             @change="change"
-            @mousemove.native="handleMouseMove"
         ></cropper>
         <div class="EditSoundDlg-button-wrapper">
             <BButton class="EditSoundDlg-play-button" :variant="playStopVariant" @click="doPlayStopPreview">{{playStopLabel}}</BButton>
@@ -114,10 +113,23 @@ export default defineComponent({
 
     mounted() {
         window.addEventListener("keydown", this.onKeyDown);
+
+        // We cannot use ".native" anymore with Vue 3, and the cropper component isn't written to expose the mousemove event.
+        // Therefore, we must register the event ourselves on the DOM.
+        const cropper = this.$refs.cropper as InstanceType<typeof Cropper>;
+        if(cropper && cropper.$el){
+            cropper.$el.addEventListener("mousemove", this.handleMouseMove);
+        }
     },
 
     unmounted() {
         window.removeEventListener("keydown", this.onKeyDown);
+
+        // Remove the mousemove registration we made on the cropper
+        const cropper = this.$refs.cropper as InstanceType<typeof Cropper>;
+        if(cropper && cropper.$el){
+            cropper.$el.removeEventListener("mousemove", this.handleMouseMove);
+        }
     },
 
     computed:{
