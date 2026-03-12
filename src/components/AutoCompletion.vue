@@ -29,7 +29,7 @@
                             :indent-wrapped="true"
                             :key="UID+'_'+item.index"
                             :selected="item.index==selected"
-                            v-on="$listeners"
+                            @[CustomEventTypes.acItemClicked]="$emit(CustomEventTypes.acItemClicked, $event)"
                             @[CustomEventTypes.acItemHovered]="handleACItemHover"
                             :isSelectable="true"
                             ref="results"

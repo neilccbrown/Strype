@@ -68,7 +68,7 @@
             :id="AC_UID"
             :AC_UID="AC_UID"
             :isImportFrame="isImportFrame()"
-            @acItemClicked="acItemClicked"
+            @[CustomEventTypes.acItemClicked]="acItemClicked"
         />
     </div>
 </template>
@@ -171,6 +171,7 @@ export default defineComponent({
     data: function() {
         return {
             scssVars, // just to be able to use in template
+            CustomEventTypes, // just to be able to use in template 
             //this flags indicates if the content of editable slot has been already modified during a sequence of action
             //as we don't want to save each single change of the content, but the full content change itself.
             isFirstChange: true,

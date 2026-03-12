@@ -50,6 +50,7 @@ export enum CustomEventTypes {
     saveStrypeProjectDoneForLoad = "saveProjDoneForLoad",
     unsupportedByStrypeFilePicked = "unsupportedByStrypeFilePicked",
     acItemHovered = "acItemHovered",
+    acItemClicked = "acItemClicked",
     openSharedFileDone = "openSharedFileDone",
     dropFramePositionsUpdated = "dropFramePositionsUpdated",
     resetLSOnShareProjectLoadConfirmed = "resetLSOnShareProjectLoadConfirmed",
