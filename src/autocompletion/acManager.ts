@@ -28,11 +28,11 @@ import microbitDescriptions from "@/autocompletion/microbit.json";
 // by the one in /microbit/ because it seems reimports don't work well.
 // Remove "VERSIONS" as well.
 const mbPYIFolderPath = "/public/public_libraries/microbit/";
-const mbPYIContextFolderContext = import.meta.glob("/public/public_libraries/microbit/**/*", {eager: true, as: "raw"}); // can't use variable here... 
+const mbPYIContextFolderContext = import.meta.glob("/public/public_libraries/microbit/**/*", {eager: true, query: "?raw", import: "default"}); // can't use variable here... 
 const mbPYContextPaths = Object.keys(mbPYIContextFolderContext);
 mbPYContextPaths.forEach((mbPYContextPath) => {
     if(mbPYContextPath.endsWith("pyi")) {        
-        const mbPYIAsModule = mbPYIContextFolderContext[mbPYContextPath]; // Immediately loads the module
+        const mbPYIAsModule = mbPYIContextFolderContext[mbPYContextPath] as string; // Immediately loads the module
         // Module paths start with mbPYIFolderPath ("/public/public_libaries/microbit/") and finish with ".pyi", 
         // to get the module name we scrap these off, change "/"
         // to "." and remove the file name altogether if we have "__init__".
