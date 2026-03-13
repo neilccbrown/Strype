@@ -6,7 +6,7 @@ import { splitByRegexMatches, strypeFileExtension } from "./common";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
 import scssVars  from "@/assets/style/_export.module.scss";
 import html2canvas, { Options } from "html2canvas";
-import Vue from "vue";
+import { nextTick } from "vue";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import { debounce } from "lodash";
 // #v-endif
@@ -50,6 +50,7 @@ export enum CustomEventTypes {
     saveStrypeProjectDoneForLoad = "saveProjDoneForLoad",
     unsupportedByStrypeFilePicked = "unsupportedByStrypeFilePicked",
     acItemHovered = "acItemHovered",
+    acItemClicked = "acItemClicked",
     openSharedFileDone = "openSharedFileDone",
     dropFramePositionsUpdated = "dropFramePositionsUpdated",
     resetLSOnShareProjectLoadConfirmed = "resetLSOnShareProjectLoadConfirmed",
@@ -725,13 +726,13 @@ export function generateAllFrameCommandsDefs():void {
     allFrameCommandsDefs = {
         " ": [{
             type: getFrameDefType(AllFrameTypesIdentifier.funccall),
-            description: i18n.global.t("frame.funccall_desc") as string,
+            description: i18n.global.t("frame.funccall_desc"),
             shortcuts: [" "],
-            symbol: i18n.global.t("buttonLabel.spaceBar") as string,
+            symbol: i18n.global.t("buttonLabel.spaceBar"),
         }],
         "=": [{
             type: getFrameDefType(AllFrameTypesIdentifier.varassign),
-            description: i18n.global.t("frame.varassign_desc") as string,
+            description: i18n.global.t("frame.varassign_desc"),
             shortcuts: ["="],
         }],
         "g": [{
@@ -781,7 +782,7 @@ export function generateAllFrameCommandsDefs():void {
             },
             {
                 type: getFrameDefType(AllFrameTypesIdentifier.funcdef),
-                description: i18n.global.t("frame.funcdef_desc") as string,
+                description: i18n.global.t("frame.funcdef_desc"),
                 shortcuts: ["f"],
                 index: 1,
             },
@@ -794,7 +795,7 @@ export function generateAllFrameCommandsDefs():void {
         ],
         "c": [{
             type: getFrameDefType(AllFrameTypesIdentifier.classdef),
-            description: i18n.global.t("frame.classdef_desc") as string,
+            description: i18n.global.t("frame.classdef_desc"),
             shortcuts: ["c"],
         }],
         "w": [{
@@ -819,12 +820,12 @@ export function generateAllFrameCommandsDefs():void {
         }],
         "#": [{
             type: getFrameDefType(AllFrameTypesIdentifier.comment),
-            description: i18n.global.t("frame.comment_desc") as string,
+            description: i18n.global.t("frame.comment_desc"),
             shortcuts: ["#"],
         }],
         "enter": [{
             type: getFrameDefType(AllFrameTypesIdentifier.blank),
-            description: i18n.global.t("frame.blank_desc") as string,
+            description: i18n.global.t("frame.blank_desc"),
             shortcuts: ["\x13"],
             symbol: "enter",
             isSVGIconSymbol: true,
@@ -916,7 +917,7 @@ export function getFunctionCallDefaultText(frameId: number): string {
     // - we have a function call frame without any brackets or operators (just a slot) --> we show "function()".
     const frameToCheck = useStore().frameObjects[frameId];
     if(frameToCheck.labelSlotsDict[0].slotStructures.operators.length == 0){
-        return i18n.global.t("frame.defaultText.simpleFuncCall") as string;
+        return i18n.global.t("frame.defaultText.simpleFuncCall");
     }
     else if(frameToCheck.labelSlotsDict[0].slotStructures.operators[0].code == "" 
         && isFieldBracketedSlot(frameToCheck.labelSlotsDict[0].slotStructures.fields[1])){
@@ -1130,8 +1131,7 @@ export function notifyDragStarted(frameId?: number):void {
             renderingCanvas.height = frameElRect.height * companionImgScalingRatio;
         } 
         // Set the "being dragged flag" for this frame -- as the object property is option, we need to use 
-        // Vue.set() to ensure reactivity works on frame objects where isBeingDragged is not definged
-        Vue.set(useStore().frameObjects[frameId],"isBeingDragged",true);
+        useStore().frameObjects[frameId].isBeingDragged = true;
         // If the we are dragging a single frame and that frame is a comment, there is a small issue with
         // the companion image: the background will be transparent (as the frame's) so to make it visually
         // easier to see, we retrieve the dragged frame parent's body background to set it in the companion image.
@@ -1151,7 +1151,7 @@ export function notifyDragStarted(frameId?: number):void {
         renderingCanvas.width = (html2canvasOptions.width as number) * companionImgScalingRatio;
         renderingCanvas.height = (html2canvasOptions.height as number) * companionImgScalingRatio;
         useStore().selectedFrames.forEach((selectedFrameId) => {
-            Vue.set(useStore().frameObjects[selectedFrameId],"isBeingDragged", true);
+            useStore().frameObjects[selectedFrameId].isBeingDragged = true;
         });
     }
     
@@ -1216,7 +1216,7 @@ export function notifyDragEnded():void {
         vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretContainerUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)].setAreDropFramesAllowed(true);
     }
     // Reset flags in the next tick to let UI update properly
-    Vue.nextTick(() => {
+    nextTick(() => {
         currentCaretDropPosId = "", currentCaretDropPosFrameId = 0, currentCaretDropPosCaretPos =  CaretPosition.none, 
         newCaretDropPosFrameId = 0, newCaretDropPosCaretPos = CaretPosition.none;
     });    
@@ -1918,7 +1918,7 @@ export function setPythonExecAreaLayoutButtonPos(): void{
         const peaComponentAPI = vueComponentsAPIHandler.peaComponentAPI;
         if(pythonConsoleTextArea && pythonTurtleContainerDiv && peaLayoutButtonsContainer && peaComponentAPI){
             // First get the natural position offset of the button, so can compute the new position:
-            const peaExpandButtonNaturalPosOffset = parseInt((scssVars.pythonExecutionAreaLayoutButtonsPosOffset as string).replace("px",""));
+            const peaExpandButtonNaturalPosOffset = parseInt((scssVars.pythonExecutionAreaLayoutButtonsPosOffset).replace("px",""));
             // Then, look for the scrollbars
             if(peaComponentAPI?.getIsConsoleAreaShowing() && !peaComponentAPI?.getIsGraphicsAreaShowing()){
                 // In the Python console, we wrap the text, only the vertical scrollbar can appear.

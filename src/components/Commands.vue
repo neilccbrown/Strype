@@ -12,8 +12,8 @@
                             <div @mouseover="getLastProjectSavedDateTooltip" :title="lastProjectSavedDateTooltip">
                                 <img v-if="isProjectFromCloudDrive" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/> 
                                 <img v-else-if="isProjectFromFS" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/> 
-                                <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag" v-t="'appMessage.savedCloudFile'" />
-                                <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" v-t="'appMessage.modifCloudFile'" :class="{'modifed-label-span': isProjectNotSourced}" />                     
+                                <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag">{{ $t("appMessage.savedCloudFile") }}</span>
+                                <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" :class="{'modifed-label-span': isProjectNotSourced}">{{ $t("appMessage.modifCloudFile") }}</span>
                             </div>
                         </div>     
                         <div @mousedown.prevent.stop @mouseup.prevent.stop>
@@ -86,14 +86,14 @@
                     aria-valuemin="0"
                     aria-valuemax="100"
                     >
-                    <span v-t="'action.uploadingToMicrobit'" class="progress-bar-text"></span>
+                    <span class="progress-bar-text">{{ $t("action.uploadingToMicrobit") }}</span>
                 </div>
             </div>
             <div class="commands-container">    
                 <iframe id="mbSimulatorIframe" src="https://python-simulator.usermbit.org/v/0.1/simulator.html?color=%2300FF00" frameborder="0" scrolling="no" sandbox="allow-scripts allow-same-origin"></iframe>
                 <br>
-                <button type="button" @click="runToMicrobit" v-t="'buttonLabel.runOnMicrobit'" class="btn btn-secondary cmd-button"/>
-                <button v-if="isMBSimulatorRunning" type="button" @click="stopMBSimulator" v-t="'buttonLabel.stopMBSimulator'" class="btn btn-secondary cmd-button stop-mb-sim-btn "/>
+                <button type="button" @click="runToMicrobit" class="btn btn-secondary cmd-button">{{ $t("buttonLabel.runOnMicrobit") }}</button>
+                <button v-if="isMBSimulatorRunning" type="button" @click="stopMBSimulator" class="btn btn-secondary cmd-button stop-mb-sim-btn ">{{ $t("buttonLabel.stopMBSimulator") }}</button>
             </div>
         </div>
         <SimpleMsgModalDlg :dlgId="startMBSimulatorlDlgId" />
@@ -228,7 +228,7 @@ export default defineComponent({
             const cloudDriveHandlerComponentAPI =  (vueComponentsAPIHandler.cloudDriveHandlerComponentAPI);
             switch(this.appStore.syncTarget){
             case StrypeSyncTarget.fs:
-                return this.$t("appMessage.targetFS") as string;
+                return this.$t("appMessage.targetFS");
             case StrypeSyncTarget.gd:
             case StrypeSyncTarget.od:
                 return (cloudDriveHandlerComponentAPI?.getDriveName())??"";
@@ -476,7 +476,7 @@ export default defineComponent({
                         else {
                             // The micro:bit simulator do not support non-user interaction for a flash request.
                             // So we just tell the user here what to do...
-                            this.appStore.simpleModalDlgMsg = this.$t("appMessage.startMBSimulatorNeedUserAction") as string;
+                            this.appStore.simpleModalDlgMsg = this.$t("appMessage.startMBSimulatorNeedUserAction");
                             eventBus.emit(CustomEventTypes.showStrypeModal, this.startMBSimulatorlDlgId);                            
                         }
                     }
@@ -725,7 +725,7 @@ export default defineComponent({
             // There shouldn't be a case when we get a date that is no set to a proper value, but to prevent
             // weird and invalid date display, we associate the default value -1 to "unknown".
             if(this.appStore.projectLastSaveDate == -1){
-                this.lastProjectSavedDateTooltip = this.$t("appMessage.lastSavedDateUnknown") as string;
+                this.lastProjectSavedDateTooltip = this.$t("appMessage.lastSavedDateUnknown");
                 return;
             } 
 
@@ -736,36 +736,36 @@ export default defineComponent({
             const lastSaveDateTickDiff = Date.now() - this.appStore.projectLastSaveDate;
             if(lastSaveDateTickDiff > 604800000 ){
                 // More than a week ago (7 days * 24 h * 60 min * 60 s * 1000 ms)
-                toolTipVal = this.$t("appMessage.lastSavedOn", {lastSavedDate: new Date(this.appStore.projectLastSaveDate).toLocaleString()}) as string; 
+                toolTipVal = this.$t("appMessage.lastSavedOn", {lastSavedDate: new Date(this.appStore.projectLastSaveDate).toLocaleString()}); 
             }
             else if(lastSaveDateTickDiff > 86400000){
                 // Less than a week but more than a day ago (24 h * 60 min * 60 s * 1000 ms)
                 const nbDays = lastSaveDateTickDiff / 86400000;
                 toolTipVal = (nbDays > 1)
-                    ? this.$t("appMessage.lastSavedOnNDays", {nbLastSave: Math.round(nbDays)}) as string
-                    : this.$t("appMessage.lastSavedOn1Day") as string;
+                    ? this.$t("appMessage.lastSavedOnNDays", {nbLastSave: Math.round(nbDays)})
+                    : this.$t("appMessage.lastSavedOn1Day");
             }
             else if(lastSaveDateTickDiff > 3600000){
                 // Less than a day but more than an hour ago (60 min * 60 s * 1000 ms)
                 const nbHours = lastSaveDateTickDiff / 3600000;
                 toolTipVal = (nbHours > 1)
-                    ? this.$t("appMessage.lastSavedOnNHours", {nbLastSave: Math.round(nbHours)}) as string
-                    : this.$t("appMessage.lastSavedOn1Hour") as string;
+                    ? this.$t("appMessage.lastSavedOnNHours", {nbLastSave: Math.round(nbHours)})
+                    : this.$t("appMessage.lastSavedOn1Hour");
             }
             else if(lastSaveDateTickDiff > 60000){
                 // Less than an hour but more than a minute ago (60 s * 1000 ms)
                 const nbMins = lastSaveDateTickDiff / 60000;
                 toolTipVal = (nbMins > 1)
-                    ? this.$t("appMessage.lastSavedOnNMins", {nbLastSave: Math.round(nbMins)}) as string
-                    : this.$t("appMessage.lastSavedOn1Min") as string;
+                    ? this.$t("appMessage.lastSavedOnNMins", {nbLastSave: Math.round(nbMins)})
+                    : this.$t("appMessage.lastSavedOn1Min");
 
             }
             else {
             // Less than a minute ago (we will use min 1 seconde even if less than a second, which is unlikely)
                 const nbSecs = lastSaveDateTickDiff / 1000;
                 toolTipVal = (nbSecs > 1)
-                    ? this.$t("appMessage.lastSavedOnNSecs", {nbLastSave: Math.round(nbSecs)}) as string
-                    : this.$t("appMessage.lastSavedOn1Sec") as string;
+                    ? this.$t("appMessage.lastSavedOnNSecs", {nbLastSave: Math.round(nbSecs)})
+                    : this.$t("appMessage.lastSavedOn1Sec");
             }
             this.lastProjectSavedDateTooltip = toolTipVal;
         },

@@ -62,7 +62,7 @@ const concatFileContentParts = (part1: string | Uint8Array, part2: string | Uint
 export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, errorMsg: string} => {
     // If we are not connected to a cloud file system, then we raise an error.
     if(!isSyncTargetCloudDrive(useStore().syncTarget)){
-        return {succeeded: false, errorMsg: i18n.global.t("errorMessage.fileIO.notConnectedToCloud") as string};
+        return {succeeded: false, errorMsg: i18n.global.t("errorMessage.fileIO.notConnectedToCloud")};
     }
 
     // We cannot make any assumption on what the file name path separator is.
@@ -77,7 +77,7 @@ export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, error
     // Look up the file on the Cloud Drive in the location:
     // We don't support parent directory references, so if there are any, we can already return in error...
     if(posixPathObj.dir.split("/").includes("..")){
-        return {succeeded: false,errorMsg: i18n.global.t("errorMessage.fileIO.parentDirRefNotSupported") as string};
+        return {succeeded: false,errorMsg: i18n.global.t("errorMessage.fileIO.parentDirRefNotSupported")};
     }   
     else {
         return new Sk.misceval.promiseToSuspension(
@@ -94,13 +94,13 @@ export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, error
                                 // Before adding the file in the map, we do some basic checks.
                                 // Check 1: if the file is in x mode, it can't exist
                                 if(skFile.mode.v.startsWith("x")){
-                                    return {succeeded: false, errorMsg: i18n.global.t("errorMessage.fileIO.fileAlreadyExists", {filename: filePath}) as string};
+                                    return {succeeded: false, errorMsg: i18n.global.t("errorMessage.fileIO.fileAlreadyExists", {filename: filePath})};
 
                                 }
                                 // Check 2: if the file is in write, append, or r+ mode, it can't be readonly.
                                 const isReadonly = vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getSpecificCloudDriveComponent(useStore().syncTarget)?.checkIsCloudDriveFileReadonly(cloudDriveFile);
                                 if(isReadonly && /^([wa])|(rb?\+)/.test(skFile.mode.v)) {
-                                    return {succeeded: false, errorMsg: i18n.global.t("errorMessage.fileIO.readonlyFile", {filename: filePath}) as string};
+                                    return {succeeded: false, errorMsg: i18n.global.t("errorMessage.fileIO.readonlyFile", {filename: filePath})};
                                 }
                                 // Can add the matched file to the mapping object unless we are in "x" mode which requires the file not to exist.
                                 const fileMapEntry: CloudFileWithMetaData = {...cloudDriveFile, filePath: filePath, locationId: fileFolderId, readOnly: !!isReadonly};
@@ -119,7 +119,7 @@ export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, error
                                         return {succeeded: true, errorMsg: ""};
                                     },
                                     () => {
-                                        return {succeeded: false, errorMsg: i18n.global.t("errorMessage.fileIO.openReadingError", {filename: filePath}) as string};
+                                        return {succeeded: false, errorMsg: i18n.global.t("errorMessage.fileIO.openReadingError", {filename: filePath})};
                                     });
                                 }
                                 else{
@@ -133,7 +133,7 @@ export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, error
                                 // Python creates the file right at the call to open().
                                 // So we try that first.
                                 if(skFile.mode.v.startsWith("r")){
-                                    return {succeeded: false, errorMsg: i18n.global.t("errorMessage.fileIO.fileNotFound", {filename: filePath}) as string};
+                                    return {succeeded: false, errorMsg: i18n.global.t("errorMessage.fileIO.fileNotFound", {filename: filePath})};
                                 }
                                 else if(skFile.mode.v.startsWith("w") || skFile.mode.v.startsWith("a") || skFile.mode.v.startsWith("x")){
                                     return vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.writeFileContentForIO(useStore().syncTarget, (skFile.mode.v.includes("b") ? new Uint8Array(0) : ""), {filePath: filePath, fileName: fileName, folderId: fileFolderId})
@@ -156,7 +156,7 @@ export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, error
                         });
                 },
                 (errorMsg) => {
-                    return {succeeded: false, errorMsg: errorMsg??i18n.global.t("errorMessage.fileIO.fileLocationNotFound", {filename: filePath}) as string};
+                    return {succeeded: false, errorMsg: errorMsg??i18n.global.t("errorMessage.fileIO.fileLocationNotFound", {filename: filePath})};
                 })     
         );
     }
@@ -242,7 +242,7 @@ const getCloudFileFolderIdFromPath = (fileFolderPath: path.PathObject): Promise<
 export const skulptCloseFileIO = (skFile: SkulptFile): {succeeded: boolean, errorMsg: string} => {
     const fileEntryIndex = cloudFilesMap.findIndex((entry) => entry.filePath == skFile.name);
     if(fileEntryIndex == -1){
-        return {succeeded: false, errorMsg: i18n.global.t("errorMessage.fileIO.closeInternalError") as string};
+        return {succeeded: false, errorMsg: i18n.global.t("errorMessage.fileIO.closeInternalError")};
     }
     // If we are in strict reading mode OR in error*, we don't need to do any async part.
     // Otherise, we need to make the actual writing to the file. (* an error may be raised 

@@ -53,7 +53,7 @@
 </template>
 <script lang="ts">
 
-import Vue, { defineComponent } from "vue";
+import { defineComponent } from "vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import {Demo, DemoGroup, getBuiltinDemos, getThirdPartyLibraryDemos} from "@/helpers/demos";
 import Parser from "@/parser/parser";
@@ -96,13 +96,13 @@ export default defineComponent({
             // Our built-in demos are always available:
             this.availableDemos = [
                 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
-                {name: this.$t("demos.builtinGraphics") as string, demos: getBuiltinDemos("graphics")},
-                {name: this.$t("demos.builtinTurtle") as string, demos: getBuiltinDemos("turtle")},
-                {name: this.$t("demos.builtinConsole") as string, demos: getBuiltinDemos("console")},
+                {name: this.$t("demos.builtinGraphics"), demos: getBuiltinDemos("graphics")},
+                {name: this.$t("demos.builtinTurtle"), demos: getBuiltinDemos("turtle")},
+                {name: this.$t("demos.builtinConsole"), demos: getBuiltinDemos("console")},
                 // #v-else
                 // A bit pointless to show "micro:bit" for micro:bit version since there is no other choice,
                 // but let's keep the same presentation across the different versions.
-                {name: this.$t("demos.builtinMicrobit") as string, demos: getBuiltinDemos("microbit")},
+                {name: this.$t("demos.builtinMicrobit"), demos: getBuiltinDemos("microbit")},
                 // #v-endif
 
             ];
@@ -152,7 +152,7 @@ export default defineComponent({
                 };
                 r.push(details);
                 img.then((url) => {
-                    Vue.set(details, "imgURL", url);
+                    details.imgURL = url;
                 });
             }
             this.demosInCurrentCategory = r;

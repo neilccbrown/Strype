@@ -14,12 +14,12 @@
         > 
             <!-- category main acions-->
             <!-- new project-->
-            <a :id="newProjectLinkId" v-if="showMenu" :class="'strype-menu-link '+ scssVars.strypeMenuItemClassName" @click="resetProject();showMenu=false;" v-t="'appMenu.resetProject'" :title="$t('appMenu.resetProjectTooltip')"/>
+            <a :id="newProjectLinkId" v-if="showMenu" :class="'strype-menu-link '+ scssVars.strypeMenuItemClassName" @click="resetProject();showMenu=false;" :title="$t('appMenu.resetProjectTooltip')">{{ $t("appMenu.resetProject") }}</a>
             <!-- open project -->
             <a :id="loadProjectLinkId" v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLoadProjectModal">{{$t('appMenu.loadProject')}}<span class="strype-menu-kb-shortcut">{{loadProjectKBShortcut}}</span></a>
             <ModalDlg :dlgId="loadProjectModalDlgId" showCloseBtn hideDlgBtns>
                 <div class="project-target-popup-content-container">
-                    <span v-t="'appMessage.loadToTarget'" class="load-save-label"/>
+                    <span class="load-save-label">{{ $t("appMessage.loadToTarget") }}</span>
                     <div :ref="loadProjectTargetButtonGpId" class="project-target-button-container">
                         <div id="loadFromGDStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
                             @mouseenter="changeTargetFocusOnMouseOver">
@@ -34,22 +34,22 @@
                         <div :id="loadFromFSStrypeButtonId" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
                             @mouseenter="changeTargetFocusOnMouseOver">
                             <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
-                            <span v-t="'appMessage.targetFS'"></span>
+                            <span>{{ $t("appMessage.targetFS") }}</span>
                         </div>
                     </div>
                 </div>
             </ModalDlg>
             <!-- save project -->
             <a :id="saveProjectLinkId" v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="handleSaveMenuClick">{{$t('appMenu.saveProject')}}<span class="strype-menu-kb-shortcut">{{saveProjectKBShortcut}}</span></a>
-            <a v-if="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !isSynced }" @click="handleSaveAsMenuClick" v-t="'appMenu.saveAsProject'"/>
+            <a v-if="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !isSynced }" @click="handleSaveAsMenuClick">{{$t("appMenu.saveAsProject")}}</a>
             <ModalDlg :dlgId="saveProjectModalDlgId" :okCustomTitle="$t('buttonLabel.save')" size="lg">
                 <div class="save-project-modal-dlg-container">
                     <div class="modal-row">
-                        <label v-t="'appMessage.fileName'" class="load-save-label modal-cell"/>
+                        <label class="load-save-label modal-cell">{{$t("appMessage.fileName")}}</label>
                         <input :id="saveFileNameInputId" :placeholder="$t('defaultProjName')" type="text" ref="toFocus" autocomplete="off" class="modal-cell" />
                     </div>
                     <div class="modal-row">
-                        <span v-t="'appMessage.saveToTarget'" class="load-save-label modal-cell" />
+                        <span class="load-save-label modal-cell">{{$t("appMessage.saveToTarget")}}</span>
                         <div class="modal-cell">
                             <div :ref="saveProjectTargetButtonGpId" class="project-target-button-container">
                                 <div id="saveToGDStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
@@ -65,23 +65,23 @@
                                 <div :id="saveToFSStrypeButtonId" tabindex="0"  @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
                                     :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncFSValue}">
                                     <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
-                                    <span v-t="'appMessage.targetFS'"></span>
+                                    <span>{{ $t("appMessage.targetFS") }}</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="modal-row">
-                        <label v-show="showCloudSaveLocation" v-t="'appMessage.cloudLocation'" class="load-save-label modal-cell"/>
+                        <label v-show="showCloudSaveLocation" class="load-save-label modal-cell">{{$t("appMessage.cloudLocation")}}</label>
                         <div v-show="showCloudSaveLocation" class="modal-cell">                        
                             <span class="load-save-label">{{currentDriveLocation}}</span>
-                            <BButton v-t="'buttonLabel.saveDiffLocation'" variant="outline-primary" @click="onSaveDiffLocationClick" size="sm" />
+                            <BButton variant="outline-primary" @click="onSaveDiffLocationClick" size="sm">{{ $t("buttonLabel.saveDiffLocation") }}</BButton>
                         </div>
                     </div>
                 </div>
             </ModalDlg>
             <ModalDlg :dlgId="saveOnLoadModalDlgId" :okCustomTitle="$t('buttonLabel.saveChanges')" :cancelCustomTitle="$t('buttonLabel.discardChanges')">
                 <div>
-                    <span  v-t="'appMessage.editorAskSaveChangedCode'" class="load-project-lost-span"/>
+                    <span class="load-project-lost-span">{{ $t("appMessage.editorAskSaveChangedCode") }}</span>
                     <br/>
                 </div>
             </ModalDlg>            
@@ -101,16 +101,16 @@
                         <div id="shareMethodSnapshotButton" :class="scssVars.projectTargetButtonClassName + ' share-method-dlg'" tabindex="0"  @click="copySnapshotLink()" @keydown.self="onTargetButtonKeyDown($event, shareProjectChooseMethodDlgId)"
                              @mouseenter="changeTargetFocusOnMouseOver">
                             <img src="@/assets/images/snapshotIcon.svg" :alt="$t('appMessage.methodSnapshotLink')"/>
-                            <span class="share-method-title" v-t="'appMessage.methodSnapshotLink'"></span>
-                            <span class="share-method-explanation" v-t="'appMessage.methodSnapshotLinkExplanation'"></span>
-                            <span class="share-method-warning" v-if="shareContentZippedBase64.length > 2000" v-t="'appMessage.snapshotLinkTooLarge'"></span>
+                            <span class="share-method-title">{{ $t("appMessage.methodSnapshotLink") }}</span>
+                            <span class="share-method-explanation">{{ $t("appMessage.methodSnapshotLinkExplanation") }}</span>
+                            <span class="share-method-warning" v-if="shareContentZippedBase64.length > 2000">{{ $t("appMessage.snapshotLinkTooLarge") }}</span>
                         </div>
                         <div id="shareMethodCloudButton" :class="scssVars.projectTargetButtonClassName + ' share-method-dlg'" tabindex="0"  @click="copyCloudLink()" @keydown.self="onTargetButtonKeyDown($event, shareProjectChooseMethodDlgId)"
                              @mouseenter="changeTargetFocusOnMouseOver">
                             <img src="@/assets/images/logoOneDrive.svg" alt="$t('appMessage.methodCloudLink')"/>
-                            <span class="share-method-title" v-t="'appMessage.methodCloudLink'"></span>
-                            <span class="share-method-explanation" v-t="'appMessage.methodCloudLinkExplanation'"></span>
-                            <span class="share-method-warning" v-if="!canShareProjectViaCloud" v-t="'appMessage.cloudShareUnavailable'"></span>
+                            <span class="share-method-title">{{ $t("appMessage.methodCloudLink") }}</span>
+                            <span class="share-method-explanation">{{ $t("appMessage.methodCloudLinkExplanation") }}</span>
+                            <span class="share-method-warning" v-if="!canShareProjectViaCloud">{{ $t("appMessage.cloudShareUnavailable") }}</span>
                         </div>
                     </div>
                 </div>
@@ -141,16 +141,16 @@
                     </ModalDlg>
             <!-- download python/hex project -->
             <!-- #v-ifdef MODE == VITE_MICROBIT_MODE-->
-            <a v-if="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="downloadHex();showMenu=false;" v-t="'appMenu.downloadHex'" />
+            <a v-if="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="downloadHex();showMenu=false;">{{ $t("appMenu.downloadHex") }}</a>
             <!-- #v-endif-->
-            <a v-if="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="downloadPython();showMenu=false;" v-t="'appMenu.downloadPython'" />
+            <a v-if="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="downloadPython();showMenu=false;">{{ $t("appMenu.downloadPython") }}</a>
             <!-- BLANK SPACE IN MENU TO FOOTER -->
             <div class="flex-padding" />
             <!-- category: preferences / settings -->
             <!-- Localisation -->
             <div class="appMenu-prefs-div">
                 <div>
-                    <label :for="appLangSelectId" v-t="'appMenu.lang'"/>&nbsp;
+                    <label :for="appLangSelectId">{{$t("appMenu.lang")}}</label>&nbsp;
                     <select name="lang" :id="appLangSelectId" v-model="appLang" @change="showMenu=false;" :class="scssVars.strypeMenuItemClassName" @click="setCurrentTabIndexFromEltId(appLangSelectId)">
                         <option v-for="locale in locales" :value="locale.code" :key="locale.code">{{locale.name}}</option>
                     </select>
@@ -408,7 +408,7 @@ export default defineComponent({
         });        
     },
 
-    beforeDestroy(){
+    beforeUnmount(){
         // Just in case, we remove the Bootstrap modal event handler from eventBus
         eventBus.off(CustomEventTypes.strypeModalShown, this.onStrypeMenuShownModalDlg);
         eventBus.off(CustomEventTypes.strypeModalHidden, this.onStrypeMenuHideModalDlg);
@@ -659,7 +659,7 @@ export default defineComponent({
         strypeProjMIMEDescArray(): MIMEDesc[]{
             return [
                 {
-                    description: this.$t("strypeFileDesc") as string,
+                    description: this.$t("strypeFileDesc"),
                     accept: { "application/strype": ["."+strypeFileExtension] },
                 },
             ];
@@ -668,7 +668,7 @@ export default defineComponent({
         pythonImportMIMEDescArray(): MIMEDesc[]{
             return [
                 {
-                    description: this.$t("pythonFileDesc") as string,
+                    description: this.$t("pythonFileDesc"),
                     accept: { "text/x-python": [".py"] },
                 },
             ];
@@ -949,7 +949,7 @@ export default defineComponent({
             // Note that for every call, we always also generate a timeout to make sure we never end up in "pending" situation -- that timeout is really generous to avoid unwanted behaviour for the user.
             const noShareActionTimeOut = 10*1000; 
             const noShareActionTimeOutHandle = setTimeout(()=>{
-                this.showErrorForShareProjectLink(this.$t("errorMessage.sharingLinkTimedout") as string);
+                this.showErrorForShareProjectLink(this.$t("errorMessage.sharingLinkTimedout"));
             }, noShareActionTimeOut);
 
             // With Cloud Drives, we allow two types of sharing: either sharing the Drive link (after setting the project readonly and totally public in the sharing settings)
@@ -977,13 +977,13 @@ export default defineComponent({
                                             }
                                             else{
                                                 // Something happened we couldn't make the link
-                                                alertMessage = this.$t("errorMessage.cloudDrivePublicShareFailed", {error: (respStatus?.toString())??"unknown"}) as string;
+                                                alertMessage = this.$t("errorMessage.cloudDrivePublicShareFailed", {error: (respStatus?.toString())??"unknown"});
                                             }
                                         }
                                     })
                                     .catch((error: any) => {
                                         // Something happened when we tried to get the public URL of the Google Drive file.
-                                        alertMessage = this.$t("errorMessage.cloudDrivePublicShareFailed", {error: (error.status?.toString())??"unknown"}) as string;            
+                                        alertMessage = this.$t("errorMessage.cloudDrivePublicShareFailed", {error: (error.status?.toString())??"unknown"});            
                                     })
                                     .finally(() => {
                                         if((alertMessage.length > 0) && this.areShareProjectActionStillValid(forShareMode)){
@@ -994,7 +994,7 @@ export default defineComponent({
                             else{
                                 // The project could not be made public on the Cloud Drive for some reason.
                                 if(this.areShareProjectActionStillValid(forShareMode)){
-                                    alertMessage = this.$t("errorMessage.cloudDrivePublicShareFailed", {error: (alertMessage.length > 0) ? alertMessage: "unknow"}) as string;
+                                    alertMessage = this.$t("errorMessage.cloudDrivePublicShareFailed", {error: (alertMessage.length > 0) ? alertMessage: "unknow"});
                                     this.showErrorForShareProjectLink(alertMessage);
                                 }
                             }
@@ -1088,7 +1088,7 @@ export default defineComponent({
                     // DO NOT UPDATE THE CURRENT SYNC FLAG IN THE STATE - we only do that IF loading succeed (because it can be still cancelled or impossible to achieve)
                     let saveFileName = forcedProjectName || (document.getElementById(this.saveFileNameInputId) as HTMLInputElement).value.trim();
                     if(saveFileName.length == 0){
-                        saveFileName = this.$t("defaultProjName") as string;
+                        saveFileName = this.$t("defaultProjName");
                     }
                     
                     const selectValue = this.getTargetSelectVal();
@@ -1097,7 +1097,7 @@ export default defineComponent({
                     if(!isSyncTargetCloudDrive(selectValue)){
                         if(!canBrowserSaveFilePicker() && saveFileName.trim().match(fileNameRegex) == null){
                             // Show an error message and do nothing special
-                            this.appStore.simpleModalDlgMsg = this.$t("errorMessage.fileNameError") as string;
+                            this.appStore.simpleModalDlgMsg = this.$t("errorMessage.fileNameError");
                             eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
                             this.currentModalButtonGroupIDInAction = "";
                             return;

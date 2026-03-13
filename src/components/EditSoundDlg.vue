@@ -14,7 +14,6 @@
             minWidth="1"
             minHeight="100"
             @change="change"
-            @mousemove.native="handleMouseMove"
         ></cropper>
         <div class="EditSoundDlg-button-wrapper">
             <BButton class="EditSoundDlg-play-button" :variant="playStopVariant" @click="doPlayStopPreview">{{playStopLabel}}</BButton>
@@ -47,7 +46,7 @@
 </template>
 
 <script lang="ts">
-import Vue, { defineComponent } from "vue";
+import { defineComponent } from "vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { Cropper } from "vue-advanced-cropper";
 import "vue-advanced-cropper/dist/style.css";
@@ -76,7 +75,7 @@ export default defineComponent({
     props:{
         dlgId: String,
         dlgTitle: String,
-        soundToEdit: {type: AudioBuffer, required: true},
+        soundToEdit: {type: [AudioBuffer, null], default: null},
     },
     
     data: function() {
@@ -107,17 +106,30 @@ export default defineComponent({
         eventBus.on(CustomEventTypes.strypeModalHidden, this.onHideModalDlg);
     },
 
-    beforeDestroy(){
+    beforeUnmount(){
         // Remove the event listener for the dialog here, just in case...
         eventBus.off(CustomEventTypes.strypeModalHidden, this.onHideModalDlg);
     },
 
     mounted() {
         window.addEventListener("keydown", this.onKeyDown);
+
+        // We cannot use ".native" anymore with Vue 3, and the cropper component isn't written to expose the mousemove event.
+        // Therefore, we must register the event ourselves on the DOM.
+        const cropper = this.$refs.cropper as InstanceType<typeof Cropper>;
+        if(cropper && cropper.$el){
+            cropper.$el.addEventListener("mousemove", this.handleMouseMove);
+        }
     },
 
-    destroyed() {
+    unmounted() {
         window.removeEventListener("keydown", this.onKeyDown);
+
+        // Remove the mousemove registration we made on the cropper
+        const cropper = this.$refs.cropper as InstanceType<typeof Cropper>;
+        if(cropper && cropper.$el){
+            cropper.$el.removeEventListener("mousemove", this.handleMouseMove);
+        }
     },
 
     computed:{
@@ -148,20 +160,24 @@ export default defineComponent({
             };
         },
         change(info : {image: any, coordinates: {left: number, top: number, width: number, height: number}}) {
-            this.crop = {
-                firstSampleIncl: Math.round(info.coordinates.left / previewImageWidth * this.soundToEdit?.length),
-                lastSampleExcl: Math.round((info.coordinates.left + info.coordinates.width) / previewImageWidth * this.soundToEdit?.length),
-                leftPixel: info.coordinates.left,
-                widthPixels: info.coordinates.width,
-            };
-            // Changing the crop changes the average volume:
-            let volumeFactor = 10 ** (this.volumeScaleLogPercent / 100.0);
-            this.volumeRMS = getRMS(this.soundToEdit, volumeFactor, this.crop.firstSampleIncl, this.crop.lastSampleExcl);
-            this.currentSoundLength = ((this.crop.lastSampleExcl - this.crop.firstSampleIncl - 1) / this.soundToEdit?.sampleRate).toFixed(3);
+            if(this.soundToEdit){
+                this.crop = {
+                    firstSampleIncl: Math.round(info.coordinates.left / previewImageWidth * this.soundToEdit?.length),
+                    lastSampleExcl: Math.round((info.coordinates.left + info.coordinates.width) / previewImageWidth * this.soundToEdit?.length),
+                    leftPixel: info.coordinates.left,
+                    widthPixels: info.coordinates.width,
+                };
+                // Changing the crop changes the average volume:
+                let volumeFactor = 10 ** (this.volumeScaleLogPercent / 100.0);
+                this.volumeRMS = getRMS(this.soundToEdit, volumeFactor, this.crop.firstSampleIncl, this.crop.lastSampleExcl);
+                this.currentSoundLength = ((this.crop.lastSampleExcl - this.crop.firstSampleIncl - 1) / this.soundToEdit?.sampleRate).toFixed(3);
+            }
         },
         doNormaliseVolume() {
-            let rms = getRMS(this.soundToEdit, 1.0, this.crop.firstSampleIncl, this.crop.lastSampleExcl);
-            this.volumeScaleLogPercent = Math.max(-70, Math.min(70, Math.round(Math.log10(rms == 0.0 ? 1 : 0.1 / rms) * 100))); 
+            if(this.soundToEdit){
+                let rms = getRMS(this.soundToEdit, 1.0, this.crop.firstSampleIncl, this.crop.lastSampleExcl);
+                this.volumeScaleLogPercent = Math.max(-70, Math.min(70, Math.round(Math.log10(rms == 0.0 ? 1 : 0.1 / rms) * 100))); 
+            }
         },
         doPlayStopPreview() {
             if (this.stopPreview != null) {
@@ -169,81 +185,89 @@ export default defineComponent({
                 return;
             }
             
-            // Add a play marker:
-            const playbackLine = document.createElement("div");
-            playbackLine.className = "EditSoundDlg-img-red-line";
-            playbackLine.setAttribute("style", "opacity: 0%; left: 0%;");
-            
-            document.getElementsByClassName("vue-preview__wrapper")?.[0].append(playbackLine);
-            
-            // We are handling a user-triggered click event, which allows us to play sound:
-            const ctx = new AudioContext();
-            const src = ctx.createBufferSource();
-            src.buffer = this.soundToEdit;
-            var gainNode = ctx.createGain();
-            const volumeFactor = 10 ** (this.volumeScaleLogPercent / 100.0);
-            gainNode.gain.value = volumeFactor;
-            gainNode.connect(ctx.destination);
+            if(this.soundToEdit){
+                // Add a play marker:
+                const playbackLine = document.createElement("div");
+                playbackLine.className = "EditSoundDlg-img-red-line";
+                playbackLine.setAttribute("style", "opacity: 0%; left: 0%;");
+                
+                document.getElementsByClassName("vue-preview__wrapper")?.[0].append(playbackLine);
+                
+                // We are handling a user-triggered click event, which allows us to play sound:
+                const ctx = new AudioContext();
+                const src = ctx.createBufferSource();
+                src.buffer = this.soundToEdit;
+                var gainNode = ctx.createGain();
+                const volumeFactor = 10 ** (this.volumeScaleLogPercent / 100.0);
+                gainNode.gain.value = volumeFactor;
+                gainNode.connect(ctx.destination);
 
-            src.connect(gainNode);
-            const startTime = ctx.currentTime;
-            let updater = null as number | null;
-            this.stopPreview = () => {
-                src.stop();
-                if (updater != null) {
-                    window.clearInterval(updater);
-                    updater = null;
-                }
-                playbackLine.remove();
-                this.stopPreview = null;
-            };
-            src.onended = this.stopPreview;
-            let sampleDuration = this.crop.lastSampleExcl - this.crop.firstSampleIncl;
-            src.start(0, this.crop.firstSampleIncl / this.soundToEdit?.sampleRate, sampleDuration / this.soundToEdit?.sampleRate);
-            
-            // Show a red marker animating across as it plays.
-            // There isn't a way to get regular callbacks while playing
-            // so we must time it ourselves.  We don't bother if the sound is under 300ms:
-            updater = window.setInterval(() => {
-                const percentage = (ctx.currentTime - startTime) / (sampleDuration / this.soundToEdit.sampleRate) * 100;
-                if (percentage >= 100) {
-                    this.stopPreview?.();
-                }
-                else {
-                    playbackLine.style.left = percentage + "%";
-                    playbackLine.style.opacity = "100%";
-                }
-            }, 100);
+                src.connect(gainNode);
+                const startTime = ctx.currentTime;
+                let updater = null as number | null;
+                this.stopPreview = () => {
+                    src.stop();
+                    if (updater != null) {
+                        window.clearInterval(updater);
+                        updater = null;
+                    }
+                    playbackLine.remove();
+                    this.stopPreview = null;
+                };
+                src.onended = this.stopPreview;
+                let sampleDuration = this.crop.lastSampleExcl - this.crop.firstSampleIncl;
+                src.start(0, this.crop.firstSampleIncl / this.soundToEdit.sampleRate, sampleDuration / this.soundToEdit.sampleRate);
+                
+                // Show a red marker animating across as it plays.
+                // There isn't a way to get regular callbacks while playing
+                // so we must time it ourselves.  We don't bother if the sound is under 300ms:
+                const ste = this.soundToEdit;
+                updater = window.setInterval(() => {
+                    const percentage = (ctx.currentTime - startTime) / (sampleDuration / ste.sampleRate) * 100;
+                    if (percentage >= 100) {
+                        this.stopPreview?.();
+                    }
+                    else {
+                        playbackLine.style.left = percentage + "%";
+                        playbackLine.style.opacity = "100%";
+                    }
+                }, 100);
+            }
         },
         getUpdatedMedia() : Promise<{code: string, mediaType: string}> {
-            const copiedAudioBuffer = new AudioBuffer({
-                length: this.crop.lastSampleExcl - this.crop.firstSampleIncl,
-                numberOfChannels: this.soundToEdit.numberOfChannels,
-                sampleRate: this.soundToEdit.sampleRate,
-            });
+            if(this.soundToEdit){
+                const copiedAudioBuffer = new AudioBuffer({
+                    length: this.crop.lastSampleExcl - this.crop.firstSampleIncl,
+                    numberOfChannels: this.soundToEdit.numberOfChannels,
+                    sampleRate: this.soundToEdit.sampleRate,
+                });
 
-            const volumeFactor = 10 ** (this.volumeScaleLogPercent / 100.0);
-            for (let channel = 0; channel < this.soundToEdit.numberOfChannels; channel++) {
-                const channelData = this.soundToEdit.getChannelData(channel);
-                const copiedChannelData = copiedAudioBuffer.getChannelData(channel);
+                const volumeFactor = 10 ** (this.volumeScaleLogPercent / 100.0);
+                for (let channel = 0; channel < this.soundToEdit.numberOfChannels; channel++) {
+                    const channelData = this.soundToEdit.getChannelData(channel);
+                    const copiedChannelData = copiedAudioBuffer.getChannelData(channel);
 
-                for (let sample = this.crop.firstSampleIncl; sample < this.crop.lastSampleExcl; sample++) {
-                    copiedChannelData[sample - this.crop.firstSampleIncl] = channelData[sample] * volumeFactor;
+                    for (let sample = this.crop.firstSampleIncl; sample < this.crop.lastSampleExcl; sample++) {
+                        copiedChannelData[sample - this.crop.firstSampleIncl] = channelData[sample] * volumeFactor;
+                    }
                 }
+                
+                return audioBufferToDataURL(copiedAudioBuffer).then((dataURL) => {
+                    return {
+                        code: "load_sound(\"" + dataURL + "\")", 
+                        mediaType: "audio/wav",
+                    };
+                });
             }
-            
-            return audioBufferToDataURL(copiedAudioBuffer).then((dataURL) => {
-                return {
-                    code: "load_sound(\"" + dataURL + "\")", 
-                    mediaType: "audio/wav",
-                };
-            });
+            else{
+                return Promise.reject("We shouldn't be here, soundToEdit should not be null");
+            }
         },
         handleMouseMove(event: MouseEvent) {
             const cropper = this.$refs.cropper as InstanceType<typeof Cropper>;
             const imageElement = cropper?.$el.querySelector("img");
 
-            if (cropper && imageElement && imageElement.complete) {
+            if (cropper && imageElement && imageElement.complete && this.soundToEdit) {
                 const rect = imageElement.getBoundingClientRect();
                 const offsetX = event.clientX - rect.left;
                 const offsetY = event.clientY - rect.top;
@@ -255,7 +279,7 @@ export default defineComponent({
                 const imageY = offsetY * scaleY;
 
                 if (imageX >= 0 && imageX < imageElement.width && imageY >= 0 && imageY < imageElement.height) {
-                    const t = (imageX / previewImageWidth) * this.soundToEdit?.duration;
+                    const t = (imageX / previewImageWidth) * this.soundToEdit.duration;
                     this.cursorTime = t != undefined ? t.toPrecision(3) : undefined;
                     this.cursorHeight = ((imageY / previewImageHeight) * -2 + 1).toFixed(2);
                 }
@@ -287,19 +311,21 @@ export default defineComponent({
     },
     watch: {
         volumeScaleLogPercent() {
-            // Redraw sound with new volume:
-            let volumeFactor = 10 ** (this.volumeScaleLogPercent / 100.0);
-            this.imgPreview = drawSoundOnCanvas(this.soundToEdit, previewImageWidth, previewImageHeight, volumeFactor);
-            this.volumeRMS = getRMS(this.soundToEdit, volumeFactor, this.crop.firstSampleIncl, this.crop.lastSampleExcl);
-            // But retain same crop (have to do this after cropper has updated the image):
-            Vue.nextTick(() => {
-                (this.$refs.cropper as InstanceType<typeof Cropper>).setCoordinates({
-                    left: this.crop.leftPixel,
-                    width: this.crop.widthPixels,
-                    top: 0,
-                    height: previewImageHeight,
+            if(this.soundToEdit){
+                // Redraw sound with new volume:
+                let volumeFactor = 10 ** (this.volumeScaleLogPercent / 100.0);
+                this.imgPreview = drawSoundOnCanvas(this.soundToEdit, previewImageWidth, previewImageHeight, volumeFactor);
+                this.volumeRMS = getRMS(this.soundToEdit, volumeFactor, this.crop.firstSampleIncl, this.crop.lastSampleExcl);
+                // But retain same crop (have to do this after cropper has updated the image):
+                this.$nextTick(() => {
+                    (this.$refs.cropper as InstanceType<typeof Cropper>).setCoordinates({
+                        left: this.crop.leftPixel,
+                        width: this.crop.widthPixels,
+                        top: 0,
+                        height: previewImageHeight,
+                    });
                 });
-            });
+            }
         },
         soundToEdit() {
             // When image changes (dialog being re-shown), redraw image:

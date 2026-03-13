@@ -29,7 +29,7 @@
                             :indent-wrapped="true"
                             :key="UID+'_'+item.index"
                             :selected="item.index==selected"
-                            v-on="$listeners"
+                            @[CustomEventTypes.acItemClicked]="$emit(CustomEventTypes.acItemClicked, $event)"
                             @[CustomEventTypes.acItemHovered]="handleACItemHover"
                             :isSelectable="true"
                             ref="results"
@@ -423,7 +423,7 @@ export default defineComponent({
                 this.acResults["Python"] = getBuiltins().filter((ac) => !ac.acResult.startsWith("_") || token.startsWith("_"));
               
                 // Add user-defined functions except class functions (even if the user is inside the class):
-                this.acResults[this.$t("autoCompletion.myFunctions") as string] = await Promise.all(getAllEnabledUserDefinedFunctions().map(async (f) => ({
+                this.acResults[this.$t("autoCompletion.myFunctions")] = await Promise.all(getAllEnabledUserDefinedFunctions().map(async (f) => ({
                     acResult: (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code,
                     // If the function's documentation slot isn't empty, we used it as documentation
                     documentation: (f.labelSlotsDict[3].slotStructures.fields[0] as BaseSlot)?.code.trim()??"",
@@ -433,7 +433,7 @@ export default defineComponent({
                 })));
 
                 // Add user-defined classes:
-                this.acResults[this.$t("autoCompletion.myClasses") as string] = await Promise.all(getAllEnabledUserDefinedClasses().map(async (f) => ({
+                this.acResults[this.$t("autoCompletion.myClasses")] = await Promise.all(getAllEnabledUserDefinedClasses().map(async (f) => ({
                     acResult: (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code,
                     // If the class's documentation slot isn't empty, we used it as documentation
                     documentation: (f.labelSlotsDict[2].slotStructures.fields[0] as BaseSlot)?.code.trim()??"",
@@ -443,7 +443,7 @@ export default defineComponent({
                 })));
                 
                 // Add user-defined variables:
-                this.acResults[this.$t("autoCompletion.myVariables") as string] = Array.from(getAllUserDefinedVariablesUpTo(frameId)).map((f) => ({
+                this.acResults[this.$t("autoCompletion.myVariables")] = Array.from(getAllUserDefinedVariablesUpTo(frameId)).map((f) => ({
                     acResult: f,
                     documentation: "",
                     type: ["variable"],
@@ -621,7 +621,7 @@ export default defineComponent({
                 }
                 // &#8203; is a zero-width space that allows line breaking, for things like Actor(image_or_filename where you'd like to break after the bracket but without showing a space
                 return `<span class='ac-doc-header'>${_.escape(curAC.acResult) + (curAC.type.includes("function") ? "(&#8203;" + (curAC.signature ? paramsText(curAC.signature) : (curAC.params ?? []).filter((p) => !p.hide).map((p) => p.name + (p.defaultValue !== undefined ? " = " + p.defaultValue : "")).join(", ")) + ")" : "")}</span>`
-                    + (doc?.trimStart() || (this.$t("autoCompletion.noDocumentation") as string));
+                    + (doc?.trimStart() || this.$t("autoCompletion.noDocumentation"));
             }
             else {
                 return "";

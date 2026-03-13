@@ -39,7 +39,7 @@
 
 <script lang="ts">
 import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, MediaDataAndDim, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
-import Vue, { computed, defineComponent } from "vue";
+import { computed, defineComponent } from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
@@ -399,7 +399,7 @@ export default defineComponent({
                 let {uiLiteralCode, focusSpanPos: focusCursorAbsPos, hasStringSlots, mediaLiterals} = getFrameLabelSlotLiteralCodeAndFocus(labelDiv, slotUID, {useFlatMediaDataCode: options?.useFlatMediaDataCode});
                 const parsedCodeRes = parseCodeLiteral(uiLiteralCode, {frameType: this.appStore.frameObjects[this.frameId].frameType.type, isInsideString: false, cursorPos: options?.skipCursorSetAndStateSave ? undefined : focusCursorAbsPos, skipStringEscape: hasStringSlots, imageLiterals: mediaLiterals});
                 const majorChange = this.majorChange(this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures, parsedCodeRes.slots);
-                Vue.set(this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex], "slotStructures", parsedCodeRes.slots);
+                this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures = parsedCodeRes.slots;
                 // The parser can be return a different size "code" of the slots than the code literal
                 // (that is for example the case with textual operators which requires spacing in typing, not in the UI)
                 focusCursorAbsPos += parsedCodeRes.cursorOffset;
@@ -462,7 +462,7 @@ export default defineComponent({
                         
                                             // Change the type of frame to varassign and adapt the content
                                             // (when we change the state in this next line, we need to COPY the FrameType object otherwise undo/redo makes weird changes in the commands)
-                                            Vue.set(this.appStore.frameObjects[this.frameId],"frameType", cloneDeep(getFrameDefType(AllFrameTypesIdentifier.varassign)));   
+                                            this.appStore.frameObjects[this.frameId].frameType = cloneDeep(getFrameDefType(AllFrameTypesIdentifier.varassign));   
                                             const newContent: { [index: number]: LabelSlotsContent} = {
                                                 // LHS 
                                                 0: {
@@ -852,8 +852,8 @@ export default defineComponent({
                 }
                 else {
                     // Restore the caret visibility
-                    Vue.set(this.appStore.frameObjects[this.appStore.currentFrame.id], "caretVisibility", this.appStore.currentFrame.caretPosition);
-                    Vue.nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
+                    this.appStore.frameObjects[this.appStore.currentFrame.id].caretVisibility = this.appStore.currentFrame.caretPosition;
+                    this.$nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
                 }
             }
         },

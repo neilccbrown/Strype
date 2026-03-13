@@ -134,7 +134,7 @@ export default defineComponent({
         document.addEventListener(CustomEventTypes.exposedCloudDriveItemChidren, this.gotChildrenForFolder);       
     },
 
-    destroyed() {
+    unmounted() {
         // Remove all listeners
         document.removeEventListener(CustomEventTypes.requestedCloudDrivePickerPickedItem, this.exposePickedItem);
         document.removeEventListener(CustomEventTypes.exposedCloudDriveItemChidren, this.gotChildrenForFolder);  

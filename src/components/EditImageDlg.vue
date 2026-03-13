@@ -15,7 +15,6 @@
             minHeight="1"
             @ready="imageLoaded"
             @change="change"
-            @mousemove.native="handleMouseMove"            
         ></cropper>
         <div class="d-flex justify-content-center" style="margin-top: 10px;">
             <div class="d-flex position-relative" style="font-size: 80%;">
@@ -104,17 +103,30 @@ export default defineComponent({
         this.updatePreview = debounce(this.updatePreview, 500);
     },
 
-    beforeDestroy(){
+    beforeUnmount(){
         // Remove the event listener for the dialog here, just in case...
         eventBus.off(CustomEventTypes.strypeModalHidden, this.onHideModalDlg);
     },
     
     mounted() {
         window.addEventListener("keydown", this.onKeyDown);
+
+        // We cannot use ".native" anymore with Vue 3, and the cropper component isn't written to expose the mousemove event.
+        // Therefore, we must register the event ourselves on the DOM.
+        const cropper = this.$refs.cropper as InstanceType<typeof Cropper>;
+        if(cropper && cropper.$el){
+            cropper.$el.addEventListener("mousemove", this.handleMouseMove);
+        }
     },
 
-    destroyed() {
+    unmounted() {
         window.removeEventListener("keydown", this.onKeyDown);
+
+        // Remove the mousemove registration we made on the cropper
+        const cropper = this.$refs.cropper as InstanceType<typeof Cropper>;
+        if(cropper && cropper.$el){
+            cropper.$el.removeEventListener("mousemove", this.handleMouseMove);
+        }
     },
 
     computed:{

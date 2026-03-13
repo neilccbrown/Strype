@@ -91,7 +91,7 @@
             </div>
             <SimpleMsgModalDlg :dlgId="simpleMsgModalDlgId"/>
             <ModalDlg :dlgId="importDiffVersionModalDlgId" :okCustomTitle="$t('buttonLabel.continue')">
-                <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
+                <span>{{ $t("appMessage.editorFileUploadWrongVersion") }}</span>                
             </ModalDlg>
             <ModalDlg :dlgId="resyncToCloudDriveAtStartupModalDlgId" :elementToFocusId="resyncSaveToCloudDriveAtStartupButtonId" size="lg">
                 <span style="white-space:pre-wrap" v-html="resyncToCloudDriveAtStartupDetailsMessage"></span>
@@ -104,7 +104,7 @@
             </ModalDlg>
             <MediaPreviewPopup ref="mediaPreviewPopup" />
             <EditImageDlg dlgId="editImageDlg" ref="editImageDlg" :imgToEdit="imgToEditInDialog" :showImgPreview="showImgPreview" />
-            <EditSoundDlg dlgId="editSoundDlg" ref="editSoundDlg" :soundToEdit="soundToEditInDialog as AudioBuffer" />
+            <EditSoundDlg dlgId="editSoundDlg" ref="editSoundDlg" :soundToEdit="soundToEditInDialog" />
             <div :id="getSkulptBackendTurtleDivId" class="hidden"></div>
             <canvas v-show="appStore.isDraggingFrame" :id="getCompanionDndCanvasId" class="companion-canvas-dnd"/>
             <ModalDlg :dlgId="confirmResetLSOnShareProjectLoadDlgId" :okCustomTitle="$t('buttonLabel.continue')" :cancelCustomTitle="$t('buttonLabel.cancelLoadSharedProject')" >
@@ -124,7 +124,7 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue, { defineComponent } from "vue";
+import { defineComponent } from "vue";
 import { useI18n } from "vue-i18n";
 import { BApp } from "bootstrap-vue-next";
 import MessageBanner from "@/components/MessageBanner.vue";
@@ -323,7 +323,7 @@ export default defineComponent({
         },
 
         resyncToCloudDriveAtStartupDetailsMessage(): string {
-            return this.$t("appMessage.resyncToCloudDriveAtStartup", {drivename: this.cloudDriveName}) as string;
+            return this.$t("appMessage.resyncToCloudDriveAtStartup", {drivename: this.cloudDriveName});
         },
 
         resyncSaveToCloudDriveAtStartupButtonId(): string {
@@ -666,7 +666,7 @@ export default defineComponent({
         eventBus.on(CustomEventTypes.strypeModalHidden, this.onHideModalDlg);  
     },
 
-    destroyed() {
+    unmounted() {
         // Removes the listeners
         document.removeEventListener("selectionchange", this.handleDocumentSelectionChange);
         document.removeEventListener("mouseup", this.checkMouseSelection);
@@ -709,7 +709,7 @@ export default defineComponent({
                                 afterAPILoaded();
                             }
                             else{
-                                this.finaliseOpenShareProject({key: "errorMessage.retrievedSharedGenericProject", param: this.$t("errorMessage.cloudAPIFailed",{apiname: specifcDriveComponent?.driveAPIName}) as string});
+                                this.finaliseOpenShareProject({key: "errorMessage.retrievedSharedGenericProject", param: this.$t("errorMessage.cloudAPIFailed",{apiname: specifcDriveComponent?.driveAPIName})});
                             }
                         });
                 }
@@ -805,7 +805,7 @@ export default defineComponent({
                 const binary = Base64.toUint8Array(param);
                 const spyContent = inflateRaw(binary, { to: "string" });
 
-                const loadSpy = () => this.setStateFromPythonFile(spyContent, this.$t("defaultProjName") as string, 0, false);
+                const loadSpy = () => this.setStateFromPythonFile(spyContent, this.$t("defaultProjName"), 0, false);
                 
                 this.checkLocalStorageHasProject().then(() => {
                     // A project exists in the local storage, we ask the user if they want to keep it (and cancel the load of the shared project)
@@ -1116,7 +1116,7 @@ export default defineComponent({
         finaliseOpenShareProject(message?: {key: string, param: string}) {
             // Show a message to the user that the project has (not) been loaded, if requested
             if(message){
-                this.appStore.simpleModalDlgMsg = this.$t(message.key, {param1: message.param}) as string;
+                this.appStore.simpleModalDlgMsg = this.$t(message.key, {param1: message.param});
                 eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
             }
             // And also remove the query parameters in the URL
@@ -1462,11 +1462,11 @@ export default defineComponent({
             // When a context menu entry is hovered, we want to make it as it was selected via the keyboard. 
             // If we didn't, then there would be a confusion between a selected item with the keyboard, and another hovered item with the mouse.
             // Doing so guarantee that only 1 element is selected in the menu.
-            // (Note that we don't need to worry about hovering out: the context menu handles that natively already.    )
+            // (Note that we don't need to worry about hovering out: the context menu handles that natively already.)
             // We remove the current "keyboard-focus" class if any, and set it on the currently hovered item, unless that item is a group and opened.
             const currentlyKBFocusedEntry = document.querySelector(".mx-context-menu-item.keyboard-focus");
             currentlyKBFocusedEntry?.classList.remove("keyboard-focus");
-            if(!menuTarget.classList.contains("open")){
+            if(!menuTarget.classList.contains("open") && !menuTarget.classList.contains("disabled")){
                 menuTarget.classList.add("keyboard-focus");
             }
         },
@@ -1529,7 +1529,7 @@ export default defineComponent({
         onStrypeCommandsSplitPaneResize(event: any, useSpecificPEALayout?: StrypePEALayoutMode){
             // Save the new size of the RHS pane of the editor/commands splitter
             if(this.appStore.editorCommandsSplitterPane2Size != undefined) {
-                Vue.set(this.appStore.editorCommandsSplitterPane2Size, useSpecificPEALayout??(this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed), event.panes[1].size);
+                this.appStore.editorCommandsSplitterPane2Size[useSpecificPEALayout??(this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed)] = event.panes[1].size;
             }
             else {
                 // The tricky case of when the state property has never been set

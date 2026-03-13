@@ -145,7 +145,7 @@ export default defineComponent({
         },
     },
 
-    beforeDestroy(){
+    beforeUnmount(){
         // Just in case, we remove event listeners 
         window.removeEventListener("keydown", this.validateOnEnterKeyDown);
     },

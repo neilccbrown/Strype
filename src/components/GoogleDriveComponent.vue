@@ -605,7 +605,7 @@ export default defineComponent({
                     // We check the permission is given to the scope required by Strype. If not given, show message.
                     if(!google.accounts.oauth2.hasGrantedAllScopes(response, this.googleDriveScope)) {
                         this.oauthToken = null;
-                        this.appStore.simpleModalDlgMsg = this.$t("errorMessage.gdrivePermissionsNotMet") as string;
+                        this.appStore.simpleModalDlgMsg = this.$t("errorMessage.gdrivePermissionsNotMet");
                         eventBus.emit(CustomEventTypes.showStrypeModal, this.loginErrorModalDlgId);
                     }                   
                              

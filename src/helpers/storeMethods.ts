@@ -3,7 +3,7 @@ import i18n from "@/i18n";
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
 import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameLabel, FrameObject, FrozenState, getFrameDefType, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
-import Vue from "vue";
+import { nextTick} from "vue";
 import { checkEditorCodeErrors, countEditorCodeErrors, getCaretContainerUID, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID } from "./editor";
 import { cloneDeep, isEqual } from "lodash";
 import scssVars from "@/assets/style/_export.module.scss";
@@ -268,10 +268,7 @@ export const removeFrameInFrameList = (frameId: number): void => {
     );
 
     //Now we can delete the frame from the list of frameObjects
-    Vue.delete(
-        useStore().frameObjects,
-        frameId
-    );
+    delete useStore().frameObjects[frameId];
 };
 
 // Returns the parentId of the frame or if it is a joint frame returns the parentId of the JointParent.
@@ -790,11 +787,11 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
             error: "",
         }
     );
-    Vue.delete(slot,"errorTitle");
+    delete (slot as BaseSlot).errorTitle;
 
     // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
     // If the frame of this slot has a runtime error, we also clear it
-    Vue.delete(useStore().frameObjects[slotInfos.frameId], "runTimeError");
+    delete useStore().frameObjects[slotInfos.frameId].runTimeError;
     // #v-endif
 
     // Check for precompiled errors (empty slots)
@@ -819,7 +816,7 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
         useStore().setSlotErroneous( 
             {
                 ...slotInfos,  
-                error: i18n.global.t("errorMessage.emptyEditableSlot") as string,
+                error: i18n.global.t("errorMessage.emptyEditableSlot"),
             }
         );
         useStore().addPreCompileErrors(getLabelSlotUID(slotInfos));
@@ -830,7 +827,7 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
         useStore().setSlotErroneous( 
             {
                 ...slotInfos,  
-                error: i18n.global.t("errorMessage.editableSlotWithHash") as string,
+                error: i18n.global.t("errorMessage.editableSlotWithHash"),
             }
         );
         useStore().addPreCompileErrors(getLabelSlotUID(slotInfos));
@@ -900,7 +897,7 @@ export function checkCodeErrors(frameIdForPrecompiled?: number): void {
     }
     // We make sure the number of errors shown in the interface is in line with the current state of the code
     // As the UI should update first, we do it in the next tick
-    Vue.nextTick().then(() => {
+    nextTick().then(() => {
         checkEditorCodeErrors();
         useStore().errorCount = countEditorCodeErrors();
     }); 
@@ -1002,8 +999,8 @@ export function calculateNextCollapseState(frameList: FrameObject[], parentIsFro
         const nextState = cycleToNextPossible(prev.overallState, currentAndPossibleStates);
         const nextPossible = changeWherePossible(frameList, nextState);
         if (reason != "dryrun") {
-            Vue.set(prev, "overallState", nextState);
-            Vue.set(prev, "lastStates", nextPossible);
+            prev.overallState = nextState;
+            prev.lastStates = nextPossible;
         }
         return {overall: nextState, individual: nextPossible};
     }

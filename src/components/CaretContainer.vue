@@ -30,7 +30,7 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue, { defineComponent, PropType } from "vue";
+import { defineComponent, PropType } from "vue";
 import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
 import { AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, PythonExecRunningState, FrameContextMenuActionName, CurrentFrame, CollapsedState, StrypeContextMenuItem, CoordPosition } from "@/types/types";
@@ -197,7 +197,7 @@ export default defineComponent({
         this.putCaretContainerInView();
     },
 
-    destroyed() {
+    unmounted() {
         window.removeEventListener("paste", this.pasteIfFocused);
         window.removeEventListener("keydown", this.keydownForSafariPaste);
         document.removeEventListener(CustomEventTypes.scrollCaretIntoView, this.putCaretContainerInView);
@@ -441,7 +441,7 @@ export default defineComponent({
 
             const framesAdded = frameIdsAfterPaste.filter((frameId) => !frameIdsBeforePaste.has(frameId));
             // Then after nextTick tell all the new frames to update their prompts:
-            Vue.nextTick(() => {
+            this.$nextTick(() => {
                 eventBus.emit(CustomEventTypes.updateParamPrompts, framesAdded);
             });
         },

@@ -68,13 +68,13 @@
             :id="AC_UID"
             :AC_UID="AC_UID"
             :isImportFrame="isImportFrame()"
-            @acItemClicked="acItemClicked"
+            @[CustomEventTypes.acItemClicked]="acItemClicked"
         />
     </div>
 </template>
 
 <script lang="ts">
-import Vue, { defineComponent, PropType } from "vue";
+import { defineComponent, PropType } from "vue";
 import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
@@ -164,13 +164,14 @@ export default defineComponent({
         }
     },
 
-    beforeDestroy() {
+    beforeUnmounts() {
         this.appStore.removePreCompileErrors(this.UID);
     },
 
     data: function() {
         return {
             scssVars, // just to be able to use in template
+            CustomEventTypes, // just to be able to use in template 
             //this flags indicates if the content of editable slot has been already modified during a sequence of action
             //as we don't want to save each single change of the content, but the full content change itself.
             isFirstChange: true,
@@ -467,7 +468,7 @@ export default defineComponent({
         // Event callback equivalent to what would happen for a focus event callback 
         // (the spans don't get focus anymore because the containg editable div grab it)
         onGetCaret(event: MouseEvent, fromNaturalClick?: boolean): void {
-            Vue.nextTick(() => vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex)].updatePrependText());
+            this.$nextTick(() => vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex)].updatePrependText());
 
             // When this method is triggered by a natural click on the text slot, we delay the chain of actions a bit,
             // because the potential blurring of another slot may interfer with with timing and scrolling into view.
@@ -655,7 +656,7 @@ export default defineComponent({
         // Event callback equivalent to what would happen for a blur event callback 
         // (the spans don't get focus anymore because the containg editable div grab it)
         onLoseCaret(keepIgnoreKeyEventFlagOn?: boolean): void {
-            Vue.nextTick(() => vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex)].updatePrependTextAndCheckErrors());
+            this.$nextTick(() => vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex)].updatePrependTextAndCheckErrors());
             
             // Before anything, we make sure that the current frame still exists,
             // and that our slot still exists.  If we shouldn't exist any more, we should
@@ -1365,7 +1366,7 @@ export default defineComponent({
                             // Show an error message to the user, and do nothing else.
                             const msg = cloneDeep(MessageDefinitions.InvalidPythonParsePaste);
                             const msgObj = msg.message as FormattedMessage;
-                            msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, this.$t("errorMessage.unexpectedCharsPython") as string);
+                            msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, this.$t("errorMessage.unexpectedCharsPython"));
 
                             //don't leave the message for ever
                             this.appStore.showMessage(msg, 5000);
