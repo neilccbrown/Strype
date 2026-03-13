@@ -832,7 +832,7 @@ export const useStore = defineStore("app", {
                         );
                     }
                     //and finally, delete the frame
-                    this.frameObjects[payload.frameToDeleteId];
+                    delete this.frameObjects[payload.frameToDeleteId];
                 }
             }
         },
