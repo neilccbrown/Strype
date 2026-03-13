@@ -11,7 +11,7 @@ export function compileBlob(compiler: Compiler): Blob | undefined {
     }
     catch {
         // Notify the user of any detected errors in the code
-        useStore().simpleModalDlgMsg = i18n.global.t("appMessage.preCompiledErrorNeedFix") as string;
+        useStore().simpleModalDlgMsg = i18n.global.t("appMessage.preCompiledErrorNeedFix");
         eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
     }
 }

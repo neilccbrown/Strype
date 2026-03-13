@@ -275,7 +275,7 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
             // We then show the error on the last frame available in the list (that is, before the EOF, 2 lines ahead)
             frameId = (locatableError) ? lineFrameMapping[errorLine - 1].frameId : lineFrameMapping[errorLine - 3].frameId;
 
-            const noLineSkulptErrStr = (locatableError) ? skulptErrStr.replaceAll(/ on line \d+/g,"") : i18n.global.t("errorMessage.EOFError") as string;
+            const noLineSkulptErrStr = (locatableError) ? skulptErrStr.replaceAll(/ on line \d+/g,"") : i18n.global.t("errorMessage.EOFError");
             // In order to show the Skulpt error in the editor, we set an error on all the frames. That approach is the best compromise between
             // our current error related code implementation and clarity for the user.
             // Exception: if we have a "running action" message, we don't show anything (no message and no error).

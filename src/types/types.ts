@@ -462,7 +462,7 @@ export const ImportsContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.importsContainer,
     labels: [
-        { label: (i18n.global.t("appMessage.importsContainer") as string), showSlots: false, defaultText: "" },
+        { label: i18n.global.t("appMessage.importsContainer"), showSlots: false, defaultText: "" },
     ],
     allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
@@ -474,7 +474,7 @@ export const DefsContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.defsContainer,
     labels: [
-        { label: (i18n.global.t("appMessage.defsContainer") as string), showSlots: false, defaultText: "" },
+        { label: i18n.global.t("appMessage.defsContainer"), showSlots: false, defaultText: "" },
     ],
     allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
@@ -486,7 +486,7 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.framesMainContainer,
     labels: [
-        { label: (i18n.global.t("appMessage.mainContainer") as string), showSlots: false, defaultText: "" },
+        { label: i18n.global.t("appMessage.mainContainer"), showSlots: false, defaultText: "" },
     ],
     allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
     forbiddenChildrenTypes: BlockDefinition.forbiddenChildrenTypes.concat(Object.values(AllFrameTypesIdentifier)
@@ -506,7 +506,7 @@ export const ProjectDocumentationDefinition: FramesDefinitions = {
     ...StatementDefinition,
     type: AllFrameTypesIdentifier.projectDocumentation,
     labels: [
-        { label: `<img src='${quoteCircleProject}'>`, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.global.t("frame.defaultText.projectDescription") as string, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
+        { label: `<img src='${quoteCircleProject}'>`, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.global.t("frame.defaultText.projectDescription"), allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
     ],
     colour: "#A00000",
 };
@@ -521,7 +521,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
     const FuncCallDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.funccall,
-        labels: [{ label: "", defaultText: i18n.global.t("frame.defaultText.funcCall") as string, showLabel: false }],
+        labels: [{ label: "", defaultText: i18n.global.t("frame.defaultText.funcCall"), showLabel: false }],
         colour: scssVars.mainCodeContainerBackground,
     };
 
@@ -535,14 +535,14 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
     const ReturnDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.return,
-        labels: [{ label: "return ", defaultText: i18n.global.t("frame.defaultText.expression") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK }],
+        labels: [{ label: "return ", defaultText: i18n.global.t("frame.defaultText.expression"), optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK }],
         colour: scssVars.mainCodeContainerBackground,
     };
 
     const GlobalDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.global,
-        labels: [{ label: "global ", defaultText: i18n.global.t("frame.defaultText.variable") as string, allowedSlotContent: AllowedSlotContent.ONLY_NAMES }],
+        labels: [{ label: "global ", defaultText: i18n.global.t("frame.defaultText.variable"), allowedSlotContent: AllowedSlotContent.ONLY_NAMES }],
         colour: scssVars.mainCodeContainerBackground,
     };
 
@@ -550,8 +550,8 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.varassign,
         labels: [
-            { label: "", defaultText: i18n.global.t("frame.defaultText.identifier") as string },
-            { label: " &#x21D0; ", defaultText: i18n.global.t("frame.defaultText.value") as string },
+            { label: "", defaultText: i18n.global.t("frame.defaultText.identifier") },
+            { label: " &#x21D0; ", defaultText: i18n.global.t("frame.defaultText.value") },
         ],
         colour: scssVars.mainCodeContainerBackground,
     };
@@ -578,7 +578,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.raise,
         labels: [
-            { label: "raise ", defaultText: i18n.global.t("frame.defaultText.exception") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK },
+            { label: "raise ", defaultText: i18n.global.t("frame.defaultText.exception"), optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK },
         ],
         colour: scssVars.mainCodeContainerBackground,
     };
@@ -587,7 +587,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...StatementDefinition,
         type: ImportFrameTypesIdentifiers.import,
         labels: [
-            { label: "import ", defaultText: i18n.global.t("frame.defaultText.modulePart") as string, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
+            { label: "import ", defaultText: i18n.global.t("frame.defaultText.modulePart"), allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
             // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
             // and thus not giving us back any AC results on the shortcut
             //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
@@ -600,8 +600,8 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...StatementDefinition,
         type: ImportFrameTypesIdentifiers.fromimport,
         labels: [
-            { label: "from ", defaultText: i18n.global.t("frame.defaultText.module") as string, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
-            { label: "import ", defaultText: i18n.global.t("frame.defaultText.modulePart") as string, allowedSlotContent: AllowedSlotContent.ONLY_NAMES_OR_STAR },
+            { label: "from ", defaultText: i18n.global.t("frame.defaultText.module"), allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
+            { label: "import ", defaultText: i18n.global.t("frame.defaultText.modulePart"), allowedSlotContent: AllowedSlotContent.ONLY_NAMES_OR_STAR },
             // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
             // and thus not giving us back any AC results on the shortcut
             //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
@@ -614,7 +614,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...StatementDefinition,
         type: ImportFrameTypesIdentifiers.library,
         labels: [
-            { label: "library ", defaultText: i18n.global.t("frame.defaultText.libraryAddress") as string, acceptAC: false, allowedSlotContent: AllowedSlotContent.LIBRARY_ADDRESS},
+            { label: "library ", defaultText: i18n.global.t("frame.defaultText.libraryAddress"), acceptAC: false, allowedSlotContent: AllowedSlotContent.LIBRARY_ADDRESS},
         ],
         colour: "#B4C8DC",
     };
@@ -622,7 +622,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
     const CommentDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.comment,
-        labels: [{ label: "# ", defaultText: i18n.global.t("frame.defaultText.comment") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION}],
+        labels: [{ label: "# ", defaultText: i18n.global.t("frame.defaultText.comment"), optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION}],
         colour: scssVars.mainCodeContainerBackground,
     };
 
@@ -631,7 +631,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.if,
         labels: [
-            { label: "if ", defaultText: i18n.global.t("frame.defaultText.condition") as string },
+            { label: "if ", defaultText: i18n.global.t("frame.defaultText.condition") },
             { label: " :", showSlots: false, defaultText: "" },
         ],
         allowJointChildren: true,
@@ -646,7 +646,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.elif,
         labels: [
-            { label: "elif ", defaultText: i18n.global.t("frame.defaultText.condition") as string },
+            { label: "elif ", defaultText: i18n.global.t("frame.defaultText.condition") },
             { label: " :", showSlots: false, defaultText: "" },
         ],
         isJointFrame: true,
@@ -665,8 +665,8 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.for,
         labels: [
-            { label: "for ", defaultText: i18n.global.t("frame.defaultText.identifier") as string, acceptAC: false },
-            { label: " in ", defaultText: i18n.global.t("frame.defaultText.list") as string },
+            { label: "for ", defaultText: i18n.global.t("frame.defaultText.identifier"), acceptAC: false },
+            { label: " in ", defaultText: i18n.global.t("frame.defaultText.list") },
             { label: " :", showSlots: false, defaultText: "" },
         ],
         allowJointChildren: true,
@@ -678,7 +678,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.while,
         labels: [
-            { label: "while ", defaultText: i18n.global.t("frame.defaultText.condition") as string },
+            { label: "while ", defaultText: i18n.global.t("frame.defaultText.condition") },
             { label: " :", showSlots: false, defaultText: "" },
         ],
         allowJointChildren: true,
@@ -690,7 +690,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.except,
         labels: [
-            { label: "except ", defaultText: i18n.global.t("frame.defaultText.exception") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
+            { label: "except ", defaultText: i18n.global.t("frame.defaultText.exception"), optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
             { label: " :", showSlots: false, defaultText: "" },
         ],
         jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
@@ -722,10 +722,10 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: DefIdentifiers.funcdef,
         labels: [
-            { label: "def ", defaultText: i18n.global.t("frame.defaultText.name") as string, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
-            { label: "(", defaultText: i18n.global.t("frame.defaultText.parameters") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_FORMAL_PARAMS, appendSelfWhenInClass: true },
+            { label: "def ", defaultText: i18n.global.t("frame.defaultText.name"), acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
+            { label: "(", defaultText: i18n.global.t("frame.defaultText.parameters"), optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_FORMAL_PARAMS, appendSelfWhenInClass: true },
             { label: ")&nbsp;:", showSlots: false, defaultText: "" },
-            { label: `<img src='${quoteCircleFuncdef}'>`, newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.global.t("frame.defaultText.funcDescription") as string, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
+            { label: `<img src='${quoteCircleFuncdef}'>`, newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.global.t("frame.defaultText.funcDescription"), allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],
         allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.HEADER_AND_DOC_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
         allowedFrozenStates: [FrozenState.UNFROZEN, FrozenState.FROZEN], // Note: logic elsewhere only allows freezing at the top-level
@@ -736,9 +736,9 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: DefIdentifiers.classdef,
         labels: [
-            { label: "class ", defaultText: i18n.global.t("frame.defaultText.name") as string, acceptAC: false},
+            { label: "class ", defaultText: i18n.global.t("frame.defaultText.name"), acceptAC: false},
             { label: " :", showSlots: false, defaultText: ""},
-            { label: `<img src='${quoteCircleClass}'>`, newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.global.t("frame.defaultText.classDescription") as string, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
+            { label: `<img src='${quoteCircleClass}'>`, newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.global.t("frame.defaultText.classDescription"), allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],
         allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
         allowedFrozenStates: [FrozenState.UNFROZEN, FrozenState.FROZEN],
@@ -754,8 +754,8 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.with,
         labels: [
-            { label: "with ", defaultText: i18n.global.t("frame.defaultText.expression") as string },
-            { label: " as ", defaultText: i18n.global.t("frame.defaultText.identifier") as string, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
+            { label: "with ", defaultText: i18n.global.t("frame.defaultText.expression") },
+            { label: " as ", defaultText: i18n.global.t("frame.defaultText.identifier"), allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
             { label: " :", showSlots: false, defaultText: "" },
         ],
         colour: "#ede8f2",
@@ -797,16 +797,16 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             // For containers, we just assign the label manually again here and change the definitons
             switch (frameObject.frameType.type) {
             case ImportsContainerDefinition.type:
-                frameObject.frameType.labels[0].label = i18n.global.t("appMessage.importsContainer") as string;
-                ImportsContainerDefinition.labels[0].label = i18n.global.t("appMessage.importsContainer") as string;
+                frameObject.frameType.labels[0].label = i18n.global.t("appMessage.importsContainer");
+                ImportsContainerDefinition.labels[0].label = i18n.global.t("appMessage.importsContainer");
                 break;
             case DefsContainerDefinition.type:
-                frameObject.frameType.labels[0].label = i18n.global.t("appMessage.defsContainer") as string;
-                DefsContainerDefinition.labels[0].label = i18n.global.t("appMessage.defsContainer") as string;
+                frameObject.frameType.labels[0].label = i18n.global.t("appMessage.defsContainer");
+                DefsContainerDefinition.labels[0].label = i18n.global.t("appMessage.defsContainer");
                 break;
             case MainFramesContainerDefinition.type:
-                frameObject.frameType.labels[0].label = i18n.global.t("appMessage.mainContainer") as string;
-                MainFramesContainerDefinition.labels[0].label = i18n.global.t("appMessage.mainContainer") as string;
+                frameObject.frameType.labels[0].label = i18n.global.t("appMessage.mainContainer");
+                MainFramesContainerDefinition.labels[0].label = i18n.global.t("appMessage.mainContainer");
                 break;
             case ProjectDocumentationDefinition.type:
                 break;

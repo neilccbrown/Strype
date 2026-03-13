@@ -191,7 +191,7 @@ export const useStore = defineStore("app", {
 
             isContextMenuKeyboardShortcutUsed: false,
 
-            projectName: i18n.global.t("defaultProjName") as string,
+            projectName: i18n.global.t("defaultProjName"),
 
             isEditorContentModified: false,
 
@@ -520,7 +520,7 @@ export const useStore = defineStore("app", {
             const errorTitle = (retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot).errorTitle;
             return (errorTitle) 
                 ? errorTitle
-                : i18n.global.t("errorMessage.errorTitle") as string; 
+                : i18n.global.t("errorMessage.errorTitle"); 
         },
 
         preCompileErrorExists: (state) => (id: string) => {
@@ -2501,7 +2501,7 @@ export const useStore = defineStore("app", {
                         if(!newStateObj || typeof(newStateObj) !== "object" || Array.isArray(newStateObj)){
                             //no need to go further
                             isStateJSONStrValid=false;
-                            errorDetailMessage = i18n.global.t("errorMessage.dataNotObject") as string;
+                            errorDetailMessage = i18n.global.t("errorMessage.dataNotObject");
                             doFinaliseCheckup();
                         }
                         else{
@@ -2510,14 +2510,14 @@ export const useStore = defineStore("app", {
                                 .then((isIntegral) => {
                                     if(!isIntegral) {
                                         isStateJSONStrValid = false;
-                                        errorDetailMessage = i18n.global.t("errorMessage.stateDataIntegrity") as string;
+                                        errorDetailMessage = i18n.global.t("errorMessage.stateDataIntegrity");
                                     } 
                                     else {
                                         // Check 3) as 2) is validated
                                         isVersionCorrect = (newStateObj["version"] == AppVersion);
                                         if(Number.parseInt(newStateObj["version"]) > 1 && newStateObj["platform"] != AppPlatform) {
                                             isStateJSONStrValid = false;
-                                            errorDetailMessage = i18n.global.t("errorMessage.stateWrongPlatform") as string;
+                                            errorDetailMessage = i18n.global.t("errorMessage.stateWrongPlatform");
                                         }
                                         else{
                                             // Check 4) and 5) as 3) is validated
@@ -2530,7 +2530,7 @@ export const useStore = defineStore("app", {
                                             if(!restoreSavedStateFrameTypes(newStateObj)){
                                                 // There was something wrong with the type name (it should not happen, but better check anyway)
                                                 isStateJSONStrValid = false;
-                                                errorDetailMessage = i18n.global.t("errorMessage.stateWrongFrameTypeName") as string;
+                                                errorDetailMessage = i18n.global.t("errorMessage.stateWrongFrameTypeName");
                                             }
                                         }
                                         delete newStateObj["version"];
@@ -2543,7 +2543,7 @@ export const useStore = defineStore("app", {
                     catch {
                         // We cannot use the string arguemnt to retrieve a valid state --> inform the users
                         isStateJSONStrValid = false;
-                        errorDetailMessage = i18n.global.t("errorMessage.wrongDataFormat") as string;
+                        errorDetailMessage = i18n.global.t("errorMessage.wrongDataFormat");
                         doFinaliseCheckup();
                     }
                 }            

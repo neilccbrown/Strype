@@ -659,7 +659,7 @@ export default defineComponent({
         strypeProjMIMEDescArray(): MIMEDesc[]{
             return [
                 {
-                    description: this.$t("strypeFileDesc") as string,
+                    description: this.$t("strypeFileDesc"),
                     accept: { "application/strype": ["."+strypeFileExtension] },
                 },
             ];
@@ -668,7 +668,7 @@ export default defineComponent({
         pythonImportMIMEDescArray(): MIMEDesc[]{
             return [
                 {
-                    description: this.$t("pythonFileDesc") as string,
+                    description: this.$t("pythonFileDesc"),
                     accept: { "text/x-python": [".py"] },
                 },
             ];
@@ -949,7 +949,7 @@ export default defineComponent({
             // Note that for every call, we always also generate a timeout to make sure we never end up in "pending" situation -- that timeout is really generous to avoid unwanted behaviour for the user.
             const noShareActionTimeOut = 10*1000; 
             const noShareActionTimeOutHandle = setTimeout(()=>{
-                this.showErrorForShareProjectLink(this.$t("errorMessage.sharingLinkTimedout") as string);
+                this.showErrorForShareProjectLink(this.$t("errorMessage.sharingLinkTimedout"));
             }, noShareActionTimeOut);
 
             // With Cloud Drives, we allow two types of sharing: either sharing the Drive link (after setting the project readonly and totally public in the sharing settings)
@@ -977,13 +977,13 @@ export default defineComponent({
                                             }
                                             else{
                                                 // Something happened we couldn't make the link
-                                                alertMessage = this.$t("errorMessage.cloudDrivePublicShareFailed", {error: (respStatus?.toString())??"unknown"}) as string;
+                                                alertMessage = this.$t("errorMessage.cloudDrivePublicShareFailed", {error: (respStatus?.toString())??"unknown"});
                                             }
                                         }
                                     })
                                     .catch((error: any) => {
                                         // Something happened when we tried to get the public URL of the Google Drive file.
-                                        alertMessage = this.$t("errorMessage.cloudDrivePublicShareFailed", {error: (error.status?.toString())??"unknown"}) as string;            
+                                        alertMessage = this.$t("errorMessage.cloudDrivePublicShareFailed", {error: (error.status?.toString())??"unknown"});            
                                     })
                                     .finally(() => {
                                         if((alertMessage.length > 0) && this.areShareProjectActionStillValid(forShareMode)){
@@ -994,7 +994,7 @@ export default defineComponent({
                             else{
                                 // The project could not be made public on the Cloud Drive for some reason.
                                 if(this.areShareProjectActionStillValid(forShareMode)){
-                                    alertMessage = this.$t("errorMessage.cloudDrivePublicShareFailed", {error: (alertMessage.length > 0) ? alertMessage: "unknow"}) as string;
+                                    alertMessage = this.$t("errorMessage.cloudDrivePublicShareFailed", {error: (alertMessage.length > 0) ? alertMessage: "unknow"});
                                     this.showErrorForShareProjectLink(alertMessage);
                                 }
                             }
@@ -1088,7 +1088,7 @@ export default defineComponent({
                     // DO NOT UPDATE THE CURRENT SYNC FLAG IN THE STATE - we only do that IF loading succeed (because it can be still cancelled or impossible to achieve)
                     let saveFileName = forcedProjectName || (document.getElementById(this.saveFileNameInputId) as HTMLInputElement).value.trim();
                     if(saveFileName.length == 0){
-                        saveFileName = this.$t("defaultProjName") as string;
+                        saveFileName = this.$t("defaultProjName");
                     }
                     
                     const selectValue = this.getTargetSelectVal();
@@ -1097,7 +1097,7 @@ export default defineComponent({
                     if(!isSyncTargetCloudDrive(selectValue)){
                         if(!canBrowserSaveFilePicker() && saveFileName.trim().match(fileNameRegex) == null){
                             // Show an error message and do nothing special
-                            this.appStore.simpleModalDlgMsg = this.$t("errorMessage.fileNameError") as string;
+                            this.appStore.simpleModalDlgMsg = this.$t("errorMessage.fileNameError");
                             eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
                             this.currentModalButtonGroupIDInAction = "";
                             return;

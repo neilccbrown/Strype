@@ -279,7 +279,7 @@ export default defineComponent({
         },
 
         errorPopupTitle(): string {
-            return this.$t((this.hasParsingError) ? "errorMessage.errorTitle" : ((this.hasRuntimeError) ? "PEA.runtimeErrorConsole" : "errorMessage.pastFrameErrTitle")) as string;
+            return this.$t((this.hasParsingError) ? "errorMessage.errorTitle" : ((this.hasRuntimeError) ? "PEA.runtimeErrorConsole" : "errorMessage.pastFrameErrTitle"));
         },
 
         errorPopupContent(): string {
@@ -479,24 +479,24 @@ export default defineComponent({
             // Prepare the base content items for the context menu (vue3-context menu) - we extend the type of ContextMenuItem to add the helper property "actioName"
             this.frameContextMenuItems = [
                 // Important these first three are in the same order as the enum CollapsedState:
-                {label: this.$t("contextMenu.collapseHeader") as string, onClick: this.collapseToHeader, actionName: FrameContextMenuActionName.collapseToHeader, attrs: {"action-name": FrameContextMenuActionName.collapseToHeader}},
-                {label: this.$t("contextMenu.collapseDocumentation") as string, onClick: this.collapseToDocumentation, actionName: FrameContextMenuActionName.collapseToDocumentation, attrs: {"action-name": FrameContextMenuActionName.collapseToDocumentation}},
-                {label: this.$t("contextMenu.collapseFull") as string, onClick: this.collapseToFull, actionName: FrameContextMenuActionName.collapseToFull, attrs: {"action-name": FrameContextMenuActionName.collapseToFull}},
-                {label: this.$t("contextMenu.freeze") as string, onClick: this.freeze, actionName: FrameContextMenuActionName.freeze, attrs: {"action-name": FrameContextMenuActionName.freeze}},
-                {label: this.$t("contextMenu.unfreeze") as string, onClick: this.unfreeze, actionName: FrameContextMenuActionName.unfreeze, attrs: {"action-name": FrameContextMenuActionName.unfreeze}},
+                {label: this.$t("contextMenu.collapseHeader"), onClick: this.collapseToHeader, actionName: FrameContextMenuActionName.collapseToHeader, attrs: {"action-name": FrameContextMenuActionName.collapseToHeader}},
+                {label: this.$t("contextMenu.collapseDocumentation"), onClick: this.collapseToDocumentation, actionName: FrameContextMenuActionName.collapseToDocumentation, attrs: {"action-name": FrameContextMenuActionName.collapseToDocumentation}},
+                {label: this.$t("contextMenu.collapseFull"), onClick: this.collapseToFull, actionName: FrameContextMenuActionName.collapseToFull, attrs: {"action-name": FrameContextMenuActionName.collapseToFull}},
+                {label: this.$t("contextMenu.freeze"), onClick: this.freeze, actionName: FrameContextMenuActionName.freeze, attrs: {"action-name": FrameContextMenuActionName.freeze}},
+                {label: this.$t("contextMenu.unfreeze"), onClick: this.unfreeze, actionName: FrameContextMenuActionName.unfreeze, attrs: {"action-name": FrameContextMenuActionName.unfreeze}},
                 {divided: "self"},
-                {label: this.$t("contextMenu.cut") as string, onClick: this.cut, actionName: FrameContextMenuActionName.cut, attrs: {"action-name": FrameContextMenuActionName.cut}, shortcut: isMacOSPlatform() ? "⌘X" : (this.$t("shortcut.ctrlPlus") as string) + "X"},
-                {label: this.$t("contextMenu.copy") as string, onClick: this.copy, actionName: FrameContextMenuActionName.copy, attrs: {"action-name": FrameContextMenuActionName.copy}, shortcut: isMacOSPlatform() ? "⌘C" : (this.$t("shortcut.ctrlPlus") as string) + "C"},
-                {label: this.$t("contextMenu.downloadAsImg") as string, onClick: this.downloadAsImg},
-                {label: this.$t("contextMenu.duplicate") as string, onClick: this.duplicate},
+                {label: this.$t("contextMenu.cut"), onClick: this.cut, actionName: FrameContextMenuActionName.cut, attrs: {"action-name": FrameContextMenuActionName.cut}, shortcut: isMacOSPlatform() ? "⌘X" : this.$t("shortcut.ctrlPlus") + "X"},
+                {label: this.$t("contextMenu.copy"), onClick: this.copy, actionName: FrameContextMenuActionName.copy, attrs: {"action-name": FrameContextMenuActionName.copy}, shortcut: isMacOSPlatform() ? "⌘C" : this.$t("shortcut.ctrlPlus") + "C"},
+                {label: this.$t("contextMenu.downloadAsImg"), onClick: this.downloadAsImg},
+                {label: this.$t("contextMenu.duplicate"), onClick: this.duplicate},
                 {divided: "self"},
-                {label: this.$t("contextMenu.pasteAbove") as string, onClick: this.pasteAbove},
-                {label: this.$t("contextMenu.pasteBelow") as string, onClick: this.pasteBelow},
+                {label: this.$t("contextMenu.pasteAbove"), onClick: this.pasteAbove},
+                {label: this.$t("contextMenu.pasteBelow"), onClick: this.pasteBelow},
                 {divided: "self"},
-                {label: this.$t("contextMenu.disable") as string, onClick: this.disable},
+                {label: this.$t("contextMenu.disable"), onClick: this.disable},
                 {divided: "self"},
-                {label: this.$t("contextMenu.delete") as string, onClick: this.delete, actionName: FrameContextMenuActionName.delete, attrs: {"action-name": FrameContextMenuActionName.delete}, shortcut: this.$t("shortcut.delete") as string},
-                {label: this.$t("contextMenu.deleteOuter") as string, onClick: this.deleteOuter, actionName: FrameContextMenuActionName.deleteOuter}];
+                {label: this.$t("contextMenu.delete"), onClick: this.delete, actionName: FrameContextMenuActionName.delete, attrs: {"action-name": FrameContextMenuActionName.delete}, shortcut: this.$t("shortcut.delete")},
+                {label: this.$t("contextMenu.deleteOuter"), onClick: this.deleteOuter, actionName: FrameContextMenuActionName.deleteOuter}];
 
             // Not all frames can be collapsed; only show menu items that are possible for at least one of the frames,
             // disable the item if all frames are already in that state, and show the dot shortcut next to whatever it would do:
@@ -540,7 +540,7 @@ export default defineComponent({
                 else {
                     someCollapseShowing = true;
                     if (nextWouldBe as number === c) {
-                        this.frameContextMenuItems[c].shortcut = this.$t("shortcut.period") as string;
+                        this.frameContextMenuItems[c].shortcut = this.$t("shortcut.period");
                     }
                 }
             }
@@ -558,7 +558,7 @@ export default defineComponent({
                     
                     // Check if there are precompile errors on any of our slots anywhere in the frame:
                     if (errorsInFrameOrChild) {
-                        x.label = this.$t("contextMenu.cannotFreezeErrors") as string;
+                        x.label = this.$t("contextMenu.cannotFreezeErrors");
                         x.disabled = true;
                     }
                     
@@ -571,7 +571,7 @@ export default defineComponent({
                 }
                 else if (x.actionName === FrameContextMenuActionName.collapseToHeader || x.actionName === FrameContextMenuActionName.collapseToDocumentation) {
                     if (errorsInFrameOrChild) {
-                        x.label = this.$t("contextMenu.cannotCollapseErrors") as string;
+                        x.label = this.$t("contextMenu.cannotCollapseErrors");
                         x.disabled = true;
                     }
                     return false;
@@ -680,7 +680,7 @@ export default defineComponent({
                 // Note: joint frames cannot be part of a selection, so we know there would only be 1 frame
                 if(canPasteBelowFrame && isCopyJointFrame && this.appStore.frameObjects[targetPasteBelow.id].jointFrameIds.length > 0){
                     // offset the index by 1: a joint frame can never be pasted above a root, we know "paste above" won't be shown...
-                    this.frameContextMenuItems[pasteBelowOptionIndex - 1].label = this.$t("contextMenu.pasteBelowJointRoot") as string;
+                    this.frameContextMenuItems[pasteBelowOptionIndex - 1].label = this.$t("contextMenu.pasteBelowJointRoot");
                 }
             }
 
@@ -741,8 +741,8 @@ export default defineComponent({
             const anyCanDisable = this.isPartOfSelection ? this.appStore.selectedFrames.some(canDisable) : canDisable(this.frameId);
             
             const disableOrEnableOption = (!anyCanDisable && anyCanEnable) 
-                ?  {label: this.$t("contextMenu.enable") as string, onClick: this.enable, disabled: false}
-                :  {label: this.$t("contextMenu.disable") as string, onClick: this.disable, disabled: !anyCanDisable && !anyCanEnable};
+                ?  {label: this.$t("contextMenu.enable"), onClick: this.enable, disabled: false}
+                :  {label: this.$t("contextMenu.disable"), onClick: this.disable, disabled: !anyCanDisable && !anyCanEnable};
             const enableDisableIndex = this.frameContextMenuItems.findIndex((entry) => entry.onClick === this.enable || entry.onClick === this.disable);
             this.frameContextMenuItems.splice(enableDisableIndex, 1, disableOrEnableOption);
             

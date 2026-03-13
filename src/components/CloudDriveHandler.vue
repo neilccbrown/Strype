@@ -133,7 +133,7 @@ export default defineComponent({
         },
         
         enterFileNameLabel(): string {
-            return this.$t("appMessage.enterFileNameLabel") as string;
+            return this.$t("appMessage.enterFileNameLabel");
         },
 
         saveExistingCloudProjectModalDlgId(): string {
@@ -365,7 +365,7 @@ export default defineComponent({
                             });
                     }
                     else{
-                        vueComponentsAPIHandler.appComponentAPI?.finaliseOpenShareProject({key: "errorMessage.retrievedSharedGenericProject", param: this.$t("errorMessage.cloudAPIFailed", {apiname: cloudDriveComponent.driveAPIName}) as string});
+                        vueComponentsAPIHandler.appComponentAPI?.finaliseOpenShareProject({key: "errorMessage.retrievedSharedGenericProject", param: this.$t("errorMessage.cloudAPIFailed", {apiname: cloudDriveComponent.driveAPIName})});
                     }
                 });
         },
@@ -393,7 +393,7 @@ export default defineComponent({
                 ?.catch((_) => {
                     // Something happened, we let the user know
                     const erroMsg = (typeof _ == "string") ? _ : JSON.stringify(_);
-                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.clouldFileRestoreSharingStatus", {drivename: cloudDriveComponent.driveName, errordetails: erroMsg}) as string;
+                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.clouldFileRestoreSharingStatus", {drivename: cloudDriveComponent.driveName, errordetails: erroMsg});
                     eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
                 })
                 .finally(() => {
@@ -540,7 +540,7 @@ export default defineComponent({
                     // We assume something went wrong regarding saving against the specified file id.
                     // This can notably happen if the file has been locked in the meantime that we tried to save it.
                     // We show a modal and remove saving mechanisms.
-                    this.appStore.simpleModalDlgMsg = this.$t((this.saveReason == SaveRequestReason.reloadBrowser) ? "errorMessage.driveNoFile" :"errorMessage.driveSaveFailed", {drivename: cloudDriveComponent.driveName}) as string;
+                    this.appStore.simpleModalDlgMsg = this.$t((this.saveReason == SaveRequestReason.reloadBrowser) ? "errorMessage.driveNoFile" :"errorMessage.driveSaveFailed", {drivename: cloudDriveComponent.driveName});
                     eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
                     this.updateSignInStatus(cloudTarget,false);
                     // Reset the "Save As" flag of the Menu
@@ -642,7 +642,7 @@ export default defineComponent({
                         }
                         // Users may have changed the file name directly on Drive, so we make sure at this stage we get the project with that same name
                         // (At this stage, we shouldn't have an undefined name, but for safety we use the default project name if so.)
-                        const fileNameNoExt = (fileName) ? fileName.substring(0, fileName.lastIndexOf(".")) : this.$t("defaultProjName") as string;
+                        const fileNameNoExt = (fileName) ? fileName.substring(0, fileName.lastIndexOf(".")) : this.$t("defaultProjName");
                         this.appStore.projectName = fileNameNoExt;
                         this.saveFileName = fileNameNoExt;
                         
@@ -660,7 +660,7 @@ export default defineComponent({
                                     vueComponentsAPIHandler.appComponentAPI?.finaliseOpenShareProject({key: "appMessage.retrievedSharedGenericProject", param: fileNameNoExt});
                                 }
                                 else{
-                                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.driveFileReadOnly", {drivename: cloudDriveComponent.driveName}) as string;
+                                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.driveFileReadOnly", {drivename: cloudDriveComponent.driveName});
                                     eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
                                 }
                             }
@@ -678,11 +678,11 @@ export default defineComponent({
                 }
             }, (errorRespStatus: number) => {
                 if(errorRespStatus == 404){
-                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.driveNoFile", {drivename: cloudDriveComponent.driveName}) as string;                    
+                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.driveNoFile", {drivename: cloudDriveComponent.driveName});                    
                     eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
                 }
                 else{
-                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.cloudDriveError", {drivename: cloudDriveComponent.driveName, error: errorRespStatus}) as string;                    
+                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.cloudDriveError", {drivename: cloudDriveComponent.driveName, error: errorRespStatus});                    
                     eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
                 }
                 // At the very end, emit event for notifying the attempt to open a shared project is finished
@@ -703,7 +703,7 @@ export default defineComponent({
 
         onUnsupportedByStrypeFilePicked(){
             // When a non-Strype file was picked to load, we notify the user on a modal dialog, and trigger the Drive picker again
-            this.appStore.simpleModalDlgMsg = this.$t("errorMessage.gdriveWrongFile") as string;
+            this.appStore.simpleModalDlgMsg = this.$t("errorMessage.gdriveWrongFile");
             eventBus.emit(CustomEventTypes.showStrypeModal, this.unsupportedByStrypeFilePickedModalDlgId);
         },
 

@@ -443,7 +443,7 @@ export default defineComponent({
             case PythonExecRunningState.Running:
                 return " " + this.$t("PEA.stop");
             case PythonExecRunningState.RunningAwaitingStop:
-                return this.$t("PEA.stopping") as string;
+                return this.$t("PEA.stopping");
             default: return "";
             }
         },

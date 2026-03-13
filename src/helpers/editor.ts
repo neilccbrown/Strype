@@ -726,13 +726,13 @@ export function generateAllFrameCommandsDefs():void {
     allFrameCommandsDefs = {
         " ": [{
             type: getFrameDefType(AllFrameTypesIdentifier.funccall),
-            description: i18n.global.t("frame.funccall_desc") as string,
+            description: i18n.global.t("frame.funccall_desc"),
             shortcuts: [" "],
-            symbol: i18n.global.t("buttonLabel.spaceBar") as string,
+            symbol: i18n.global.t("buttonLabel.spaceBar"),
         }],
         "=": [{
             type: getFrameDefType(AllFrameTypesIdentifier.varassign),
-            description: i18n.global.t("frame.varassign_desc") as string,
+            description: i18n.global.t("frame.varassign_desc"),
             shortcuts: ["="],
         }],
         "g": [{
@@ -782,7 +782,7 @@ export function generateAllFrameCommandsDefs():void {
             },
             {
                 type: getFrameDefType(AllFrameTypesIdentifier.funcdef),
-                description: i18n.global.t("frame.funcdef_desc") as string,
+                description: i18n.global.t("frame.funcdef_desc"),
                 shortcuts: ["f"],
                 index: 1,
             },
@@ -795,7 +795,7 @@ export function generateAllFrameCommandsDefs():void {
         ],
         "c": [{
             type: getFrameDefType(AllFrameTypesIdentifier.classdef),
-            description: i18n.global.t("frame.classdef_desc") as string,
+            description: i18n.global.t("frame.classdef_desc"),
             shortcuts: ["c"],
         }],
         "w": [{
@@ -820,12 +820,12 @@ export function generateAllFrameCommandsDefs():void {
         }],
         "#": [{
             type: getFrameDefType(AllFrameTypesIdentifier.comment),
-            description: i18n.global.t("frame.comment_desc") as string,
+            description: i18n.global.t("frame.comment_desc"),
             shortcuts: ["#"],
         }],
         "enter": [{
             type: getFrameDefType(AllFrameTypesIdentifier.blank),
-            description: i18n.global.t("frame.blank_desc") as string,
+            description: i18n.global.t("frame.blank_desc"),
             shortcuts: ["\x13"],
             symbol: "enter",
             isSVGIconSymbol: true,
@@ -917,7 +917,7 @@ export function getFunctionCallDefaultText(frameId: number): string {
     // - we have a function call frame without any brackets or operators (just a slot) --> we show "function()".
     const frameToCheck = useStore().frameObjects[frameId];
     if(frameToCheck.labelSlotsDict[0].slotStructures.operators.length == 0){
-        return i18n.global.t("frame.defaultText.simpleFuncCall") as string;
+        return i18n.global.t("frame.defaultText.simpleFuncCall");
     }
     else if(frameToCheck.labelSlotsDict[0].slotStructures.operators[0].code == "" 
         && isFieldBracketedSlot(frameToCheck.labelSlotsDict[0].slotStructures.fields[1])){
@@ -1918,7 +1918,7 @@ export function setPythonExecAreaLayoutButtonPos(): void{
         const peaComponentAPI = vueComponentsAPIHandler.peaComponentAPI;
         if(pythonConsoleTextArea && pythonTurtleContainerDiv && peaLayoutButtonsContainer && peaComponentAPI){
             // First get the natural position offset of the button, so can compute the new position:
-            const peaExpandButtonNaturalPosOffset = parseInt((scssVars.pythonExecutionAreaLayoutButtonsPosOffset as string).replace("px",""));
+            const peaExpandButtonNaturalPosOffset = parseInt((scssVars.pythonExecutionAreaLayoutButtonsPosOffset).replace("px",""));
             // Then, look for the scrollbars
             if(peaComponentAPI?.getIsConsoleAreaShowing() && !peaComponentAPI?.getIsGraphicsAreaShowing()){
                 // In the Python console, we wrap the text, only the vertical scrollbar can appear.

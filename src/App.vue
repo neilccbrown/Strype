@@ -323,7 +323,7 @@ export default defineComponent({
         },
 
         resyncToCloudDriveAtStartupDetailsMessage(): string {
-            return this.$t("appMessage.resyncToCloudDriveAtStartup", {drivename: this.cloudDriveName}) as string;
+            return this.$t("appMessage.resyncToCloudDriveAtStartup", {drivename: this.cloudDriveName});
         },
 
         resyncSaveToCloudDriveAtStartupButtonId(): string {
@@ -709,7 +709,7 @@ export default defineComponent({
                                 afterAPILoaded();
                             }
                             else{
-                                this.finaliseOpenShareProject({key: "errorMessage.retrievedSharedGenericProject", param: this.$t("errorMessage.cloudAPIFailed",{apiname: specifcDriveComponent?.driveAPIName}) as string});
+                                this.finaliseOpenShareProject({key: "errorMessage.retrievedSharedGenericProject", param: this.$t("errorMessage.cloudAPIFailed",{apiname: specifcDriveComponent?.driveAPIName})});
                             }
                         });
                 }
@@ -805,7 +805,7 @@ export default defineComponent({
                 const binary = Base64.toUint8Array(param);
                 const spyContent = inflateRaw(binary, { to: "string" });
 
-                const loadSpy = () => this.setStateFromPythonFile(spyContent, this.$t("defaultProjName") as string, 0, false);
+                const loadSpy = () => this.setStateFromPythonFile(spyContent, this.$t("defaultProjName"), 0, false);
                 
                 this.checkLocalStorageHasProject().then(() => {
                     // A project exists in the local storage, we ask the user if they want to keep it (and cancel the load of the shared project)
@@ -1116,7 +1116,7 @@ export default defineComponent({
         finaliseOpenShareProject(message?: {key: string, param: string}) {
             // Show a message to the user that the project has (not) been loaded, if requested
             if(message){
-                this.appStore.simpleModalDlgMsg = this.$t(message.key, {param1: message.param}) as string;
+                this.appStore.simpleModalDlgMsg = this.$t(message.key, {param1: message.param});
                 eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
             }
             // And also remove the query parameters in the URL

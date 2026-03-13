@@ -816,7 +816,7 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
         useStore().setSlotErroneous( 
             {
                 ...slotInfos,  
-                error: i18n.global.t("errorMessage.emptyEditableSlot") as string,
+                error: i18n.global.t("errorMessage.emptyEditableSlot"),
             }
         );
         useStore().addPreCompileErrors(getLabelSlotUID(slotInfos));
@@ -827,7 +827,7 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
         useStore().setSlotErroneous( 
             {
                 ...slotInfos,  
-                error: i18n.global.t("errorMessage.editableSlotWithHash") as string,
+                error: i18n.global.t("errorMessage.editableSlotWithHash"),
             }
         );
         useStore().addPreCompileErrors(getLabelSlotUID(slotInfos));

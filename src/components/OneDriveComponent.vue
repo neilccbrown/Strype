@@ -187,7 +187,7 @@ export default defineComponent({
                 pickerMode: CloudDriveItemPickerMode.FOLDERS,
                 pathResolutionMode: CloudDriveItemPickerFolderPathResolutionMode.BY_NAME,
                 initialFolderPathPartsToSelect: (this.appStore.strypeProjectLocationPath??"").split("/"),
-                emptyPickerText: this.$t("appMessage.emptyCloudDrivePicker", {drivename: this.driveName }) as string,
+                emptyPickerText: this.$t("appMessage.emptyCloudDrivePicker", {drivename: this.driveName }),
             };
         },
 
@@ -435,7 +435,7 @@ export default defineComponent({
                 // now we need to construct our query string
                 const queryString = new URLSearchParams({
                     filePicker: JSON.stringify(this.pickerOptions),
-                    locale:  this.$t("localeOneDrive") as string,
+                    locale:  this.$t("localeOneDrive"),
                 });
 
                 // we create the absolute url by combining the base url, appending the _layouts path, and including the query string
@@ -582,7 +582,7 @@ export default defineComponent({
                     // now we need to construct our query string
                     const queryString = new URLSearchParams({
                         filePicker: JSON.stringify(this.pickerOptions),
-                        locale:  this.$t("localeOneDrive") as string,
+                        locale:  this.$t("localeOneDrive"),
                     });
 
                     // We create the absolute url by combining the base url, appending the _layouts path, and including the query string
