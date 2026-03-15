@@ -1,10 +1,12 @@
 import { defineConfig, loadEnv } from "vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import { execSync } from "child_process";
-import vue2 from  "@vitejs/plugin-vue2";
 import path from "path";
 import { fileURLToPath } from "url";
 import ConditionalCompile from "vite-plugin-conditional-compiler";
+import vue from "@vitejs/plugin-vue";
+import Components from "unplugin-vue-components/vite";
+import { BootstrapVueNextResolver } from "bootstrap-vue-next/resolvers";
 import fs from "fs";
 import { zipDir } from "./scripts/zip-dir.js";
 import checker from 'vite-plugin-checker';
@@ -111,11 +113,14 @@ export default defineConfig(({mode}) => {
     // We use environment variables for the possible values (only exception is in the serve/build scripts...)
     const viteEnv = loadEnv(mode, process.cwd(), "VITE_");
     const isStandardPython = mode === viteEnv.VITE_STANDARD_PYTHON_MODE;
-    
+  
     return {       
         plugins: [
-            ConditionalCompile(),            
-            vue2(),
+            ConditionalCompile(),
+            vue(),
+            Components({
+                resolvers: [BootstrapVueNextResolver()],
+            }),
             removeFilesPlugin(isStandardPython),
             viteStaticCopyPyodide(),
             zipPysrcPlugin(),
@@ -127,9 +132,9 @@ export default defineConfig(({mode}) => {
             preprocessorOptions: {
                 scss: {
                     additionalData: `
-                        @import "@/assets/style/variables.scss";
+                        @use "@/assets/style/variables" as *;
                     ` + (process.env.VITE_GITHUB_PAGE ?  `
-                        @import "@/assets/style/test-watermark.scss";
+                        @use "@/assets/style/test-watermark" as *;
                     ` : ""),
                 },
             },
@@ -153,6 +158,7 @@ export default defineConfig(({mode}) => {
             // So that we still have compilation of imports like: import { STRYPE_LOCATION } from "@/helpers/pythonToFrames"
             alias: {
                 "@": path.resolve(__dirname, "src"),
+                vue: "@vue/compat",
             },
         },
 

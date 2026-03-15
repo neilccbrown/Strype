@@ -60,7 +60,7 @@ async function testLongRoundTripLoadShareNewLoadSave(page: Page, filepath: strin
     await page.evaluate(() => {
         (window as any).Playwright = true;
     });
-    await page.locator("*", {hasText: /^Continue$/}).click();
+    await page.locator("*:visible", {hasText: /^Continue$/}).click();
 
     // And check that when we save it, we get original content:
     const output = readFileSync(await save(page), "utf8").replace(/\r\n/g, "\n");

@@ -7,11 +7,11 @@
         :data-item="item"
         @mouseover="onHover"
         @mousedown.prevent.stop
-        @mouseup.self="$emit('acItemClicked',id)"
+        @mouseup.self="$emit(CustomEventTypes.acItemClicked,id)"
     >
         <!-- One or the other: -->
-        <span v-if="itemHTML" v-html="itemHTML" @mousedown.prevent.stop @mouseup.self="$emit('acItemClicked',id)"></span>
-        <span v-else @mousedown.prevent.stop @mouseup.self="$emit('acItemClicked',id)">{{ item }}</span>
+        <span v-if="itemHTML" v-html="itemHTML" @mousedown.prevent.stop @mouseup.self="$emit(CustomEventTypes.acItemClicked,id)"></span>
+        <span v-else @mousedown.prevent.stop @mouseup.self="$emit(CustomEventTypes.acItemClicked,id)">{{ item }}</span>
         <span v-if="version > 1" class="api-item-version ac-item-version" :title="$t('apidiscovery.v2InfoMsg')">v{{version}}</span>
     </li>
 </template>
@@ -19,11 +19,11 @@
 <script lang="ts">
 //////////////////////
 import { CustomEventTypes } from "@/helpers/editor";
-import Vue from "vue";
+import { defineComponent } from "vue";
 import scssVars from "@/assets/style/_export.module.scss";
 //////////////////////
 
-export default Vue.extend({
+export default defineComponent({
     name: "PopUpItem",
 
     props: {
@@ -37,12 +37,13 @@ export default Vue.extend({
         selected: Boolean,
         isSelectable: Boolean,
         indentWrapped: Boolean,
-        version: Number,
+        version: {type: Number, required: true},
     },
 
     data: function () {
         return {
             scssVars, // just to be able to use in template
+            CustomEventTypes, // just to be able to use in template
         };
     },
 
@@ -65,7 +66,7 @@ export default Vue.extend({
     white-space: pre-line !important;
 }
 
-// Style related to the context menu are in App.vue
+// Style related to the context menu are in ContextMenu.vue
 
 // Indent lines after the first:
 .ac-indent-wrapped {

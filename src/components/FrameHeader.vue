@@ -56,7 +56,7 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue, { PropType } from "vue";
+import { defineComponent, PropType } from "vue";
 import LabelSlotsStructure from "@/components/LabelSlotsStructure.vue";
 import {useStore} from "@/store/store";
 import {AllFrameTypesIdentifier, CollapsedState, FrameLabel, FrameObject, FrozenState} from "@/types/types";
@@ -66,6 +66,7 @@ import ChildrenFrameStateToggle from "@/components/ChildrenFrameStateToggle.vue"
 import { isMacOSPlatform } from "@/helpers/common";
 import { calculateNextCollapseState } from "@/helpers/storeMethods";
 import { CustomEventTypes } from "@/helpers/editor";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 
 // Splits into a list of lists (each outer list is a line, with 1 or more items on it)
 // by looking at the newLine flag in the FrameLabel.
@@ -93,8 +94,37 @@ function splitAtNewLines(labels : FrameLabel[], state: CollapsedState) : {item: 
 //////////////////////
 //     Component    //
 //////////////////////
-export default Vue.extend({
+export default defineComponent({
     name: "FrameHeader",
+
+    created() {
+        // Expose this component that other components might need.
+        // Vue 3 has deprecated direct access to components.
+        // (we don't set it in setup() because we want to have this accessible, and the component created!)
+        const apiMethods = {
+            setHasErroneousSlot: (value: boolean) => {
+                this.hasErroneousSlot = value;
+            },
+        };
+        
+        if(vueComponentsAPIHandler.frameHeaderComponentAPI == null){    
+            vueComponentsAPIHandler.frameHeaderComponentAPI = {
+                forInstance: {
+                    [this.frameId]: apiMethods,
+                },
+            };
+        }
+        else{
+            vueComponentsAPIHandler.frameHeaderComponentAPI.forInstance[this.frameId] = apiMethods;
+        }
+    },
+
+    unmounted() {
+        // Remove the component's API instance
+        if(vueComponentsAPIHandler.frameHeaderComponentAPI?.forInstance[this.frameId]){
+            delete vueComponentsAPIHandler.frameHeaderComponentAPI?.forInstance[this.frameId];
+        }
+    },
 
     components: {
         ChildrenFrameStateToggle,
@@ -108,17 +138,17 @@ export default Vue.extend({
             type: Array as PropType<FrameLabel[]>,
             required: true,
         },
-        frameId: Number,
-        frameType: String,
+        frameId: {type: Number, required: true},
+        frameType: {type: String, required: true},
         isDisabled: Boolean,
         frameAllowChildren: Boolean,
         frameCollapsedState: Number, // Index in the enum CollapsedState
         frameFrozenState: Number,  // Index in the enum FrozenState
-        frameAllowedCollapsedStates: {type: Array as PropType<CollapsedState[]>},
+        frameAllowedCollapsedStates: {type: Array as PropType<CollapsedState[]>, required: true},
         frameAllowedFrozenStates: {type: Array as PropType<FrozenState[]>},
         erroneous: Boolean,
         wasLastRuntimeError: Boolean,
-        onFocus: Function, // Handler for focus/blur the header (see Frame.vue)
+        onFocus: {type: Function, required: true}, // Handler for focus/blur the header (see Frame.vue)
     },
 
     computed:{

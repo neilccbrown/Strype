@@ -27,11 +27,11 @@ import microbitDescriptions from "@/autocompletion/microbit.json";
 // by the one in /microbit/ because it seems reimports don't work well.
 // Remove "VERSIONS" as well.
 const mbPYIFolderPath = "/public/public_libraries/microbit/";
-const mbPYIContextFolderContext = import.meta.glob("/public/public_libraries/microbit/**/*", {eager: true, as: "raw"}); // can't use variable here... 
+const mbPYIContextFolderContext = import.meta.glob("/public/public_libraries/microbit/**/*", {eager: true, query: "?raw", import: "default"}); // can't use variable here... 
 const mbPYContextPaths = Object.keys(mbPYIContextFolderContext);
 mbPYContextPaths.forEach((mbPYContextPath) => {
     if(mbPYContextPath.endsWith("pyi")) {        
-        const mbPYIAsModule = mbPYIContextFolderContext[mbPYContextPath]; // Immediately loads the module
+        const mbPYIAsModule = mbPYIContextFolderContext[mbPYContextPath] as string; // Immediately loads the module
         // Module paths start with mbPYIFolderPath ("/public/public_libaries/microbit/") and finish with ".pyi", 
         // to get the module name we scrap these off, change "/"
         // to "." and remove the file name altogether if we have "__init__".
@@ -291,7 +291,7 @@ export async function getAllExplicitlyImportedItems(context: string) : Promise<A
 }
 
 function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isSimpleImport: boolean, soFar: AcResultsWithCategory, context: string, importedAliasedModules: {[alias: string]: string}, availableLibraries: AcResultsWithCategory): void {
-    const importedModulesCategory = i18n.t("autoCompletion.importedModules") as string;
+    const importedModulesCategory = i18n.global.t("autoCompletion.importedModules");
     if (!isSimpleImport && frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*") {
                 
         // Depending on whether we are microbit or Skulpt, access the appropriate JSON file and retrieve

@@ -3,7 +3,7 @@
 import { LineAndSlotPositions } from "@/types/types";
 import { useStore } from "@/store/store";
 import i18n from "@/i18n";
-import Vue from "vue";
+import { nextTick } from "vue";
 import { CustomEventTypes, setPythonExecAreaLayoutButtonPos } from "./editor";
 import { clearFileIOCaches, skulptCloseFileIO, skulptInteralFileWrite, skulptOpenFileIO } from "./skulptFileIO";
 
@@ -21,7 +21,7 @@ let codeExecStateRunningCheckFn: () => boolean | undefined;
 function outf(text: string) { 
     consoleTextArea.value = consoleTextArea.value + text; 
     // Scroll to bottom:
-    Vue.nextTick(() => {
+    nextTick(() => {
         consoleTextArea.scrollTop = consoleTextArea.scrollHeight;
     });
 }
@@ -277,13 +277,13 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         //read:skulptReadPythonLib(libraryAddresses),
         fileopen: skulptOpenFileIO,
         fileclose: skulptCloseFileIO, // This is an added property in Skulpt for fileIO
-        fileNotWritableErr: i18n.t("errorMessage.fileIO.fileNotWritableErr"), // This is an added property in Skulpt for fileIO
-        fileNotReadableErr: i18n.t("errorMessage.fileIO.fileNotReadableErr"), // This is an added property in Skulpt for fileIO
-        fileClosedErr: i18n.t("errorMessage.fileIO.fileClosedErr"), // This is an added property in Skulpt for fileIO
-        fileModeErr: i18n.t("errorMessage.fileIO.fileModeErr"), // This is an added property in Skulpt for fileIO
-        fileWriteNotStrErr: i18n.t("errorMessage.fileIO.fileWriteNotStrErr"), // This is an added property in Skulpt for fileIO
-        fileWriteNotBytesErr: i18n.t("errorMessage.fileIO.fileWriteNotBytesErr"), // This is an added property in Skulpt for fileIO
-        fileWriteLinesNotArrayErr: i18n.t("errorMessage.fileIO.fileWriteLinesNotArrayErr"), // This is an added property in Skulpt for fileIO
+        fileNotWritableErr: i18n.global.t("errorMessage.fileIO.fileNotWritableErr"), // This is an added property in Skulpt for fileIO
+        fileNotReadableErr: i18n.global.t("errorMessage.fileIO.fileNotReadableErr"), // This is an added property in Skulpt for fileIO
+        fileClosedErr: i18n.global.t("errorMessage.fileIO.fileClosedErr"), // This is an added property in Skulpt for fileIO
+        fileModeErr: i18n.global.t("errorMessage.fileIO.fileModeErr"), // This is an added property in Skulpt for fileIO
+        fileWriteNotStrErr: i18n.global.t("errorMessage.fileIO.fileWriteNotStrErr"), // This is an added property in Skulpt for fileIO
+        fileWriteNotBytesErr: i18n.global.t("errorMessage.fileIO.fileWriteNotBytesErr"), // This is an added property in Skulpt for fileIO
+        fileWriteLinesNotArrayErr: i18n.global.t("errorMessage.fileIO.fileWriteLinesNotArrayErr"), // This is an added property in Skulpt for fileIO
         nonreadopen: true,
         filewrite: skulptInteralFileWrite, // see skulptFileIO.ts
         inputfun:sInput,

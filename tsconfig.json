@@ -24,6 +24,7 @@
       "@testing-library/cypress",
       "node",
       "vite/client",
+      "vue",
     ],
     "paths": {
       "@/*": [

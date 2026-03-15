@@ -4,6 +4,10 @@
  */
 
 import { StrypePlatform } from "@/types/types";
+import mitt from "mitt";
+
+// As Vue 3 doesn't support $on, $off and $once anymore, we use the mitt package instead for the application event bus
+export const eventBus = mitt<Record<string, any>>();
 
 // Version of the application to check code's import compatibility in the editor
 // note: that is not an offical software version of Strype, just a way to help us dealing with compatibility issues.
@@ -47,10 +51,3 @@ export function getLocaleBuildDate(): string {
         }
     }
 }
-
-// This will disappear with Vue 3, only added now for making the current version working
-export let vm = null as any;
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export const setVM  = (theVM: any) => {
-    vm = theVM;
-};

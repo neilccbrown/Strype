@@ -39,10 +39,9 @@
 
 <script lang="ts">
 import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, MediaDataAndDim, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
-import Vue from "vue";
+import { computed, defineComponent } from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
-import FrameHeaderComponent from "@/components/FrameHeader.vue";
 import LabelSlot from "@/components/LabelSlot.vue";
 import { CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID } from "@/helpers/editor";
 import { checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId} from "@/helpers/storeMethods";
@@ -53,17 +52,62 @@ import { isMacOSPlatform, splitByRegexMatches } from "@/helpers/common";
 import { detectBrowser } from "@/helpers/browser";
 import { handleVerticalCaretMove } from "@/helpers/spans";
 import { preparePasteMediaData } from "@/helpers/media";
+import { useAsyncComputed } from "@/helpers/vue3composables";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { eventBus } from "@/helpers/appContext";
 
-export default Vue.extend({
+export default defineComponent({
     name: "LabelSlotsStructure",
+    
+    setup(componentInstance){
+        // Move the Options API style computed properties or methods here if we need them in setup:
+        const subSlots = computed(() => useStore().getFlatSlotBases(componentInstance.frameId, componentInstance.labelIndex));
+        const labelSlotsStructDivId = computed(() => getFrameLabelSlotsStructureUID(componentInstance.frameId, componentInstance.labelIndex));
+        const isFocused = () => {
+            // We check if we are the parent of the currently focused element, as it may be a contenteditable item within us:
+            var selectedElement = window.getSelection()?.focusNode;
+            while (selectedElement != null) {
+                if (selectedElement instanceof Element && selectedElement.id === labelSlotsStructDivId.value) {
+                    return true;
+                }
+                selectedElement = selectedElement.parentNode;
+            }
+            return false;
+        };
+
+        // Migrating to Vue 3, we don't use the Vue 2 package vue-async-computed anymore.
+        // Instead we can natively use a helper (see vue3composables.ts).
+        const placeholderText = useAsyncComputed(async () => {
+            // Look for the placeholder (default) text to put in slots.
+            // Special rules apply for the "function name" part of a function call frame cf getFunctionCallDefaultText() in editor.ts.
+            const isFuncCallFrame = useStore().frameObjects[componentInstance.frameId].frameType.type == AllFrameTypesIdentifier.funccall;
+            if (subSlots.value.length == 1) {
+                // If we are on an optional label slots structure that doesn't contain anything yet, we only show the placeholder if we're focused
+                const isOptionalEmpty = (useStore().frameObjects[componentInstance.frameId].frameType.labels[componentInstance.labelIndex].optionalSlot??OptionalSlotType.REQUIRED) == OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK && subSlots.value.length == 1 && subSlots.value[0].code.length == 0;
+                if(isOptionalEmpty && !isFocused()){
+                    return Promise.resolve([" "]);
+                }
+                return Promise.resolve([(isFuncCallFrame) ? getFunctionCallDefaultText(componentInstance.frameId) : componentInstance.defaultText]);
+            }
+            else {
+                return Promise.all((subSlots.value as FlatSlotBase[]).map((slotItem, index) => slotItem.placeholderSource !== undefined 
+                    ? calculateParamPrompt(componentInstance.frameId, slotItem.placeholderSource, slotItem.focused ?? false) 
+                    : Promise.resolve((useStore().frameObjects[componentInstance.frameId].frameType.type == AllFrameTypesIdentifier.funccall && index == 0) 
+                        ? getFunctionCallDefaultText(componentInstance.frameId)
+                        : "\u200b")));
+            }
+        }, []);
+
+        return { subSlots, labelSlotsStructDivId, isFocused, placeholderText };
+    },
 
     components:{
         LabelSlot,
     },
 
     props: {
-        frameId: Number,
-        labelIndex: Number,
+        frameId: {type: Number, required: true},
+        labelIndex: {type: Number, required: true},
         defaultText: String,
         isDisabled: Boolean,
         isFrozen: Boolean,
@@ -84,15 +128,32 @@ export default Vue.extend({
     },
 
     created(){
-        // Register this component on the root, to allow external calls for refactoring the slots
-        this.$root.$refs[this.labelSlotsStructDivId] = this;
+        // Expose this component that other components might need.
+        // Vue 3 has deprecated direct access to components.
+        // (we don't set it in setup() because we want to have this accessible, and the component created!)
+        const apiMethods = {
+            checkSlotRefactoring: this.checkSlotRefactoring,
+            updatePrependText: this.updatePrependText,
+            updatePrependTextAndCheckErrors: this.updatePrependTextAndCheckErrors,
+        };
+        
+        if(vueComponentsAPIHandler.labelSlotsStructureComponentAPI == null){    
+            vueComponentsAPIHandler.labelSlotsStructureComponentAPI = {
+                forInstance: {
+                    [this.labelSlotsStructDivId]: apiMethods,
+                },
+            };
+        }
+        else{
+            vueComponentsAPIHandler.labelSlotsStructureComponentAPI.forInstance[this.labelSlotsStructDivId] = apiMethods;
+        }
     },
-    
+
     mounted() {
         this.$nextTick(() => {
             this.updatePrependText();
         });
-        this.$root.$on(CustomEventTypes.updateParamPrompts, this.updateParamPromptsIfInList);
+        eventBus.on(CustomEventTypes.updateParamPrompts, this.updateParamPromptsIfInList);
     },
 
     computed:{
@@ -101,42 +162,11 @@ export default Vue.extend({
         scssVars() {
             // just to be able to use in template
             return scssVars;
-        },
-
-        labelSlotsStructDivId(): string {
-            return getFrameLabelSlotsStructureUID(this.frameId, this.labelIndex);
-        },
-
-        subSlots(): FlatSlotBase[] {
-            return this.appStore.getFlatSlotBases(this.frameId, this.labelIndex);  
-        },   
+        },           
         
         focusSlotCursorInfos(): SlotCursorInfos | undefined {
             return this.appStore.focusSlotCursorInfos;
-        },
-    },
-
-    asyncComputed: {
-        placeholderText() : Promise<string[]> {
-            // Look for the placeholder (default) text to put in slots.
-            // Special rules apply for the "function name" part of a function call frame cf getFunctionCallDefaultText() in editor.ts.
-            const isFuncCallFrame = this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall;
-            if (this.subSlots.length == 1) {
-                // If we are on an optional label slots structure that doesn't contain anything yet, we only show the placeholder if we're focused
-                const isOptionalEmpty = (this.appStore.frameObjects[this.frameId].frameType.labels[this.labelIndex].optionalSlot??OptionalSlotType.REQUIRED) == OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK && this.subSlots.length == 1 && this.subSlots[0].code.length == 0;
-                if(isOptionalEmpty && !this.isFocused()){
-                    return Promise.resolve([" "]);
-                }
-                return Promise.resolve([(isFuncCallFrame) ? getFunctionCallDefaultText(this.frameId) : this.defaultText]);
-            }
-            else {
-                return Promise.all(this.subSlots.map((slotItem, index) => slotItem.placeholderSource !== undefined 
-                    ? calculateParamPrompt(this.frameId, slotItem.placeholderSource, slotItem.focused ?? false) 
-                    : Promise.resolve((this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && index == 0) 
-                        ? getFunctionCallDefaultText(this.frameId)
-                        : "\u200b")));
-            }
-        },
+        },        
     },
 
     watch: {
@@ -342,7 +372,7 @@ export default Vue.extend({
 
         checkSlotRefactoring(slotUID: string, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, doAfterCursorSet?: VoidFunction, useFlatMediaDataCode?: boolean}) {
             // Slot errors will be check later again. We clear off the notification on the parent (frame header) for slot errors so it can reset the triangle error indicator
-            (this.$parent as InstanceType<typeof FrameHeaderComponent>).$data.hasErroneousSlot = false;
+            vueComponentsAPIHandler.frameHeaderComponentAPI?.forInstance[this.frameId].setHasErroneousSlot(false);
             // Comments do not need to be checked, so we do nothing special for them, but just enforce the caret to be placed at the right place and the code value to be updated
             const currentFocusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
             const allowed = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelIndex].allowedSlotContent;
@@ -369,7 +399,7 @@ export default Vue.extend({
                 let {uiLiteralCode, focusSpanPos: focusCursorAbsPos, hasStringSlots, mediaLiterals} = getFrameLabelSlotLiteralCodeAndFocus(labelDiv, slotUID, {useFlatMediaDataCode: options?.useFlatMediaDataCode});
                 const parsedCodeRes = parseCodeLiteral(uiLiteralCode, {frameType: this.appStore.frameObjects[this.frameId].frameType.type, isInsideString: false, cursorPos: options?.skipCursorSetAndStateSave ? undefined : focusCursorAbsPos, skipStringEscape: hasStringSlots, imageLiterals: mediaLiterals});
                 const majorChange = this.majorChange(this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures, parsedCodeRes.slots);
-                Vue.set(this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex], "slotStructures", parsedCodeRes.slots);
+                this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures = parsedCodeRes.slots;
                 // The parser can be return a different size "code" of the slots than the code literal
                 // (that is for example the case with textual operators which requires spacing in typing, not in the UI)
                 focusCursorAbsPos += parsedCodeRes.cursorOffset;
@@ -432,7 +462,7 @@ export default Vue.extend({
                         
                                             // Change the type of frame to varassign and adapt the content
                                             // (when we change the state in this next line, we need to COPY the FrameType object otherwise undo/redo makes weird changes in the commands)
-                                            Vue.set(this.appStore.frameObjects[this.frameId],"frameType", cloneDeep(getFrameDefType(AllFrameTypesIdentifier.varassign)));   
+                                            this.appStore.frameObjects[this.frameId].frameType = cloneDeep(getFrameDefType(AllFrameTypesIdentifier.varassign));   
                                             const newContent: { [index: number]: LabelSlotsContent} = {
                                                 // LHS 
                                                 0: {
@@ -761,13 +791,13 @@ export default Vue.extend({
             event.preventDefault();
             
             if (!(event.shiftKey || event.metaKey || event.altKey || event.ctrlKey)) {
-                const subSlots = this.$refs.labelSlots as InstanceType<typeof LabelSlot>[];
-                for (const subSlot of subSlots) {
-                    if (subSlot.handleUpDown(event)) {
+                for(const subSlot of this.subSlots){
+                    const subSlotCoreInfos = {frameId: this.frameId, labelSlotsIndex: this.labelIndex, slotId: subSlot.id, slotType: subSlot.type};
+                    if(vueComponentsAPIHandler.labelSlotComponentAPI?.forInstance[getLabelSlotUID(subSlotCoreInfos)].handleUpDown(event)){
                         // Consumed by focused slot which is showing autocomplete:
                         return;
                     }
-                }
+                }               
             }
             
             if (!(event.metaKey || event.altKey || event.ctrlKey)) {
@@ -802,7 +832,7 @@ export default Vue.extend({
             }
             
             this.appStore.isEditing = false;
-            this.blurEditableSlot(true);
+            this.blurEditableSlot(undefined, true);
             document.getSelection()?.removeAllRanges();
             
             //If the up arrow is pressed you need to move the caret as well.
@@ -822,8 +852,8 @@ export default Vue.extend({
                 }
                 else {
                     // Restore the caret visibility
-                    Vue.set(this.appStore.frameObjects[this.appStore.currentFrame.id], "caretVisibility", this.appStore.currentFrame.caretPosition);
-                    Vue.nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
+                    this.appStore.frameObjects[this.appStore.currentFrame.id].caretVisibility = this.appStore.currentFrame.caretPosition;
+                    this.$nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
                 }
             }
         },
@@ -994,7 +1024,9 @@ export default Vue.extend({
             this.appStore.ignoreFocusRequest = false;
         },
 
-        blurEditableSlot(force?: boolean){
+        blurEditableSlot(event: FocusEvent | undefined, force?: boolean){
+            // event here is only kept for keeping TS happy
+
             // If a request to ignore the loss of focus has been made, we return right away but reset the flag
             if(this.appStore.ignoreBlurEditableSlot) {
                 this.appStore.ignoreBlurEditableSlot = false;
@@ -1043,18 +1075,6 @@ export default Vue.extend({
             }
 
             
-        },
-        
-        isFocused() {
-            // We check if we are the parent of the currently focused element, as it may be a contenteditable item within us:
-            var selectedElement = window.getSelection()?.focusNode;
-            while (selectedElement != null) {
-                if (selectedElement instanceof Element && selectedElement.id === this.labelSlotsStructDivId) {
-                    return true;
-                }
-                selectedElement = selectedElement.parentNode;
-            }
-            return false;
         },
         
         updatePrependText() {
