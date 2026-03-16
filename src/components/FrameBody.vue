@@ -35,40 +35,30 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue from "vue";
+import { defineAsyncComponent, defineComponent } from "vue";
 import { useStore } from "@/store/store";
-import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import { AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState } from "@/types/types";
 import { mapStores } from "pinia";
-import { getCaretContainerRef, getCaretUID, getFrameBodyUID, getFrameUID } from "@/helpers/editor";
+import { getCaretContainerRef, getFrameBodyUID, getFrameUID } from "@/helpers/editor";
 
 //////////////////////
 //     Component    //
 //////////////////////
-export default Vue.extend({
+export default defineComponent({
     name: "FrameBody",
 
+
     components: {
-        Frame,
+        Frame: defineAsyncComponent(() => import("@/components/Frame.vue")), // lazy import as we have a circular reference with this component.
         CaretContainer,
     },
     
     props: {
-        frameId: Number,
+        frameId: {type: Number, required: true},
         isDisabled: Boolean,
         isBeingDragged: Boolean,
         caretVisibility: String, //Flag indicating this caret is visible or not
-    },
-
-    mounted() {
-        // Register the caret container component at the upmost level for drag and drop
-        this.$root.$refs[getCaretUID(this.caretPosition.body, this.frameId)] = this.$refs[getCaretContainerRef()];
-    },
-
-    destroyed() {
-        // Remove the registration of the caret container component at the upmost level for drag and drop
-        delete this.$root.$refs[getCaretUID(this.caretPosition.body, this.frameId)];
     },
 
     computed: {

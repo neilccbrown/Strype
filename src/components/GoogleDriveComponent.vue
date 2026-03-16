@@ -5,8 +5,8 @@
  *  is used in CloudDriveHandler)
  */
 <template>
-    <GoogleDriveFilePicker :ref="googleDriveFilePickerComponentId" @picked-file="onLoadPickedFile" @picked-folder="savePickedFolder"
-        :pick-folder-cancelled="onPickFolderCancelled" @unsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" :dev-key="devKey" :oauth-token="oauthToken"/>
+    <GoogleDriveFilePicker @picked-file="onLoadPickedFile" @picked-folder="savePickedFolder"
+        :pick-folder-cancelled="onPickFolderCancelled" @unsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" :dev-key="devKey" :oauth-token="oauthToken??''"/>
 </template>
 <script lang="ts">
 //////////////////////
@@ -15,19 +15,18 @@
 import { useStore } from "@/store/store";
 import { CloudDriveAPIState, CloudDriveFile, CloudFileSharingStatus, GDFile } from "@/types/cloud-drive-types";
 import { mapStores } from "pinia";
-import Vue from "vue";
-import CloudDriveHandlerComponent from "@/components/CloudDriveHandler.vue";
+import { defineComponent, PropType } from "vue";
 import { MessageDefinitions, StrypeSyncTarget } from "@/types/types";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker.vue";
-import { PropType } from "@vue/composition-api";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
-import { AppSPYFullPrefix } from "@/main";
-import { getCloudLoginErrorModalDlgId } from "@/helpers/editor";
+import { CustomEventTypes, getCloudLoginErrorModalDlgId } from "@/helpers/editor";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { AppSPYFullPrefix, eventBus } from "@/helpers/appContext";
 
 //////////////////////
 //     Component    //
 //////////////////////
-export default Vue.extend({
+export default defineComponent({
     name: "GoogleDriveComponent",
 
     components:{
@@ -51,7 +50,7 @@ export default Vue.extend({
             gapiLoadedState: CloudDriveAPIState.UNLOADED,
             client: null as google.accounts.oauth2.TokenClient | null, // The Google Identity client
             oauthToken : null as string | null,
-            devKey: "AIzaSyDKjPl4foVEM8iCMTkgu_FpedJ604vbm6E",            
+            devKey: "AIzaSyDKjPl4foVEM8iCMTkgu_FpedJ604vbm6E",
             signInCallBack: (cloudTarget: StrypeSyncTarget) => {},
         };
     },
@@ -84,11 +83,6 @@ export default Vue.extend({
         googleDriveScope(): string {
             return "https://www.googleapis.com/auth/drive";
         },
-
-        googleDriveFilePickerComponentId(): string {
-            return "googleDriveFilePickerComponent";
-        },
-
 
         loginErrorModalDlgId(): string {
             return getCloudLoginErrorModalDlgId();
@@ -320,7 +314,7 @@ export default Vue.extend({
         },
 
         pickFolderForSave(){
-            (this.$refs[this.googleDriveFilePickerComponentId] as InstanceType<typeof GoogleDriveFilePicker>).startPicking(true);
+            vueComponentsAPIHandler.googleDriveFilePickerComponentAPI?.startPicking(true);
         },
 
         loadPickedFileId(id: string, otherParams: {fileName?: string}, onGettingFileMetadataSucces: (fileNameFromDrive: string, fileModifiedDateTime: string)=>void
@@ -347,7 +341,7 @@ export default Vue.extend({
         
         openFilePicker(startingFromFolderId: string | undefined): Promise<void> {
             // Launch the file picker for this cloud drive (this would be called after we made sure the connection to OneDrive is (still) valid)
-            (this.$refs[this.googleDriveFilePickerComponentId] as InstanceType<typeof GoogleDriveFilePicker>).startPicking(false, startingFromFolderId);
+            vueComponentsAPIHandler.googleDriveFilePickerComponentAPI?.startPicking(false, startingFromFolderId);
             return Promise.resolve();     
         },
 
@@ -558,7 +552,7 @@ export default Vue.extend({
             // Construct the multipart body
             const body = `--${boundary}\nContent-Type: application/json; charset=UTF-8\n\n${JSON.stringify(bodyReqParams)}\n--${boundary}\n\n`;
             // Convert binary data to Blob
-            const blob = new Blob([body, fileContent, `\n--${boundary}--`], { type: "multipart/related; boundary=" + boundary });
+            const blob = new Blob([body, fileContent as BlobPart, `\n--${boundary}--`], { type: "multipart/related; boundary=" + boundary });
             return new Promise<string>((resolve, reject) => {
                 fetch(`https://www.googleapis.com/upload/drive/v3/files${(isCreatingFile) ? "" : "/" + (fileInfos.fileId??"")}?uploadType=multipart`, {
                     method: isCreatingFile ?  "POST" : "PATCH",
@@ -594,11 +588,9 @@ export default Vue.extend({
             gapi.client.init({
             }).then((response) => {
                 this.gapiLoadedState = CloudDriveAPIState.LOADED;
-                // eslint-disable-next-line
                 console.info("GAPI loaded");
             }, (reason) => {
                 this.gapiLoadedState = CloudDriveAPIState.FAILED;
-                // eslint-disable-next-line
                 console.warn(reason.result.error.message);
             });
         },
@@ -613,13 +605,13 @@ export default Vue.extend({
                     // We check the permission is given to the scope required by Strype. If not given, show message.
                     if(!google.accounts.oauth2.hasGrantedAllScopes(response, this.googleDriveScope)) {
                         this.oauthToken = null;
-                        this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.gdrivePermissionsNotMet") as string;
-                        this.$root.$emit("bv::show::modal", this.loginErrorModalDlgId);
+                        this.appStore.simpleModalDlgMsg = this.$t("errorMessage.gdrivePermissionsNotMet");
+                        eventBus.emit(CustomEventTypes.showStrypeModal, this.loginErrorModalDlgId);
                     }                   
                              
                     if (response && response.error == undefined) {
                         this.oauthToken = response.access_token;
-                        (this.$parent as InstanceType<typeof CloudDriveHandlerComponent>).updateSignInStatus(StrypeSyncTarget.gd, true);
+                        vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.updateSignInStatus(StrypeSyncTarget.gd, true);
                     }
 
                     // In any case, continue the action requested by the user (need to do it in a next tick to make sure the oauthToken is updated in all Vue components)

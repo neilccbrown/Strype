@@ -88,8 +88,8 @@ export interface CloudDriveItemPickerItem {
     hasVisitedFolder?: boolean // this is for the internal behaviour of the Picker, to know if we need to fetch the folder content (see CloudDriveItemPicker.vue)
 }
 
-export interface CTreeItemPickerItem extends CloudDriveItemPickerItem{
-    children: CTreeItemPickerItem[],
+export interface VTreeItemPickerItem extends CloudDriveItemPickerItem{
+    children: VTreeItemPickerItem[],
 }
 /* end picker related stuff */
 
@@ -166,7 +166,7 @@ export interface IAuthenticateCommand {
     type: "SharePoint" | "OneDrive";
 }
 type OneDriveExtFilter = "folder" | "site" | "documentLibrary" | "list" | "onenote" | "file" | "media" | "photo" | "video" | "audio" | "document" | "listItem" | "playlist" | "syntexTemplate" | "syntexSnippet" | "syntexField" | `.${string}`;
-import { DriveItem } from "@microsoft/microsoft-graph-types";
+import type { DriveItem } from "@microsoft/microsoft-graph-types";
 export type OneDrivePickConfigurationOptions = {
     sdk: "8.0";
     /**

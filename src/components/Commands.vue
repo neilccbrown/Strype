@@ -1,70 +1,81 @@
 <template>
     <div class="commands">
-        /* IFTRUE_isPython
-        <Splitpanes horizontal :class="{[scssVars.commandsPEASplitterThemeClassName]: true, [scssVars.expandedPEAClassName]: isExpandedPEA}" @resize="onCommandsSplitterResize">
-            <pane key="1" ref="peaCommandsSplitterPane1Ref" :size="100 - commandsSplitterPane2Size" :min-size="commandSplitterPane1MinSize">
-        FITRUE_isPython */
-                <div :class="scssVars.noPEACommandsClassName" @wheel.stop>
-                    <div :class="scssVars.strypeProjectNameContainerClassName">
-                        <span class="project-name">{{projectName}}</span>
-                        <div @mouseover="getLastProjectSavedDateTooltip" :title="lastProjectSavedDateTooltip">
-                            <img v-if="isProjectFromCloudDrive" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/> 
-                            <img v-else-if="isProjectFromFS" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/> 
-                            <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag" v-t="'appMessage.savedCloudFile'" />
-                            <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" v-t="'appMessage.modifCloudFile'" :class="{'modifed-label-span': isProjectNotSourced}" />                     
-                        </div>
-                    </div>     
-                    <div @mousedown.prevent.stop @mouseup.prevent.stop>
-                        /* IFTRUE_isMicrobit
-                        <b-tabs id="commandsTabs" content-class="mt-2" v-model="tabIndex">
-                            <b-tab :title="$t('commandTabs.0')" active :title-link-class="getTabClasses(0)" :disabled="isEditing">
-                        FITRUE_isMicrobit */
-                                <div :id="commandsContainerUID" class="command-tab-content" >
-                                    <div id="addFramePanel">
-                                        <div :class="{[scssVars.addFrameCommandsContainerClassName]: true/* IFTRUE_isPython , 'with-expanded-PEA': isExpandedPEA FITRUE_isPython*/}">
-                                            <p>
-                                                <AddFrameCommand
-                                                    v-for="addFrameCommand in addFrameCommands"
-                                                    :id="addFrameCommandUID(addFrameCommand[0].type.type)"
-                                                    :key="addFrameCommand[0].type.type"
-                                                    :type="addFrameCommand[0].type.type"
-                                                    :shortcut="addFrameCommand[0].shortcuts[0]"
-                                                    :symbol="
-                                                        addFrameCommand[0].symbol !== undefined
-                                                            ? addFrameCommand[0].symbol
-                                                            : addFrameCommand[0].shortcuts[0]
-                                                    "
-                                                    :isSVGIconSymbol="addFrameCommand[0].isSVGIconSymbol"
-                                                    :description="addFrameCommand[0].description"
-                                                    :index="
-                                                        addFrameCommand[0].index!==undefined
-                                                        ? addFrameCommand[0].index
-                                                        : 0
-                                                    "
-                                                />
-                                            </p>
+        <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
+        <!-- the container div is only here because the new version of Splitpanes doesn't get the classes -->
+        <div :class="{[scssVars.commandsPEASplitterThemeClassName]: true, [scssVars.expandedPEAClassName]: isExpandedPEA}">
+            <Splitpanes horizontal @resize="onCommandsSplitterResize">
+                <pane key="1" :size="100 - commandsSplitterPane2Size" :min-size="commandSplitterPane1MinSize">
+        <!-- #v-endif-->
+                    <div :class="scssVars.noPEACommandsClassName" @wheel.stop>
+                        <div :class="scssVars.strypeProjectNameContainerClassName">
+                            <span class="project-name">{{projectName}}</span>
+                            <div @mouseover="getLastProjectSavedDateTooltip" :title="lastProjectSavedDateTooltip">
+                                <img v-if="isProjectFromCloudDrive" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/> 
+                                <img v-else-if="isProjectFromFS" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/> 
+                                <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag">{{ $t("appMessage.savedCloudFile") }}</span>
+                                <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" :class="{'modifed-label-span': isProjectNotSourced}">{{ $t("appMessage.modifCloudFile") }}</span>
+                            </div>
+                        </div>     
+                        <div @mousedown.prevent.stop @mouseup.prevent.stop>
+                            <!-- #v-ifdef MODE == VITE_MICROBIT_MODE -->
+                            <BTabs id="commandsTabs" content-class="mt-2" v-model:index="tabIndex">
+                                <BTab :title="$t('commandTabs.0')" active :title-link-class="getTabClasses(0)" :disabled="isEditing">
+                            <!-- #v-endif-->
+                                    <div :id="commandsContainerUID" class="command-tab-content" >
+                                        <div id="addFramePanel">
+                                            <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
+                                            <div :class="{[scssVars.addFrameCommandsContainerClassName]: true, 'with-expanded-PEA': isExpandedPEA}">
+                                            <!-- #v-else-->
+                                            <div :class="scssVars.addFrameCommandsContainerClassName">
+                                            <!-- #v-endif-->
+                                                <p>
+                                                    <AddFrameCommand
+                                                        v-for="addFrameCommand in addFrameCommands"
+                                                        :id="addFrameCommandUID(addFrameCommand[0].type.type)"
+                                                        :key="addFrameCommand[0].type.type"
+                                                        :type="addFrameCommand[0].type.type"
+                                                        :shortcut="addFrameCommand[0].shortcuts[0]"
+                                                        :symbol="
+                                                            addFrameCommand[0].symbol !== undefined
+                                                                ? addFrameCommand[0].symbol
+                                                                : addFrameCommand[0].shortcuts[0]
+                                                        "
+                                                        :isSVGIconSymbol="addFrameCommand[0].isSVGIconSymbol"
+                                                        :description="addFrameCommand[0].description"
+                                                        :index="
+                                                            addFrameCommand[0].index!==undefined
+                                                            ? addFrameCommand[0].index
+                                                            : 0
+                                                        "
+                                                    />
+                                                </p>
+                                            <!-- this conditional rendering is only used for our code editor to see the closing <div> right -->
+                                            <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
+                                            </div>
+                                            <!-- #v-else-->
+                                            </div>
+                                            <!-- #v-endif-->
                                         </div>
                                     </div>
-                                </div>
-                            /* IFTRUE_isMicrobit 
-                            </b-tab>
-                                <b-tab :title="$t('commandTabs.1')" :title-link-class="getTabClasses(1)">
-                                    <APIDiscovery  class="command-tab-content"/>
-                                </b-tab>
-                            FITRUE_isMicrobit */
-                        </b-tabs>
+                                <!-- #v-ifdef MODE == VITE_MICROBIT_MODE -->
+                                </BTab>
+                                    <BTab :title="$t('commandTabs.1')" :title-link-class="getTabClasses(1)">
+                                        <APIDiscovery  class="command-tab-content"/>
+                                    </BTab>                       
+                            </BTabs>
+                            <!-- #v-endif-->
+                        </div>
+                        <text id="userCode"></text>
+                        <span id="keystrokeSpan"></span>
                     </div>
-                    <text id="userCode"></text>
-                    <span id="keystrokeSpan"></span>
-                </div>
-        /* IFTRUE_isPython
-            </pane>
-            <pane key="2" ref="peaCommandsSplitterPane2Ref" :size="commandsSplitterPane2Size" :min-size="commandSplitterPane2MinSize" :class="{'collapsed-pea-splitter-pane': !isExpandedPEA}">
-                <python-execution-area :class="scssVars.peaContainerClassName" :ref="peaComponentRefId" v-on:[peaMountedEventName]="onPEAMounted" :hasDefault43Ratio="!isCommandsSplitterChanged && !hasPEAExpanded"/>
-            </pane>
-        </Splitpanes>
-        FITRUE_isPython */
-        /* IFTRUE_isMicrobit 
+        <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
+                </pane>
+                <pane key="2" :size="commandsSplitterPane2Size" :min-size="commandSplitterPane2MinSize" :class="{'collapsed-pea-splitter-pane': !isExpandedPEA}">
+                    <python-execution-area :class="scssVars.peaContainerClassName" :ref="peaComponentRefId" v-on:[peaMountedEventName]="onPEAMounted" :hasDefault43Ratio="!isCommandsSplitterChanged && !hasPEAExpanded"/>
+                </pane>
+            </Splitpanes>
+        </div>
+        <!-- #v-else -->
         <div :class="scssVars.peaContainerClassName">  
             <div v-if="showProgress" class="progress cmd-progress-container">
                 <div 
@@ -75,29 +86,28 @@
                     aria-valuemin="0"
                     aria-valuemax="100"
                     >
-                    <span v-t="'action.uploadingToMicrobit'" class="progress-bar-text"></span>
+                    <span class="progress-bar-text">{{ $t("action.uploadingToMicrobit") }}</span>
                 </div>
             </div>
             <div class="commands-container">    
                 <iframe id="mbSimulatorIframe" src="https://python-simulator.usermbit.org/v/0.1/simulator.html?color=%2300FF00" frameborder="0" scrolling="no" sandbox="allow-scripts allow-same-origin"></iframe>
                 <br>
-                <button type="button" @click="runToMicrobit" v-t="'buttonLabel.runOnMicrobit'" class="btn btn-secondary cmd-button"/>
-                <button v-if="isMBSimulatorRunning" type="button" @click="stopMBSimulator" v-t="'buttonLabel.stopMBSimulator'" class="btn btn-secondary cmd-button stop-mb-sim-btn "/>
+                <button type="button" @click="runToMicrobit" class="btn btn-secondary cmd-button">{{ $t("buttonLabel.runOnMicrobit") }}</button>
+                <button v-if="isMBSimulatorRunning" type="button" @click="stopMBSimulator" class="btn btn-secondary cmd-button stop-mb-sim-btn ">{{ $t("buttonLabel.stopMBSimulator") }}</button>
             </div>
         </div>
         <SimpleMsgModalDlg :dlgId="startMBSimulatorlDlgId" />
-        FITRUE_isMicrobit */
+    <!-- #v-endif-->
     </div>
 </template>
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCloudDriveHandlerComponentRefId, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getMenuLeftPaneUID, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
+import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getMenuLeftPaneUID, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, CollapsedState, defaultEmptyStrypeLayoutDividerSettings, FrameObject, PythonExecRunningState, SelectAllFramesAction, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
-import Vue from "vue";
-import browserDetect from "vue-browser-detect-plugin";
+import { defineComponent } from "vue";
 import { mapStores } from "pinia";
 import { getAvailableNavigationPositions, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import scssVars  from "@/assets/style/_export.module.scss";
@@ -107,32 +117,47 @@ import gdIcon from "@/assets/images/logoGDrive.png";
 import odIcon from "@/assets/images/logoOneDrive.svg";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
 import { clamp } from "lodash";
-/* IFTRUE_isPython */
-import {Splitpanes, Pane, PaneData} from "splitpanes";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { eventBus } from "@/helpers/appContext";
+// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+import {Splitpanes, Pane} from "splitpanes";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import {getPEAConsoleId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getPEAComponentRefId, getPEAControlsDivId} from "@/helpers/editor";
-/* FITRUE_isPython */
-/* IFTRUE_isMicrobit */
+// #v-else
 import APIDiscovery from "@/components/APIDiscovery.vue";
 import { flash } from "@/helpers/webUSB";
-import CloudDriveHandlerComponent from "./CloudDriveHandler.vue";
 import { downloadHex, getPythonContent } from "@/helpers/download";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
-/* FITRUE_isMicrobit */
+import { useBrowserDetect } from "vue3-detect-browser";
+import { BTab, BTabs } from "bootstrap-vue-next";
+// #v-endif
 
-export default Vue.extend({
+// #v-ifdef MODE == VITE_MICROBIT_MODE
+// This variable is moved to at the module level rather than in data because having a Window as a reactive property doesn't work with Vue 2.7 (and Vue 3)
+let mbSimulator: Window | null = null;
+// #v-endif
+
+export default defineComponent({
     name: "Commands",
+
+    setup(){
+        // #v-ifdef MODE == VITE_MICROBIT_MODE
+        // Get the detectBrowser function from the (replaced for Vue 3) browser detection package
+        const detectBrowser = useBrowserDetect;
+        return { detectBrowser };
+        // #v-endif
+    },
 
     components: {
         AddFrameCommand,
-        /* IFTRUE_isMicrobit */
-        APIDiscovery,
-        SimpleMsgModalDlg,
-        /* FITRUE_isMicrobit */
-        /* IFTRUE_isPython */
+        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
         Splitpanes, Pane,
         PythonExecutionArea, 
-        /* FITRUE_isPython */
+        // #v-else
+        APIDiscovery,
+        SimpleMsgModalDlg,
+        BTabs, BTab,
+        // #v-endif
     },
 
     data: function () {
@@ -143,7 +168,7 @@ export default Vue.extend({
             uploadThroughUSB: false,
             frameCommandsReactiveFlag: false, // this flag is only use to allow a reactive binding when the add frame commands are updated (language),
             lastProjectSavedDateTooltip: "", // update on a mouse over event (in getLastProjectSavedDateTooltip)
-            /* IFTRUE_isPython */
+            // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
             isExpandedPEA: false, // flag indicating whether the Python Execution Area is expanded (to update the UI parts accordingly)
             hasPEAExpanded: false, // flag indicating whether the Python Execution Area *has ever been* expanded
             peaMountedEventName: CustomEventTypes.pythonExecAreaMounted,
@@ -151,19 +176,15 @@ export default Vue.extend({
             commandSplitterPane2MinSize: 0, // to be adjusted after the component is mounted
             commandsSplitterPane2Size: 0, // to be adjused after the component is mounted
             isCommandsSplitterChanged: false,
-            /* FITRUE_isPython */
-            /* IFTRUE_isMicrobit */
-            mbSimulator: null as Window | null,
-            /* FITRUE_isMicrobit */
+            // #v-endif
         };
     },
 
-    /* IFTRUE_isMicrobit */
+    // #v-ifdef MODE == VITE_MICROBIT_MODE
     beforeMount() {
-        Vue.use(browserDetect);
-        this.uploadThroughUSB = (this.$browserDetect.isChrome || this.$browserDetect.isOpera || this.$browserDetect.isEdge);
+        this.uploadThroughUSB = (this.detectBrowser().isChrome || this.detectBrowser().isOpera || this.detectBrowser().isEdge);
     },
-    /* FITRUE_isMicrobit */
+    // #v-endif
 
     computed: {
         ...mapStores(useStore),
@@ -204,26 +225,23 @@ export default Vue.extend({
         },
 
         syncedTargetName(): string {
-            const cloudDriveHandlerComponent =  ((this.$root.$children[0].$refs[getMenuLeftPaneUID()] as Vue).$refs[getCloudDriveHandlerComponentRefId()] as InstanceType<typeof CloudDriveHandlerComponent>);
+            const cloudDriveHandlerComponentAPI =  (vueComponentsAPIHandler.cloudDriveHandlerComponentAPI);
             switch(this.appStore.syncTarget){
             case StrypeSyncTarget.fs:
-                return this.$t("appMessage.targetFS") as string;
+                return this.$t("appMessage.targetFS");
             case StrypeSyncTarget.gd:
-                return cloudDriveHandlerComponent.getDriveName();
             case StrypeSyncTarget.od:
-                return cloudDriveHandlerComponent.getDriveName();
+                return (cloudDriveHandlerComponentAPI?.getDriveName())??"";
             default:
                 return "";
             }
         },
         
-        /* IFTRUE_isPython */
+        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
         peaComponentRefId(): string {
             return getPEAComponentRefId();
         },
-        /* FITRUE_isPython */
-
-        /* IFTRUE_isMicrobit */
+        // #v-else
         tabIndex: {
             get(): number{
                 return this.appStore.commandsTabIndex;
@@ -241,7 +259,7 @@ export default Vue.extend({
             // Indicates when the users triggered the simulator
             return this.appStore.pythonExecRunningState == PythonExecRunningState.Running; 
         },
-        /* FITRUE_isMicrobit */
+        // #v-endif
 
         commandsContainerUID(): string {
             return getCommandsContainerUID();
@@ -271,6 +289,29 @@ export default Vue.extend({
     },
 
     created() {
+        // Expose this component that other components might need.
+        // Vue 3 has deprecated direct access to components.
+        // (we don't set it in setup() because we want to have this accessible, and the component created!)
+        vueComponentsAPIHandler.commandsComponentAPI = {
+            onCommandsSplitterResize: this.onCommandsSplitterResize,
+            resetPEACommmandsSplitterDefaultState: this.resetPEACommmandsSplitterDefaultState,
+            setCommandsSplitterPane2Size: (value: number) => {
+                this.commandsSplitterPane2Size= value;
+            },
+            // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+            setPEACommandsSplitterPanesMinSize: this.setPEACommandsSplitterPanesMinSize,
+            setIsExpandedPEA: (value: boolean) => {
+                this.isExpandedPEA = value;
+            },
+            setLogicalORHasPEAExpanded: (value: boolean) => {
+                this.hasPEAExpanded ||= value;
+            },
+            setIsCommandsSplitterChanged: (value: boolean) => {
+                this.isCommandsSplitterChanged = value;
+            },
+            // #v-endif
+        };
+
         if(this.appStore.showKeystroke){
             window.addEventListener(
                 "dblclick",
@@ -415,18 +456,19 @@ export default Vue.extend({
                 }
                 
                 // If ctrl-enter/cmd-enter is pressed, make sure we quit the editing (if that's the case) and run the code
-                if((event.ctrlKey || event.metaKey) && eventKeyLowCase === "enter" 
-                /* IFTRUE_isPython && this.$refs[getPEAComponentRefId()] FITRUE_isPython *//* IFTRUE_isMicrobit && this.mbSimulator FITRUE_isMicrobit */) {
-                    /* IFTRUE_isPython */
-                    ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).focus();
-                    ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).click();
+                let isTargetRefDefined = false;
+                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                isTargetRefDefined = !!this.$refs[getPEAComponentRefId()];
+                // #v-else
+                isTargetRefDefined = (mbSimulator != null);
+                // #v-endif
+                if((event.ctrlKey || event.metaKey) && eventKeyLowCase === "enter" && isTargetRefDefined) {
+                    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                    vueComponentsAPIHandler.peaComponentAPI?.focusClickRunButton();
                     // Need to unfocus to avoid keyboard focus non-obviously remaining with the run button:
-                    ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).blur();
-                    /* FITRUE_isPython */
-
-                    /* IFTRUE_isMicrobit */
-                    // If the run Python shortcut is triggered with the micro:bit version, we start/stop the simulator.
-                        
+                    vueComponentsAPIHandler.peaComponentAPI?.blurRunButton();
+                    // #v-else
+                    // If the run Python shortcut is triggered with the micro:bit version, we start/stop the simulator.                        
                     if(event.ctrlKey){
                         if(this.isMBSimulatorRunning) {
                             this.stopMBSimulator();
@@ -434,11 +476,11 @@ export default Vue.extend({
                         else {
                             // The micro:bit simulator do not support non-user interaction for a flash request.
                             // So we just tell the user here what to do...
-                            this.appStore.simpleModalDlgMsg = this.$i18n.t("appMessage.startMBSimulatorNeedUserAction") as string;
-                            this.$root.$emit("bv::show::modal", this.startMBSimulatorlDlgId);                            
+                            this.appStore.simpleModalDlgMsg = this.$t("appMessage.startMBSimulatorNeedUserAction");
+                            eventBus.emit(CustomEventTypes.showStrypeModal, this.startMBSimulatorlDlgId);                            
                         }
                     }
-                    /* FITRUE_isMicrobit */
+                    // #v-endif
                     
                     // Don't then process the keypress for other purposes:
                     event.preventDefault();
@@ -450,7 +492,6 @@ export default Vue.extend({
                 // If a context menu is currently displayed, we handle the menu keyboard interaction here
                 // (note that preventing the event here also prevents the keyboard scrolling of the page)
                 if(!isEditing && this.appStore.contextMenuShownId.length > 0 && getActiveContextMenu()){
-                    handleContextMenuKBInteraction(event.key);
                     event.stopImmediatePropagation();
                     event.preventDefault();
                     return;
@@ -458,7 +499,11 @@ export default Vue.extend({
 
                 // Prevent default scrolling and navigation in the editor, except if Turtle is currently running and listening for key events
                 // (then we just leave the PEA handling it, see at the end of these conditions for related code)
-                if (!isDraggingFrames && !isEditing && /*IFTRUE_isPython*/ !(isPythonExecuting && ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isTurtleListeningKeyEvents || (this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isRunningStrypeGraphics)) && /*FITRUE_isPython*/ ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End", "PageUp", "PageDown"].includes(event.key)) {
+                let extraConditionsForPEA = true;
+                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                extraConditionsForPEA = !(isPythonExecuting && vueComponentsAPIHandler.peaComponentAPI?.getIsTurtleListeningKeyEvents() || vueComponentsAPIHandler.peaComponentAPI?.getIsRunningStrypeGraphics());
+                // #v-endif
+                if (!isDraggingFrames && !isEditing && extraConditionsForPEA && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End", "PageUp", "PageDown"].includes(event.key)) {
                     event.stopImmediatePropagation();
                     event.stopPropagation();
                     event.preventDefault();
@@ -581,8 +626,8 @@ export default Vue.extend({
                             }
                         }
                     }
-                    /* IFTRUE_isPython */
-                    else if(isPythonExecuting && !(this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isRunningStrypeGraphics){
+                    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                    else if(isPythonExecuting && !vueComponentsAPIHandler.peaComponentAPI?.getIsRunningStrypeGraphics()){
                         // The special case when the user's code is being executing, we want to handle the key events carefully.
                         // If there is a combination key (ctrl,...) we just ignore the events, otherwise, if Turtle is active we pass events to the Turtle graphics,
                         // and if it's not active AND the Python Execution console hasn't go focus, we prevents events.
@@ -615,7 +660,7 @@ export default Vue.extend({
                             return;
                         }
                     }
-                    /* FITRUE_isPython */
+                    // #v-endif
                 }
                 else if(this.appStore.isDraggingFrame){
                     // Hitting escape during a DnD cancels it.
@@ -651,11 +696,11 @@ export default Vue.extend({
             false
         );
         
-        /* IFTRUE_isMicrobit */
-        this.mbSimulator = (document.querySelector("#mbSimulatorIframe") as HTMLIFrameElement)?.contentWindow;
+        // #v-ifdef MODE == VITE_MICROBIT_MODE
+        mbSimulator = (document.querySelector("#mbSimulatorIframe") as HTMLIFrameElement)?.contentWindow;
         window.addEventListener("blur", this.handleMBSimulatorTakesFocus);        
         window.addEventListener("message", this.onMicrobitSimulatorMsgReceived);
-        /* FITRUE_isMicrobit */
+        // #v-endif
     },
 
     methods: {
@@ -680,7 +725,7 @@ export default Vue.extend({
             // There shouldn't be a case when we get a date that is no set to a proper value, but to prevent
             // weird and invalid date display, we associate the default value -1 to "unknown".
             if(this.appStore.projectLastSaveDate == -1){
-                this.lastProjectSavedDateTooltip = this.$i18n.t("appMessage.lastSavedDateUnknown") as string;
+                this.lastProjectSavedDateTooltip = this.$t("appMessage.lastSavedDateUnknown");
                 return;
             } 
 
@@ -691,41 +736,41 @@ export default Vue.extend({
             const lastSaveDateTickDiff = Date.now() - this.appStore.projectLastSaveDate;
             if(lastSaveDateTickDiff > 604800000 ){
                 // More than a week ago (7 days * 24 h * 60 min * 60 s * 1000 ms)
-                toolTipVal = this.$i18n.t("appMessage.lastSavedOn", {lastSavedDate: new Date(this.appStore.projectLastSaveDate).toLocaleString()}) as string; 
+                toolTipVal = this.$t("appMessage.lastSavedOn", {lastSavedDate: new Date(this.appStore.projectLastSaveDate).toLocaleString()}); 
             }
             else if(lastSaveDateTickDiff > 86400000){
                 // Less than a week but more than a day ago (24 h * 60 min * 60 s * 1000 ms)
                 const nbDays = lastSaveDateTickDiff / 86400000;
                 toolTipVal = (nbDays > 1)
-                    ? this.$i18n.t("appMessage.lastSavedOnNDays", {nbLastSave: Math.round(nbDays)}) as string
-                    : this.$i18n.t("appMessage.lastSavedOn1Day") as string;
+                    ? this.$t("appMessage.lastSavedOnNDays", {nbLastSave: Math.round(nbDays)})
+                    : this.$t("appMessage.lastSavedOn1Day");
             }
             else if(lastSaveDateTickDiff > 3600000){
                 // Less than a day but more than an hour ago (60 min * 60 s * 1000 ms)
                 const nbHours = lastSaveDateTickDiff / 3600000;
                 toolTipVal = (nbHours > 1)
-                    ? this.$i18n.t("appMessage.lastSavedOnNHours", {nbLastSave: Math.round(nbHours)}) as string
-                    : this.$i18n.t("appMessage.lastSavedOn1Hour") as string;
+                    ? this.$t("appMessage.lastSavedOnNHours", {nbLastSave: Math.round(nbHours)})
+                    : this.$t("appMessage.lastSavedOn1Hour");
             }
             else if(lastSaveDateTickDiff > 60000){
                 // Less than an hour but more than a minute ago (60 s * 1000 ms)
                 const nbMins = lastSaveDateTickDiff / 60000;
                 toolTipVal = (nbMins > 1)
-                    ? this.$i18n.t("appMessage.lastSavedOnNMins", {nbLastSave: Math.round(nbMins)}) as string
-                    : this.$i18n.t("appMessage.lastSavedOn1Min") as string;
+                    ? this.$t("appMessage.lastSavedOnNMins", {nbLastSave: Math.round(nbMins)})
+                    : this.$t("appMessage.lastSavedOn1Min");
 
             }
             else {
             // Less than a minute ago (we will use min 1 seconde even if less than a second, which is unlikely)
                 const nbSecs = lastSaveDateTickDiff / 1000;
                 toolTipVal = (nbSecs > 1)
-                    ? this.$i18n.t("appMessage.lastSavedOnNSecs", {nbLastSave: Math.round(nbSecs)}) as string
-                    : this.$i18n.t("appMessage.lastSavedOn1Sec") as string;
+                    ? this.$t("appMessage.lastSavedOnNSecs", {nbLastSave: Math.round(nbSecs)})
+                    : this.$t("appMessage.lastSavedOn1Sec");
             }
             this.lastProjectSavedDateTooltip = toolTipVal;
         },
 
-        /* IFTRUE_isMicrobit */
+        // #v-ifdef MODE == VITE_MICROBIT_MODE
         runToMicrobit() {
             // If we can directly upload on microbit, we run the method flash().
             // If we cannot, we run downloadHex(), it already contains code to show a message to the user.
@@ -740,7 +785,7 @@ export default Vue.extend({
         onMicrobitSimulatorMsgReceived(e: MessageEvent<Record<string, any>>){
             // Example reference: https://github.com/micropython-microbit-v2-simulator/micropython-microbit-v2-simulator/blob/main/src/demo.html
             const { data } = e;
-            const simulator = this.mbSimulator;
+            const simulator = mbSimulator;
             // Actions on the simulator will loose the focus on Strype, so we save where we were.
             if (simulator && e.source === simulator) {
                 switch (data.kind) {                            
@@ -749,7 +794,7 @@ export default Vue.extend({
                     getPythonContent()
                         .then((pyContent) => {                            
                             this.appStore.pythonExecRunningState = PythonExecRunningState.Running;
-                            this.mbSimulator?.postMessage({
+                            mbSimulator?.postMessage({
                                 "kind": "flash",
                                 "filesystem": {
                                     "main.py": new TextEncoder()
@@ -779,7 +824,7 @@ export default Vue.extend({
 
         stopMBSimulator() {
             // Send a stop message to the simulator
-            this.mbSimulator?.postMessage({"kind": "stop"}, "*");
+            mbSimulator?.postMessage({"kind": "stop"}, "*");
             this.appStore.pythonExecRunningState = PythonExecRunningState.NotRunning;
         },
         
@@ -792,9 +837,7 @@ export default Vue.extend({
                 return ["commands-tab" + disabledClassStr];
             }
         },
-        /*FITRUE_isMicrobit */
-
-        /* IFTRUE_isPython */
+        // #v-else
         onPEAMounted(){
             // Once the PEA is ready, we need to fix the splitter's position between the frame commands area and the PEA,
             // so that the PEA stays at the bottom of the viewport as intially intented (in its initial 4:3 ratio).
@@ -824,7 +867,7 @@ export default Vue.extend({
             return new Promise((resolve) => {
                 this.hasPEAExpanded = false;
                 this.isCommandsSplitterChanged = false;               
-                (this.$refs[this.peaComponentRefId] as InstanceType<typeof PythonExecutionArea>).togglePEALayout(StrypePEALayoutMode.tabsCollapsed);
+                vueComponentsAPIHandler.peaComponentAPI?.togglePEALayout(StrypePEALayoutMode.tabsCollapsed);
                 // Once we have the flags set, we set a timer to wait for the splitter to update before returning from the promise
                 setTimeout(() => {
                     resolve();
@@ -837,7 +880,7 @@ export default Vue.extend({
             // and the PEA (will take the full space in its pane, breaking the initial 4:3 ratio)
             document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
             this.isCommandsSplitterChanged = true;
-            this.commandsSplitterPane2Size = event[1].size;
+            this.commandsSplitterPane2Size = event.panes[1].size;
             // We also save the value in the store. We do not want to set commandsSplitterPane2Size as get/set computed property
             // (and call the appStore change in set()) because we set the value based on other settings (the 4:3 ratio) when PEA is mounted,
             // that value then shouldn't be saved in the store.
@@ -846,12 +889,12 @@ export default Vue.extend({
             }
             else {
                 // The tricky case of when the state property has never been set
-                this.appStore.peaCommandsSplitterPane2Size = {...defaultEmptyStrypeLayoutDividerSettings, [this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed]: event[1].size};
+                this.appStore.peaCommandsSplitterPane2Size = {...defaultEmptyStrypeLayoutDividerSettings, [this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed]: event.panes[1].size};
             }
 
             // A change of divider position triggers a modification notification only when the user actively moves the divider,
             // we can distinguish between a sitation when the divider is position is loaded and user event by the content of the event
-            if(event.length > 1){
+            if(event.panes.length > 1){
                 this.appStore.isEditorContentModified = true;
             }
         }, 
@@ -876,20 +919,7 @@ export default Vue.extend({
                 const frameCommandsScrollBarH = frameCommandsContainer.offsetHeight - frameCommandsContainer.clientHeight;
                 if(projectNameContainerDiv && firstAddCommandDiv){
                     const firstAddCommandDivFullHeight = firstAddCommandDiv.getBoundingClientRect().height + parseInt(window.getComputedStyle(firstAddCommandDiv).marginTop.replace("px","")) + parseInt(window.getComputedStyle(firstAddCommandDiv).marginBottom.replace("px",""));                    
-                    this.commandSplitterPane1MinSize = ((projectNameContainerDiv.getBoundingClientRect().height + firstAddCommandDivFullHeight + frameCommandsScrollBarH) * 100) / (viewPortH - commandsSplitterHeight);
-                    const currentPane1Size = parseFloat(((this.$refs.peaCommandsSplitterPane1Ref as InstanceType<typeof Pane>).$data as PaneData).style.height.replace("%",""));
-                    if(currentPane1Size < this.commandSplitterPane1MinSize){
-                        // Setting the min size doesn't mean that the current size will update to be valid. 
-                        // So we do it ourselves. The reactivity doesn't seem to always work (some timing issue?)
-                        // so we change the data of the Panes directly
-                        setTimeout(() => {
-                            this.commandsSplitterPane2Size = (100 - this.commandSplitterPane1MinSize);      
-                            (this.$refs.peaCommandsSplitterPane1Ref as InstanceType<typeof Pane>).$data.style.height = this.commandSplitterPane1MinSize + "%";
-                            (this.$refs.peaCommandsSplitterPane2Ref as InstanceType<typeof Pane>).$data.style.height = this.commandsSplitterPane2Size + "%";
-                            // And trigger the Graphics to resize properly
-                            document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged, {detail: onlyResizePEA}));
-                        }, 200);                        
-                    }     
+                    this.commandSplitterPane1MinSize = ((projectNameContainerDiv.getBoundingClientRect().height + firstAddCommandDivFullHeight + frameCommandsScrollBarH) * 100) / (viewPortH - commandsSplitterHeight);                    
                 }    
             
                 // Pane 2:
@@ -897,22 +927,11 @@ export default Vue.extend({
                 const peaConsoleElement = document.getElementById(getPEAConsoleId());
                 if(peaConsoleElement){               
                     const peaConsoleLineH = parseFloat(window.getComputedStyle(peaConsoleElement).lineHeight.replace("px",""));
-                    this.commandSplitterPane2MinSize = ((peaHeaderHeight + 3 * peaConsoleLineH) * 100) / (viewPortH - commandsSplitterHeight);
-                    const currentPane2Size = parseFloat(((this.$refs.peaCommandsSplitterPane2Ref as InstanceType<typeof Pane>).$data as PaneData).style.height.replace("%",""));
-                    if(currentPane2Size < this.commandSplitterPane2MinSize){
-                        // Setting the min size doesn't mean that the current size will update to be valid. 
-                        // So we do it ourselves. The reactivity doesn't seem to always work (some timing issue?)
-                        // so we change the data of the Panes directly
-                        setTimeout(() => {
-                            this.commandsSplitterPane2Size = (this.commandSplitterPane2MinSize);      
-                            (this.$refs.peaCommandsSplitterPane1Ref as InstanceType<typeof Pane>).$data.style.height = (100 - this.commandsSplitterPane2Size) + "%";
-                            (this.$refs.peaCommandsSplitterPane2Ref as InstanceType<typeof Pane>).$data.style.height = this.commandsSplitterPane2Size + "%";
-                        }, 200);                        
-                    }     
+                    this.commandSplitterPane2MinSize = ((peaHeaderHeight + 3 * peaConsoleLineH) * 100) / (viewPortH - commandsSplitterHeight);    
                 }
             }
         },
-        /* FITRUE_isPython */
+        // #v-endif
     },
 });
 </script>
@@ -949,31 +968,31 @@ export default Vue.extend({
     color: #252323;
     background-color: #E2E7E0;
     height: 100vh;
-    /* IFTRUE_isMicrobit */
+    // #v-ifdef MODE == VITE_MICROBIT_MODE
     display: flex;
     flex-direction: column;
     padding:0px 15px;
-    /* FITRUE_isMicrobit */
+    // #v-endif
 }
 
 /**
  * The following classes overwrite the spitter's style
  * for the splitter in use in this component.
  */
-/* IFTRUE_isPython */
-.#{$strype-classname-commands-pea-splitter-theme}.splitpanes--horizontal>.splitpanes__splitter,
-.#{$strype-classname-commands-pea-splitter-theme} > .splitpanes--horizontal>.splitpanes__splitter {
-    height: 1px !important;
-    background-color: black;
-    position: relative;
+// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+.#{$strype-classname-commands-pea-splitter-theme} {
+    height: 100%;
 }
 
-.#{$strype-classname-commands-pea-splitter-theme}.#{$strype-classname-expanded-pea}.splitpanes--horizontal>.splitpanes__splitter,
+.#{$strype-classname-commands-pea-splitter-theme} > .splitpanes--horizontal>.splitpanes__splitter {
+    height: 1px !important;
+    background-color: black !important;
+}
+
 .#{$strype-classname-commands-pea-splitter-theme}.#{$strype-classname-expanded-pea} > .splitpanes--horizontal>.splitpanes__splitter {
     background-color: transparent !important;    
 }
 
-.#{$strype-classname-commands-pea-splitter-theme}.splitpanes--horizontal>.splitpanes__splitter:before,
 .#{$strype-classname-commands-pea-splitter-theme} > .splitpanes--horizontal>.splitpanes__splitter:before {
     content: "";
     position: absolute;
@@ -986,9 +1005,9 @@ export default Vue.extend({
 }
 
 .collapsed-pea-splitter-pane {
-    background-color: $pea-outer-background-color;
+    background-color: $pea-outer-background-color !important;
 }
-/* FITRUE_isPython */
+// #v-endif
 /** End splitter classes */
 
 .cmd-progress-container {
@@ -1005,15 +1024,14 @@ export default Vue.extend({
 }
 
 .#{$strype-classname-no-pea-commands} {
-    /* IFTRUE_isPython */
+    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
     overflow-y: hidden;
     display: flex;
     flex-direction: column;
     height: 100%;    
-    /* FITRUE_isPython */
-    /* IFTRUE_isMicrobit */
+    // #v-else
     overflow-y: auto;
-    /* FITRUE_isMicrobit */
+    // #v-endif
 }
 
 .progress-bar-text {
@@ -1045,15 +1063,14 @@ export default Vue.extend({
 }
 
 .#{$strype-classname-pea-container} {
-    /* IFTRUE_isPython */
+    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
     margin: 0px $strype-python-exec-area-margin $strype-python-exec-area-margin $strype-python-exec-area-margin;
-    /* FITRUE_isPython */
-    /* IFTRUE_isMicrobit */
+    // #v-else
     margin-bottom: 40px;
     overflow: hidden; // that is used to keep the margin https://stackoverflow.com/questions/44165725/flexbox-preventing-margins-from-being-respected
     flex-grow: 3;
     flex-shrink: 0;
-    /* FITRUE_isMicrobit */
+    // #v-endif
     display: flex;
     flex-direction: column;    
     align-items: flex-start;
@@ -1086,7 +1103,7 @@ export default Vue.extend({
 }
 //ends bootstrap overriding
 
-/* IFTRUE_isMicrobit */
+// #v-ifdef MODE == VITE_MICROBIT_MODE
 .commands-container {
     display: inline-block;
 }
@@ -1110,5 +1127,5 @@ export default Vue.extend({
 .cmd-button {
     padding: 1px 6px 1px 6px !important;
 }
-/* FITRUE_isMicrobit */
+// #v-endif
 </style>

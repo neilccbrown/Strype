@@ -1,11 +1,11 @@
 import { saveAs } from "file-saver";
 import { compileBlob } from "./compile";
 import { parseCodeAndGetParseElements } from "@/parser/parser";
-import {vm} from "@/main";
 import { useStore } from "@/store/store";
 import { MessageDefinitions } from "@/types/types";
-import { getAppSimpleMsgDlgId } from "./editor";
+import { CustomEventTypes, getAppSimpleMsgDlgId } from "./editor";
 import i18n from "@/i18n";
+import { eventBus } from "./appContext";
 
 export function downloadHex(showImagePopup?: boolean): void {
     const parserElements = parseCodeAndGetParseElements(true, "py");
@@ -23,8 +23,8 @@ export function downloadHex(showImagePopup?: boolean): void {
     //We show the image only if the download has succeeded, and we request one to be shown
     if(!succeeded){
         // Notify the user of any detected errors in the code
-        useStore().simpleModalDlgMsg = i18n.t("appMessage.preCompiledErrorNeedFix") as string;
-        vm.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+        useStore().simpleModalDlgMsg = i18n.global.t("appMessage.preCompiledErrorNeedFix");
+        eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
     }
     else if (showImagePopup){
         useStore().showMessage(MessageDefinitions.DownloadHex, null);
@@ -35,8 +35,8 @@ export function getPythonContent(): Promise<string> {
     const parserElements = parseCodeAndGetParseElements(false, "py-export");
     if (parserElements.hasErrors) {
         // Notify the user of any detected errors in the code
-        useStore().simpleModalDlgMsg = i18n.t("appMessage.preCompiledErrorNeedFix") as string;
-        vm.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+        useStore().simpleModalDlgMsg = i18n.global.t("appMessage.preCompiledErrorNeedFix");
+        eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
         return Promise.reject("");
     }
     return Promise.resolve(parserElements.parsedOutput);

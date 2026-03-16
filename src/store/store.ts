@@ -1,27 +1,24 @@
-import Vue from "vue";
+import { nextTick} from "vue";
 import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia, ModifierKeyCode } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
-import { AppPlatform, AppVersion, projectDocumentationFrameId, vm } from "@/main";
+import { AppPlatform, AppVersion, eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getStrypeCommandComponentRefId, getCaretContainerUID, isCaretContainerElement, AutoSaveKeyNames } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getCaretContainerUID, isCaretContainerElement, AutoSaveKeyNames } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
 import {cloneDeep, isEqual} from "lodash";
-import $ from "jquery";
-import { BvModalEvent } from "bootstrap-vue";
-import { nextTick } from "@vue/composition-api";
 import { TPyParser } from "tigerpython-parser";
-import AppComponent from "@/App.vue";
 import emptyState from "@/store/initial-states/empty-state";
-/* IFTRUE_isPython */
-import PEAComponent from "@/components/PythonExecutionArea.vue";
-import CommandsComponent from "@/components/Commands.vue";
-import { actOnTurtleImport, getPEAComponentRefId } from "@/helpers/editor";
-/* FITRUE_isPython */
+import { BvTriggerableEvent } from "bootstrap-vue-next";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import $ from "jquery";
+// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+import { actOnTurtleImport } from "@/helpers/editor";
+// #v-endif
 
 function getState(): StateAppObject {
     // If we have a state available in the local (browser's) storage, we strip off the frame contents
@@ -31,9 +28,9 @@ function getState(): StateAppObject {
     let returnedState;
     if(typeof(Storage) !== "undefined") {
         let storageString = AutoSaveKeyNames.pythonEditorState;
-        /* IFTRUE_isMicrobit */
+        // #v-ifdef MODE == VITE_MICROBIT_MODE
         storageString = AutoSaveKeyNames.mbEditor;
-        /* FITRUE_isMicrobit */
+        // #v-endif
         const savedState = localStorage.getItem(storageString);
         if(savedState) {
             isExistingStateLocated = true;
@@ -42,12 +39,11 @@ function getState(): StateAppObject {
     }
     
     if(!isExistingStateLocated) {
-        /* IFTRUE_isPython */
+        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
         returnedState = initialStates["initialPythonState"];
-        /* FITRUE_isPython */
-        /* IFTRUE_isMicrobit */
+        // #v-else
         returnedState = initialStates["initialMicrobitState"];
-        /* FITRUE_isMicrobit */
+        // #v-endif
     }
     return (returnedState as StateAppObject);
 }
@@ -76,7 +72,7 @@ export const useStore = defineStore("app", {
 
             defsContainerId: -2,
 
-            /** END of flags that need checking when a build is done **/
+            /** END of flags that need checking when a build is done **/           
 
             currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
 
@@ -112,7 +108,7 @@ export const useStore = defineStore("app", {
              ***/ 
             editorCommandsSplitterPane2Size: undefined as StrypeLayoutDividerSettings | undefined, // same as above for the divider between the editor and the commands (pane 2), default is 34%
             
-            /* IFTRUE_isPython */
+            // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
             peaLayoutMode:  undefined as StrypePEALayoutMode | undefined, // the project layout view is saved with the store
             
             // The size of the commands/PEA splitter pane 2 size is saved with the store.
@@ -122,7 +118,7 @@ export const useStore = defineStore("app", {
             peaSplitViewSplitterPane1Size: undefined as StrypeLayoutDividerSettings | undefined, // same as above for the split view PEA divider (pane 1), this time a default value is 50%
             
             peaExpandedSplitterPane2Size: undefined as StrypeLayoutDividerSettings | undefined, // same as above for the expanded view divider (pane 2), this time a default value is 50%
-            /* FITRUE_isPython */
+            // #v-endif
             /* end properties for saving layout */
 
             // This flag indicates if the user code is being executed in the Python Execution Area (including the micro:bit simulator)
@@ -195,7 +191,7 @@ export const useStore = defineStore("app", {
 
             isContextMenuKeyboardShortcutUsed: false,
 
-            projectName: i18n.t("defaultProjName") as string,
+            projectName: i18n.global.t("defaultProjName"),
 
             isEditorContentModified: false,
 
@@ -298,15 +294,15 @@ export const useStore = defineStore("app", {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === RootContainerFrameDefinition.type)[0].id;
         },
         
-        getMainCodeFrameContainerId: (state) => {
+        getMainCodeFrameContainerId: (state): number => {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === MainFramesContainerDefinition.type)[0].id;
         },
 
-        getImportsFrameContainerId:(state) => {
+        getImportsFrameContainerId:(state): number => {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === ImportsContainerDefinition.type)[0].id;
         },
 
-        getDefsFrameContainerId:(state) => {
+        getDefsFrameContainerId:(state): number => {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === DefsContainerDefinition.type)[0].id;
         },
 
@@ -505,10 +501,7 @@ export const useStore = defineStore("app", {
                 
                 // remove any empty commands (forbidden) for this shortcut
                 if( filteredCommands[frameShortcut].length === 0){
-                    Vue.delete(
-                        filteredCommands,
-                        frameShortcut
-                    );                    
+                    delete filteredCommands[frameShortcut];                    
                 }
             }
             
@@ -527,7 +520,7 @@ export const useStore = defineStore("app", {
             const errorTitle = (retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot).errorTitle;
             return (errorTitle) 
                 ? errorTitle
-                : i18n.t("errorMessage.errorTitle") as string; 
+                : i18n.global.t("errorMessage.errorTitle"); 
         },
 
         preCompileErrorExists: (state) => (id: string) => {
@@ -752,11 +745,7 @@ export const useStore = defineStore("app", {
 
         updateStateBeforeChanges(release: boolean) {
             //if the flag release is true, we clear the current stateBeforeChanges value
-            Vue.set(
-                this,
-                "stateBeforeChanges",
-                (release) ? {} : cloneDeep(this.$state)
-            );
+            this.stateBeforeChanges = (release) ? {} : cloneDeep(this.$state);
         },
 
         clearAllFrames() {
@@ -767,7 +756,7 @@ export const useStore = defineStore("app", {
             Object.keys(this.frameObjects).forEach((frameId) => {
                 const frameIdInt = parseInt(frameId);
                 if(frameIdInt > 0) {
-                    Vue.delete(this.frameObjects, frameId);
+                    delete this.frameObjects[parseInt(frameId)];
                 }
                 else if(frameIdInt < 0){
                     // The frame section containers are not cleared, but their children are!
@@ -843,21 +832,14 @@ export const useStore = defineStore("app", {
                         );
                     }
                     //and finally, delete the frame
-                    Vue.delete(
-                        this.frameObjects,
-                        payload.frameToDeleteId
-                    );
+                    delete this.frameObjects[payload.frameToDeleteId];
                 }
             }
         },
 
         setEditableFocus(payload: EditableFocusPayload) {
             // Use Vue.set here because "focused" may not yet exist on the object (it's an optional field)
-            Vue.set(
-                retrieveSlotFromSlotInfos(payload),
-                "focused",
-                payload.focused
-            );
+            (retrieveSlotFromSlotInfos(payload) as BaseSlot).focused = payload.focused;
         },
 
         changeCaretWithKeyboard(key: string, isLevelScopeChange?: boolean) {  
@@ -872,11 +854,7 @@ export const useStore = defineStore("app", {
             } 
 
             // Turn off previous caret 
-            Vue.set(
-                this.frameObjects[currId],
-                "caretVisibility",
-                CaretPosition.none
-            );
+            this.frameObjects[currId].caretVisibility = CaretPosition.none;
 
             const currentCaret: CurrentFrame = {id: currId, caretPosition: currPosition};
             const availablePositions = getAvailableNavigationPositions();
@@ -914,14 +892,10 @@ export const useStore = defineStore("app", {
             this.currentFrame.id = nextCaret.id;
             this.currentFrame.caretPosition = nextCaret.caretPosition;
 
-            Vue.set(
-                this.frameObjects[nextCaret.id],
-                "caretVisibility",
-                nextCaret.caretPosition
-            );
+            this.frameObjects[nextCaret.id].caretVisibility = nextCaret.caretPosition;
 
             // Scroll caret into view when navigating with keyboard:
-            Vue.nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
+            nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
 
             // Only frame containers (sections) are collapsable, so we don't need to check if a destination frame itself is collapsed,
             // but we do need to check if the target container is - and expand it if needed.
@@ -930,24 +904,16 @@ export const useStore = defineStore("app", {
         },
 
         setCurrentFrame(newCurrentFrame: CurrentFrame, scrollIntoView = true) {
-            Vue.set(
-                this.frameObjects[this.currentFrame.id],
-                "caretVisibility",
-                CaretPosition.none
-            );
+            this.frameObjects[this.currentFrame.id].caretVisibility = CaretPosition.none;
 
             this.currentFrame.id = newCurrentFrame.id;
             this.currentFrame.caretPosition = newCurrentFrame.caretPosition;
 
-            Vue.set(
-                this.frameObjects[newCurrentFrame.id],
-                "caretVisibility",
-                newCurrentFrame.caretPosition
-            );
+            this.frameObjects[newCurrentFrame.id].caretVisibility = newCurrentFrame.caretPosition;
 
             // By default, scroll the new caret into view:
             if (scrollIntoView) {
-                Vue.nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
+                nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
             }
         },
 
@@ -1248,7 +1214,7 @@ export const useStore = defineStore("app", {
         },
 
         setFrameErroneous(frameId: number, errMsg: string) {
-            Vue.set(this.frameObjects[frameId], "atParsingError", errMsg);
+            this.frameObjects[frameId].atParsingError = errMsg;
         },
 
         setSlotErroneous(frameSlotInfos: SlotInfos) {
@@ -1258,19 +1224,11 @@ export const useStore = defineStore("app", {
             // Sometimes we need to extend the error, if more than one different errors are on the same slot
             if(!existingErrorBits.includes(frameSlotInfos.error??"")){
                 const newError = (existingError === "" || frameSlotInfos.error === "") ? frameSlotInfos.error: (existingError +"\n" + frameSlotInfos.error);
-                // As error-related properties are optional, we need to use Vue.set(), since they may not exist on the object yet
-                Vue.set(
-                    slotObject,
-                    "error",
-                    newError
-                );
+                // As error-related properties are optional
+                slotObject.error = newError;
 
                 if(frameSlotInfos.errorTitle){
-                    Vue.set(
-                        slotObject,
-                        "errorTitle",
-                        frameSlotInfos.errorTitle
-                    );
+                    slotObject.errorTitle = frameSlotInfos.errorTitle;
                 }
             }           
         },
@@ -1292,10 +1250,10 @@ export const useStore = defineStore("app", {
             // the whole tree.  So we check if the two objects are (deep) equal before
             // we update, to avoid unnecessary updates and renders:
             if (!isEqual(this.anchorSlotCursorInfos, anchorCursorInfos)) {
-                Vue.set(this, "anchorSlotCursorInfos", anchorCursorInfos);
+                this.anchorSlotCursorInfos = anchorCursorInfos;
             }
             if (!isEqual(this.focusSlotCursorInfos, focusCursorInfos)) {
-                Vue.set(this, "focusSlotCursorInfos", focusCursorInfos);
+                this.focusSlotCursorInfos = focusCursorInfos;
             }
             if(!anchorCursorInfos || !focusCursorInfos){
                 // Force the selection on the page to be reset too
@@ -1349,21 +1307,13 @@ export const useStore = defineStore("app", {
                 nextAvailableId = Math.max.apply({},(Object.keys(this.copiedFrames).concat(Object.keys(this.copiedFrames))).map(Number)) + 1;
             });
 
-            Vue.set( 
-                this,
-                "copiedSelectionFrameIds",  
-                topLevelCopiedFrames
-            );
+            this.copiedSelectionFrameIds = topLevelCopiedFrames;
         },
 
         updateState(newState: Record<string, unknown>){
             //this method complete changes the state with a new state object
             Object.keys(this.$state).forEach((property) => {
-                Vue.set(
-                    this,
-                    property,
-                    newState[property]
-                );
+                (this as any)[property] = newState[property];
             } );
 
             // The frame cursor cannot be left inside a collapsed frame container (section),
@@ -1384,11 +1334,7 @@ export const useStore = defineStore("app", {
             
             //copied frames are cleared
             this.copiedFrameId = -100;
-            Vue.set(
-                this,
-                "copiedFrames",
-                {}
-            );
+            this.copiedFrames = {};
             this.copiedSelectionFrameIds.splice(0);
 
             //context menu indicator is cleared
@@ -1402,7 +1348,7 @@ export const useStore = defineStore("app", {
             // Should show editing mode
             this.isEditing = false;
             if(this.focusSlotCursorInfos){
-                const labelSlotStructs = Object.values(this.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
+                const labelSlotStructs = Object.values(this.frameObjects).flatMap((frameObject: FrameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
                 const focusedSlot= (retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false) as BaseSlot);
                 if(focusedSlot){
                     focusedSlot.focused = false;
@@ -1452,7 +1398,7 @@ export const useStore = defineStore("app", {
             stateCopy.lastCriticalActionPositioning.lastCriticalCaretPosition = {id: 0, caretPosition: CaretPosition.none};
             stateCopy.lastCriticalActionPositioning.lastCriticalSlotCursorInfos = mockAnchorFocusSlotCursorInfos;
             if(this.isEditing){
-                const labelSlotStructs = Object.values(stateCopy.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
+                const labelSlotStructs = Object.values(stateCopy.frameObjects).flatMap((frameObject: FrameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
                 const focusedSlotCopy = (retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false) as BaseSlot);
                 if(focusedSlotCopy){
                     focusedSlotCopy.focused = false;
@@ -1487,15 +1433,11 @@ export const useStore = defineStore("app", {
             // Clear the current blue caret, whichever the new value will be so we do not get 2 carets if the current and new values differ
             const oldCaretId = this.currentFrame.id;
             if(getAvailableNavigationPositions().map((e)=>e.frameId).includes(oldCaretId) && this.frameObjects[oldCaretId]){
-                Vue.set(
-                    this.frameObjects[oldCaretId],
-                    "caretVisibility",
-                    CaretPosition.none
-                );
+                this.frameObjects[oldCaretId].caretVisibility = CaretPosition.none;
             }
 
             // And remove any currently focused slot
-            const labelSlotStructs = Object.values(this.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
+            const labelSlotStructs = Object.values(this.frameObjects).flatMap((frameObject: FrameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
             const focusedSlot = retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false);
             if(focusedSlot){
                 focusedSlot.focused = false;
@@ -1532,11 +1474,7 @@ export const useStore = defineStore("app", {
                         lastPartIsArray = isArrayPart;
                         //if a part doesn't exist, we create it with an empty object value
                         if(statePartToChange[part] === undefined){
-                            Vue.set(
-                                statePartToChange,
-                                part,
-                                (isArrayPart) ? [] : {}
-                            );
+                            statePartToChange[part] = (isArrayPart) ? [] : {};
                         }
                         statePartToChange = statePartToChange[part];
                     });
@@ -1546,11 +1484,7 @@ export const useStore = defineStore("app", {
                     //   because deletion would offset the indexing during the loop, so we will clean the array later.
                     // - For objects, we check if the element is null: if so, it's fine to remove it directly
                     if(lastPartIsArray || !lastPartIsArray && changeEntry.value != null){
-                        Vue.set(
-                            statePartToChange,
-                            property,
-                            changeEntry.value
-                        );
+                        statePartToChange[property] = changeEntry.value;
 
                         //if we "delete" something in an array, flag this array for clearning
                         if(lastPartIsArray && changeEntry.value===null && arraysToClean.indexOf(statePartToChange) === -1){
@@ -1564,10 +1498,7 @@ export const useStore = defineStore("app", {
                             statePartToChange[property] = undefined;
                         }
                         else{
-                            Vue.delete(
-                                statePartToChange,
-                                property
-                            );   
+                            delete statePartToChange[property];
                         }              
                     }
                 });
@@ -1576,25 +1507,18 @@ export const useStore = defineStore("app", {
                 arraysToClean.forEach((arrayToClean) => {
                     for(let arrayIndex = arrayToClean.length; arrayIndex >=0; arrayIndex--){
                         if(arrayToClean[arrayIndex] === null){
-                            Vue.delete(
-                                arrayToClean,
-                                arrayIndex
-                            );
+                            delete arrayToClean[arrayIndex];
                         }
                     }
                 }); 
 
                 // We make sure the current selection of the document is in sync with what we have in the store
-                Vue.nextTick(() => {
+                nextTick(() => {
                     // Set the right current frame in any case
                     const newCaretId = this.lastCriticalActionPositioning.lastCriticalCaretPosition.id;
                     if(getAvailableNavigationPositions().map((e)=>e.frameId).includes(newCaretId) && this.frameObjects[newCaretId]){
-                        Vue.set(
-                            this.frameObjects[newCaretId],
-                            "caretVisibility",
-                            this.lastCriticalActionPositioning.lastCriticalCaretPosition.caretPosition
-                        );
-                        Vue.nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
+                        this.frameObjects[newCaretId].caretVisibility = this.lastCriticalActionPositioning.lastCriticalCaretPosition.caretPosition;
+                        nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
                     }
                     if(this.focusSlotCursorInfos && this.anchorSlotCursorInfos){
                         this.setSlotTextCursors(this.focusSlotCursorInfos, this.focusSlotCursorInfos);
@@ -1650,7 +1574,7 @@ export const useStore = defineStore("app", {
                 stateCopy.lastCriticalActionPositioning.lastCriticalCaretPosition = {id: 0, caretPosition: CaretPosition.none};
                 stateCopy.lastCriticalActionPositioning.lastCriticalSlotCursorInfos = mockAnchorFocusSlotCursorInfos;
                 if(this.isEditing){
-                    const labelSlotStructs = Object.values(stateCopy.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
+                    const labelSlotStructs = Object.values(stateCopy.frameObjects).flatMap((frameObject: FrameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
                     const focusedSlotCopy = (retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false) as BaseSlot);
                     if(focusedSlotCopy){
                         focusedSlotCopy.focused = false;
@@ -1678,11 +1602,7 @@ export const useStore = defineStore("app", {
             const allFrameIds = [payload.frameId];
             allFrameIds.push(...getAllChildrenAndJointFramesIds(payload.frameId));
             allFrameIds.forEach((frameId) => {
-                Vue.set(
-                    this.frameObjects[frameId],
-                    "isDisabled",
-                    payload.isDisabling
-                );
+                this.frameObjects[frameId].isDisabled = payload.isDisabling;
 
                 // If disabling [resp. enabling], we also need to remove [resp. add] potential errors of empty editable slots
                 // As disabling a frame could impact other places of the code, we actually just run for error checks on the code itself.
@@ -1717,28 +1637,16 @@ export const useStore = defineStore("app", {
         },
 
         flushCopiedFrames(){
-            Vue.set(
-                this,
-                "copiedFrames",
-                {}
-            );
+            this.copiedFrames = {};
 
             this.copiedFrameId = -100;
             
-            Vue.set(
-                this,
-                "copiedSelectionFrameIds",
-                []
-            );
+            this.copiedSelectionFrameIds = [];
         },
 
         setCollapseStatuses(statuses: Record<number, CollapsedState>) {
             Object.entries(statuses).forEach(([frameId, collapsed]) => 
-                Vue.set(
-                    this.frameObjects[Number(frameId)],
-                    "collapsedState",
-                    collapsed
-                ));
+                this.frameObjects[Number(frameId)].collapsedState = collapsed);
             // A change of collapse status triggers a modification notification
             this.isEditorContentModified = true;
         },
@@ -1750,11 +1658,7 @@ export const useStore = defineStore("app", {
         },
 
         setFrozenStatus(payload: {frameId: number; frozen: FrozenState}) {
-            Vue.set(
-                this.frameObjects[payload.frameId],
-                "frozenState",
-                payload.frozen
-            );
+            this.frameObjects[payload.frameId].frozenState = payload.frozen;
             // A change of freeze status triggers a modification notification
             this.isEditorContentModified = true;
         },
@@ -1848,7 +1752,7 @@ export const useStore = defineStore("app", {
         setFocusEditableSlot(payload: {frameSlotInfos: SlotCoreInfos; caretPosition: CaretPosition}){            
             // First thing to do is checking if another slot had focus, and remove it that's the case
             // (as the selection has already been changed via the browser, we cannot use it)            
-            const labelSlotStructs = Object.values(this.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
+            const labelSlotStructs = Object.values(this.frameObjects).flatMap((frameObject: FrameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
             const prevFocusedSlot = retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false);
             if(prevFocusedSlot){
                 (prevFocusedSlot as BaseSlot).focused = false;
@@ -1993,22 +1897,14 @@ export const useStore = defineStore("app", {
                 defaultChildFrame.parentId = newFrame.id;
                 defaultChildFrame.jointParentId = 0;
                 newFrame.childrenIds.push(defaultChildFrame.id);
-                Vue.set(
-                    this.frameObjects,
-                    defaultChildFrame.id,
-                    defaultChildFrame
-                );
+                this.frameObjects[defaultChildFrame.id] = defaultChildFrame;
             });
             newFrame.frameType.defaultJointTypes?.forEach((defaultJointFrame) => {
                 defaultJointFrame.id = (++nextAvailableId);
                 defaultJointFrame.jointParentId = newFrame.id;
                 defaultJointFrame.parentId = 0;
                 newFrame.jointFrameIds.push(defaultJointFrame.id);
-                Vue.set(
-                    this.frameObjects,
-                    defaultJointFrame.id,
-                    defaultJointFrame
-                );
+                this.frameObjects[defaultJointFrame.id] = defaultJointFrame;
             });
 
             // In the special case a hidden shorthand frame addition, we add the code content in the first slot of the frame (by design)
@@ -2025,11 +1921,7 @@ export const useStore = defineStore("app", {
 
             // Add the new frame to the list
             // "Vue.set" is used as Vue cannot catch the change by doing : state.frameObjects[fobj.id] = fobj
-            Vue.set(
-                this.frameObjects,
-                newFrame.id,
-                newFrame
-            );
+            this.frameObjects[newFrame.id] = newFrame;
         
             // As the new frame isn't yet added to the DOM, we need a list to store its navigational positions,
             // which will then be merged to the existing caret positions
@@ -2090,7 +1982,7 @@ export const useStore = defineStore("app", {
                         : {id: this.frameObjects[newFrame.parentId].childrenIds[index - 1], caretPosition: CaretPosition.below};       
                     this.setCurrentFrame(newPos);
                 }
-                await Vue.nextTick();
+                await nextTick();
                 availablePositions = getAvailableNavigationPositions();
                 this.isWrappingFrame = false;
             }
@@ -2430,11 +2322,7 @@ export const useStore = defineStore("app", {
             }
 
             // irrespective to where we are going to, we need to make sure to hide current caret
-            Vue.set(
-                this.frameObjects[this.currentFrame.id],
-                "caretVisibility",
-                CaretPosition.none
-            );
+            this.frameObjects[this.currentFrame.id].caretVisibility = CaretPosition.none;
 
             // If next position is an editable slot
             if(nextPosition.isSlotNavigationPosition){
@@ -2460,7 +2348,7 @@ export const useStore = defineStore("app", {
                 // (as the slot may have not yet be renderered in the UI, for example when adding a new frame, we do it later)
                 // If we are reaching a comment frame, coming from the blue caret underneath, we neeed to check if there is a terminating line return:
                 // if that's the case, we do not get just after it, but before it; see LabelSlot.vue onEnterOrTabKeyUp() for why.
-                Vue.nextTick(() => {
+                nextTick(() => {
                     let textCursorPos = (directionDelta == 1) ? 0 : (document.getElementById(getLabelSlotUID(nextSlotCoreInfos))?.textContent?.replace(/\u200B/, "")?.length)??0;
                     const isCommentFrame = this.frameObjects[nextSlotCoreInfos.frameId as number].frameType.type == AllFrameTypesIdentifier.comment;
                     if(isCommentFrame && (document.getElementById(getLabelSlotUID(nextSlotCoreInfos))?.textContent??"").endsWith("\n") && directionDelta == -1){
@@ -2483,14 +2371,10 @@ export const useStore = defineStore("app", {
             else{
                 // else we set editFlag to false as we are moving to a caret position
                 this.isEditing = false;
-                Vue.set(
-                    this.frameObjects[nextPosition.frameId],
-                    "caretVisibility",
-                    nextPosition.caretPosition
-                );
+                this.frameObjects[nextPosition.frameId].caretVisibility = nextPosition.caretPosition as CaretPosition;
 
                 // Scroll it into view:
-                Vue.nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
+                nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
 
                 this.setSlotTextCursors(undefined, undefined);
        
@@ -2574,10 +2458,10 @@ export const useStore = defineStore("app", {
                             if(!isVersionCorrect) {
                                 // If the version isn't correct, we ask confirmation to the user before continuing 
                                 // for ease of coding, we register a "one time" event listener on the modal
-                                const execSetStateFunction = (event: BvModalEvent, dlgId: string) => {
-                                    if((event.trigger == "ok" || event.trigger=="event") && dlgId == getImportDiffVersionModalDlgId()){
+                                const execSetStateFunction = (event: BvTriggerableEvent) => {
+                                    if((event.trigger == "ok" || event.trigger=="event") && event.componentId == getImportDiffVersionModalDlgId()){
                                         this.doSetStateFromJSONStr(newStateStr).then(() => {
-                                            vm.$root.$off("bv::modal::hide", execSetStateFunction); 
+                                            eventBus.off(CustomEventTypes.strypeModalHidden, execSetStateFunction); 
                                             resolve();          
                                         });                          
                                     }
@@ -2586,8 +2470,8 @@ export const useStore = defineStore("app", {
                                         reject(errorDetailMessage);
                                     }
                                 };
-                                vm.$root.$on("bv::modal::hide", execSetStateFunction); 
-                                vm.$root.$emit("bv::show::modal", getImportDiffVersionModalDlgId());
+                                eventBus.on(CustomEventTypes.strypeModalHidden, execSetStateFunction); 
+                                eventBus.emit(CustomEventTypes.showStrypeModal, getImportDiffVersionModalDlgId());
                             //
                             }
                             else{
@@ -2617,7 +2501,7 @@ export const useStore = defineStore("app", {
                         if(!newStateObj || typeof(newStateObj) !== "object" || Array.isArray(newStateObj)){
                             //no need to go further
                             isStateJSONStrValid=false;
-                            errorDetailMessage = i18n.t("errorMessage.dataNotObject") as string;
+                            errorDetailMessage = i18n.global.t("errorMessage.dataNotObject");
                             doFinaliseCheckup();
                         }
                         else{
@@ -2626,14 +2510,14 @@ export const useStore = defineStore("app", {
                                 .then((isIntegral) => {
                                     if(!isIntegral) {
                                         isStateJSONStrValid = false;
-                                        errorDetailMessage = i18n.t("errorMessage.stateDataIntegrity") as string;
+                                        errorDetailMessage = i18n.global.t("errorMessage.stateDataIntegrity");
                                     } 
                                     else {
                                         // Check 3) as 2) is validated
                                         isVersionCorrect = (newStateObj["version"] == AppVersion);
                                         if(Number.parseInt(newStateObj["version"]) > 1 && newStateObj["platform"] != AppPlatform) {
                                             isStateJSONStrValid = false;
-                                            errorDetailMessage = i18n.t("errorMessage.stateWrongPlatform") as string;
+                                            errorDetailMessage = i18n.global.t("errorMessage.stateWrongPlatform");
                                         }
                                         else{
                                             // Check 4) and 5) as 3) is validated
@@ -2646,7 +2530,7 @@ export const useStore = defineStore("app", {
                                             if(!restoreSavedStateFrameTypes(newStateObj)){
                                                 // There was something wrong with the type name (it should not happen, but better check anyway)
                                                 isStateJSONStrValid = false;
-                                                errorDetailMessage = i18n.t("errorMessage.stateWrongFrameTypeName") as string;
+                                                errorDetailMessage = i18n.global.t("errorMessage.stateWrongFrameTypeName");
                                             }
                                         }
                                         delete newStateObj["version"];
@@ -2656,10 +2540,10 @@ export const useStore = defineStore("app", {
                                 .finally(doFinaliseCheckup);                                   
                         }
                     }
-                    catch(err){
+                    catch {
                         // We cannot use the string arguemnt to retrieve a valid state --> inform the users
                         isStateJSONStrValid = false;
-                        errorDetailMessage = i18n.t("errorMessage.wrongDataFormat") as string;
+                        errorDetailMessage = i18n.global.t("errorMessage.wrongDataFormat");
                         doFinaliseCheckup();
                     }
                 }            
@@ -2676,16 +2560,16 @@ export const useStore = defineStore("app", {
                     // If this splitter was changed, the PEA needs to be resized once the splitter has updated
                     setTimeout(() => {
                         if (this.editorCommandsSplitterPane2Size != undefined && this.editorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed] != undefined) {
-                            (vm.$children[0] as InstanceType<typeof AppComponent>).onStrypeCommandsSplitPaneResize({1: {size: this.editorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed]}}, newPEALayout);
+                            vueComponentsAPIHandler.appComponentAPI?.onStrypeCommandsSplitPaneResize({panes: [{}, {size: this.editorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed]}]}, newPEALayout);
                         }
                     }, chainedTimeOuts);
                 }
                 if (this.peaLayoutMode != newPEALayout) {
                     setTimeout(() => {
                         this.peaLayoutMode = newPEALayout;
-                        /* IFTRUE_isPython */
-                        ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).$refs[getPEAComponentRefId()] as InstanceType<typeof PEAComponent>).togglePEALayout(newPEALayout);
-                        /* FITRUE_isPython */
+                        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                        vueComponentsAPIHandler.peaComponentAPI?.togglePEALayout(newPEALayout);
+                        // #v-endif
                     }, chainedTimeOuts += 200);
                 }
 
@@ -2695,7 +2579,7 @@ export const useStore = defineStore("app", {
                     if (forceSetUndefined || (newPEACommandsSplitterPane2Size && newPEACommandsSplitterPane2Size[newPEALayout] != undefined)) {
                         setTimeout(() => {
                             if (this.peaCommandsSplitterPane2Size && this.peaCommandsSplitterPane2Size[newPEALayout] != undefined) {
-                                (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).onCommandsSplitterResize({1: {size: this.peaCommandsSplitterPane2Size[newPEALayout]}});
+                                vueComponentsAPIHandler.commandsComponentAPI?.onCommandsSplitterResize({panes: [{}, {size: this.peaCommandsSplitterPane2Size[newPEALayout]}]});
                             }
                         }, (chainedTimeOuts += 200));
                     }
@@ -2712,7 +2596,7 @@ export const useStore = defineStore("app", {
                     if (forceSetUndefined || (newPEAExpandedSplitterPane2Size != undefined && newPEAExpandedSplitterPane2Size[newPEALayout] != undefined)) {
                         setTimeout(() => {
                             if (this.peaExpandedSplitterPane2Size != undefined && this.peaExpandedSplitterPane2Size[newPEALayout] != undefined) {
-                                (vm.$children[0] as InstanceType<typeof AppComponent>).onExpandedPythonExecAreaSplitPaneResize({1: {size: this.peaExpandedSplitterPane2Size[newPEALayout]}});
+                                vueComponentsAPIHandler.appComponentAPI?.onExpandedPythonExecAreaSplitPaneResize({panes: [{}, {size: this.peaExpandedSplitterPane2Size[newPEALayout]}]});
                             }
                         }, (chainedTimeOuts += 200));
                     }
@@ -2727,12 +2611,12 @@ export const useStore = defineStore("app", {
         
         doSetStateFromJSONStr(stateJSONStr: string): Promise<void>{
             return new Promise((resolve) => {
-                /* IFTRUE_isPython */
+                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
                 // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
                 actOnTurtleImport();
 
                 // Clear the Python Execution Area as it could have be run before.
-                ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getPEAComponentRefId()] as InstanceType<typeof PEAComponent>).clear(); 
+                vueComponentsAPIHandler.peaComponentAPI?.clear(); 
                 
                 // With the PEA, the styling of the overall UI layout is quite complex as some things depend on the "natural"
                 // default state of the layout, and we handle some styling manually. To make things clearer, we always reset 
@@ -2752,18 +2636,16 @@ export const useStore = defineStore("app", {
                 delete newState.peaExpandedSplitterPane2Size;
                 const newPEASplitViewSplitterPane1Size = newState.peaSplitViewSplitterPane1Size;
                 delete newState.peaSplitViewSplitterPane1Size;  
-                const commandsComponent = (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>);
 
-                commandsComponent.resetPEACommmandsSplitterDefaultState().then(() => {
+                vueComponentsAPIHandler.commandsComponentAPI?.resetPEACommmandsSplitterDefaultState().then(() => {
                     this.updateState(JSON.parse(JSON.stringify(newState)));
                     // Wait a bit after we have reset everything for the UI to get ready, then affect backed up changes
                     this.setDividerStates(newEditorCommandsSplitterPane2Size, newPEALayout ?? StrypePEALayoutMode.tabsCollapsed, newPEACommandsSplitterPane2Size, newPEASplitViewSplitterPane1Size, newPEAExpandedSplitterPane2Size, resolve, true);
                 });
-                /* FITRUE_isPython */
-                /* IFTRUE_isMicrobit */
+                // #v-else
                 this.updateState(JSON.parse(stateJSONStr));
                 resolve();
-                /* FITRUE_isMicrobit */
+                // #v-endif
             });
         },
 
@@ -2788,11 +2670,7 @@ export const useStore = defineStore("app", {
 
             // Add the copied objects to the FrameObjects
             Object.keys(copiedFrames).map(Number).forEach((id: number)=> {
-                Vue.set(
-                    this.frameObjects,
-                    id,
-                    copiedFrames[id]
-                );
+                this.frameObjects[id] = copiedFrames[id];
             });
             
             const topFrame = copiedFrames[Object.keys(copiedFrames).map(Number)[0]];
@@ -2886,11 +2764,7 @@ export const useStore = defineStore("app", {
             
             // Add the copied objects to the FrameObjects
             Object.keys(copiedFrames).map(Number).forEach((id: number)=> {
-                Vue.set(
-                    this.frameObjects,
-                    id,
-                    copiedFrames[id]
-                );
+                this.frameObjects[id] = copiedFrames[id];
             });
             this.updateNextAvailableId();            
 
@@ -3188,6 +3062,9 @@ export const settingsStore = defineStore("settings", {
             // on the project's locale.
             // The default state is undefined so we can detect real undefined locale to the default English...
             locale: undefined as undefined | string,
+            // Handler for saving the settings in LocalStorage (from Vue 3, we cannot directly access the App instance via vm.$children)
+            // so we use a callback function App MUST supply instead
+            saveSettingInLocalStorageHandler: null as null | ((r: SaveRequestReason) => void),
         };
     },
 
@@ -3197,7 +3074,7 @@ export const settingsStore = defineStore("settings", {
             this.locale = lang;
 
             // Then change the UI via i18n
-            i18n.locale = lang;
+            i18n.global.locale.value = lang;
 
             // And also change TigerPython locale -- if Strype locale is not available in TigerPython, we use English instead
             const tpLangs = TPyParser.getLanguages();
@@ -3209,13 +3086,15 @@ export const settingsStore = defineStore("settings", {
             // Change the frame command labels / details 
             generateAllFrameCommandsDefs();
 
-            /* IFTRUE_isMicrobit */
+            // #v-ifdef MODE == VITE_MICROBIT_MODE
             //change the API description content here, as we don't want to construct the textual API description every time we need it
             getAPIItemTextualDescriptions(true);
-            /* FITRUE_isMicrobit */
+            // #v-endif
 
             // Save the settings
-            (vm.$children[0] as InstanceType<typeof AppComponent>).autoSaveStateToWebLocalStorage(SaveRequestReason.saveSettings);
+            if(this.saveSettingInLocalStorageHandler){
+                this.saveSettingInLocalStorageHandler(SaveRequestReason.saveSettings);
+            }
         },
     },
 });

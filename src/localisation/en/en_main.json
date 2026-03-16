@@ -52,11 +52,13 @@
     "no": "No",
     "ok": "OK",
     "cancel": "Cancel",
+    "save": "Save",
     "saveDiffLocation": "Save elsewhere",
     "overwriteProject": "Replace",
     "saveProjectCopy": "Choose new name",
     "spaceBar": "space",
-    "yesSign" : "Connect",
+    "saveToCloudDrive" : "Save to {drivename}",
+    "loadFromCloudDrive" : "Load from {drivename}",
     "noContinueWithout":"Do not connect",
     "saveChanges": "Save changes",
     "discardChanges": "Discard changes",
@@ -64,7 +66,8 @@
     "continue" :"Continue",
     "cancelLoadSharedProject":"Cancel (load backup)",
     "select": "Select",
-    "refresh": "refresh"
+    "refresh": "refresh",
+    "choose": "Choose"
   },
   "errorMessage": {
     "wrongDataFormat": "the data format cannot be read",
@@ -122,7 +125,7 @@
     "editorFileUpload": "Uploading your file to the editor...",
     "editorAskSaveChangedCode": "Your project contains unsaved changes.\nSave before closing?",
     "editorFileUploadWrongVersion": "This code has been produced with a different version of the editor.\nImporting may result in errors.\n\nDo you still want to continue?",
-    "newProjectConfirmation":"Your project will be reset: <b>any changes will be lost</b>.<br/>Load a new project anyway?",
+    "newProjectConfirmation":"Unsaved changes will be lost.",
     "importsContainer": "Imports:",
     "defsContainer": "Definitions:",
     "mainContainer": "My code:",
@@ -165,7 +168,7 @@
     "gdriveAllPythonFiles": "All Python files",
     "gdriveTab": "My Drive",
     "editorErrors": "Errors",
-    "resyncToCloudDriveAtStartup": "<b>Reconnect and <u>save</u> to {drivename}?</b>\n\nLast time you were editing, you were saving to {drivename}.\nIf you want to instead <u>load</u> changes from {drivename}, click 'Do not connect' and use 'Open' from the menu.",
+    "resyncToCloudDriveAtStartup": "<b>Reconnect to {drivename}?</b>\n\nLast time you were editing, you were saving to {drivename}.\nDo you want to load the remote version from {drivename} or save this local version to {drivename}?",
     "LSOnShareProjectLoad":"An existing project backup has been detected.<br>Loading the shared project will erase this backup.",
     "methodSnapshotLink": "Snapshot link",
     "methodSnapshotLinkExplanation": "The current code (via a long link)",
@@ -272,7 +275,7 @@
     "cursorHeightMac": "Height (⇧ ⌘ C to copy):"
   },
   "demos": {
-    "dialogTitle": "Choose an example to load",
+    "dialogTitle": "Example programs",
     "addLibrary": "Add library:",
     "libraryAddrPlaceholder": "Library address",
     "add": "Add",

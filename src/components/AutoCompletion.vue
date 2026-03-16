@@ -29,7 +29,7 @@
                             :indent-wrapped="true"
                             :key="UID+'_'+item.index"
                             :selected="item.index==selected"
-                            v-on="$listeners"
+                            @[CustomEventTypes.acItemClicked]="$emit(CustomEventTypes.acItemClicked, $event)"
                             @[CustomEventTypes.acItemHovered]="handleACItemHover"
                             :isSelectable="true"
                             ref="results"
@@ -73,7 +73,7 @@
 
 <script lang="ts">
 //////////////////////
-import Vue from "vue";
+import { defineComponent } from "vue";
 import { useStore } from "@/store/store";
 import PopUpItem from "@/components/PopUpItem.vue";
 import {IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWithCategory, BaseSlot, AllFrameTypesIdentifier, AcMicrobitResultType} from "@/types/types";
@@ -86,22 +86,47 @@ import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
 import {Completion, Signature, SignatureArg, TPyParser} from "tigerpython-parser";
 import scssVars from "@/assets/style/_export.module.scss";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
-/* IFTRUE_isMicrobit */
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+// #v-ifdef MODE == VITE_MICROBIT_MODE
 import microbitDescriptions from "@/autocompletion/microbit.json";
 import microbitAPI from "@/autocompletion/microbit-api.json";
-/* FITRUE_isMicrobit */
+// #v-endif
 
 //////////////////////
-export default Vue.extend({
+export default defineComponent({
     name: "AutoCompletion",
 
     components: {
         PopUpItem,
     },
 
+    created() {
+        // Expose this component that other components might need.
+        // Vue 3 has deprecated direct access to components.
+        // (we don't set it in setup() because we want to have this accessible, and the component created!)
+        const apiMethods = {
+            updateACForModuleImport: this.updateACForModuleImport,
+            updateACForImportFrom: this.updateACForImportFrom,
+            updateAC: this.updateAC,
+        };
+        
+        if(vueComponentsAPIHandler.autoCompletionComponentAPI == null){    
+            vueComponentsAPIHandler.autoCompletionComponentAPI = {
+                forInstance: {
+                    [this.AC_UID]: apiMethods,
+                },
+            };
+        }
+        else{
+            vueComponentsAPIHandler.autoCompletionComponentAPI.forInstance[this.AC_UID] = apiMethods;
+        }
+    },
+
     props: {
+        // The component ID for this component (to be able to retrieve the correct component instance via the Vue Component API)
+        AC_UID: {type: String, required: true},
         list: [String],
-        slotId: String,
+        slotId: {type: String, required: true},
     },
 
     data: function() {
@@ -145,7 +170,7 @@ export default Vue.extend({
             }; 
         },
 
-        /* IFTRUE_isMicrobit */
+        // #v-ifdef MODE == VITE_MICROBIT_MODE
         allMicrobitAnnotatedVariables(): AcMicrobitResultType[] {
             // We retrieve the micro:bit annoted variables only once, as this won't change.
             // See updateAC() why.
@@ -159,7 +184,7 @@ export default Vue.extend({
             });
             return res;
         },
-        /* FITRUE_isMicrobit */
+        // #v-endif
     },
 
     methods: {
@@ -200,16 +225,16 @@ export default Vue.extend({
             const isInsideFuncCallFrameForMyCodeSection = this.appStore.frameObjects[(parseLabelSlotUID(this.slotId).frameId)].frameType.type === AllFrameTypesIdentifier.funccall && findCurrentStrypeLocation().strypeLocation == STRYPE_LOCATION.MAIN_CODE_SECTION;
             const getOrder = (cat : string) => {
                 // First is my variables, my functions and my classes (in that order, except when we are inside a function call frame AND in "my code", my variables comes last).
-                if (cat === this.$i18n.t("autoCompletion.myVariables")) {
+                if (cat === this.$t("autoCompletion.myVariables")) {
                     return (isInsideFuncCallFrameForMyCodeSection) ? 2 : 0;
                 }
-                else if (cat === this.$i18n.t("autoCompletion.myFunctions")) {
+                else if (cat === this.$t("autoCompletion.myFunctions")) {
                     return (isInsideFuncCallFrameForMyCodeSection) ? 0 : 1;
                 }
-                else if (cat === this.$i18n.t("autoCompletion.myClasses")) {
+                else if (cat === this.$t("autoCompletion.myClasses")) {
                     return (isInsideFuncCallFrameForMyCodeSection) ? 1 : 2;
                 }
-                else if (cat === this.$i18n.t("autoCompletion.importedModules")) {
+                else if (cat === this.$t("autoCompletion.importedModules")) {
                     return 3;
                 }
                 // Python in-built is after any custom imports:
@@ -305,8 +330,11 @@ export default Vue.extend({
                 // end (and for microbit, we add a dummy "from builtins import *" to allow builtins a/c): 
                 // For the specific case of a call after "self." within a function defintion of 
                 // a user defined class, we pass the full class code (see above) to TigerPython
-                // and add an extra line after that class that call as "<class name>()." to replace self.
-                const preamble = "" /* IFTRUE_isMicrobit + "from builtins import *\n" FITRUE_isMicrobit */;
+                // and add an extra line after that class that call as "<class name>()." to replace self.   
+                let preamble = "";
+                // #v-ifdef MODE == VITE_MICROBIT_MODE
+                preamble = "from builtins import *\n";
+                // #v-endif
                 const extraLineContent = (isGettingWholeClassContext) 
                     ? `${(this.appStore.frameObjects[currentStrypeLocationForClassInfos.locationFrameId].labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code}().` 
                     : parser.getStoppedIndentation() + context + ".";
@@ -315,7 +343,7 @@ export default Vue.extend({
                 if (tppCompletions == null) {
                     tppCompletions = [];                    
                 }
-                /* IFTRUE_isMicrobit */
+                // #v-ifdef MODE == VITE_MICROBIT_MODE
                 // TODO 
                 // TPP, at least now, doesn't interpret module annotated-only variable in PYI properly,
                 // like for "button_a: Button" for the microbit init file :
@@ -326,7 +354,6 @@ export default Vue.extend({
                 try{
                     const tppCompletions2 = TPyParser.autoComplete(totalCode, totalCode.length, false);
                     if(tppCompletions.filter((s) => !s.acResult.startsWith("_")).length != tppCompletions2.length){
-                        // eslint-disable-next-line
                         console.warn("There is a mismatch between autoCompleteEx and autoComplete");
                         throw new Error();
                     }
@@ -369,16 +396,22 @@ export default Vue.extend({
                         tppCompletions = [];
                     }                       
                 }                
-                /* FITRUE_isMicrobit */
+                // #v-endif
                 
 
-                let version0 = 0;                
+                let version0 = 0;
+                let mbVersionExtra = 0;
+                // #v-ifdef MODE == VITE_MICROBIT_MODE
+                //for micro:bit we can get the version from the version reference JSON
+                mbVersionExtra = this.getMicrobitVersionFor(context + "." + token);
+                // #v-endif
+
                 const items =  tppCompletions.filter((s) => !s.acResult.startsWith("_") || token.startsWith("_")).map((s) => ({
                     acResult: s.acResult,
                     documentation: s.documentation,
                     params: s.params == null ? [] : s.params.map((p) => ({name: p})),
                     type: ["function", "module", "variable", "type"].includes(s.type ?? "") ? [s.type] : [],
-                    version: version0 /* IFTRUE_isMicrobit + this.getMicrobitVersionFor(context + "." + token) FITRUE_isMicrobit */, //for micro:bit we can get the version from the version reference JSON
+                    version: version0 + mbVersionExtra,
                 } as AcResultType));
                 this.acResults = {[context]: items};
                 this.showSuggestionsAC(token);
@@ -390,7 +423,7 @@ export default Vue.extend({
                 this.acResults["Python"] = getBuiltins().filter((ac) => !ac.acResult.startsWith("_") || token.startsWith("_"));
               
                 // Add user-defined functions except class functions (even if the user is inside the class):
-                this.acResults[this.$i18n.t("autoCompletion.myFunctions") as string] = await Promise.all(getAllEnabledUserDefinedFunctions().map(async (f) => ({
+                this.acResults[this.$t("autoCompletion.myFunctions")] = await Promise.all(getAllEnabledUserDefinedFunctions().map(async (f) => ({
                     acResult: (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code,
                     // If the function's documentation slot isn't empty, we used it as documentation
                     documentation: (f.labelSlotsDict[3].slotStructures.fields[0] as BaseSlot)?.code.trim()??"",
@@ -400,7 +433,7 @@ export default Vue.extend({
                 })));
 
                 // Add user-defined classes:
-                this.acResults[this.$i18n.t("autoCompletion.myClasses") as string] = await Promise.all(getAllEnabledUserDefinedClasses().map(async (f) => ({
+                this.acResults[this.$t("autoCompletion.myClasses")] = await Promise.all(getAllEnabledUserDefinedClasses().map(async (f) => ({
                     acResult: (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code,
                     // If the class's documentation slot isn't empty, we used it as documentation
                     documentation: (f.labelSlotsDict[2].slotStructures.fields[0] as BaseSlot)?.code.trim()??"",
@@ -410,7 +443,7 @@ export default Vue.extend({
                 })));
                 
                 // Add user-defined variables:
-                this.acResults[this.$i18n.t("autoCompletion.myVariables") as string] = Array.from(getAllUserDefinedVariablesUpTo(frameId)).map((f) => ({
+                this.acResults[this.$t("autoCompletion.myVariables")] = Array.from(getAllUserDefinedVariablesUpTo(frameId)).map((f) => ({
                     acResult: f,
                     documentation: "",
                     type: ["variable"],
@@ -567,7 +600,6 @@ export default Vue.extend({
             const curAC = this.resultsToShow[this.currentModule].find((e) => e.index === this.selected) as AcResultType;
             if (curAC) {
                 let doc = curAC.documentation;
-                // eslint-disable-next-line no-inner-declarations
                 function argText(arg: SignatureArg) : string {
                     if (arg.defaultValue != null) {
                         return _.escape(arg.name) + " = " + _.escape(arg.defaultValue);
@@ -576,7 +608,6 @@ export default Vue.extend({
                         return _.escape(arg.name);
                     }
                 }
-                // eslint-disable-next-line no-inner-declarations
                 function paramsText(sig: Signature) : string{
                     const posOnly = sig.positionalOnlyArgs.slice(sig.firstParamIsSelfOrCls ? 1 : 0);
                     return [
@@ -590,7 +621,7 @@ export default Vue.extend({
                 }
                 // &#8203; is a zero-width space that allows line breaking, for things like Actor(image_or_filename where you'd like to break after the bracket but without showing a space
                 return `<span class='ac-doc-header'>${_.escape(curAC.acResult) + (curAC.type.includes("function") ? "(&#8203;" + (curAC.signature ? paramsText(curAC.signature) : (curAC.params ?? []).filter((p) => !p.hide).map((p) => p.name + (p.defaultValue !== undefined ? " = " + p.defaultValue : "")).join(", ")) + ")" : "")}</span>`
-                    + (doc?.trimStart() || (this.$i18n.t("autoCompletion.noDocumentation") as string));
+                    + (doc?.trimStart() || this.$t("autoCompletion.noDocumentation"));
             }
             else {
                 return "";
@@ -601,7 +632,7 @@ export default Vue.extend({
             return Object.values(this.resultsToShow)?.length > 0;
         },  
 
-        /* IFTRUE_isMicrobit */
+        // #v-ifdef MODE == VITE_MICROBIT_MODE
         getMicrobitVersionFor(elementPath: string): number {
             // Get through the version definitions to find the version.
             // The version is listed for things v2+.
@@ -624,7 +655,7 @@ export default Vue.extend({
             }
             return resVersion;
         },        
-        /* FITRUE_isMicrobit */
+        // #v-endif
     }, 
 
 });

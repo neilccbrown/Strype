@@ -24,7 +24,9 @@
       "chai",
       "cypress",
       "@testing-library/cypress",
-      "node"
+      "node",
+      "vite/client",
+      "vue",
     ],
     "paths": {
       "@/*": [

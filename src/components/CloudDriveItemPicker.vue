@@ -1,7 +1,7 @@
 <template>
     <div>
         <div class="strype-cloud-drive-item-picker-refresh-btn" tabindex="-1" @click="refreshContent"><i class="fas fa-sync-alt"></i><span>{{$t("buttonLabel.refresh")}}</span></div>
-        <CTree ref="ctree" @select="onSelectItemInternally" @click="onSelectItemByClick" @dblclick="onSelectItemByClick" :emptyText="emptyText" class="strype-ctree" titleField="name" />
+        <VTree ref="vtree" @select="onSelectItemInternally" @click="onSelectItemByClick" @node-dblclick="onSelectItemByClick" :emptyText="emptyText" class="strype-vtree" titleField="name" />
     </div>
 </template>
 
@@ -21,18 +21,18 @@
  * content has changed in the meantime, it won't be seen.
  */
 import { CustomEventTypes } from "@/helpers/editor";
-import { CloudDriveItemPickerFolderPathResolutionMode, CloudDriveItemPickerItem, CloudDriveItemPickerMode, CTreeItemPickerItem } from "@/types/cloud-drive-types";
-import Vue, { PropType } from "vue";
-import CTree from "@wsfe/ctree";
-import { TreeNode } from "@wsfe/ctree/types/src/store";
-import AppComponent from "@/App.vue";
+import { CloudDriveItemPickerFolderPathResolutionMode, CloudDriveItemPickerItem, CloudDriveItemPickerMode, VTreeItemPickerItem } from "@/types/cloud-drive-types";
+import { defineComponent, PropType } from "vue";
+import VTree from "@wsfe/vue-tree";
+import type { TreeNode } from "@wsfe/vue-tree/types/store";
 import { AppEvent } from "@/types/types";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 
-export default Vue.extend({
+export default defineComponent({
     name: "CloudDriveItemPicker",
 
     components: {
-        CTree,
+        VTree,
     },
 
     props: {
@@ -85,7 +85,7 @@ export default Vue.extend({
 
     data: function () {
         return {
-            pickedItem: null as CTreeItemPickerItem | null, // the item picked (changes when anything else is selected)
+            pickedItem: null as VTreeItemPickerItem | null, // the item picked (changes when anything else is selected)
             isWaitingForChildrenLookup: false, // a flag we used when waiting for getting a folder content (used for a progress indicator)
         };
     },
@@ -93,21 +93,21 @@ export default Vue.extend({
     watch:{
         rawRootData: {
             handler(newData: CloudDriveItemPickerItem[]) {
-                // We transform the new data array to a tree understood by CTree, and set it to the latter.
+                // We transform the new data array to a tree understood by VTree, and set it to the latter.
                 // (For large data, they recommand using setData() rather than a prop.)
-                const cTreeRootData = this.prepareItemsToShowInTree(newData);
+                const vTreeRootData = this.prepareItemsToShowInTree(newData);
                 this.$nextTick(() => {
                     // We need to wait for the tree to be available.
-                    const cTreeComponent = (this.$refs.ctree as InstanceType<typeof CTree>);
-                    if(cTreeComponent){
-                        cTreeComponent.setData(cTreeRootData);
+                    const vTreeComponent = (this.$refs.vtree as InstanceType<typeof VTree>);
+                    if(vTreeComponent){
+                        vTreeComponent.setData(vTreeRootData);
                         // Select the initial folder to select if provided
                         if(this.initialFolderToSelectPathParts.length > 0){
                             this.selectInitialFolderLocation();
                         }
-                        else if(cTreeRootData.length > 0){
+                        else if(vTreeRootData.length > 0){
                             // Select the first node (if any) otherwise
-                            cTreeComponent.setSelected(cTreeRootData[0].id, true);
+                            vTreeComponent.setSelected(vTreeRootData[0].id, true);
                         }
                     }
                 }); 
@@ -119,8 +119,8 @@ export default Vue.extend({
         isWaitingForChildrenLookup(newValue: boolean) {
             // Trigger or stop the app progress bar.
             const emitPayload: AppEvent = {requestAttention: newValue};
-            emitPayload.message = this.$i18n.t("appMessage.cloudDriveItemPickerLoadingFolderContent").toString();
-            (this.$root.$children[0] as InstanceType<typeof AppComponent>).applyShowAppProgress(emitPayload);
+            emitPayload.message = this.$t("appMessage.cloudDriveItemPickerLoadingFolderContent").toString();
+            vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress(emitPayload);
             // And block or release the overlay
             document.dispatchEvent(new CustomEvent(CustomEventTypes.requestAppNotOnTop, {detail: newValue}));
         },        
@@ -134,7 +134,7 @@ export default Vue.extend({
         document.addEventListener(CustomEventTypes.exposedCloudDriveItemChidren, this.gotChildrenForFolder);       
     },
 
-    destroyed() {
+    unmounted() {
         // Remove all listeners
         document.removeEventListener(CustomEventTypes.requestedCloudDrivePickerPickedItem, this.exposePickedItem);
         document.removeEventListener(CustomEventTypes.exposedCloudDriveItemChidren, this.gotChildrenForFolder);  
@@ -146,10 +146,10 @@ export default Vue.extend({
             return `${(isFolderItem) ? this.folderSymbol : this.fileSymbol} ${name}`;
         },
 
-        prepareItemsToShowInTree(cloudDriveItems: CloudDriveItemPickerItem[]): CTreeItemPickerItem[]{
+        prepareItemsToShowInTree(cloudDriveItems: CloudDriveItemPickerItem[]): VTreeItemPickerItem[]{
             // First transform to the data type for the tree
-            const cTreeData = cloudDriveItems
-                .map((cloudDriveItem) => ({...cloudDriveItem, name: this.getItemNameWithIcon(cloudDriveItem.name, cloudDriveItem.isFolder), children: []}) as CTreeItemPickerItem);
+            const vTreeData = cloudDriveItems
+                .map((cloudDriveItem) => ({...cloudDriveItem, name: this.getItemNameWithIcon(cloudDriveItem.name, cloudDriveItem.isFolder), children: []}) as VTreeItemPickerItem);
             
             // Then filter out the items that don't align with the mode/filter criteria
             const filterByFolder = (this.mode == CloudDriveItemPickerMode.FOLDERS);
@@ -163,7 +163,7 @@ export default Vue.extend({
                 });
             }
             const filterByFileRegex = new RegExp(`.*(${filterByFileRegexExtensionsParttern})$`); 
-            return cTreeData.filter((rootItem) => {
+            return vTreeData.filter((rootItem) => {
                 return ((filterByFolder && rootItem.isFolder) || (!filterByFolder && filterByFileRegex.test(rootItem.name)));
             });
         },
@@ -173,13 +173,13 @@ export default Vue.extend({
             this.$emit(CustomEventTypes.exposedCloudDrivePickerPickedItem, (this.pickedItem) ? {...this.pickedItem, name: this.pickedItem.name.substring(2)} : this.pickedItem);            
         },
 
-        onSelectItemInternally(pickerItem: CTreeItemPickerItem){
+        onSelectItemInternally(pickerItem: VTreeItemPickerItem){
             this.pickedItem = {...pickerItem, isFolder: pickerItem.name.startsWith(this.folderSymbol)};
         },
 
-        onSelectItemByClick(pickerItem: CTreeItemPickerItem){
+        onSelectItemByClick(pickerItem: VTreeItemPickerItem){
             this.onSelectItemInternally(pickerItem);
-            (this.$refs.ctree as InstanceType<typeof CTree>).setSelected(pickerItem.id, true);
+            (this.$refs.vtree as InstanceType<typeof VTree>).setSelected(pickerItem.id, true);
 
             // A click/double click event on a folder will collapse/expand it:
             // the first time the event occurs, we need to know if that folder contains children as they would not have been provided.
@@ -199,15 +199,15 @@ export default Vue.extend({
             // When done, it calls another internal event sending a boolean value for whichever other need (for example by selectInitialFolderLocation()).
             if(this.pickedItem){
                 const pickedItemId = this.pickedItem.id;
-                const treeComponent = (this.$refs.ctree as InstanceType<typeof CTree>);
+                const treeComponent = (this.$refs.vtree as InstanceType<typeof VTree>);
                 // We got the children of a folder: we can now consider our current folder has been visited
-                treeComponent.$set(treeComponent.getNode(pickedItemId) as TreeNode, "hasVisitedFolder", true);                
+                (treeComponent.getNode(pickedItemId) as TreeNode).hasVisitedFolder = true;                
 
                 // Then we append the children to the folder
                 const childrenForTree = this.prepareItemsToShowInTree((event as CustomEvent<CloudDriveItemPickerItem[]>).detail);
                 childrenForTree.forEach((child) => treeComponent.append(child, pickedItemId));
                
-                // And we expand that folder since it would have not been opened by CTree as it was empty by then...
+                // And we expand that folder since it would have not been opened by VTree as it was empty by then...
                 this.$nextTick(() => {                  
                     treeComponent.setExpand(pickedItemId, true);
                     
@@ -229,27 +229,27 @@ export default Vue.extend({
             // The path may contain either the ids or the names of the folder making this path, this depends on the property pathResolutionMode.
             // Because the tree is constructed by starting with the root content and getting the children on demand, we will need to programmatically
             // request the inner folders of the path -- if at some point a folder isn't found we just do nothing.
-            const cTreeComponent = this.$refs.ctree as InstanceType<typeof CTree>;
-            if(cTreeComponent){
-                let cTreeRootFlatData = (this.pathResolutionMode == CloudDriveItemPickerFolderPathResolutionMode.BY_NAME) ? cTreeComponent.getFlatData() : null;
+            const vTreeComponent = this.$refs.vtree as InstanceType<typeof VTree>;
+            if(vTreeComponent){
+                let vTreeRootFlatData = (this.pathResolutionMode == CloudDriveItemPickerFolderPathResolutionMode.BY_NAME) ? vTreeComponent.getFlatData() : null;
                 
-                let currentNodeAtLevel = null as CTreeItemPickerItem | null;
-                let parentNode = null as CTreeItemPickerItem | null;
+                let currentNodeAtLevel = null as VTreeItemPickerItem | null;
+                let parentNode = null as VTreeItemPickerItem | null;
                 const cleanup = () => {
                     // If we didn't find a part of the path, no need to continue, but we select the first element of the tree (if any) to show a clean state
-                    const treeData = cTreeComponent.getTreeData();
+                    const treeData = vTreeComponent.getTreeData();
                     if(treeData.length > 0){
-                        cTreeComponent.setSelected(treeData[0].id, true); 
+                        vTreeComponent.setSelected(treeData[0].id, true); 
                     }
                 };
 
                 for(const [index, pathPart] of this.initialFolderToSelectPathParts.entries()){
                     const parentNodeId = parentNode?.id ?? ""; // keep TS happy
                     // If we are not in the root level or the current level folder hasn't been visited (i.e. its children retrieved) we need to first
-                    if(index > 0 && !(cTreeComponent.getNode(parentNode?.id??"") as CTreeItemPickerItem|null)?.hasVisitedFolder){
+                    if(index > 0 && !(vTreeComponent.getNode(parentNode?.id??"") as VTreeItemPickerItem|null)?.hasVisitedFolder){
                         let gotChildren = false;
                         await new Promise<void>((resolve) => {
-                            this.$el.addEventListener(this.internalChildrenRetrievedNotificationEvent, (event) => {
+                            this.$el.addEventListener(this.internalChildrenRetrievedNotificationEvent, (event: any) => {
                                 gotChildren = (event as CustomEvent<boolean>).detail;
                                 resolve();
                             }, {once: true});
@@ -263,13 +263,13 @@ export default Vue.extend({
                     }
                     // get the children before looking for it
                     if(this.pathResolutionMode == CloudDriveItemPickerFolderPathResolutionMode.BY_ID){
-                        currentNodeAtLevel = cTreeComponent.getNode(pathPart) as CTreeItemPickerItem | null;
+                        currentNodeAtLevel = vTreeComponent.getNode(pathPart) as VTreeItemPickerItem | null;
                     }
                     else{
                         // We need to look up the folder by name.                        
-                        currentNodeAtLevel = (((index > 0) ? (parentNode as CTreeItemPickerItem).children : (cTreeRootFlatData as CTreeItemPickerItem[] | null))?.find((node) => {
+                        currentNodeAtLevel = (((index > 0) ? (parentNode as VTreeItemPickerItem).children : (vTreeRootFlatData as VTreeItemPickerItem[] | null))?.find((node) => {
                             return node.name == this.getItemNameWithIcon(pathPart as string, true);
-                        })??null) as CTreeItemPickerItem | null;
+                        })??null) as VTreeItemPickerItem | null;
                     }
                     if(!currentNodeAtLevel){
                         cleanup();
@@ -279,14 +279,14 @@ export default Vue.extend({
                         parentNode = currentNodeAtLevel;   
                         // Important: we need to select the parent to allow gotChildrenForFolder() to work properly      
                         // and also, when we are checking the very last element of the path, it will be selected here...
-                        cTreeComponent.setSelected(parentNode.id, true);
+                        vTreeComponent.setSelected(parentNode.id, true);
                     }                   
                 }
                 
                 // If we have reached this part, then we have found and selected the folder we wanted to show: we scroll to it
                 // a bit later as the tree may not yet be rendered.
                 setTimeout(() => {
-                    cTreeComponent.scrollTo(parentNode?.id as string);
+                    vTreeComponent.scrollTo(parentNode?.id as string);
                 }, 0);
             }
         },
@@ -300,22 +300,22 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-// The CTree component holds an iframe that we don't need, 
+// The VTree component holds an iframe that we don't need, 
 // but because it's in the way, we just hide it.
-.strype-ctree > iframe {
+.strype-vtree > iframe {
     display: none; 
 }
 
-/* Overwrite the existing classes of CTreet to meet our own styling */
-.ctree-tree-node__indent-wrapper {
+/* Overwrite the existing classes of VTree to meet our own styling */
+.vtree-tree-node__indent-wrapper {
     cursor: pointer;
 }
 
-.ctree-tree-node__title_selected {
+.vtree-tree-node__title_selected {
     font-weight: 600;
 }
 
-.ctree-tree__scroll-area {
+.vtree-tree__scroll-area {
     max-width: 80vw;
     max-height: 75vh;    
     overflow: auto;

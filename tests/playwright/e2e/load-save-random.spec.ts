@@ -369,7 +369,7 @@ async function getFramesFromDOM(page: Page) : Promise<FrameEntry[][]> {
 async function newProject(page: Page) : Promise<void> {
     // New is located in the menu, so we need to open it first, then find the link and click on it:
     await page.click("#" + await strypeElIds.getEditorMenuUID());
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(2000);
     await page.click("#" + await strypeElIds.getNewProjectLinkId());
     await page.waitForTimeout(2000);
 }
@@ -405,6 +405,7 @@ async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: s
     const dom = await getFramesFromDOM(page);
     expect(dom).toEqual(sections);
     const savePath = await save(page);
+    await page.waitForTimeout(2000);
     await newProject(page);
     
     // Log for debugging purposes:

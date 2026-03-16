@@ -25,24 +25,29 @@
 import { useStore } from "@/store/store";
 import { StrypeSyncTarget } from "@/types/types";
 import { mapStores } from "pinia";
-import Vue, { PropType } from "vue";
+import { defineComponent, PropType } from "vue";
 import { AccountInfo, Configuration, PublicClientApplication  } from "@azure/msal-browser";
 import { CloudDriveItemPickerFolderPathResolutionMode, CloudDriveItemPickerItem, CloudDriveItemPickerMode, CloudFileSharingStatus, OneDrivePickConfigurationOptions, OneDriveTokenPurpose } from "@/types/cloud-drive-types";
 import { uniqueId } from "lodash";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { CloudDriveAPIState } from "@/types/cloud-drive-types";
 import { CloudDriveFile } from "@/types/cloud-drive-types";
-import { BaseItem, DriveItem, Permission, UploadSession } from "@microsoft/microsoft-graph-types";
-import CloudDriveHandlerComponent from "@/components/CloudDriveHandler.vue";
+import type { BaseItem, DriveItem, Permission, UploadSession } from "@microsoft/microsoft-graph-types";
 import CloudDriveItemPicker from "@/components/CloudDriveItemPicker.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
-import { BvModalEvent } from "bootstrap-vue";
 import { CustomEventTypes } from "@/helpers/editor";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { eventBus } from "@/helpers/appContext";
+import { BvTriggerableEvent } from "bootstrap-vue-next";
 
 //////////////////////
 //     Component    //
 //////////////////////
-export default Vue.extend({
+
+// This variable is moved to at the module level rather than in data because having a Window as a reactive property doesn't work with Vue 2.7 (and Vue 3)
+let pickerPopup: Window | null = null;
+
+export default defineComponent({
     name: "OneDriveComponent",
 
     components: {
@@ -62,7 +67,7 @@ export default Vue.extend({
         window.addEventListener("message", this.onPickerMsg);
 
         // The events from Bootstrap modal are registered to the root app element.
-        this.$root.$on("bv::modal::hide", this.onFolderPickerForWSAccountHideModalDlg); 
+        eventBus.on(CustomEventTypes.strypeModalHidden, this.onFolderPickerForWSAccountHideModalDlg); 
     },
 
 
@@ -76,7 +81,6 @@ export default Vue.extend({
             isPersonalAccount: false,
             app: null as PublicClientApplication | null,
             baseUrl: "https://onedrive.live.com/picker", // default value for personal accounts
-            pickerPopup: null as WindowProxy | null,
             pickerOptions: null as OneDrivePickConfigurationOptions | null,
             pickerPort: null as MessagePort | null,
             isPickingFile: true, // flag to indicate whether the picker is in file or folder picking mode
@@ -122,7 +126,12 @@ export default Vue.extend({
         },
 
         redirectURI(): string {
-            const redirectServerEditorPath = "" /*IFTRUE_isPython +"editor" FITRUE_isPython*//*IFTRUE_isMicrobit +"microbit" FITRUE_isMicrobit*/;
+            let redirectServerEditorPath = ""; 
+            // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+            redirectServerEditorPath = "editor";
+            // #v-else
+            redirectServerEditorPath = "microbit";
+            // #v-endif
             return `${this.siteOrigin}/${redirectServerEditorPath}/`;
         },
 
@@ -178,7 +187,7 @@ export default Vue.extend({
                 pickerMode: CloudDriveItemPickerMode.FOLDERS,
                 pathResolutionMode: CloudDriveItemPickerFolderPathResolutionMode.BY_NAME,
                 initialFolderPathPartsToSelect: (this.appStore.strypeProjectLocationPath??"").split("/"),
-                emptyPickerText: this.$i18n.t("appMessage.emptyCloudDrivePicker", {drivename: this.driveName }) as string,
+                emptyPickerText: this.$t("appMessage.emptyCloudDrivePicker", {drivename: this.driveName }),
             };
         },
 
@@ -218,7 +227,7 @@ export default Vue.extend({
                             const patternForTrimming = /https:\/\/.+\.sharepoint\.com\/personal\/[^/]+/g;
                             const matchingRes = data.webUrl.match(patternForTrimming);
                             if(matchingRes){
-                                this.baseUrl = data.webUrl.substring(0, matchingRes[0].length); 
+                                this.baseUrl = data.webUrl.substring(0, matchingRes[0].length);
                             }
                         }
                     }
@@ -227,7 +236,7 @@ export default Vue.extend({
                     }
                 }
             
-                (this.$parent as InstanceType<typeof CloudDriveHandlerComponent>).updateSignInStatus(StrypeSyncTarget.od, true);
+                vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.updateSignInStatus(StrypeSyncTarget.od, true);
                 callback(StrypeSyncTarget.od);
             }
         },   
@@ -339,7 +348,7 @@ export default Vue.extend({
 
                 return true;
             } 
-            catch(err) {
+            catch {
                 return false;
             }
         },
@@ -391,7 +400,7 @@ export default Vue.extend({
                 const itemsForPicker = this.transformOneDriveItemsToCloudDriveItemPickerItems(rootLevelDriveItems as DriveItem[]);
                 this.folderPickerForWSAccountRawData = itemsForPicker;
                 if(!doNotOpenPickerModalDlg){              
-                    this.$root.$emit("bv::show::modal", this.folderPickerForWSAccountDlgId);
+                    eventBus.emit(CustomEventTypes.showStrypeModal, this.folderPickerForWSAccountDlgId);
                 }
             }
             else{
@@ -407,7 +416,7 @@ export default Vue.extend({
                 
                 // create a new window. The Picker's recommended maximum size is 1080x680, but it can scale down to
                 // a minimum size of 250x230 for very small screens or very large zoom.
-                this.pickerPopup = window.open("", "Picker", "width=1080,height=680");
+                pickerPopup = window.open("", "Picker", "width=1080,height=680");
                 this.isPickingFile = false;
             
                 // options: These are the picker configuration, see the schema link for a full explaination of the available options
@@ -426,14 +435,14 @@ export default Vue.extend({
                 // now we need to construct our query string
                 const queryString = new URLSearchParams({
                     filePicker: JSON.stringify(this.pickerOptions),
-                    locale:  this.$i18n.t("localeOneDrive") as string,
+                    locale:  this.$t("localeOneDrive"),
                 });
 
                 // we create the absolute url by combining the base url, appending the _layouts path, and including the query string
                 const url = `${this.baseUrl}?${queryString}`;
                 // create a form
-                const form = this.pickerPopup?.document.createElement("form");
-                if(this.pickerPopup && form){
+                const form = pickerPopup?.document.createElement("form");
+                if(pickerPopup && form){
                     // set the action of the form to the url defined above
                     // This will include the query string options for the picker.
                     form.setAttribute("action", url);
@@ -443,14 +452,14 @@ export default Vue.extend({
 
                     // Create a hidden input element to send the OAuth token to the Picker.
                     // This optional when using a popup window but required when using an iframe.
-                    const tokenInput = this.pickerPopup.document.createElement("input");
+                    const tokenInput = pickerPopup.document.createElement("input");
                     tokenInput.setAttribute("type", "hidden");
                     tokenInput.setAttribute("name", "access_token");
                     tokenInput.setAttribute("value", pickerAccessToken);
                     form.appendChild(tokenInput);
 
                     // append the form to the body
-                    this.pickerPopup.document.body.append(form);
+                    pickerPopup.document.body.append(form);
 
                     // submit the form, this will load the picker page
                     form.submit();
@@ -489,8 +498,8 @@ export default Vue.extend({
             this.onFolderToSaveFilePicked(StrypeSyncTarget.od);
         },
 
-        onFolderPickerForWSAccountHideModalDlg(event: BvModalEvent, dlgId: string ){
-            if(dlgId == this.folderPickerForWSAccountDlgId){
+        onFolderPickerForWSAccountHideModalDlg(event: BvTriggerableEvent){
+            if(event.componentId == this.folderPickerForWSAccountDlgId){
                 if(event.trigger == "ok"){
                     // Trigger the selection's validation
                     document.dispatchEvent(new CustomEvent(CustomEventTypes.requestedCloudDrivePickerPickedItem));
@@ -554,7 +563,7 @@ export default Vue.extend({
                     
                     // create a new window. The Picker's recommended maximum size is 1080x680, but it can scale down to
                     // a minimum size of 250x230 for very small screens or very large zoom.
-                    this.pickerPopup = window.open("", "Picker", "width=1080,height=680");
+                    pickerPopup = window.open("", "Picker", "width=1080,height=680");
                     this.isPickingFile = true;
                 
                     // options: These are the picker configuration, see the schema link for a full explaination of the available options
@@ -573,7 +582,7 @@ export default Vue.extend({
                     // now we need to construct our query string
                     const queryString = new URLSearchParams({
                         filePicker: JSON.stringify(this.pickerOptions),
-                        locale:  this.$i18n.t("localeOneDrive") as string,
+                        locale:  this.$t("localeOneDrive"),
                     });
 
                     // We create the absolute url by combining the base url, appending the _layouts path, and including the query string
@@ -581,8 +590,8 @@ export default Vue.extend({
                     const layoutPath = (this.isPersonalAccount) ? "" : "/_layouts/15/FilePicker.aspx";
                     const url = `${this.baseUrl + layoutPath}?${queryString}`;
                     // create a form
-                    const form = this.pickerPopup?.document.createElement("form");
-                    if(this.pickerPopup && form){
+                    const form = pickerPopup?.document.createElement("form");
+                    if(pickerPopup && form){
                         // set the action of the form to the url defined above
                         // This will include the query string options for the picker.
                         form.setAttribute("action", url);
@@ -592,14 +601,14 @@ export default Vue.extend({
 
                         // Create a hidden input element to send the OAuth token to the Picker.
                         // This optional when using a popup window but required when using an iframe.
-                        const tokenInput = this.pickerPopup.document.createElement("input");
+                        const tokenInput = pickerPopup.document.createElement("input");
                         tokenInput.setAttribute("type", "hidden");
                         tokenInput.setAttribute("name", "access_token");
                         tokenInput.setAttribute("value", pickerAccessToken);
                         form.appendChild(tokenInput);
 
                         // append the form to the body
-                        this.pickerPopup.document.body.append(form);
+                        pickerPopup.document.body.append(form);
 
                         // submit the form, this will load the picker page
                         form.submit();
@@ -826,7 +835,7 @@ export default Vue.extend({
                     const resp = await fetch(uploadSessionURL as string, {
                         method: "PUT", 
                         headers: {"Content-Length": chunk.length.toString(), "Content-Range": `bytes ${offset}-${offset + chunk.length - 1}/${rawFileContent.length}`},
-                        body: chunk,
+                        body: chunk as BodyInit,
                     });
                     const jsonProps = await resp.json() as BaseItem;
                     // On the last chunk, Graph should return the meta data about the created file, so we can get the ID from there.
@@ -943,7 +952,7 @@ export default Vue.extend({
 
         async onPickerMsg(event: MessageEvent){
             // we validate the message is for us, win here is the same variable as above
-            if (event.source && event.source === this.pickerPopup) {
+            if (event.source && event.source === pickerPopup) {
                 const message = event.data;
                 // the channelId is part of the configuration options, but we could have multiple pickers so that is supported via channels
                 // On initial load and if it ever refreshes in its window, the Picker will send an 'initialize' message.
@@ -998,7 +1007,7 @@ export default Vue.extend({
                     }}
                     break;
                 case "close":
-                    this.pickerPopup?.close();
+                    pickerPopup?.close();
                     break;
                 case "pick":
                 {
@@ -1009,7 +1018,7 @@ export default Vue.extend({
                             result: "success",
                         },
                     });
-                    this.pickerPopup?.close();
+                    pickerPopup?.close();
                     // Trigger the actual retrieval of the file (if we had selected a file) or get the folder details (if we had selected a folder)
                     const strypeFileItem = message.data.data.items[0] as BaseItem;
                     const fileId = strypeFileItem.id??"";

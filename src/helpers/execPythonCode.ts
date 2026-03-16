@@ -4,7 +4,7 @@ import { LineAndSlotPositions } from "@/types/types";
 import { useStore } from "@/store/store";
 import { skulptReadPythonLib } from "@/autocompletion/ac-skulpt";
 import i18n from "@/i18n";
-import Vue from "vue";
+import { nextTick } from "vue";
 import { CustomEventTypes, setPythonExecAreaLayoutButtonPos } from "./editor";
 import { clearFileIOCaches, skulptCloseFileIO, skulptInteralFileWrite, skulptOpenFileIO } from "./skulptFileIO";
 
@@ -22,7 +22,7 @@ let codeExecStateRunningCheckFn: () => boolean | undefined;
 function outf(text: string) { 
     consoleTextArea.value = consoleTextArea.value + text; 
     // Scroll to bottom:
-    Vue.nextTick(() => {
+    nextTick(() => {
         consoleTextArea.scrollTop = consoleTextArea.scrollHeight;
     });
 }
@@ -182,13 +182,13 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         read:skulptReadPythonLib(libraryAddresses),
         fileopen: skulptOpenFileIO,
         fileclose: skulptCloseFileIO, // This is an added property in Skulpt for fileIO
-        fileNotWritableErr: i18n.t("errorMessage.fileIO.fileNotWritableErr"), // This is an added property in Skulpt for fileIO
-        fileNotReadableErr: i18n.t("errorMessage.fileIO.fileNotReadableErr"), // This is an added property in Skulpt for fileIO
-        fileClosedErr: i18n.t("errorMessage.fileIO.fileClosedErr"), // This is an added property in Skulpt for fileIO
-        fileModeErr: i18n.t("errorMessage.fileIO.fileModeErr"), // This is an added property in Skulpt for fileIO
-        fileWriteNotStrErr: i18n.t("errorMessage.fileIO.fileWriteNotStrErr"), // This is an added property in Skulpt for fileIO
-        fileWriteNotBytesErr: i18n.t("errorMessage.fileIO.fileWriteNotBytesErr"), // This is an added property in Skulpt for fileIO
-        fileWriteLinesNotArrayErr: i18n.t("errorMessage.fileIO.fileWriteLinesNotArrayErr"), // This is an added property in Skulpt for fileIO
+        fileNotWritableErr: i18n.global.t("errorMessage.fileIO.fileNotWritableErr"), // This is an added property in Skulpt for fileIO
+        fileNotReadableErr: i18n.global.t("errorMessage.fileIO.fileNotReadableErr"), // This is an added property in Skulpt for fileIO
+        fileClosedErr: i18n.global.t("errorMessage.fileIO.fileClosedErr"), // This is an added property in Skulpt for fileIO
+        fileModeErr: i18n.global.t("errorMessage.fileIO.fileModeErr"), // This is an added property in Skulpt for fileIO
+        fileWriteNotStrErr: i18n.global.t("errorMessage.fileIO.fileWriteNotStrErr"), // This is an added property in Skulpt for fileIO
+        fileWriteNotBytesErr: i18n.global.t("errorMessage.fileIO.fileWriteNotBytesErr"), // This is an added property in Skulpt for fileIO
+        fileWriteLinesNotArrayErr: i18n.global.t("errorMessage.fileIO.fileWriteLinesNotArrayErr"), // This is an added property in Skulpt for fileIO
         nonreadopen: true,
         filewrite: skulptInteralFileWrite, // see skulptFileIO.ts
         inputfun:sInput,
@@ -275,14 +275,14 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
             // We then show the error on the last frame available in the list (that is, before the EOF, 2 lines ahead)
             frameId = (locatableError) ? lineFrameMapping[errorLine - 1].frameId : lineFrameMapping[errorLine - 3].frameId;
 
-            const noLineSkulptErrStr = (locatableError) ? skulptErrStr.replaceAll(/ on line \d+/g,"") : i18n.t("errorMessage.EOFError") as string;
+            const noLineSkulptErrStr = (locatableError) ? skulptErrStr.replaceAll(/ on line \d+/g,"") : i18n.global.t("errorMessage.EOFError");
             // In order to show the Skulpt error in the editor, we set an error on all the frames. That approach is the best compromise between
             // our current error related code implementation and clarity for the user.
             // Exception: if we have a "running action" message, we don't show anything (no message and no error).
             if(!skulptErrStr.startsWith(STRYPE_INPUT_INTERRUPT_ERR_MSG)){
                 consoleTextArea.value += ("< " + noLineSkulptErrStr + " >" + moreInfo);
                 // Set the error on the frame header -- do not use editable slots here as we can't give a detailed error location
-                Vue.set(useStore().frameObjects[frameId],"runTimeError", noLineSkulptErrStr);   
+                useStore().frameObjects[frameId].runTimeError = noLineSkulptErrStr;
                 useStore().wasLastRuntimeErrorFrameId = frameId;
                 // We now need to force expand that frame and all its ancestors so that it shows up:
                 useStore().forceExpand(frameId);
@@ -297,7 +297,7 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         }
         handleExecutionFinished(true);
         // We will have added text either way, now scroll to bottom:
-        Vue.nextTick(() => {
+        nextTick(() => {
             consoleTextArea.scrollTop = consoleTextArea.scrollHeight;
         });
     });
