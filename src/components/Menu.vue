@@ -111,6 +111,7 @@
                             <span class="share-method-title">{{ $t("appMessage.methodCloudLink") }}</span>
                             <span class="share-method-explanation">{{ $t("appMessage.methodCloudLinkExplanation") }}</span>
                             <span class="share-method-warning" v-if="!canShareProjectViaCloud">{{ $t("appMessage.cloudShareUnavailable") }}</span>
+                            <span class="share-method-warning" v-if="warnCloudModifiedProject">{{ $t("appMessage.cloudShareNotSaved") }}</span>
                         </div>
                     </div>
                 </div>
@@ -560,7 +561,11 @@ export default defineComponent({
         },
 
         canShareProjectViaCloud(): boolean {
-            return isSyncTargetCloudDrive(this.appStore.syncTarget) && !this.appStore.isEditorContentModified;
+            return isSyncTargetCloudDrive(this.appStore.syncTarget);
+        },
+
+        warnCloudModifiedProject(): boolean {
+            return this.canShareProjectViaCloud && this.appStore.isEditorContentModified;
         },
 
         isSharingPublicNotDirectDownload(): boolean {

@@ -176,7 +176,8 @@
     "methodCloudLink": "Cloud link",
     "methodCloudLinkExplanation": "The cloud file (including future changes)", 
     "snapshotLinkTooLarge": "Warning: this link may be too large for some browsers, probably due to images/sounds in the code.", 
-    "cloudShareUnavailable": "You need to save to a cloud drive first."
+    "cloudShareUnavailable": "You need to save to a cloud drive first.",
+    "cloudShareNotSaved": "You cannot share unchanged changes, only the currently saved project can be shared."
   },
   "contextMenu": {
     "ctrl": "Ctrl",
