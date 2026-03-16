@@ -27,7 +27,6 @@
 <script lang="ts">
 import { defineComponent } from "vue";
 import {EditImageInDialogFunction, EditSoundInDialogFunction, LoadedMedia} from "@/types/types";
-import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import {SpriteManager} from "@/stryperuntime/image_and_collisions";
 import {getDateTimeFormatted} from "@/helpers/common";
 import {saveAs} from "file-saver";

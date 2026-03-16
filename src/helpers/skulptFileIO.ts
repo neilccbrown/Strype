@@ -7,20 +7,16 @@
 import path from "path-browserify";
 import { useStore } from "@/store/store";
 import i18n from "@/i18n";
-import { CloudDriveComponent, CloudDriveFile, CloudFileWithMetaData, CloudFolder, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
+import { CloudDriveFile, CloudFileWithMetaData, CloudFolder, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
 import {CloudFileId, CloudFileInfo} from "@/stryperuntime/worker_bridge_type";
 import { vueComponentsAPIHandler } from "./vueComponentAPI";
+import { CloudDriveHandlerComponentAPI } from "@/types/vue-component-api-types";
 
 declare const Sk: any;
 
-function getCloud() : CloudDriveHandlerComponent {
-    // Initialisator of the variable
-    if(cloudDriveHandlerComponent == undefined){
-        cloudDriveHandlerComponent = ((vm.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).$refs[getCloudDriveHandlerComponentRefId()] as InstanceType<typeof CloudDriveHandlerComponent>);
-    }
-    // TODO VUE3 will need fix
-    // I think ideally under Vue 3 we should be able to remove the "as unknown"
-    return cloudDriveHandlerComponent as unknown as CloudDriveHandlerComponent;
+function getCloud() : CloudDriveHandlerComponentAPI {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return vueComponentsAPIHandler.cloudDriveHandlerComponentAPI!;
 }
 
 const cloudFilesMap: CloudFileWithMetaData[] = [];
