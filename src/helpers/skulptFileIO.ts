@@ -64,7 +64,7 @@ const concatFileContentParts = (part1: string | Uint8Array, part2: string | Uint
 };
 
 
-export function cloudLookupFile(parent: CloudFileId, name: string) : Promise<{fileId: CloudFileId, isDir: boolean} | undefined> {
+export function cloudLookupFile(parent: CloudFileId, name: string) : Promise<CloudFileInfo | undefined> {
     // If we are not connected to a cloud file system, then we raise an error:
     if(!isSyncTargetCloudDrive(useStore().syncTarget)){
         return Promise.reject(i18n.global.t("errorMessage.fileIO.notConnectedToCloud") as string);
@@ -77,7 +77,7 @@ export function cloudLookupFile(parent: CloudFileId, name: string) : Promise<{fi
             // The search succeeded and we expect only one folder to be found (if any, so we'll use the first one returned).
             // We can save that folder in the cache and either return it's ID if we don't have other folder to resolve, or continue resolving otherwise.
             if(cloudFolderFiles.length > 0){
-                return Promise.resolve({fileId: {cloudFileId: cloudFolderFiles[0].id}, isDir: cloudFolderFiles[0].isDir, fileSize: cloudFolderFiles[0].fileSize});
+                return Promise.resolve({fileId: {cloudFileId: cloudFolderFiles[0].id}, isDir: cloudFolderFiles[0].isDir, name: cloudFolderFiles[0].name, fileSize: cloudFolderFiles[0].fileSize});
             }
             else{
                 return Promise.resolve(undefined);
