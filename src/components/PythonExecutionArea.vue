@@ -174,17 +174,6 @@ export default defineComponent({
             downloadWAV: this.downloadWAV,
             getSpriteManager: this.getSpriteManager,
             redrawCanvas: this.redrawCanvas,
-            // The following methods are used TEMPORARY to be accessed by the Strype media API internal files,
-            // before we merge the Pyodide changes in the Vue 3 version.
-            // TODO : remove when no longer required.
-            consumeLastClickDetails: this.consumeLastClickDetails,
-            consumeLastClickedItems: this.consumeLastClickedItems,
-            getAudioContext: this.getAudioContext,
-            getMouseDetails: this.getMouseDetails,
-            getPressedKeys: this.getPressedKeys,
-            loadLibraryAsset: this.loadLibraryAsset,
-            playAudioBuffer: this.playAudioBuffer,
-            stopAudioBuffer: this.stopAudioBuffer,
         };
 
         // Expose the Components API handler object on window for Strype.graphics and Strype.sounds 
