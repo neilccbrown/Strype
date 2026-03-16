@@ -68,10 +68,10 @@ export function cloudLookupFile(parent: CloudFileId, name: string) : Promise<{fi
     // If we are not connected to a cloud file system, then we raise an error:
     if(!isSyncTargetCloudDrive(useStore().syncTarget)){
         // TODO VUE3 will need fix
-        return Promise.reject(i18n.t("errorMessage.fileIO.notConnectedToCloud") as string);
+        return Promise.reject(i18n.global.t("errorMessage.fileIO.notConnectedToCloud") as string);
     }
     
-    const cloud : CloudDriveHandlerComponent = getCloud();
+    const cloud : CloudDriveHandlerComponentAPI = getCloud();
 
     return cloud.searchCloudDriveElements(useStore().syncTarget, name, parent.cloudFileId, false, {orderBy: cloud.modifiedDataSearchOptionName, fileFields: cloud.fileMoreFieldsForIO})
         .then((cloudFolderFiles : CloudDriveFile[]) => {
@@ -91,9 +91,9 @@ export function cloudListDir(parent: CloudFileId) : Promise<CloudFileInfo[]> {
     // If we are not connected to a cloud file system, then we raise an error:
     if(!isSyncTargetCloudDrive(useStore().syncTarget)){
         // TODO VUE3 will need fix
-        return Promise.reject(i18n.t("errorMessage.fileIO.notConnectedToCloud") as string);
+        return Promise.reject(i18n.global.t("errorMessage.fileIO.notConnectedToCloud") as string);
     }
-    const cloud : CloudDriveHandlerComponent = getCloud();
+    const cloud : CloudDriveHandlerComponentAPI = getCloud();
 
     return cloud.searchCloudDriveElements(useStore().syncTarget, undefined, parent.cloudFileId, false, {})
         .then((cloudFolderFiles : CloudDriveFile[]) => {
@@ -267,13 +267,13 @@ export async function cloudCreate(parent: CloudFileId, name: string, isDir: bool
     // If we are not connected to a cloud file system, then we raise an error:
     if(!isSyncTargetCloudDrive(useStore().syncTarget)){
         // TODO VUE3 will need fix
-        return Promise.reject(i18n.t("errorMessage.fileIO.notConnectedToCloud") as string);
+        return Promise.reject(i18n.global.t("errorMessage.fileIO.notConnectedToCloud") as string);
     }
-    const cloud : CloudDriveHandlerComponent = getCloud();
+    const cloud : CloudDriveHandlerComponentAPI = getCloud();
     
     if (isDir) {
         // TODO VUE3 will need fix
-        return Promise.reject(i18n.t("errorMessage.fileIO.cannotCreateDirectory") as string);
+        return Promise.reject(i18n.global.t("errorMessage.fileIO.cannotCreateDirectory") as string);
     }
     else {
         // Write an empty file (this will be awaited by the caller):

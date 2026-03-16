@@ -459,7 +459,7 @@ export default defineComponent({
         
         runCodeButtonLabel(): string {
             if (!isPythonWorkerReady.value) {
-                return " " + i18n.t("PEA.loading");
+                return " " + this.$t("PEA.loading");
             }
             switch (useStore().pythonExecRunningState) {
             case PythonExecRunningState.NotRunning:
