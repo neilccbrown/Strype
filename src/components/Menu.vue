@@ -1509,7 +1509,7 @@ export default defineComponent({
 }
 
 .show-menu-btn.disabled {
-    color: #b8bac0 !important;
+    color: #78797c !important;
     cursor: default;
 }
 
