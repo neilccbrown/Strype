@@ -172,7 +172,7 @@ export default defineComponent({
                 return this.isRunningStrypeGraphics;
             },
             downloadWAV: this.downloadWAV,
-            getPersistentImageManager: this.getPersistentImageManager,
+            getSpriteManager: this.getSpriteManager,
             redrawCanvas: this.redrawCanvas,
             // The following methods are used TEMPORARY to be accessed by the Strype media API internal files,
             // before we merge the Pyodide changes in the Vue 3 version.
