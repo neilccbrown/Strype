@@ -103,7 +103,7 @@ export interface VTreeItemPickerItem extends CloudDriveItemPickerItem{
 // It's not ideal but at least it still allow detecting missing parts during development and allow TS working everywhere.
 export interface CloudDriveComponent {
     // Props
-    onFileToLoadPicked: (cloudTarget: StrypeSyncTarget, fileId: string, fileName?: string) => Promise<void>,
+    onFileToLoadPicked: (cloudTarget: StrypeSyncTarget, fileId: string, fileName?: string) => void,
     onFolderToSaveFilePicked: (cloudTarget: StrypeSyncTarget) => void,
     onFolderToSavePickCancelled: () => void,
     onUnsupportedByStrypeFilePicked: VoidFunction,

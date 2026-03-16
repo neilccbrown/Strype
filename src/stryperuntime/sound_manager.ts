@@ -32,7 +32,7 @@ export class SoundManager {
                 // If it's some prefix between two colons, it's a library asset:
                 const libraryName = match[1];
                 const fileName = match[2];
-                promise = this.callbacks.loadLibraryAsset(libraryName, fileName).then(async (dataURL : string) => {
+                promise = this.callbacks.loadLibraryAsset(libraryName, fileName).then(async (dataURL : string | undefined) => {
                     return await decode(dataURL ?? url);
                 });
             }

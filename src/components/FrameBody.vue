@@ -9,13 +9,13 @@
             :ref="getCaretContainerRef"
             :frameId="frameId"
             :caretVisibility="caretVisibility"
-            :caretAssignedPosition="caretPosition.body"
+            :caretAssignedPosition="CaretPosition.body"
             :isFrameDisabled="isDisabled"
             />  
             <div class="frame-container-minheight">      
                 <Frame
                     v-for="frame in frames"
-                    :ref="setFrameRef(frame.id)"
+                    :ref="getFrameUID(frame.id)"
                     :key="frame.frameType.type  + '-id:' + frame.id"
                     :frameId="frame.id"
                     :isDisabled="frame.isDisabled"
@@ -31,91 +31,49 @@
     </div>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
 //////////////////////
 //      Imports     //
 //////////////////////
-import { defineAsyncComponent, defineComponent } from "vue";
+import { computed, ComputedRef } from "vue";
 import { useStore } from "@/store/store";
 import CaretContainer from "@/components/CaretContainer.vue";
-import { AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState } from "@/types/types";
-import { mapStores } from "pinia";
+import { CaretPosition, FrameObject } from "@/types/types";
 import { getCaretContainerRef, getFrameBodyUID, getFrameUID } from "@/helpers/editor";
 
 //////////////////////
 //     Component    //
 //////////////////////
-export default defineComponent({
-    name: "FrameBody",
+const props = defineProps<{
+    frameId: number,
+    isDisabled: boolean,
+    isBeingDragged: boolean,
+    caretVisibility?: string, //Flag indicating this caret is visible or not
+}>();
 
+const appStore = useStore();
 
-    components: {
-        Frame: defineAsyncComponent(() => import("@/components/Frame.vue")), // lazy import as we have a circular reference with this component.
-        CaretContainer,
+const frames = computed({
+    get(): FrameObject[] {
+        // gets the frames objects which are nested in here (i.e. have this frameID as parent)
+        return appStore.getFramesForParentId(props.frameId);
     },
-    
-    props: {
-        frameId: {type: Number, required: true},
-        isDisabled: Boolean,
-        isBeingDragged: Boolean,
-        caretVisibility: String, //Flag indicating this caret is visible or not
-    },
+    set() {
+        return;
+    },    
+});
 
-    computed: {
-        ...mapStores(useStore),
-        
-        frames: {
-            get(): FrameObject[] {
-                // gets the frames objects which are nested in here (i.e. have this frameID as parent)
-                return this.appStore.getFramesForParentId(this.frameId);
-            },
-            set() {
-                return;
-            },    
-        },
+const UID : ComputedRef<string> = computed(() => getFrameBodyUID(props.frameId));
 
-        hasDisabledOrCommentFrames(): boolean {
-            return (this.frames).filter((frame) => frame.isDisabled || frame.frameType.type === AllFrameTypesIdentifier.comment).length > 0;
-        },
-
-        // Needed in order to use the `CaretPosition` type in the v-show
-        caretPosition(): typeof CaretPosition {
-            return CaretPosition;
-        }, 
-
-        isEditing(): boolean {
-            return this.appStore.isEditing;
-        },
-
-        UID(): string {
-            return getFrameBodyUID(this.frameId);
-        },
-
-        getCaretContainerRef(): string {
-            return getCaretContainerRef();
-        },
-
-        bodyDeletable(): boolean{
-            // We need to get the body background at the deletable colour only if this frame is deletable
-            // and we are not deleting the outer frames
-            if(this.appStore.potentialDeleteFrameIds){
-                return this.appStore.potentialDeleteFrameIds.includes(this.frameId) 
-                    && !this.appStore.potentialDeleteIsOuter; 
-            }
-            // For compatibility with previous versions of the store
-            return false;                       
-        },
-
-        isPythonExecuting(): boolean {
-            return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
-        },
-    },
-
-    methods: {
-        setFrameRef(frameId: number) {
-            return getFrameUID(frameId);
-        },
-    },
+const bodyDeletable : ComputedRef<boolean> = computed(() => {
+    // We need to get the body background at the deletable colour only if this frame is deletable
+    // and we are not deleting the outer frames
+    if(appStore.potentialDeleteFrameIds){
+        return appStore.potentialDeleteFrameIds.includes(props.frameId) 
+            && !appStore.potentialDeleteIsOuter; 
+    }
+    // For compatibility with previous versions of the store
+    return false;                       
 });
 </script>
 

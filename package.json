@@ -8,7 +8,7 @@
         "serve:python:dist:playwright": "rimraf temp-scripts/playwright-server && npm run build:python && mkdirp temp-scripts/playwright-server/editor/ && mv dist/* temp-scripts/playwright-server/editor/ && npx serve -l 8081 temp-scripts/playwright-server",
         "build:microbit": "cross-env vite build --mode microbit",
         "build:python": "npm run compile-service-worker && cross-env vite build --mode standard",
-        "build:github-pages": "cross-env VITE_GITHUB_PAGE=true vite build --mode standard",
+        "build:github-pages": "npm run compile-service-worker && cross-env VITE_GITHUB_PAGE=true vite build --mode standard",
         "compile-service-worker": "npx node scripts/build-service-worker.mjs",
         "lint:check": "eslint . --ext .js,.vue --max-warnings 0",
         "library:make-ac-json": "cd scripts && npm install && npx tsc && (node -e \"console.log('library_arg = \\'' + process.env.LIBRARY + '\\';')\" && npx esbuild --loader:.py=text --alias:pysrc=../pysrc --bundle compiled/scripts/process-pyodide-api.js) | npx browser-run -s ../public > ../autocomplete.json",

@@ -15,7 +15,7 @@
         v-else 
         :class="scssVars.messageBannerContainerClassName"
     >
-        <span v-if="message.message">{{ (message.message.path)? $t(message.message.path, message.message.args) : $t(message.message) }}</span>
+        <span v-if="message.message">{{ (typeof message.message !== "string")? $t(message.message.path, message.message.args) : $t(message.message) }}</span>
         <span :class="scssVars.messageBannerCrossClassName" v-on:click="close">&#x2716;</span>        
         <br/>
         <button 

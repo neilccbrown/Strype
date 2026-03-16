@@ -274,7 +274,8 @@ export default defineComponent({
                     }
                     else{
                         // Open the internally shared project
-                        return cloudDriveComponent.onFileToLoadPicked(cloudTarget, openSharedProjectFileId);
+                        cloudDriveComponent.onFileToLoadPicked(cloudTarget, openSharedProjectFileId);
+                        return Promise.resolve();
                     }
                 }
                 else{
@@ -776,7 +777,7 @@ export default defineComponent({
             })??Promise.reject("No Cloud target!"); // We should never get to the reject clause here, keep TS happy
         },
 
-        writeFileContentForIO(cloudTarget: StrypeSyncTarget, fileContent: string|Uint8Array, fileInfos: {filePath: string, fileName?: string, fileId?: string, folderId?: string}): Promise<string> {
+        writeFileContentForIO(cloudTarget: StrypeSyncTarget, fileContent: string|Uint8Array, fileInfos: { filePath: string, fileName: string, folderId: string } | { filePath: string, fileId: string }): Promise<string> {
             // Write file supports 2 modes: normal writing that only relies on the content and fileId,
             // and file creation which relies on the folderId, fileName and returns the generated fileId.
             // The fileName is always set because it may be used inside the error message.
