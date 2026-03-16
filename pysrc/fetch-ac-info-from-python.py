@@ -7,12 +7,9 @@ import inspect
 import json
 import pydoc
 import re
-import sys
 from operator import attrgetter
 import traceback
-
-sys.path.append("../public/public_libraries")
-sys.path.append("./stubs")
+from types import ModuleType
 
 def make_default(v):
     defValStr = str(v)
@@ -131,9 +128,10 @@ def get_class_and_func(ac_result, imp_mod):
         class_path = parts[:i]
         method_name = parts[i]
         try:
-            cls = attrgetter('.'.join(class_path))(imp_mod)
-            func = inspect.getfullargspec(attrgetter(ac_result)(imp_mod))
-            return cls, func
+            clsName = '.'.join(class_path)
+            cls = attrgetter(clsName)(imp_mod)
+            func = inspect.getfullargspec(attrgetter(method_name)(cls))
+            return clsName, func
         except AttributeError:
             continue
     return None, inspect.getfullargspec(attrgetter(ac_result)(imp_mod))  # fallback
@@ -197,61 +195,70 @@ def parse_arguments(text, func_name):
     return None  # Return None if no suitable line is found
 
 
-targetAPI = json.load(sys.stdin)
-for mod in targetAPI:
-    # If you "import this" it outputs to stdout and messes with our output, so don't do that:
-    if mod == "this":
-        continue
+#targetAPI = json.load(sys.stdin)
+def ac_for(mod, itemName):
+    imp_mod = importlib.import_module(mod if mod else "builtins", package=None)
     try:
-        imp_mod = importlib.import_module(mod if mod else "builtins", package=None)
+        resolved = attrgetter(itemName)(imp_mod)
     except:
-        # A module that's in Skulpt but not pure Python, like webgl
-        continue
-    for item in targetAPI[mod]:
-        # Each item has an "acResult" with the name
-        if not item['documentation']:
+        # This can happen when itemName is a module, for example.  In that case we have no useful info:
+        return json.dumps({'acResult': itemName, 'documentation': '', 'type': [], 'version': 0})
+    item = {'acResult': itemName}
+    # Documentation:
+    try:
+        doc = inspect.getdoc(resolved)
+        # Some functions now have their type signature first, which we will omit by removing up
+        # to the first \n\n that follows such signature(s):
+        if re.compile("^[A-Za-z0-9]+\\(").match(doc):
+            doubleNL = doc.find("\n\n")
+            if doubleNL > 0:
+                doc = doc[doubleNL:]
+        item['documentation'] = doc.strip().replace('\r\n', '\n')
+    except:
+        # If we get an AttributeError or any other error, we just can't provide the doc:
+        item['documentation'] = ''
+    # Item type:
+    itemTypes = []
+    try:
+        if callable(resolved):
+            itemTypes.append("function")
+        if isinstance(resolved, type):
+            itemTypes.append("type")
+        if isinstance(resolved, ModuleType):
+            itemTypes.append("module")
+    except:
+        pass
+    item['type'] = itemTypes
+    # Signature:
+    if 'function' in item['type']:
+        try:
+             cls, argspec = get_class_and_func(itemName, imp_mod)
+             # The args item in the tuple is a list of names of positional arguments:
+             numArgs = len(argspec.args)
+             if numArgs > 0:
+                 item['signature'] = convert_argspec_to_signature(attrgetter(itemName)(imp_mod), argspec, cls)                        
+        except Exception as e:
+            error_desc = str(e) + traceback.format_exc()
             try:
-                doc = inspect.getdoc(attrgetter(item['acResult'])(imp_mod))
-                # Some functions now have their type signature first, which we will omit by removing up
-                # to the first \n\n that follows such signature(s):
-                if re.compile("^[A-Za-z0-9]+\\(").match(doc):
-                    doubleNL = doc.find("\n\n")
-                    if doubleNL > 0:
-                        doc = doc[doubleNL:]
-                item['documentation'] = doc.strip().replace('\r\n', '\n')
-            except:
-                # If we get an AttributeError or any other error, we just can't provide the doc:
-                pass
-        if 'function' in item['type']:
-            try:
-                 cls, argspec = get_class_and_func(item['acResult'], imp_mod)
-                 # The args item in the tuple is a list of names of positional arguments:
-                 numArgs = len(argspec.args)
-                 if numArgs > 0:
-                     item['signature'] = convert_argspec_to_signature(attrgetter(item['acResult'])(imp_mod), argspec, cls)                        
-            except Exception as e:
-                error_desc = str(e) + traceback.format_exc()
-                try:
-                    # print is a weird case because the docs say it has a mandatory argument,
-                    # but actually you can call it without any args
-                    if item['acResult'] == "print" and (mod == "builtins" or not mod):
-                        del item['signature']
-                    else:
-                        try:
-                            item['signature'] = convert_inspect_signature_to_signature(inspect.signature(mod + "." + item['acResult']))
-                            item['first_errors'] = error_desc 
-                        except Exception as e2:
-                            error_desc += str(e2) + traceback.format_exc()
-                            rendered_doc = pydoc.render_doc(mod + "." + item['acResult'])
-                            args = parse_arguments(rendered_doc, item['acResult'])
-                            if args:
-                                item['params'] = args
-                            else:
-                                item['errors'] = "Fellback through everything and parse_arguments failed on " + rendered_doc + " earlier errs: " + error_desc
-                except Exception as e3:
-                    error_desc += str(e3) + traceback.format_exc()
-                    item['errors'] = error_desc
-                pass 
-
-
-json.dump(targetAPI, sys.stdout, indent=4)
+                # print is a weird case because the docs say it has a mandatory argument,
+                # but actually you can call it without any args
+                if itemName == "print" and (mod == "builtins" or not mod):
+                    del item['signature']
+                else:
+                    try:
+                        item['signature'] = convert_inspect_signature_to_signature(inspect.signature(mod + "." + itemName))
+                        item['first_errors'] = error_desc 
+                    except Exception as e2:
+                        error_desc += str(e2) + traceback.format_exc()
+                        rendered_doc = pydoc.render_doc(mod + "." + itemName)
+                        args = parse_arguments(rendered_doc, itemName)
+                        if args:
+                            item['params'] = args
+                        else:
+                            item['errors'] = "Fellback through everything and parse_arguments failed on " + rendered_doc + " earlier errs: " + error_desc
+            except Exception as e3:
+                error_desc += str(e3) + traceback.format_exc()
+                item['errors'] = error_desc
+            pass
+    item['version'] = 0
+    return json.dumps(item, indent=4)

@@ -1,11 +1,84 @@
 import { defineConfig, loadEnv } from "vite";
+import { viteStaticCopy } from "vite-plugin-static-copy";
 import { execSync } from "child_process";
 import path from "path";
+import { fileURLToPath } from "url";
 import ConditionalCompile from "vite-plugin-conditional-compiler";
-import fs from "fs";
 import vue from "@vitejs/plugin-vue";
 import Components from "unplugin-vue-components/vite";
 import { BootstrapVueNextResolver } from "bootstrap-vue-next/resolvers";
+import fs from "fs";
+import { zipDir } from "./scripts/zip-dir.js";
+import checker from 'vite-plugin-checker';
+import {randomUUID} from "node:crypto";
+
+function zipPysrcPlugin() {
+    let running = false;
+    const run = async () => {
+        if (running) {
+            return;
+        }
+        running = true;
+        // Important to write to a unique filename (which includes pysrc.zip for the check below to avoid infinite loop),
+        // then rename atomically, in case multiple calls to this function overlap:
+        const tempZip = path.resolve(`temp-${randomUUID()}-pysrc.zip`);
+        await zipDir({
+            rootDir: "pysrc",
+            subdirs: ["strype", "python_runner"],
+            outFile: tempZip
+        })
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const dest = path.resolve("public/pysrc.zip");
+        // On Windows, we must remove first before we can do the rename:
+        await fs.promises.rm(dest, { force: true })
+        await fs.promises.rename(tempZip, dest);
+        running = false;
+    };
+
+    return {
+        name: "zip-pysrc",
+
+        async buildStart() {
+            await run();
+        },
+
+        // Rerun when pysrc changes:
+        async configureServer(server) {
+            await run();
+
+            server.watcher.add("pysrc/**");
+
+            server.watcher.on("change", async (file) => {
+                // Avoid an infinite regeneration loop when pysrc.zip is added,
+                // and only regenerate when the pysrc dir changes, not when other files
+                // are changed.
+                if (!file.includes("pysrc.zip") && file.includes("pysrc")) {
+                    await run();
+                }
+            });
+        }
+    }
+}
+
+// Taken from https://pyodide.org/en/0.29.0/usage/working-with-bundlers.html with a tweak to make paths work on Windows:
+const PYODIDE_EXCLUDE = [
+    "!**/*.{md,html}",
+    "!**/*.d.ts",
+    "!**/*.whl",
+    "!**/node_modules",
+];
+export function viteStaticCopyPyodide() {
+    const pyodideDir = path.dirname(fileURLToPath(import.meta.resolve("pyodide")));
+    return viteStaticCopy({
+        targets: [
+            {
+                // Important to use posix.join to get forward slashes instead of backslashes:
+                src: [path.join(pyodideDir, "*").replaceAll("\\", "/")].concat(PYODIDE_EXCLUDE),
+                dest: "assets",
+            },
+        ],
+    });
+}
 
 function removeFilesPlugin(isStandardPython) {
     // The  library files we ship in the website depending on the platform we're on (standard Python or micro;bit).
@@ -49,6 +122,10 @@ export default defineConfig(({mode}) => {
                 resolvers: [BootstrapVueNextResolver()],
             }),
             removeFilesPlugin(isStandardPython),
+            viteStaticCopyPyodide(),
+            zipPysrcPlugin(),
+            // Ideally we want typescript: true, but only after finishing the Pyodide and Vue 3 work:
+            checker({ typescript: false }),        
         ],
 
         css: {
@@ -84,5 +161,9 @@ export default defineConfig(({mode}) => {
                 vue: "@vue/compat",
             },
         },
+
+        optimizeDeps: { exclude: ["pyodide"] },
+
+        worker: { format: 'es' },
     };
 });

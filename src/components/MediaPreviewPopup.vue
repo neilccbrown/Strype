@@ -27,7 +27,7 @@
 <script lang="ts">
 import { defineComponent } from "vue";
 import {EditImageInDialogFunction, EditSoundInDialogFunction, LoadedMedia} from "@/types/types";
-import {PersistentImageManager} from "@/stryperuntime/image_and_collisions";
+import {SpriteManager} from "@/stryperuntime/image_and_collisions";
 import {getDateTimeFormatted} from "@/helpers/common";
 import {saveAs} from "file-saver";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
@@ -112,7 +112,7 @@ export default defineComponent({
         doPreviewImage(imgDataURL: string) {
             document.getElementById("strypeGraphicsPEATab")?.click();
             this.$nextTick(() => {
-                const imgManager: PersistentImageManager | undefined = vueComponentsAPIHandler.peaComponentAPI?.getPersistentImageManager();
+                const imgManager: SpriteManager | undefined = vueComponentsAPIHandler.peaComponentAPI?.getSpriteManager();
                 imgManager?.clear();
                 // null is passed to clear the preview when the edit dialog is closed:
                 if (imgDataURL == null) {
@@ -131,14 +131,14 @@ export default defineComponent({
                 imgManager?.setBackground(checkered);
                 const preview = new Image();
                 preview.onload = () => {
-                    imgManager?.addPersistentImage(preview);
+                    imgManager?.addSprite(preview);
                     vueComponentsAPIHandler.peaComponentAPI?.redrawCanvas();
                 };
                 preview.src = imgDataURL;
                 vueComponentsAPIHandler.peaComponentAPI?.redrawCanvas();
             });
             this.stopPreviewOnHide = () => {
-                vueComponentsAPIHandler.peaComponentAPI?.getPersistentImageManager().clear();
+                vueComponentsAPIHandler.peaComponentAPI?.getSpriteManager().clear();
                 vueComponentsAPIHandler.peaComponentAPI?.redrawCanvas();
             };
         },

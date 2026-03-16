@@ -1,5 +1,4 @@
-import strype_graphics_internal as _strype_graphics_internal
-import strype_graphics_input_internal as _strype_input_internal
+from strype_bridge import strype_graphics_internal as _strype_graphics_internal, strype_graphics_input_internal as _strype_input_internal
 import math as _math
 import collections as _collections
 import re as _re
@@ -36,6 +35,7 @@ def _round_and_clamp_0_255(number):
     # type: (float) -> int
     return min(max(int(round(number)), 0), 255)
 
+# Note: there is a Cypress test which uses this, if you rename it, adjust that test (search "_bk_image") 
 _bk_image = None
 #type: Image | None
 
@@ -108,7 +108,7 @@ class Image:
     """
 
     # Attributes:
-    # __image: A Javascript OffscreenCanvas, but from the Python end it is only
+    # __image: A RemoteCanvas, but from the Python end it is only
     #          passed back to Javascript calls.
 
     # Tracks the rate limiting for downloads:
@@ -143,8 +143,7 @@ class Image:
         """
         Fill the image with the current fill color (see `set_fill`).
         """
-        dim = _strype_graphics_internal.getCanvasDimensions(self.__image)
-        _strype_graphics_internal.canvas_fillRect(self.__image, 0, 0, dim[0], dim[1])
+        _strype_graphics_internal.canvas_fillWhole(self.__image)
 
     def set_fill(self, color):
         # type: (str | Color | None) -> None
@@ -200,7 +199,7 @@ class Image:
         if isinstance(color, str):
             color = color_from_string(color)
         
-        _strype_graphics_internal.canvas_setPixel(self.__image, x, y, (color.red, color.green, color.blue, color.alpha))
+        _strype_graphics_internal.canvas_setPixel(self.__image, x, y, color.red, color.green, color.blue, color.alpha)
 
     def _bulk_get_pixels(self):
         # type: () -> list[int]
@@ -301,7 +300,7 @@ class Image:
             if not loaded:
                 raise Exception("Could not load font " + font_family)
         dim = _strype_graphics_internal.canvas_drawText(self.__image, text, x, y, font_size, max_width, max_height, font_family)
-        return _Dimension(dim['width'], dim['height'])
+        return _Dimension(dim[0], dim[1])
         
     def draw_rounded_rect(self, x, y, width, height, corner_size = 10):
         # type: (float, float, float, float, float) -> None
@@ -386,7 +385,8 @@ class Image:
         
         :param points: A list of pairs of (x, y) coordinates.
         """
-        _strype_graphics_internal.polygon_xy_pairs(self.__image, points)
+        # Need to convert tuple into list:
+        _strype_graphics_internal.polygon_xy_pairs(self.__image, [list(xy) for xy in points])
 
     def clone(self, scale = 1.0):
         # type: (float) -> Image
@@ -425,14 +425,16 @@ class Image:
         # download of 100 files before they realised what has happened.  I'm not sure if browsers will
         # protect against this.  So we protect against this by limiting downloads to only happening every
         # 2 seconds.  It's easier to do this on the Python side than on the Javascript side (where we'd have
-        # to mess with promises and Skulpt suspensions.  This is already wrapped up into the Python time
-        # module anyway:        
+        # to mess with promises and so on.  This is already wrapped up into the Python time module anyway:        
         now = _time.time()
         # If it's less than 2 seconds since last download, wait:
         if now < Image.__last_download + 2:
             _time.sleep(Image.__last_download + 2 - now)
         _strype_graphics_internal.canvas_downloadPNG(self.__image, filename)
         Image.__last_download = _time.time()
+
+_actorsInWorld = dict()
+# type: dict[int, Actor]
 
 class Actor:
     """
@@ -441,10 +443,10 @@ class Actor:
     """
     
     # Private attributes:
-    # __id: the identifier of the PersistentImage that represents this actor on screen.  Should never be None
+    # __id: the identifier of the Sprite that represents this actor on screen.  Should never be None
     # __editable_image: the editable image of this actor, if the user has ever called get_image() on us.
     # __tag: the user-supplied tag of the actor.  Useful to leave the type flexible, we just pass it in and out.
-    # __say: the identifier of the PersistentImage with the current speech bubble for this actor.  Is None when there is no current speech.
+    # __say: the identifier of the Sprite with the current speech bubble for this actor.  Is None when there is no current speech.
     # Note that __say can be removed on the Javascript side without our code executing, due to a timeout.  So
     # whenever we use it, we should check it's still actually present.
     
@@ -465,13 +467,14 @@ class Actor:
         :param tag: A optional tag for the actor (usually a string) for use in detecting touching actors.
         """
         if isinstance(image, Image):
-            self.__id = _strype_graphics_internal.addImage(image._Image__image, self)
+            self.__id = _strype_graphics_internal.addSprite(image._Image__image, True)
             self.__editable_image = image
         elif isinstance(image, str):
-            self.__id = _strype_graphics_internal.addImage(_strype_graphics_internal.loadAndWaitForImage(image), self)
+            self.__id = _strype_graphics_internal.addSprite(_load_image_bitmap(image), True)
             self.__editable_image = None
         else:
             raise TypeError("Actor constructor parameter must be Image")
+        _actorsInWorld[self.__id] = self
         self.__say = None
         self.__tag = tag
         _strype_graphics_internal.setImageLocation(self.__id, x, y)
@@ -528,6 +531,7 @@ class Actor:
         _strype_graphics_internal.removeImage(self.__id)
         # Also remove any speech bubble:
         self.say("")
+        del _actorsInWorld[self.__id]
 
     def get_x(self):
         # type: () -> int
@@ -541,7 +545,7 @@ class Actor:
         
          # Gets X with rounding (towards zero):
         location = _strype_graphics_internal.getImageLocation(self.__id)
-        return int(location['x']) if location else None
+        return int(location.x) if location else None
 
     def get_y(self):
         # type: () -> int
@@ -554,7 +558,7 @@ class Actor:
         """
         # Gets Y with rounding (towards zero):
         location = _strype_graphics_internal.getImageLocation(self.__id)
-        return int(location['y']) if location else None
+        return int(location.y) if location else None
 
     def get_exact_x(self):
         # type: () -> float
@@ -566,7 +570,7 @@ class Actor:
         """
         # Gets X with no rounding:
         location = _strype_graphics_internal.getImageLocation(self.__id)
-        return location['x'] if location else None
+        return location.x if location else None
 
     def get_exact_y(self):
         # type: () -> float
@@ -578,7 +582,7 @@ class Actor:
         """
         # Gets Y with no rounding:
         location = _strype_graphics_internal.getImageLocation(self.__id)
-        return location['y'] if location else None
+        return location.y if location else None
     
     def move(self, distance):
         # type: (float) -> None
@@ -593,7 +597,7 @@ class Actor:
         cur = _strype_graphics_internal.getImageLocation(self.__id)
         if cur is not None:
             rot = _math.radians(_strype_graphics_internal.getImageRotation(self.__id))
-            self.set_location(cur['x'] + distance * _math.cos(rot), cur['y'] + distance * _math.sin(rot))
+            self.set_location(cur.x + distance * _math.cos(rot), cur.y + distance * _math.sin(rot))
         # If cur is None, do nothing
     
     def turn(self, degrees):
@@ -621,7 +625,7 @@ class Actor:
         y = self.get_exact_y()
         if x is None or y is None:
             return False
-        return x < (-399 + distance) or x > (400 - distance) or y < (-299 + distance) or y > (300 - distance)
+        return x <= (-399 + distance) or x >= (400 - distance) or y <= (-299 + distance) or y >= (300 - distance)
    
     def is_touching(self, actor_or_tag):
         # type: (Actor | Any) -> bool
@@ -670,7 +674,7 @@ class Actor:
         :param tag: The tag to use to filter the returned actors (or None to return all actors)
         :return: A list of all touching actors.
         """
-        return [a for a in _strype_input_internal.getAllTouchingAssociated(self.__id) if tag is None or tag == a.get_tag()]
+        return [_actorsInWorld.get(a) for a in _strype_input_internal.getAllTouchingAssociated(self.__id) if _actorsInWorld.get(a) is not None and (tag is None or tag == _actorsInWorld.get(a).get_tag())]
     
     def remove_touching(self, tag = None):
         # type: (Any | None) -> None
@@ -699,7 +703,7 @@ class Actor:
         :param tag: The tag to use to filter the actors (or None to consider all actors)
         :return: A list of all actors within a given range.
         """
-        return [a for a in _strype_input_internal.getAllNearbyAssociated(self.__id, distance) if tag is None or tag == a.get_tag()]
+        return [_actorsInWorld.get(a) for a in _strype_input_internal.getAllNearbyAssociated(self.__id, distance) if _actorsInWorld.get(a) is not None and (tag is None or tag == _actorsInWorld.get(a).get_tag())]
 
     def get_image(self):
         # type: () -> Image
@@ -716,7 +720,7 @@ class Actor:
         if self.__editable_image is None:
             # The -42, -42 sizing indicates we will set the image ourselves afterwards:
             self.__editable_image = Image(-42, -42)
-            self.__editable_image._Image__image = _strype_graphics_internal.makeImageEditable(self.__id) 
+            self.__editable_image._Image__image = _strype_graphics_internal.makeImageEditableForSprite(self.__id) 
         return self.__editable_image
     
     def set_image(self, image):
@@ -767,6 +771,7 @@ class Actor:
             textOnlyImg.set_fill("white")
             textOnlyImg.fill()
             textOnlyImg.set_fill("black")
+            textOnlyImg.set_stroke(None)
             textDimensions = textOnlyImg.draw_text(text, 0, 0, font_size, max_width, max_height, font_family)
             # Now we prepare an image of the right size plus padding:
             sayImg = Image(textDimensions.width + 2 * padding, textDimensions.height + 2 * padding)
@@ -775,17 +780,15 @@ class Actor:
             sayImg.set_stroke("#555555FF")
             sayImg.draw_rounded_rect(2, 2, textDimensions.width + 2 * padding - 4, textDimensions.height + 2 * padding - 4, padding)
             sayImg._draw_part_of_image(textOnlyImg, padding, padding, 0, 0, textDimensions.width, textDimensions.height)
-            # Note: we used to pass None for associated object, but None is a non-null Javascript Skulpt object wrapping a null value
-            # To make this object outside of collisions entirely, we just omit the second parameter:
-            self.__say = _strype_graphics_internal.addImage(sayImg._Image__image)
+            self.__say = _strype_graphics_internal.addSprite(sayImg._Image__image, False)
             self._update_say_position()
             
     def _update_say_position(self):
         # type: () -> None
         # Update the speech bubble position to be relative to our new position and scale:
         if self.__say is not None and _strype_graphics_internal.imageExists(self.__say):
-            say_dim = _strype_graphics_internal.getImageSize(self.__say)
-            our_dim = _strype_graphics_internal.getImageSize(self.__id)
+            say_dim = _strype_graphics_internal.getImageSize(self.__say).to_py()
+            our_dim = _strype_graphics_internal.getImageSize(self.__id).to_py()
             scale = _strype_graphics_internal.getImageScale(self.__id)
             width = our_dim['width'] * scale
             height = our_dim['height'] * scale
@@ -830,6 +833,29 @@ class Actor:
         self.say(text, font_size, max_width, max_height)
         _strype_graphics_internal.removeImageAfter(self.__say, seconds)
 
+def _load_image_bitmap(name):
+    import re
+    # Important we check this first, so we don't list the filesystem (slow for cloud) if unneeded:
+    # This is copied from the conditions in loadAndWaitForImage, see there:
+    if name.startswith("http:") or name.startswith("https:") or name.startswith("data:") or name.startswith(":") or (":" not in name and re.match(r'^[^./]+\.[^/]+/.+', name)):
+        return _strype_graphics_internal.loadAndWaitForImage(name)
+    else:
+        # We load it from our virtual file system, either the current dir or /strype/graphics/
+        # To pass it on, it's probably faster to turn it into a data URL than e.g. read bytes
+        # and pass a long list of numbers which Pyodide has to convert item by array item to Javascript: 
+        import base64
+        import mimetypes
+
+        # If both fail, it will give an informative error (no such file):
+        try:
+            with open(name, "rb") as f:
+                encoded = base64.b64encode(f.read()).decode("ascii")
+        except:
+            with open("/strype/graphics/" + name, "rb") as f:
+                encoded = base64.b64encode(f.read()).decode("ascii")
+        mime_type, _ = mimetypes.guess_type(name)
+        return _strype_graphics_internal.loadAndWaitForImage(f"data:{mime_type};base64,{encoded}")
+
 def load_image(name):
     # type: (str) -> Image
     """
@@ -844,7 +870,8 @@ def load_image(name):
         return name
     # Make an internal empty image then load it:
     img = Image(-42, -42)
-    img._Image__image = _strype_graphics_internal.htmlImageToCanvas(_strype_graphics_internal.loadAndWaitForImage(name))
+    loaded_image = _load_image_bitmap(name)
+    img._Image__image = _strype_graphics_internal.htmlImageToCanvas(loaded_image)
     return img
 
 def get_clicked_actor():
@@ -887,6 +914,8 @@ def get_mouse():
     c = _strype_input_internal.getMouseDetails()
     return _MouseDetails(c[0], c[1], c[2][0], c[2][1], c[2][2])
 
+_cached_pressed_keys = {}
+_last_pressed_keys_fetch = 0
 
 def key_pressed(keyname):
     # type: (str) -> bool
@@ -900,7 +929,16 @@ def key_pressed(keyname):
     :param keyname: The name of the key to check.
     :return: True if the key is currently pressed down, False otherwise.
     """
-    return _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys())[keyname.lower()]
+    
+    # We cache this to avoid expensive round trips to the other thread.  We cache in Python
+    # to even avoid the overhead of a Javascript call when possible, as this function might be called multiple
+    # times in each animation frame:
+    now = round(_time.time() * 1000)
+    # If they do a 30 fps game we'll fetch once per animation frame, more often than that (or multiple times in same frame) and we'll use cache:
+    if now - _last_pressed_keys_fetch > 30:
+        _cached_pressed_keys = _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys().to_py())
+        _last_pressed_keys_fetch = now
+    return _cached_pressed_keys[keyname.lower()]
 
 def set_background(image_or_color, scale_to_fit = False):
     # type: (Image | str, bool) -> None
@@ -998,7 +1036,7 @@ def get_actors(tag = None):
         :param tag: The tag to use to filter the returned actors (or None to return all actors)
         :return: A list of all actors (that have not been removed via the `remove()` call).
         """
-    return [a for a in _strype_input_internal.getAllActors() if tag is None or tag == a.get_tag()]
+    return [_actorsInWorld.get(a) for a in _strype_input_internal.getAllActors() if _actorsInWorld.get(a) is not None and (tag is None or tag == _actorsInWorld.get(a).get_tag())]
 
 def get_actor_at(x, y, tag = None):
     # type: (float, float, Any | None) -> (Actor|None)
@@ -1012,7 +1050,7 @@ def get_actor_at(x, y, tag = None):
         :param tag: An optional tag used to constrain which actors to consider (if None, consider all actors).
         :return: An actor touching the given position, or None if there is none. 
     """
-    all = _strype_input_internal.getAllAt(x, y)
+    all = [_actorsInWorld.get(a) for a in _strype_input_internal.getAllAt(x, y) if _actorsInWorld.get(a) is not None]
     if tag is None:
         with_tag = all
     else:
@@ -1059,7 +1097,7 @@ def pace(actions_per_second = 25):
     for actions_per_second).
     
     :param actions_per_second: The amount of times you want to call pace() per second, 25 by default.
-    """
+    """    
     global _last_frame
     now = _time.time()
     # We sleep for 1/Nth minus the time since we last slept.  If it's negative (because we can't keep

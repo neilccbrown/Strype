@@ -1,4 +1,4 @@
-import {Page, test, expect} from "@playwright/test";
+import {Page, test, expect, Locator} from "@playwright/test";
 import {doPagePaste} from "../support/editor";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
@@ -44,7 +44,8 @@ async function checkConsoleContent(page: Page, expectedContent : string) {
 async function startRunning(page: Page) {
     // It should not be running:
     const button = page.locator("#runButton");
-    await expect(button).toHaveText("Run");
+    // It can take a while for Pyodide to load up:
+    await expect(button).toHaveText("Run", {timeout: 20000});
     // Click it:
     await page.click("#runButton");
     return button;
@@ -53,7 +54,7 @@ async function startRunning(page: Page) {
 async function runToFinish(page: Page) {
     const button = await startRunning(page);
     // Then it should not be running again, because it has finished:
-    await expect(button).toHaveText("Run");
+    await runButtonShowsRun(button);
 }
 
 test.describe("Check console after execution", () => {
@@ -82,6 +83,10 @@ test.describe("Check console after execution", () => {
     });
 });
 
+async function runButtonShowsRun(button: Locator) {
+    await expect(button).toHaveText("Run", {timeout: 20000});
+}
+
 test.describe("Test stdin works", () => {
     test("Check input/output works", async ({page}) => {
         await enterCode(page, ["", "", "name = input('What is your name?\\n')\nprint('Hello ' + name)\n"]);
@@ -90,7 +95,7 @@ test.describe("Test stdin works", () => {
         await expect(page.locator("#peaConsole")).toBeFocused();
         await page.locator("#peaConsole").pressSequentially("George\n", {delay: 75});
         // Then it should not be running again, because it has finished:
-        await expect(button).toHaveText("Run");
+        await runButtonShowsRun(button);
         await checkConsoleContent(page, "What is your name?\nGeorge\nHello George\n");
     });
 
@@ -106,7 +111,7 @@ test.describe("Test stdin works", () => {
         await page.locator("#peaConsole").pressSequentially("cat\n", {delay: 75});
         await checkConsoleContent(page, "What is your name?\nGeorge\nHello George\nWhat is your species?\ncat\nHello George the cat\n");
         // Then it should not be running again, because it has finished:
-        await expect(button).toHaveText("Run");
+        await runButtonShowsRun(button);
     });
 });
 
@@ -120,5 +125,42 @@ test.describe("Check errors show", () => {
         await enterCode(page, ["", "", "print('a'.foo())"]);
         await runToFinish(page);
         await checkConsoleContent(page, "< AttributeError: 'str' object has no attribute 'foo' >\n  From the highlighted call in your code");
+    });
+    test("Check error shows for file reading", async ({page}) => {
+        await enterCode(page, ["", "", "open(\"/does/not/exist.txt\", \"r\", encoding=\"utf-8\")"]);
+        await runToFinish(page);
+        await checkConsoleContent(page, "< FileNotFoundError: [Errno 44] No such file or directory: '/does/not/exist.txt' >\n  From the highlighted call in your code");
+    });
+});
+
+test.describe("Test assets filesystem", () => {
+    test("Check reading and processing book", async ({page}) => {
+        await enterCode(page, ["", "", `
+with open("/strype/book/books/three-men-in-a-boat.txt", "r", encoding="utf-8") as file:
+    content = file.read()
+count = content.count("Montmorency")
+
+print(f'Montmorency is mentioned {count} times.')`]);
+        await runToFinish(page);
+        await checkConsoleContent(page, "Montmorency is mentioned 48 times.\n");
+    });
+});
+
+// Not really a console test, but relies on console output so it can be here:
+test.describe("Test sounds", () => {
+    test("Check loading and setting sounds", async ({page}) => {
+        await enterCode(page, ["from strype.sound import *", "", `
+s = Sound([-1,0,1])
+print(s.get_samples())
+s.set_samples([-0.5, 0.5])
+print(s.get_samples())
+s.set_samples([1, -1])
+print(s.get_samples())`]);
+        await runToFinish(page);
+        await checkConsoleContent(page, `
+-1,0,1
+-0.5,0.5
+1,-1
+`.trimStart());
     });
 });

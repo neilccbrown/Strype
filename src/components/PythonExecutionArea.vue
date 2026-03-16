@@ -1,4 +1,3 @@
-
 <template>
     <div :id="peaComponentId" :class="{'pea-component': true, [scssVars.expandedPEAClassName]: isExpandedPEA, 'no-43-ratio-collapsed-PEA': !hasDefault43Ratio && !isExpandedPEA}" ref="peaComponent" @mousedown="handlePEAMouseDown">
         <div :id="controlsDivId" :class="{'pea-controls-div': true, 'expanded-PEA-controls': isExpandedPEA}">           
@@ -9,7 +8,7 @@
             <!-- IMPORTANT: keep this div with "invisible" text for proper layout rendering, it replaces the tabs -->
             <span v-if="!isTabsLayout" :class="scssVars.peaNoTabsPlaceholderSpanClassName">c+g</span>
             <div class="flex-padding"/>            
-            <button id="runButton" ref="runButton" class="pea-controls-button" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}">
+            <button id="runButton" ref="runButton" class="pea-controls-button" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}" :disabled="!isPythonWorkerReady">
                 <img v-if="!isPythonExecuting" :src="faviconURL" class="pea-play-img">
                 <span v-else class="python-running">{{runCodeButtonIconText}}</span>
                 <span>{{runCodeButtonLabel}}</span>
@@ -66,38 +65,45 @@
 import { defineComponent } from "vue";
 import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
-import { execPythonCode } from "@/helpers/execPythonCode";
 import { mapStores } from "pinia";
 import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, hasPrecompiledCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
 import { CoordPosition, defaultEmptyStrypeLayoutDividerSettings, PythonExecRunningState, StrypeContextMenuItem, StrypePEALayoutData, StrypePEALayoutMode } from "@/types/types";
-import { PersistentImage, PersistentImageManager, WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
+import { WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
 import SVGIcon from "@/components/SVGIcon.vue";
 import { Splitpanes, Pane } from "splitpanes";
 import { debounce } from "lodash";
 import scssVars from "@/assets/style/_export.module.scss";
 import { getLibraryName, getRawFileFromLibraries } from "@/helpers/libraryManager";
 import { getDateTimeFormatted } from "@/helpers/common";
-import audioBufferToWav from "audiobuffer-to-wav";
-import { saveAs } from "file-saver";
 import { bufferToBase64 } from "@/helpers/media";
 import turtleImgURL from "@/assets/images/turtle.png" ;
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { BTab, BTabs } from "bootstrap-vue-next";
+import * as Comlink from "comlink";
+import {handleErrorTrace, setSInputConsole, sInput} from "@/helpers/execPythonCode";
+import {ErrorDetails} from "@/workers/python-execution";
+import {SpriteHandle, SyncOrAsyncStrypePyodideWorkerRequest} from "@/stryperuntime/worker_bridge_type";
+import {SoundManager} from "@/stryperuntime/sound_manager";
+import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
+import {getPythonClient, isPythonWorkerReady, renderer, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
+
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
 
-const persistentImageManager = new PersistentImageManager();
+// It is awkward to have complex non-reactive types as members of the PythonExecutionArea component, and since
+// there is only ever one component, we can just have them as top-level members:
 let domContext : CanvasRenderingContext2D | null = null;
 let targetContext : OffscreenCanvasRenderingContext2D | null = null;
 let targetCanvas : OffscreenCanvas | null = null;
 let audioContext : AudioContext | null = null; // Important we don't initialise here, for permission reasons
-let mostRecentClickedItems : PersistentImage[] = []; // All the items under the mouse cursor at last click
-let mostRecentClickDetails : number[] | null = null; // Array of four numbers: x, y, button, click_count
-let mostRecentMouseDetails : [number, number, [boolean, boolean, boolean]] = [0, 0, [false, false, false]]; // X, Y, three button states
-const pressedKeys = new Map<string, boolean>();
+let mostRecentClickedItems : SpriteHandle[] = []; // All the items under the mouse cursor at last click
+let mostRecentClickDetails : { x: number, y: number, button: number, clickCount: number } | null = null; // x, y, button, click_count
+let mostRecentMouseDetails : {x: number, y: number, buttonsPressed: boolean[]} = {x:0, y:0, buttonsPressed: [false, false, false]}; // X, Y, three button states
+let pressedKeys : {[key: string]: boolean} = {};
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
-const bufferToSource = new Map<AudioBuffer, AudioBufferSourceNode>(); // Used to stop playing sounds
+
+let soundManager : SoundManager | null = null; // Can't initialise this year as we need permissions for audio context
 
 // We draw our actual graphics canvas (for strype.graphics) at the size it is on the page,
 // given the 4:3 aspect ratio.  But we also have a logical size that is constant, which is 800x600.
@@ -106,6 +112,17 @@ const bufferToSource = new Map<AudioBuffer, AudioBufferSourceNode>(); // Used to
 // expanded the canvas
 const graphicsCanvasLogicalWidth = WORLD_WIDTH;
 const graphicsCanvasLogicalHeight = WORLD_HEIGHT;
+
+// Load say font:
+const myFont = new FontFace(
+    "Klee One",
+    `url(${import.meta.env.BASE_URL}fonts/klee-one-v12-latin-regular.woff2)`
+);
+
+myFont.load().then((font) => {
+    document.fonts.add(font);
+});
+
 
 async function getAssetFileFromLibrary(fullLibraryAddress: string, fileName: string) {
     // First, try filename as-is:
@@ -155,7 +172,7 @@ export default defineComponent({
                 return this.isRunningStrypeGraphics;
             },
             downloadWAV: this.downloadWAV,
-            getPersistentImageManager: this.getPersistentImageManager,
+            getSpriteManager: this.getSpriteManager,
             redrawCanvas: this.redrawCanvas,
             // The following methods are used TEMPORARY to be accessed by the Strype media API internal files,
             // before we merge the Pyodide changes in the Vue 3 version.
@@ -207,6 +224,10 @@ export default defineComponent({
             frameContextMenuItems: [] as StrypeContextMenuItem[],
             showContextMenuAtCoordPos: {x: 0, y: 0} as CoordPosition,
         };
+    },
+
+    setup() {
+        return { isPythonWorkerReady }; // Make property known to Vue for use in template
     },
     
     mounted(){
@@ -437,6 +458,9 @@ export default defineComponent({
         },
         
         runCodeButtonLabel(): string {
+            if (!isPythonWorkerReady.value) {
+                return " " + this.$t("PEA.loading");
+            }
             switch (useStore().pythonExecRunningState) {
             case PythonExecRunningState.NotRunning:
                 return " " + this.$t("PEA.run");
@@ -465,6 +489,7 @@ export default defineComponent({
     },
 
     methods: {
+        
         handlePEAMouseDown() {
             // Force the Strype menu to close in case it was opened
             (vueComponentsAPIHandler.menuComponentAPI)?.toggleMenuOnOff(null);
@@ -499,11 +524,14 @@ export default defineComponent({
             case PythonExecRunningState.NotRunning:
                 useStore().pythonExecRunningState = PythonExecRunningState.Running;
                 // Important to call this when responding to a click, because browser won't allow
-                // sound to start unless we create it in response to a user action:
+                // sound to start unless we create it in direct response to a user action:
                 audioContext = new AudioContext();
+                soundManager = new SoundManager(audioContext, this);
                 this.execPythonCode();
                 return;
             case PythonExecRunningState.Running:
+                terminateAndRestartPyodide();
+                useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                 // There are 2 possible scenarios, which depends on the user code:
                 // 1) the code contains some "event" listening functions but is written in a way that Turtle execution ends (Skulpt) and still listens:
                 // 2) there is no "event" listening function in the code, or the code is written in a way that Turtle execution keeps pending (Skulpt)
@@ -518,9 +546,6 @@ export default defineComponent({
                     return;
                 }
 
-                // Case 2): Skulpt checks this property regularly while running, via a callback,
-                // so just setting the variable is enough to "request" a stop 
-                useStore().pythonExecRunningState = PythonExecRunningState.RunningAwaitingStop;
                 return;
             case PythonExecRunningState.RunningAwaitingStop:
                 // Else, nothing more we can do at the moment, just waiting for Skulpt to see it
@@ -569,12 +594,11 @@ export default defineComponent({
                 if (targetCanvas != null) {
                     targetContext?.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
                 }
-                persistentImageManager.clear();
                 // Clear input:
                 mostRecentClickedItems = [];
                 mostRecentClickDetails = null;
-                mostRecentMouseDetails = [0, 0, [false, false, false]];
-                pressedKeys.clear();
+                mostRecentMouseDetails = {x: 0, y: 0, buttonsPressed: [false, false, false]};
+                pressedKeys = {};
                 window.addEventListener("keydown", this.graphicsCanvasKeyDown);
                 window.addEventListener("keyup", this.graphicsCanvasKeyUp);
                 // Start the redraw loop:
@@ -589,8 +613,98 @@ export default defineComponent({
                 requestAnimationFrame(redraw);
                 
                 this.libraries = parser.getLibraries();
+
+                setSInputConsole(pythonConsole);
                 
+                // getPythonClient() can change value if restarted so important we take one
+                // const reference to it for the duration of a Python run: 
+                const client = getPythonClient();
+                
+                const syncBridgePromise = handleSyncRequests(renderer, soundManager as SoundManager, {
+                    getPressedKeys: () => pressedKeys,
+                    loadLibraryAsset: this.loadLibraryAsset,
+                    switchToGraphicsTab: () => {
+                        this.isRunningStrypeGraphics = true;
+                        this.peaDisplayTabIndex = PEATabIndexes.graphics;
+                    },
+                    getMouseDetails: this.getMouseDetails,
+                    consumeLastClickedItems: this.consumeLastClickedItems,
+                    consumeLastClickDetails: this.consumeLastClickDetails,
+                });
+                
+                const asyncBridge = handleAsyncRequests(renderer, soundManager as SoundManager);
+                
+                // Apparently we can use a promise as a queue to ensure we process the requests in order,
+                // and not try to service another while one is still going (especially sync ones which may yield,
+                // and risk having an async processed in the mean time).
+                let requestQueue = Promise.resolve();
+                function serialize(fn: () => void | Promise<void>) {
+                    requestQueue = requestQueue.then(() => fn()).catch((err) => {
+                        console.error("Error in serialized function:", err);
+                    });
+                }
+                
+                (client.call(
+                    client.workerProxy.executePython,
+                    userCode,
+                    typeof(this.appStore.strypeProjectLocation) === "string",
+                    Comlink.proxy((output: string) => {
+                        pythonConsole.value = pythonConsole.value + output;
+                    }),
+                    Comlink.proxy((prompt: string) => {
+                        sInput(prompt).then(async (s : string) => {
+                            // We send the output back via writeMessage rather than a direct return:
+                            await navigator.serviceWorker.ready;
+                            try {
+                                await client.writeMessage(s);
+                            }
+                            catch (e) {
+                                console.error(e);
+                            }
+                        });
+                    }),
+                    Comlink.proxy((asreq : SyncOrAsyncStrypePyodideWorkerRequest) => serialize(() => { 
+                        if (asreq.kind == "async") {
+                            asyncBridge(asreq.request);
+                        }
+                        else {
+                            const req = asreq.request;
+                            const resp = syncBridgePromise(req);
+                            if (req.request != resp.request) {
+                                console.error(`Internal error: request ${req.request} did not match the response ${resp.request}`);
+                            }
+                            resp.response.then(async (r: any) => {
+                                await navigator.serviceWorker.ready;
+                                try {
+                                    await client.writeMessage({request: resp.request, response: r});
+                                }
+                                catch (e) {
+                                    console.error(e);
+                                }
+                            }).catch(async (err) => {
+                                await navigator.serviceWorker.ready;
+                                try {
+                                    await client.writeMessage({request: resp.request, error: err.toString()});
+                                }
+                                catch (e) {
+                                    console.error(e);
+                                }
+                            });
+                        }
+                    }))
+                ) as Promise<ErrorDetails | null>).then((possibleError) => {
+                    if (possibleError != null) {
+                        handleErrorTrace(possibleError.text, possibleError.traceback, () => {}, parser.getFramePositionMap());
+                    }
+                    useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
+                    this.isRunningStrypeGraphics = false;
+                    setPythonExecAreaLayoutButtonPos();
+                    // We always restart Pyodide for a clean state:
+                    terminateAndRestartPyodide();
+                });
+
                 // Trigger the actual Python code execution launch
+                /*
                 execPythonCode(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),parser.getLibraries(), () => useStore().pythonExecRunningState != PythonExecRunningState.RunningAwaitingStop, (finishedWithError: boolean, isTurtleListeningKeyEvents: boolean, isTurtleListeningMouseEvents: boolean, isTurtleListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => {
                     // After Skulpt has executed the user code, we need to check if a keyboard listener is still pending from that user code.
                     this.isTurtleListeningKeyEvents = !!isTurtleListeningKeyEvents; 
@@ -600,9 +714,9 @@ export default defineComponent({
                     if (finishedWithError) {
                         this.updateTurtleListeningEvents();
                         // Don't draw last state if we finished with an error because we may be in an inconsistent state:
-                        persistentImageManager.resetDirty();
-                        for (let persistentImage of persistentImageManager.getPersistentImages()) {
-                            persistentImage.dirty = false;
+                        SpriteManager.resetDirty();
+                        for (let Sprite of SpriteManager.getSprites()) {
+                            Sprite.dirty = false;
                         }
                     }
                     if(!this.isTurtleListeningEvents) {
@@ -616,6 +730,7 @@ export default defineComponent({
                     // when Skulpt indicates the code execution has finished.
                     this.checkNonePrecompiledErrors();
                 });
+                */
                 // We make sure the number of errors shown in the interface is in line with the current state of the code
                 // Note that a run time error can still occur later.                
                 this.checkNonePrecompiledErrors();
@@ -801,20 +916,18 @@ export default defineComponent({
                 useStore().pythonExecRunningState = PythonExecRunningState.RunningAwaitingStop;              
             }
             this.isRunningStrypeGraphics = false;
-            pressedKeys.clear();
-            // Important not to use the accessor here as that will switch to the tab:
-            persistentImageManager.clear();
+            pressedKeys = {};
+            renderer.clear();
             this.redrawCanvas();
         },
         
-        // Note: this is called from our graphics API in strype_graphics_input_internal.js
-        getPersistentImageManager() : PersistentImageManager {
+        // Note: this is called from our graphics API in strype_graphics_input_internal.ts
+        getSpriteManager() : void {
             this.isRunningStrypeGraphics = true;
             this.peaDisplayTabIndex = PEATabIndexes.graphics;
-            return persistentImageManager;
         },
 
-        // Note: this is called from our graphics API in strype_graphics_input_internal.js
+        // Note: this is called from our graphics API in strype_graphics_input_internal.ts
         // Returns a data: base64 URL with the content if found, or undefined if not
         loadLibraryAsset(libraryShortName: string, fileName: string) : Promise<string | undefined> {
             const fullLibraryAddress = this.libraries.find((lib) => getLibraryName(lib) === libraryShortName);
@@ -841,15 +954,9 @@ export default defineComponent({
             return audioContext;
         },
         
-        downloadWAV(src: AudioBuffer, filenameStem: string) : void {
-            const wavArrayBuffer = audioBufferToWav(src);
-            const blob = new Blob([wavArrayBuffer], { type: "audio/wav" });
-            saveAs(blob, `${filenameStem}_${getDateTimeFormatted(new Date(Date.now()))}.png`);
-        },
-        
         redrawCanvasIfNeeded() : void {
             // Draws canvas if anything has changed:
-            if (persistentImageManager.isDirty()) {
+            if (renderer.isDirty()) {
                 this.redrawCanvas();
             }
         },
@@ -889,7 +996,7 @@ export default defineComponent({
             targetContext?.scale(this.scaleToFit, this.scaleToFit);
             domCanvas.setAttribute("data-scale", this.scaleToFit.toString());
             
-            for (let obj of persistentImageManager.getPersistentImages()) {
+            for (let obj of renderer.getItemsToDraw()) {
                 if (obj.rotation != 0) {
                     // These translations are in terms of the 0,0 top left system, but we call mapX/mapY
                     // on the coords we pass in, so it works out:
@@ -906,48 +1013,22 @@ export default defineComponent({
                     let dheight = obj.scale * obj.img.height;
                     targetContext?.drawImage(obj.img, mapX(obj.x) - dwidth*0.5, mapY(obj.y)-dheight*0.5, dwidth, dheight);
                 }
-                obj.dirty = false;
             }
-            persistentImageManager.resetDirty();
+            renderer.resetDirty();
             // Restore the scale:
             targetContext?.restore();
             
             // Actually copy the resulting off-screen image to the DOM canvas:
             // When the graphics tab has never been selected, the off-screen image can be empty
             // which gives an error:
-            if (c.width > 0 && c.height > 0) {
+            if (c.width > 0 && c.height > 0 && domContext) {
                 // Important on Safari to clear the canvas first, otherwise the new frame
                 // gets blended on top.  Firefox and Chrome don't do this by default (different alpha blending mode?):
-                domContext?.clearRect(0, 0, domCanvas.width, domCanvas.height);
+                domContext.fillStyle = "black";
+                domContext.fillRect(0, 0, domCanvas.width, domCanvas.height);
                 // The target canvas can be smaller than the real one, and we want to centre it:
-                domContext?.drawImage(c, (domCanvas.width - (targetCanvas?.width ?? 0)) / 2, (domCanvas.height - (targetCanvas?.height ?? 0)) / 2);
+                domContext.drawImage(c, (domCanvas.width - (targetCanvas?.width ?? 0)) / 2, (domCanvas.height - (targetCanvas?.height ?? 0)) / 2);
             }
-        },
-
-        playAudioBuffer(audioBuffer : AudioBuffer) : Promise<void> | null {
-            if (audioContext) {
-                const source = audioContext.createBufferSource();
-                source.buffer = audioBuffer;
-                source.connect(audioContext.destination);
-                return new Promise(function (resolve, reject) {
-                    source.onended = (ev) => {
-                        bufferToSource.delete(audioBuffer);
-                        resolve();
-                    };
-                    bufferToSource.set(audioBuffer, source);
-                    source.start();
-                });
-            }
-            else {
-                return null;
-            }
-        },
-        stopAudioBuffer(audioBuffer: AudioBuffer) : void {
-            const source = bufferToSource.get(audioBuffer);
-            if (source) {
-                source.stop();
-            }
-            // It's not an error if source is null, it either means the sound hasn't been playing, or it already finished
         },
         getLogicalMouseCoords(event: MouseEvent) {
             const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
@@ -970,9 +1051,11 @@ export default defineComponent({
 
             if (adjustedX >= -graphicsCanvasLogicalWidth / 2 && adjustedX <= graphicsCanvasLogicalWidth / 2 - 1 &&
                 adjustedY >= -graphicsCanvasLogicalHeight / 2 && adjustedY <= graphicsCanvasLogicalHeight / 2 - 1) {
-                mostRecentClickedItems = this.getPersistentImageManager().calculateAllOverlappingAtPos(adjustedX, adjustedY);
-                mostRecentClickDetails = [adjustedX, adjustedY, event.button, event.detail];
-                mostRecentMouseDetails[2][event.button] = true;
+                mostRecentClickedItems = renderer.calculateAllOverlappingAtPos(adjustedX, adjustedY);
+                mostRecentClickDetails = {x: adjustedX, y: adjustedY, button: event.button, clickCount: event.detail};
+                if (event.button < mostRecentMouseDetails.buttonsPressed.length) {
+                    mostRecentMouseDetails.buttonsPressed[event.button] = true;
+                }
             }
             
             // If we're running, don't propagate it into a right-click menu, for example:
@@ -986,34 +1069,33 @@ export default defineComponent({
             const {adjustedX, adjustedY} = this.getLogicalMouseCoords(event);
             if (adjustedX >= -graphicsCanvasLogicalWidth / 2 && adjustedX <= graphicsCanvasLogicalWidth / 2 - 1 &&
                 adjustedY >= -graphicsCanvasLogicalHeight / 2 && adjustedY <= graphicsCanvasLogicalHeight / 2 - 1) {
-                mostRecentMouseDetails[0] = adjustedX;
-                mostRecentMouseDetails[1] = adjustedY;
+                mostRecentMouseDetails.x = adjustedX;
+                mostRecentMouseDetails.y = adjustedY;
             }
         },
-        graphicsCanvasMouseUp(event: MouseEvent) {
-            mostRecentMouseDetails[2][event.button] = false;
+        graphicsCanvasMouseUp(event: PointerEvent) {
+            if (event.button < mostRecentMouseDetails.buttonsPressed.length) {
+                mostRecentMouseDetails.buttonsPressed[event.button] = false;
+            }
         },
-        consumeLastClickedItems() : PersistentImage[] {
+        consumeLastClickedItems() : SpriteHandle[] {
             const r = mostRecentClickedItems;
             mostRecentClickedItems = [];
             return r;
         },
-        consumeLastClickDetails() : number[] | null {
+        consumeLastClickDetails() : { x: number, y: number, button: number, clickCount: number } | null {
             const d = mostRecentClickDetails;
             mostRecentClickDetails = null;
             return d;
         },
-        getMouseDetails(): [number, number, [boolean, boolean, boolean]] {
+        getMouseDetails(): {x: number, y: number, buttonsPressed: boolean[]} {
             return mostRecentMouseDetails;
         },
         graphicsCanvasKeyDown(event: KeyboardEvent) {
-            pressedKeys.set(keyMapping.get(event.key) ?? event.key.toLowerCase(), true);
+            pressedKeys[keyMapping.get(event.key) ?? event.key.toLowerCase()] = true;
         },
         graphicsCanvasKeyUp(event: KeyboardEvent) {
-            pressedKeys.set(keyMapping.get(event.key) ?? event.key.toLowerCase(), false);
-        },
-        getPressedKeys() {
-            return pressedKeys;
+            pressedKeys[keyMapping.get(event.key) ?? event.key.toLowerCase()] = false;
         },
 
         handleContextMenuOpened() {

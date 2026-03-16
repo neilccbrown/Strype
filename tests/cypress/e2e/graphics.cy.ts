@@ -76,14 +76,15 @@ function checkImageMatch(expectedImageFileName: string, actual : PNG, comparison
             const diff = new PNG({width, height});
 
             // calling pixelmatch return how many pixels are different
-            const numDiffPixels = pixelmatch(expected.data, actual.data, diff.data, width, height, {threshold: 0.05});
+            const numDiffPixels = pixelmatch(expected.data, actual.data, diff.data, width, height, {threshold: 0.1, includeAA: false});
 
             cy.writeFile(`tests/cypress/expected-screenshots/diff/${expectedImageFileName}.png`, PNG.sync.write(diff));
 
             // calculating a percent diff
             const diffPercent = (numDiffPixels / (width * height) * 100);
 
-            expect(diffPercent).to.be.below(10);
+            // We need to use cy.then because otherwise if the test fails, it can cancel the pending cy.writeFile calls from earlier:
+            cy.then(() => expect(diffPercent).to.be.below(6));
         });
     }
     else {
@@ -171,9 +172,9 @@ function enterAndExecuteCode(functions: string, main: string, timeToWaitMillis =
     cy.get("#runButton").contains("Run");
 }
 
-function runCodeAndCheckImage(functions: string, main: string, expectedImageFileName : string, comparison = ImageComparison.COMPARE_TO_EXISTING) : void {
+function runCodeAndCheckImage(functions: string, main: string, expectedImageFileName : string, comparison = ImageComparison.COMPARE_TO_EXISTING, timeToWaitMillis = 2000) : void {
     focusEditorPasteAndClear();
-    enterAndExecuteCode(functions, main);
+    enterAndExecuteCode(functions, main, timeToWaitMillis);
     // Check the image matches expected:
     checkGraphicsCanvasContent(expectedImageFileName, comparison);
 }
@@ -246,6 +247,8 @@ describe("Image manipulation", () => {
         return;
     }
     it("Setting pixels using string colors", () => {
+        // Note that this test is implicitly testing the performance because it will only wait a few seconds
+        // for the program to finish:
         runCodeAndCheckImage("", `
             img = Image(100, 100)
             img.set_fill("white")
@@ -261,8 +264,22 @@ describe("Image manipulation", () => {
                     else:
                         img.set_pixel(x, y, "YELLOW")
             a = Actor(img.clone(6))
-        `, "image-set-pixel-string-colors");
+        `, "image-set-pixel-string-colors", ImageComparison.COMPARE_TO_EXISTING, 5000);
     });
+    it("Modifies pixels from original values", () => {
+        // Note that this test is implicitly testing the performance because it will only wait a few seconds
+        // for the program to finish:
+        runCodeAndCheckImage("", `
+        cat = Actor("cat-test.jpg")
+        img = cat.get_image()
+        for x in range(img.get_width()):
+            for y in range(img.get_height()):
+                p = img.get_pixel(x, y)
+                img.set_pixel(x, y, Color(p.red + 150, p.green + 150, p.blue + 150))
+        # Should display automatically
+        `, "image-lighten-cat", ImageComparison.COMPARE_TO_EXISTING, 5000);
+    });
+    
     it("Draws circles", () => {
         runCodeAndCheckImage("", `
             img = Image(800, 600)
@@ -292,6 +309,9 @@ describe("Image manipulation", () => {
             for p in range(5):
                 points = points + [(500 + 200*math.cos(math.radians(p * 360 / 5)), 300 + 200*math.sin(math.radians(p * 360 / 5)))] 
             img.draw_polygon(points)
+            img.set_stroke("blue")
+            img.set_fill("yellow")
+            img.draw_rounded_rect(50, 450, 150, 100, 20)
             
             Actor(img)
         `, "image-draw-polygons");
@@ -756,7 +776,7 @@ describe("Saying", () => {
     });
 });
 
-describe.only("Show text", () => {
+describe("Show text", () => {
     if (Cypress.env("mode") == "microbit") {
         // Graphics tests can't run in microbit
         return;

@@ -101,6 +101,7 @@
     "unexpectedCharsPython": "unexpected character(s)",
     "fileIO": {
       "openReadingError":"Strype ran into an internal error when opening the file (reading content issue).",
+      "cannotCreateDirectory":  "Creating directories is not currently supported.",
       "notConnectedToCloud":"access to files for IO operations is only possible from a Strype project saved in the Cloud.",
       "parentDirRefNotSupported":"parent directory references in paths (\"..\") are not supported by Strype.",
       "fileLocationNotFound":"the location of the file \"{filename}\" could not be found.",
@@ -235,6 +236,7 @@
     "run": "Run",
     "stop": "Stop",
     "stopping": "Stopping...",
+    "loading": "Initialising...",
     "runtimeErrorConsole": "Runtime error",
     "console": "Console",
     "Graphics": "Graphics",

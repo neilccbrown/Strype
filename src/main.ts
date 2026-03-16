@@ -10,8 +10,31 @@ import {getAppLangSelectId, getEditorID, getEditorMenuUID, getFrameBodyUID, getF
 import "@imengyu/vue3-context-menu/lib/vue3-context-menu.css";
 import ContextMenu from "@imengyu/vue3-context-menu";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+/* IFTRUE_isPython */
 import {getPEATabContentContainerDivId} from "./helpers/editor";
 // #v-endif
+
+// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+// We have to register the service worker ourselves so that it works in dev.
+// (If we used the Vite PWA auto-register it would only work in production.)
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", async () => {
+        // Note: service-worker.js is our desired name, the dev-sw.js is the one PWA always uses in dev mode.
+        const swUrl = import.meta.env.BASE_URL + "compiled-service-worker.js";
+        try {
+            const registration = await navigator.serviceWorker.register(swUrl, {type: "module", scope: import.meta.env.BASE_URL});
+            console.log("SW registered:", registration);
+        }
+        catch (err) {
+            console.error(`SW registration failed for ${swUrl} because:`, err);
+        }
+    });
+}
+else {
+    console.error("No service worker support");
+}
+// #v-endif
+
 
 // Set the SCSS variables for the tests here
 (window as any)[WINDOW_STRYPE_SCSSVARS_PROPNAME] = scssVars;

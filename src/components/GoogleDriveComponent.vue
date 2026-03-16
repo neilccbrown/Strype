@@ -9,6 +9,8 @@
         :pick-folder-cancelled="onPickFolderCancelled" @unsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" :dev-key="devKey" :oauth-token="oauthToken??''"/>
 </template>
 <script lang="ts">
+/// <reference types="@types/gapi.client.drive-v3" />
+// Above line is a Typescript directive, needed for the types.  It must be at the top of the <script> block.
 //////////////////////
 //      Imports     //
 //////////////////////
@@ -495,24 +497,42 @@ export default defineComponent({
             });
         },
 
-        searchCloudDriveElements(elementName: string, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]>{
+        searchCloudDriveElements(elementName: string | undefined, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]>{
             // Make a search query on Google Drive, with the provided query parameter.
             // Returns the elements found in the Drive listed by the HTTPRequest object obtained with the call to gapi.client.request(). 
             const orderByParam = (searchOptions?.orderBy) ? {orderBy: searchOptions.orderBy} : {};
             const fileFieldsParam = (searchOptions?.fileFields) ? {fields: searchOptions?.fileFields} : {};
+            const baseQuery = `parents='${elementLocationId}' and trashed=false`;
+            let query: string;
+            if (searchAllSPYFiles) {
+                query = `name contains '*.spy' and ${baseQuery}`;
+            }
+            else if (elementName != undefined) {
+                query = "name='" + elementName + "' and " + baseQuery;
+            }
+            else {
+                query = baseQuery;
+            }
             return gapi.client.request({
                 path: "https://www.googleapis.com/drive/v3/files",
-                params: {...orderByParam, ...fileFieldsParam, "q": `name${(searchAllSPYFiles) ? " contains '*.spy'": "='" + elementName +"'"} and parents='${elementLocationId}' and trashed=false`},
-            }).then((response) => {    
-                return JSON.parse(response.body).files as CloudDriveFile[];
+                params: {...orderByParam, ...fileFieldsParam, "q": query},
+            }).then((response) => {
+                const fullInfo = JSON.parse(response.body).files as gapi.client.drive.File[]; 
+                return fullInfo.map((gdf) => {
+                    let size = Number(gdf.size ?? "0");
+                    if (Number.isNaN(size)) {
+                        size = 0;
+                    }
+                    return {name: gdf.name as string, id: gdf.id as string, isDir: gdf.mimeType === "application/vnd.google-apps.folder", fileSize: size};
+                });
             });
         },
 
-        readFileContentForIO(fileId: string, isBinaryMode: boolean, filePath: string): Promise<string | Uint8Array | {success: boolean, errorMsg: string}> {
+        readFileContentForIO(fileId: string, filePath: string): Promise<Uint8Array> {
             // This method is used by FileIO to get a file string content.
-            // It relies on the Google File Id passed as argument, and the callback method for handling succes or failure is also passed as arguments.
+            // It relies on the Google File Id passed as argument.
             // The argument "filePath" is only used for error message.
-            // The nature of the answer depends on the reading mode: a string in normal text case, an array of bytes in binary mode.
+            // The answer is an array of bytes in binary mode.
             // Because we want to be able to read raw data, we use the fetch API to query Google Drive.
             return fetch("https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media", {
                 headers: { Authorization: "Bearer "+ this.oauthToken },
@@ -521,13 +541,9 @@ export default defineComponent({
                 if(resp.status != 200){
                     return Promise.reject(resp.status); 
                 }
-                return (isBinaryMode) 
-                    ? resp.arrayBuffer().then((buffer) => {
-                        return new Uint8Array(buffer);
-                    }) 
-                    : resp.text().then((text) => {
-                        return text;
-                    });
+                return resp.arrayBuffer().then((buffer) => {
+                    return new Uint8Array(buffer);
+                });
             },
             // Case of errors
             (resp) => {
@@ -535,9 +551,9 @@ export default defineComponent({
             });
         },
 
-        writeFileContentForIO(fileContent: string|Uint8Array, fileInfos: {filePath: string, fileName?: string, fileId?: string, folderId?: string}): Promise<string> {
+        writeFileContentForIO(fileContent: string|Uint8Array, fileInfos: { filePath: string, fileName: string, folderId: string } | { filePath: string, fileId: string }): Promise<string> {
             // Because we want to be able to read raw data, we use the fetch API to query Google Drive.
-            const isCreatingFile = !!(fileInfos.folderId);
+            const isCreatingFile = "folderId" in fileInfos;
             
             // The gapi.client.request() we have used for writing Strype projects in Drive isn't working for binary data.
             // So we use fetch() for binary files to be supported.
@@ -545,8 +561,8 @@ export default defineComponent({
             const boundary = "2db8c22f75474a58cd13fa2d3425017015d392ce0";
             const bodyReqParams: {name?: string, parents?: [string]} = {};
             if(isCreatingFile){
-                bodyReqParams.name = fileInfos.fileName??""; // the file name must be set by the caller!
-                bodyReqParams.parents = [fileInfos.folderId??""]; // the containing folder id must be set by the caller!
+                bodyReqParams.name = fileInfos.fileName; // the file name must be set by the caller!
+                bodyReqParams.parents = [fileInfos.folderId]; // the containing folder id must be set by the caller!
             }
 
             // Construct the multipart body

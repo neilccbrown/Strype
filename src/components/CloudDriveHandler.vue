@@ -759,20 +759,20 @@ export default defineComponent({
             this.saveFileId = undefined;
         },
 
-        searchCloudDriveElements(cloudTarget: StrypeSyncTarget, fileName: string, fileLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]> {
+        searchCloudDriveElements(cloudTarget: StrypeSyncTarget, fileName: string | undefined, fileLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]> {
             return this.getSpecificCloudDriveComponent(cloudTarget)?.searchCloudDriveElements(fileName, fileLocationId,searchAllSPYFiles, searchOptions)??Promise.reject("No Cloud target!"); // We should never get to the reject clause here, keep TS happy
         },
         
         /**
          * FileIO parts
          */
-        readFileContentForIO(cloudTarget: StrypeSyncTarget, fileId: string, isBinaryMode: boolean, filePath: string): Promise<string | Uint8Array | {success: boolean, errorMsg: string}> {
+        readFileContentForIO(cloudTarget: StrypeSyncTarget, fileId: string, filePath: string): Promise<Uint8Array> {
             // This method is used by FileIO to get a file string content.
-            // It relies on the Cloud File Id passed as argument, and the callback method for handling succes or failure is also passed as arguments.
+            // It relies on the Cloud File Id passed as argument.
             // The argument "filePath" is only used for error message.
-            // The nature of the answer depends on the reading mode: a string in normal text case, an array of bytes in binary mode.
-            return this.getSpecificCloudDriveComponent(cloudTarget)?.readFileContentForIO(fileId, isBinaryMode, filePath).catch((errorMsg) => {
-                return Promise.reject({success: false, errorMsg: this.$t("errorMessage.fileIO.fetchFileError", {filename: filePath, error: errorMsg})});
+            // The return is an array of bytes.
+            return this.getSpecificCloudDriveComponent(cloudTarget)?.readFileContentForIO(fileId, filePath).catch((errorMsg) => {
+                return Promise.reject(this.$t("errorMessage.fileIO.fetchFileError", {filename: filePath, error: errorMsg}));
             })??Promise.reject("No Cloud target!"); // We should never get to the reject clause here, keep TS happy
         },
 

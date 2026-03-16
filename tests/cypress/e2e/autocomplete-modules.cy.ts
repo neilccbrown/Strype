@@ -45,28 +45,28 @@ describe("Modules", () => {
             }
             else {
                 cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
-                checkExactlyOneItem(acIDSel, null, "antigravity");
                 checkExactlyOneItem(acIDSel, null, "array");
-                checkExactlyOneItem(acIDSel, null, "signal");
-                checkExactlyOneItem(acIDSel, null, "webbrowser");
+                checkExactlyOneItem(acIDSel, null, "collections");
+                checkExactlyOneItem(acIDSel, null, "random");
+                checkExactlyOneItem(acIDSel, null, "test");
                 checkNoItems(acIDSel, "mediacomp");
                 checkNoItems(acIDSel, "microbit");
-                // Once we type "a", should show things beginning with A but not the others:
-                cy.get("body").type("a");
-                cy.wait(500);
-                checkExactlyOneItem(acIDSel, null, "antigravity");
-                checkExactlyOneItem(acIDSel, null, "array");
-                checkNoItems(acIDSel, "signal");
-                checkNoItems(acIDSel, "webbrowser");
-                checkAutocompleteSorted(acIDSel, false);
-                // Once we type "r", should show things beginning with AR but not the others:
+                // Once we type "a", should show things beginning with R but not the others:
                 cy.get("body").type("r");
-                checkNoItems(acIDSel, "antigravity");
-                checkExactlyOneItem(acIDSel, null, "array");
-                checkNoItems(acIDSel, "signal");
-                checkNoItems(acIDSel, "webbrowser");
+                cy.wait(500);
+                checkExactlyOneItem(acIDSel, null, "random");
+                checkExactlyOneItem(acIDSel, null, "re");
+                checkNoItems(acIDSel, "collections");
+                checkNoItems(acIDSel, "test");
                 checkAutocompleteSorted(acIDSel, false);
-                cy.get(acIDSel).contains("Efficient arrays of numeric values.");
+                // Once we type "a", should show things beginning with RA but not the others:
+                cy.get("body").type("a");
+                checkNoItems(acIDSel, "re");
+                checkExactlyOneItem(acIDSel, null, "random");
+                checkNoItems(acIDSel, "collections");
+                checkNoItems(acIDSel, "test");
+                checkAutocompleteSorted(acIDSel, false);
+                cy.get(acIDSel).contains("Generate pseudo-random numbers.");
             }
         }, false);
     });
@@ -104,25 +104,26 @@ describe("Modules", () => {
             }
             else {
                 cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
-                checkExactlyOneItem(acIDSel, null, "antigravity");
                 checkExactlyOneItem(acIDSel, null, "array");
-                checkExactlyOneItem(acIDSel, null, "signal");
-                checkExactlyOneItem(acIDSel, null, "webbrowser");
+                checkExactlyOneItem(acIDSel, null, "collections");
+                checkExactlyOneItem(acIDSel, null, "random");
+                checkExactlyOneItem(acIDSel, null, "test");
+                checkNoItems(acIDSel, "mediacomp");
                 checkNoItems(acIDSel, "microbit");
-                // Once we type "a", should show things beginning with A but not the others:
-                cy.get("body").type("a");
-                cy.wait(500);
-                checkExactlyOneItem(acIDSel, null, "antigravity");
-                checkExactlyOneItem(acIDSel, null, "array");
-                checkNoItems(acIDSel, "signal");
-                checkNoItems(acIDSel, "webbrowser");
-                checkAutocompleteSorted(acIDSel, false);
-                // Once we type "r", should show things beginning with AR but not the others:
+                // Once we type "a", should show things beginning with R but not the others:
                 cy.get("body").type("r");
-                checkNoItems(acIDSel, "antigravity");
-                checkExactlyOneItem(acIDSel, null, "array");
-                checkNoItems(acIDSel, "signal");
-                checkNoItems(acIDSel, "webbrowser");
+                cy.wait(500);
+                checkExactlyOneItem(acIDSel, null, "random");
+                checkExactlyOneItem(acIDSel, null, "re");
+                checkNoItems(acIDSel, "collections");
+                checkNoItems(acIDSel, "test");
+                checkAutocompleteSorted(acIDSel, false);
+                // Once we type "a", should show things beginning with RA but not the others:
+                cy.get("body").type("a");
+                checkNoItems(acIDSel, "re");
+                checkExactlyOneItem(acIDSel, null, "random");
+                checkNoItems(acIDSel, "collections");
+                checkNoItems(acIDSel, "test");
                 checkAutocompleteSorted(acIDSel, false);
             }
         }, false);
@@ -156,9 +157,11 @@ describe("Modules", () => {
             checkNoItems(acIDSel, nonAvailable);
             checkNoItems(acIDSel, "*");
             checkAutocompleteSorted(acIDSel, false);
+            // Type rest of target:
+            cy.get("body").type(target.substring(1));
             cy.get(acIDSel).contains(targetDoc);
-            // Type rest of target then enter a comma:
-            cy.get("body").type(target.substring(1) + ",");
+            // Type a comma:
+            cy.get("body").type(",");
             cy.wait(500);
             // That should have dismissed the autocomplete and put us in a new slot:
             cy.get(acIDSel).should("not.be.visible");
@@ -178,9 +181,13 @@ describe("Modules", () => {
             checkNoItems(acIDSel, nonAvailable);
             checkNoItems(acIDSel, "*");
             checkAutocompleteSorted(acIDSel, false);
+            // Type rest:
+            cy.get("body").type(target.slice(1));
             cy.get(acIDSel).contains(targetDoc);
-            // Remove character and comma, to make it import just the one valid item:
-            cy.get("body").type("{backspace}{backspace}");
+            // Remove all and comma, to make it import just the one valid item:
+            for (let i = 0; i < 1 + target.length; i++) {
+                cy.get("body").type("{backspace}");
+            }
         }, false);
         // Now check in the body for docs on the autocomplete (we should be in a function call frame):
         cy.get("body").type("{rightarrow}{downarrow}{downarrow}");
@@ -224,7 +231,7 @@ describe("Modules", () => {
             checkExactlyOneItem(acIDSel, "time", target);
             checkNoItems(acIDSel, nonAvailable);
             // TODO: revert to "sleep(seconds)" for microbit when we fix TP 
-            checkExactlyOneItem(acIDSel, "time", Cypress.env("mode") === "microbit" ? "sleep(object)" : "sleep()");
+            checkExactlyOneItem(acIDSel, "time", Cypress.env("mode") === "microbit" ? "sleep(object)" : "sleep(t)");
             checkNoItems(acIDSel, "abs");
             checkNoItems(acIDSel, "AssertionError");
             // Type first letter of the target:
@@ -256,7 +263,7 @@ describe("Modules", () => {
             // Microbit and Python have different items in the time module, so pick accordingly:
             const target = Cypress.env("mode") == "microbit" ? "ticks_add(ticks, delta)" : "gmtime()";
             const nonAvailable = Cypress.env("mode") == "microbit" ? "gmtime" : "ticks_add";
-            const sleepCall = Cypress.env("mode") == "microbit" ? "sleep_ms(ms)" : "sleep()";
+            const sleepCall = Cypress.env("mode") == "microbit" ? "sleep_ms(ms)" : "sleep(t)";
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             // Should have time related queries, but not the standard completions:
             checkExactlyOneItem(acIDSel, "time", target);
@@ -301,7 +308,7 @@ describe("Nested modules", () => {
     // in terms of the autocomplete tests here, it should function in exactly the same way: 
     const targetModule = Cypress.env("mode") == "microbit" ? "microbit.accelerometer" : "urllib.request";
     const targetFunction = Cypress.env("mode") == "microbit" ? "get_x" : "urlopen";
-    const targetFunctionWithParam = Cypress.env("mode") == "microbit" ? "get_x()" : "urlopen(url, data, timeout, cafile, capath, cadefault, context)";
+    const targetFunctionWithParam = Cypress.env("mode") == "microbit" ? "get_x()" : "urlopen(url, data, timeout, context)";
 
     it("Offers auto-completion for modules with names a.b when imported as a.b", () => {
         // This works on microbit without using Skulpt because we have special cases to look up microbit in our precalculated JSON
@@ -320,7 +327,7 @@ describe("Nested modules", () => {
             // The modules we are retrieving are generated in our API files (see changes of commit 3073c074090c68dfb5cfc633686aa3916e55f0ca),
             // therefore, we will have the parameters in the autocompletion data.
             checkExactlyOneItem(acIDSel, targetModule, targetFunctionWithParam);
-            checkNoItems(acIDSel, "abs");
+            checkNoItems(acIDSel, "abs(");
         }, true);
     });
 
@@ -454,7 +461,7 @@ describe("Imported items", () => {
 });
 
 describe("Underscore handling", () => {
-    const importFunc = Cypress.env("mode") === "microbit" ? "__import__(name, globals, locals, fromlist, level)" : "__import__(name)";
+    const importFunc = Cypress.env("mode") === "microbit" ? "__import__(name, globals, locals, fromlist, level)" : "__import__(name, globals, locals, fromlist, level)";
 
     it("Does not offer underscore items at top-level until typed", () => {
         focusEditorAC();
@@ -476,42 +483,45 @@ describe("Underscore handling", () => {
             checkNoItems(acIDSel, "AssertionError");
             checkExactlyOneItem(acIDSel, BUILTIN, importFunc);
             checkAutocompleteSorted(acIDSel, true);
-            // Check docs are showing for built-in function:
+            // Check docs are showing for built-in function (only need one more underscore as one already typed):
+            cy.get("body").type("_import");
             cy.get(acIDSel).contains("Import a module.");
         }, true);
     });
-    // Python rules say we never import anything with underscores from modules with import *:
-    it("Does not offer underscore items on modules at all", () => {
-        // Go up to imports and add a from time import *
-        cy.get("body").type("{uparrow}{uparrow}ftime{rightarrow}*{rightarrow}");
-        cy.get("body").type("{downarrow}{downarrow}");
+    if (Cypress.env("mode") != "microbit" ) {
+        // Python rules say we never import anything with underscores from modules with import *:
+        // We use our own module because we know it has something with underscores in it:
+        it("Does not offer underscore items on modules at all", () => {
+            // Go up to imports and add a from time import *
+            cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}");
+            cy.get("body").type("{downarrow}{downarrow}");
 
-        focusEditorAC();
-        // Add a function frame and trigger auto-complete:
-        cy.get("body").type(" {ctrl} ");
-        withAC((acIDSel) => {
-            cy.get(acIDSel).should("be.visible");
-            checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
-            checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
-            checkExactlyOneItem(acIDSel, "time", Cypress.env("mode") == "microbit" ? "ticks_add(ticks, delta)" : "gmtime()");
-            checkNoItems(acIDSel, "__doc__");
-            checkNoItems(acIDSel, "__import__");
-            checkNoItems(acIDSel, "__name__");
-            // Once we type "_", should show things beginning with _ but not the others:
-            cy.get("body").type("_");
-            cy.wait(600);
-            checkNoItems(acIDSel, "abs(x)");
-            checkNoItems(acIDSel, "AssertionError");
-            checkNoItems(acIDSel, "gmtime");
-            checkNoItems(acIDSel, "ticks_add");
-            checkExactlyOneItem(acIDSel, BUILTIN, importFunc);
-            checkNoItems(acIDSel, "__doc__");
-            checkNoItems(acIDSel, "__name__");
-            checkAutocompleteSorted(acIDSel, true);
-            // Now cancel this:
-            cy.get("body").type("{backspace}{backspace}");
-        }, true);
-    });
+            focusEditorAC();
+            // Add a function frame and trigger auto-complete:
+            cy.get("body").type(" {ctrl} ");
+            withAC((acIDSel) => {
+                cy.get(acIDSel).should("be.visible");
+                checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
+                checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
+                checkExactlyOneItem(acIDSel, "strype.graphics", "stop()");
+                checkNoItems(acIDSel, "__doc__");
+                checkNoItems(acIDSel, "_bk_image");
+                checkNoItems(acIDSel, "__name__");
+                // Once we type "_", should show things beginning with _ but not the others:
+                cy.get("body").type("_");
+                cy.wait(600);
+                checkNoItems(acIDSel, "abs(x)");
+                checkNoItems(acIDSel, "AssertionError");
+                checkNoItems(acIDSel, "gmtime");
+                checkNoItems(acIDSel, "ticks_add");
+                checkExactlyOneItem(acIDSel, BUILTIN, importFunc);
+                checkNoItems(acIDSel, "_bk_image");
+                checkAutocompleteSorted(acIDSel, true);
+                // Now cancel this:
+                cy.get("body").type("{backspace}{backspace}");
+            }, true);
+        });
+    }
     /* TODO restore once TigerPython supports these items:
     it("Does not offer underscore items on object until typed", () => {
         focusEditorAC();

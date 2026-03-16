@@ -148,7 +148,6 @@ import { DAPWrapper } from "./helpers/partial-flashing";
 import { mapStores } from "pinia";
 import { getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos, getFrameBelowCaretPosition, checkCodeErrors, calculateNextCollapseState } from "./helpers/storeMethods";
 import { cloneDeep } from "lodash";
-import { BACKEND_SKULPT_DIV_ID } from "@/autocompletion/ac-skulpt";
 import {pasteMixedPython} from "@/helpers/pythonToFrames";
 import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
 import EditImageDlg from "@/components/EditImageDlg.vue";
@@ -347,7 +346,7 @@ export default defineComponent({
         },
 
         getSkulptBackendTurtleDivId(): string {
-            return BACKEND_SKULPT_DIV_ID;
+            return "TODOremovethismethodwhenturtlereplaced";
         },
 
         isPythonExecuting(): boolean {
