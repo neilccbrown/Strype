@@ -107,6 +107,7 @@ const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "do
 let soundManager : SoundManager | null = null; // Can't initialise this here as we need permissions for audio context
 const turtleCanvas = new OffscreenCanvas(800, 600);
 const turtlePixiHandler = new TurtlePixiHandler(turtleCanvas);
+let turtleDirty = false;
 turtlePixiHandler.setCanvasSize(800, 600);
 turtlePixiHandler.setPixiSize(800, 600);
 
@@ -621,6 +622,9 @@ export default defineComponent({
                         this.isRunningStrypeGraphics = true;
                         this.peaDisplayTabIndex = PEATabIndexes.graphics;
                     },
+                    markTurtleDirty: () => {
+                        turtleDirty = true
+                    },
                     getMouseDetails: this.getMouseDetails,
                     consumeLastClickedItems: this.consumeLastClickedItems,
                     consumeLastClickDetails: this.consumeLastClickDetails,
@@ -950,7 +954,7 @@ export default defineComponent({
         
         redrawCanvasIfNeeded() : void {
             // Draws canvas if anything has changed:
-            if (renderer.isDirty()) {
+            if (renderer.isDirty() || turtleDirty) {
                 this.redrawCanvas();
             }
         },
@@ -1023,10 +1027,13 @@ export default defineComponent({
                 // The target canvas can be smaller than the real one, and we want to centre it:
                 domContext.drawImage(c, (domCanvas.width - (targetCanvas?.width ?? 0)) / 2, (domCanvas.height - (targetCanvas?.height ?? 0)) / 2);
 
-                // Draw turtle on, too (TODO only if turtle used):
+            }
+            if (domContext && turtleDirty) {
+                // Draw turtle on, too:
                 turtlePixiHandler.update();
                 turtlePixiHandler.animate();
                 domContext.drawImage(turtleCanvas, (domCanvas.width - (turtleCanvas.width)) / 2, (domCanvas.height - (turtleCanvas.height)) / 2);
+                turtleDirty = false;
             }
         },
         getLogicalMouseCoords(event: MouseEvent) {

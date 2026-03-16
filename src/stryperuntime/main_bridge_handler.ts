@@ -18,6 +18,7 @@ interface SyncRequestCallbacks {
     getPressedKeys : () => {[key: string]: boolean},
     loadLibraryAsset : (libraryShortName: string, fileName: string) => Promise<string | undefined>,
     switchToGraphicsTab: () => void,
+    markTurtleDirty: () => void,
     getMouseDetails: () => {x : number, y: number, buttonsPressed: boolean[] },
     consumeLastClickDetails: () => { x: number, y: number, button: number, clickCount: number } | null,
     consumeLastClickedItems: () => SpriteHandle[],
@@ -157,6 +158,8 @@ export const handleSyncRequests : (
         return {request: req.request, response: fetch(req.url).then((resp) => resp.arrayBuffer()).then((arr) => encodeUint8ToString(new Uint8ClampedArray(arr)))};
     }
     case "turtle": {
+        // Assume all turtle interactions require a redraw:
+        callbacks.markTurtleDirty();
         return {request: req.request, response: handleTurtle(turtle, req.buffer).then(() => true)};
     }
     default:
