@@ -225,7 +225,7 @@ export function handleErrorTrace(errorType : string, traceback: { filename: stri
     }
     handleExecutionFinished(true);
     // We will have added text either way, now scroll to bottom:
-    Vue.nextTick(() => {
+    nextTick(() => {
         consoleTextArea.scrollTop = consoleTextArea.scrollHeight;
     });
 }
