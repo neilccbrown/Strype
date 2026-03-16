@@ -36,7 +36,7 @@ export default defineComponent({
     },
 
     props: {
-        onFileToLoadPicked: {type: Function as PropType<(cloudTarget: StrypeSyncTarget, fileId: string, fileName?: string) => Promise<void>>, required: true},
+        onFileToLoadPicked: {type: Function as PropType<(cloudTarget: StrypeSyncTarget, fileId: string, fileName?: string) => void>, required: true},
         onFolderToSaveFilePicked: {type: Function as PropType<(cloudTarget: StrypeSyncTarget) => void>, required: true},
         onFolderToSavePickCancelled: {type: Function as PropType<() => void>, required: true},
         onUnsupportedByStrypeFilePicked: {type: Function as PropType<() => void>, required: true},

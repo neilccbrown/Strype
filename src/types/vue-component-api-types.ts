@@ -21,7 +21,7 @@ import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileShari
 import { AppEvent, LoadRequestReason, Position, SaveRequestReason, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import { LoadedMedia } from "@/types/types";
-import { Sprite, SpriteManager } from "@/stryperuntime/image_and_collisions";
+import { SpriteManager } from "@/stryperuntime/image_and_collisions";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
 // #v-end-if
 
@@ -74,8 +74,8 @@ export type CloudDriveHandlerComponentAPI = {
   getPublicShareLink: (cloudTarget: StrypeSyncTarget) => Promise<{ respStatus: number, webLink: string }>,
   getPublicSharedProjectContent: (cloudTarget: StrypeSyncTarget, sharedFileID: string) => Promise<void> | undefined,
   searchCloudDriveElements: (cloudTarget: StrypeSyncTarget, fileName: string, fileLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>) => Promise<CloudDriveFile[]>,
-  readFileContentForIO: (cloudTarget: StrypeSyncTarget, fileId: string, isBinaryMode: boolean, filePath: string) => Promise<string | Uint8Array | {success: boolean, errorMsg: string}>,
-  writeFileContentForIO: (cloudTarget: StrypeSyncTarget, fileContent: string|Uint8Array, fileInfos: {filePath: string, fileName?: string, fileId?: string, folderId?: string}) => Promise<string>,
+  readFileContentForIO: (cloudTarget: StrypeSyncTarget, fileId: string, filePath: string) => Promise<Uint8Array>,
+  writeFileContentForIO: (cloudTarget: StrypeSyncTarget, fileContent: string|Uint8Array, fileInfos: { filePath: string, fileName: string, folderId: string } | { filePath: string, fileId: string }) => Promise<string>,
   getSaveExistingCloudProjectInfos: () => SaveExistingCloudProjectInfos,
   setSaveExistingCloudProjectInfos: (v: SaveExistingCloudProjectInfos) => void,
   setSaveFileName: (v: string) => void,
@@ -164,17 +164,6 @@ export type PEAComponentAPI = {
   downloadWAV: (src: AudioBuffer, filenameStem: string) => void,
   redrawCanvas: () => void,
   getSpriteManager: () => SpriteManager,
-  // The following methods are used TEMPORARY to be accessed by the Strype media API internal files,
-  // before we merge the Pyodide changes in the Vue 3 version.
-  // TODO : remove when no longer required.
-  loadLibraryAsset: (libraryShortName: string, fileName: string) => Promise<string | undefined>,
-  playAudioBuffer: (audioBuffer : AudioBuffer) => Promise<void> | null,
-  getAudioContext: () => AudioContext,
-  stopAudioBuffer: (audioBuffer: AudioBuffer) => void,
-  consumeLastClickedItems: () => Sprite[],
-  consumeLastClickDetails: () => number[] | null,
-  getMouseDetails: () => [number, number, [boolean, boolean, boolean]],
-  getPressedKeys: () => Map<string, boolean>,
 };
 
 export type MediaPreviewPopupComponentAPI = {

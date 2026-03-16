@@ -64,10 +64,9 @@ const concatFileContentParts = (part1: string | Uint8Array, part2: string | Uint
 };
 
 
-export function cloudLookupFile(parent: CloudFileId, name: string) : Promise<{fileId: CloudFileId, isDir: boolean} | undefined> {
+export function cloudLookupFile(parent: CloudFileId, name: string) : Promise<CloudFileInfo | undefined> {
     // If we are not connected to a cloud file system, then we raise an error:
     if(!isSyncTargetCloudDrive(useStore().syncTarget)){
-        // TODO VUE3 will need fix
         return Promise.reject(i18n.global.t("errorMessage.fileIO.notConnectedToCloud") as string);
     }
     
@@ -78,7 +77,7 @@ export function cloudLookupFile(parent: CloudFileId, name: string) : Promise<{fi
             // The search succeeded and we expect only one folder to be found (if any, so we'll use the first one returned).
             // We can save that folder in the cache and either return it's ID if we don't have other folder to resolve, or continue resolving otherwise.
             if(cloudFolderFiles.length > 0){
-                return Promise.resolve({fileId: {cloudFileId: cloudFolderFiles[0].id}, isDir: cloudFolderFiles[0].isDir, fileSize: cloudFolderFiles[0].fileSize});
+                return Promise.resolve({fileId: {cloudFileId: cloudFolderFiles[0].id}, isDir: cloudFolderFiles[0].isDir, name: cloudFolderFiles[0].name, fileSize: cloudFolderFiles[0].fileSize});
             }
             else{
                 return Promise.resolve(undefined);
@@ -90,7 +89,6 @@ export function cloudLookupFile(parent: CloudFileId, name: string) : Promise<{fi
 export function cloudListDir(parent: CloudFileId) : Promise<CloudFileInfo[]> {
     // If we are not connected to a cloud file system, then we raise an error:
     if(!isSyncTargetCloudDrive(useStore().syncTarget)){
-        // TODO VUE3 will need fix
         return Promise.reject(i18n.global.t("errorMessage.fileIO.notConnectedToCloud") as string);
     }
     const cloud : CloudDriveHandlerComponentAPI = getCloud();
@@ -266,13 +264,11 @@ export async function cloudReadFile(file: CloudFileId, fromByte: number, lengthB
 export async function cloudCreate(parent: CloudFileId, name: string, isDir: boolean, filePath: string) : Promise<CloudFileId> {
     // If we are not connected to a cloud file system, then we raise an error:
     if(!isSyncTargetCloudDrive(useStore().syncTarget)){
-        // TODO VUE3 will need fix
         return Promise.reject(i18n.global.t("errorMessage.fileIO.notConnectedToCloud") as string);
     }
     const cloud : CloudDriveHandlerComponentAPI = getCloud();
     
     if (isDir) {
-        // TODO VUE3 will need fix
         return Promise.reject(i18n.global.t("errorMessage.fileIO.cannotCreateDirectory") as string);
     }
     else {

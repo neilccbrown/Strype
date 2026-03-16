@@ -2,7 +2,7 @@
     <div class="joint-frames">
         <Frame
             v-for="frame in jointFrames"
-            :ref="setFrameRef(frame.id)"
+            :ref="getFrameUID(frame.id)"
             :key="frame.frameType.type + '-id:' + frame.id"
             :frameId="frame.id"
             :isDisabled="frame.isDisabled || isDisabled"
@@ -16,60 +16,34 @@
     </div>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
 //////////////////////
 //      Imports     //
 //////////////////////
-import { defineAsyncComponent, defineComponent } from "vue";
+import { computed } from "vue";
 import { useStore } from "@/store/store";
-import { FrameObject, PythonExecRunningState } from "@/types/types";
-import { mapStores } from "pinia";
+import { FrameObject } from "@/types/types";
 import { getFrameUID } from "@/helpers/editor";
 
 
 //////////////////////
 //     Component    //
 //////////////////////
-export default defineComponent({
-    name: "JointFrames",
+const props = defineProps<{
+    jointParentId: number, // Unique Indentifier for each Frame
+    isDisabled: boolean,
+    isBeingDragged: boolean,
+    isParentSelected: boolean,
+}>();
 
-    components: {
-        Frame: defineAsyncComponent(() => import("@/components/Frame.vue")), // lazy umport as we have a circular reference with this component.
+const appStore = useStore();
+
+const jointFrames = computed({
+    get(): FrameObject[] {
+        return appStore.getJointFramesForFrameId(props.jointParentId);
     },
-
-    props: {
-        // NOTE that type declarations here start with a Capital Letter!!! (different to types.ts!)
-        jointParentId: {type: Number, required: true}, // Unique Indentifier for each Frame
-        isDisabled: Boolean,
-        isBeingDragged: Boolean,
-        isParentSelected: Boolean,
-    },
-
-    computed: {
-        ...mapStores(useStore),
-        
-        jointFrames: {
-            get(): FrameObject[]  {
-                return this.appStore.getJointFramesForFrameId(this.jointParentId);
-            },
-            set() {
-                return;
-            },    
-        },
-
-        isEditing(): boolean {
-            return this.appStore.isEditing;
-        },
-
-        isPythonExecuting(): boolean {
-            return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
-        },
-    },
-
-    methods: {
-        setFrameRef(frameId: number) {
-            return getFrameUID(frameId);
-        },
+    set() {
+        return;
     },
 });
 </script>
