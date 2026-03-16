@@ -1073,7 +1073,7 @@ export default defineComponent({
                 mostRecentMouseDetails.y = adjustedY;
             }
         },
-        graphicsCanvasMouseUp(event: PointerEvent) {
+        graphicsCanvasMouseUp(event: MouseEvent) {
             if (event.button < mostRecentMouseDetails.buttonsPressed.length) {
                 mostRecentMouseDetails.buttonsPressed[event.button] = false;
             }

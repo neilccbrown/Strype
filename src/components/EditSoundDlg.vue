@@ -141,8 +141,8 @@ export default defineComponent({
         playStopLabel(): TranslateResult {
             return this.stopPreview == null ? this.$t("media.soundPlay") : this.$t("media.soundStop");
         },
-        playStopVariant() : string {
-            return this.stopPreview == null ? "success" : "danger";
+        playStopVariant() : "link-success" | "link-danger" {
+            return this.stopPreview == null ? "link-success" : "link-danger";
         },
     },
 
