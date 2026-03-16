@@ -61,6 +61,11 @@ export function createLazyFetchAssetsFS(pyodide : PyodideAPI) : EmscriptenFileSy
                 if (!url) {
                     throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
                 }
+                if (typeof url !== "string") {
+                    // Shouldn't happen, except once it did, so let's check:
+                    console.error("Non string URL for path \"" + path + "\" is URL: " + JSON.stringify(url));
+                }
+                
                 const buf = decodeStringToUint8(syncBridge({request: "assetFile_fetch", url}));
 
                 cache.set(path, buf);
