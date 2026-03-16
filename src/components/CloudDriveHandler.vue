@@ -274,7 +274,8 @@ export default defineComponent({
                     }
                     else{
                         // Open the internally shared project
-                        return cloudDriveComponent.onFileToLoadPicked(cloudTarget, openSharedProjectFileId);
+                        cloudDriveComponent.onFileToLoadPicked(cloudTarget, openSharedProjectFileId);
+                        return Promise.resolve();
                     }
                 }
                 else{
