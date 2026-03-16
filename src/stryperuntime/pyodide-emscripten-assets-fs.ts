@@ -4,7 +4,8 @@ import {syncBridge} from "@/workers/python_execution_type";
 import {decodeStringToUint8} from "@/stryperuntime/worker_bridge_type";
 import {getFullFilePath} from "@/stryperuntime/pyodide-emscripten-cloud-fs";
 
-const fileIndex: Record<string, string> = import.meta.glob<string>("/src/assetsFilesystem/**/*", {
+// The default: part matches the ESM structure that Vite will give us:
+const fileIndex: Record<string, { default: string }> = import.meta.glob<{ default: string }>("/src/assetsFilesystem/**/*", {
     as: "url",
     eager: true,
 });
@@ -61,7 +62,12 @@ export function createLazyFetchAssetsFS(pyodide : PyodideAPI) : EmscriptenFileSy
                 if (!url) {
                     throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
                 }
-                const buf = decodeStringToUint8(syncBridge({request: "assetFile_fetch", url}));
+                if (!url?.default || typeof url.default !== "string") {
+                    // Shouldn't happen, except once it did after we got the types wrong vs Vite, so let's check:
+                    console.error("Non string URL for path \"" + path + "\" is URL: " + JSON.stringify(url));
+                }
+                
+                const buf = decodeStringToUint8(syncBridge({request: "assetFile_fetch", url: url.default}));
 
                 cache.set(path, buf);
             }

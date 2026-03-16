@@ -52,11 +52,13 @@
     "no": "Non",
     "ok": "OK",
     "cancel": "Annuler",
+    "save": "Enregistrer",
     "saveDiffLocation": "Enregister ailleurs",
     "overwriteProject": "Remplacer",
     "saveProjectCopy": "Choisir un autre nom",
     "spaceBar": "espace",
-    "yesSign": "Se connecter",
+    "saveToCloudDrive" : "Enregistrer dans {drivename}",
+    "loadFromCloudDrive" : "Charger à partir de {drivename}",
     "noContinueWithout": "Ne pas se connecter",
     "saveChanges": "Enregister les modifications",
     "discardChanges": "Ignorer les modifications",
@@ -64,7 +66,8 @@
     "continue": "Continuer",
     "cancelLoadSharedProject": "Annuler (charger la sauvegarde)",
     "select": "Selectionner",
-    "refresh": "rafraîchir"
+    "refresh": "rafraîchir",
+    "choose": "Sélectionner"
   },
   "errorMessage": {
     "wrongDataFormat": "le format de données ne peut pas être lu",
@@ -121,7 +124,7 @@
     "editorFileUpload": "Chargement de votre fichier dans l'éditeur...",
     "editorAskSaveChangedCode": "Votre projet contient des modifications non-enregistrées. Enregister avant de quitter le projet actuel ?",
     "editorFileUploadWrongVersion": "Le code a été réalisé avec une version différente de l'éditeur.\nL'importer pourrait générer des erreurs.\n\nSouhaitez-vous néanmoins continuer ?",
-    "newProjectConfirmation": "Votre projet va être réinitialisé: <b>toute modification sera perdue</b>.<br/>Charger un nouveau projet quand même ?",
+    "newProjectConfirmation": "Toute modification non enregistrée sera perdue.",
     "importsContainer": "Imports :",
     "defsContainer": "Définitions :",
     "mainContainer": "Mon code :",
@@ -164,7 +167,7 @@
     "gdriveAllPythonFiles": "Tous les fichiers Python",
     "gdriveTab": "Mon Drive",
     "editorErrors": "Erreurs",
-    "resyncToCloudDriveAtStartup": "<b>Se reconnecter et <u>sauvegarder</u> vers {drivename} ?</b>\n\nLa dernière fois que vous éditiez ce projet, vous l'enregistriez vers {drivename}.\nSi vous souhaitez plutôt <u>charger</u> les modifications à partir de {drivename}, cliquez sur 'Ne pas se connecter' et utilisez 'Ouvrir' à partir du menu.",
+    "resyncToCloudDriveAtStartup": "<b>Se reconnecter vers {drivename} ?</b>\n\nLa dernière fois que vous éditiez ce projet, vous l'enregistriez vers {drivename}.\nSouhaitez-vous charger la version en ligne à partir de {drivename}, ou sauvegarder cette version locale vers {drivename} ?",
     "LSOnShareProjectLoad": "La sauvegarde d'un projet existant a été detectée.<br>Charger un projet partagé effacera cette sauvegarde.",
     "methodSnapshotLink": "Lien instantané",
     "methodSnapshotLinkExplanation": "Le code actuel (via un long lien)",
@@ -272,7 +275,7 @@
     "cursorHeightMac": "Hauteur (⇧ ⌘ C pour copier) :"
   },
   "demos": {
-    "dialogTitle": "Choisissez un exemple à charger",
+    "dialogTitle": "Exemples de programmes",
     "addLibrary": "Ajouter une bibliothèque :",
     "libraryAddrPlaceholder": "Adresse de la bibliothèque",
     "add": "Ajouter",

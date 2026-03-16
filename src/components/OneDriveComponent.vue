@@ -25,7 +25,7 @@
 import { useStore } from "@/store/store";
 import { StrypeSyncTarget } from "@/types/types";
 import { mapStores } from "pinia";
-import Vue, { PropType } from "vue";
+import { defineComponent, PropType } from "vue";
 import { AccountInfo, Configuration, PublicClientApplication  } from "@azure/msal-browser";
 import { CloudDriveItemPickerFolderPathResolutionMode, CloudDriveItemPickerItem, CloudDriveItemPickerMode, CloudFileSharingStatus, OneDrivePickConfigurationOptions, OneDriveTokenPurpose } from "@/types/cloud-drive-types";
 import { uniqueId } from "lodash";
@@ -33,11 +33,12 @@ import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { CloudDriveAPIState } from "@/types/cloud-drive-types";
 import { CloudDriveFile } from "@/types/cloud-drive-types";
 import type { BaseItem, DriveItem, Permission, UploadSession } from "@microsoft/microsoft-graph-types";
-import CloudDriveHandlerComponent from "@/components/CloudDriveHandler.vue";
 import CloudDriveItemPicker from "@/components/CloudDriveItemPicker.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
-import { BvModalEvent } from "bootstrap-vue";
 import { CustomEventTypes } from "@/helpers/editor";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { eventBus } from "@/helpers/appContext";
+import { BvTriggerableEvent } from "bootstrap-vue-next";
 
 //////////////////////
 //     Component    //
@@ -46,7 +47,7 @@ import { CustomEventTypes } from "@/helpers/editor";
 // This variable is moved to at the module level rather than in data because having a Window as a reactive property doesn't work with Vue 2.7 (and Vue 3)
 let pickerPopup: Window | null = null;
 
-export default Vue.extend({
+export default defineComponent({
     name: "OneDriveComponent",
 
     components: {
@@ -66,7 +67,7 @@ export default Vue.extend({
         window.addEventListener("message", this.onPickerMsg);
 
         // The events from Bootstrap modal are registered to the root app element.
-        this.$root.$on("bv::modal::hide", this.onFolderPickerForWSAccountHideModalDlg); 
+        eventBus.on(CustomEventTypes.strypeModalHidden, this.onFolderPickerForWSAccountHideModalDlg); 
     },
 
 
@@ -186,7 +187,7 @@ export default Vue.extend({
                 pickerMode: CloudDriveItemPickerMode.FOLDERS,
                 pathResolutionMode: CloudDriveItemPickerFolderPathResolutionMode.BY_NAME,
                 initialFolderPathPartsToSelect: (this.appStore.strypeProjectLocationPath??"").split("/"),
-                emptyPickerText: this.$i18n.t("appMessage.emptyCloudDrivePicker", {drivename: this.driveName }) as string,
+                emptyPickerText: this.$t("appMessage.emptyCloudDrivePicker", {drivename: this.driveName }),
             };
         },
 
@@ -235,7 +236,7 @@ export default Vue.extend({
                     }
                 }
             
-                (this.$parent as InstanceType<typeof CloudDriveHandlerComponent>).updateSignInStatus(StrypeSyncTarget.od, true);
+                vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.updateSignInStatus(StrypeSyncTarget.od, true);
                 callback(StrypeSyncTarget.od);
             }
         },   
@@ -399,7 +400,7 @@ export default Vue.extend({
                 const itemsForPicker = this.transformOneDriveItemsToCloudDriveItemPickerItems(rootLevelDriveItems as DriveItem[]);
                 this.folderPickerForWSAccountRawData = itemsForPicker;
                 if(!doNotOpenPickerModalDlg){              
-                    this.$root.$emit("bv::show::modal", this.folderPickerForWSAccountDlgId);
+                    eventBus.emit(CustomEventTypes.showStrypeModal, this.folderPickerForWSAccountDlgId);
                 }
             }
             else{
@@ -434,7 +435,7 @@ export default Vue.extend({
                 // now we need to construct our query string
                 const queryString = new URLSearchParams({
                     filePicker: JSON.stringify(this.pickerOptions),
-                    locale:  this.$i18n.t("localeOneDrive") as string,
+                    locale:  this.$t("localeOneDrive"),
                 });
 
                 // we create the absolute url by combining the base url, appending the _layouts path, and including the query string
@@ -497,8 +498,8 @@ export default Vue.extend({
             this.onFolderToSaveFilePicked(StrypeSyncTarget.od);
         },
 
-        onFolderPickerForWSAccountHideModalDlg(event: BvModalEvent, dlgId: string ){
-            if(dlgId == this.folderPickerForWSAccountDlgId){
+        onFolderPickerForWSAccountHideModalDlg(event: BvTriggerableEvent){
+            if(event.componentId == this.folderPickerForWSAccountDlgId){
                 if(event.trigger == "ok"){
                     // Trigger the selection's validation
                     document.dispatchEvent(new CustomEvent(CustomEventTypes.requestedCloudDrivePickerPickedItem));
@@ -581,7 +582,7 @@ export default Vue.extend({
                     // now we need to construct our query string
                     const queryString = new URLSearchParams({
                         filePicker: JSON.stringify(this.pickerOptions),
-                        locale:  this.$i18n.t("localeOneDrive") as string,
+                        locale:  this.$t("localeOneDrive"),
                     });
 
                     // We create the absolute url by combining the base url, appending the _layouts path, and including the query string
@@ -830,7 +831,7 @@ export default Vue.extend({
                     const resp = await fetch(uploadSessionURL as string, {
                         method: "PUT", 
                         headers: {"Content-Length": chunk.length.toString(), "Content-Range": `bytes ${offset}-${offset + chunk.length - 1}/${rawFileContent.length}`},
-                        body: chunk,
+                        body: chunk as BodyInit,
                     });
                     const jsonProps = await resp.json() as BaseItem;
                     // On the last chunk, Graph should return the meta data about the created file, so we can get the ID from there.

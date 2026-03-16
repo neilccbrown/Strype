@@ -13,17 +13,19 @@ export async function load(page: Page, filepath: string) : Promise<void> {
     // A modification update might arise because we had changed something in the editor:
     // so we check if this situation happened, and discard changes if so.
     await page.waitForTimeout(2000);
-    const discardChangesButton = page.locator("button.btn-secondary");
+    const discardChangesButton = page.locator("button.btn-secondary:visible");
     if(await discardChangesButton.count() > 0) {
         const discardChangesButtonContent = await discardChangesButton.textContent();
         if(discardChangesButtonContent == "Discard changes"){
             await discardChangesButton.click();
         }
     }
-    // The "button" for the target selection is now a div element.
-    await page.click("#" + await strypeElIds(page).getLoadFromFSStrypeButtonId());
-    // Must force because the <input> is hidden:
-    await page.setInputFiles("#" + await strypeElIds(page).getImportFileInputId(), filepath);
+    const [fileChooser] = await Promise.all([
+        page.waitForEvent("filechooser"),
+        // The "button" for the target selection is now a div element.
+        page.click("#" + await strypeElIds(page).getLoadFromFSStrypeButtonId()),
+    ]);
+    await fileChooser.setFiles(filepath);
     await page.waitForTimeout(2000);
 }
 
@@ -39,15 +41,16 @@ export async function loadContent(page: Page, spyToLoad: string) : Promise<void>
 export async function save(page: Page, firstSave = true) : Promise<string> {
     // Save is located in the menu, so we need to open it first, then find the link and click on it:
     await page.click("#" + await strypeElIds(page).getEditorMenuUID());
-
+    await page.waitForTimeout(1000);
+    
     let download;
     if (firstSave) {
         await page.click("#" + await strypeElIds(page).getSaveProjectLinkId());
         // For testing, we always want to save to this device:
-        await page.getByText(en.appMessage.targetFS).click();
+        await page.locator("span:visible").getByText(en.appMessage.targetFS).click();
         [download] = await Promise.all([
             page.waitForEvent("download"),
-            page.click("button.btn:has-text('OK')"),
+            page.locator("button.btn:visible", {hasText: en.buttonLabel.save}).click(),
         ]);
     }
     else {

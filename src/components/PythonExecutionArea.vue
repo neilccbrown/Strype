@@ -1,14 +1,14 @@
 <template>
     <div :id="peaComponentId" :class="{'pea-component': true, [scssVars.expandedPEAClassName]: isExpandedPEA, 'no-43-ratio-collapsed-PEA': !hasDefault43Ratio && !isExpandedPEA}" ref="peaComponent" @mousedown="handlePEAMouseDown">
         <div :id="controlsDivId" :class="{'pea-controls-div': true, 'expanded-PEA-controls': isExpandedPEA}">           
-            <b-tabs v-show="isTabsLayout" v-model="peaDisplayTabIndex" no-key-nav>
-                <b-tab v-show="isTabsLayout" :button-id="graphicsTabId" :title="'\uD83D\uDC22 '+$t('PEA.Graphics')" title-link-class="pea-display-tab"></b-tab>
-                <b-tab v-show="isTabsLayout" :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab" active></b-tab>
-            </b-tabs>
+            <BTabs v-show="isTabsLayout" v-model:index="peaDisplayTabIndex" no-key-nav>
+                <BTab v-show="isTabsLayout" :button-id="graphicsTabId" :title="'\uD83D\uDC22 '+$t('PEA.Graphics')" title-link-class="pea-display-tab"></BTab>
+                <BTab v-show="isTabsLayout" :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab"></BTab>
+            </BTabs>
             <!-- IMPORTANT: keep this div with "invisible" text for proper layout rendering, it replaces the tabs -->
             <span v-if="!isTabsLayout" :class="scssVars.peaNoTabsPlaceholderSpanClassName">c+g</span>
             <div class="flex-padding"/>            
-            <button id="runButton" ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}" :disabled="!isPythonWorkerReady">
+            <button id="runButton" ref="runButton" class="pea-controls-button" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}" :disabled="!isPythonWorkerReady">
                 <img v-if="!isPythonExecuting" :src="faviconURL" class="pea-play-img">
                 <span v-else class="python-running">{{runCodeButtonIconText}}</span>
                 <span>{{runCodeButtonLabel}}</span>
@@ -16,31 +16,34 @@
         </div>
         <div :id="tabContentContainerDivId" :class="{'pea-tab-content-container': true, 'flex-padding': true, 'pea-43-ratio': hasDefault43Ratio}">
             <!-- the SplitPanes is used in all layout configurations: for tabs, we only show 1 of the panes and disable moving the divider, and for stacked window it acts as normal -->
-            <Splitpanes :class="{'strype-PEA-split-theme': true, 'with-expanded-PEA': isExpandedPEA, 'tabs-PEA': isTabsLayout}" :horizontal="!isExpandedPEA" @resize="onSplitterPane1Resize">
-                <pane :id="graphicsSplitPaneId" key="1" v-show="isGraphicsAreaShowing" :size="(isTabsLayout) ? 100 : currentSplitterPane1Size" min-size="5">
-                    <div :id="graphicsContainerDivId" @wheel.stop :class="{'pea-graphics-container': true, hidden: graphicsTemporaryHidden}" @contextmenu="showContextMenu($event)">
-                        <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @mousedown.stop="graphicsCanvasMouseDown" @mouseup.stop="graphicsCanvasMouseUp" @mousemove="graphicsCanvasMouseMove"></canvas>
-                        <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
-                            <div :id="graphicsDivId" ref="pythonTurtleDiv" class="pea-graphics-div"></div>
-                        </div> 
-                    </div>
-                </pane>
-                <pane key="2" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)" min-size="5">
-                    <textarea 
-                        :id="pythonConsoleId"
-                        ref="pythonConsole"
-                        class="pea-console"
-                        @focus="onFocus()"
-                        @change="onChange"
-                        @wheel.stop
-                        @keydown.self.stop="handleKeyEvent"
-                        @keyup.self="handleKeyEvent"
-                        disabled
-                        spellcheck="false"
-                    >    
-                    </textarea>
-                </pane>
-            </Splitpanes>
+            <!-- the container div is only here because the new version of Splitpanes doesn't get the classes -->
+            <div :class="{'strype-PEA-split-theme': true, 'with-expanded-PEA': isExpandedPEA, 'tabs-PEA': isTabsLayout}">
+                <Splitpanes :horizontal="!isExpandedPEA" @resize="onSplitterPane1Resize">
+                    <pane :id="graphicsSplitPaneId" key="1" v-show="isGraphicsAreaShowing" :size="(isTabsLayout) ? 100 : currentSplitterPane1Size" min-size="5">
+                        <div :id="graphicsContainerDivId" @wheel.stop :class="{'pea-graphics-container': true, hidden: graphicsTemporaryHidden}" @contextmenu="handleContextMenu">
+                            <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @mousedown.stop="graphicsCanvasMouseDown" @mouseup.stop="graphicsCanvasMouseUp" @mousemove="graphicsCanvasMouseMove"></canvas>
+                            <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
+                                <div :id="graphicsDivId" ref="pythonTurtleDiv" class="pea-graphics-div"></div>
+                            </div> 
+                        </div>
+                    </pane>
+                    <pane key="2" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)" min-size="5">
+                        <textarea 
+                            :id="pythonConsoleId"
+                            ref="pythonConsole"
+                            class="pea-console"
+                            @focus="onFocus()"
+                            @change="onChange"
+                            @wheel.stop
+                            @keydown.self.stop="handleKeyEvent"
+                            @keyup.self="handleKeyEvent"
+                            disabled
+                            spellcheck="false"
+                        >    
+                        </textarea>
+                    </pane>
+                </Splitpanes>
+            </div>
             <div :class="{[scssVars.peaToggleLayoutButtonsContainerClassName]: true, hidden: (!isTabContentHovered || isPythonExecuting)}">
                 <div v-for="(layoutData, index) in PEALayoutsData" :key="'strype-PEA-Layout-'+index" 
                     @click="togglePEALayout(layoutData.mode, true)" :title="$t('PEA.'+layoutData.iconName)">
@@ -48,32 +51,34 @@
                 </div>
             </div>
         </div>
-        <vue-context ref="menu" @open="handleContextMenuOpened" @close="handleContextMenuClosed" id="PEAcontextmenu">
-            <li><a @click.stop="screenshotGraphicsArea(); closeContextMenu()" @mouseover="handleContextMenuHover">{{$i18n.t("contextMenu.screenshotGraphics")}}</a></li>
-        </vue-context>
+        <ContextMenu 
+            :contextMenuItemsDef="frameContextMenuItems"
+            :showContextMenu="showContextMenu"
+            :showAt="showContextMenuAtCoordPos"
+            :onOpened="handleContextMenuOpened"            
+            :onClosed="handleContextMenuClosed"
+        />
     </div>
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import {useStore} from "@/store/store";
+import { defineComponent } from "vue";
+import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
-import {mapStores} from "pinia";
-import {adjustContextMenuPosition, checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getStrypeCommandComponentRefId, hasPrecompiledCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight} from "@/helpers/editor";
-import i18n from "@/i18n";
-import {defaultEmptyStrypeLayoutDividerSettings, Position, PythonExecRunningState, StrypePEALayoutData, StrypePEALayoutMode} from "@/types/types";
-import {WORLD_HEIGHT, WORLD_WIDTH} from "@/stryperuntime/image_and_collisions";
-import Menu from "@/components/Menu.vue";
-import CommandsComponent from "@/components/Commands.vue";
+import { mapStores } from "pinia";
+import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, hasPrecompiledCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
+import { CoordPosition, defaultEmptyStrypeLayoutDividerSettings, PythonExecRunningState, StrypeContextMenuItem, StrypePEALayoutData, StrypePEALayoutMode } from "@/types/types";
+import { WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
 import SVGIcon from "@/components/SVGIcon.vue";
-import {Pane, Splitpanes} from "splitpanes";
-import {debounce} from "lodash";
+import { Splitpanes, Pane } from "splitpanes";
+import { debounce } from "lodash";
 import scssVars from "@/assets/style/_export.module.scss";
-import {getLibraryName, getRawFileFromLibraries} from "@/helpers/libraryManager";
-import VueContext, {VueContextConstructor} from "vue-context";
-import {getDateTimeFormatted} from "@/helpers/common";
-import {bufferToBase64} from "@/helpers/media";
-import turtleImgURL from "@/assets/images/turtle.png";
+import { getLibraryName, getRawFileFromLibraries } from "@/helpers/libraryManager";
+import { getDateTimeFormatted } from "@/helpers/common";
+import { bufferToBase64 } from "@/helpers/media";
+import turtleImgURL from "@/assets/images/turtle.png" ;
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { BTab, BTabs } from "bootstrap-vue-next";
 import * as Comlink from "comlink";
 import {handleErrorTrace, setSInputConsole, sInput} from "@/helpers/execPythonCode";
 import {ErrorDetails} from "@/workers/python-execution";
@@ -82,6 +87,7 @@ import {SoundManager} from "@/stryperuntime/sound_manager";
 import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
 import {getPythonClient, isPythonWorkerReady, renderer, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
 import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
+
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
@@ -133,19 +139,65 @@ async function getAssetFileFromLibrary(fullLibraryAddress: string, fileName: str
     return  await getRawFileFromLibraries([fullLibraryAddress], "assets/" + fileName);
 }
 
-export default Vue.extend({
+export default defineComponent({
     name: "PythonExecutionArea",
 
     components: {
         Splitpanes,
         Pane,
         SVGIcon,
-        VueContext,
+        BTabs, BTab,
     },
 
     props:{
         hasDefault43Ratio: Boolean,
     },
+
+    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+    created() {
+        // Expose this component that other components might need.
+        // Vue 3 has deprecated direct access to components.
+        // (we don't set it in setup() because we want to have this accessible, and the component created!)
+        vueComponentsAPIHandler.peaComponentAPI = {
+            togglePEALayout: this.togglePEALayout,
+            clear: this.clear,
+            getIsConsoleAreaShowing: () => this.isConsoleAreaShowing,
+            getIsGraphicsAreaShowing: () => this.isGraphicsAreaShowing,
+            focusClickRunButton: () => {
+                (this.$refs.runButton as HTMLButtonElement).focus();
+                (this.$refs.runButton as HTMLButtonElement).click();
+            },
+            blurRunButton: () => {
+                (this.$refs.runButton as HTMLButtonElement).blur();
+            },
+            getIsTurtleListeningKeyEvents: () => {
+                return this.isTurtleListeningKeyEvents;
+            },
+            getIsRunningStrypeGraphics: () => {
+                return this.isRunningStrypeGraphics;
+            },
+            downloadWAV: this.downloadWAV,
+            getSpriteManager: this.getSpriteManager,
+            redrawCanvas: this.redrawCanvas,
+            // The following methods are used TEMPORARY to be accessed by the Strype media API internal files,
+            // before we merge the Pyodide changes in the Vue 3 version.
+            // TODO : remove when no longer required.
+            consumeLastClickDetails: this.consumeLastClickDetails,
+            consumeLastClickedItems: this.consumeLastClickedItems,
+            getAudioContext: this.getAudioContext,
+            getMouseDetails: this.getMouseDetails,
+            getPressedKeys: this.getPressedKeys,
+            loadLibraryAsset: this.loadLibraryAsset,
+            playAudioBuffer: this.playAudioBuffer,
+            stopAudioBuffer: this.stopAudioBuffer,
+        };
+
+        // Expose the Components API handler object on window for Strype.graphics and Strype.sounds 
+        // to access it, and get access to the PEA component's methods.
+        // TODO : remove that when we merge the Vue 3 change with Pyodide as we won't need it.
+        (window as any).vuePEAComponentAPIHandler = vueComponentsAPIHandler.peaComponentAPI;
+    },
+    // #v-endif
 
     data: function() {
         return {
@@ -154,7 +206,7 @@ export default Vue.extend({
             isTabsLayout: true, // flag to indicate the PEA's layout - tabs by default
             graphicsTemporaryHidden: false, //flag to use when we need to temporary hide the graphics for UI reasons (like before a layout of the PEA is performed, so we can compute things right)
             turtleGraphicsImported: false, // by default, Turtle isn't imported - this flag is updated when we detect the import (see event registration in mounted())
-            peaDisplayTabIndex: PEATabIndexes.console, // the index of the PEA tab (graphics/console), we use it equally as a flag to indicate if we are on one or other tab
+            peaDisplayTabIndex: PEATabIndexes.console, // (see mounted() for details) - flag of the tab index, used equally as a flag to indicate if we are on one or other tab
             interruptedTurtle: false,
             isTabContentHovered: false,
             isTurtleListeningKeyEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for key events on Turtle
@@ -171,6 +223,11 @@ export default Vue.extend({
                 {iconName: "PEA-layout-split-expanded", mode: StrypePEALayoutMode.splitExpanded},
             ] as StrypePEALayoutData[],
             highlightPythonRunningState: false, // a flag used to trigger a CSS highlight of the PEA running state
+            // Flag used to trigger the context menu opening
+            showContextMenu: false,
+            // Prepare an empty version of the menu: it will be updated as required in handleClick()
+            frameContextMenuItems: [] as StrypeContextMenuItem[],
+            showContextMenuAtCoordPos: {x: 0, y: 0} as CoordPosition,
         };
     },
 
@@ -179,6 +236,15 @@ export default Vue.extend({
     },
     
     mounted(){
+        this.$nextTick(() => {
+            // The default index of the PEA tab (graphics/console) we want to show.
+            // The value set in the data by default is not "meaningful", because for
+            // some reason with the BTabs internals, the index is set back to -1, then 0.
+            // So we give our wanted default index immediatly here so in the end the UI
+            // looks like initially having the right tab opened.
+            this.peaDisplayTabIndex = PEATabIndexes.console;
+        });
+    
         // Just to prevent any inconsistency with a uncompatible state, set a state value here and we'll know we won't get in some error
         useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
         
@@ -285,7 +351,7 @@ export default Vue.extend({
         this.$nextTick(() => {
             const graphicTaBElement = document.getElementById(this.graphicsTabId);
             if(graphicTaBElement){
-                graphicTaBElement.innerHTML = graphicTaBElement.innerHTML.replace("\uD83D\uDC22", `<img src="${turtleImgURL}" alt="${this.$i18n.t("PEA.Graphics")}" class="pea-turtle-img" />`);
+                graphicTaBElement.innerHTML = graphicTaBElement.innerHTML.replace("\uD83D\uDC22", `<img src="${turtleImgURL}" alt="${this.$t("PEA.Graphics")}" class="pea-turtle-img" />`);
             }
         });
        
@@ -398,15 +464,15 @@ export default Vue.extend({
         
         runCodeButtonLabel(): string {
             if (!isPythonWorkerReady.value) {
-                return " " + i18n.t("PEA.loading");
+                return " " + this.$t("PEA.loading");
             }
             switch (useStore().pythonExecRunningState) {
             case PythonExecRunningState.NotRunning:
-                return " " + i18n.t("PEA.run");
+                return " " + this.$t("PEA.run");
             case PythonExecRunningState.Running:
-                return " " + i18n.t("PEA.stop");
+                return " " + this.$t("PEA.stop");
             case PythonExecRunningState.RunningAwaitingStop:
-                return i18n.t("PEA.stopping") as string;
+                return this.$t("PEA.stopping");
             default: return "";
             }
         },
@@ -431,7 +497,7 @@ export default Vue.extend({
         
         handlePEAMouseDown() {
             // Force the Strype menu to close in case it was opened
-            (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).toggleMenuOnOff(null);
+            (vueComponentsAPIHandler.menuComponentAPI)?.toggleMenuOnOff(null);
         },
 
         onSplitterPane1Resize(event: any) {
@@ -439,11 +505,11 @@ export default Vue.extend({
             if(!this.isTabsLayout){
                 // Save the PEA splitter's pane 1 size with the project (it will update currentSplitterPane1Size by reactivity)
                 if(this.appStore.peaSplitViewSplitterPane1Size != undefined){
-                    this.appStore.peaSplitViewSplitterPane1Size[this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed] = event[0].size;
+                    this.appStore.peaSplitViewSplitterPane1Size[this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed] = event.panes[0].size;
                 }
                 else {
                     // The tricky case of when the state property has never been set
-                    this.appStore.peaSplitViewSplitterPane1Size = {...defaultEmptyStrypeLayoutDividerSettings, [this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed]: event[0].size};
+                    this.appStore.peaSplitViewSplitterPane1Size = {...defaultEmptyStrypeLayoutDividerSettings, [this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed]: event.panes[0].size};
                 }
             }
 
@@ -767,8 +833,7 @@ export default Vue.extend({
                 // the right position of the divider between the commands and the PEA (in collapsed layouts)
                 if((layoutMode == StrypePEALayoutMode.tabsCollapsed || layoutMode == StrypePEALayoutMode.splitCollapsed)
                     && this.appStore.peaCommandsSplitterPane2Size && this.appStore.peaCommandsSplitterPane2Size[layoutMode] != undefined){
-                    (this.$root.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).commandsSplitterPane2Size
-                         = this.appStore.peaCommandsSplitterPane2Size[layoutMode] as number;
+                    vueComponentsAPIHandler.commandsComponentAPI?.setCommandsSplitterPane2Size(this.appStore.peaCommandsSplitterPane2Size[layoutMode] as number);
                 }
 
                 // If we are switching to the split view (or between split views) and graphics exists, it can add scrolling bars which then mess up the rendering.
@@ -834,8 +899,8 @@ export default Vue.extend({
                 const errors = getEditorCodeErrorsHTMLElements();
                 if(errors && errors.length > 0){
                     // The Strype Menu handles already navigation of errors, so we use it to navigate to the first error...
-                    (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).currentErrorNavIndex = -1; 
-                    (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).goToError(null, true);
+                    vueComponentsAPIHandler.menuComponentAPI?.setCurrentErrorNavIndex(-1); 
+                    vueComponentsAPIHandler.menuComponentAPI?.goToError(null, true);
                 }
             }, 200);
         },
@@ -975,7 +1040,7 @@ export default Vue.extend({
                 domContext.drawImage(turtleCanvas, (domCanvas.width - (turtleCanvas.width)) / 2, (domCanvas.height - (turtleCanvas.height)) / 2);
             }
         },
-        getLogicalMouseCoords(event: PointerEvent) {
+        getLogicalMouseCoords(event: MouseEvent) {
             const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
             // We use the centres to align real bounding box and scaled:
             const scaledWidth = graphicsCanvasLogicalWidth * this.scaleToFit;
@@ -991,7 +1056,7 @@ export default Vue.extend({
             const adjustedY = (offsetY / scaledHeight) * graphicsCanvasLogicalHeight;
             return {adjustedX, adjustedY};
         },
-        graphicsCanvasMouseDown(event: PointerEvent) {
+        graphicsCanvasMouseDown(event: MouseEvent) {
             const {adjustedX, adjustedY} = this.getLogicalMouseCoords(event);
 
             if (adjustedX >= -graphicsCanvasLogicalWidth / 2 && adjustedX <= graphicsCanvasLogicalWidth / 2 - 1 &&
@@ -1010,7 +1075,7 @@ export default Vue.extend({
                 event.stopImmediatePropagation();
             }
         },
-        graphicsCanvasMouseMove(event: PointerEvent) {
+        graphicsCanvasMouseMove(event: MouseEvent) {
             const {adjustedX, adjustedY} = this.getLogicalMouseCoords(event);
             if (adjustedX >= -graphicsCanvasLogicalWidth / 2 && adjustedX <= graphicsCanvasLogicalWidth / 2 - 1 &&
                 adjustedY >= -graphicsCanvasLogicalHeight / 2 && adjustedY <= graphicsCanvasLogicalHeight / 2 - 1) {
@@ -1049,15 +1114,11 @@ export default Vue.extend({
 
         handleContextMenuClosed(){
             this.appStore.isContextMenuKeyboardShortcutUsed=false;
+            this.showContextMenu = false;
             document.dispatchEvent(new CustomEvent(CustomEventTypes.requestAppNotOnTop, {detail: false}));
         },
 
-        closeContextMenu() {
-            // The context menu doesn't close because we need to stop the click event propagation (cf. template), we do it here
-            ((this.$refs.menu as unknown) as VueContextConstructor).close();
-        },
-
-        showContextMenu (event: MouseEvent, positionForMenu?: Position): void {
+        handleContextMenu(event: MouseEvent): void {
             // Do not show any menu if the user's code is being executed
             if(this.isPythonExecuting){
                 return;
@@ -1070,20 +1131,13 @@ export default Vue.extend({
             this.appStore.contextMenuShownId = "PEAcontextmenu";
             
             // Overwrite readonly properties clientX and clientY (to position the menu if needed)
-            setContextMenuEventClientXY(event, positionForMenu);
-            ((this.$refs.menu as unknown) as VueContextConstructor).open(event);
-
-            this.$nextTick(() => {
-                const contextMenu = document.getElementById("PEAcontextmenu");
-                if(contextMenu){
-                    // We make sure the menu can be shown completely. 
-                    adjustContextMenuPosition(event, contextMenu, positionForMenu);
-                }
-            });
-        },
-
-        handleContextMenuHover(event: MouseEvent) {
-            this.$root.$emit(CustomEventTypes.contextMenuHovered, event.target as HTMLElement);
+            setContextMenuEventClientXY(event);
+           
+            // Create the menu content here and open it
+            this.frameContextMenuItems = [{label: this.$t("contextMenu.screenshotGraphics"), onClick: this.screenshotGraphicsArea}];
+            this.showContextMenuAtCoordPos.x = event.x;
+            this.showContextMenuAtCoordPos.y = event.y;
+            this.showContextMenu = true;
         },
 
         async screenshotGraphicsArea() {
@@ -1171,7 +1225,7 @@ export default Vue.extend({
         align-items: center;
     }
 
-    .pea-controls-div button {
+    .pea-controls-button {
         z-index: 10;
         border-radius: 10px;
         border: 1px solid transparent;
@@ -1241,11 +1295,13 @@ export default Vue.extend({
     }
 
     .pea-display-tab {
-        color: black;
+        --bs-nav-link-color: black;
+        --bs-nav-link-hover-color: black;
+        --bs-nav-tabs-border-radius: 0.25rem;
+
     }
 
     .pea-display-tab:hover {
-        color: black;
         background-color: lightgray !important;
     }
 
@@ -1340,26 +1396,26 @@ export default Vue.extend({
     /**
      * The following CSS classes are for the Splitter component in use here
      */
-    .splitpanes.strype-PEA-split-theme.with-expanded-PEA {
+    .strype-PEA-split-theme {
+        height: 100%;
+    }
+
+    .strype-PEA-split-theme.with-expanded-PEA .splitpanes {
         background-color: $pea-outer-background-color;
     }
     
-    .strype-PEA-split-theme.splitpanes--horizontal>.splitpanes__splitter,
     .strype-PEA-split-theme .splitpanes--horizontal>.splitpanes__splitter {
         height: 8px !important;
     }
 
-    .strype-PEA-split-theme.tabs-PEA.splitpanes--horizontal>.splitpanes__splitter,
     .strype-PEA-split-theme.tabs-PEA .splitpanes--horizontal>.splitpanes__splitter {
         display: none;
     }
 
-    .strype-PEA-split-theme.tabs-PEA.splitpanes--vertical>.splitpanes__splitter,
     .strype-PEA-split-theme.tabs-PEA .splitpanes--vertical>.splitpanes__splitter {
         display: none;
     }
 
-    .strype-PEA-split-theme.splitpanes--vertical > .splitpanes__splitter:before,
     .strype-PEA-split-theme > .splitpanes--vertical > .splitpanes__splitter:before {
         content: "";
         position: absolute;

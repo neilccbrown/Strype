@@ -184,6 +184,7 @@ describe("Tests saving layout metadata", () => {
         focusEditorPasteAndClear();
         cy.get("#" + strypeElIds.getPEATabContentContainerDivId()).trigger("mouseenter");
         cy.get("div[title='" + en.PEA["PEA-layout-tabs-expanded"]).click();
+        cy.wait(1000);
         cy.get("div[title='" + en.PEA["PEA-layout-tabs-collapsed"] + "']").click();
 
         // Since the default code contains a project doc, we need to include it to the code

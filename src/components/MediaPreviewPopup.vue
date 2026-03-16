@@ -10,9 +10,9 @@
             <span class="MediaPreviewPopup-header-text" v-html="mediaInfo"></span>
         </div>
         <div class="MediaPreviewPopup-controls">
-            <b-button size="sm" variant="outline-success" class="MediaPreviewPopup-header-preview-button" @click="doPreview">{{$t("media.preview")}}</b-button>
-            <b-button size="sm" variant="outline-success" class="MediaPreviewPopup-header-download-button" @click="doDownload"><i class="fa fa-download"></i></b-button>
-            <b-button size="sm" variant="outline-danger" class="MediaPreviewPopup-header-edit-button" @click="doEdit">{{$t("media.edit")}}</b-button>
+            <BButton size="sm" variant="outline-success" class="MediaPreviewPopup-header-preview-button" @click="doPreview">{{$t("media.preview")}}</BButton>
+            <BButton size="sm" variant="outline-success" class="MediaPreviewPopup-header-download-button" @click="doDownload"><i class="fa fa-download"></i></BButton>
+            <BButton size="sm" variant="outline-danger" class="MediaPreviewPopup-header-edit-button" @click="doEdit">{{$t("media.edit")}}</BButton>
         </div>
         <div class="MediaPreviewPopup-img-container-wrapper">
             <div class="MediaPreviewPopup-img-container">
@@ -25,19 +25,35 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import { defineComponent } from "vue";
 import {EditImageInDialogFunction, EditSoundInDialogFunction, LoadedMedia} from "@/types/types";
-import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import {SpriteManager} from "@/stryperuntime/image_and_collisions";
 import {getDateTimeFormatted} from "@/helpers/common";
 import {saveAs} from "file-saver";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { BButton } from "bootstrap-vue-next";
 
 // These bits of text are not translated because they are class names:
 const HTMLImageClass = "<a href='https://strype.org/doc/library/#strype.graphics.Image' target='_blank'>Image</a>";
 const HTMLSoundClass = "<a href='https://strype.org/doc/library/#strype.sound.Sound' target='_blank'>Sound</a>";
 
-export default Vue.extend({
+export default defineComponent({
     name: "MediaPreviewPopup",
+
+    created() {
+        // Expose this component that other components might need.
+        // Vue 3 has deprecated direct access to components.
+        // (we don't set it in setup() because we want to have this accessible, and the component created!)
+        vueComponentsAPIHandler.mediaPreviewPopupComponentAPI = {
+            showPopup: this.showPopup,
+            startHidePopup: this.startHidePopup,
+        };    
+    },
+
+    components: {
+        BButton,
+    },
+
     data() {
         return {
             isVisible: false,
@@ -52,7 +68,7 @@ export default Vue.extend({
         };
     },
 
-    inject: ["peaComponent", "editImageInDialog", "editSoundInDialog"],
+    inject: ["editImageInDialog", "editSoundInDialog"],
     
     methods: {
         showPopup(event : MouseEvent, media: LoadedMedia, replaceMedia: (replacement: {code: string, mediaType: string}) => void) {
@@ -95,12 +111,12 @@ export default Vue.extend({
         },
         doPreviewImage(imgDataURL: string) {
             document.getElementById("strypeGraphicsPEATab")?.click();
-            Vue.nextTick(() => {
-                const imgManager: SpriteManager | undefined = this.peaComponentRef?.getSpriteManager();
+            this.$nextTick(() => {
+                const imgManager: SpriteManager | undefined = vueComponentsAPIHandler.peaComponentAPI?.getSpriteManager();
                 imgManager?.clear();
                 // null is passed to clear the preview when the edit dialog is closed:
                 if (imgDataURL == null) {
-                    this.peaComponentRef?.redrawCanvas();
+                    vueComponentsAPIHandler.peaComponentAPI?.redrawCanvas();
                     return;
                 }
                 const checkered = new OffscreenCanvas(800, 600);
@@ -116,14 +132,14 @@ export default Vue.extend({
                 const preview = new Image();
                 preview.onload = () => {
                     imgManager?.addSprite(preview);
-                    this.peaComponentRef?.redrawCanvas();
+                    vueComponentsAPIHandler.peaComponentAPI?.redrawCanvas();
                 };
                 preview.src = imgDataURL;
-                this.peaComponentRef?.redrawCanvas();
+                vueComponentsAPIHandler.peaComponentAPI?.redrawCanvas();
             });
             this.stopPreviewOnHide = () => {
-                this.peaComponentRef?.getSpriteManager()?.clear();
-                this.peaComponentRef?.redrawCanvas();
+                vueComponentsAPIHandler.peaComponentAPI?.getSpriteManager().clear();
+                vueComponentsAPIHandler.peaComponentAPI?.redrawCanvas();
             };
         },
         doPreview() {
@@ -187,7 +203,7 @@ export default Vue.extend({
         },
         doDownload() {
             if (this.audioBuffer !== undefined) {
-                this.peaComponentRef?.downloadWAV(this.audioBuffer, "strype-sound");
+                vueComponentsAPIHandler.peaComponentAPI?.downloadWAV(this.audioBuffer, "strype-sound");
             }
             else if (this.imgDataURL) {
                 saveAs(this.imgDataURL, `strype-image_${getDateTimeFormatted(new Date(Date.now()))}.png`);
@@ -196,9 +212,6 @@ export default Vue.extend({
     },
     
     computed: {
-        peaComponentRef(): InstanceType<typeof PythonExecutionArea> | null {
-            return ((this as any).peaComponent as () => InstanceType<typeof PythonExecutionArea>)?.();
-        },
         doEditImageInDialog() : EditImageInDialogFunction {
             return (this as any).editImageInDialog as EditImageInDialogFunction;
         },
