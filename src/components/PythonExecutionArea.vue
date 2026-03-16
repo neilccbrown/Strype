@@ -623,7 +623,7 @@ export default defineComponent({
                         this.peaDisplayTabIndex = PEATabIndexes.graphics;
                     },
                     markTurtleDirty: () => {
-                        turtleDirty = true
+                        turtleDirty = true;
                     },
                     getMouseDetails: this.getMouseDetails,
                     consumeLastClickedItems: this.consumeLastClickedItems,
