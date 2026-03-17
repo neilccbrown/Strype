@@ -6,6 +6,7 @@ import {Page, test, expect} from "@playwright/test";
 import {PNG} from "pngjs";
 import fs from "fs";
 import {doPagePaste} from "../support/editor";
+import {dragDividerTo} from "../support/dividers";
 
 let browser = "";
 
@@ -265,11 +266,8 @@ test.describe("Check graphics works when shared with turtle", () => {
         await page.locator("#peaGraphicsContainerDiv").hover();
         await page.waitForTimeout(1000);
         await page.click(".pea-toggle-layout-buttons-container > div:nth-child(2)");
-        await page.waitForTimeout(1000);
-        await page.locator(".expanded-PEA-splitter-overlay.strype-split-theme > .splitpanes.splitpanes--horizontal > .splitpanes__splitter").hover();
-        await page.mouse.down();
-        await page.mouse.move(500, 200);
-        await page.mouse.up();
+        await page.waitForTimeout(20 * 1000);
+        await dragDividerTo(page, ".expanded-PEA-splitter-overlay.strype-split-theme > .splitpanes.splitpanes--horizontal > .splitpanes__splitter", 500, 200);
         await page.click("#runButton");
         await page.waitForTimeout(2000);
         await clickProportionalPos(page, 100/800, 100/600);
@@ -310,11 +308,8 @@ test.describe("Check graphics works when shared with turtle", () => {
         await page.locator("#peaGraphicsContainerDiv").hover();
         await page.waitForTimeout(1000);
         await page.click(".pea-toggle-layout-buttons-container > div:nth-child(2)");
-        await page.waitForTimeout(1000);
-        await page.locator(".expanded-PEA-splitter-overlay.strype-split-theme > .splitpanes.splitpanes--horizontal > .splitpanes__splitter").hover();
-        await page.mouse.down();
-        await page.mouse.move(500, 200);
-        await page.mouse.up();
+        await page.waitForTimeout(20 * 1000);
+        await dragDividerTo(page, ".expanded-PEA-splitter-overlay.strype-split-theme > .splitpanes.splitpanes--horizontal > .splitpanes__splitter", 500, 200);
         await page.click("#runButton");
         await page.waitForTimeout(2000);
         await clickProportionalPos(page, 100/800, 100/600, "left");
