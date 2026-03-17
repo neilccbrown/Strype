@@ -4,8 +4,7 @@ import {AsyncStrypePyodideHandlerFunction, CloudFileId, decodeStringToUint8, enc
 import {Renderer} from "@/stryperuntime/renderer";
 import {SoundManager} from "@/stryperuntime/sound_manager";
 import {drawText} from "@/helpers/textDrawing";
-// We only import the type because the library itself is loaded from index.html: 
-import type WebFont from "webfontloader";
+import WebFont from "webfontloader";
 import {saveAs} from "file-saver";
 import {getDateTimeFormatted} from "@/helpers/common";
 import {cloudCloseFile, cloudCreate, cloudListDir, cloudLookupFile, cloudOpenFile, cloudReadFile, cloudTruncateFile, cloudWriteFile} from "@/helpers/cloudFileIO";
