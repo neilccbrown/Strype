@@ -13,7 +13,7 @@ const STRYPE_INPUT_INTERRUPT_ERR_MSG = "ExternalError: " + STRYPE_RUN_ACTION_MSG
 // the output HTML object, a text area in our case. Declared globally in the script for ease of usage
 // a Sk object that is FROM THE SKULPT LIBRARY, it is the main entry point of Skulpt
 let consoleTextArea: HTMLTextAreaElement = {} as HTMLTextAreaElement; 
-let codeExecStateRunningCheckFn: () => boolean | undefined;
+let codeExecStateRunningCheckFn: (() => boolean) | undefined = undefined;
 
 // The function used for "output" from Skulpt, to be registered against the Skulpt object
 function outf(text: string) { 

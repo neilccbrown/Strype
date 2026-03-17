@@ -149,7 +149,7 @@ export type SyncOrAsyncStrypePyodideWorkerRequest =
 // to an array of numbers and encodes each one with commas etc, and must parse it all back again.
 // Instead we can turn the values directly into strings by storing the 0-255 values into a character in the string
 // which works because each string character is 2 bytes so can take the 0-255 values.
-export function decodeStringToUint8(str: string): Uint8ClampedArray {
+export function decodeStringToUint8(str: string): Uint8ClampedArray<ArrayBuffer> {
     const u8 = new Uint8ClampedArray(str.length);
     for (let i = 0; i < str.length; i++) {
         u8[i] = str.charCodeAt(i);

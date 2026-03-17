@@ -128,7 +128,7 @@ export class SoundManager {
         return buffer.getChannelData(0);
     }
 
-    setMonoSoundSampleValues(index: number, values: Float32Array) : void {
+    setMonoSoundSampleValues(index: number, values: Float32Array<ArrayBuffer>) : void {
         const buffer = this.loadedSounds[index];
         // If it's the same number of samples we can just replace:
         if (values.length == buffer.length) {

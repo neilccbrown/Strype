@@ -28,7 +28,10 @@ export class LRU<K extends string | number, V> {
         }
         // evict oldest
         else if (this.cache.size === this.max) {
-            const evictKey = this.oldestKey();
+            // Oldest key is first one added, which is first in Map:
+            // We know key exists because cache is full:
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const evictKey = this.cache.keys().next().value!;
             const evictVal = this.cache.get(evictKey);
             this.cache.delete(evictKey);
             if (evictVal !== undefined) {
@@ -47,8 +50,5 @@ export class LRU<K extends string | number, V> {
         this.cache.delete(key);
     }
 
-    // Used to find the oldest key, to evict.  Oldest one is first one added, which is first in Map:
-    oldestKey() : K {
-        return this.cache.keys().next().value;
-    }
+    
 }
