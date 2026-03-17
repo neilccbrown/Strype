@@ -8,7 +8,7 @@ import {drawText} from "@/helpers/textDrawing";
 import type WebFont from "webfontloader";
 import {saveAs} from "file-saver";
 import {getDateTimeFormatted} from "@/helpers/common";
-import {cloudCloseFile, cloudCreate, cloudListDir, cloudLookupFile, cloudOpenFile, cloudReadFile, cloudTruncateFile, cloudWriteFile} from "@/helpers/skulptFileIO";
+import {cloudCloseFile, cloudCreate, cloudListDir, cloudLookupFile, cloudOpenFile, cloudReadFile, cloudTruncateFile, cloudWriteFile} from "@/helpers/cloudFileIO";
 import {useStore} from "@/store/store";
 import { handleTurtle, TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 
