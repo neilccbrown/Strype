@@ -710,11 +710,11 @@ export class TurtlePixiHandler {
         this.pixiApp.stage.addChild(this.uiContainer as PIXI.DisplayObject);
         this.pixiApp.stage.addChild(this.fixedContainer as PIXI.DisplayObject);
 
-        canvas.addEventListener("pointerdown", this.handlePointerDown.bind(this));
-        canvas.addEventListener("pointermove", this.handlePointerMove.bind(this));
-        canvas.addEventListener("pointerup", this.handlePointerUp.bind(this));
-        canvas.addEventListener("pointerenter", this.handlePointerEnter.bind(this));
-        canvas.addEventListener("pointerleave", this.handlePointerLeave.bind(this));
+        canvas.addEventListener("pointerdown", this.handlePointerDown.bind(this) as EventListener);
+        canvas.addEventListener("pointermove", this.handlePointerMove.bind(this) as EventListener);
+        canvas.addEventListener("pointerup", this.handlePointerUp.bind(this) as EventListener);
+        canvas.addEventListener("pointerenter", this.handlePointerEnter.bind(this) as EventListener);
+        canvas.addEventListener("pointerleave", this.handlePointerLeave.bind(this) as EventListener);
 
         window.addEventListener("keydown", this.handleKeyDown.bind(this));
         window.addEventListener("keyup", this.handleKeyUp.bind(this));
