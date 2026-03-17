@@ -1214,7 +1214,7 @@ export default defineComponent({
             // This method is called when we want to draw attention on the "running state" of the Strype project.
             // This is achieved using CSS only, so we just use a flag to trigger a CSS change, and reset it after a decent amount of time.
             this.highlightPythonRunningState = true;
-            setTimeout(() => this.highlightPythonRunningState = false, 3000);
+            setTimeout(() => this.highlightPythonRunningState = false, 4000);
         },
     },
 });
@@ -1270,7 +1270,12 @@ export default defineComponent({
     
     @keyframes pulse {
         0%   { box-shadow: 0 0 5px red; }
-        50%  { box-shadow: 0 0 20px red; }
+        12.5%  { box-shadow: 0 0 40px red; }
+        25%  { box-shadow: 0 0 5px red; }
+        37.5%  { box-shadow: 0 0 40px red; }
+        50%  { box-shadow: 0 0 5px red; }
+        37.5%  { box-shadow: 0 0 40px red; }
+        75%  { box-shadow: 0 0 5px red; }
         100% { box-shadow: 0 0 5px red; }
     }
 
