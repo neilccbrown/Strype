@@ -1,5 +1,7 @@
 import {makeSoundHandle, RemoteSound} from "@/stryperuntime/worker_bridge_type";
 import audioBufferToWav from "audiobuffer-to-wav";
+import {saveAs} from "file-saver";
+import {getDateTimeFormatted} from "@/helpers/common";
 
 // A main thread class for handling all the sounds which Python code has asked us to load or play or stop
 export class SoundManager {
@@ -126,7 +128,7 @@ export class SoundManager {
         return buffer.getChannelData(0);
     }
 
-    setMonoSoundSampleValues(index: number, values: Float32Array) : void {
+    setMonoSoundSampleValues(index: number, values: Float32Array<ArrayBuffer>) : void {
         const buffer = this.loadedSounds[index];
         // If it's the same number of samples we can just replace:
         if (values.length == buffer.length) {
@@ -144,6 +146,12 @@ export class SoundManager {
     getAsWAV(index: number) : ArrayBuffer {
         const buffer = this.loadedSounds[index];
         return audioBufferToWav(buffer);
+    }
+    
+    downloadWAV(indexOrSound: number | AudioBuffer, filenameStem: string) : void {
+        const wavArrayBuffer = typeof(indexOrSound) === "number" ? this.getAsWAV(indexOrSound) : audioBufferToWav(indexOrSound);
+        const blob = new Blob([wavArrayBuffer], { type: "audio/wav" });
+        saveAs(blob, `${filenameStem}_${getDateTimeFormatted(new Date(Date.now()))}.png`);
     }
 
     cloneSound(index: number, toMono: boolean) : Promise<number> {

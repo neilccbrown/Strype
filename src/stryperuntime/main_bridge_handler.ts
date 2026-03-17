@@ -4,11 +4,10 @@ import {AsyncStrypePyodideHandlerFunction, CloudFileId, decodeStringToUint8, enc
 import {Renderer} from "@/stryperuntime/renderer";
 import {SoundManager} from "@/stryperuntime/sound_manager";
 import {drawText} from "@/helpers/textDrawing";
-// We only import the type because the library itself is loaded from index.html: 
-import type WebFont from "webfontloader";
+import WebFont from "webfontloader";
 import {saveAs} from "file-saver";
 import {getDateTimeFormatted} from "@/helpers/common";
-import {cloudCloseFile, cloudCreate, cloudListDir, cloudLookupFile, cloudOpenFile, cloudReadFile, cloudTruncateFile, cloudWriteFile} from "@/helpers/skulptFileIO";
+import {cloudCloseFile, cloudCreate, cloudListDir, cloudLookupFile, cloudOpenFile, cloudReadFile, cloudTruncateFile, cloudWriteFile} from "@/helpers/cloudFileIO";
 import {useStore} from "@/store/store";
 import { handleTurtle, TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 
@@ -262,9 +261,7 @@ export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundMan
         return;
     }
     case "downloadWAV": {
-        const wavArrayBuffer = soundManager.getAsWAV(req.sound.handle.handle);
-        const blob = new Blob([wavArrayBuffer], { type: "audio/wav" });
-        saveAs(blob, `${req.filenameStem}_${getDateTimeFormatted(new Date(Date.now()))}.png`);
+        soundManager.downloadWAV(req.sound.handle.handle, req.filenameStem);
         return;
     }
     default:

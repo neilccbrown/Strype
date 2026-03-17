@@ -5,7 +5,6 @@ import { useStore } from "@/store/store";
 import i18n from "@/i18n";
 import { nextTick } from "vue";
 import { CustomEventTypes, setPythonExecAreaLayoutButtonPos } from "./editor";
-import { clearFileIOCaches, skulptCloseFileIO, skulptInteralFileWrite, skulptOpenFileIO } from "./skulptFileIO";
 
 const STRYPE_RUN_ACTION_MSG = "StrypeRunActionCalled";
 const STRYPE_INPUT_INTERRUPT_ERR_MSG = "ExternalError: " + STRYPE_RUN_ACTION_MSG;
@@ -14,8 +13,7 @@ const STRYPE_INPUT_INTERRUPT_ERR_MSG = "ExternalError: " + STRYPE_RUN_ACTION_MSG
 // the output HTML object, a text area in our case. Declared globally in the script for ease of usage
 // a Sk object that is FROM THE SKULPT LIBRARY, it is the main entry point of Skulpt
 let consoleTextArea: HTMLTextAreaElement = {} as HTMLTextAreaElement; 
-declare const Sk: any;
-let codeExecStateRunningCheckFn: () => boolean | undefined;
+let codeExecStateRunningCheckFn: (() => boolean) | undefined = undefined;
 
 // The function used for "output" from Skulpt, to be registered against the Skulpt object
 function outf(text: string) { 
@@ -227,88 +225,5 @@ export function handleErrorTrace(errorType : string, traceback: { filename: stri
     // We will have added text either way, now scroll to bottom:
     nextTick(() => {
         consoleTextArea.scrollTop = consoleTextArea.scrollHeight;
-    });
-}
-
-// and providing the code (usually, user defined code) and the text area to display the output
-export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv: HTMLDivElement|null, userCode: string, lineFrameMapping: LineAndSlotPositions, libraryAddresses: string[], keepRunning: () => boolean,
-                               executionFinished: (finishedWithError: boolean, isListeningKeyEvents: boolean, isListeningMouseEvents: boolean, isListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => any): void{
-    consoleTextArea = aConsoleTextArea;
-    codeExecStateRunningCheckFn = keepRunning;
-    Sk.pre = consoleTextArea.id;
-    // Set the Turtle environment here:
-    Sk.TurtleGraphics = {};
-    if(aTurtleDiv){
-        Sk.TurtleGraphics.target = aTurtleDiv.id;
-        // Our default canvas has a size of 400x300 (as default Python's)
-        Sk.TurtleGraphics.width = 400;
-        Sk.TurtleGraphics.height = 300;
-        // Provide custom names for the custom events exposed by Skulpt for listening when mouse [resp. timer] events are off.
-        // That's only ease of using our existing custom events naming mechanism, and because we "clear" the TurtleGraphics object
-        // everytime an execution is finished (see below)
-        Sk.TurtleGraphics.MouseEventsListenerOffEventName = CustomEventTypes.skulptMouseEventListenerOff;
-        Sk.TurtleGraphics.TimerEventsListenerOffEventName = CustomEventTypes.skulptTimerEventListenerOff;
-    }
-
-    // Wrapper function for handling when Skulpt execution is finished
-    function handleExecutionFinished(finishedWithError: boolean): void {
-        // Before clearning TurtleGraphics (see below) we need to keep a reference on a few event listener related things.
-        // Note that some user code may provoke the execution loop of Skulpt to finish while still having the UI listening
-        // for events, that's why we need to keep track of whenever some events are still being listened by the UI to consider
-        // whether the code execution is finished or not (for the UI/user point of view...)
-        const isTurtleListeningKB = Sk.TurtleGraphics.isListeningKeyEvents;
-        const isTurtleListeningMouse = Sk.TurtleGraphics.isListeningMouseEvents;
-        const isTurtleListeningTimer = Sk.TurtleGraphics.isListeningTimerEvents;
-        // Only set the "stop listener" function property hook if Turtle is still listening some events
-        const stopTurtleListeners = (isTurtleListeningKB || isTurtleListeningMouse || isTurtleListeningTimer) ? Sk.TurtleGraphics.reset : undefined;
-        // To make sure we don't get weird things happening on the Turtle, we don't keep Skulpt having a relation with the UI for Turtle
-        // so that the UI will stay "idle" until the next run.
-        Sk.TurtleGraphics = {};
-
-        // Other actions requested by the caller of the execPythonCode function
-        executionFinished(finishedWithError, isTurtleListeningKB, isTurtleListeningMouse, isTurtleListeningTimer, stopTurtleListeners);
-    }
-    
-    // Clear the cloud FileIO map and directories references before running anything
-    clearFileIOCaches();
-
-    Sk.configure({
-        output:outf, 
-        //read:skulptReadPythonLib(libraryAddresses),
-        fileopen: skulptOpenFileIO,
-        fileclose: skulptCloseFileIO, // This is an added property in Skulpt for fileIO
-        fileNotWritableErr: i18n.global.t("errorMessage.fileIO.fileNotWritableErr"), // This is an added property in Skulpt for fileIO
-        fileNotReadableErr: i18n.global.t("errorMessage.fileIO.fileNotReadableErr"), // This is an added property in Skulpt for fileIO
-        fileClosedErr: i18n.global.t("errorMessage.fileIO.fileClosedErr"), // This is an added property in Skulpt for fileIO
-        fileModeErr: i18n.global.t("errorMessage.fileIO.fileModeErr"), // This is an added property in Skulpt for fileIO
-        fileWriteNotStrErr: i18n.global.t("errorMessage.fileIO.fileWriteNotStrErr"), // This is an added property in Skulpt for fileIO
-        fileWriteNotBytesErr: i18n.global.t("errorMessage.fileIO.fileWriteNotBytesErr"), // This is an added property in Skulpt for fileIO
-        fileWriteLinesNotArrayErr: i18n.global.t("errorMessage.fileIO.fileWriteLinesNotArrayErr"), // This is an added property in Skulpt for fileIO
-        nonreadopen: true,
-        filewrite: skulptInteralFileWrite, // see skulptFileIO.ts
-        inputfun:sInput,
-        inputfunTakesPrompt: true,
-        yieldLimit:100, 
-        killableWhile: true,
-        killableFor: false});
-    Sk.inBrowser=false;
-    
-    const myPromise = Sk.misceval.asyncToPromise(function() {
-        return Sk.importMainWithBody("<stdin>", false, userCode, true);
-    }, {
-        // handle a suspension of the executing code
-        // "*" says handle all types of suspensions
-        "*": () => {
-            if (!keepRunning()) {
-                throw STRYPE_RUN_ACTION_MSG;
-            }
-        }});
-    // Show error in Python console if error happens
-    myPromise.then(() => {
-        handleExecutionFinished(false);
-        return;
-    },
-    (err: any) => {
-        handleErrorTrace(err.toString(), err.traceback, handleExecutionFinished, lineFrameMapping);
     });
 }

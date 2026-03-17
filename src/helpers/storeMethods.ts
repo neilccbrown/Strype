@@ -1013,7 +1013,9 @@ export function calculateNextCollapseState(frameList: FrameObject[], parentIsFro
         let nextState;
         if (curStateValues.size == 1) {
             //  They are, so we'll use that then advance it to the next one which is possible for some frame:
-            const singleState : CollapsedState = curStateValues.keys().next().value;
+            // We know key exists because we just checked size is 1::
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const singleState : CollapsedState = curStateValues.keys().next().value!;
             nextState = cycleToNextPossible(singleState, currentAndPossibleStates);
         }
         else {

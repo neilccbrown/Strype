@@ -178,7 +178,7 @@ export default defineComponent({
                 return this.isRunningStrypeGraphics;
             },
             downloadWAV: this.downloadWAV,
-            getSpriteManager: this.getSpriteManager,
+            overrideGraphics: this.overrideGraphics,
             redrawCanvas: this.redrawCanvas,
         };
 
@@ -218,6 +218,7 @@ export default defineComponent({
             // Prepare an empty version of the menu: it will be updated as required in handleClick()
             frameContextMenuItems: [] as StrypeContextMenuItem[],
             showContextMenuAtCoordPos: {x: 0, y: 0} as CoordPosition,
+            graphicsOverride: null as {background: OffscreenCanvas | HTMLImageElement, imageToShowCentered: OffscreenCanvas | HTMLImageElement} | null,
         };
     },
 
@@ -918,12 +919,6 @@ export default defineComponent({
             renderer.clear();
             this.redrawCanvas();
         },
-        
-        // Note: this is called from our graphics API in strype_graphics_input_internal.ts
-        getSpriteManager() : void {
-            this.isRunningStrypeGraphics = true;
-            this.peaDisplayTabIndex = PEATabIndexes.graphics;
-        },
 
         // Note: this is called from our graphics API in strype_graphics_input_internal.ts
         // Returns a data: base64 URL with the content if found, or undefined if not
@@ -944,12 +939,14 @@ export default defineComponent({
             }
             return Promise.resolve(undefined);
         },
-        
-        getAudioContext() : AudioContext {
-            if (audioContext == null) {
-                throw new Error("Problem initialising audio");
+
+        overrideGraphics(background: OffscreenCanvas | HTMLImageElement | null, imageToShowCentered: OffscreenCanvas | HTMLImageElement | null) : void {
+            if (background && imageToShowCentered) {
+                this.graphicsOverride = {background, imageToShowCentered};
             }
-            return audioContext;
+            else {
+                this.graphicsOverride = null;
+            }
         },
         
         redrawCanvasIfNeeded() : void {
@@ -961,8 +958,12 @@ export default defineComponent({
         redrawCanvas() : void {
             const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
             const c = targetCanvas;
-            if (c == null) {
+            if (c == null || domCanvas == null) {
                 // We can't redraw if there's no canvas
+                // Note that in theory domCanvas should always be present.  But in practice it seems to sometimes be null.
+                // I believe this is because we are redrawing on animation frames, which may be at an awkward moment when
+                // Vue is reconstructing the DOM after changes, and thus it is possible the refs are not updated with the
+                // latest DOM canvas element.  Not 100% sure, though.  In any case, we just skip the redraw that frame.
                 return;
             }
             // We clear the full canvas size including the bit which might not be drawn on
@@ -993,8 +994,25 @@ export default defineComponent({
             targetContext?.save();
             targetContext?.scale(this.scaleToFit, this.scaleToFit);
             domCanvas.setAttribute("data-scale", this.scaleToFit.toString());
+
+            let itemsToDraw: {
+                x: number;
+                y: number;
+                rotation: number;
+                scale: number;
+                img: ImageBitmap | OffscreenCanvas | HTMLImageElement
+            }[];
+            if (this.graphicsOverride) {
+                itemsToDraw = [
+                    {x: 0, y: 0, rotation: 0, scale: 1, img: this.graphicsOverride.background},
+                    {x: 0, y: 0, rotation: 0, scale: 1, img: this.graphicsOverride.imageToShowCentered},
+                ];
+            }
+            else {
+                itemsToDraw = renderer.getItemsToDraw();
+            }
             
-            for (let obj of renderer.getItemsToDraw()) {
+            for (let obj of itemsToDraw) {
                 if (obj.rotation != 0) {
                     // These translations are in terms of the 0,0 top left system, but we call mapX/mapY
                     // on the coords we pass in, so it works out:
@@ -1028,7 +1046,7 @@ export default defineComponent({
                 domContext.drawImage(c, (domCanvas.width - (targetCanvas?.width ?? 0)) / 2, (domCanvas.height - (targetCanvas?.height ?? 0)) / 2);
 
             }
-            if (domContext && turtleDirty) {
+            if (domContext && turtleDirty && this.graphicsOverride == null) {
                 // Draw turtle on, too:
                 turtlePixiHandler.update();
                 turtlePixiHandler.animate();
@@ -1186,6 +1204,10 @@ export default defineComponent({
             if(forTurtle){
                 offScreenCanvasToUse = null;
             }
+        },
+        
+        downloadWAV(src: AudioBuffer, filenameStem: string) {
+            soundManager?.downloadWAV(src, filenameStem);
         },
         
         doHighlightPythonRunningState(){
@@ -1420,17 +1442,6 @@ export default defineComponent({
         transform: none !important;
     }   
     
-    #pythonGraphicsContainer {
-        position: relative;
-    }
-
-    #pythonGraphicsContainer > * {
-        top: 0;
-        left: 0;
-        position: absolute;
-        width: 100%;
-        height: 100%;
-    }
     #pythonGraphicsCanvas {
         top: 0;
         left: 0;

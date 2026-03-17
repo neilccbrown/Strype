@@ -25,6 +25,7 @@ export async function addFakeClipboard(page: Page) : Promise<void> {
                 mockTextContent = text;
                 mockItems = [{
                     types: ["text/plain"],
+                    presentationStyle: "unspecified",
                     getType: (type : string) => {
                         if (type === "text/plain") {
                             return Promise.resolve(new Blob([mockTextContent], { type }));

@@ -458,8 +458,8 @@ class Actor:
         
         The image parameter must be an :class:`Image` object.
 
-        The (x, y) coordinate determines the location of the actor.  The graphics world coordinate system has x coordinates from -400 to 400, 
-        and y coordinates from -300 to 300.  The origin (0, 0) point is in the center; (-400, -300) is the bottom left.
+        The (x, y) coordinate determines the location of the actor.  The graphics world coordinate system has x coordinates from -399 to 400, 
+        and y coordinates from -299 to 300.  The origin (0, 0) point is in the center; (-399, -299) is the bottom left.
         
         :param image: An :class:`Image` object.
         :param x: The x coordinate at which to place the actor.
@@ -934,6 +934,8 @@ def key_pressed(keyname):
     # to even avoid the overhead of a Javascript call when possible, as this function might be called multiple
     # times in each animation frame:
     now = round(_time.time() * 1000)
+    global _cached_pressed_keys
+    global _last_pressed_keys_fetch
     # If they do a 30 fps game we'll fetch once per animation frame, more often than that (or multiple times in same frame) and we'll use cache:
     if now - _last_pressed_keys_fetch > 30:
         _cached_pressed_keys = _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys().to_py())
