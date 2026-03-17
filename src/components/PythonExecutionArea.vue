@@ -958,8 +958,12 @@ export default defineComponent({
         redrawCanvas() : void {
             const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
             const c = targetCanvas;
-            if (c == null) {
+            if (c == null || domCanvas == null) {
                 // We can't redraw if there's no canvas
+                // Note that in theory domCanvas should always be present.  But in practice it seems to sometimes be null.
+                // I believe this is because we are redrawing on animation frames, which may be at an awkward moment when
+                // Vue is reconstructing the DOM after changes, and thus it is possible the refs are not updated with the
+                // latest DOM canvas element.  Not 100% sure, though.  In any case, we just skip the redraw that frame.
                 return;
             }
             // We clear the full canvas size including the bit which might not be drawn on
