@@ -73,7 +73,7 @@ export type CloudDriveHandlerComponentAPI = {
   restoreCloudDriveFileSharingStatus: (cloudTarget: StrypeSyncTarget) => Promise<void> | undefined,
   getPublicShareLink: (cloudTarget: StrypeSyncTarget) => Promise<{ respStatus: number, webLink: string }>,
   getPublicSharedProjectContent: (cloudTarget: StrypeSyncTarget, sharedFileID: string) => Promise<void> | undefined,
-  searchCloudDriveElements: (cloudTarget: StrypeSyncTarget, fileName: string, fileLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>) => Promise<CloudDriveFile[]>,
+  searchCloudDriveElements: (cloudTarget: StrypeSyncTarget, fileName: string | undefined, fileLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>) => Promise<CloudDriveFile[]>,
   readFileContentForIO: (cloudTarget: StrypeSyncTarget, fileId: string, filePath: string) => Promise<Uint8Array>,
   writeFileContentForIO: (cloudTarget: StrypeSyncTarget, fileContent: string|Uint8Array, fileInfos: { filePath: string, fileName: string, folderId: string } | { filePath: string, fileId: string }) => Promise<string>,
   getSaveExistingCloudProjectInfos: () => SaveExistingCloudProjectInfos,
@@ -81,6 +81,8 @@ export type CloudDriveHandlerComponentAPI = {
   setSaveFileName: (v: string) => void,
   saveFile: (cloudTarget: StrypeSyncTarget, saveReason: SaveRequestReason) => void,
   loadFile: (cloudTarget: StrypeSyncTarget, loadReason?: LoadRequestReason) => void,
+  modifiedDataSearchOptionName(cloudTarget: StrypeSyncTarget): string | undefined,
+  fileMoreFieldsForIO(cloudTarget: StrypeSyncTarget): string | undefined,
 }
 
 export type CaretContainerComponentAPI = {

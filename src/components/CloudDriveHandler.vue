@@ -88,6 +88,12 @@ export default defineComponent({
             },
             saveFile: this.saveFile,
             loadFile: this.loadFile,
+            modifiedDataSearchOptionName: (cloudTarget: StrypeSyncTarget) => {
+                return this.getSpecificCloudDriveComponent(cloudTarget)?.modifiedDataSearchOptionName;
+            },
+            fileMoreFieldsForIO: (cloudTarget: StrypeSyncTarget) => {
+                return this.getSpecificCloudDriveComponent(cloudTarget)?.fileMoreFieldsForIO;
+            },
         };
     },
 

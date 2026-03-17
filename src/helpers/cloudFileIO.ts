@@ -38,7 +38,16 @@ export function cloudLookupFile(parent: CloudFileId, name: string) : Promise<Clo
     
     const cloud : CloudDriveHandlerComponentAPI = getCloud();
 
-    return cloud.searchCloudDriveElements(useStore().syncTarget, name, parent.cloudFileId, false, {orderBy: cloud.modifiedDataSearchOptionName, fileFields: cloud.fileMoreFieldsForIO})
+    const searchOptions : Record<string, string> = {};
+    const modifiedDataSearchOptionName = cloud.modifiedDataSearchOptionName(useStore().syncTarget);
+    if (modifiedDataSearchOptionName) {
+        searchOptions.orderBy = modifiedDataSearchOptionName;
+    }
+    const fileMoreFieldsForIO = cloud.fileMoreFieldsForIO(useStore().syncTarget);
+    if (fileMoreFieldsForIO) {
+        searchOptions.fileFields = fileMoreFieldsForIO;
+    }
+    return cloud.searchCloudDriveElements(useStore().syncTarget, name, parent.cloudFileId, false, searchOptions)
         .then((cloudFolderFiles : CloudDriveFile[]) => {
             // The search succeeded and we expect only one folder to be found (if any, so we'll use the first one returned).
             // We can save that folder in the cache and either return it's ID if we don't have other folder to resolve, or continue resolving otherwise.
