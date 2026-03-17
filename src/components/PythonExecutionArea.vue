@@ -1230,9 +1230,9 @@ export default defineComponent({
     }
     
     @keyframes pulse {
-        0%   { box-shadow: 0 0 5px gold; }
-        50%  { box-shadow: 0 0 20px gold; }
-        100% { box-shadow: 0 0 5px gold; }
+        0%   { box-shadow: 0 0 5px red; }
+        50%  { box-shadow: 0 0 20px red; }
+        100% { box-shadow: 0 0 5px red; }
     }
 
     #runButton.highlighted {

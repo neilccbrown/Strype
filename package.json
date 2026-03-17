@@ -157,6 +157,6 @@
         "src/**/*.{js,ts,vue}": "eslint --fix"
     },
     "volta": {
-        "node": "24.13.0"
+        "node": "25.8.1"
     }
 }
