@@ -86,6 +86,7 @@ import {SpriteHandle, SyncOrAsyncStrypePyodideWorkerRequest} from "@/stryperunti
 import {SoundManager} from "@/stryperuntime/sound_manager";
 import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
 import {getPythonClient, isPythonWorkerReady, renderer, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
+import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
@@ -103,7 +104,12 @@ let mostRecentMouseDetails : {x: number, y: number, buttonsPressed: boolean[]} =
 let pressedKeys : {[key: string]: boolean} = {};
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
 
-let soundManager : SoundManager | null = null; // Can't initialise this year as we need permissions for audio context
+let soundManager : SoundManager | null = null; // Can't initialise this here as we need permissions for audio context
+const turtleCanvas = new OffscreenCanvas(800, 600);
+const turtlePixiHandler = new TurtlePixiHandler(turtleCanvas);
+let turtleDirty = false;
+turtlePixiHandler.setCanvasSize(800, 600);
+turtlePixiHandler.setPixiSize(800, 600);
 
 // We draw our actual graphics canvas (for strype.graphics) at the size it is on the page,
 // given the 4:3 aspect ratio.  But we also have a logical size that is constant, which is 800x600.
@@ -609,12 +615,15 @@ export default defineComponent({
                 // const reference to it for the duration of a Python run: 
                 const client = getPythonClient();
                 
-                const syncBridgePromise = handleSyncRequests(renderer, soundManager as SoundManager, {
+                const syncBridgePromise = handleSyncRequests(renderer, soundManager as SoundManager, turtlePixiHandler, {
                     getPressedKeys: () => pressedKeys,
                     loadLibraryAsset: this.loadLibraryAsset,
                     switchToGraphicsTab: () => {
                         this.isRunningStrypeGraphics = true;
                         this.peaDisplayTabIndex = PEATabIndexes.graphics;
+                    },
+                    markTurtleDirty: () => {
+                        turtleDirty = true;
                     },
                     getMouseDetails: this.getMouseDetails,
                     consumeLastClickedItems: this.consumeLastClickedItems,
@@ -945,7 +954,7 @@ export default defineComponent({
         
         redrawCanvasIfNeeded() : void {
             // Draws canvas if anything has changed:
-            if (renderer.isDirty()) {
+            if (renderer.isDirty() || turtleDirty) {
                 this.redrawCanvas();
             }
         },
@@ -1017,6 +1026,14 @@ export default defineComponent({
                 domContext.fillRect(0, 0, domCanvas.width, domCanvas.height);
                 // The target canvas can be smaller than the real one, and we want to centre it:
                 domContext.drawImage(c, (domCanvas.width - (targetCanvas?.width ?? 0)) / 2, (domCanvas.height - (targetCanvas?.height ?? 0)) / 2);
+
+            }
+            if (domContext && turtleDirty) {
+                // Draw turtle on, too:
+                turtlePixiHandler.update();
+                turtlePixiHandler.animate();
+                domContext.drawImage(turtleCanvas, (domCanvas.width - (turtleCanvas.width)) / 2, (domCanvas.height - (turtleCanvas.height)) / 2);
+                turtleDirty = false;
             }
         },
         getLogicalMouseCoords(event: MouseEvent) {

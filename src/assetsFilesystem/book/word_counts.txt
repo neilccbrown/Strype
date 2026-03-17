@@ -23381,7 +23381,6 @@ nibbling 1.09612e-06
 jumper 1.09612e-06
 frills 1.09612e-06
 adverbs 1.09612e-06
-woman's 1.09571e-06
 seraglio 1.09571e-06
 deducted 1.09571e-06
 clamped 1.09571e-06
@@ -25107,7 +25106,6 @@ churned 9.23817e-07
 truffles 9.23409e-07
 tariffs 9.23409e-07
 philander 9.23409e-07
-king's 9.23409e-07
 fishy 9.23409e-07
 belie 9.23409e-07
 joyless 9.23002e-07
@@ -25657,7 +25655,6 @@ householders 8.75345e-07
 attainder 8.75345e-07
 tumultuously 8.74937e-07
 pendulous 8.74937e-07
-man's 8.74937e-07
 fruitfulness 8.74937e-07
 brewers 8.74937e-07
 workingman 8.7453e-07
@@ -27055,7 +27052,6 @@ slowing 7.58849e-07
 roguery 7.58849e-07
 promissory 7.58849e-07
 pancake 7.58849e-07
-god's 7.58849e-07
 dour 7.58849e-07
 crepe 7.58849e-07
 mussel 7.58442e-07
@@ -29031,7 +29027,6 @@ haft 6.2321e-07
 disembark 6.2321e-07
 copyists 6.2321e-07
 cookie 6.2321e-07
-world's 6.22802e-07
 sorrowed 6.22802e-07
 soliloquized 6.22802e-07
 hardiness 6.22802e-07
@@ -29145,7 +29140,6 @@ pathfinder 6.171e-07
 necromancy 6.171e-07
 memo 6.171e-07
 landsman 6.171e-07
-it's 6.171e-07
 hundredweight 6.171e-07
 generalissimo 6.171e-07
 sweltering 6.16692e-07
@@ -31349,7 +31343,6 @@ armchairs 4.92865e-07
 prophetical 4.92458e-07
 neurosis 4.92458e-07
 extremists 4.92458e-07
-author's 4.92458e-07
 soy 4.9205e-07
 skiffs 4.9205e-07
 penchant 4.9205e-07
@@ -32636,7 +32629,6 @@ scruff 4.3421e-07
 porthole 4.3421e-07
 paraphrased 4.3421e-07
 crudities 4.3421e-07
-children's 4.3421e-07
 balsams 4.3421e-07
 thesaurus 4.33803e-07
 taskmaster 4.33803e-07
@@ -33238,7 +33230,6 @@ bowline 4.08956e-07
 affixing 4.08956e-07
 tubal 4.08549e-07
 torrential 4.08549e-07
-queen's 4.08549e-07
 parenthood 4.08549e-07
 muffling 4.08549e-07
 lynched 4.08549e-07
@@ -34908,7 +34899,6 @@ archness 3.48264e-07
 adulterers 3.48264e-07
 underwriters 3.47857e-07
 tinting 3.47857e-07
-that's 3.47857e-07
 shovelling 3.47857e-07
 nostalgia 3.47857e-07
 nihilism 3.47857e-07
@@ -34963,7 +34953,6 @@ picayune 3.4582e-07
 nationalization 3.4582e-07
 mullions 3.4582e-07
 mountaineering 3.4582e-07
-love's 3.4582e-07
 indefeasible 3.4582e-07
 iconoclasts 3.4582e-07
 flippers 3.4582e-07
@@ -35405,7 +35394,6 @@ unloving 3.31156e-07
 scarp 3.31156e-07
 purgatives 3.31156e-07
 particularize 3.31156e-07
-mother's 3.31156e-07
 looping 3.31156e-07
 hucksters 3.31156e-07
 frippery 3.31156e-07
@@ -35485,7 +35473,6 @@ vitalized 3.28713e-07
 syndicalism 3.28713e-07
 officiousness 3.28713e-07
 missals 3.28713e-07
-lord's 3.28713e-07
 landers 3.28713e-07
 humpback 3.28713e-07
 foreshadow 3.28713e-07
@@ -36353,7 +36340,6 @@ kana 3.01829e-07
 inveigh 3.01829e-07
 fouling 3.01829e-07
 detours 3.01829e-07
-child's 3.01829e-07
 burger 3.01829e-07
 bents 3.01829e-07
 slangy 3.01422e-07
@@ -36570,7 +36556,6 @@ disentangling 2.94904e-07
 confetti 2.94904e-07
 comfy 2.94904e-07
 carnally 2.94904e-07
-boy's 2.94904e-07
 adipose 2.94904e-07
 accustoming 2.94904e-07
 wraiths 2.94497e-07
@@ -36625,7 +36610,6 @@ reveling 2.92868e-07
 poohed 2.92868e-07
 lexicographer 2.92868e-07
 lachrymal 2.92868e-07
-john's 2.92868e-07
 italicized 2.92868e-07
 hooves 2.92868e-07
 fulminate 2.92868e-07
@@ -36802,7 +36786,6 @@ addiction 2.88387e-07
 showmen 2.8798e-07
 relishes 2.8798e-07
 outwitting 2.8798e-07
-one's 2.8798e-07
 kinks 2.8798e-07
 jokers 2.8798e-07
 industrially 2.8798e-07
@@ -37412,7 +37395,6 @@ fumigation 2.70058e-07
 filibusters 2.70058e-07
 belting 2.70058e-07
 acclimated 2.70058e-07
-year's 2.6965e-07
 tyres 2.6965e-07
 typist 2.6965e-07
 smudged 2.6965e-07
@@ -37697,7 +37679,6 @@ egret 2.62318e-07
 contestant 2.62318e-07
 concretely 2.62318e-07
 bibulous 2.62318e-07
-what's 2.61911e-07
 wallah 2.61911e-07
 trusteeship 2.61911e-07
 stagecoach 2.61911e-07
@@ -37789,7 +37770,6 @@ tarsal 2.59874e-07
 simplifies 2.59874e-07
 raccoons 2.59874e-07
 leas 2.59874e-07
-lady's 2.59874e-07
 hies 2.59874e-07
 cribbed 2.59874e-07
 collapsible 2.59874e-07
@@ -38084,7 +38064,6 @@ shipload 2.52135e-07
 pubic 2.52135e-07
 operational 2.52135e-07
 hubs 2.52135e-07
-father's 2.52135e-07
 escarpments 2.52135e-07
 empresses 2.52135e-07
 cambium 2.52135e-07
@@ -38241,7 +38220,6 @@ cloy 2.47655e-07
 censurable 2.47655e-07
 balderdash 2.47655e-07
 tuner 2.47247e-07
-there's 2.47247e-07
 temporized 2.47247e-07
 teetotal 2.47247e-07
 tantalized 2.47247e-07
@@ -38294,7 +38272,6 @@ laundresses 2.46433e-07
 interlocutors 2.46433e-07
 inset 2.46433e-07
 fillings 2.46433e-07
-editor's 2.46433e-07
 czars 2.46433e-07
 copperplate 2.46433e-07
 calligraphy 2.46433e-07
@@ -38493,7 +38470,6 @@ inebriates 2.41137e-07
 implacably 2.41137e-07
 expos 2.41137e-07
 exchangeable 2.41137e-07
-devil's 2.41137e-07
 coatings 2.41137e-07
 apathetically 2.41137e-07
 adjoin 2.41137e-07
@@ -39025,7 +39001,6 @@ medically 2.28103e-07
 magnetization 2.28103e-07
 inditing 2.28103e-07
 importuning 2.28103e-07
-girl's 2.28103e-07
 evictions 2.28103e-07
 dogfish 2.28103e-07
 cruet 2.28103e-07
@@ -39778,7 +39753,6 @@ manipulator 2.10588e-07
 libidinous 2.10588e-07
 impounded 2.10588e-07
 hmm 2.10588e-07
-he's 2.10588e-07
 fanged 2.10588e-07
 eyepiece 2.10588e-07
 enchain 2.10588e-07
@@ -40204,7 +40178,6 @@ ipecac 2.01219e-07
 hydrous 2.01219e-07
 hussies 2.01219e-07
 glower 2.01219e-07
-day's 2.01219e-07
 counterattacks 2.01219e-07
 brunettes 2.01219e-07
 bimetallism 2.01219e-07
@@ -40519,7 +40492,6 @@ umbel 1.94702e-07
 theorize 1.94702e-07
 spiel 1.94702e-07
 southwestward 1.94702e-07
-smith's 1.94702e-07
 slenderer 1.94702e-07
 singsong 1.94702e-07
 remonstrates 1.94702e-07
@@ -40596,7 +40568,6 @@ heritable 1.9348e-07
 heatedly 1.9348e-07
 frump 1.9348e-07
 exuberantly 1.9348e-07
-doctor's 1.9348e-07
 disembowelled 1.9348e-07
 captivates 1.9348e-07
 washtub 1.93073e-07
@@ -41296,7 +41267,6 @@ reverencing 1.78816e-07
 repined 1.78816e-07
 physiography 1.78816e-07
 perfecta 1.78816e-07
-people's 1.78816e-07
 peewit 1.78816e-07
 newsdealers 1.78816e-07
 metatarsus 1.78816e-07
@@ -41558,7 +41528,6 @@ poof 1.73928e-07
 pearled 1.73928e-07
 orientalists 1.73928e-07
 openwork 1.73928e-07
-majesty's 1.73928e-07
 levitation 1.73928e-07
 iridium 1.73928e-07
 inveighs 1.73928e-07
@@ -41584,7 +41553,6 @@ reamer 1.73521e-07
 overworking 1.73521e-07
 nonage 1.73521e-07
 nativities 1.73521e-07
-martin's 1.73521e-07
 interweave 1.73521e-07
 finials 1.73521e-07
 ejaculates 1.73521e-07
@@ -41803,7 +41771,6 @@ idiopathic 1.69855e-07
 identifiable 1.69855e-07
 enfeebling 1.69855e-07
 earwigs 1.69855e-07
-colonel's 1.69855e-07
 catechise 1.69855e-07
 benumb 1.69855e-07
 weaved 1.69448e-07
@@ -41960,7 +41927,6 @@ decoying 1.67004e-07
 constitutionalism 1.67004e-07
 carps 1.67004e-07
 avidly 1.67004e-07
-women's 1.66597e-07
 unrolls 1.66597e-07
 tosh 1.66597e-07
 tiler 1.66597e-07
@@ -42076,7 +42042,6 @@ scantier 1.64967e-07
 restaurateur 1.64967e-07
 recruitment 1.64967e-07
 ranters 1.64967e-07
-president's 1.64967e-07
 particularities 1.64967e-07
 oscillates 1.64967e-07
 nutritional 1.64967e-07
@@ -42596,7 +42561,6 @@ calve 1.56006e-07
 braggarts 1.56006e-07
 bodkins 1.56006e-07
 unexamined 1.55599e-07
-translator's 1.55599e-07
 tom's 1.55599e-07
 tarantulas 1.55599e-07
 taped 1.55599e-07
@@ -42825,7 +42789,6 @@ equated 1.51933e-07
 converters 1.51933e-07
 confessionals 1.51933e-07
 cartoonist 1.51933e-07
-bird's 1.51933e-07
 besieger 1.51933e-07
 beastliness 1.51933e-07
 architectonic 1.51933e-07
@@ -43054,7 +43017,6 @@ remonstrant 1.48267e-07
 reconsidering 1.48267e-07
 pasteurized 1.48267e-07
 myopia 1.48267e-07
-life's 1.48267e-07
 legume 1.48267e-07
 irrelevancy 1.48267e-07
 homey 1.48267e-07
@@ -44146,7 +44108,6 @@ insurer 1.31159e-07
 initiator 1.31159e-07
 hourglass 1.31159e-07
 hereon 1.31159e-07
-farmer's 1.31159e-07
 demurring 1.31159e-07
 cottar 1.31159e-07
 boning 1.31159e-07
@@ -44319,7 +44280,6 @@ gravitates 1.28308e-07
 gonads 1.28308e-07
 gibbered 1.28308e-07
 genuflections 1.28308e-07
-general's 1.28308e-07
 forcefulness 1.28308e-07
 etchers 1.28308e-07
 eff 1.28308e-07
@@ -44368,14 +44328,12 @@ accustoms 1.27901e-07
 terminable 1.27493e-07
 syndicalist 1.27493e-07
 spiracle 1.27493e-07
-soldier's 1.27493e-07
 snips 1.27493e-07
 shapeliness 1.27493e-07
 reprimanding 1.27493e-07
 recordings 1.27493e-07
 pubs 1.27493e-07
 poltroons 1.27493e-07
-men's 1.27493e-07
 irreproachably 1.27493e-07
 inhalations 1.27493e-07
 herpes 1.27493e-07
@@ -44442,7 +44400,6 @@ putts 1.26679e-07
 pustular 1.26679e-07
 prophetesses 1.26679e-07
 preachment 1.26679e-07
-pilgrim's 1.26679e-07
 nougat 1.26679e-07
 marshlands 1.26679e-07
 lubricity 1.26679e-07
@@ -44481,7 +44438,6 @@ neutron 1.26271e-07
 neighs 1.26271e-07
 monkeying 1.26271e-07
 jujube 1.26271e-07
-jack's 1.26271e-07
 girlishly 1.26271e-07
 equability 1.26271e-07
 demeaning 1.26271e-07
@@ -44550,7 +44506,6 @@ sparkler 1.25049e-07
 snick 1.25049e-07
 snacks 1.25049e-07
 slugged 1.25049e-07
-she's 1.25049e-07
 reconstructions 1.25049e-07
 reawaken 1.25049e-07
 purveyance 1.25049e-07
@@ -44812,7 +44767,6 @@ bringers 1.22198e-07
 breezily 1.22198e-07
 amoeboid 1.22198e-07
 altimeter 1.22198e-07
-wife's 1.21791e-07
 shallot 1.21791e-07
 sandstorm 1.21791e-07
 rashes 1.21791e-07
@@ -44921,7 +44875,6 @@ plankton 1.20569e-07
 pirating 1.20569e-07
 pillager 1.20569e-07
 onsets 1.20569e-07
-nature's 1.20569e-07
 moralised 1.20569e-07
 mizzenmast 1.20569e-07
 mantelpieces 1.20569e-07
@@ -45019,7 +44972,6 @@ salaaming 1.19347e-07
 polkas 1.19347e-07
 outrunning 1.19347e-07
 mispronounced 1.19347e-07
-let's 1.19347e-07
 leafing 1.19347e-07
 insurrectionists 1.19347e-07
 icons 1.19347e-07
@@ -45209,7 +45161,6 @@ rareness 1.16903e-07
 questionnaire 1.16903e-07
 previsions 1.16903e-07
 pregnancies 1.16903e-07
-pope's 1.16903e-07
 pathfinders 1.16903e-07
 odalisque 1.16903e-07
 nagger 1.16903e-07
@@ -45259,7 +45210,6 @@ chronograph 1.16495e-07
 bluffly 1.16495e-07
 bisecting 1.16495e-07
 battening 1.16495e-07
-baby's 1.16495e-07
 whoopee 1.16088e-07
 wholehearted 1.16088e-07
 whiplash 1.16088e-07
@@ -45435,7 +45385,6 @@ gliders 1.14459e-07
 focuses 1.14459e-07
 fellas 1.14459e-07
 fecundated 1.14459e-07
-enemy's 1.14459e-07
 elaborations 1.14459e-07
 dustpan 1.14459e-07
 disconnectedly 1.14459e-07
@@ -45461,7 +45410,6 @@ profiteer 1.14051e-07
 porringers 1.14051e-07
 pasts 1.14051e-07
 overripe 1.14051e-07
-night's 1.14051e-07
 naturalize 1.14051e-07
 millwright 1.14051e-07
 marquees 1.14051e-07
@@ -45580,7 +45528,6 @@ escalloped 1.12829e-07
 determiner 1.12829e-07
 depreciates 1.12829e-07
 congestive 1.12829e-07
-captain's 1.12829e-07
 braille 1.12829e-07
 begums 1.12829e-07
 appraisers 1.12829e-07
@@ -45881,7 +45828,6 @@ instancing 1.09164e-07
 indoctrination 1.09164e-07
 indivisibility 1.09164e-07
 humanoid 1.09164e-07
-heart's 1.09164e-07
 guilelessly 1.09164e-07
 frizzy 1.09164e-07
 flyleaf 1.09164e-07
@@ -45973,7 +45919,6 @@ vulgarian 1.07942e-07
 uncharacteristic 1.07942e-07
 tenderhearted 1.07942e-07
 syringes 1.07942e-07
-shepherd's 1.07942e-07
 rowlock 1.07942e-07
 rials 1.07942e-07
 reabsorbed 1.07942e-07
@@ -46157,7 +46102,6 @@ gladioli 1.05905e-07
 glaces 1.05905e-07
 expurgation 1.05905e-07
 enfranchising 1.05905e-07
-duke's 1.05905e-07
 decamps 1.05905e-07
 creameries 1.05905e-07
 childbearing 1.05905e-07
@@ -46187,7 +46131,6 @@ mopes 1.05498e-07
 monopolizes 1.05498e-07
 mayoral 1.05498e-07
 manege 1.05498e-07
-lover's 1.05498e-07
 latency 1.05498e-07
 hiccoughs 1.05498e-07
 hairdressing 1.05498e-07
@@ -46450,7 +46393,6 @@ looters 1.02239e-07
 librettos 1.02239e-07
 investigative 1.02239e-07
 impromptus 1.02239e-07
-here's 1.02239e-07
 fullback 1.02239e-07
 flashily 1.02239e-07
 fishpond 1.02239e-07
@@ -46478,7 +46420,6 @@ pharmacology 1.01832e-07
 pachyderms 1.01832e-07
 menservants 1.01832e-07
 mechanized 1.01832e-07
-master's 1.01832e-07
 macadamised 1.01832e-07
 insets 1.01832e-07
 inflammability 1.01832e-07
@@ -46512,7 +46453,6 @@ oviducts 1.01424e-07
 nearsighted 1.01424e-07
 mousetrap 1.01424e-07
 matriarchal 1.01424e-07
-lion's 1.01424e-07
 itinerants 1.01424e-07
 insouciant 1.01424e-07
 insecticide 1.01424e-07
@@ -46526,7 +46466,6 @@ dynamited 1.01424e-07
 downside 1.01424e-07
 delete 1.01424e-07
 defaults 1.01424e-07
-company's 1.01424e-07
 buoying 1.01424e-07
 boundlessly 1.01424e-07
 bootblacks 1.01424e-07
@@ -46585,7 +46524,6 @@ serrations 1.0061e-07
 researcher 1.0061e-07
 refract 1.0061e-07
 ptarmigans 1.0061e-07
-prince's 1.0061e-07
 peelers 1.0061e-07
 outface 1.0061e-07
 limpness 1.0061e-07
@@ -46719,7 +46657,6 @@ pirouettes 9.89804e-08
 overfeeding 9.89804e-08
 nudes 9.89804e-08
 naif 9.89804e-08
-minister's 9.89804e-08
 kidded 9.89804e-08
 irresponsibly 9.89804e-08
 irreplaceable 9.89804e-08
@@ -46873,7 +46810,6 @@ beryllium 9.77584e-08
 barbels 9.77584e-08
 armorers 9.77584e-08
 aquamarine 9.77584e-08
-widow's 9.7351e-08
 viewers 9.7351e-08
 vexatiously 9.7351e-08
 unties 9.7351e-08
@@ -46949,7 +46885,6 @@ cabinetmaker 9.69437e-08
 bellboy 9.69437e-08
 arguer 9.69437e-08
 abstinent 9.69437e-08
-who's 9.65364e-08
 whippoorwills 9.65364e-08
 whippet 9.65364e-08
 unharnessing 9.65364e-08
@@ -47320,7 +47255,6 @@ trainman 9.24631e-08
 slither 9.24631e-08
 roustabouts 9.24631e-08
 roust 9.24631e-08
-poet's 9.24631e-08
 pitchforked 9.24631e-08
 piglets 9.24631e-08
 mounded 9.24631e-08
@@ -47438,7 +47372,6 @@ trochees 9.12411e-08
 trillions 9.12411e-08
 timorousness 9.12411e-08
 supplicates 9.12411e-08
-student's 9.12411e-08
 stabber 9.12411e-08
 spreaders 9.12411e-08
 securest 9.12411e-08
@@ -47540,7 +47473,6 @@ incarcerate 9.04265e-08
 helpmates 9.04265e-08
 greats 9.04265e-08
 greases 9.04265e-08
-gentleman's 9.04265e-08
 fistulous 9.04265e-08
 fallowing 9.04265e-08
 ductless 9.04265e-08
@@ -47617,7 +47549,6 @@ phonology 8.96118e-08
 overstayed 8.96118e-08
 morns 8.96118e-08
 mislay 8.96118e-08
-miller's 8.96118e-08
 microcosmic 8.96118e-08
 launder 8.96118e-08
 jostles 8.96118e-08
@@ -47671,7 +47602,6 @@ eosinophil 8.92045e-08
 emigrates 8.92045e-08
 driveling 8.92045e-08
 deuces 8.92045e-08
-cook's 8.92045e-08
 concretes 8.92045e-08
 comporting 8.92045e-08
 casuals 8.92045e-08
@@ -47851,7 +47781,6 @@ latticework 8.71679e-08
 kleptomania 8.71679e-08
 juju 8.71679e-08
 jamboree 8.71679e-08
-grant's 8.71679e-08
 gadflies 8.71679e-08
 frameworks 8.71679e-08
 flowerbeds 8.71679e-08
@@ -47960,7 +47889,6 @@ conversationalists 8.63532e-08
 conductive 8.63532e-08
 canoeists 8.63532e-08
 blamelessness 8.63532e-08
-bishop's 8.63532e-08
 atty 8.63532e-08
 arcane 8.63532e-08
 anatomic 8.63532e-08
@@ -48069,7 +47997,6 @@ mezzanine 8.51313e-08
 louring 8.51313e-08
 levelly 8.51313e-08
 lemmings 8.51313e-08
-knight's 8.51313e-08
 hooky 8.51313e-08
 holograph 8.51313e-08
 harpooning 8.51313e-08
@@ -48232,7 +48159,6 @@ plagiarized 8.35019e-08
 neurology 8.35019e-08
 narcosis 8.35019e-08
 metallurgist 8.35019e-08
-mayor's 8.35019e-08
 lymphocytes 8.35019e-08
 lento 8.35019e-08
 lapin 8.35019e-08
@@ -48364,7 +48290,6 @@ budging 8.228e-08
 booting 8.228e-08
 barebacked 8.228e-08
 agriculturally 8.228e-08
-winter's 8.18726e-08
 windowpane 8.18726e-08
 verruca 8.18726e-08
 underskirt 8.18726e-08
@@ -48372,7 +48297,6 @@ underselling 8.18726e-08
 tiresomely 8.18726e-08
 thriftiness 8.18726e-08
 staled 8.18726e-08
-son's 8.18726e-08
 socializing 8.18726e-08
 snowfield 8.18726e-08
 sixfold 8.18726e-08
@@ -48516,7 +48440,6 @@ inscrutability 8.06507e-08
 horsetail 8.06507e-08
 hetero 8.06507e-08
 hailstorms 8.06507e-08
-gray's 8.06507e-08
 frostbite 8.06507e-08
 felicitating 8.06507e-08
 demobilisation 8.06507e-08
@@ -48808,7 +48731,6 @@ flintlocks 7.77994e-08
 fizzed 7.77994e-08
 fishhook 7.77994e-08
 empiricists 7.77994e-08
-earth's 7.77994e-08
 dolled 7.77994e-08
 coracles 7.77994e-08
 colorists 7.77994e-08
@@ -48868,7 +48790,6 @@ steins 7.69847e-08
 sordidly 7.69847e-08
 sketchbook 7.69847e-08
 shortbread 7.69847e-08
-sailor's 7.69847e-08
 roadsters 7.69847e-08
 petards 7.69847e-08
 pawnshops 7.69847e-08
@@ -48886,7 +48807,6 @@ garcons 7.69847e-08
 gangling 7.69847e-08
 froths 7.69847e-08
 forwardly 7.69847e-08
-emperor's 7.69847e-08
 cleanser 7.69847e-08
 circulations 7.69847e-08
 buzzy 7.69847e-08
@@ -49058,7 +48978,6 @@ disassociate 7.53554e-08
 coifs 7.53554e-08
 briefness 7.53554e-08
 bottler 7.53554e-08
-bell's 7.53554e-08
 automated 7.53554e-08
 abrading 7.53554e-08
 viability 7.49481e-08
@@ -49522,7 +49441,6 @@ seascape 7.08748e-08
 screwy 7.08748e-08
 rompers 7.08748e-08
 reshaped 7.08748e-08
-professor's 7.08748e-08
 ppr 7.08748e-08
 perpetrates 7.08748e-08
 particularizing 7.08748e-08
@@ -49601,7 +49519,6 @@ fraternising 7.04675e-08
 florescence 7.04675e-08
 fissile 7.04675e-08
 faultiness 7.04675e-08
-dog's 7.04675e-08
 diaphragmatic 7.04675e-08
 demoralizes 7.04675e-08
 defencelessness 7.04675e-08
@@ -49761,7 +49678,6 @@ boycotts 6.92455e-08
 bleacher 6.92455e-08
 basketfuls 6.92455e-08
 ashtray 6.92455e-08
-artist's 6.92455e-08
 angularities 6.92455e-08
 uppercut 6.88382e-08
 unstrapping 6.88382e-08
@@ -49797,7 +49713,6 @@ impanelled 6.88382e-08
 hydration 6.88382e-08
 hinter 6.88382e-08
 gunsmiths 6.88382e-08
-goldsmith's 6.88382e-08
 faultily 6.88382e-08
 excavates 6.88382e-08
 evicting 6.88382e-08
@@ -50005,7 +49920,6 @@ sentimentalize 6.72089e-08
 sanding 6.72089e-08
 refueling 6.72089e-08
 rares 6.72089e-08
-ranger's 6.72089e-08
 podded 6.72089e-08
 perspires 6.72089e-08
 pennyweights 6.72089e-08
@@ -50086,7 +50000,6 @@ discreetest 6.68016e-08
 crampons 6.68016e-08
 contacting 6.68016e-08
 cesarean 6.68016e-08
-calf's 6.68016e-08
 boluses 6.68016e-08
 bifurcates 6.68016e-08
 ballistics 6.68016e-08
@@ -50134,10 +50047,8 @@ competitiveness 6.63942e-08
 clowning 6.63942e-08
 cartwheel 6.63942e-08
 capsicums 6.63942e-08
-butler's 6.63942e-08
 blusterous 6.63942e-08
 blenching 6.63942e-08
-baker's 6.63942e-08
 amperage 6.63942e-08
 affirmatives 6.63942e-08
 abusively 6.63942e-08
@@ -50168,7 +50079,6 @@ intramural 6.59869e-08
 inhumanities 6.59869e-08
 festers 6.59869e-08
 electrotypes 6.59869e-08
-dick's 6.59869e-08
 devilishness 6.59869e-08
 demobilised 6.59869e-08
 dangler 6.59869e-08
@@ -50279,7 +50189,6 @@ inclusions 6.51722e-08
 illicitly 6.51722e-08
 homos 6.51722e-08
 hipper 6.51722e-08
-grey's 6.51722e-08
 gonorrhoeal 6.51722e-08
 furbelow 6.51722e-08
 formalized 6.51722e-08
@@ -50324,7 +50233,6 @@ jihad 6.47649e-08
 jackstraws 6.47649e-08
 incarnadine 6.47649e-08
 hypochondriacs 6.47649e-08
-hunter's 6.47649e-08
 hikers 6.47649e-08
 handhold 6.47649e-08
 goop 6.47649e-08
@@ -50452,7 +50360,6 @@ entwines 6.39503e-08
 droopy 6.39503e-08
 decentralisation 6.39503e-08
 cudgeling 6.39503e-08
-cooper's 6.39503e-08
 continua 6.39503e-08
 contenders 6.39503e-08
 comptrollers 6.39503e-08
@@ -50474,7 +50381,6 @@ sheepishness 6.35429e-08
 shampooed 6.35429e-08
 retied 6.35429e-08
 respites 6.35429e-08
-regent's 6.35429e-08
 reactors 6.35429e-08
 raffled 6.35429e-08
 purveying 6.35429e-08
@@ -50546,11 +50452,9 @@ morgues 6.31356e-08
 moonlighters 6.31356e-08
 modellers 6.31356e-08
 miffed 6.31356e-08
-mark's 6.31356e-08
 mackerels 6.31356e-08
 leftover 6.31356e-08
 latitudinal 6.31356e-08
-lamb's 6.31356e-08
 interface 6.31356e-08
 inconsideration 6.31356e-08
 impeachable 6.31356e-08
@@ -50590,7 +50494,6 @@ squarest 6.27283e-08
 secularised 6.27283e-08
 rockfish 6.27283e-08
 predictive 6.27283e-08
-porter's 6.27283e-08
 pimiento 6.27283e-08
 phylactery 6.27283e-08
 phis 6.27283e-08
@@ -50609,7 +50512,6 @@ kilter 6.27283e-08
 interpretive 6.27283e-08
 interjecting 6.27283e-08
 industrials 6.27283e-08
-homer's 6.27283e-08
 glassily 6.27283e-08
 gargles 6.27283e-08
 frailness 6.27283e-08
@@ -50849,7 +50751,6 @@ inauspiciously 6.1099e-08
 imbues 6.1099e-08
 halftone 6.1099e-08
 grouper 6.1099e-08
-grandmother's 6.1099e-08
 flightless 6.1099e-08
 flamingos 6.1099e-08
 finessing 6.1099e-08
@@ -50912,7 +50813,6 @@ conjoining 6.06917e-08
 confidantes 6.06917e-08
 cheerfullest 6.06917e-08
 cenotaphs 6.06917e-08
-brother's 6.06917e-08
 birched 6.06917e-08
 bicycled 6.06917e-08
 backslidden 6.06917e-08
@@ -50973,12 +50873,10 @@ headbands 6.02843e-08
 handspring 6.02843e-08
 hallucinated 6.02843e-08
 guaranis 6.02843e-08
-governor's 6.02843e-08
 gaudier 6.02843e-08
 frogmen 6.02843e-08
 emaciate 6.02843e-08
 ekes 6.02843e-08
-eagle's 6.02843e-08
 decoded 6.02843e-08
 deafens 6.02843e-08
 cockeyed 6.02843e-08
@@ -51295,7 +51193,6 @@ recopied 5.78404e-08
 recognizably 5.78404e-08
 ramifies 5.78404e-08
 pulchritude 5.78404e-08
-publisher's 5.78404e-08
 prole 5.78404e-08
 pissed 5.78404e-08
 pigheaded 5.78404e-08
@@ -51361,7 +51258,6 @@ obstetrician 5.7433e-08
 necrology 5.7433e-08
 medicare 5.7433e-08
 marginalia 5.7433e-08
-maiden's 5.7433e-08
 literates 5.7433e-08
 lammed 5.7433e-08
 keynotes 5.7433e-08
@@ -51503,7 +51399,6 @@ faithlessly 5.66184e-08
 eulogise 5.66184e-08
 didoes 5.66184e-08
 dictatorially 5.66184e-08
-crow's 5.66184e-08
 crematory 5.66184e-08
 crayfishes 5.66184e-08
 constrict 5.66184e-08
@@ -51516,7 +51411,6 @@ benders 5.66184e-08
 beep 5.66184e-08
 adiabatic 5.66184e-08
 adenoid 5.66184e-08
-white's 5.62111e-08
 whelped 5.62111e-08
 weakfish 5.62111e-08
 unhurriedly 5.62111e-08
@@ -51636,7 +51530,6 @@ telecommunication 5.53964e-08
 swiping 5.53964e-08
 sundae 5.53964e-08
 strudel 5.53964e-08
-sportsman's 5.53964e-08
 spiraled 5.53964e-08
 spacial 5.53964e-08
 solemnise 5.53964e-08
@@ -51803,7 +51696,6 @@ limericks 5.45818e-08
 jammer 5.45818e-08
 immigrating 5.45818e-08
 ideologies 5.45818e-08
-hood's 5.45818e-08
 gulling 5.45818e-08
 goalkeeper 5.45818e-08
 ginned 5.45818e-08
@@ -51822,7 +51714,6 @@ conciliates 5.45818e-08
 compacting 5.45818e-08
 codifying 5.45818e-08
 cleanings 5.45818e-08
-cat's 5.45818e-08
 calumets 5.45818e-08
 calks 5.45818e-08
 cabochon 5.45818e-08
@@ -51899,11 +51790,9 @@ stressful 5.37671e-08
 stim 5.37671e-08
 steeplechases 5.37671e-08
 stats 5.37671e-08
-soul's 5.37671e-08
 solvable 5.37671e-08
 snotty 5.37671e-08
 saddlebag 5.37671e-08
-rabbit's 5.37671e-08
 pyrotechnical 5.37671e-08
 psis 5.37671e-08
 profanities 5.37671e-08
@@ -51999,7 +51888,6 @@ hairline 5.33598e-08
 guessers 5.33598e-08
 grandaunt 5.33598e-08
 goners 5.33598e-08
-giant's 5.33598e-08
 foreknows 5.33598e-08
 ferrules 5.33598e-08
 extricates 5.33598e-08
@@ -52011,7 +51899,6 @@ cutworms 5.33598e-08
 chivied 5.33598e-08
 ceder 5.33598e-08
 briskest 5.33598e-08
-bride's 5.33598e-08
 bob's 5.33598e-08
 biddable 5.33598e-08
 bashing 5.33598e-08
@@ -52072,7 +51959,6 @@ berm 5.29525e-08
 bedim 5.29525e-08
 baster 5.29525e-08
 ballyhoo 5.29525e-08
-bachelor's 5.29525e-08
 amaranths 5.29525e-08
 agrarians 5.29525e-08
 whinnies 5.25451e-08
@@ -52150,7 +52036,6 @@ stagy 5.21378e-08
 spited 5.21378e-08
 shouter 5.21378e-08
 shirty 5.21378e-08
-ship's 5.21378e-08
 shapers 5.21378e-08
 salesgirl 5.21378e-08
 routinely 5.21378e-08
@@ -52470,7 +52355,6 @@ blender 5.01012e-08
 barmy 5.01012e-08
 barcarole 5.01012e-08
 anthropomorphous 5.01012e-08
-wood's 4.96938e-08
 willpower 4.96938e-08
 whackers 4.96938e-08
 underscoring 4.96938e-08
@@ -52483,7 +52367,6 @@ sterilising 4.96938e-08
 sniffles 4.96938e-08
 smocked 4.96938e-08
 shtick 4.96938e-08
-rose's 4.96938e-08
 roominess 4.96938e-08
 reprises 4.96938e-08
 rediscovering 4.96938e-08
@@ -52508,7 +52391,6 @@ militating 4.96938e-08
 memorise 4.96938e-08
 losings 4.96938e-08
 layouts 4.96938e-08
-kaiser's 4.96938e-08
 interweaves 4.96938e-08
 indites 4.96938e-08
 impeaches 4.96938e-08
@@ -52520,7 +52402,6 @@ gristmill 4.96938e-08
 gaffers 4.96938e-08
 followings 4.96938e-08
 fizzling 4.96938e-08
-fisherman's 4.96938e-08
 embryologists 4.96938e-08
 edgy 4.96938e-08
 drool 4.96938e-08
@@ -52567,7 +52448,6 @@ redistribute 4.92865e-08
 recouping 4.92865e-08
 recognisance 4.92865e-08
 publicized 4.92865e-08
-priest's 4.92865e-08
 plagiarised 4.92865e-08
 perilling 4.92865e-08
 pauperize 4.92865e-08
@@ -52588,7 +52468,6 @@ expropriate 4.92865e-08
 escudos 4.92865e-08
 entr'actes 4.92865e-08
 effeminately 4.92865e-08
-doll's 4.92865e-08
 discommode 4.92865e-08
 dampest 4.92865e-08
 cuboid 4.92865e-08
@@ -52609,13 +52488,11 @@ adulteresses 4.92865e-08
 adjudicating 4.92865e-08
 wearable 4.88792e-08
 watermill 4.88792e-08
-ward's 4.88792e-08
 vocalized 4.88792e-08
 vivisectionists 4.88792e-08
 unscientifically 4.88792e-08
 underbid 4.88792e-08
 typewrite 4.88792e-08
-turner's 4.88792e-08
 tragicomedy 4.88792e-08
 toweling 4.88792e-08
 torchbearers 4.88792e-08
@@ -52709,7 +52586,6 @@ objectionably 4.84719e-08
 nickering 4.84719e-08
 mouses 4.84719e-08
 moonlighter 4.84719e-08
-monk's 4.84719e-08
 minefields 4.84719e-08
 menstruated 4.84719e-08
 logistic 4.84719e-08
@@ -52848,7 +52724,6 @@ neediness 4.76572e-08
 navigates 4.76572e-08
 natter 4.76572e-08
 mushing 4.76572e-08
-merchant's 4.76572e-08
 matriarchy 4.76572e-08
 manhandled 4.76572e-08
 lignin 4.76572e-08
@@ -52857,7 +52732,6 @@ jabbers 4.76572e-08
 hobnail 4.76572e-08
 foretastes 4.76572e-08
 forages 4.76572e-08
-fool's 4.76572e-08
 erases 4.76572e-08
 entryway 4.76572e-08
 decontaminated 4.76572e-08
@@ -52933,10 +52807,8 @@ cheeped 4.72499e-08
 callouses 4.72499e-08
 buncoed 4.72499e-08
 bookmarks 4.72499e-08
-billy's 4.72499e-08
 biconcave 4.72499e-08
 beetled 4.72499e-08
-bear's 4.72499e-08
 barehanded 4.72499e-08
 bactericidal 4.72499e-08
 apiaries 4.72499e-08
@@ -53055,7 +52927,6 @@ misanthropist 4.64352e-08
 mechanization 4.64352e-08
 lingerer 4.64352e-08
 lightheartedly 4.64352e-08
-kid's 4.64352e-08
 instate 4.64352e-08
 inadvisability 4.64352e-08
 hydrolyzed 4.64352e-08
@@ -53092,14 +52963,12 @@ unpinning 4.60279e-08
 tropically 4.60279e-08
 toadied 4.60279e-08
 thatchers 4.60279e-08
-swift's 4.60279e-08
 stapler 4.60279e-08
 stammerers 4.60279e-08
 soybean 4.60279e-08
 solver 4.60279e-08
 silts 4.60279e-08
 semiquaver 4.60279e-08
-saviour's 4.60279e-08
 sanitarians 4.60279e-08
 residencies 4.60279e-08
 puking 4.60279e-08
@@ -53188,7 +53057,6 @@ memorising 4.56206e-08
 masterwork 4.56206e-08
 libeled 4.56206e-08
 kneecap 4.56206e-08
-husband's 4.56206e-08
 hogging 4.56206e-08
 headset 4.56206e-08
 friskiness 4.56206e-08
@@ -53207,7 +53075,6 @@ batik 4.56206e-08
 axially 4.56206e-08
 arterioles 4.56206e-08
 abuser 4.56206e-08
-wolf's 4.52132e-08
 whizzes 4.52132e-08
 vacillates 4.52132e-08
 undersecretary 4.52132e-08
@@ -53375,7 +53242,6 @@ tinderbox 4.43986e-08
 thralled 4.43986e-08
 stultifies 4.43986e-08
 stairwell 4.43986e-08
-squire's 4.43986e-08
 snowshoeing 4.43986e-08
 smudging 4.43986e-08
 shirr 4.43986e-08
@@ -53414,7 +53280,6 @@ greasily 4.43986e-08
 gibbeting 4.43986e-08
 frustum 4.43986e-08
 forgivable 4.43986e-08
-ford's 4.43986e-08
 flatirons 4.43986e-08
 fatefully 4.43986e-08
 expansible 4.43986e-08
@@ -53483,7 +53348,6 @@ grads 4.39913e-08
 gonad 4.39913e-08
 galvanise 4.39913e-08
 fumblingly 4.39913e-08
-fox's 4.39913e-08
 fichus 4.39913e-08
 explicated 4.39913e-08
 ethnographers 4.39913e-08
@@ -53512,7 +53376,6 @@ afterlife 4.39913e-08
 abstruseness 4.39913e-08
 zap 4.35839e-08
 whipsaw 4.35839e-08
-war's 4.35839e-08
 valentine's 4.35839e-08
 vaccinations 4.35839e-08
 urinals 4.35839e-08
@@ -53585,7 +53448,6 @@ bookplate 4.35839e-08
 bleeder 4.35839e-08
 bivalent 4.35839e-08
 bipedal 4.35839e-08
-bill's 4.35839e-08
 bedecking 4.35839e-08
 beanie 4.35839e-08
 ammeters 4.35839e-08
@@ -53658,7 +53520,6 @@ fanciest 4.31766e-08
 expendable 4.31766e-08
 epitomise 4.31766e-08
 distastefulness 4.31766e-08
-death's 4.31766e-08
 cushioning 4.31766e-08
 copiers 4.31766e-08
 contemptuousness 4.31766e-08
@@ -53773,7 +53634,6 @@ stances 4.2362e-08
 speedboat 4.2362e-08
 snarly 4.2362e-08
 skimping 4.2362e-08
-sister's 4.2362e-08
 scenically 4.2362e-08
 riffled 4.2362e-08
 remelted 4.2362e-08
@@ -53819,7 +53679,6 @@ fibrillation 4.2362e-08
 extemporise 4.2362e-08
 encirclement 4.2362e-08
 dramatise 4.2362e-08
-dolly's 4.2362e-08
 diatom 4.2362e-08
 cooping 4.2362e-08
 caesium 4.2362e-08
@@ -53857,7 +53716,6 @@ purposelessness 4.19546e-08
 pulverise 4.19546e-08
 prolapsed 4.19546e-08
 pluralists 4.19546e-08
-parson's 4.19546e-08
 parches 4.19546e-08
 pantheons 4.19546e-08
 offside 4.19546e-08
@@ -53900,7 +53758,6 @@ bulkiness 4.19546e-08
 bluet 4.19546e-08
 armload 4.19546e-08
 actuarial 4.19546e-08
-young's 4.15473e-08
 wolfed 4.15473e-08
 welters 4.15473e-08
 unsurprised 4.15473e-08
@@ -53953,7 +53810,6 @@ cohesiveness 4.15473e-08
 cogwheels 4.15473e-08
 cockscombs 4.15473e-08
 calligrapher 4.15473e-08
-bull's 4.15473e-08
 begrudges 4.15473e-08
 attunes 4.15473e-08
 apostasies 4.15473e-08
@@ -54017,7 +53873,6 @@ chequering 4.114e-08
 bugling 4.114e-08
 bluffness 4.114e-08
 binaries 4.114e-08
-beggar's 4.114e-08
 beachcombers 4.114e-08
 baulking 4.114e-08
 armors 4.114e-08
@@ -54092,7 +53947,6 @@ celestially 4.07327e-08
 callas 4.07327e-08
 birdsong 4.07327e-08
 barkeepers 4.07327e-08
-barber's 4.07327e-08
 balladry 4.07327e-08
 bailable 4.07327e-08
 backwardly 4.07327e-08
@@ -54119,7 +53973,6 @@ tootling 4.03253e-08
 territoriality 4.03253e-08
 teenagers 4.03253e-08
 symbology 4.03253e-08
-sun's 4.03253e-08
 subscript 4.03253e-08
 subcontinent 4.03253e-08
 southerns 4.03253e-08
@@ -54135,11 +53988,8 @@ pillions 4.03253e-08
 perusals 4.03253e-08
 personalized 4.03253e-08
 peculators 4.03253e-08
-painter's 4.03253e-08
 opportunistic 4.03253e-08
-officer's 4.03253e-08
 nonagenarian 4.03253e-08
-nation's 4.03253e-08
 misconceiving 4.03253e-08
 misapplying 4.03253e-08
 mesmeriser 4.03253e-08
@@ -54173,7 +54023,6 @@ conniption 4.03253e-08
 coheirs 4.03253e-08
 clapboarded 4.03253e-08
 cholesterol 4.03253e-08
-chief's 4.03253e-08
 chaotically 4.03253e-08
 buildup 4.03253e-08
 bowlegged 4.03253e-08
@@ -54228,7 +54077,6 @@ innumerably 3.9918e-08
 handyman 3.9918e-08
 handcarts 3.9918e-08
 gamer 3.9918e-08
-friend's 3.9918e-08
 flays 3.9918e-08
 earful 3.9918e-08
 dumdum 3.9918e-08
@@ -54255,7 +54103,6 @@ tussled 3.95107e-08
 trickiness 3.95107e-08
 treacly 3.95107e-08
 tomorrows 3.95107e-08
-teacher's 3.95107e-08
 tanked 3.95107e-08
 superimpose 3.95107e-08
 sundaes 3.95107e-08
@@ -54263,13 +54110,11 @@ substation 3.95107e-08
 subcontract 3.95107e-08
 splattering 3.95107e-08
 spectroscopy 3.95107e-08
-speaker's 3.95107e-08
 soling 3.95107e-08
 socialisation 3.95107e-08
 snoot 3.95107e-08
 snooker 3.95107e-08
 shuttled 3.95107e-08
-sheep's 3.95107e-08
 senescence 3.95107e-08
 semitransparent 3.95107e-08
 roiling 3.95107e-08
@@ -54390,7 +54235,6 @@ moralises 3.91033e-08
 mercantilism 3.91033e-08
 melodiousness 3.91033e-08
 marinated 3.91033e-08
-maid's 3.91033e-08
 macadamizing 3.91033e-08
 logistical 3.91033e-08
 listings 3.91033e-08
@@ -54399,7 +54243,6 @@ iterations 3.91033e-08
 intergovernmental 3.91033e-08
 immunized 3.91033e-08
 immunization 3.91033e-08
-hero's 3.91033e-08
 hamstrings 3.91033e-08
 grommet 3.91033e-08
 griddles 3.91033e-08
@@ -54490,7 +54333,6 @@ homonyms 3.8696e-08
 homemakers 3.8696e-08
 hinterlands 3.8696e-08
 helves 3.8696e-08
-grandfather's 3.8696e-08
 gormandize 3.8696e-08
 girlfriend 3.8696e-08
 geckos 3.8696e-08
@@ -54557,13 +54399,11 @@ mistranslations 3.82887e-08
 misinterprets 3.82887e-08
 lanthanum 3.82887e-08
 landscaping 3.82887e-08
-land's 3.82887e-08
 jouster 3.82887e-08
 jobless 3.82887e-08
 isotherm 3.82887e-08
 humorless 3.82887e-08
 heuristic 3.82887e-08
-hall's 3.82887e-08
 gumshoe 3.82887e-08
 goof 3.82887e-08
 gainfully 3.82887e-08
@@ -54659,7 +54499,6 @@ disoriented 3.78814e-08
 disinterest 3.78814e-08
 democratisation 3.78814e-08
 deforested 3.78814e-08
-deacon's 3.78814e-08
 creosoted 3.78814e-08
 cpd 3.78814e-08
 countable 3.78814e-08
@@ -54694,7 +54533,6 @@ sharpish 3.7474e-08
 shahs 3.7474e-08
 secularizing 3.7474e-08
 schmuck 3.7474e-08
-robin's 3.7474e-08
 retouches 3.7474e-08
 reinsurance 3.7474e-08
 recriminating 3.7474e-08
@@ -54722,7 +54560,6 @@ marimba 3.7474e-08
 louvres 3.7474e-08
 longboats 3.7474e-08
 lepta 3.7474e-08
-lawyer's 3.7474e-08
 krypton 3.7474e-08
 jammers 3.7474e-08
 interjects 3.7474e-08
@@ -54736,7 +54573,6 @@ grayest 3.7474e-08
 goofy 3.7474e-08
 glassfuls 3.7474e-08
 exterminators 3.7474e-08
-expositor's 3.7474e-08
 explosiveness 3.7474e-08
 encasement 3.7474e-08
 effendis 3.7474e-08
@@ -54763,7 +54599,6 @@ architectures 3.7474e-08
 wriggly 3.70667e-08
 wops 3.70667e-08
 windjammers 3.70667e-08
-where's 3.70667e-08
 vulgarise 3.70667e-08
 unctions 3.70667e-08
 tussling 3.70667e-08
@@ -54834,7 +54669,6 @@ conically 3.70667e-08
 conflation 3.70667e-08
 conductance 3.70667e-08
 columnist 3.70667e-08
-collier's 3.70667e-08
 coding 3.70667e-08
 clammily 3.70667e-08
 chows 3.70667e-08
@@ -54896,13 +54730,11 @@ handlebars 3.66594e-08
 halfhearted 3.66594e-08
 gruesomeness 3.66594e-08
 grandstands 3.66594e-08
-grandpa's 3.66594e-08
 genocide 3.66594e-08
 gawking 3.66594e-08
 gaunter 3.66594e-08
 flexes 3.66594e-08
 flatfoot 3.66594e-08
-fisher's 3.66594e-08
 fibber 3.66594e-08
 farad 3.66594e-08
 endives 3.66594e-08
@@ -54988,7 +54820,6 @@ evener 3.62521e-08
 emasculating 3.62521e-08
 dunderheads 3.62521e-08
 drumbeat 3.62521e-08
-dragon's 3.62521e-08
 drabness 3.62521e-08
 disencumbering 3.62521e-08
 disassociation 3.62521e-08
@@ -55095,7 +54926,6 @@ anesthetized 3.58447e-08
 ancientness 3.58447e-08
 alumna 3.58447e-08
 altruists 3.58447e-08
-wright's 3.54374e-08
 waywardly 3.54374e-08
 virtuousness 3.54374e-08
 vincible 3.54374e-08
@@ -55124,7 +54954,6 @@ nightdresses 3.54374e-08
 musicals 3.54374e-08
 moralizer 3.54374e-08
 maths 3.54374e-08
-mason's 3.54374e-08
 macaronis 3.54374e-08
 lusciously 3.54374e-08
 lemonades 3.54374e-08
@@ -55149,7 +54978,6 @@ eyesores 3.54374e-08
 envision 3.54374e-08
 encases 3.54374e-08
 dramatisation 3.54374e-08
-drake's 3.54374e-08
 defoliation 3.54374e-08
 databases 3.54374e-08
 cyclometer 3.54374e-08
@@ -55171,7 +54999,6 @@ ambivalence 3.54374e-08
 allegorists 3.54374e-08
 agonise 3.54374e-08
 windbags 3.50301e-08
-warren's 3.50301e-08
 walkover 3.50301e-08
 vulcanizing 3.50301e-08
 vibrantly 3.50301e-08
@@ -55184,7 +55011,6 @@ tappets 3.50301e-08
 subcommittees 3.50301e-08
 stigmatises 3.50301e-08
 soldiered 3.50301e-08
-society's 3.50301e-08
 shopworn 3.50301e-08
 sexy 3.50301e-08
 scoutmasters 3.50301e-08
@@ -55210,7 +55036,6 @@ ornateness 3.50301e-08
 ombudsman 3.50301e-08
 nonmetallic 3.50301e-08
 nattering 3.50301e-08
-major's 3.50301e-08
 maintainable 3.50301e-08
 maestros 3.50301e-08
 legalising 3.50301e-08
@@ -55292,14 +55117,12 @@ meerkat 3.46228e-08
 medallists 3.46228e-08
 marlinespike 3.46228e-08
 locator 3.46228e-08
-kitty's 3.46228e-08
 jangles 3.46228e-08
 infatuating 3.46228e-08
 impresarios 3.46228e-08
 importable 3.46228e-08
 hygrometers 3.46228e-08
 horseflies 3.46228e-08
-hooker's 3.46228e-08
 honks 3.46228e-08
 homosexuals 3.46228e-08
 handcraft 3.46228e-08
@@ -55338,7 +55161,6 @@ bandannas 3.46228e-08
 autonomic 3.46228e-08
 aglitter 3.46228e-08
 aftertaste 3.46228e-08
-youth's 3.42154e-08
 wining 3.42154e-08
 whitecap 3.42154e-08
 westerlies 3.42154e-08
@@ -55356,7 +55178,6 @@ sorrily 3.42154e-08
 soliloquises 3.42154e-08
 shuttling 3.42154e-08
 shoplifters 3.42154e-08
-sheriff's 3.42154e-08
 serviced 3.42154e-08
 seediness 3.42154e-08
 scrambler 3.42154e-08
@@ -55395,11 +55216,9 @@ inefficiencies 3.42154e-08
 incomer 3.42154e-08
 huller 3.42154e-08
 habituates 3.42154e-08
-green's 3.42154e-08
 gormandizer 3.42154e-08
 glottal 3.42154e-08
 gimpy 3.42154e-08
-gibbon's 3.42154e-08
 garnishment 3.42154e-08
 gallimaufry 3.42154e-08
 francophone 3.42154e-08
@@ -55408,7 +55227,6 @@ extrapolated 3.42154e-08
 exploitable 3.42154e-08
 equivalency 3.42154e-08
 enraptures 3.42154e-08
-earl's 3.42154e-08
 dumbbells 3.42154e-08
 distastes 3.42154e-08
 disincline 3.42154e-08
@@ -55471,9 +55289,7 @@ overdrafts 3.38081e-08
 oilfields 3.38081e-08
 obfuscation 3.38081e-08
 noncompliance 3.38081e-08
-nobody's 3.38081e-08
 mountaintops 3.38081e-08
-motley's 3.38081e-08
 misruled 3.38081e-08
 misjudges 3.38081e-08
 mellifluously 3.38081e-08
@@ -55523,7 +55339,6 @@ upstarted 3.34008e-08
 unlatching 3.34008e-08
 unfeasible 3.34008e-08
 unearthliness 3.34008e-08
-trapper's 3.34008e-08
 toothaches 3.34008e-08
 tigresses 3.34008e-08
 thermonuclear 3.34008e-08
@@ -55676,7 +55491,6 @@ hocked 3.29935e-08
 hiccuping 3.29935e-08
 genealogically 3.29935e-08
 funneled 3.29935e-08
-flower's 3.29935e-08
 fave 3.29935e-08
 fancywork 3.29935e-08
 drumlins 3.29935e-08
@@ -55718,7 +55532,6 @@ undomesticated 3.25861e-08
 underpart 3.25861e-08
 unbid 3.25861e-08
 trusties 3.25861e-08
-traveller's 3.25861e-08
 townswomen 3.25861e-08
 tholes 3.25861e-08
 tenderfoots 3.25861e-08
@@ -55787,7 +55600,6 @@ drooled 3.25861e-08
 derail 3.25861e-08
 defrays 3.25861e-08
 defiler 3.25861e-08
-dean's 3.25861e-08
 cyclopedias 3.25861e-08
 custodial 3.25861e-08
 curtest 3.25861e-08
@@ -55804,12 +55616,10 @@ bettors 3.25861e-08
 beeline 3.25861e-08
 baseballs 3.25861e-08
 adumbrate 3.25861e-08
-admiral's 3.25861e-08
 zips 3.21788e-08
 windpipes 3.21788e-08
 weirder 3.21788e-08
 weeders 3.21788e-08
-walker's 3.21788e-08
 upgrading 3.21788e-08
 unfiltered 3.21788e-08
 underskirts 3.21788e-08
@@ -55845,7 +55655,6 @@ puds 3.21788e-08
 pudendum 3.21788e-08
 protracts 3.21788e-08
 proofreaders 3.21788e-08
-pike's 3.21788e-08
 pessaries 3.21788e-08
 peripherally 3.21788e-08
 overcautious 3.21788e-08
@@ -55903,7 +55712,6 @@ bursars 3.21788e-08
 bunts 3.21788e-08
 brainiest 3.21788e-08
 bigotries 3.21788e-08
-baron's 3.21788e-08
 arced 3.21788e-08
 apprizing 3.21788e-08
 apposed 3.21788e-08
@@ -55955,14 +55763,12 @@ privatizing 3.17715e-08
 preps 3.17715e-08
 preoccupying 3.17715e-08
 precociousness 3.17715e-08
-potter's 3.17715e-08
 poleaxe 3.17715e-08
 persuadable 3.17715e-08
 penetrability 3.17715e-08
 outstretch 3.17715e-08
 outfought 3.17715e-08
 orienting 3.17715e-08
-optic's 3.17715e-08
 nosebags 3.17715e-08
 nondramatic 3.17715e-08
 niggas 3.17715e-08
@@ -56031,7 +55837,6 @@ uncoupling 3.13641e-08
 uncertified 3.13641e-08
 truckers 3.13641e-08
 taping 3.13641e-08
-summer's 3.13641e-08
 stinky 3.13641e-08
 speechify 3.13641e-08
 spatting 3.13641e-08
@@ -56057,7 +55862,6 @@ rinses 3.13641e-08
 rhapsodizing 3.13641e-08
 retractions 3.13641e-08
 restart 3.13641e-08
-reader's 3.13641e-08
 ravened 3.13641e-08
 putsch 3.13641e-08
 puritanically 3.13641e-08
@@ -56095,7 +55899,6 @@ flagmen 3.13641e-08
 feudalistic 3.13641e-08
 familiarizes 3.13641e-08
 falsifiers 3.13641e-08
-fairy's 3.13641e-08
 extractors 3.13641e-08
 eradicates 3.13641e-08
 enthrones 3.13641e-08
@@ -56111,7 +55914,6 @@ corrugate 3.13641e-08
 constructionist 3.13641e-08
 choreography 3.13641e-08
 centigrams 3.13641e-08
-carpenter's 3.13641e-08
 capacitance 3.13641e-08
 cantilevers 3.13641e-08
 canonizing 3.13641e-08
@@ -56179,19 +55981,16 @@ jittery 3.09568e-08
 insidiousness 3.09568e-08
 identifier 3.09568e-08
 housefly 3.09568e-08
-horse's 3.09568e-08
 grandpas 3.09568e-08
 grandmas 3.09568e-08
 goddamned 3.09568e-08
 gadder 3.09568e-08
 freaky 3.09568e-08
-fortune's 3.09568e-08
 fishtail 3.09568e-08
 federating 3.09568e-08
 facsimiled 3.09568e-08
 extemporising 3.09568e-08
 exiguity 3.09568e-08
-everybody's 3.09568e-08
 entraps 3.09568e-08
 enamellers 3.09568e-08
 embezzlers 3.09568e-08
@@ -56220,7 +56019,6 @@ baldies 3.09568e-08
 arbitrage 3.09568e-08
 apostatizing 3.09568e-08
 apexes 3.09568e-08
-another's 3.09568e-08
 allegorist 3.09568e-08
 agglutinating 3.09568e-08
 acclimatise 3.09568e-08
@@ -56275,11 +56073,9 @@ mikes 3.05495e-08
 mergers 3.05495e-08
 maximize 3.05495e-08
 malts 3.05495e-08
-maker's 3.05495e-08
 liquoring 3.05495e-08
 liefest 3.05495e-08
 lapins 3.05495e-08
-journey's 3.05495e-08
 intermittency 3.05495e-08
 huskier 3.05495e-08
 hillbillies 3.05495e-08
@@ -56540,9 +56336,7 @@ tantalization 2.93275e-08
 supportive 2.93275e-08
 subset 2.93275e-08
 starkness 2.93275e-08
-spider's 2.93275e-08
 skewbald 2.93275e-08
-singer's 2.93275e-08
 sideline 2.93275e-08
 sibling 2.93275e-08
 shirtfront 2.93275e-08
@@ -56685,7 +56479,6 @@ mockingbirds 2.89202e-08
 magnetisation 2.89202e-08
 luau 2.89202e-08
 longueurs 2.89202e-08
-law's 2.89202e-08
 joylessness 2.89202e-08
 jaggedly 2.89202e-08
 ingrown 2.89202e-08
@@ -56738,7 +56531,6 @@ anglicize 2.89202e-08
 ambulatories 2.89202e-08
 aerate 2.89202e-08
 zippy 2.85129e-08
-week's 2.85129e-08
 vegan 2.85129e-08
 unstop 2.85129e-08
 unenforceable 2.85129e-08
@@ -56747,7 +56539,6 @@ trucker 2.85129e-08
 tropisms 2.85129e-08
 transiting 2.85129e-08
 thimblefuls 2.85129e-08
-surgeon's 2.85129e-08
 suburbanite 2.85129e-08
 strongbox 2.85129e-08
 slipknot 2.85129e-08
@@ -56764,7 +56555,6 @@ radiology 2.85129e-08
 queers 2.85129e-08
 queenliest 2.85129e-08
 psychoneurosis 2.85129e-08
-prisoner's 2.85129e-08
 primmer 2.85129e-08
 powwows 2.85129e-08
 piecrust 2.85129e-08
@@ -56798,7 +56588,6 @@ iciest 2.85129e-08
 hyperthyroidism 2.85129e-08
 holdups 2.85129e-08
 hernias 2.85129e-08
-hell's 2.85129e-08
 handicapper 2.85129e-08
 gunnels 2.85129e-08
 grumpiness 2.85129e-08
@@ -56846,7 +56635,6 @@ achiever 2.85129e-08
 workout 2.81055e-08
 vilifies 2.81055e-08
 unhinging 2.81055e-08
-uncle's 2.81055e-08
 twinkly 2.81055e-08
 tummies 2.81055e-08
 totting 2.81055e-08
@@ -56871,7 +56659,6 @@ roofers 2.81055e-08
 roamers 2.81055e-08
 riverboat 2.81055e-08
 resorption 2.81055e-08
-reed's 2.81055e-08
 protozoans 2.81055e-08
 prevaricators 2.81055e-08
 passbook 2.81055e-08
@@ -56883,7 +56670,6 @@ mushrooming 2.81055e-08
 miters 2.81055e-08
 mayflies 2.81055e-08
 mailbag 2.81055e-08
-lordship's 2.81055e-08
 interline 2.81055e-08
 insurrectionist 2.81055e-08
 ingest 2.81055e-08
@@ -56995,7 +56781,6 @@ mispronouncing 2.76982e-08
 misinform 2.76982e-08
 misfiring 2.76982e-08
 misappropriate 2.76982e-08
-miner's 2.76982e-08
 medications 2.76982e-08
 mailer 2.76982e-08
 locators 2.76982e-08
@@ -57011,7 +56796,6 @@ ineptly 2.76982e-08
 individualise 2.76982e-08
 impugners 2.76982e-08
 immobilization 2.76982e-08
-hope's 2.76982e-08
 hermit's 2.76982e-08
 gourdes 2.76982e-08
 gastrointestinal 2.76982e-08
@@ -57060,7 +56844,6 @@ acreages 2.76982e-08
 acquirer 2.76982e-08
 wriggler 2.72909e-08
 woodlots 2.72909e-08
-witch's 2.72909e-08
 vocalizing 2.72909e-08
 unscratched 2.72909e-08
 unclothe 2.72909e-08
@@ -57091,7 +56874,6 @@ reciprocals 2.72909e-08
 recessions 2.72909e-08
 rarefies 2.72909e-08
 rampantly 2.72909e-08
-prophet's 2.72909e-08
 propellants 2.72909e-08
 prion 2.72909e-08
 pressured 2.72909e-08
@@ -57204,7 +56986,6 @@ rationalise 2.68836e-08
 psychologies 2.68836e-08
 preempt 2.68836e-08
 pollinating 2.68836e-08
-pharaoh's 2.68836e-08
 pectic 2.68836e-08
 overworks 2.68836e-08
 oversize 2.68836e-08
@@ -57296,12 +57077,10 @@ threesome 2.64762e-08
 teeniest 2.64762e-08
 superposing 2.64762e-08
 subserviently 2.64762e-08
-stranger's 2.64762e-08
 stopgap 2.64762e-08
 steriliser 2.64762e-08
 spiciness 2.64762e-08
 soughs 2.64762e-08
-somebody's 2.64762e-08
 sledded 2.64762e-08
 silhouetting 2.64762e-08
 seedbed 2.64762e-08
@@ -57325,9 +57104,7 @@ princeliest 2.64762e-08
 primped 2.64762e-08
 predetermining 2.64762e-08
 possessiveness 2.64762e-08
-pig's 2.64762e-08
 periling 2.64762e-08
-pastor's 2.64762e-08
 overpasses 2.64762e-08
 overbears 2.64762e-08
 oilmen 2.64762e-08
@@ -57371,7 +57148,6 @@ decode 2.64762e-08
 deadlocked 2.64762e-08
 crosscuts 2.64762e-08
 crisscrossing 2.64762e-08
-count's 2.64762e-08
 country's 2.64762e-08
 copilot 2.64762e-08
 coopered 2.64762e-08
@@ -57444,7 +57220,6 @@ prescripts 2.60689e-08
 predictor 2.60689e-08
 pothole 2.60689e-08
 placation 2.60689e-08
-piper's 2.60689e-08
 pics 2.60689e-08
 phonics 2.60689e-08
 peculator 2.60689e-08
@@ -57487,7 +57262,6 @@ heterogeneously 2.60689e-08
 glockenspiel 2.60689e-08
 gating 2.60689e-08
 galumphing 2.60689e-08
-freedom's 2.60689e-08
 fornicate 2.60689e-08
 firming 2.60689e-08
 expressionlessly 2.60689e-08
@@ -57530,7 +57304,6 @@ tyrannises 2.56616e-08
 twinging 2.56616e-08
 tipples 2.56616e-08
 timidest 2.56616e-08
-tiger's 2.56616e-08
 tepidly 2.56616e-08
 sunfishes 2.56616e-08
 stroganoff 2.56616e-08
@@ -57552,7 +57325,6 @@ reinvented 2.56616e-08
 rehung 2.56616e-08
 recriminatory 2.56616e-08
 radiography 2.56616e-08
-printer's 2.56616e-08
 precondition 2.56616e-08
 powerhouse 2.56616e-08
 pollinate 2.56616e-08
@@ -57619,7 +57391,6 @@ beheads 2.56616e-08
 augmenter 2.56616e-08
 atomized 2.56616e-08
 antagonistically 2.56616e-08
-angler's 2.56616e-08
 analyser 2.56616e-08
 alleluias 2.56616e-08
 yardsticks 2.52542e-08
@@ -57739,7 +57510,6 @@ civvies 2.52542e-08
 civilizes 2.52542e-08
 chloroforming 2.52542e-08
 changeability 2.52542e-08
-chancellor's 2.52542e-08
 bypassed 2.52542e-08
 busks 2.52542e-08
 brutalise 2.52542e-08
@@ -57843,7 +57613,6 @@ convivially 2.48469e-08
 confrontations 2.48469e-08
 clocking 2.48469e-08
 clicker 2.48469e-08
-clergyman's 2.48469e-08
 chigger 2.48469e-08
 cartographic 2.48469e-08
 campgrounds 2.48469e-08
@@ -57922,7 +57691,6 @@ logier 2.44396e-08
 levelers 2.44396e-08
 legalities 2.44396e-08
 leeched 2.44396e-08
-keeper's 2.44396e-08
 job's 2.44396e-08
 jacaranda 2.44396e-08
 isomer 2.44396e-08
@@ -57932,7 +57700,6 @@ immobilize 2.44396e-08
 illusionist 2.44396e-08
 iambs 2.44396e-08
 hypodermics 2.44396e-08
-hunt's 2.44396e-08
 humanlike 2.44396e-08
 hots 2.44396e-08
 horribleness 2.44396e-08
@@ -57991,7 +57758,6 @@ watercolours 2.40323e-08
 vulgarisation 2.40323e-08
 vortexes 2.40323e-08
 voluminousness 2.40323e-08
-vicar's 2.40323e-08
 unwelcoming 2.40323e-08
 unstuck 2.40323e-08
 turnaround 2.40323e-08
@@ -58007,7 +57773,6 @@ spyglasses 2.40323e-08
 slurry 2.40323e-08
 shockers 2.40323e-08
 satiates 2.40323e-08
-river's 2.40323e-08
 riflers 2.40323e-08
 rifer 2.40323e-08
 revilement 2.40323e-08
@@ -58035,7 +57800,6 @@ nickers 2.40323e-08
 murderesses 2.40323e-08
 moonlighting 2.40323e-08
 monochromes 2.40323e-08
-molly's 2.40323e-08
 misspellings 2.40323e-08
 misreport 2.40323e-08
 millstream 2.40323e-08
@@ -58061,7 +57825,6 @@ hagiography 2.40323e-08
 grounders 2.40323e-08
 gradate 2.40323e-08
 giggler 2.40323e-08
-fuller's 2.40323e-08
 fuddles 2.40323e-08
 freakishly 2.40323e-08
 footplate 2.40323e-08
@@ -58086,7 +57849,6 @@ collectible 2.40323e-08
 cleanliest 2.40323e-08
 chrysalises 2.40323e-08
 charterer 2.40323e-08
-carter's 2.40323e-08
 cantankerousness 2.40323e-08
 browser 2.40323e-08
 bracers 2.40323e-08
@@ -58102,7 +57864,6 @@ adulator 2.40323e-08
 acclimatizing 2.40323e-08
 abjurations 2.40323e-08
 zucchini 2.36249e-08
-wizard's 2.36249e-08
 winker 2.36249e-08
 wiggler 2.36249e-08
 whooper 2.36249e-08
@@ -58190,7 +57951,6 @@ honeylocust 2.36249e-08
 hellions 2.36249e-08
 gynaecology 2.36249e-08
 grazers 2.36249e-08
-gentlemen's 2.36249e-08
 gardener's 2.36249e-08
 gabardines 2.36249e-08
 funnies 2.36249e-08
@@ -58295,7 +58055,6 @@ incinerate 2.32176e-08
 hyperinflation 2.32176e-08
 hoarsest 2.32176e-08
 histrionically 2.32176e-08
-hart's 2.32176e-08
 handgrip 2.32176e-08
 gymnosperm 2.32176e-08
 gumdrops 2.32176e-08
@@ -58332,7 +58091,6 @@ discretely 2.32176e-08
 defoliated 2.32176e-08
 deadbeat 2.32176e-08
 dandles 2.32176e-08
-dale's 2.32176e-08
 curlicue 2.32176e-08
 crossbowman 2.32176e-08
 comps 2.32176e-08
@@ -58342,7 +58100,6 @@ claviers 2.32176e-08
 choosy 2.32176e-08
 chanteys 2.32176e-08
 centralise 2.32176e-08
-cardinal's 2.32176e-08
 capitalise 2.32176e-08
 calcimine 2.32176e-08
 bulletined 2.32176e-08
@@ -58350,7 +58107,6 @@ boyfriend 2.32176e-08
 blips 2.32176e-08
 blenches 2.32176e-08
 blancmanges 2.32176e-08
-black's 2.32176e-08
 blabber 2.32176e-08
 biennium 2.32176e-08
 bicentennial 2.32176e-08
@@ -58437,7 +58193,6 @@ greyest 2.28103e-08
 grandiosely 2.28103e-08
 gradualness 2.28103e-08
 gooey 2.28103e-08
-gay's 2.28103e-08
 gayness 2.28103e-08
 garlicky 2.28103e-08
 fondants 2.28103e-08
@@ -58455,7 +58210,6 @@ dewiness 2.28103e-08
 denationalizing 2.28103e-08
 decelerate 2.28103e-08
 dazes 2.28103e-08
-daughter's 2.28103e-08
 curlicues 2.28103e-08
 crossbred 2.28103e-08
 croaky 2.28103e-08
@@ -58472,7 +58226,6 @@ cations 2.28103e-08
 candidatures 2.28103e-08
 cabdriver 2.28103e-08
 bullring 2.28103e-08
-builder's 2.28103e-08
 bricking 2.28103e-08
 boneheads 2.28103e-08
 blowup 2.28103e-08
@@ -58480,7 +58233,6 @@ blocker 2.28103e-08
 besot 2.28103e-08
 baps 2.28103e-08
 bacillary 2.28103e-08
-angel's 2.28103e-08
 ancienter 2.28103e-08
 agronomy 2.28103e-08
 woodcarver 2.2403e-08
@@ -58520,7 +58272,6 @@ sequentially 2.2403e-08
 semisolid 2.2403e-08
 sedation 2.2403e-08
 secularising 2.2403e-08
-secretary's 2.2403e-08
 savvied 2.2403e-08
 satiable 2.2403e-08
 reuse 2.2403e-08
@@ -58553,7 +58304,6 @@ megalith 2.2403e-08
 mantissa 2.2403e-08
 loyalest 2.2403e-08
 loured 2.2403e-08
-judge's 2.2403e-08
 inaugurations 2.2403e-08
 imposers 2.2403e-08
 immaturely 2.2403e-08
@@ -58570,7 +58320,6 @@ flub 2.2403e-08
 felicitates 2.2403e-08
 factorial 2.2403e-08
 encrustation 2.2403e-08
-elephant's 2.2403e-08
 disposals 2.2403e-08
 depilatories 2.2403e-08
 dependently 2.2403e-08
@@ -58711,7 +58460,6 @@ cafeterias 2.19956e-08
 bushwhacked 2.19956e-08
 bravuras 2.19956e-08
 bozo 2.19956e-08
-booth's 2.19956e-08
 boater 2.19956e-08
 boardroom 2.19956e-08
 birdcages 2.19956e-08
@@ -58799,7 +58547,6 @@ larked 2.15883e-08
 kiddish 2.15883e-08
 keens 2.15883e-08
 kaleidoscopes 2.15883e-08
-jester's 2.15883e-08
 instabilities 2.15883e-08
 incremental 2.15883e-08
 inciters 2.15883e-08
@@ -58880,13 +58627,11 @@ tempos 2.1181e-08
 synthesised 2.1181e-08
 suppurates 2.1181e-08
 summoners 2.1181e-08
-sultan's 2.1181e-08
 sulphuring 2.1181e-08
 sulphured 2.1181e-08
 splays 2.1181e-08
 sodding 2.1181e-08
 smarties 2.1181e-08
-slave's 2.1181e-08
 simpleminded 2.1181e-08
 semiannually 2.1181e-08
 sedater 2.1181e-08
@@ -58901,7 +58646,6 @@ regrouped 2.1181e-08
 redraw 2.1181e-08
 recommissioned 2.1181e-08
 recasts 2.1181e-08
-rake's 2.1181e-08
 poos 2.1181e-08
 polyglots 2.1181e-08
 poleaxes 2.1181e-08
@@ -58911,7 +58655,6 @@ pedagogically 2.1181e-08
 particularises 2.1181e-08
 oarlock 2.1181e-08
 nongovernmental 2.1181e-08
-mill's 2.1181e-08
 matchboxes 2.1181e-08
 mannishness 2.1181e-08
 longbows 2.1181e-08
@@ -58961,7 +58704,6 @@ conscripting 2.1181e-08
 compaction 2.1181e-08
 cohabits 2.1181e-08
 coelenterate 2.1181e-08
-clay's 2.1181e-08
 ciao 2.1181e-08
 chopstick 2.1181e-08
 burled 2.1181e-08
@@ -59036,12 +58778,10 @@ openhanded 2.07737e-08
 obsequy 2.07737e-08
 nonperformance 2.07737e-08
 motels 2.07737e-08
-morning's 2.07737e-08
 moon's 2.07737e-08
 monopolizer 2.07737e-08
 monomaniacal 2.07737e-08
 missuses 2.07737e-08
-miser's 2.07737e-08
 meld 2.07737e-08
 matriarch 2.07737e-08
 lucks 2.07737e-08
@@ -59057,9 +58797,7 @@ junked 2.07737e-08
 instinctual 2.07737e-08
 inflecting 2.07737e-08
 humorousness 2.07737e-08
-how's 2.07737e-08
 houseboy 2.07737e-08
-heaven's 2.07737e-08
 hallmarks 2.07737e-08
 halftones 2.07737e-08
 gushers 2.07737e-08
@@ -59069,13 +58807,11 @@ grittiness 2.07737e-08
 grimier 2.07737e-08
 grazer 2.07737e-08
 gravelling 2.07737e-08
-grandma's 2.07737e-08
 glasshouses 2.07737e-08
 gawks 2.07737e-08
 fumigator 2.07737e-08
 freckly 2.07737e-08
 fleabite 2.07737e-08
-field's 2.07737e-08
 fannies 2.07737e-08
 extrovert 2.07737e-08
 extensibility 2.07737e-08
@@ -59093,7 +58829,6 @@ decimates 2.07737e-08
 debasements 2.07737e-08
 crud 2.07737e-08
 creaminess 2.07737e-08
-cox's 2.07737e-08
 countermands 2.07737e-08
 conservationists 2.07737e-08
 cogitates 2.07737e-08
@@ -59205,7 +58940,6 @@ miscount 2.03663e-08
 misconducting 2.03663e-08
 microorganism 2.03663e-08
 menages 2.03663e-08
-mamma's 2.03663e-08
 louver 2.03663e-08
 lookup 2.03663e-08
 lollies 2.03663e-08
@@ -59251,7 +58985,6 @@ detoured 2.03663e-08
 deportees 2.03663e-08
 depletes 2.03663e-08
 cybernetic 2.03663e-08
-crane's 2.03663e-08
 cowhand 2.03663e-08
 countervails 2.03663e-08
 counterpoints 2.03663e-08
@@ -59274,7 +59007,6 @@ baldrics 2.03663e-08
 acculturation 2.03663e-08
 abominating 2.03663e-08
 abnegate 2.03663e-08
-writer's 1.9959e-08
 unwraps 1.9959e-08
 untalented 1.9959e-08
 unmissed 1.9959e-08
@@ -59282,7 +59014,6 @@ unidiomatic 1.9959e-08
 underbidding 1.9959e-08
 umpteen 1.9959e-08
 truckloads 1.9959e-08
-tree's 1.9959e-08
 translocation 1.9959e-08
 transactional 1.9959e-08
 tocsins 1.9959e-08
@@ -59406,7 +59137,6 @@ avdp 1.9959e-08
 anticlerical 1.9959e-08
 annotates 1.9959e-08
 amps 1.9959e-08
-wren's 1.95517e-08
 wind's 1.95517e-08
 welders 1.95517e-08
 waspishly 1.95517e-08
@@ -59444,7 +59174,6 @@ skewing 1.95517e-08
 scrimmaging 1.95517e-08
 scramblers 1.95517e-08
 scrags 1.95517e-08
-scout's 1.95517e-08
 scavenged 1.95517e-08
 rubdown 1.95517e-08
 riffling 1.95517e-08
@@ -59459,7 +59188,6 @@ queasiness 1.95517e-08
 psychopaths 1.95517e-08
 propane 1.95517e-08
 proliferate 1.95517e-08
-prodigal's 1.95517e-08
 predecease 1.95517e-08
 practicably 1.95517e-08
 poppers 1.95517e-08
@@ -59549,7 +59277,6 @@ carbonize 1.95517e-08
 camshaft 1.95517e-08
 bulimia 1.95517e-08
 buggery 1.95517e-08
-bobby's 1.95517e-08
 blockage 1.95517e-08
 biotechnology 1.95517e-08
 bankrupting 1.95517e-08
@@ -59572,7 +59299,6 @@ upliftings 1.91443e-08
 unelected 1.91443e-08
 turnabout 1.91443e-08
 trilateral 1.91443e-08
-traitor's 1.91443e-08
 tomboyish 1.91443e-08
 toehold 1.91443e-08
 tinpot 1.91443e-08
@@ -59602,7 +59328,6 @@ seaways 1.91443e-08
 screwdrivers 1.91443e-08
 scantness 1.91443e-08
 sautes 1.91443e-08
-saint's 1.91443e-08
 roughcast 1.91443e-08
 rooking 1.91443e-08
 riverbanks 1.91443e-08
@@ -59628,7 +59353,6 @@ polarizes 1.91443e-08
 polarising 1.91443e-08
 plumier 1.91443e-08
 plagiarise 1.91443e-08
-philosopher's 1.91443e-08
 pharmacologic 1.91443e-08
 omnivorously 1.91443e-08
 novelized 1.91443e-08
@@ -59641,12 +59365,10 @@ memorialise 1.91443e-08
 meiosis 1.91443e-08
 medicate 1.91443e-08
 mastitis 1.91443e-08
-mariner's 1.91443e-08
 magician's 1.91443e-08
 machos 1.91443e-08
 luffs 1.91443e-08
 loathings 1.91443e-08
-lily's 1.91443e-08
 lambswool 1.91443e-08
 jugulars 1.91443e-08
 josher 1.91443e-08
@@ -59723,7 +59445,6 @@ undernourishment 1.8737e-08
 uncurls 1.8737e-08
 ululating 1.8737e-08
 tremolos 1.8737e-08
-today's 1.8737e-08
 titivate 1.8737e-08
 ticklishness 1.8737e-08
 televised 1.8737e-08
@@ -59812,7 +59533,6 @@ gooseneck 1.8737e-08
 godliest 1.8737e-08
 gibbers 1.8737e-08
 genuflect 1.8737e-08
-frog's 1.8737e-08
 freckling 1.8737e-08
 fraudulence 1.8737e-08
 fratricides 1.8737e-08
@@ -59839,21 +59559,17 @@ conservationist 1.8737e-08
 compliantly 1.8737e-08
 commiserates 1.8737e-08
 coho 1.8737e-08
-church's 1.8737e-08
 chiropody 1.8737e-08
 chairback 1.8737e-08
 calamitously 1.8737e-08
 butties 1.8737e-08
-butterfly's 1.8737e-08
 browsers 1.8737e-08
 botulism 1.8737e-08
 blowfly 1.8737e-08
 blindfolds 1.8737e-08
-blacksmith's 1.8737e-08
 bespangle 1.8737e-08
 begrime 1.8737e-08
 bedpan 1.8737e-08
-beauty's 1.8737e-08
 beaned 1.8737e-08
 battleaxes 1.8737e-08
 barbell 1.8737e-08
@@ -59943,7 +59659,6 @@ licensure 1.83297e-08
 libeler 1.83297e-08
 levier 1.83297e-08
 junkyard 1.83297e-08
-jay's 1.83297e-08
 ionosphere 1.83297e-08
 investigatory 1.83297e-08
 interning 1.83297e-08
@@ -59993,7 +59708,6 @@ constipate 1.83297e-08
 companionways 1.83297e-08
 commutes 1.83297e-08
 colonizes 1.83297e-08
-club's 1.83297e-08
 clubber 1.83297e-08
 clubbable 1.83297e-08
 chromatically 1.83297e-08
@@ -60040,7 +59754,6 @@ superfluousness 1.79224e-08
 subbasement 1.79224e-08
 studentships 1.79224e-08
 steerable 1.79224e-08
-spirit's 1.79224e-08
 spearfish 1.79224e-08
 solemnizes 1.79224e-08
 socialised 1.79224e-08
@@ -60065,7 +59778,6 @@ pummels 1.79224e-08
 pomanders 1.79224e-08
 polytechnics 1.79224e-08
 polices 1.79224e-08
-physician's 1.79224e-08
 pended 1.79224e-08
 peculate 1.79224e-08
 peafowls 1.79224e-08
@@ -60096,10 +59808,8 @@ lambasting 1.79224e-08
 intensifier 1.79224e-08
 innateness 1.79224e-08
 immunize 1.79224e-08
-hill's 1.79224e-08
 hexagram 1.79224e-08
 headhunters 1.79224e-08
-hamlet's 1.79224e-08
 hagiographer 1.79224e-08
 gybing 1.79224e-08
 greasiest 1.79224e-08
@@ -60110,7 +59820,6 @@ gavels 1.79224e-08
 fulcrums 1.79224e-08
 freestones 1.79224e-08
 fossilisation 1.79224e-08
-forester's 1.79224e-08
 forestation 1.79224e-08
 forecloses 1.79224e-08
 foaling 1.79224e-08
@@ -60122,9 +59831,7 @@ fawner 1.79224e-08
 ethnicity 1.79224e-08
 erotically 1.79224e-08
 enhancements 1.79224e-08
-dyer's 1.79224e-08
 drogues 1.79224e-08
-draper's 1.79224e-08
 dpt 1.79224e-08
 dixieland 1.79224e-08
 dissimilitudes 1.79224e-08
@@ -60148,7 +59855,6 @@ conciliators 1.79224e-08
 concessionaire 1.79224e-08
 computerized 1.79224e-08
 collaborates 1.79224e-08
-clerk's 1.79224e-08
 clavichords 1.79224e-08
 chroming 1.79224e-08
 chortles 1.79224e-08
@@ -60184,7 +59890,6 @@ zombies 1.7515e-08
 yakuza 1.7515e-08
 whiny 1.7515e-08
 weeniest 1.7515e-08
-virgin's 1.7515e-08
 unsporting 1.7515e-08
 unsheathes 1.7515e-08
 undies 1.7515e-08
@@ -60206,7 +59911,6 @@ soakings 1.7515e-08
 snitched 1.7515e-08
 slabbing 1.7515e-08
 skyrocketing 1.7515e-08
-skipper's 1.7515e-08
 shenanigan 1.7515e-08
 semaphoring 1.7515e-08
 segmenting 1.7515e-08
@@ -60231,7 +59935,6 @@ portentousness 1.7515e-08
 porousness 1.7515e-08
 pointlessly 1.7515e-08
 placatory 1.7515e-08
-pirate's 1.7515e-08
 personhood 1.7515e-08
 permissibly 1.7515e-08
 perjures 1.7515e-08
@@ -60270,13 +59973,10 @@ immures 1.7515e-08
 hymens 1.7515e-08
 honorifics 1.7515e-08
 hemophilia 1.7515e-08
-hare's 1.7515e-08
 guildhalls 1.7515e-08
 glossily 1.7515e-08
 globalization 1.7515e-08
-gambler's 1.7515e-08
 friskily 1.7515e-08
-freeman's 1.7515e-08
 foghorns 1.7515e-08
 feta 1.7515e-08
 fazed 1.7515e-08
@@ -60299,7 +59999,6 @@ cyberspace 1.7515e-08
 cuspids 1.7515e-08
 cropland 1.7515e-08
 corsages 1.7515e-08
-convict's 1.7515e-08
 compactest 1.7515e-08
 circumnavigations 1.7515e-08
 chessboards 1.7515e-08
@@ -60345,7 +60044,6 @@ tossers 1.71077e-08
 theorizes 1.71077e-08
 terrorizes 1.71077e-08
 temporizer 1.71077e-08
-temple's 1.71077e-08
 tagger 1.71077e-08
 subversives 1.71077e-08
 subplot 1.71077e-08
@@ -60362,7 +60060,6 @@ shutdown 1.71077e-08
 shortfall 1.71077e-08
 shenanigans 1.71077e-08
 shanghais 1.71077e-08
-serpent's 1.71077e-08
 sermonized 1.71077e-08
 segue 1.71077e-08
 secretariats 1.71077e-08
@@ -60390,9 +60087,7 @@ piranha 1.71077e-08
 piggishness 1.71077e-08
 piddled 1.71077e-08
 perisher 1.71077e-08
-peasant's 1.71077e-08
 patientest 1.71077e-08
-papa's 1.71077e-08
 oversubscribed 1.71077e-08
 overgrows 1.71077e-08
 overeaten 1.71077e-08
@@ -60413,7 +60108,6 @@ lemmas 1.71077e-08
 layoff 1.71077e-08
 landholdings 1.71077e-08
 lacewing 1.71077e-08
-labour's 1.71077e-08
 karakul 1.71077e-08
 juggernauts 1.71077e-08
 judiciaries 1.71077e-08
@@ -60422,7 +60116,6 @@ jeopardizes 1.71077e-08
 interrelationships 1.71077e-08
 interlinking 1.71077e-08
 infatuates 1.71077e-08
-infant's 1.71077e-08
 incinerating 1.71077e-08
 homophone 1.71077e-08
 hols 1.71077e-08
@@ -60464,7 +60157,6 @@ commissariats 1.71077e-08
 colanders 1.71077e-08
 circularizing 1.71077e-08
 chippers 1.71077e-08
-china's 1.71077e-08
 chestful 1.71077e-08
 carefullest 1.71077e-08
 captaining 1.71077e-08
@@ -60476,9 +60168,7 @@ biweekly 1.71077e-08
 betroths 1.71077e-08
 bedroll 1.71077e-08
 beclouds 1.71077e-08
-beadle's 1.71077e-08
 barbarised 1.71077e-08
-banker's 1.71077e-08
 asphalts 1.71077e-08
 aquifer 1.71077e-08
 analyzers 1.71077e-08
@@ -60514,7 +60204,6 @@ scorchers 1.67004e-08
 schoolmarms 1.67004e-08
 savoriness 1.67004e-08
 saltcellars 1.67004e-08
-rogue's 1.67004e-08
 riversides 1.67004e-08
 riskiest 1.67004e-08
 rejuvenates 1.67004e-08
@@ -60533,7 +60222,6 @@ quahog 1.67004e-08
 pupates 1.67004e-08
 positron 1.67004e-08
 polyethylene 1.67004e-08
-polo's 1.67004e-08
 pneumococci 1.67004e-08
 permuted 1.67004e-08
 penalise 1.67004e-08
@@ -60586,7 +60274,6 @@ grommets 1.67004e-08
 genuflecting 1.67004e-08
 gallstone 1.67004e-08
 fruitcake 1.67004e-08
-freedmen's 1.67004e-08
 fractiously 1.67004e-08
 frack 1.67004e-08
 fornicating 1.67004e-08
@@ -60608,7 +60295,6 @@ disorganizes 1.67004e-08
 deviant 1.67004e-08
 denitrification 1.67004e-08
 dadoes 1.67004e-08
-daddy's 1.67004e-08
 cuspid 1.67004e-08
 crumbing 1.67004e-08
 contraindications 1.67004e-08
@@ -60621,14 +60307,11 @@ combiner 1.67004e-08
 codpieces 1.67004e-08
 cobbers 1.67004e-08
 clamshells 1.67004e-08
-city's 1.67004e-08
 chanteuse 1.67004e-08
 chanterelle 1.67004e-08
-chamberlain's 1.67004e-08
 catalogers 1.67004e-08
 castoff 1.67004e-08
 calligraphers 1.67004e-08
-butcher's 1.67004e-08
 boutonnieres 1.67004e-08
 bluestockings 1.67004e-08
 biochemist 1.67004e-08
@@ -60648,10 +60331,8 @@ adulate 1.67004e-08
 abstrusely 1.67004e-08
 aborts 1.67004e-08
 worldlier 1.62931e-08
-workmen's 1.62931e-08
 weens 1.62931e-08
 webfoot 1.62931e-08
-wanderer's 1.62931e-08
 vulnerabilities 1.62931e-08
 variegating 1.62931e-08
 undoings 1.62931e-08
@@ -60703,17 +60384,13 @@ philanderers 1.62931e-08
 perfumeries 1.62931e-08
 pejorative 1.62931e-08
 pasteurised 1.62931e-08
-page's 1.62931e-08
 oxcarts 1.62931e-08
-owl's 1.62931e-08
 overspent 1.62931e-08
 outpacing 1.62931e-08
 openhearted 1.62931e-08
 nonviolent 1.62931e-08
 nightstick 1.62931e-08
-neighbor's 1.62931e-08
 naturalist's 1.62931e-08
-month's 1.62931e-08
 misapprehends 1.62931e-08
 milts 1.62931e-08
 milepost 1.62931e-08
@@ -60747,14 +60424,11 @@ hammerlock 1.62931e-08
 haircuts 1.62931e-08
 haemophilia 1.62931e-08
 graphology 1.62931e-08
-goat's 1.62931e-08
 gnarling 1.62931e-08
 gigglers 1.62931e-08
 getup 1.62931e-08
 gastronomically 1.62931e-08
-garrison's 1.62931e-08
 fumier 1.62931e-08
-friar's 1.62931e-08
 formlessly 1.62931e-08
 formalize 1.62931e-08
 forestland 1.62931e-08
@@ -60819,7 +60493,6 @@ amateurism 1.62931e-08
 alluviums 1.62931e-08
 admonishments 1.62931e-08
 adjudicates 1.62931e-08
-abbot's 1.62931e-08
 yearbooks 1.58857e-08
 yashmaks 1.58857e-08
 woodblocks 1.58857e-08
@@ -60907,7 +60580,6 @@ moseying 1.58857e-08
 monocled 1.58857e-08
 molls 1.58857e-08
 mitring 1.58857e-08
-mind's 1.58857e-08
 meetinghouses 1.58857e-08
 maturate 1.58857e-08
 martyring 1.58857e-08
@@ -60952,14 +60624,12 @@ exoticism 1.58857e-08
 executable 1.58857e-08
 evangelically 1.58857e-08
 epitomising 1.58857e-08
-engineer's 1.58857e-08
 energises 1.58857e-08
 endmost 1.58857e-08
 encryption 1.58857e-08
 encrypted 1.58857e-08
 encrusts 1.58857e-08
 economizers 1.58857e-08
-duchess's 1.58857e-08
 drollness 1.58857e-08
 doxes 1.58857e-08
 discriminator 1.58857e-08
@@ -60998,7 +60668,6 @@ anthropomorphically 1.58857e-08
 alliterating 1.58857e-08
 allegros 1.58857e-08
 abetter 1.58857e-08
-weaver's 1.54784e-08
 vitalises 1.54784e-08
 valetudinarianism 1.54784e-08
 urinates 1.54784e-08
@@ -61018,7 +60687,6 @@ sterilizers 1.54784e-08
 steepening 1.54784e-08
 standoff 1.54784e-08
 spunks 1.54784e-08
-spring's 1.54784e-08
 spoofed 1.54784e-08
 spicier 1.54784e-08
 sparkly 1.54784e-08
@@ -61045,7 +60713,6 @@ redesign 1.54784e-08
 reconfirmed 1.54784e-08
 receipting 1.54784e-08
 rapporteur 1.54784e-08
-rajah's 1.54784e-08
 quark 1.54784e-08
 protrusile 1.54784e-08
 proliferated 1.54784e-08
@@ -61054,7 +60721,6 @@ photoelectric 1.54784e-08
 perniciousness 1.54784e-08
 pauperise 1.54784e-08
 outplay 1.54784e-08
-outlaw's 1.54784e-08
 osculate 1.54784e-08
 orthopaedic 1.54784e-08
 obligating 1.54784e-08
@@ -61092,11 +60758,9 @@ impugner 1.54784e-08
 impeller 1.54784e-08
 idealistically 1.54784e-08
 hybridising 1.54784e-08
-hook's 1.54784e-08
 honky 1.54784e-08
 heavyweights 1.54784e-08
 haylofts 1.54784e-08
-hawk's 1.54784e-08
 harlot's 1.54784e-08
 handwoven 1.54784e-08
 haem 1.54784e-08
@@ -61194,7 +60858,6 @@ sterilizes 1.50711e-08
 stents 1.50711e-08
 speediness 1.50711e-08
 songbook 1.50711e-08
-smuggler's 1.50711e-08
 skullcaps 1.50711e-08
 siroccos 1.50711e-08
 shampoos 1.50711e-08
@@ -61227,7 +60890,6 @@ puniness 1.50711e-08
 preordain 1.50711e-08
 preheating 1.50711e-08
 postie 1.50711e-08
-planter's 1.50711e-08
 pimpernels 1.50711e-08
 picnicker 1.50711e-08
 perishables 1.50711e-08
@@ -61241,7 +60903,6 @@ outspreads 1.50711e-08
 outsell 1.50711e-08
 ordainment 1.50711e-08
 ophthalmologist 1.50711e-08
-nun's 1.50711e-08
 notionally 1.50711e-08
 nonsectarian 1.50711e-08
 nocturnally 1.50711e-08
@@ -61275,7 +60936,6 @@ incipience 1.50711e-08
 illuminatingly 1.50711e-08
 identifiers 1.50711e-08
 hydraulically 1.50711e-08
-housekeeper's 1.50711e-08
 hindquarter 1.50711e-08
 hefts 1.50711e-08
 harmonizer 1.50711e-08
@@ -61283,7 +60943,6 @@ happenstance 1.50711e-08
 handset 1.50711e-08
 haggler 1.50711e-08
 guzzlers 1.50711e-08
-guy's 1.50711e-08
 gunmetal 1.50711e-08
 gumboil 1.50711e-08
 guarantying 1.50711e-08
@@ -61304,7 +60963,6 @@ familiarization 1.50711e-08
 extrusive 1.50711e-08
 expurgations 1.50711e-08
 exhumations 1.50711e-08
-evening's 1.50711e-08
 evaders 1.50711e-08
 erectors 1.50711e-08
 equivocates 1.50711e-08
@@ -61323,7 +60981,6 @@ departmentally 1.50711e-08
 defeatism 1.50711e-08
 cyber 1.50711e-08
 croissants 1.50711e-08
-cow's 1.50711e-08
 contextual 1.50711e-08
 consolable 1.50711e-08
 coloniser 1.50711e-08
@@ -61379,7 +61036,6 @@ sync 1.46638e-08
 swordfishes 1.46638e-08
 superannuate 1.46638e-08
 subsumes 1.46638e-08
-stone's 1.46638e-08
 stodginess 1.46638e-08
 stiffeners 1.46638e-08
 stargazer 1.46638e-08
@@ -61390,7 +61046,6 @@ snorkel 1.46638e-08
 slobbers 1.46638e-08
 slather 1.46638e-08
 shantytown 1.46638e-08
-sergeant's 1.46638e-08
 scrimshaw 1.46638e-08
 scatterbrains 1.46638e-08
 savouriness 1.46638e-08
@@ -61409,7 +61064,6 @@ rattletraps 1.46638e-08
 prizefight 1.46638e-08
 preschool 1.46638e-08
 prearrange 1.46638e-08
-possum's 1.46638e-08
 pockmarks 1.46638e-08
 pneumatically 1.46638e-08
 plonk 1.46638e-08
@@ -61481,13 +61135,11 @@ detoxification 1.46638e-08
 demitasse 1.46638e-08
 dedicators 1.46638e-08
 deactivated 1.46638e-08
-czar's 1.46638e-08
 cytoplasmic 1.46638e-08
 curliest 1.46638e-08
 cumbersomeness 1.46638e-08
 creationism 1.46638e-08
 corporately 1.46638e-08
-constable's 1.46638e-08
 consonantly 1.46638e-08
 concussed 1.46638e-08
 cheekiness 1.46638e-08
@@ -61497,14 +61149,12 @@ callused 1.46638e-08
 butane 1.46638e-08
 boomtown 1.46638e-08
 bonk 1.46638e-08
-boar's 1.46638e-08
 birder 1.46638e-08
 bilingualism 1.46638e-08
 besmears 1.46638e-08
 bassinets 1.46638e-08
 barreling 1.46638e-08
 banjoist 1.46638e-08
-back's 1.46638e-08
 backhander 1.46638e-08
 baaed 1.46638e-08
 ayatollah 1.46638e-08
@@ -61570,7 +61220,6 @@ sippers 1.42564e-08
 shadiness 1.42564e-08
 serialized 1.42564e-08
 selflessly 1.42564e-08
-schoolmaster's 1.42564e-08
 rowdiest 1.42564e-08
 rolltop 1.42564e-08
 revisionism 1.42564e-08
@@ -61580,7 +61229,6 @@ repatriating 1.42564e-08
 regionalism 1.42564e-08
 regimenting 1.42564e-08
 recidivist 1.42564e-08
-ray's 1.42564e-08
 rat's 1.42564e-08
 raring 1.42564e-08
 raptors 1.42564e-08
@@ -61588,7 +61236,6 @@ ragas 1.42564e-08
 pyramiding 1.42564e-08
 pusses 1.42564e-08
 premix 1.42564e-08
-premier's 1.42564e-08
 predestines 1.42564e-08
 prats 1.42564e-08
 planar 1.42564e-08
@@ -61614,7 +61261,6 @@ mortgagors 1.42564e-08
 metaled 1.42564e-08
 medievalist 1.42564e-08
 medevac 1.42564e-08
-mare's 1.42564e-08
 marbleized 1.42564e-08
 lukewarmly 1.42564e-08
 lovably 1.42564e-08
@@ -61715,7 +61361,6 @@ worryings 1.38491e-08
 windier 1.38491e-08
 wieners 1.38491e-08
 weatherboarding 1.38491e-08
-warrior's 1.38491e-08
 walkout 1.38491e-08
 urbanites 1.38491e-08
 unsubscribed 1.38491e-08
@@ -61740,7 +61385,6 @@ taros 1.38491e-08
 tankful 1.38491e-08
 tamps 1.38491e-08
 syllabification 1.38491e-08
-swan's 1.38491e-08
 swamis 1.38491e-08
 suntanned 1.38491e-08
 sultanates 1.38491e-08
@@ -61796,17 +61440,14 @@ pressuring 1.38491e-08
 prefab 1.38491e-08
 preexisted 1.38491e-08
 predetermines 1.38491e-08
-pilot's 1.38491e-08
 pigskins 1.38491e-08
 phytoplankton 1.38491e-08
 phantasmagorical 1.38491e-08
 penalizes 1.38491e-08
-peacock's 1.38491e-08
 parsec 1.38491e-08
 paperweights 1.38491e-08
 outsmarted 1.38491e-08
 outguessed 1.38491e-08
-orphan's 1.38491e-08
 offstage 1.38491e-08
 offhanded 1.38491e-08
 objurgate 1.38491e-08
@@ -61817,7 +61458,6 @@ naan 1.38491e-08
 mudguards 1.38491e-08
 moronic 1.38491e-08
 moraliser 1.38491e-08
-monkey's 1.38491e-08
 moils 1.38491e-08
 mobster 1.38491e-08
 miscue 1.38491e-08
@@ -61841,7 +61481,6 @@ huskiest 1.38491e-08
 hoers 1.38491e-08
 hijacked 1.38491e-08
 gynaecological 1.38491e-08
-gunner's 1.38491e-08
 grovellers 1.38491e-08
 gratuitousness 1.38491e-08
 grassroots 1.38491e-08
@@ -61852,7 +61491,6 @@ gleefulness 1.38491e-08
 friskier 1.38491e-08
 fricasseeing 1.38491e-08
 fossilize 1.38491e-08
-flora's 1.38491e-08
 flawlessness 1.38491e-08
 fixate 1.38491e-08
 extenders 1.38491e-08
@@ -61875,18 +61513,15 @@ cuisines 1.38491e-08
 crabwise 1.38491e-08
 cosmogonists 1.38491e-08
 corruptest 1.38491e-08
-coroner's 1.38491e-08
 cornpone 1.38491e-08
 coonskins 1.38491e-08
 conventionalize 1.38491e-08
 concavely 1.38491e-08
 centenaries 1.38491e-08
 cantinas 1.38491e-08
-candidate's 1.38491e-08
 calcines 1.38491e-08
 cabinetmaking 1.38491e-08
 cabdrivers 1.38491e-08
-buster's 1.38491e-08
 bruins 1.38491e-08
 bradawls 1.38491e-08
 bobsleds 1.38491e-08
@@ -61926,7 +61561,6 @@ trisected 1.34418e-08
 trashed 1.34418e-08
 transliterating 1.34418e-08
 topographies 1.34418e-08
-tinker's 1.34418e-08
 surcingles 1.34418e-08
 supranational 1.34418e-08
 supercomputer 1.34418e-08
@@ -61941,7 +61575,6 @@ songstresses 1.34418e-08
 slickness 1.34418e-08
 slickly 1.34418e-08
 sicks 1.34418e-08
-shoemaker's 1.34418e-08
 scavenge 1.34418e-08
 rhapsodise 1.34418e-08
 revealingly 1.34418e-08
@@ -61956,9 +61589,7 @@ reactivated 1.34418e-08
 razz 1.34418e-08
 rapists 1.34418e-08
 quashes 1.34418e-08
-pussy's 1.34418e-08
 psychoanalytical 1.34418e-08
-princess's 1.34418e-08
 posties 1.34418e-08
 portraitists 1.34418e-08
 pooping 1.34418e-08
@@ -61973,7 +61604,6 @@ oxymoron 1.34418e-08
 overtaxes 1.34418e-08
 overpaying 1.34418e-08
 orangutan 1.34418e-08
-nurse's 1.34418e-08
 nosh 1.34418e-08
 nonwhite 1.34418e-08
 nonunion 1.34418e-08
@@ -61994,7 +61624,6 @@ metabolized 1.34418e-08
 maximums 1.34418e-08
 mafiosi 1.34418e-08
 logrolling 1.34418e-08
-leech's 1.34418e-08
 lanker 1.34418e-08
 jogger 1.34418e-08
 jimmied 1.34418e-08
@@ -62035,7 +61664,6 @@ ethological 1.34418e-08
 enmeshes 1.34418e-08
 emulsification 1.34418e-08
 empathetic 1.34418e-08
-drunkard's 1.34418e-08
 drainpipes 1.34418e-08
 dozers 1.34418e-08
 discontinuities 1.34418e-08
@@ -62052,12 +61680,10 @@ cruses 1.34418e-08
 crossbreeding 1.34418e-08
 crenellate 1.34418e-08
 creationist 1.34418e-08
-cowboy's 1.34418e-08
 counterproductive 1.34418e-08
 constricts 1.34418e-08
 comparably 1.34418e-08
 committers 1.34418e-08
-committee's 1.34418e-08
 commie 1.34418e-08
 coked 1.34418e-08
 coccyges 1.34418e-08
@@ -62078,7 +61704,6 @@ betiding 1.34418e-08
 beignet 1.34418e-08
 bathyscaphe 1.34418e-08
 autobiographically 1.34418e-08
-aunt's 1.34418e-08
 assigner 1.34418e-08
 articulateness 1.34418e-08
 armloads 1.34418e-08
@@ -62094,7 +61719,6 @@ advisably 1.34418e-08
 zings 1.30344e-08
 yodeled 1.30344e-08
 wryness 1.30344e-08
-worker's 1.30344e-08
 withed 1.30344e-08
 websites 1.30344e-08
 veterinaries 1.30344e-08
@@ -62139,7 +61763,6 @@ songwriter 1.30344e-08
 slipperiest 1.30344e-08
 skier 1.30344e-08
 shufflers 1.30344e-08
-settler's 1.30344e-08
 scouter 1.30344e-08
 scoreless 1.30344e-08
 scarping 1.30344e-08
@@ -62240,7 +61863,6 @@ eclectically 1.30344e-08
 drafters 1.30344e-08
 downheartedness 1.30344e-08
 disharmonious 1.30344e-08
-diamond's 1.30344e-08
 deuterium 1.30344e-08
 depersonalized 1.30344e-08
 denouncements 1.30344e-08
@@ -62260,7 +61882,6 @@ clued 1.30344e-08
 clingy 1.30344e-08
 civilises 1.30344e-08
 circumcisions 1.30344e-08
-churchman's 1.30344e-08
 chowchow 1.30344e-08
 chordate 1.30344e-08
 choirboys 1.30344e-08
@@ -62270,7 +61891,6 @@ carbuncular 1.30344e-08
 capitalizes 1.30344e-08
 capaciously 1.30344e-08
 bunging 1.30344e-08
-brewer's 1.30344e-08
 breading 1.30344e-08
 braggers 1.30344e-08
 bottleneck 1.30344e-08
@@ -62280,7 +61900,6 @@ bestrewing 1.30344e-08
 beleaguers 1.30344e-08
 bedims 1.30344e-08
 beauts 1.30344e-08
-barker's 1.30344e-08
 ball's 1.30344e-08
 backfires 1.30344e-08
 awfuller 1.30344e-08
@@ -62309,9 +61928,7 @@ underdogs 1.26271e-08
 undemonstratively 1.26271e-08
 umpteenth 1.26271e-08
 twaddled 1.26271e-08
-turtle's 1.26271e-08
 transpacific 1.26271e-08
-transcriber's 1.26271e-08
 tradings 1.26271e-08
 towheads 1.26271e-08
 tollgates 1.26271e-08
@@ -62344,7 +61961,6 @@ sequined 1.26271e-08
 scandalises 1.26271e-08
 satanist 1.26271e-08
 sandiest 1.26271e-08
-rover's 1.26271e-08
 rotisserie 1.26271e-08
 roisters 1.26271e-08
 responder 1.26271e-08
@@ -62395,16 +62011,12 @@ metros 1.26271e-08
 meretriciousness 1.26271e-08
 megs 1.26271e-08
 marketer 1.26271e-08
-mammy's 1.26271e-08
 malingered 1.26271e-08
 levelheaded 1.26271e-08
 leewards 1.26271e-08
-landlord's 1.26271e-08
 lambed 1.26271e-08
 ladyfingers 1.26271e-08
-kit's 1.26271e-08
 jugging 1.26271e-08
-jenny's 1.26271e-08
 itemised 1.26271e-08
 italicising 1.26271e-08
 irenic 1.26271e-08
@@ -62456,7 +62068,6 @@ disembody 1.26271e-08
 diffusers 1.26271e-08
 dicotyledon 1.26271e-08
 detouring 1.26271e-08
-detective's 1.26271e-08
 destruct 1.26271e-08
 demonetizing 1.26271e-08
 deflating 1.26271e-08
@@ -62465,10 +62076,8 @@ crosshairs 1.26271e-08
 cremes 1.26271e-08
 costed 1.26271e-08
 conveners 1.26271e-08
-cock's 1.26271e-08
 cloverleaf 1.26271e-08
 clambakes 1.26271e-08
-citizen's 1.26271e-08
 chokecherries 1.26271e-08
 chivalrousness 1.26271e-08
 chiropractor 1.26271e-08
@@ -62546,7 +62155,6 @@ squinter 1.22198e-08
 squiggle 1.22198e-08
 sputnik 1.22198e-08
 sprucing 1.22198e-08
-sponge's 1.22198e-08
 sparrow's 1.22198e-08
 southeasters 1.22198e-08
 sonatina 1.22198e-08
@@ -62556,7 +62164,6 @@ smallholders 1.22198e-08
 slippage 1.22198e-08
 skippered 1.22198e-08
 skiers 1.22198e-08
-shell's 1.22198e-08
 sexagenarians 1.22198e-08
 semipermeable 1.22198e-08
 seconders 1.22198e-08
@@ -62577,7 +62184,6 @@ regressions 1.22198e-08
 regressed 1.22198e-08
 refrozen 1.22198e-08
 redefine 1.22198e-08
-rector's 1.22198e-08
 recrystallised 1.22198e-08
 recenter 1.22198e-08
 rearm 1.22198e-08
@@ -62593,7 +62199,6 @@ placements 1.22198e-08
 photocopies 1.22198e-08
 philosophizers 1.22198e-08
 peeve 1.22198e-08
-parent's 1.22198e-08
 parachuting 1.22198e-08
 overdressing 1.22198e-08
 overcareful 1.22198e-08
@@ -62612,12 +62217,10 @@ mutilator 1.22198e-08
 mugginess 1.22198e-08
 muckrake 1.22198e-08
 mtg 1.22198e-08
-missionary's 1.22198e-08
 misgoverning 1.22198e-08
 misanthropically 1.22198e-08
 minuting 1.22198e-08
 mimed 1.22198e-08
-millionaire's 1.22198e-08
 merrymaker 1.22198e-08
 mensurable 1.22198e-08
 meninx 1.22198e-08
@@ -62646,9 +62249,7 @@ immobilizing 1.22198e-08
 hookworms 1.22198e-08
 hooey 1.22198e-08
 honourer 1.22198e-08
-home's 1.22198e-08
 homeopaths 1.22198e-08
-hog's 1.22198e-08
 headier 1.22198e-08
 haplessly 1.22198e-08
 handicappers 1.22198e-08
@@ -62709,7 +62310,6 @@ celebrator 1.22198e-08
 cavitation 1.22198e-08
 caulks 1.22198e-08
 burliest 1.22198e-08
-bunny's 1.22198e-08
 bungholes 1.22198e-08
 buffered 1.22198e-08
 brazens 1.22198e-08
@@ -62724,7 +62324,6 @@ beastlier 1.22198e-08
 bathrobes 1.22198e-08
 atavist 1.22198e-08
 asterisked 1.22198e-08
-archer's 1.22198e-08
 archbishop's 1.22198e-08
 appositives 1.22198e-08
 ancestries 1.22198e-08
@@ -62742,7 +62341,6 @@ winnowers 1.18125e-08
 winched 1.18125e-08
 whooshed 1.18125e-08
 whittlers 1.18125e-08
-whistler's 1.18125e-08
 whippersnappers 1.18125e-08
 wastewater 1.18125e-08
 washbasins 1.18125e-08
@@ -62767,7 +62365,6 @@ tenners 1.18125e-08
 temporises 1.18125e-08
 temporaries 1.18125e-08
 tarsals 1.18125e-08
-tailor's 1.18125e-08
 taffrails 1.18125e-08
 swotting 1.18125e-08
 stockpot 1.18125e-08
@@ -62785,7 +62382,6 @@ sermonise 1.18125e-08
 selenographers 1.18125e-08
 seismologist 1.18125e-08
 scrod 1.18125e-08
-schoolboy's 1.18125e-08
 savager 1.18125e-08
 saltines 1.18125e-08
 salivating 1.18125e-08
@@ -62804,7 +62400,6 @@ recycled 1.18125e-08
 rechecking 1.18125e-08
 reburial 1.18125e-08
 razorbacks 1.18125e-08
-rainbow's 1.18125e-08
 quiescently 1.18125e-08
 quarterstaves 1.18125e-08
 psychos 1.18125e-08
@@ -62833,23 +62428,19 @@ outstretches 1.18125e-08
 outsmart 1.18125e-08
 outcropped 1.18125e-08
 outclasses 1.18125e-08
-other's 1.18125e-08
 orchestrating 1.18125e-08
 normalization 1.18125e-08
 nonsexual 1.18125e-08
-nobleman's 1.18125e-08
 muskellunge 1.18125e-08
 mozzarella 1.18125e-08
 mounters 1.18125e-08
 moldiness 1.18125e-08
 modems 1.18125e-08
 modals 1.18125e-08
-minstrel's 1.18125e-08
 mindlessly 1.18125e-08
 microwaves 1.18125e-08
 mechanize 1.18125e-08
 maxi 1.18125e-08
-marsh's 1.18125e-08
 maria's 1.18125e-08
 macrame 1.18125e-08
 macadamize 1.18125e-08
@@ -62902,7 +62493,6 @@ eggheads 1.18125e-08
 eeriest 1.18125e-08
 dunking 1.18125e-08
 dumbfounding 1.18125e-08
-driver's 1.18125e-08
 doppelganger 1.18125e-08
 doeskins 1.18125e-08
 doddery 1.18125e-08
@@ -62914,7 +62504,6 @@ dbl 1.18125e-08
 cossets 1.18125e-08
 copulatives 1.18125e-08
 contuse 1.18125e-08
-conqueror's 1.18125e-08
 conflate 1.18125e-08
 cloistering 1.18125e-08
 cinctures 1.18125e-08
@@ -62925,14 +62514,12 @@ chimer 1.18125e-08
 chequebook 1.18125e-08
 categorize 1.18125e-08
 butterfingers 1.18125e-08
-burgomaster's 1.18125e-08
 bumbles 1.18125e-08
 bulleted 1.18125e-08
 budgeting 1.18125e-08
 briskets 1.18125e-08
 breadfruits 1.18125e-08
 bongos 1.18125e-08
-boatswain's 1.18125e-08
 blowtorch 1.18125e-08
 benching 1.18125e-08
 befogs 1.18125e-08
@@ -62955,7 +62542,6 @@ workhorse 1.14051e-08
 whingers 1.14051e-08
 weatherman 1.14051e-08
 waterfowls 1.14051e-08
-watchman's 1.14051e-08
 vulgarises 1.14051e-08
 vasts 1.14051e-08
 upstrokes 1.14051e-08
@@ -62966,7 +62552,6 @@ unarguable 1.14051e-08
 ultramodern 1.14051e-08
 ubiquitously 1.14051e-08
 triangulating 1.14051e-08
-traveler's 1.14051e-08
 trashing 1.14051e-08
 timelessly 1.14051e-08
 thorniness 1.14051e-08
@@ -62986,7 +62571,6 @@ stargazing 1.14051e-08
 stapling 1.14051e-08
 stabilised 1.14051e-08
 stabilisation 1.14051e-08
-squatter's 1.14051e-08
 splenectomy 1.14051e-08
 spillover 1.14051e-08
 spieling 1.14051e-08
@@ -63001,7 +62585,6 @@ septicaemic 1.14051e-08
 sensationalistic 1.14051e-08
 semidetached 1.14051e-08
 scarifies 1.14051e-08
-sand's 1.14051e-08
 samey 1.14051e-08
 safaris 1.14051e-08
 runoffs 1.14051e-08
@@ -63030,7 +62613,6 @@ proselytiser 1.14051e-08
 presciently 1.14051e-08
 preempting 1.14051e-08
 pouffe 1.14051e-08
-player's 1.14051e-08
 pigpens 1.14051e-08
 photoengraving 1.14051e-08
 phantasmagorias 1.14051e-08
@@ -63049,7 +62631,6 @@ nonacceptance 1.14051e-08
 noels 1.14051e-08
 nightclubs 1.14051e-08
 niftiest 1.14051e-08
-mummy's 1.14051e-08
 multilingualism 1.14051e-08
 modellings 1.14051e-08
 misogynistic 1.14051e-08
@@ -63075,7 +62656,6 @@ kookaburra 1.14051e-08
 kicky 1.14051e-08
 jumpiness 1.14051e-08
 jeez 1.14051e-08
-jean's 1.14051e-08
 irrationals 1.14051e-08
 interventionist 1.14051e-08
 interoperability 1.14051e-08
@@ -63095,14 +62675,11 @@ hospitalisation 1.14051e-08
 hosing 1.14051e-08
 hippie 1.14051e-08
 highfliers 1.14051e-08
-heron's 1.14051e-08
 herbivore 1.14051e-08
-hen's 1.14051e-08
 heavyset 1.14051e-08
 headlamps 1.14051e-08
 handover 1.14051e-08
 hairiest 1.14051e-08
-gypsy's 1.14051e-08
 gumdrop 1.14051e-08
 greenfly 1.14051e-08
 girting 1.14051e-08
@@ -63154,7 +62731,6 @@ carport 1.14051e-08
 carollers 1.14051e-08
 carefuller 1.14051e-08
 cancans 1.14051e-08
-boat's 1.14051e-08
 boardinghouses 1.14051e-08
 bloodthirstily 1.14051e-08
 blisteringly 1.14051e-08
@@ -63196,11 +62772,9 @@ synthesizes 1.09978e-08
 synchronises 1.09978e-08
 symptomatically 1.09978e-08
 surtaxes 1.09978e-08
-superintendent's 1.09978e-08
 sultrier 1.09978e-08
 stealthier 1.09978e-08
 stationmasters 1.09978e-08
-state's 1.09978e-08
 starriest 1.09978e-08
 squishing 1.09978e-08
 splurged 1.09978e-08
@@ -63210,10 +62784,8 @@ snowmen 1.09978e-08
 sisterliness 1.09978e-08
 sextets 1.09978e-08
 serer 1.09978e-08
-seal's 1.09978e-08
 seafront 1.09978e-08
 scoopful 1.09978e-08
-scholar's 1.09978e-08
 scants 1.09978e-08
 saxes 1.09978e-08
 saunas 1.09978e-08
@@ -63306,7 +62878,6 @@ gybes 1.09978e-08
 guttersnipes 1.09978e-08
 granulates 1.09978e-08
 gradualism 1.09978e-08
-government's 1.09978e-08
 gingersnap 1.09978e-08
 gingers 1.09978e-08
 ghosted 1.09978e-08
@@ -63320,13 +62891,11 @@ flusters 1.09978e-08
 florescent 1.09978e-08
 feasibly 1.09978e-08
 fantasied 1.09978e-08
-faith's 1.09978e-08
 escargots 1.09978e-08
 enamouring 1.09978e-08
 electrocardiogram 1.09978e-08
 dressier 1.09978e-08
 donuts 1.09978e-08
-doge's 1.09978e-08
 documentaries 1.09978e-08
 dismembers 1.09978e-08
 disgorgement 1.09978e-08
@@ -63337,7 +62906,6 @@ denudes 1.09978e-08
 defencelessly 1.09978e-08
 debiting 1.09978e-08
 dearests 1.09978e-08
-darling's 1.09978e-08
 curter 1.09978e-08
 counterstrokes 1.09978e-08
 counterclaims 1.09978e-08
@@ -63354,7 +62922,6 @@ coattail 1.09978e-08
 centralizes 1.09978e-08
 cashbook 1.09978e-08
 carburettors 1.09978e-08
-bunker's 1.09978e-08
 bullwhip 1.09978e-08
 bullpen 1.09978e-08
 brawniest 1.09978e-08
@@ -63371,11 +62938,9 @@ bastardised 1.09978e-08
 barrelling 1.09978e-08
 barnstormers 1.09978e-08
 barcaroles 1.09978e-08
-bailiff's 1.09978e-08
 backslides 1.09978e-08
 antisemitic 1.09978e-08
 anesthesiology 1.09978e-08
-ambassador's 1.09978e-08
 airspeed 1.09978e-08
 advantaging 1.09978e-08
 addles 1.09978e-08
@@ -63384,13 +62949,11 @@ abhorrently 1.09978e-08
 woodblock 1.05905e-08
 wingspread 1.05905e-08
 warplane 1.05905e-08
-warden's 1.05905e-08
 wadge 1.05905e-08
 vocalizations 1.05905e-08
 vituperates 1.05905e-08
 vatting 1.05905e-08
 varsities 1.05905e-08
-vampire's 1.05905e-08
 usher's 1.05905e-08
 uppercuts 1.05905e-08
 uppercase 1.05905e-08
@@ -63457,7 +63020,6 @@ pumpkinseed 1.05905e-08
 psychotics 1.05905e-08
 prolixly 1.05905e-08
 probating 1.05905e-08
-prior's 1.05905e-08
 printout 1.05905e-08
 potherb 1.05905e-08
 policewomen 1.05905e-08
@@ -63469,7 +63031,6 @@ philanders 1.05905e-08
 personalizing 1.05905e-08
 percentile 1.05905e-08
 penologist 1.05905e-08
-penny's 1.05905e-08
 pa's 1.05905e-08
 panatella 1.05905e-08
 paltrier 1.05905e-08
@@ -63533,7 +63094,6 @@ humidifying 1.05905e-08
 guestroom 1.05905e-08
 groundsman 1.05905e-08
 grouchily 1.05905e-08
-goose's 1.05905e-08
 geeing 1.05905e-08
 gawp 1.05905e-08
 fruitier 1.05905e-08
@@ -63592,7 +63152,6 @@ clubfooted 1.05905e-08
 clotheshorse 1.05905e-08
 clinger 1.05905e-08
 ciders 1.05905e-08
-charity's 1.05905e-08
 chaparrals 1.05905e-08
 catwalks 1.05905e-08
 catnaps 1.05905e-08
@@ -63649,7 +63208,6 @@ trouping 1.01832e-08
 troupers 1.01832e-08
 troposphere 1.01832e-08
 tranquillises 1.01832e-08
-toad's 1.01832e-08
 thumbnails 1.01832e-08
 teensy 1.01832e-08
 tastier 1.01832e-08
@@ -63674,17 +63232,13 @@ showplace 1.01832e-08
 shinnied 1.01832e-08
 shakiest 1.01832e-08
 shakier 1.01832e-08
-servant's 1.01832e-08
 seismologists 1.01832e-08
 segued 1.01832e-08
 sedatest 1.01832e-08
-seamen's 1.01832e-08
 seaman's 1.01832e-08
 schuss 1.01832e-08
-sawyer's 1.01832e-08
 saltine 1.01832e-08
 ruched 1.01832e-08
-rider's 1.01832e-08
 reworded 1.01832e-08
 revalued 1.01832e-08
 retreading 1.01832e-08
@@ -63741,7 +63295,6 @@ negligibly 1.01832e-08
 neglectfully 1.01832e-08
 nearshore 1.01832e-08
 nattiness 1.01832e-08
-murderer's 1.01832e-08
 moonscape 1.01832e-08
 modernizes 1.01832e-08
 minuses 1.01832e-08
@@ -63761,9 +63314,7 @@ lunkheads 1.01832e-08
 limpidness 1.01832e-08
 libidinal 1.01832e-08
 lewder 1.01832e-08
-leopard's 1.01832e-08
 leavers 1.01832e-08
-lark's 1.01832e-08
 landfill 1.01832e-08
 kappas 1.01832e-08
 irruptive 1.01832e-08
@@ -63805,7 +63356,6 @@ finalists 1.01832e-08
 filminess 1.01832e-08
 filibustered 1.01832e-08
 fetidness 1.01832e-08
-fellow's 1.01832e-08
 extrapolations 1.01832e-08
 exercisers 1.01832e-08
 evader 1.01832e-08
@@ -63825,7 +63375,6 @@ disgruntlement 1.01832e-08
 disembowels 1.01832e-08
 dinette 1.01832e-08
 delis 1.01832e-08
-deer's 1.01832e-08
 deadbeats 1.01832e-08
 crosshatching 1.01832e-08
 crossbreed 1.01832e-08
@@ -63834,10 +63383,8 @@ cretinous 1.01832e-08
 creationists 1.01832e-08
 crasser 1.01832e-08
 cookeries 1.01832e-08
-consul's 1.01832e-08
 conniver 1.01832e-08
 compulsively 1.01832e-08
-colt's 1.01832e-08
 coloreds 1.01832e-08
 coleuses 1.01832e-08
 coital 1.01832e-08
@@ -63854,7 +63401,6 @@ carer 1.01832e-08
 cardsharper 1.01832e-08
 capsuled 1.01832e-08
 canoodle 1.01832e-08
-camel's 1.01832e-08
 callusing 1.01832e-08
 cahoot 1.01832e-08
 bylaw 1.01832e-08
@@ -63877,7 +63423,6 @@ barraged 1.01832e-08
 autonomously 1.01832e-08
 auscultating 1.01832e-08
 aubergines 1.01832e-08
-attorney's 1.01832e-08
 attitudinized 1.01832e-08
 aspidistras 1.01832e-08
 apishly 1.01832e-08
@@ -63921,9 +63466,7 @@ stopgaps 9.77584e-09
 stockinette 9.77584e-09
 stillbirths 9.77584e-09
 stabiliser 9.77584e-09
-squirrel's 9.77584e-09
 squeakily 9.77584e-09
-spy's 9.77584e-09
 sprucest 9.77584e-09
 spooled 9.77584e-09
 spirochaetes 9.77584e-09
@@ -63972,10 +63515,8 @@ postural 9.77584e-09
 populates 9.77584e-09
 polluters 9.77584e-09
 pointillism 9.77584e-09
-poacher's 9.77584e-09
 pluses 9.77584e-09
 pizzicati 9.77584e-09
-pioneer's 9.77584e-09
 pinnies 9.77584e-09
 pictorials 9.77584e-09
 phoneticians 9.77584e-09
@@ -64016,7 +63557,6 @@ mentorship 9.77584e-09
 markup 9.77584e-09
 markka 9.77584e-09
 maritally 9.77584e-09
-march's 9.77584e-09
 maladroitly 9.77584e-09
 lowbrow 9.77584e-09
 legals 9.77584e-09
@@ -64026,7 +63566,6 @@ lasagne 9.77584e-09
 keywords 9.77584e-09
 kamikazes 9.77584e-09
 janglers 9.77584e-09
-invalid's 9.77584e-09
 internationalisation 9.77584e-09
 interlope 9.77584e-09
 interlink 9.77584e-09
@@ -64051,12 +63590,10 @@ handsaws 9.77584e-09
 halite 9.77584e-09
 hairdo 9.77584e-09
 gynecologists 9.77584e-09
-gun's 9.77584e-09
 guitarists 9.77584e-09
 grittiest 9.77584e-09
 gremlin 9.77584e-09
 goldenest 9.77584e-09
-ghost's 9.77584e-09
 genitourinary 9.77584e-09
 gamiest 9.77584e-09
 fuzzed 9.77584e-09
@@ -64083,7 +63620,6 @@ effuses 9.77584e-09
 dyads 9.77584e-09
 dwarfism 9.77584e-09
 dupers 9.77584e-09
-dove's 9.77584e-09
 doulas 9.77584e-09
 disinters 9.77584e-09
 disassemble 9.77584e-09
@@ -64103,12 +63639,10 @@ crewelwork 9.77584e-09
 creamers 9.77584e-09
 crackup 9.77584e-09
 crackerjacks 9.77584e-09
-cotton's 9.77584e-09
 corporal's 9.77584e-09
 contouring 9.77584e-09
 congregants 9.77584e-09
 confiscators 9.77584e-09
-composer's 9.77584e-09
 community's 9.77584e-09
 communally 9.77584e-09
 commentating 9.77584e-09
@@ -64116,7 +63650,6 @@ comediennes 9.77584e-09
 clueless 9.77584e-09
 clops 9.77584e-09
 chummily 9.77584e-09
-chaplain's 9.77584e-09
 causalities 9.77584e-09
 casaba 9.77584e-09
 camisoles 9.77584e-09
@@ -64128,7 +63661,6 @@ butterfat 9.77584e-09
 bushiest 9.77584e-09
 burliness 9.77584e-09
 budgie 9.77584e-09
-buddy's 9.77584e-09
 brolly 9.77584e-09
 boozes 9.77584e-09
 booger 9.77584e-09
@@ -64139,7 +63671,6 @@ blackballing 9.77584e-09
 biasing 9.77584e-09
 besmirches 9.77584e-09
 bentonite 9.77584e-09
-belle's 9.77584e-09
 barracudas 9.77584e-09
 balds 9.77584e-09
 balboas 9.77584e-09
@@ -64157,7 +63688,6 @@ acronyms 9.77584e-09
 yawner 9.36851e-09
 workweek 9.36851e-09
 wordings 9.36851e-09
-woodcutter's 9.36851e-09
 wheelbase 9.36851e-09
 wateriness 9.36851e-09
 warpaths 9.36851e-09
@@ -64175,7 +63705,6 @@ underworlds 9.36851e-09
 underpants 9.36851e-09
 undercooked 9.36851e-09
 uncooperative 9.36851e-09
-tucker's 9.36851e-09
 trashiest 9.36851e-09
 transformational 9.36851e-09
 tousling 9.36851e-09
@@ -64217,14 +63746,12 @@ sandblast 9.36851e-09
 sackers 9.36851e-09
 rotogravure 9.36851e-09
 rockslides 9.36851e-09
-robber's 9.36851e-09
 resets 9.36851e-09
 rehanging 9.36851e-09
 refinishing 9.36851e-09
 referendums 9.36851e-09
 reconnoiters 9.36851e-09
 recombines 9.36851e-09
-raven's 9.36851e-09
 randomness 9.36851e-09
 quicksteps 9.36851e-09
 quaky 9.36851e-09
@@ -64282,7 +63809,6 @@ madrasa 9.36851e-09
 macadamising 9.36851e-09
 lugsails 9.36851e-09
 loaners 9.36851e-09
-lieutenant's 9.36851e-09
 leaser 9.36851e-09
 latecomers 9.36851e-09
 kronur 9.36851e-09
@@ -64304,7 +63830,6 @@ holographs 9.36851e-09
 hogbacks 9.36851e-09
 hoaxers 9.36851e-09
 histologists 9.36851e-09
-head's 9.36851e-09
 headiest 9.36851e-09
 harmonisation 9.36851e-09
 hangovers 9.36851e-09
@@ -64334,7 +63859,6 @@ flightier 9.36851e-09
 fleeciest 9.36851e-09
 fictionally 9.36851e-09
 feisty 9.36851e-09
-fate's 9.36851e-09
 farads 9.36851e-09
 fantasyland 9.36851e-09
 falsettos 9.36851e-09
@@ -64345,7 +63869,6 @@ ethicists 9.36851e-09
 escargot 9.36851e-09
 ensnarement 9.36851e-09
 dumper 9.36851e-09
-duck's 9.36851e-09
 draughtboard 9.36851e-09
 dithered 9.36851e-09
 disusing 9.36851e-09
@@ -64359,7 +63882,6 @@ dampener 9.36851e-09
 dailiness 9.36851e-09
 dabbers 9.36851e-09
 curettage 9.36851e-09
-curate's 9.36851e-09
 cubbyholes 9.36851e-09
 crustiest 9.36851e-09
 cricked 9.36851e-09
@@ -64372,7 +63894,6 @@ coneflower 9.36851e-09
 comedic 9.36851e-09
 cohos 9.36851e-09
 coffining 9.36851e-09
-clown's 9.36851e-09
 claustrophobic 9.36851e-09
 cinematic 9.36851e-09
 chordates 9.36851e-09
@@ -64404,7 +63925,6 @@ aseptically 9.36851e-09
 arsed 9.36851e-09
 aortas 9.36851e-09
 ambience 9.36851e-09
-amateur's 9.36851e-09
 alliterates 9.36851e-09
 aftermaths 9.36851e-09
 afterbirths 9.36851e-09
@@ -64421,9 +63941,7 @@ unsnarled 8.96118e-09
 underdressed 8.96118e-09
 unblock 8.96118e-09
 trouped 8.96118e-09
-treasurer's 8.96118e-09
 transgressive 8.96118e-09
-tramp's 8.96118e-09
 tradeswomen 8.96118e-09
 timeservers 8.96118e-09
 thyroids 8.96118e-09
@@ -64435,7 +63953,6 @@ substituent 8.96118e-09
 stylistically 8.96118e-09
 stubborner 8.96118e-09
 stodgily 8.96118e-09
-statesman's 8.96118e-09
 starrier 8.96118e-09
 starchiness 8.96118e-09
 squawker 8.96118e-09
@@ -64443,7 +63960,6 @@ splicer 8.96118e-09
 spillage 8.96118e-09
 spiff 8.96118e-09
 spiderwebs 8.96118e-09
-sow's 8.96118e-09
 songwriters 8.96118e-09
 socking 8.96118e-09
 snorters 8.96118e-09
@@ -64493,11 +64009,9 @@ pitchforking 8.96118e-09
 pinfeathers 8.96118e-09
 phenom 8.96118e-09
 pesto 8.96118e-09
-person's 8.96118e-09
 permanents 8.96118e-09
 perceptively 8.96118e-09
 pepped 8.96118e-09
-patriot's 8.96118e-09
 patient's 8.96118e-09
 patchiness 8.96118e-09
 pantechnicons 8.96118e-09
@@ -64521,14 +64035,11 @@ misshape 8.96118e-09
 mismanages 8.96118e-09
 misfitted 8.96118e-09
 millisecond 8.96118e-09
-messiah's 8.96118e-09
 meretriciously 8.96118e-09
 mercerizing 8.96118e-09
 medievalists 8.96118e-09
 markkaa 8.96118e-09
-manager's 8.96118e-09
 majoritarian 8.96118e-09
-magistrate's 8.96118e-09
 lushness 8.96118e-09
 luridness 8.96118e-09
 longhair 8.96118e-09
@@ -64541,7 +64052,6 @@ lambently 8.96118e-09
 kited 8.96118e-09
 kippering 8.96118e-09
 kilning 8.96118e-09
-junior's 8.96118e-09
 jinxed 8.96118e-09
 jiggly 8.96118e-09
 jellying 8.96118e-09
@@ -64558,7 +64068,6 @@ idolatresses 8.96118e-09
 ideologue 8.96118e-09
 hyperthyroid 8.96118e-09
 hunkering 8.96118e-09
-hound's 8.96118e-09
 hotelier 8.96118e-09
 hormonal 8.96118e-09
 homiest 8.96118e-09
@@ -64570,7 +64079,6 @@ grubbiness 8.96118e-09
 grouched 8.96118e-09
 greeter 8.96118e-09
 gormandise 8.96118e-09
-gorgon's 8.96118e-09
 generalissimos 8.96118e-09
 gazebos 8.96118e-09
 garrotes 8.96118e-09
@@ -64583,7 +64091,6 @@ eyetooth 8.96118e-09
 extrudes 8.96118e-09
 externalising 8.96118e-09
 extemporisation 8.96118e-09
-exile's 8.96118e-09
 executioner's 8.96118e-09
 euphoric 8.96118e-09
 epees 8.96118e-09
@@ -64615,10 +64122,8 @@ curricular 8.96118e-09
 cubing 8.96118e-09
 crybaby 8.96118e-09
 crankshafts 8.96118e-09
-cousin's 8.96118e-09
 countess's 8.96118e-09
 countersinks 8.96118e-09
-cotter's 8.96118e-09
 conditionality 8.96118e-09
 concertedly 8.96118e-09
 competences 8.96118e-09
@@ -64633,14 +64138,11 @@ cesspits 8.96118e-09
 certs 8.96118e-09
 cerebrate 8.96118e-09
 cellmate 8.96118e-09
-cavalier's 8.96118e-09
 catnap 8.96118e-09
 cathodic 8.96118e-09
 casehardened 8.96118e-09
-carver's 8.96118e-09
 cardiograph 8.96118e-09
 caramelized 8.96118e-09
-button's 8.96118e-09
 bumptiously 8.96118e-09
 buffoonish 8.96118e-09
 buckaroos 8.96118e-09
@@ -64649,7 +64151,6 @@ browbeats 8.96118e-09
 brainier 8.96118e-09
 bouffant 8.96118e-09
 boniness 8.96118e-09
-bond's 8.96118e-09
 blurb 8.96118e-09
 biometrics 8.96118e-09
 belugas 8.96118e-09
@@ -64657,7 +64158,6 @@ belletristic 8.96118e-09
 barraging 8.96118e-09
 backbreaking 8.96118e-09
 backboards 8.96118e-09
-auntie's 8.96118e-09
 atomically 8.96118e-09
 assholes 8.96118e-09
 asap 8.96118e-09
@@ -64665,7 +64165,6 @@ appetisers 8.96118e-09
 anticlimactic 8.96118e-09
 alliteratively 8.96118e-09
 alcoholically 8.96118e-09
-agent's 8.96118e-09
 additives 8.96118e-09
 accessibly 8.96118e-09
 yogic 8.55386e-09
@@ -64705,14 +64204,12 @@ subroutines 8.55386e-09
 subbing 8.55386e-09
 stripey 8.55386e-09
 strangulating 8.55386e-09
-stork's 8.55386e-09
 steppingstone 8.55386e-09
 steamfitter 8.55386e-09
 squidgy 8.55386e-09
 squeegeed 8.55386e-09
 specking 8.55386e-09
 softeners 8.55386e-09
-snake's 8.55386e-09
 siring 8.55386e-09
 sinkholes 8.55386e-09
 sickbay 8.55386e-09
@@ -64721,7 +64218,6 @@ shakeup 8.55386e-09
 sendoff 8.55386e-09
 semiautomatic 8.55386e-09
 searchable 8.55386e-09
-sculptor's 8.55386e-09
 scribe's 8.55386e-09
 schnozzle 8.55386e-09
 scatted 8.55386e-09
@@ -64760,7 +64256,6 @@ poufs 8.55386e-09
 pothering 8.55386e-09
 postwoman 8.55386e-09
 portlier 8.55386e-09
-pond's 8.55386e-09
 pocketknives 8.55386e-09
 pluralized 8.55386e-09
 platforming 8.55386e-09
@@ -64778,7 +64273,6 @@ outracing 8.55386e-09
 offline 8.55386e-09
 offbeat 8.55386e-09
 obscener 8.55386e-09
-novelist's 8.55386e-09
 noodling 8.55386e-09
 multiplicative 8.55386e-09
 mortarboard 8.55386e-09
@@ -64839,7 +64333,6 @@ gigging 8.55386e-09
 gemstone 8.55386e-09
 gawped 8.55386e-09
 gamuts 8.55386e-09
-freedman's 8.55386e-09
 freaking 8.55386e-09
 formatted 8.55386e-09
 foreordaining 8.55386e-09
@@ -64848,12 +64341,10 @@ fleabites 8.55386e-09
 flatworm 8.55386e-09
 flamings 8.55386e-09
 flaccidly 8.55386e-09
-fireman's 8.55386e-09
 fireboxes 8.55386e-09
 filterer 8.55386e-09
 feminize 8.55386e-09
 faxed 8.55386e-09
-falcon's 8.55386e-09
 factually 8.55386e-09
 externalise 8.55386e-09
 emotionalizing 8.55386e-09
@@ -64879,13 +64370,11 @@ conker 8.55386e-09
 conformal 8.55386e-09
 condemners 8.55386e-09
 concuss 8.55386e-09
-commander's 8.55386e-09
 comeuppance 8.55386e-09
 collaborations 8.55386e-09
 cognacs 8.55386e-09
 cofferdams 8.55386e-09
 codifications 8.55386e-09
-cobbler's 8.55386e-09
 coalmine 8.55386e-09
 clunkers 8.55386e-09
 cliquey 8.55386e-09
@@ -64901,7 +64390,6 @@ campanology 8.55386e-09
 camos 8.55386e-09
 cajoler 8.55386e-09
 butterball 8.55386e-09
-burglar's 8.55386e-09
 broker's 8.55386e-09
 bowwow 8.55386e-09
 boolean 8.55386e-09
@@ -64916,7 +64404,6 @@ babysitter 8.55386e-09
 authoritarians 8.55386e-09
 authoring 8.55386e-09
 assemblers 8.55386e-09
-art's 8.55386e-09
 aromatically 8.55386e-09
 armbands 8.55386e-09
 aquatints 8.55386e-09
@@ -64927,7 +64414,6 @@ antigenic 8.55386e-09
 amygdala 8.55386e-09
 airworthy 8.55386e-09
 addictive 8.55386e-09
-adder's 8.55386e-09
 acquirers 8.55386e-09
 achoo 8.55386e-09
 acerbated 8.55386e-09
@@ -64960,9 +64446,7 @@ uncap 8.14653e-09
 trundler 8.14653e-09
 trisecting 8.14653e-09
 tripodal 8.14653e-09
-trail's 8.14653e-09
 toweled 8.14653e-09
-tourist's 8.14653e-09
 touchiest 8.14653e-09
 timidness 8.14653e-09
 timider 8.14653e-09
@@ -64977,7 +64461,6 @@ termly 8.14653e-09
 tenterhook 8.14653e-09
 temptresses 8.14653e-09
 tarantellas 8.14653e-09
-swallow's 8.14653e-09
 swagged 8.14653e-09
 surreptitiousness 8.14653e-09
 superscribing 8.14653e-09
@@ -65008,7 +64491,6 @@ shredders 8.14653e-09
 shoddiness 8.14653e-09
 shiftlessly 8.14653e-09
 shiftiest 8.14653e-09
-sexton's 8.14653e-09
 sermonised 8.14653e-09
 sculpting 8.14653e-09
 scrumptiously 8.14653e-09
@@ -65041,11 +64523,9 @@ pupating 8.14653e-09
 proselytised 8.14653e-09
 predated 8.14653e-09
 preconceive 8.14653e-09
-preacher's 8.14653e-09
 prankster 8.14653e-09
 poxes 8.14653e-09
 pluckiness 8.14653e-09
-ploughman's 8.14653e-09
 pleonasms 8.14653e-09
 playmakers 8.14653e-09
 plagiarizes 8.14653e-09
@@ -65080,10 +64560,8 @@ neoclassic 8.14653e-09
 naturalizes 8.14653e-09
 mutest 8.14653e-09
 mudflat 8.14653e-09
-m's 8.14653e-09
 mouthwash 8.14653e-09
 monotonousness 8.14653e-09
-money's 8.14653e-09
 moment's 8.14653e-09
 modicums 8.14653e-09
 misprinting 8.14653e-09
@@ -65094,13 +64572,11 @@ mics 8.14653e-09
 microfilms 8.14653e-09
 mesmerizes 8.14653e-09
 maximizing 8.14653e-09
-marshal's 8.14653e-09
 mappers 8.14653e-09
 manky 8.14653e-09
 mammalians 8.14653e-09
 mailers 8.14653e-09
 madwomen 8.14653e-09
-lulu's 8.14653e-09
 louvers 8.14653e-09
 louses 8.14653e-09
 lopsidedness 8.14653e-09
@@ -65113,7 +64589,6 @@ launderer 8.14653e-09
 latecomer 8.14653e-09
 landmass 8.14653e-09
 landforms 8.14653e-09
-laird's 8.14653e-09
 khan's 8.14653e-09
 kebabs 8.14653e-09
 karats 8.14653e-09
@@ -65145,7 +64620,6 @@ headhunting 8.14653e-09
 harpsichordist 8.14653e-09
 handpicked 8.14653e-09
 grogginess 8.14653e-09
-granny's 8.14653e-09
 grabby 8.14653e-09
 gowning 8.14653e-09
 goalposts 8.14653e-09
@@ -65160,7 +64634,6 @@ fluoroscopic 8.14653e-09
 fleeciness 8.14653e-09
 flans 8.14653e-09
 flacks 8.14653e-09
-fiddler's 8.14653e-09
 fibbers 8.14653e-09
 feminised 8.14653e-09
 federalize 8.14653e-09
@@ -65172,7 +64645,6 @@ exponentially 8.14653e-09
 europium 8.14653e-09
 equivocalness 8.14653e-09
 equidistantly 8.14653e-09
-emigrant's 8.14653e-09
 effectuates 8.14653e-09
 edgers 8.14653e-09
 earwax 8.14653e-09
@@ -65185,7 +64657,6 @@ doziness 8.14653e-09
 dowdiest 8.14653e-09
 doorplates 8.14653e-09
 docents 8.14653e-09
-dent's 8.14653e-09
 denotations 8.14653e-09
 deflowers 8.14653e-09
 debilities 8.14653e-09
@@ -65198,7 +64669,6 @@ copulates 8.14653e-09
 conveyable 8.14653e-09
 condoms 8.14653e-09
 conditionals 8.14653e-09
-comfort's 8.14653e-09
 colorfully 8.14653e-09
 collarbones 8.14653e-09
 closefisted 8.14653e-09
@@ -65217,7 +64687,6 @@ campsites 8.14653e-09
 calliopes 8.14653e-09
 cadges 8.14653e-09
 buttonwoods 8.14653e-09
-bullock's 8.14653e-09
 bruiting 8.14653e-09
 brined 8.14653e-09
 bopped 8.14653e-09
@@ -65229,11 +64698,9 @@ birthing 8.14653e-09
 biracial 8.14653e-09
 binged 8.14653e-09
 behaviourist 8.14653e-09
-bee's 8.14653e-09
 bedazzle 8.14653e-09
 becalms 8.14653e-09
 basters 8.14653e-09
-baronet's 8.14653e-09
 barbiturates 8.14653e-09
 baptizers 8.14653e-09
 ballplayers 8.14653e-09
@@ -65241,7 +64708,6 @@ bactericide 8.14653e-09
 backbites 8.14653e-09
 authorisations 8.14653e-09
 arrhythmia 8.14653e-09
-army's 8.14653e-09
 armband 8.14653e-09
 appeaser 8.14653e-09
 apostatizes 8.14653e-09

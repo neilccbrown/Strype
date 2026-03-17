@@ -50,6 +50,7 @@ export type SyncStrypePyodideWorkerRequest =
     | { request: "ensureCanvas"; img: RemoteCanvas | RemoteImage }
     | { request: "canvas_getAllPixelsRGBA"; img: RemoteCanvas }
     | { request: "canvas_drawText", img: RemoteCanvas, text: string, x: number, y: number, fontSize: number, maxWidth: number, maxHeight: number, fontName: string }
+    | { request: "turtle", buffer: [string, string, any][]}    
     | { request: "getPressedKeys" }
     | { request: "getMouseDetails" }
     | { request: "consumeLastClickDetails" }
@@ -83,6 +84,7 @@ export type SyncStrypePyodideWorkerResponse =
     | { request: "ensureCanvas"; response: RemoteCanvas; }
     | { request: "canvas_getAllPixelsRGBA"; response: string } // See encodeRGBA/decodeRGBA below
     | { request: "canvas_drawText"; response: { width: number; height: number; } }
+    | { request: "turtle"; response: boolean; } // We don't need a return value as such, we're just using the response to wait
     | { request: "getPressedKeys"; response: {[key: string]: boolean} }
     | { request: "getMouseDetails", response: {x : number, y: number, buttonsPressed: boolean[] } }
     | { request: "consumeLastClickDetails", response: { x: number, y: number, button: number, clickCount: number } | null }

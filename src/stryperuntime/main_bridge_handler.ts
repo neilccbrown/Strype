@@ -10,6 +10,7 @@ import {saveAs} from "file-saver";
 import {getDateTimeFormatted} from "@/helpers/common";
 import {cloudCloseFile, cloudCreate, cloudListDir, cloudLookupFile, cloudOpenFile, cloudReadFile, cloudTruncateFile, cloudWriteFile} from "@/helpers/skulptFileIO";
 import {useStore} from "@/store/store";
+import { handleTurtle, TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 
 // These are callbacks passed from PythonExecutionArea.vue to do things that are tied to the DOM or wider Strype state.
 // This means we don't have to make reference to the PythonExecutionArea component itself.
@@ -17,6 +18,7 @@ interface SyncRequestCallbacks {
     getPressedKeys : () => {[key: string]: boolean},
     loadLibraryAsset : (libraryShortName: string, fileName: string) => Promise<string | undefined>,
     switchToGraphicsTab: () => void,
+    markTurtleDirty: () => void,
     getMouseDetails: () => {x : number, y: number, buttonsPressed: boolean[] },
     consumeLastClickDetails: () => { x: number, y: number, button: number, clickCount: number } | null,
     consumeLastClickedItems: () => SpriteHandle[],
@@ -26,8 +28,9 @@ interface SyncRequestCallbacks {
 export const handleSyncRequests : (
     renderer : Renderer,
     soundManager : SoundManager,
+    turtle: TurtlePixiHandler,
     callbacks : SyncRequestCallbacks,
-) => SyncPromiseStrypePyodideHandlerFunction = (renderer, soundManager, callbacks) => (req) => {
+) => SyncPromiseStrypePyodideHandlerFunction = (renderer, soundManager, turtle, callbacks) => (req) => {
     switch (req.request) {
     case "loadImage": {
         callbacks.switchToGraphicsTab();
@@ -153,6 +156,11 @@ export const handleSyncRequests : (
     }
     case "assetFile_fetch": {
         return {request: req.request, response: fetch(req.url).then((resp) => resp.arrayBuffer()).then((arr) => encodeUint8ToString(new Uint8ClampedArray(arr)))};
+    }
+    case "turtle": {
+        // Assume all turtle interactions require a redraw:
+        callbacks.markTurtleDirty();
+        return {request: req.request, response: handleTurtle(turtle, req.buffer).then(() => true)};
     }
     default:
         // Trick to give a compile-time error if a case is missing above:

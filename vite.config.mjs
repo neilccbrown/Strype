@@ -24,7 +24,7 @@ function zipPysrcPlugin() {
         const tempZip = path.resolve(`temp-${randomUUID()}-pysrc.zip`);
         await zipDir({
             rootDir: "pysrc",
-            subdirs: ["strype", "python_runner"],
+            subdirs: ["strype", "python_runner", "turtle"],
             outFile: tempZip
         })
         await new Promise(resolve => setTimeout(resolve, 500));
