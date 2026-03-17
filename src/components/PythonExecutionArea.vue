@@ -1188,6 +1188,10 @@ export default defineComponent({
             }
         },
         
+        downloadWAV(src: AudioBuffer, filenameStem: string) {
+            soundManager?.downloadWAV(src, filenameStem);
+        },
+        
         doHighlightPythonRunningState(){
             // This method is called when we want to draw attention on the "running state" of the Strype project.
             // This is achieved using CSS only, so we just use a flag to trigger a CSS change, and reset it after a decent amount of time.

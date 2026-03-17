@@ -262,9 +262,7 @@ export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundMan
         return;
     }
     case "downloadWAV": {
-        const wavArrayBuffer = soundManager.getAsWAV(req.sound.handle.handle);
-        const blob = new Blob([wavArrayBuffer], { type: "audio/wav" });
-        saveAs(blob, `${req.filenameStem}_${getDateTimeFormatted(new Date(Date.now()))}.png`);
+        soundManager.downloadWAV(req.sound.handle.handle, req.filenameStem);
         return;
     }
     default:
