@@ -163,7 +163,7 @@ export type PEAComponentAPI = {
   getIsRunningStrypeGraphics: () =>  boolean,
   downloadWAV: (src: AudioBuffer, filenameStem: string) => void,
   redrawCanvas: () => void,
-  getSpriteManager: () => SpriteManager,
+  overrideGraphics: (background: OffscreenCanvas | HTMLImageElement | null, imageToShowCentered: OffscreenCanvas | HTMLImageElement | null) => void,
 };
 
 export type MediaPreviewPopupComponentAPI = {

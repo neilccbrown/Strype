@@ -112,10 +112,9 @@ export default defineComponent({
         doPreviewImage(imgDataURL: string) {
             document.getElementById("strypeGraphicsPEATab")?.click();
             this.$nextTick(() => {
-                const imgManager: SpriteManager | undefined = vueComponentsAPIHandler.peaComponentAPI?.getSpriteManager();
-                imgManager?.clear();
                 // null is passed to clear the preview when the edit dialog is closed:
                 if (imgDataURL == null) {
+                    vueComponentsAPIHandler.peaComponentAPI?.overrideGraphics(null, null);
                     vueComponentsAPIHandler.peaComponentAPI?.redrawCanvas();
                     return;
                 }
@@ -128,17 +127,16 @@ export default defineComponent({
                         ctx.fillRect(x, y, squareSize, squareSize);
                     }
                 }
-                imgManager?.setBackground(checkered);
                 const preview = new Image();
                 preview.onload = () => {
-                    imgManager?.addSprite(preview);
+                    vueComponentsAPIHandler.peaComponentAPI?.overrideGraphics(checkered, preview);
                     vueComponentsAPIHandler.peaComponentAPI?.redrawCanvas();
                 };
                 preview.src = imgDataURL;
                 vueComponentsAPIHandler.peaComponentAPI?.redrawCanvas();
             });
             this.stopPreviewOnHide = () => {
-                vueComponentsAPIHandler.peaComponentAPI?.getSpriteManager().clear();
+                vueComponentsAPIHandler.peaComponentAPI?.overrideGraphics(null, null);
                 vueComponentsAPIHandler.peaComponentAPI?.redrawCanvas();
             };
         },
