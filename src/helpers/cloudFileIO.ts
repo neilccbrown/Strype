@@ -4,7 +4,6 @@
  * At the moment, we only support file IO in the cloud (due to restrictions on 
  * the browser's access to the host file system).
  */
-import path from "path-browserify";
 import { useStore } from "@/store/store";
 import i18n from "@/i18n";
 import { CloudDriveFile, CloudFileWithMetaData, CloudFolder, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";

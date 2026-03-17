@@ -21,7 +21,6 @@ import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileShari
 import { AppEvent, LoadRequestReason, Position, SaveRequestReason, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import { LoadedMedia } from "@/types/types";
-import { SpriteManager } from "@/stryperuntime/image_and_collisions";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
 // #v-end-if
 

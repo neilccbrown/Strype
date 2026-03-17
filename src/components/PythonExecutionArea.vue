@@ -1001,7 +1001,7 @@ export default defineComponent({
             if (this.graphicsOverride) {
                 itemsToDraw = [
                     {x: 0, y: 0, rotation: 0, scale: 1, img: this.graphicsOverride.background},
-                    {x: 0, y: 0, rotation: 0, scale: 1, img: this.graphicsOverride.imageToShowCentered}
+                    {x: 0, y: 0, rotation: 0, scale: 1, img: this.graphicsOverride.imageToShowCentered},
                 ];
             }
             else {
