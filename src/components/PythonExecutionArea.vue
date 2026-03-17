@@ -1040,7 +1040,7 @@ export default defineComponent({
             if (c.width > 0 && c.height > 0 && domContext) {
                 // Important on Safari to clear the canvas first, otherwise the new frame
                 // gets blended on top.  Firefox and Chrome don't do this by default (different alpha blending mode?):
-                domContext.fillStyle = "black";
+                domContext.fillStyle = "#808080";
                 domContext.fillRect(0, 0, domCanvas.width, domCanvas.height);
                 // The target canvas can be smaller than the real one, and we want to centre it:
                 domContext.drawImage(c, (domCanvas.width - (targetCanvas?.width ?? 0)) / 2, (domCanvas.height - (targetCanvas?.height ?? 0)) / 2);
