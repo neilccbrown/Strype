@@ -11,6 +11,7 @@
         "build:github-pages": "npm run compile-service-worker && cross-env VITE_GITHUB_PAGE=true vite build --mode standard",
         "compile-service-worker": "npx node scripts/build-service-worker.mjs",
         "lint:check": "eslint . --ext .js,.vue --max-warnings 0",
+        "type:check": "vue-tsc --noEmit",
         "library:make-ac-json": "cd scripts && npm install && npx tsc && (node -e \"console.log('library_arg = \\'' + process.env.LIBRARY + '\\';')\" && npx esbuild --loader:.py=text --alias:pysrc=../pysrc --bundle compiled/scripts/process-pyodide-api.js) | npx browser-run -s ../public > ../autocomplete.json",
         "preprocess:update-microbit-api": "python3.9 scripts/process-microbit-api.py > src/autocompletion/microbit-api.json",
         "preprocess:update-python-api": "cd scripts && npm install && npx tsc && ((echo 'let library_arg=null;' && npx esbuild --platform=node --format=esm --loader:.py=text --alias:pysrc=../pysrc --bundle compiled/scripts/process-pyodide-api.js) | node) > ../src/autocompletion/python-api.json",
@@ -145,10 +146,10 @@
         "start-server-and-test": "^1.15.4",
         "typescript": "^4.9.5",
         "unplugin-vue-components": "^31.0.0",
-        "vite-plugin-checker": "^0.12.0",
+        "vite-plugin-checker": "^0.6.4",
         "vite-plugin-static-copy": "^3.1.6",
         "vue-eslint-parser": "^10.2.0",
-        "vue-template-compiler": "2.7.14"
+        "vue-tsc": "^1.8.27"
     },
     "husky": {
         "hooks": {

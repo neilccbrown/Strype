@@ -1,0 +1,41 @@
+name: Run lint and type check
+on: [push,pull_request]
+jobs:
+  Lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Install Node.js and NPM via Volta
+        uses: volta-cli/action@v4
+      - name: NPM Install
+        # ci is better than npm install for CI jobs, apparently (quicker + more predictable):
+        run: npm ci
+      - name: NPM Linter
+        run: npm run lint:check        
+  TypeCheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Install Node.js and NPM via Volta
+        uses: volta-cli/action@v4
+      - name: NPM Install
+        # ci is better than npm install for CI jobs, apparently (quicker + more predictable):
+        run: npm ci
+      - name: NPM Type check
+        run: npm run type:check        
+  Build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - name: Install Node.js and NPM via Volta
+        uses: volta-cli/action@v4
+      - name: NPM Install
+        # ci is better than npm install for CI jobs, apparently (quicker + more predictable):
+        run: npm ci
+      - name: NPM Type check
+        run: |
+            npm run build:python
+            npm run build:microbit
