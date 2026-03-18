@@ -377,6 +377,8 @@ export default defineComponent({
     mounted() {
         eventBus.on(CustomEventTypes.cutFrameSelection, this.cutIfFirstInSelection);
         eventBus.on(CustomEventTypes.copyFrameSelection, this.copyIfFirstInSelection);
+        eventBus.on(CustomEventTypes.duplicateFrameSelection, this.duplicateIfFirstInSelection);
+        eventBus.on(CustomEventTypes.disableOrEnableFrameSelection, this.disableOrEnableFirstInSelection);
 
         // The frame header can listen for events from the editable slots focus to manage header level error messages
         document.getElementById(this.frameHeaderId)?.addEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);
@@ -403,12 +405,41 @@ export default defineComponent({
                 this.cut();
             }
         },
+
         copyIfFirstInSelection() {
             // Cutting/copying by shortcut is only available for a frame selection*, and if the user's code isn't being executed.
             // To prevent the command to be called on all frames, but only once (first of a selection), we check that the current frame is a first of a selection.
             // * "this.isPartOfSelection" is necessary because it is only set at the right value in a subsequent call. 
             if(!this.isPythonExecuting && this.isPartOfSelection && (this.appStore.getFrameSelectionPosition(this.frameId) as string).startsWith("first")) {
                 this.copy();
+            }
+        },
+
+        duplicateIfFirstInSelection() {
+            // Duplicating by shortcut is only available for a frame selection*, and if the user's code isn't being executed.
+            // To prevent the command to be called on all frames, but only once (first of a selection), we check that the current frame is a first of a selection.
+            // * "this.isPartOfSelection" is necessary because it is only set at the right value in a subsequent call. 
+            if(!this.isPythonExecuting && this.isPartOfSelection && (this.appStore.getFrameSelectionPosition(this.frameId) as string).startsWith("first")) {
+                this.duplicate();
+            }
+        },
+
+        disableOrEnableFirstInSelection(){
+            // Disabling or enabling frames by shortcut is only available for a frame selection*, and if the user's code isn't being executed.
+            // To prevent the command to be called on all frames, but only once (first of a selection), we check that the current frame is a first of a selection.
+            // * "this.isPartOfSelection" is necessary because it is only set at the right value in a subsequent call. 
+            if(!this.isPythonExecuting && this.isPartOfSelection && (this.appStore.getFrameSelectionPosition(this.frameId) as string).startsWith("first")) {
+                // The action to perform isn't dictated by the status of the first frame: it depends on all the frames.
+                // We follow the same logic we would use when creating the context menu to know which situation we're in: enabling, disabling and if allowed at all
+                const anyCanEnable =  this.appStore.selectedFrames.some((frameId) => this.canEnableOrDisableFrame(frameId, true));
+                const anyCanDisable = this.appStore.selectedFrames.some((frameId) => this.canEnableOrDisableFrame(frameId, false));
+
+                if(!anyCanDisable && anyCanEnable){
+                    this.enable();
+                }
+                else if(anyCanDisable){
+                    this.disable();
+                }
             }
         },
 
@@ -488,7 +519,7 @@ export default defineComponent({
                 {label: this.$t("contextMenu.cut"), onClick: this.cut, actionName: FrameContextMenuActionName.cut, attrs: {"action-name": FrameContextMenuActionName.cut}, shortcut: isMacOSPlatform() ? "⌘X" : this.$t("shortcut.ctrlPlus") + "X"},
                 {label: this.$t("contextMenu.copy"), onClick: this.copy, actionName: FrameContextMenuActionName.copy, attrs: {"action-name": FrameContextMenuActionName.copy}, shortcut: isMacOSPlatform() ? "⌘C" : this.$t("shortcut.ctrlPlus") + "C"},
                 {label: this.$t("contextMenu.downloadAsImg"), onClick: this.downloadAsImg},
-                {label: this.$t("contextMenu.duplicate"), onClick: this.duplicate},
+                {label: this.$t("contextMenu.duplicate"), onClick: this.duplicate, attrs: {"action-name": FrameContextMenuActionName.duplicate}, shortcut: isMacOSPlatform() ? "⌘D" : this.$t("shortcut.ctrlPlus") + "D"},
                 {divided: "self"},
                 {label: this.$t("contextMenu.pasteAbove"), onClick: this.pasteAbove},
                 {label: this.$t("contextMenu.pasteBelow"), onClick: this.pasteBelow},
@@ -719,30 +750,20 @@ export default defineComponent({
                 }
             }
 
-            // Our logic for disable/enable is as follows:
-            //   - On an individual frame level:
-            //     - Frozen frames, or children of frozen frames, can't be changed either way
-            //     - Blanks cannot directly be changed
-            //   - If there is a selection:
-            //     - If any are disabled and can be enabled, we show enable
-            //     - If any are enabled and can be disabled, we show disable
-            //     - Otherwise none can be changed, show Disable and grey it out
-            const canEnable = (frameId : number) => {
-                const frame = this.appStore.frameObjects[frameId];
-                return frame.isDisabled && !parentIsFrozen && frame.frozenState != FrozenState.FROZEN;
-            };
-            const canDisable = (frameId : number) => {
-                const frame = this.appStore.frameObjects[frameId];
-                return !frame.isDisabled && !parentIsFrozen && frame.frozenState != FrozenState.FROZEN
-                    && frame.frameType.type != AllFrameTypesIdentifier.blank;
-            };
-            
-            const anyCanEnable = this.isPartOfSelection ? this.appStore.selectedFrames.some(canEnable) : canEnable(this.frameId);
-            const anyCanDisable = this.isPartOfSelection ? this.appStore.selectedFrames.some(canDisable) : canDisable(this.frameId);
+            // Check which, between "enable" and "disable", we should show in the menu, and if we need to disable the menu entry
+            // (see canEnableOrDisableFrame() for details)            
+            const anyCanEnable = this.isPartOfSelection ? this.appStore.selectedFrames.some((frameId) => this.canEnableOrDisableFrame(frameId, true)) : this.canEnableOrDisableFrame(this.frameId, true);
+            const anyCanDisable = this.isPartOfSelection ? this.appStore.selectedFrames.some((frameId) => this.canEnableOrDisableFrame(frameId, false)) : this.canEnableOrDisableFrame(this.frameId, false);
             
             const disableOrEnableOption = (!anyCanDisable && anyCanEnable) 
                 ?  {label: this.$t("contextMenu.enable"), onClick: this.enable, disabled: false}
                 :  {label: this.$t("contextMenu.disable"), onClick: this.disable, disabled: !anyCanDisable && !anyCanEnable};
+            // Set the keyboard shortcut indicator and the attribute "action-name" so the keyboard shorcut can be effective, only when the menu entry isn't disabled
+            // (note: this is only relevant to handling the shortcut when the menu is showing, otherwise it is handled in a different manner)
+            if(!disableOrEnableOption.disabled){
+                (disableOrEnableOption as StrypeContextMenuItem).shortcut = (isMacOSPlatform()) ? "⌘/" : this.$t("shortcut.ctrlPlus") + "/";
+                (disableOrEnableOption as StrypeContextMenuItem).attrs = {"action-name": (!anyCanDisable && anyCanEnable) ? FrameContextMenuActionName.enable : FrameContextMenuActionName.disable};
+            }
             const enableDisableIndex = this.frameContextMenuItems.findIndex((entry) => entry.onClick === this.enable || entry.onClick === this.disable);
             this.frameContextMenuItems.splice(enableDisableIndex, 1, disableOrEnableOption);
             
@@ -779,6 +800,28 @@ export default defineComponent({
             this.showContextMenuAtCoordPos.y = event.y;
             this.showContextMenuAtCoordPos.pos = positionForMenu;
             this.showContextMenu = true;
+        },
+
+        canEnableOrDisableFrame(frameId: number, lookCanEnable: boolean): boolean {
+            // Our logic for disable/enable is as follows:
+            //   - On an individual frame level:
+            //     - Frozen frames, or children of frozen frames, can't be changed either way
+            //     - Blanks cannot directly be changed
+            //   - If there is a selection:
+            //     - If any are disabled and can be enabled, we show enable
+            //     - If any are enabled and can be disabled, we show disable
+            //     - Otherwise none can be changed, show Disable and grey it out
+            const collapseFrames = (this.isPartOfSelection ? this.appStore.selectedFrames : [this.frameId]).map((id) => this.appStore.frameObjects[id]);
+            const parentIsFrozen = this.appStore.frameObjects[collapseFrames[0].parentId].frozenState == FrozenState.FROZEN;
+            if(lookCanEnable){
+                const frame = this.appStore.frameObjects[frameId];
+                return frame.isDisabled && !parentIsFrozen && frame.frozenState != FrozenState.FROZEN;
+            }
+            else{
+                const frame = this.appStore.frameObjects[frameId];
+                return !frame.isDisabled && !parentIsFrozen && frame.frozenState != FrozenState.FROZEN
+                    && frame.frameType.type != AllFrameTypesIdentifier.blank;
+            }
         },
 
         registerMouseEventsForDeleteOperations(ctxMenuItemDef: StrypeContextMenuItem, menuEntryWrapperElement: HTMLDivElement): void {

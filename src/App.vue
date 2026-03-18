@@ -523,11 +523,26 @@ export default defineComponent({
                 return;
             }
             
-            // If we are at a frame cursor and they hit ctrl-x/ctrl-c then we do cut/copy:
-            if(!this.appStore.isEditing && !this.isPythonExecuting && (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "c" || event.key.toLowerCase() === "x")) {
+            // If we are at a frame cursor and they hit ctrl-x or ctrl-c or ctrl-d or ctrl-/ then we do cut/copy/duplicate/disable[enable]:
+            if(!this.appStore.isEditing && !this.isPythonExecuting && (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "c" || event.key.toLowerCase() === "x" || event.key.toLowerCase() === "d" || event.key === "/")) {
                 // We emit an event to be picked up by the first frame in the current selection:
                 // The frames themselves decide whether to act based on whether they are the first frame in the selection:
-                eventBus.emit(event.key.toLowerCase() === "c" ? CustomEventTypes.copyFrameSelection : CustomEventTypes.cutFrameSelection);
+                let customEvent = "";
+                switch(event.key.toLowerCase()) {
+                case "c":
+                    customEvent = CustomEventTypes.copyFrameSelection;
+                    break;
+                case "x":
+                    customEvent = CustomEventTypes.cutFrameSelection;
+                    break;
+                case "d":
+                    customEvent = CustomEventTypes.duplicateFrameSelection;
+                    break;
+                case "/":
+                    customEvent = CustomEventTypes.disableOrEnableFrameSelection;
+                    break;
+                }
+                eventBus.emit(customEvent);
                 event.preventDefault();
                 event.stopImmediatePropagation();
                 event.stopPropagation();
