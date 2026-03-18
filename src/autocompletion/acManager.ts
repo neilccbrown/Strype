@@ -15,10 +15,8 @@ import {OUR_PUBLIC_LIBRARY_MODULES, pythonBuiltins} from "@/autocompletion/pytho
 import pythonAPI from "@/autocompletion/python-api.json";
 import graphicsMod from "@/../pysrc/strype/graphics.py?raw";
 import soundMod from "@/../pysrc/strype/sound.py?raw";
-import turtleMod from "@/../pysrc/pyi/turtle.pyi?raw";
 TPyParser.defineModule("strype.graphics", extractPYI(graphicsMod), "pyi");
 TPyParser.defineModule("strype.sound", extractPYI(soundMod), "pyi");
-TPyParser.defineModule("turtle", turtleMod, "pyi");
 // #v-else
 import microbitPythonAPI from "@/autocompletion/microbit-api.json";
 import microbitDescriptions from "@/autocompletion/microbit.json";
@@ -294,7 +292,7 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
     const importedModulesCategory = i18n.global.t("autoCompletion.importedModules");
     if (!isSimpleImport && frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*") {
                 
-        // Depending on whether we are microbit or Skulpt, access the appropriate JSON file and retrieve
+        // Depending on whether we are microbit or Pyodide, access the appropriate JSON file and retrieve
         // the contents of the specific module:
         
         // #v-ifdef MODE == VITE_MICROBIT_MODE
@@ -309,9 +307,9 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
             }
         }
         // #v-else
-        const allSkulptItems : AcResultType[] = pythonAPI[module as keyof typeof pythonAPI] as AcResultType[];
-        if (allSkulptItems) {
-            soFar[module] = [...allSkulptItems.filter((x) => !x.acResult.startsWith("_"))];
+        const allPyodideItems : AcResultType[] = pythonAPI[module as keyof typeof pythonAPI] as AcResultType[];
+        if (allPyodideItems) {
+            soFar[module] = [...allPyodideItems.filter((x) => !x.acResult.startsWith("_"))];
         }
         else if (module in availableLibraries) {
             soFar[module] = [...availableLibraries[module].filter((x) => !x.acResult.startsWith("_"))];
