@@ -106,10 +106,19 @@ const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "do
 
 let soundManager : SoundManager | null = null; // Can't initialise this here as we need permissions for audio context
 const turtleCanvas = new OffscreenCanvas(800, 600);
-const turtlePixiHandler = new TurtlePixiHandler(turtleCanvas);
+function makePixiHandler() : TurtlePixiHandler | null {
+    try {
+        return new TurtlePixiHandler(turtleCanvas);
+    }
+    catch (err) {
+        console.error("PixiJS failed to initialise for turtle graphics", err);
+        return null;
+    }
+}
+const turtlePixiHandler : TurtlePixiHandler | null = makePixiHandler();
 let turtleDirty = false;
-turtlePixiHandler.setCanvasSize(800, 600);
-turtlePixiHandler.setPixiSize(800, 600);
+turtlePixiHandler?.setCanvasSize(800, 600);
+turtlePixiHandler?.setPixiSize(800, 600);
 
 // We draw our actual graphics canvas (for strype.graphics) at the size it is on the page,
 // given the 4:3 aspect ratio.  But we also have a logical size that is constant, which is 800x600.
@@ -1046,7 +1055,7 @@ export default defineComponent({
                 domContext.drawImage(c, (domCanvas.width - (targetCanvas?.width ?? 0)) / 2, (domCanvas.height - (targetCanvas?.height ?? 0)) / 2);
 
             }
-            if (domContext && turtleDirty && this.graphicsOverride == null) {
+            if (domContext && turtlePixiHandler && turtleDirty && this.graphicsOverride == null) {
                 // Draw turtle on, too:
                 turtlePixiHandler.update();
                 turtlePixiHandler.animate();
