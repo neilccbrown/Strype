@@ -548,16 +548,16 @@ export default defineComponent({
                 },
                 { states: new Set<CollapsedState>(), allowedStates: new Set<CollapsedState>() }
             );
-            const parentIsFrozen = this.appStore.frameObjects[collapseFrames[0].parentId].frozenState == FrozenState.FROZEN;
+            const ancestorIsFrozen = this.appStore.isEffectivelyFrozen(collapseFrames[0].parentId);
             let nextWouldBe;
             // Important to do this before next step as we might then remove some:
             if (combinedCollapse.states.size === 1) {
                 const commonState = combinedCollapse.states.keys().next().value as CollapsedState;
                 this.frameContextMenuItems[commonState as number].disabled = true;
-                nextWouldBe = calculateNextCollapseState(collapseFrames, parentIsFrozen, "dryrun").overall;
+                nextWouldBe = calculateNextCollapseState(collapseFrames, ancestorIsFrozen, "dryrun").overall;
             }
             else {
-                nextWouldBe = calculateNextCollapseState(collapseFrames, parentIsFrozen, "dryrun").overall;
+                nextWouldBe = calculateNextCollapseState(collapseFrames, ancestorIsFrozen, "dryrun").overall;
             }
             let someCollapseShowing = false;
             // Loops through all possible enum values, backwards so we can remove without upsetting the later-processed indexes:
@@ -565,7 +565,7 @@ export default defineComponent({
                 // If state is impossible for all frames, don't show it in the menu:
                 // Also, if there's only one allowed state for all frames (which would be fully visible), remove all items:
                 if (!combinedCollapse.allowedStates.has(c as CollapsedState) || combinedCollapse.allowedStates.size === 1
-                    || (c as CollapsedState == CollapsedState.FULLY_VISIBLE && parentIsFrozen)) {
+                    || (c as CollapsedState == CollapsedState.FULLY_VISIBLE && ancestorIsFrozen)) {
                     this.frameContextMenuItems.splice(c,1);
                 }
                 else {
@@ -627,7 +627,7 @@ export default defineComponent({
                 this.appStore.isPositionAllowsSelectedFrames(targetFrameId, CaretPosition.below, false) : 
                 this.appStore.isPositionAllowsFrame(targetFrameId, CaretPosition.below, false, this.frameId);
             // Note: frozen frames themselves can be duplicated, but children of frozen frames cannot:
-            if(!canDuplicate || parentIsFrozen){
+            if(!canDuplicate || ancestorIsFrozen){
                 const duplicateOptionContextMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.onClick === this.duplicate);
                 //We don't need the duplication option: remove it from the menu options if not present
                 if(duplicateOptionContextMenuPos > -1){
@@ -734,7 +734,7 @@ export default defineComponent({
 
             // Should we show any deleting options (Delete, Cut); requires all selected frames to be deleteable.
             // The only thing that prevents deletion is being frozen:
-            this.contextMenuAllCanBeDeleted = !parentIsFrozen && (this.isPartOfSelection
+            this.contextMenuAllCanBeDeleted = !ancestorIsFrozen && (this.isPartOfSelection
                 ? this.appStore
                     .selectedFrames
                     .every((frameId) => this.appStore.frameObjects[frameId].frozenState != FrozenState.FROZEN)
@@ -811,15 +811,14 @@ export default defineComponent({
             //     - If any are disabled and can be enabled, we show enable
             //     - If any are enabled and can be disabled, we show disable
             //     - Otherwise none can be changed, show Disable and grey it out
-            const collapseFrames = (this.isPartOfSelection ? this.appStore.selectedFrames : [this.frameId]).map((id) => this.appStore.frameObjects[id]);
-            const parentIsFrozen = this.appStore.frameObjects[collapseFrames[0].parentId].frozenState == FrozenState.FROZEN;
+            const frameOrAncestorIsFrozen = this.appStore.isEffectivelyFrozen(frameId);
             if(lookCanEnable){
                 const frame = this.appStore.frameObjects[frameId];
-                return frame.isDisabled && !parentIsFrozen && frame.frozenState != FrozenState.FROZEN;
+                return frame.isDisabled && !frameOrAncestorIsFrozen;
             }
             else{
                 const frame = this.appStore.frameObjects[frameId];
-                return !frame.isDisabled && !parentIsFrozen && frame.frozenState != FrozenState.FROZEN
+                return !frame.isDisabled && !frameOrAncestorIsFrozen
                     && frame.frameType.type != AllFrameTypesIdentifier.blank;
             }
         },
