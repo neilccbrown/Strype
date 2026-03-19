@@ -175,7 +175,7 @@
     "methodCloudLinkExplanation": "Le fichier du cloud (incluant les modifications futures)",
     "snapshotLinkTooLarge": "Attention: ce lien peut être trop long pour certains navigateurs, notamment à cause des images/sons dans le code.",
     "cloudShareUnavailable": "Vous devez d'abord sauvegarder le projet dans un service cloud.",
-    "cloudShareNotSaved": "Vous ne pouvez pas partager des changements non-sauvegardés, seulement le projet actuellement sauvegardé peut être partagé."
+    "cloudShareNotSaved": "Vous avez actuellement des modifications non enregistrées."
   },
   "contextMenu": {
     "ctrl": "Ctrl",

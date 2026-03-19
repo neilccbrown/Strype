@@ -61,6 +61,8 @@ export enum CustomEventTypes {
     requestedCloudDrivePickerRefresh = "requestedCloudDrivePickerRefresh",
     cutFrameSelection = "cutFrameSelection",
     copyFrameSelection = "copyFrameSelection",
+    duplicateFrameSelection = "duplicateFrameSelection",
+    disableOrEnableFrameSelection = "disableOrEnableFrameSelection",
     updateParamPrompts = "updateParamPrompts",
     // The following events are used for our modal dialogs, a wrapping mechanism around Bootstrap modals
     showStrypeModal = "bv::show::modal", // request a modal opening, param is a dialog ID
@@ -85,7 +87,10 @@ export const frameContextMenuShortcuts: FrameContextMenuShortcut[] = [
     {actionName: FrameContextMenuActionName.copy, firstModifierKey: [ModifierKeyCode.ctrl, ModifierKeyCode.meta], mainKey: "c"},
     {actionName: FrameContextMenuActionName.cut, firstModifierKey: [ModifierKeyCode.ctrl, ModifierKeyCode.meta], mainKey: "x"},
     {actionName: FrameContextMenuActionName.paste, firstModifierKey: [ModifierKeyCode.ctrl, ModifierKeyCode.meta], mainKey: "v"},
+    {actionName: FrameContextMenuActionName.duplicate, firstModifierKey: [ModifierKeyCode.ctrl, ModifierKeyCode.meta], mainKey: "d"},
     {actionName: FrameContextMenuActionName.delete, mainKey: "delete"},
+    {actionName: FrameContextMenuActionName.enable, mainKey: "/"},
+    {actionName: FrameContextMenuActionName.disable, mainKey: "/"},
 ];
 
 export function getFrameContainerUID(frameId: number): string {
