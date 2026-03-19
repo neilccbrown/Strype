@@ -152,6 +152,8 @@ test.describe("Check turtle works when shared with graphics", () => {
     });
     test("Check turtle keyboard input", async ({page}) => {
         // Skip in CI outside Chromium as WebGL is not always available for turtle in Github Actions runners:
+        test.skip(({ browserName }) => browserName === "firefox" || browserName === "webkit",
+            "WebGL not reliable in CI for Firefox/WebKit");
         await enterCode(page, ["import turtle\n", `
             def up():
                 for _ in range(3):
@@ -176,6 +178,8 @@ test.describe("Check turtle works when shared with graphics", () => {
 
     test("Check turtle mouse input", async ({page}) => {
         // Skip in CI outside Chromium as WebGL is not always available for turtle in Github Actions runners:
+        test.skip(({ browserName }) => browserName === "firefox" || browserName === "webkit",
+            "WebGL not reliable in CI for Firefox/WebKit");
         await enterCode(page, ["import turtle\n", `
             def clicked_at(x, y):
                 # Will draw a line as it goes:
