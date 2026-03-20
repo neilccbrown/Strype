@@ -320,7 +320,7 @@ export default defineComponent({
         },
 
         loadPickedFileId(id: string, otherParams: {fileName?: string}, onGettingFileMetadataSucces: (fileNameFromDrive: string, fileModifiedDateTime: string)=>void
-            , onGettingFileContentSuccess: (fileContent: string) => void, onGettingFileContentFailure: (errorRespStatus: number) => void){
+            , onGettingFileContentSuccess: (fileContent: string) => void, onGettingFileContentFailure: (errorRespStatus: number) => void, onFinally: VoidFunction){
             gapi.client.request({
                 path: "https://www.googleapis.com/drive/v3/files/" + id,
                 method: "GET",
@@ -337,7 +337,10 @@ export default defineComponent({
                     // cf https://stackoverflow.com/questions/13356493/decode-utf-8-with-javascript
                     const isPythonLikeFormat = (otherParams.fileName && (otherParams.fileName.endsWith(`.${pythonFileExtension}`) || (otherParams.fileName.endsWith(`.${strypeFileExtension}`) && resp.body && resp.body.startsWith(AppSPYFullPrefix))));
                     onGettingFileContentSuccess(decodeURIComponent(escape((isPythonLikeFormat) ? resp.body : JSON.stringify(resp.result))));
-                }, (resp) => onGettingFileContentFailure(resp.status??400));
+                }, (resp) => onGettingFileContentFailure(resp.status??400))
+                    .finally(() => {
+                        onFinally();
+                    });
             });
         },
         

@@ -131,7 +131,7 @@ export interface CloudDriveComponent {
     lookForAvailableProjectFileName: (fileLocation: string | undefined, fileName: string, onFileAlreadyExists: (existingFileId: string) => void, onSuccess: VoidFunction, onFailure: VoidFunction) => void,
     openFilePicker: (startingFromFolderId: string | undefined) => Promise<void>,
     loadPickedFileId: (id: string, otherParams: { fileName?: string }, onGettingFileMetadataSucces: (fileNameFromDrive: string, fileModifiedDateTime: string) => void,
-        onGettingFileContentSuccess: (fileContent: string) => void, onGettingFileContentFailure: (errorRespStatus: number) => void) => void,
+        onGettingFileContentSuccess: (fileContent: string) => void, onGettingFileContentFailure: (errorRespStatus: number) => void, onFinally: VoidFunction) => void,
     checkIsFileLocked: (existingFileId: string, onSuccess: VoidFunction, onFailure: VoidFunction) => void,
     doSaveFile: (saveFileId: string | undefined, projetLocation: string, fullFileName: string, fileContent: string, isExplictSave: boolean, onSuccess: (savedFileId: string) => void, onFailure: (errRespStatus: number) => void) => void,
     getCloudAPIStatusWhenLoadedOrFailed: () => Promise<CloudDriveAPIState>,

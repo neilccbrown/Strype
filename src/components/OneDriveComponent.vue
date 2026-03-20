@@ -511,7 +511,10 @@ export default defineComponent({
         },
 
         async loadPickedFileId(id: string, otherParams: {fileName?: string}, onGettingFileMetadataSucces: (fileNameFromDrive: string, fileModifiedDateTime: string)=>void
-            , onGettingFileContentSuccess: (fileContent: string) => void, onGettingFileContentFailure: (errorRespStatus: number) => void){
+            , onGettingFileContentSuccess: (fileContent: string) => void, onGettingFileContentFailure: (errorRespStatus: number) => void, onFinally: VoidFunction){
+            // Show a progress indication on the editor
+            vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: true, message: this.$t("appMessage.editorFileUpload")});
+
             // We don't need to query some meta information again against OneDrive because we get them as soon as we pick a file (via the picker).
             // However, we only kept them in this component internal data and now use them.
             // The file content is retrieve via a new query.                  
@@ -550,7 +553,10 @@ export default defineComponent({
             else{
                 const fileContent = await resp.text();                
                 onGettingFileContentSuccess(fileContent);
-            }          
+            }
+            
+            // Call onFinally at the end of this method
+            onFinally();
         },
         
         openFilePicker(): Promise<void> {

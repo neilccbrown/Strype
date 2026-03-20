@@ -2,7 +2,7 @@
     <!-- With the new package for Bootstrap (for Vue 3), BApp must wrap the application content -->
     <BApp>
         <div>
-            <div v-if="showAppProgress || setAppNotOnTop" :class="{'app-overlay-pane': true, 'app-progress-pane': showAppProgress}" @contextmenu="handleOverlayRightClick">
+            <div v-if="showAppProgress || setAppNotOnTop" :class="{'app-overlay-pane': true, 'app-overlay-pane-absolute': showAppProgress, 'app-progress-pane': showAppProgress}" @contextmenu="handleOverlayRightClick">
                 <div v-if="showAppProgress" class="app-progress-container">
                     <div class="progress">
                         <div 
@@ -755,9 +755,10 @@ export default defineComponent({
                     // Extract the file ID and attempt a retrieving of the file with the Google Drive API (it waits a bit for the API to be loaded)
                     const sharedFileID = shareProjectId.substring(googleDrivePublicURLPreamble.length).match(/^([^/]+)\/.*$/)?.[1];
                     vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getPublicSharedProjectContent(StrypeSyncTarget.gd, sharedFileID??"");
-                
                 }
                 else{
+                    // Show a progress indication on the editor
+                    vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: true, message: this.$t("appMessage.editorFileUpload")});
                     axios.get<string>(shareProjectId)
                         .then((resp) => {
                             if(resp.status == 200){
@@ -773,10 +774,11 @@ export default defineComponent({
                                     }) :
                                     this.setStateFromPythonFile(resp.data, filename, 0, false)
                                 ).then(() => {
-                                    alertMsgKey = "appMessage.retrievedSharedGenericProject";
-                                    alertParams = this.appStore.projectName;
                                     // A generic project is saved in memory, so we must make sure there is no target destination saved.
                                     vueComponentsAPIHandler.menuComponentAPI?.saveTargetChoice(StrypeSyncTarget.none);
+
+                                    // And we make sure we show the project is unmodified
+                                    this.appStore.isEditorContentModified = false;
                                 },
                                 (reason) => {
                                     alertMsgKey = "errorMessage.retrievedSharedGenericProject";
@@ -796,7 +798,9 @@ export default defineComponent({
                             }, 3000);                            
                         })
                         .finally(() => {
-                            this.finaliseOpenShareProject({key: alertMsgKey, param: alertParams});
+                            // Make sure the progress indication on the editor is removed.
+                            vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: false});
+                            this.finaliseOpenShareProject((alertMsgKey) ? {key: alertMsgKey, param: alertParams} : undefined);
                         });
                 }
             };
@@ -1700,6 +1704,10 @@ body.#{$strype-classname-dragging-frame} {
     position: absolute;
     left: 0px;
     z-index: 500;
+}
+
+.app-overlay-pane-absolute  {    
+    z-index: 600 !important;
 }
 
 .app-progress-pane {

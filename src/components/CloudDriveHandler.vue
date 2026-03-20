@@ -335,6 +335,8 @@ export default defineComponent({
                     if(cloudApiState == CloudDriveAPIState.LOADED){
                         let alertMsgKey = "", alertParams = "";
                         // Attempt the retrieval of the file, if the Cloud Drive supports it
+                        // Show a progress indication on the editor
+                        vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: true, message: this.$t("appMessage.editorFileUpload")});   
                         return cloudDriveComponent.getPublicSharedProjectContent(sharedFileID)
                             .then(({isSuccess, projectName, decodedURIFileContent, errorMsg}) => {
                                 if(isSuccess){
@@ -349,11 +351,12 @@ export default defineComponent({
                                             if(isSpyNewFormat){
                                                 this.appStore.projectName  = projectName;
                                             }
-                                            alertMsgKey = "appMessage.retrievedSharedGenericProject";
-                                            alertParams = this.appStore.projectName;
 
                                             // Remove things in the state that were related to the Cloud Drive
                                             this.cleanCloudDriveRelatedInfosInState();
+
+                                            // And we make sure we show the project is unmodified
+                                            this.appStore.isEditorContentModified = false;
                                         })
                                         .catch((reason) => {
                                             alertMsgKey = "errorMessage.retrievedSharedGenericProject";
@@ -367,8 +370,10 @@ export default defineComponent({
                                 }
                             })
                             .finally(() => {
-                                // Show a message to the user that the project has (/not) been loaded
-                                vueComponentsAPIHandler.appComponentAPI?.finaliseOpenShareProject({key: alertMsgKey, param: alertParams});
+                                // Make sure the progress indication on the editor is removed.
+                                vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: false});
+                                // Finalise action after the project has (/not) been loaded
+                                vueComponentsAPIHandler.appComponentAPI?.finaliseOpenShareProject((alertMsgKey) ? {key: alertMsgKey, param: alertParams} : undefined);
                             });
                     }
                     else{
@@ -590,6 +595,9 @@ export default defineComponent({
             // so we let the Drive know what to do after retrieving one and the other, and let it use that.
             let lastSaveDate = -1; // Need to be kept on a temporary var as the file content will overwrite this.
             let otherParams = {fileName: fileName};
+            // Show a progress indication on the editor
+            vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: true, message: this.$t("appMessage.editorFileUpload")});
+            // Get the file content
             const cloudDriveComponent = this.getSpecificCloudDriveComponent(cloudTarget);
             cloudDriveComponent?.loadPickedFileId(id, otherParams, (fileNameFromDrive: string, fileModifiedDateTime: string) => {
                 if(this.openSharedProjectFileId.length > 0 || this.loadReason == LoadRequestReason.reloadBrowser){
@@ -644,9 +652,11 @@ export default defineComponent({
                             this.appStore.strypeProjectLocationAlias = strypeLocationAlias;
                             this.appStore.strypeProjectLocationPath = strypeProjectLocationPath;
                             this.appStore.projectLastSaveDate = lastSaveDate;
-                            // And we make sure we show the project is unmodified
-                            this.appStore.isEditorContentModified = false;
                         }
+
+                        // And we make sure we show the project is unmodified
+                        this.appStore.isEditorContentModified = false;
+
                         // Users may have changed the file name directly on Drive, so we make sure at this stage we get the project with that same name
                         // (At this stage, we shouldn't have an undefined name, but for safety we use the default project name if so.)
                         const fileNameNoExt = (fileName) ? fileName.substring(0, fileName.lastIndexOf(".")) : this.$t("defaultProjName");
@@ -664,7 +674,7 @@ export default defineComponent({
                                 this.saveFileId = undefined;
                                 this.updateSignInStatus(cloudTarget, false);
                                 if(isOpenedSharedProject){
-                                    vueComponentsAPIHandler.appComponentAPI?.finaliseOpenShareProject({key: "appMessage.retrievedSharedGenericProject", param: fileNameNoExt});
+                                    vueComponentsAPIHandler.appComponentAPI?.finaliseOpenShareProject();
                                 }
                                 else{
                                     this.appStore.simpleModalDlgMsg = this.$t("errorMessage.driveFileReadOnly", {drivename: cloudDriveComponent.driveName});
@@ -694,6 +704,9 @@ export default defineComponent({
                 }
                 // At the very end, emit event for notifying the attempt to open a shared project is finished
                 this.$emit(CustomEventTypes.openSharedFileDone);  
+            }, () => {
+                // The finally clause only makes sure the progress indication on the editor is removed.
+                vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: false});
             });
         },
 
