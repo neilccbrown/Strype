@@ -46,7 +46,7 @@ export class SpriteManager {
         this.sprites.clear();
         const bk = {
             id: 0,
-            img: {width: 808, height: 606, handle: makeImageHandle(0)}, // Special identifier indicating a black image
+            img: {width: 800, height: 600, handle: makeImageHandle(0)}, // Special identifier indicating a black image
             // Since we go from -399 to 400, -299 to 300, the actual centre is 0.5, 0.5:
             x: 0.5,
             y: 0.5,

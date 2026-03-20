@@ -5,7 +5,7 @@ import { SpriteManager } from "@/stryperuntime/image_and_collisions";
 // also has the actual ImageBitmap/OffscreenCanvas object references.  When asked, can render its mirror of the 
 // Pyodide web worker state by combining all this together.
 export class Renderer  {
-    // Always has a single black 808x606 image first for the default background:
+    // Always has a single black 800x600 image first for the default background:
     private loadedImages : ImageBitmap[]  = [];
     private canvases : OffscreenCanvas[] = [];
     // Mirrored (as in echoed, not as in horizontally flipped) from the Pyodide thread:
@@ -20,9 +20,9 @@ export class Renderer  {
         // So no need to do anything when this sprite manager changes:
         this.sprites = new SpriteManager(() => {});
         
-        // We have one special image to begin with for the default background; a black 808x606 image:
-        const width = 808;
-        const height = 606;
+        // We have one special image to begin with for the default background; a black 800x600 image:
+        const width = 800;
+        const height = 600;
 
         const canvas = new OffscreenCanvas(width, height);
         const ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D;
