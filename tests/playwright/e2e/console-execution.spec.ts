@@ -84,7 +84,8 @@ test.describe("Check console after execution", () => {
 });
 
 async function runButtonShowsRun(button: Locator) {
-    await expect(button).toHaveText("Run", {timeout: 30000});
+    // Firefox is incredibly slow to reinitialise on CI, so we have a huge timeout:
+    await expect(button).toHaveText("Run", {timeout: 60000});
 }
 
 test.describe("Test stdin works", () => {
