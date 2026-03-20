@@ -1193,7 +1193,7 @@ export default defineComponent({
                         // We need to get the file content (hope for the best) and update the store
                         fileHandles[0].getFile().then((file: File) => {
                             const emitPayload: AppEvent = {requestAttention: true};
-                            emitPayload.message = this.$t("appMessage.editorFileUpload").toString();
+                            emitPayload.message = this.$t("appMessage.editorFileUpload");
                             this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);
                             const reader = new FileReader();
                             reader.addEventListener("load", () => {
@@ -1229,7 +1229,7 @@ export default defineComponent({
                 //before reading the file, we check the extension is supported for the import
                 if(files[0].name.indexOf(".") > -1 && fileImportSupportedFormats.findIndex((extension) => extension === files[0].name.substring(files[0].name.lastIndexOf(".") + 1)) > -1) {
                     const emitPayload: AppEvent = {requestAttention: true};
-                    emitPayload.message = this.$t("appMessage.editorFileUpload").toString();
+                    emitPayload.message = this.$t("appMessage.editorFileUpload");
                     this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);
                     // Store the file name in a variable to use it later in the callback, for some reason using files[0].name fails in Pinia, on Safari
                     const fileName = files[0].name;

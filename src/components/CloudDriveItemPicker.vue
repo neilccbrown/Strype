@@ -119,7 +119,7 @@ export default defineComponent({
         isWaitingForChildrenLookup(newValue: boolean) {
             // Trigger or stop the app progress bar.
             const emitPayload: AppEvent = {requestAttention: newValue};
-            emitPayload.message = this.$t("appMessage.cloudDriveItemPickerLoadingFolderContent").toString();
+            emitPayload.message = this.$t("appMessage.cloudDriveItemPickerLoadingFolderContent");
             vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress(emitPayload);
             // And block or release the overlay
             document.dispatchEvent(new CustomEvent(CustomEventTypes.requestAppNotOnTop, {detail: newValue}));
