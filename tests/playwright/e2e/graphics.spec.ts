@@ -219,7 +219,7 @@ test.describe("Check graphics works when shared with turtle", () => {
         `]);
         await page.click("#graphicsPEATab");
         await page.click("#runButton");
-        await page.waitForTimeout(5000);
+        await page.waitForTimeout(10000);
         // Check the mouse starts in the right place (same image as test above):
         await checkGraphicsAreaContent(page, "shared-graphics-background-1");
         // Need a delay to make sure it is registered during a frame:
@@ -349,11 +349,8 @@ test.describe("Check graphics works when shared with turtle", () => {
         await page.locator("#peaGraphicsContainerDiv").hover();
         await page.waitForTimeout(1000);
         await page.click(".pea-toggle-layout-buttons-container > div:nth-child(2)");
-        await page.waitForTimeout(1000);
-        await page.locator(".expanded-PEA-splitter-overlay.strype-split-theme > .splitpanes.splitpanes--horizontal > .splitpanes__splitter").hover();
-        await page.mouse.down();
-        await page.mouse.move(500, 200);
-        await page.mouse.up();
+        await page.waitForTimeout(20000);
+        await dragDividerTo(page, ".expanded-PEA-splitter-overlay.strype-split-theme > .splitpanes.splitpanes--horizontal > .splitpanes__splitter", 500, 200);
         await page.click("#runButton");
         await page.waitForTimeout(2000);
         await clickProportionalPos(page, 100/800, 100/600, "left");
