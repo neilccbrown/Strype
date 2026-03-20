@@ -777,6 +777,9 @@ export default defineComponent({
                                     alertParams = this.appStore.projectName;
                                     // A generic project is saved in memory, so we must make sure there is no target destination saved.
                                     vueComponentsAPIHandler.menuComponentAPI?.saveTargetChoice(StrypeSyncTarget.none);
+
+                                    // And we make sure we show the project is unmodified
+                                    this.appStore.isEditorContentModified = false;
                                 },
                                 (reason) => {
                                     alertMsgKey = "errorMessage.retrievedSharedGenericProject";

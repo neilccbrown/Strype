@@ -354,6 +354,9 @@ export default defineComponent({
 
                                             // Remove things in the state that were related to the Cloud Drive
                                             this.cleanCloudDriveRelatedInfosInState();
+
+                                            // And we make sure we show the project is unmodified
+                                            this.appStore.isEditorContentModified = false;
                                         })
                                         .catch((reason) => {
                                             alertMsgKey = "errorMessage.retrievedSharedGenericProject";
@@ -644,9 +647,11 @@ export default defineComponent({
                             this.appStore.strypeProjectLocationAlias = strypeLocationAlias;
                             this.appStore.strypeProjectLocationPath = strypeProjectLocationPath;
                             this.appStore.projectLastSaveDate = lastSaveDate;
-                            // And we make sure we show the project is unmodified
-                            this.appStore.isEditorContentModified = false;
                         }
+
+                        // And we make sure we show the project is unmodified
+                        this.appStore.isEditorContentModified = false;
+
                         // Users may have changed the file name directly on Drive, so we make sure at this stage we get the project with that same name
                         // (At this stage, we shouldn't have an undefined name, but for safety we use the default project name if so.)
                         const fileNameNoExt = (fileName) ? fileName.substring(0, fileName.lastIndexOf(".")) : this.$t("defaultProjName");
