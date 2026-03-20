@@ -132,6 +132,10 @@ async function clickProportionalPos(page: Page, x: number, y: number, button: "l
 }
 
 test.describe("Check turtle works when shared with graphics", () => {
+    // Skip in CI outside Chromium as WebGL is not always available for turtle in Github Actions runners:
+    test.skip(({ browserName }) => browserName === "firefox" || browserName === "webkit",
+        "WebGL not reliable in CI for Firefox/WebKit");
+
     test("Check turtle square shows", async ({page}) => {
         await enterCode(page, ["import turtle\n", "", `
             t = turtle.Turtle()
