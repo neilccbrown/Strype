@@ -2,7 +2,7 @@
     <!-- With the new package for Bootstrap (for Vue 3), BApp must wrap the application content -->
     <BApp>
         <div>
-            <div v-if="showAppProgress || setAppNotOnTop" :class="{'app-overlay-pane': true, 'app-progress-pane': showAppProgress}" @contextmenu="handleOverlayRightClick">
+            <div v-if="showAppProgress || setAppNotOnTop" :class="{'app-overlay-pane': true, 'app-overlay-pane-absolute': showAppProgress, 'app-progress-pane': showAppProgress}" @contextmenu="handleOverlayRightClick">
                 <div v-if="showAppProgress" class="app-progress-container">
                     <div class="progress">
                         <div 
@@ -1700,6 +1700,10 @@ body.#{$strype-classname-dragging-frame} {
     position: absolute;
     left: 0px;
     z-index: 500;
+}
+
+.app-overlay-pane-absolute  {    
+    z-index: 600 !important;
 }
 
 .app-progress-pane {
