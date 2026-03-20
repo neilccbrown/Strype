@@ -335,6 +335,8 @@ export default defineComponent({
                     if(cloudApiState == CloudDriveAPIState.LOADED){
                         let alertMsgKey = "", alertParams = "";
                         // Attempt the retrieval of the file, if the Cloud Drive supports it
+                        // Show a progress indication on the editor
+                        vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: true, message: this.$t("appMessage.editorFileUpload")});   
                         return cloudDriveComponent.getPublicSharedProjectContent(sharedFileID)
                             .then(({isSuccess, projectName, decodedURIFileContent, errorMsg}) => {
                                 if(isSuccess){
@@ -370,6 +372,8 @@ export default defineComponent({
                                 }
                             })
                             .finally(() => {
+                                // Make sure the progress indication on the editor is removed.
+                                vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: false});
                                 // Show a message to the user that the project has (/not) been loaded
                                 vueComponentsAPIHandler.appComponentAPI?.finaliseOpenShareProject({key: alertMsgKey, param: alertParams});
                             });
@@ -593,6 +597,9 @@ export default defineComponent({
             // so we let the Drive know what to do after retrieving one and the other, and let it use that.
             let lastSaveDate = -1; // Need to be kept on a temporary var as the file content will overwrite this.
             let otherParams = {fileName: fileName};
+            // Show a progress indication on the editor
+            vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: true, message: this.$t("appMessage.editorFileUpload")});
+            // Get the file content
             const cloudDriveComponent = this.getSpecificCloudDriveComponent(cloudTarget);
             cloudDriveComponent?.loadPickedFileId(id, otherParams, (fileNameFromDrive: string, fileModifiedDateTime: string) => {
                 if(this.openSharedProjectFileId.length > 0 || this.loadReason == LoadRequestReason.reloadBrowser){
@@ -699,6 +706,9 @@ export default defineComponent({
                 }
                 // At the very end, emit event for notifying the attempt to open a shared project is finished
                 this.$emit(CustomEventTypes.openSharedFileDone);  
+            }, () => {
+                // The finally clause only makes sure the progress indication on the editor is removed.
+                vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: false});
             });
         },
 

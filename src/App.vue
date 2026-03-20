@@ -755,9 +755,10 @@ export default defineComponent({
                     // Extract the file ID and attempt a retrieving of the file with the Google Drive API (it waits a bit for the API to be loaded)
                     const sharedFileID = shareProjectId.substring(googleDrivePublicURLPreamble.length).match(/^([^/]+)\/.*$/)?.[1];
                     vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getPublicSharedProjectContent(StrypeSyncTarget.gd, sharedFileID??"");
-                
                 }
                 else{
+                    // Show a progress indication on the editor
+                    vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: true, message: this.$t("appMessage.editorFileUpload")});
                     axios.get<string>(shareProjectId)
                         .then((resp) => {
                             if(resp.status == 200){
@@ -799,6 +800,8 @@ export default defineComponent({
                             }, 3000);                            
                         })
                         .finally(() => {
+                            // Make sure the progress indication on the editor is removed.
+                            vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: false});
                             this.finaliseOpenShareProject({key: alertMsgKey, param: alertParams});
                         });
                 }
