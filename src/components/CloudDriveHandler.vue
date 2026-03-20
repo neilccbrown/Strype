@@ -351,8 +351,6 @@ export default defineComponent({
                                             if(isSpyNewFormat){
                                                 this.appStore.projectName  = projectName;
                                             }
-                                            alertMsgKey = "appMessage.retrievedSharedGenericProject";
-                                            alertParams = this.appStore.projectName;
 
                                             // Remove things in the state that were related to the Cloud Drive
                                             this.cleanCloudDriveRelatedInfosInState();
@@ -374,8 +372,8 @@ export default defineComponent({
                             .finally(() => {
                                 // Make sure the progress indication on the editor is removed.
                                 vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: false});
-                                // Show a message to the user that the project has (/not) been loaded
-                                vueComponentsAPIHandler.appComponentAPI?.finaliseOpenShareProject({key: alertMsgKey, param: alertParams});
+                                // Finalise action after the project has (/not) been loaded
+                                vueComponentsAPIHandler.appComponentAPI?.finaliseOpenShareProject((alertMsgKey) ? {key: alertMsgKey, param: alertParams} : undefined);
                             });
                     }
                     else{
@@ -676,7 +674,7 @@ export default defineComponent({
                                 this.saveFileId = undefined;
                                 this.updateSignInStatus(cloudTarget, false);
                                 if(isOpenedSharedProject){
-                                    vueComponentsAPIHandler.appComponentAPI?.finaliseOpenShareProject({key: "appMessage.retrievedSharedGenericProject", param: fileNameNoExt});
+                                    vueComponentsAPIHandler.appComponentAPI?.finaliseOpenShareProject();
                                 }
                                 else{
                                     this.appStore.simpleModalDlgMsg = this.$t("errorMessage.driveFileReadOnly", {drivename: cloudDriveComponent.driveName});

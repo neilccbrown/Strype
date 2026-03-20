@@ -774,8 +774,6 @@ export default defineComponent({
                                     }) :
                                     this.setStateFromPythonFile(resp.data, filename, 0, false)
                                 ).then(() => {
-                                    alertMsgKey = "appMessage.retrievedSharedGenericProject";
-                                    alertParams = this.appStore.projectName;
                                     // A generic project is saved in memory, so we must make sure there is no target destination saved.
                                     vueComponentsAPIHandler.menuComponentAPI?.saveTargetChoice(StrypeSyncTarget.none);
 
@@ -802,7 +800,7 @@ export default defineComponent({
                         .finally(() => {
                             // Make sure the progress indication on the editor is removed.
                             vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: false});
-                            this.finaliseOpenShareProject({key: alertMsgKey, param: alertParams});
+                            this.finaliseOpenShareProject((alertMsgKey) ? {key: alertMsgKey, param: alertParams} : undefined);
                         });
                 }
             };
