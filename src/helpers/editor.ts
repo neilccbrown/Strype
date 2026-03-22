@@ -77,8 +77,6 @@ export enum CustomEventTypes {
     pythonConsoleAfterInput = "pythonConsoleAfterInput",
     notifyTurtleUsage = "turtleUsage",
     pythonExecAreaSizeChanged = "peaSizeChanged",
-    skulptMouseEventListenerOff = "skMouseEventsOff",
-    skulptTimerEventListenerOff = "skTimerEventsOff",
     highlightPythonRunningState = "highlightPythonRunningState"
     // #v-endif
 }
@@ -223,10 +221,6 @@ export function getPEATabContentContainerDivId(): string {
 
 export function getPEAGraphicsContainerDivId(): string {
     return "peaGraphicsContainerDiv";
-}
-
-export function getPEAGraphicsDivId(): string {
-    return "peaGraphicsDiv";
 }
 
 export function getPEAConsoleId(): string {
@@ -1865,7 +1859,8 @@ export function getNumPrecedingBackslashes(content: string, cursorPos : number) 
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 // This method acts the turtle module being imported or not in the editor's frame
 export function actOnTurtleImport(): void {
-    let hasTurtleImported = false;
+    // Matches types in recipient in PythonExecutionArea
+    let graphicsImport = "none" as "strype" | "turtle" | "none";
    
     Object.values(useStore().frameObjects).forEach((frame) => {
         // If the frame is disabled, or is not an import/for...import frame, it definitely do not imports turtle.
@@ -1879,11 +1874,19 @@ export function actOnTurtleImport(): void {
             .map((slot)=>slot.code)
             // We add spaces around the modules so we can also extract "as" (aliases)
             .reduce((accModules, currentSlotVal,i) => (accModules + ((i > 0) ? " " + frame.labelSlotsDict[0].slotStructures.operators[i-1].code + " " : "") + currentSlotVal), "");
-        hasTurtleImported ||= importedModules.split(" , ").some((module) => module.localeCompare("turtle") == 0 || module.startsWith("turtle as "));
+        importedModules.split(" , ").forEach((module) => {
+            if (module.localeCompare("turtle") == 0 || module.startsWith("turtle as ")){
+                graphicsImport = "turtle";
+            }
+            // Spaces are added in code above:
+            else if (module.localeCompare("strype . graphics") == 0 || module.startsWith("strype . graphics as ")){
+                graphicsImport = "strype";
+            }
+        });
     });
 
     // We notify the Python exec area about the presence or absence of the turtle module
-    document.getElementById(getPEAComponentRefId())?.dispatchEvent(new CustomEvent(CustomEventTypes.notifyTurtleUsage, {detail: hasTurtleImported}));
+    document.getElementById(getPEAComponentRefId())?.dispatchEvent(new CustomEvent(CustomEventTypes.notifyTurtleUsage, {detail: graphicsImport}));
 }
 
 // UI-related method to calculate and set the max height of the Python Execution Area tabs content.

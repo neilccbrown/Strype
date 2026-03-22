@@ -160,7 +160,6 @@
     "expand": "展开",
     "collapse": "折叠",
     "console": "控制台",
-    "TurtleGraphics": "海龟绘图",
-    "importTurtle": "导入模块'turtle'以使用海龟绘图。"
+    "TurtleGraphics": "海龟绘图"
   }
 }

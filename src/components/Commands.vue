@@ -122,7 +122,7 @@ import { eventBus } from "@/helpers/appContext";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import {Splitpanes, Pane} from "splitpanes";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
-import {getPEAConsoleId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getPEAComponentRefId, getPEAControlsDivId} from "@/helpers/editor";
+import {getPEAConsoleId, getPEATabContentContainerDivId, getPEAComponentRefId, getPEAControlsDivId} from "@/helpers/editor";
 // #v-else
 import APIDiscovery from "@/components/APIDiscovery.vue";
 import { flash } from "@/helpers/webUSB";
