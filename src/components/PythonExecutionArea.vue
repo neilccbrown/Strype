@@ -103,6 +103,7 @@ let mostRecentClickDetails : { x: number, y: number, button: number, clickCount:
 let mostRecentMouseDetails : {x: number, y: number, buttonsPressed: boolean[]} = {x:0, y:0, buttonsPressed: [false, false, false]}; // X, Y, three button states
 let pressedKeys : {[key: string]: boolean} = {};
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
+let switchedToGraphicsTabAlreadyThisExecute = false;
 
 let soundManager : SoundManager | null = null; // Can't initialise this here as we need permissions for audio context
 const turtleCanvas = new OffscreenCanvas(800, 600);
@@ -180,12 +181,6 @@ export default defineComponent({
             blurRunButton: () => {
                 (this.$refs.runButton as HTMLButtonElement).blur();
             },
-            getIsTurtleListeningKeyEvents: () => {
-                return this.isTurtleListeningKeyEvents;
-            },
-            getIsRunningStrypeGraphics: () => {
-                return this.isRunningStrypeGraphics;
-            },
             downloadWAV: this.downloadWAV,
             overrideGraphics: this.overrideGraphics,
             redrawCanvas: this.redrawCanvas,
@@ -211,7 +206,6 @@ export default defineComponent({
             isTurtleListeningKeyEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for key events on Turtle
             isTurtleListeningMouseEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for mouse events on Turtle
             isTurtleListeningTimerEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for timer events on Turtle
-            isRunningStrypeGraphics : false,
             scaleToFit: 1,
             libraries: [] as string[],
             stopTurtleUIEventListeners: undefined as ((keepShowingTurtleUI: boolean)=>void) | undefined, // registered callback method to clear the Turtle listeners mentioned above
@@ -519,6 +513,13 @@ export default defineComponent({
             // Notify a resize of the PEA happened
             document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
         },
+        
+        switchToGraphicsTab(condition: "always" | "ifFirstCallDuringExecute") {
+            if (condition == "always" || !switchedToGraphicsTabAlreadyThisExecute) {
+                this.peaDisplayTabIndex = PEATabIndexes.graphics;
+                switchedToGraphicsTabAlreadyThisExecute = true;
+            }
+        },
 
         runClicked() {
             // The Python code execution has a 3-ways states:
@@ -599,6 +600,8 @@ export default defineComponent({
                 if (targetCanvas != null) {
                     targetContext?.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
                 }
+                switchedToGraphicsTabAlreadyThisExecute = false;
+                
                 // Clear input:
                 mostRecentClickedItems = [];
                 mostRecentClickDetails = null;
@@ -628,11 +631,9 @@ export default defineComponent({
                 const syncBridgePromise = handleSyncRequests(renderer, soundManager as SoundManager, turtlePixiHandler, {
                     getPressedKeys: () => pressedKeys,
                     loadLibraryAsset: this.loadLibraryAsset,
-                    switchToGraphicsTab: () => {
-                        this.isRunningStrypeGraphics = true;
-                        this.peaDisplayTabIndex = PEATabIndexes.graphics;
-                    },
+                    switchToGraphicsTab: this.switchToGraphicsTab,
                     markTurtleDirty: () => {
+                        this.switchToGraphicsTab("ifFirstCallDuringExecute");
                         turtleDirty = true;
                     },
                     getMouseDetails: this.getMouseDetails,
@@ -705,40 +706,11 @@ export default defineComponent({
                         handleErrorTrace(possibleError.text, possibleError.traceback, () => {}, parser.getFramePositionMap());
                     }
                     useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
-                    this.isRunningStrypeGraphics = false;
                     setPythonExecAreaLayoutButtonPos();
                     // We always restart Pyodide for a clean state:
                     terminateAndRestartPyodide();
                 });
-
-                // Trigger the actual Python code execution launch
-                /*
-                execPythonCode(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),parser.getLibraries(), () => useStore().pythonExecRunningState != PythonExecRunningState.RunningAwaitingStop, (finishedWithError: boolean, isTurtleListeningKeyEvents: boolean, isTurtleListeningMouseEvents: boolean, isTurtleListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => {
-                    // After Skulpt has executed the user code, we need to check if a keyboard listener is still pending from that user code.
-                    this.isTurtleListeningKeyEvents = !!isTurtleListeningKeyEvents; 
-                    this.isTurtleListeningMouseEvents = !!isTurtleListeningMouseEvents; 
-                    this.isTurtleListeningTimerEvents = !!isTurtleListeningTimerEvents;
-                    this.stopTurtleUIEventListeners = stopTurtleListeners;
-                    if (finishedWithError) {
-                        this.updateTurtleListeningEvents();
-                        // Don't draw last state if we finished with an error because we may be in an inconsistent state:
-                        SpriteManager.resetDirty();
-                        for (let Sprite of SpriteManager.getSprites()) {
-                            Sprite.dirty = false;
-                        }
-                    }
-                    if(!this.isTurtleListeningEvents) {
-                        useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
-                    }
-                    window.removeEventListener("keydown", this.graphicsCanvasKeyDown);
-                    window.removeEventListener("keyup", this.graphicsCanvasKeyUp);
-                    this.isRunningStrypeGraphics = false;
-                    setPythonExecAreaLayoutButtonPos();
-                    // A runtime error may happen whenever the user code failed, therefore we should check if an error
-                    // when Skulpt indicates the code execution has finished.
-                    this.checkNonePrecompiledErrors();
-                });
-                */
+                
                 // We make sure the number of errors shown in the interface is in line with the current state of the code
                 // Note that a run time error can still occur later.                
                 this.checkNonePrecompiledErrors();
@@ -923,7 +895,6 @@ export default defineComponent({
             if(useStore().pythonExecRunningState) {
                 useStore().pythonExecRunningState = PythonExecRunningState.RunningAwaitingStop;              
             }
-            this.isRunningStrypeGraphics = false;
             pressedKeys = {};
             renderer.clear();
             this.redrawCanvas();
@@ -956,11 +927,13 @@ export default defineComponent({
             else {
                 this.graphicsOverride = null;
             }
+            this.switchToGraphicsTab("always");
         },
         
         redrawCanvasIfNeeded() : void {
             // Draws canvas if anything has changed:
             if (renderer.isDirty() || turtleDirty) {
+                this.switchToGraphicsTab("ifFirstCallDuringExecute");
                 this.redrawCanvas();
             }
         },
