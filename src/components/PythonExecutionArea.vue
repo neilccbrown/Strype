@@ -81,7 +81,7 @@ import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { BTab, BTabs } from "bootstrap-vue-next";
 import * as Comlink from "comlink";
 import {handleErrorTrace, setSInputConsole, sInput} from "@/helpers/execPythonCode";
-import {ErrorDetails} from "@/workers/python-execution";
+import {ErrorDetails, serviceWorkerReadyAndInControl} from "@/workers/python-execution";
 import {SpriteHandle, SyncOrAsyncStrypePyodideWorkerRequest} from "@/stryperuntime/worker_bridge_type";
 import {SoundManager} from "@/stryperuntime/sound_manager";
 import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
@@ -662,7 +662,7 @@ export default defineComponent({
                     Comlink.proxy((prompt: string) => {
                         sInput(prompt).then(async (s : string) => {
                             // We send the output back via writeMessage rather than a direct return:
-                            await navigator.serviceWorker.ready;
+                            await serviceWorkerReadyAndInControl();
                             try {
                                 await client.writeMessage(s);
                             }
@@ -682,7 +682,7 @@ export default defineComponent({
                                 console.error(`Internal error: request ${req.request} did not match the response ${resp.request}`);
                             }
                             resp.response.then(async (r: any) => {
-                                await navigator.serviceWorker.ready;
+                                await serviceWorkerReadyAndInControl();
                                 try {
                                     await client.writeMessage({request: resp.request, response: r});
                                 }
@@ -690,7 +690,7 @@ export default defineComponent({
                                     console.error(e);
                                 }
                             }).catch(async (err) => {
-                                await navigator.serviceWorker.ready;
+                                await serviceWorkerReadyAndInControl();
                                 try {
                                     await client.writeMessage({request: resp.request, error: err.toString()});
                                 }

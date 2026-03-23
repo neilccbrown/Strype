@@ -85,6 +85,20 @@ import {createLazyFetchAssetsFS} from "@/stryperuntime/pyodide-emscripten-assets
 // We only specify updatePort here as we don't want other files using it directly:
 declare const self: PyodideWorkerGlobalScope & { updatePort: MessagePort };
 
+export async function serviceWorkerReadyAndInControl() : Promise<void> {
+    await navigator.serviceWorker.ready;
+
+    // If already controlled, all is fine:
+    if (navigator.serviceWorker.controller) {
+        return;
+    }
+    // Wait until the service worker takes control:
+    await new Promise((resolve) => {
+        navigator.serviceWorker.addEventListener("controllerchange", resolve, { once: true });
+    });
+}
+
+
 async function loadOnly() : Promise<PyodideInterface> {
     const pyodide = await loadPyodideAndPackage({url: `${import.meta.env.BASE_URL}pysrc.zip`, format: "zip"}, loadPyodide);
     

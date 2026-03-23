@@ -19,7 +19,6 @@ import {getPEATabContentContainerDivId} from "./helpers/editor";
 // (If we used the Vite PWA auto-register it would only work in production.)
 if ("serviceWorker" in navigator) {
     window.addEventListener("load", async () => {
-        // Note: service-worker.js is our desired name, the dev-sw.js is the one PWA always uses in dev mode.
         const swUrl = import.meta.env.BASE_URL + "compiled-service-worker.js";
         try {
             const registration = await navigator.serviceWorker.register(swUrl, {type: "module", scope: import.meta.env.BASE_URL});

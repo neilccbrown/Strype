@@ -1051,7 +1051,7 @@ export default defineComponent({
                         showMessage: false,
                         readCompressed: true,
                     }
-                ).then(() => {
+                ).then(async () => {
                     // When a file had been reloaded and it was previously synced with a Cloud Drive, we want to ask the user
                     // about reloading the project from that Cloud Drive again (only if we were not attempting to open a shared project via the URL)
                     if(this.appStore.currentCloudSaveFileId) {
@@ -1079,6 +1079,49 @@ export default defineComponent({
                     else if(this.appStore.syncTarget == StrypeSyncTarget.fs){
                         vueComponentsAPIHandler.menuComponentAPI?.saveTargetChoice(StrypeSyncTarget.none);
                     }
+
+
+                    // If the user does a hard reload (Ctrl/Cmd-Shift-R on most browsers) then according to
+                    // browser security policy, the service worker will not take control of the page because
+                    // it's trying to give a "fresh" version of the page.  But for us that means if the user
+                    // does a hard reload of the page, Pyodide communication won't work when they hit Run!
+                    // The solution is a bit horrible; in this case we need to perform an additional "soft"
+                    // reload of the page to get the service worker to take control again.  To avoid getting
+                    // stuck in a reload loop if there is a constant service worker failure (for some other
+                    // reason?) we use an item in the session storage to not do it repeatedly if we refreshed
+                    // recently:
+                    const RELOAD_KEY = "sw-reload-attempted";
+
+                    await navigator.serviceWorker.ready;
+
+                    // If the service worker hasn't taken control of us, controller will be null (but ready
+                    // just above will still succeed):
+                    if (!navigator.serviceWorker.controller) {
+                        console.error("No service worker controller; considering reloading");
+
+                        const reloadTime = sessionStorage.getItem(RELOAD_KEY);
+                        // Don't reload again if we did this soft-reload in the last 30 seconds:
+                        const reloadRecently = reloadTime && (Date.now() - parseInt(reloadTime)) < 30000;
+
+                        if (reloadRecently) {
+                            console.error("Service worker unavailable even after reload attempt");
+                        }
+                        else {
+                            sessionStorage.setItem(RELOAD_KEY, Date.now().toString());
+                            // Vue/Vite's dev mode intercepts the reload, so we have to circumvent that in dev mode:
+                            if (import.meta.env.DEV) {
+                                window.location.replace(window.location.href);
+                            }
+                            else {
+                                window.location.reload();
+                            }
+                            console.error("Reload did not work"); // this should NOT appear if reload worked
+                            // Block forever to avoid anything else happening — we're about to reload anyway
+                            await new Promise(() => {});
+                        }
+                    }
+                    sessionStorage.removeItem(RELOAD_KEY);
+
                 }, () => {});
             }, () => {});
         },
