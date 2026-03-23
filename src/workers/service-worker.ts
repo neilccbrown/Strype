@@ -6,6 +6,10 @@ import { serviceWorkerFetchListener } from "sync-message";
 
 declare let self: ServiceWorkerGlobalScope;
 
+self.addEventListener("install", () => {
+    self.skipWaiting(); // activate immediately
+});
+
 self.addEventListener("activate", (event) => {
     // Claim clients immediately so pages are controlled without reload
     event.waitUntil(self.clients.claim());
