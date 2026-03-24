@@ -426,7 +426,7 @@ export default defineComponent({
             // To prevent the command to be called on all frames, but only once (first of a selection), we check that the current frame is a first of a selection.
             // * "this.isPartOfSelection" is necessary because it is only set at the right value in a subsequent call. 
             if(!this.isPythonExecuting && this.isPartOfSelection && (this.appStore.getFrameSelectionPosition(this.frameId) as string).startsWith("first")) {
-                this.duplicate();
+                this.duplicate(true);
             }
         },
 
@@ -441,10 +441,10 @@ export default defineComponent({
                 const anyCanDisable = this.appStore.selectedFrames.some((frameId) => this.canEnableOrDisableFrame(frameId, false));
 
                 if(!anyCanDisable && anyCanEnable){
-                    this.enable();
+                    this.enable(true);
                 }
                 else if(anyCanDisable){
-                    this.disable();
+                    this.disable(true);
                 }
             }
         },
@@ -525,12 +525,12 @@ export default defineComponent({
                 {label: this.$t("contextMenu.cut"), onClick: this.cut, actionName: FrameContextMenuActionName.cut, attrs: {"action-name": FrameContextMenuActionName.cut}, shortcut: isMacOSPlatform() ? "⌘X" : this.$t("shortcut.ctrlPlus") + "X"},
                 {label: this.$t("contextMenu.copy"), onClick: this.copy, actionName: FrameContextMenuActionName.copy, attrs: {"action-name": FrameContextMenuActionName.copy}, shortcut: isMacOSPlatform() ? "⌘C" : this.$t("shortcut.ctrlPlus") + "C"},
                 {label: this.$t("contextMenu.downloadAsImg"), onClick: this.downloadAsImg},
-                {label: this.$t("contextMenu.duplicate"), onClick: this.duplicate, attrs: {"action-name": FrameContextMenuActionName.duplicate}, shortcut: isMacOSPlatform() ? "⌘D" : this.$t("shortcut.ctrlPlus") + "D"},
+                {label: this.$t("contextMenu.duplicate"), onClick: () => this.duplicate(false), attrs: {"action-name": FrameContextMenuActionName.duplicate}, shortcut: isMacOSPlatform() ? "⌘D" : this.$t("shortcut.ctrlPlus") + "D"},
                 {divided: "self"},
                 {label: this.$t("contextMenu.pasteAbove"), onClick: this.pasteAbove},
                 {label: this.$t("contextMenu.pasteBelow"), onClick: this.pasteBelow},
                 {divided: "self"},
-                {label: this.$t("contextMenu.disable"), onClick: this.disable},
+                {label: this.$t("contextMenu.disable"), onClick: () => this.disable()},
                 {divided: "self"},
                 {label: this.$t("contextMenu.delete"), onClick: this.delete, actionName: FrameContextMenuActionName.delete, attrs: {"action-name": FrameContextMenuActionName.delete}, shortcut: this.$t("shortcut.delete")},
                 {label: this.$t("contextMenu.deleteOuter"), onClick: this.deleteOuter, actionName: FrameContextMenuActionName.deleteOuter}];
@@ -762,15 +762,15 @@ export default defineComponent({
             const anyCanDisable = this.isPartOfSelection ? this.appStore.selectedFrames.some((frameId) => this.canEnableOrDisableFrame(frameId, false)) : this.canEnableOrDisableFrame(this.frameId, false);
             
             const disableOrEnableOption = (!anyCanDisable && anyCanEnable) 
-                ?  {label: this.$t("contextMenu.enable"), onClick: this.enable, disabled: false}
-                :  {label: this.$t("contextMenu.disable"), onClick: this.disable, disabled: !anyCanDisable && !anyCanEnable};
+                ?  {label: this.$t("contextMenu.enable"), onClick: () => this.enable(), disabled: false}
+                :  {label: this.$t("contextMenu.disable"), onClick: () => this.disable(), disabled: !anyCanDisable && !anyCanEnable};
             // Set the keyboard shortcut indicator and the attribute "action-name" so the keyboard shorcut can be effective, only when the menu entry isn't disabled
             // (note: this is only relevant to handling the shortcut when the menu is showing, otherwise it is handled in a different manner)
             if(!disableOrEnableOption.disabled){
                 (disableOrEnableOption as StrypeContextMenuItem).shortcut = (isMacOSPlatform()) ? "⌘/" : this.$t("shortcut.ctrlPlus") + "/";
                 (disableOrEnableOption as StrypeContextMenuItem).attrs = {"action-name": (!anyCanDisable && anyCanEnable) ? FrameContextMenuActionName.enable : FrameContextMenuActionName.disable};
             }
-            const enableDisableIndex = this.frameContextMenuItems.findIndex((entry) => entry.onClick === this.enable || entry.onClick === this.disable);
+            const enableDisableIndex = this.frameContextMenuItems.findIndex((entry) => entry.label === this.$t("contextMenu.enable") || entry.label === this.$t("contextMenu.disable") );
             this.frameContextMenuItems.splice(enableDisableIndex, 1, disableOrEnableOption);
             
             // Overwrite readonly properties clientX and clientY (to position the menu if needed)
@@ -1142,13 +1142,14 @@ export default defineComponent({
             return midFramePosArray;
         },
 
-        duplicate(): void {
+        duplicate(keepSelection?: boolean): void {
             if(this.isPartOfSelection){
                 this.appStore.copySelectedFramesToPosition(
                     {
                         newParentId: (this.isJointFrame)
                             ? getParentId(this.appStore.frameObjects[this.frameId])
                             : getParentOrJointParent(this.frameId),
+                        keepSelection: keepSelection,
                     }
                 );
             }
@@ -1356,9 +1357,9 @@ export default defineComponent({
          
         },
 
-        disable(): void {
+        disable(keepSelection?: boolean): void {
             if(this.isPartOfSelection){
-                this.appStore.changeDisableSelection(true);
+                this.appStore.changeDisableSelection({isDisabling: true, keepSelection: keepSelection});
             }
             else {
                 this.appStore.changeDisableFrame(
@@ -1370,9 +1371,9 @@ export default defineComponent({
             }
         },
         
-        enable(): void {
+        enable(keepSelection?: boolean): void {
             if(this.isPartOfSelection){
-                this.appStore.changeDisableSelection(false);
+                this.appStore.changeDisableSelection({isDisabling: false, keepSelection: keepSelection});
             }
             else {
                 this.appStore.changeDisableFrame(

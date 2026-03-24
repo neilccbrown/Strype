@@ -2727,7 +2727,7 @@ export const useStore = defineStore("app", {
 
         // This method can be used to copy the selected frames to a position.
         // This can be a paste event or a duplicate event.
-        copySelectedFramesToPosition(payload: {newParentId: number; newIndex?: number}, ignoreStateBackup?: boolean) {
+        copySelectedFramesToPosition(payload: {newParentId: number; newIndex?: number, ignoreStateBackup?: boolean, keepSelection?: boolean}) {
             const stateBeforeChanges = cloneDeep(this.$state);
             // -100 is chosen so that TS won't complain for non-initialised variable
             let newIndex = payload.newIndex??-100;
@@ -2781,22 +2781,27 @@ export const useStore = defineStore("app", {
                 );
             });
 
-            //Make the top new frame the current frame
-            this.setCurrentFrame(
-                { 
-                    id: topLevelCopiedFrames[topLevelCopiedFrames.length-1],
-                    caretPosition: CaretPosition.below,
-                }
-            );
+            //Make the top new frame the current frame only when we don't want to keep the selection
+            if(!payload.keepSelection){
+                this.setCurrentFrame(
+                    { 
+                        id: topLevelCopiedFrames[topLevelCopiedFrames.length-1],
+                        caretPosition: CaretPosition.below,
+                    }
+                );
+            }
 
             this.updateNextAvailableId();
 
             //save state changes unless requested not to
-            if(!ignoreStateBackup) {
+            if(!payload.ignoreStateBackup) {
                 this.saveStateChanges(stateBeforeChanges);
             }
         
-            this.unselectAllFrames();
+            // Do not unselect frames if requested not to
+            if(!payload.keepSelection){
+                this.unselectAllFrames();
+            }
         },
 
         pasteFrame(payload: {clickedFrameId: number; caretPosition: CaretPosition, ignoreStateBackup?: boolean}) {
@@ -2894,8 +2899,8 @@ export const useStore = defineStore("app", {
                 {
                     newParentId: pasteToParentId,
                     newIndex: index,
-                },
-                payload.ignoreStateBackup            
+                    ignoreStateBackup: payload.ignoreStateBackup,
+                }                
             );
         },
 
@@ -2932,7 +2937,7 @@ export const useStore = defineStore("app", {
             this.unselectAllFrames();
         },
 
-        changeDisableSelection(isDisabling: boolean) {
+        changeDisableSelection(payload: {isDisabling: boolean, keepSelection?: boolean}) {
             const stateBeforeChanges = cloneDeep(this.$state);
             
             this.selectedFrames.forEach( (id) => {
@@ -2940,11 +2945,11 @@ export const useStore = defineStore("app", {
                 if (this.frameObjects[id].frozenState != FrozenState.FROZEN &&
                     this.frameObjects[this.frameObjects[id].parentId].frozenState != FrozenState.FROZEN &&
                     // And can't disable blanks (can enable, in case of old projects where this was allowed):
-                    (!isDisabling || this.frameObjects[id].frameType.type != AllFrameTypesIdentifier.blank)) {
+                    (!payload.isDisabling || this.frameObjects[id].frameType.type != AllFrameTypesIdentifier.blank)) {
                     this.doChangeDisableFrame(
                         {
                             frameId: id,
-                            isDisabling: isDisabling,
+                            isDisabling: payload.isDisabling,
                         }
                     );
                 }
@@ -2953,7 +2958,10 @@ export const useStore = defineStore("app", {
             //save state changes
             this.saveStateChanges(stateBeforeChanges);
         
-            this.unselectAllFrames();
+            // Do not unselect frames if requested not to
+            if(!payload.keepSelection){
+                this.unselectAllFrames();
+            }
         },
 
         selectMultipleFrames(key: string) {
