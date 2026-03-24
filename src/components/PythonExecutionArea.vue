@@ -282,6 +282,7 @@ export default defineComponent({
                             debounceComputeAddFrameCommandContainerSize(this.isExpandedPEA);
                         }
                         setPythonExecAreaLayoutButtonPos();
+                        this.redrawImportMessage();
                     }, 100);
                 }, waitSplitterToAdaptTimeout);
             }, 100);
@@ -302,7 +303,7 @@ export default defineComponent({
         const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
         domContext = domCanvas.getContext("2d", {alpha: true}) as CanvasRenderingContext2D | null;
         // Need to resize off-screen canvas to match, if the on-screen canvas changes size: 
-        let adjustCanvasSize = function() {
+        let adjustCanvasSize = () => {
             // This confused me at first: the <canvas> has a width and height property.  These are initially set
             // to 300 and 150 if you don't specify them.  They stay at these defaults even if the HTML <canvas> element
             // changes its on-screen size, but it will then scale up the displayed image from 300 x 150 to whatever its
@@ -322,6 +323,7 @@ export default defineComponent({
             const maxWidth = (4 / 3) * maxHeight;
             targetCanvas = new OffscreenCanvas(maxWidth, maxHeight);
             targetContext = targetCanvas?.getContext("2d", {alpha: true}) as OffscreenCanvasRenderingContext2D;
+            this.redrawImportMessage();
         };
         // Listen to size changes, and call now:
         new ResizeObserver(adjustCanvasSize).observe(domCanvas);
