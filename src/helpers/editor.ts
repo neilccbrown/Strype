@@ -1119,6 +1119,12 @@ document.addEventListener(CustomEventTypes.dropFramePositionsUpdated, () => {
 });
 
 export function notifyDragStarted(frameId?: number):void {
+    // There is only one case where dragging is stop right from the root: frozen frames.
+    // If a frame (or that frame of a selection) is frozen, or its ancestor is, then we don't allow drag.
+    if((frameId && useStore().isEffectivelyFrozen(frameId)) || (!frameId && useStore().selectedFrames.some((frameId) => useStore().isEffectivelyFrozen(frameId)))){
+        return;
+    }
+
     const renderingCanvas = document.getElementById(companionCanvasId) as HTMLCanvasElement;
     let html2canvasOptions: Partial<Options> = {backgroundColor: null, canvas: renderingCanvas, scale: companionImgScalingRatio};
     // If we move a single frame, we keep a reference of it, and set undefinfed if not (see variable definition)
