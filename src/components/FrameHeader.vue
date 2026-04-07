@@ -97,7 +97,14 @@ function splitAtNewLines(labels : FrameLabel[], state: CollapsedState) : {item: 
 export default defineComponent({
     name: "FrameHeader",
 
-    created() {
+    mounted(){
+        // It is better to register the component API here rather than in created().
+        // One particular case is the function call frame transformation to a varassign frame:
+        // the change of frame type triggers the Frame component key change which triggers a re-mount of
+        // the frame header - so we would have removed this frame header component API instance in unmounted()
+        // but it would not be re-created if we registered the component API in created().
+        // (mounted() is also called on a standard frame header creation anyway...)
+ 
         // Expose this component that other components might need.
         // Vue 3 has deprecated direct access to components.
         // (we don't set it in setup() because we want to have this accessible, and the component created!)
