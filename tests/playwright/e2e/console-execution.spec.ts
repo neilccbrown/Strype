@@ -159,9 +159,19 @@ s.set_samples([1, -1])
 print(s.get_samples())`]);
         await runToFinish(page);
         await checkConsoleContent(page, `
--1,0,1
--0.5,0.5
-1,-1
+[-1, 0, 1]
+[-0.5, 0.5]
+[1, -1]
+`.trimStart());
+    });
+
+    test("Check type of sound samples", async ({page}) => {
+        await enterCode(page, ["from strype.sound import *", "", `
+s = Sound([-1,0,1])
+print(type(s.get_samples()))`]);
+        await runToFinish(page);
+        await checkConsoleContent(page, `
+<class 'list'>
 `.trimStart());
     });
 });

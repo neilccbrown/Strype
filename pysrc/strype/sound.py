@@ -45,7 +45,8 @@ class Sound:
         
         :return: All the samples from the sound 
         """
-        return _strype_sound_internal.getSamples(self.__buffer)
+        # Because it's a [proxy] object, must convert to Python before returning it:
+        return _strype_sound_internal.getSamples(self.__buffer).to_py()
 
     def set_samples(self, sample_list):
         # type: (list[float]) -> None
