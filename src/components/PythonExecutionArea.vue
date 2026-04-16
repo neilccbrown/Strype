@@ -262,7 +262,7 @@ export default defineComponent({
 
             // Register an event listener on this component for the notification of the turtle library import usage
             (this.$refs.peaComponent as HTMLDivElement).addEventListener(CustomEventTypes.notifyTurtleUsage, (event) => {
-                this.graphicsImported = (event as CustomEvent).detail as any;
+                this.graphicsImported = (event as CustomEvent<boolean>).detail;
                 this.redrawImportMessage();
             });
             
