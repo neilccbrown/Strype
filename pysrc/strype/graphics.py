@@ -960,48 +960,44 @@ def set_background(image_or_color, scale_to_fit = False):
     :param scale_to_fit: If True, scale the image to the world size. If False, tile the image on the world. 
     """
 
-    # We use an oversize image to avoid slivers of other colour appearing at the edges
-    # due to the size not being perfectly 800 x 600 on the actual webpage,
-    # which means we are scaling and using anti-aliased sub-pixel rendering:
-        
     # Note we always take a copy, even if the size is fine, because
     # we don't want later changes to affect the background:
-    def background_808_606(image):
-        dest = Image(808, 606)
+    def background_800_600(image):
+        dest = Image(800, 600)
         w = image.get_width()
         h = image.get_height()
         if not scale_to_fit:
             # Since we centre, even if two copies would fit, we will need 3 because we need half a copy
             # each side of the centre.  So just always draw one more than we need:
-            horiz_copies = (_math.ceil(808 / w) if w < 808 else 0) + 1
-            vert_copies = (_math.ceil(606 / h) if h < 606 else 0) + 1
+            horiz_copies = (_math.ceil(800 / w) if w < 800 else 0) + 1
+            vert_copies = (_math.ceil(600 / h) if h < 600 else 0) + 1
             # We want one copy bang in the centre, so we need to work out the offset:
             # These offsets will either be zero or negative because we start by drawing
             # the far left or far top image.  We work out the position of the central
             # image then subtract the width/height of half of the copies we need: 
-            x_offset = (808 - w) / 2 - (horiz_copies - 1) / 2 * w
-            y_offset = (606 - h) / 2 - (vert_copies - 1) / 2 * h
+            x_offset = (800 - w) / 2 - (horiz_copies - 1) / 2 * w
+            y_offset = (600 - h) / 2 - (vert_copies - 1) / 2 * h
             for i in range(0, horiz_copies):
                 for j in range(0, vert_copies):
                     dest.draw_image(image, x_offset + i * w, y_offset + j * h)
         else:
-            scale = max(808 / w, 606 / h)
-            dest._draw_part_of_image(image, (808 - scale * w) / 2, (606 - scale * h) / 2, 0, 0, w, h, scale)
+            scale = max(800 / w, 600 / h)
+            dest._draw_part_of_image(image, (800 - scale * w) / 2, (600 - scale * h) / 2, 0, 0, w, h, scale)
         return dest
         
     if isinstance(image_or_color, Image):
-        bk_image = background_808_606(image_or_color)
+        bk_image = background_800_600(image_or_color)
     elif isinstance(image_or_color, str):
         # We follow this heuristic: if it has a dot, slash or colon it's a filename/URL
         # otherwise it's a color name/value.
         if _re.search(r"[.:/]", image_or_color):
-            bk_image = background_808_606(load_image(image_or_color))
+            bk_image = background_800_600(load_image(image_or_color))
         else:
-            bk_image = Image(808, 606)
+            bk_image = Image(800, 600)
             bk_image.set_fill(image_or_color)
             bk_image.fill()
     elif isinstance(image_or_color, Color):
-        bk_image = Image(808, 606)
+        bk_image = Image(800, 600)
         bk_image.set_fill(image_or_color)
         bk_image.fill()
     else:
@@ -1020,9 +1016,7 @@ def get_background():
     Any changes to the image (such as drawing on it) will be shown on the live display.
     
     Note that the image returned by get_background() will not be the same as that passed
-    to set_background().  The image may have been tiled or stretched.  It may also not be exactly
-    800 x 600; the image may be slightly oversized (e.g. 808 x 606) to make sure it covers
-    the edges fully.  But its centre will be at (0, 0).
+    to set_background().  The image may have been tiled or stretched.
     
     :return: The live background image, or None if one has not been set.
     """

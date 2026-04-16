@@ -46,7 +46,7 @@ export class SpriteManager {
         this.sprites.clear();
         const bk = {
             id: 0,
-            img: {width: 808, height: 606, handle: makeImageHandle(0)}, // Special identifier indicating a black image
+            img: {width: 800, height: 600, handle: makeImageHandle(0)}, // Special identifier indicating a black image
             // Since we go from -399 to 400, -299 to 300, the actual centre is 0.5, 0.5:
             x: 0.5,
             y: 0.5,
@@ -56,7 +56,7 @@ export class SpriteManager {
         };
         this.sprites.set(0, bk);
         this.notify({request: "add", id: makeSpriteHandle(0), x: bk.x, y: bk.y, rotation: bk.rotation, scale: bk.scale, image: bk.img, collidable: false});
-        this.dirty = true;
+        // We don't mark dirty on clear, because we don't trigger a re-render
         this.collisionSystem.clear();
     }
     
@@ -74,7 +74,10 @@ export class SpriteManager {
     }
 
     public addSprite(imageOrCanvas : RemoteImage | RemoteCanvas, collidable: boolean, forceId?: number): number {
-        this.dirty = true;
+        // We don't mark dirty for adding the background:
+        if (forceId == undefined || forceId != 0) {
+            this.dirty = true;
+        }
         const id = forceId ?? this.nextSpriteId++;
         const box = collidable ? this.collisionSystem.createBox({x:0, y:0}, imageOrCanvas.width, imageOrCanvas.height, {isCentered: true}) : null;
         const newImage = {id, img: imageOrCanvas, x: 0, y: 0, rotation: 0, scale: 1, collisionBox : box};
@@ -131,7 +134,10 @@ export class SpriteManager {
         if (obj != undefined && (obj.x != x || obj.y != y)) {
             obj.x = Math.max(-WORLD_WIDTH/2 + 1, Math.min(x, WORLD_WIDTH/2));
             obj.y = Math.max(-WORLD_HEIGHT/2 + 1, Math.min(y, WORLD_HEIGHT/2));
-            this.dirty = true;
+            if (id != 0) {
+                // Just initialising background:
+                this.dirty = true;
+            }
             obj.collisionBox?.setPosition(x, y);
             obj.collisionBox?.updateBody();
             this.sendUpdateFor(obj);
@@ -222,7 +228,6 @@ export class SpriteManager {
         return this.dirty;
     }
 
-    // Note: doesn't reset the individual images' dirty state
     public resetDirty() : void {
         this.dirty = false;
     }

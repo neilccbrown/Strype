@@ -240,7 +240,7 @@
     "runtimeErrorConsole": "Runtime error",
     "console": "Console",
     "Graphics": "Graphics",
-    "importTurtle": "Import the module 'turtle' to use Turtle Graphics.",
+    "importTurtleOrGraphics": "Import 'strype.graphics' or 'turtle' to use Graphics.",
     "PEA-layout-tabs-collapsed": "Collapsed and tabs layout",
     "PEA-layout-tabs-expanded":"Expanded and tabs layout",
     "PEA-layout-split-collapsed": "Collapsed and split layout",

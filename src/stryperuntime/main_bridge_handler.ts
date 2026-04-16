@@ -16,7 +16,7 @@ import { handleTurtle, TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_han
 interface SyncRequestCallbacks {
     getPressedKeys : () => {[key: string]: boolean},
     loadLibraryAsset : (libraryShortName: string, fileName: string) => Promise<string | undefined>,
-    switchToGraphicsTab: () => void,
+    switchToGraphicsTab: (condition: "always" | "ifFirstCallDuringExecute") => void,
     markTurtleDirty: () => void,
     getMouseDetails: () => {x : number, y: number, buttonsPressed: boolean[] },
     consumeLastClickDetails: () => { x: number, y: number, button: number, clickCount: number } | null,
@@ -32,14 +32,14 @@ export const handleSyncRequests : (
 ) => SyncPromiseStrypePyodideHandlerFunction = (renderer, soundManager, turtle, callbacks) => (req) => {
     switch (req.request) {
     case "loadImage": {
-        callbacks.switchToGraphicsTab();
+        callbacks.switchToGraphicsTab("ifFirstCallDuringExecute");
         return {request: req.request, response: renderer.loadImage(req.url)};
     }
     case "loadLibraryAsset": {
         return {request: req.request, response: callbacks.loadLibraryAsset(req.libraryShortName, req.fileName)};
     }
     case "makeOffscreenCanvas": {
-        callbacks.switchToGraphicsTab();
+        callbacks.switchToGraphicsTab("ifFirstCallDuringExecute");
         return {request: req.request, response: Promise.resolve(renderer.makeCanvas(req.width, req.height))};
     }
     case "getPressedKeys": {

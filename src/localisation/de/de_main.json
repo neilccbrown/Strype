@@ -148,6 +148,6 @@
     "collapse": "Verkleinern",
     "console": "Konsole",
     "Graphics": "Graphics",
-    "importTurtle": "Importiere das Modul 'turtle' um Turtle Graphics zu benutzen."
+    "importTurtleOrGraphics": "Importiere 'strype.graphics' oder 'turtle' um Graphics zu benutzen."
   }
 }

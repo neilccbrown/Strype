@@ -238,7 +238,7 @@
     "runtimeErrorConsole": "Erreur d'exécution",
     "console": "Console",
     "Graphics": "Graphics",
-    "importTurtle": "Importez le module 'turtle' pour utiliser Turtle Graphics",
+    "importTurtleOrGraphics": "Importez 'strype.graphics' ou 'turtle' pour utiliser Graphics",
     "PEA-layout-tabs-collapsed": "Disposition en onglets reduite",
     "PEA-layout-tabs-expanded": "Disposition en onglets étendue",
     "PEA-layout-split-collapsed": "Disposition fractionnée réduite",

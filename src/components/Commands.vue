@@ -122,7 +122,7 @@ import { eventBus } from "@/helpers/appContext";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import {Splitpanes, Pane} from "splitpanes";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
-import {getPEAConsoleId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getPEAComponentRefId, getPEAControlsDivId} from "@/helpers/editor";
+import {getPEAConsoleId, getPEATabContentContainerDivId, getPEAComponentRefId, getPEAControlsDivId} from "@/helpers/editor";
 // #v-else
 import APIDiscovery from "@/components/APIDiscovery.vue";
 import { flash } from "@/helpers/webUSB";
@@ -497,11 +497,11 @@ export default defineComponent({
                     return;
                 }
 
-                // Prevent default scrolling and navigation in the editor, except if Turtle is currently running and listening for key events
+                // Prevent default scrolling and navigation in the editor, except if Python is currently running
                 // (then we just leave the PEA handling it, see at the end of these conditions for related code)
                 let extraConditionsForPEA = true;
                 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
-                extraConditionsForPEA = !(isPythonExecuting && vueComponentsAPIHandler.peaComponentAPI?.getIsTurtleListeningKeyEvents() || vueComponentsAPIHandler.peaComponentAPI?.getIsRunningStrypeGraphics());
+                extraConditionsForPEA = !isPythonExecuting;
                 // #v-endif
                 if (!isDraggingFrames && !isEditing && extraConditionsForPEA && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End", "PageUp", "PageDown"].includes(event.key)) {
                     event.stopImmediatePropagation();
@@ -626,41 +626,6 @@ export default defineComponent({
                             }
                         }
                     }
-                    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
-                    else if(isPythonExecuting && !vueComponentsAPIHandler.peaComponentAPI?.getIsRunningStrypeGraphics()){
-                        // The special case when the user's code is being executing, we want to handle the key events carefully.
-                        // If there is a combination key (ctrl,...) we just ignore the events, otherwise, if Turtle is active we pass events to the Turtle graphics,
-                        // and if it's not active AND the Python Execution console hasn't go focus, we prevents events.
-                        if(!event.altKey && !event.ctrlKey && !event.metaKey){
-                            const turtlePlaceholder = document.getElementById(getPEAGraphicsDivId());
-                            const isTurtleShowing = turtlePlaceholder?.style.display != "none";
-                            if(turtlePlaceholder && isTurtleShowing && document.activeElement?.id != turtlePlaceholder.id){
-                                // Give focus to the Turtle graphics first to make sure it will respond.
-                                turtlePlaceholder.focus();
-                                // Then we can forward the key event.
-                                setTimeout(() => {
-                                    turtlePlaceholder.dispatchEvent(new KeyboardEvent("keydown", {
-                                        keyCode: event.keyCode,
-                                    }));
-                                    turtlePlaceholder.dispatchEvent(new KeyboardEvent("keyup", {
-                                        key: event.key,
-                                        keyCode: event.keyCode,
-                                    }));
-                                }, 500);
-                            }
-
-                            if(document.activeElement?.id === getPEAConsoleId()){
-                                // Don't interfere with the Python Execution console if it's having focus
-                                return;
-                            }
-
-                            event.stopImmediatePropagation();
-                            event.stopPropagation(),
-                            event.preventDefault();
-                            return;
-                        }
-                    }
-                    // #v-endif
                 }
                 else if(this.appStore.isDraggingFrame){
                     // Hitting escape during a DnD cancels it.
