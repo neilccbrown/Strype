@@ -30,6 +30,7 @@ export function createAudioBufferFromSamples(samples: number[], sampleRate: numb
 }
 
 export function loadAndWaitForAudioBuffer(path : string) : RemoteSound {
+    console.log("loadAndWaitForAudioBuffer sync bridge start: " + Date.now());
     return syncBridge({request: "loadSound", url: path});
 }
 export function getSamples(sound : RemoteSound) : number[] {

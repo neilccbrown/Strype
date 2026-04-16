@@ -153,6 +153,7 @@ def load_sound(source):
     :param source: The filename or URL to a sound file 
     :return: The loaded sound
     """
+    print(f"load_sound start: {int(_time.time() * 1000)}")
     # If they mistakenly try to load a sound (e.g. a literal) just let it through:
     if isinstance(source, Sound):
         return source
@@ -173,6 +174,7 @@ def load_sound(source):
             with open("/strype/sounds/" + source, "rb") as f:
                 encoded = base64.b64encode(f.read()).decode("ascii")
         mime_type, _ = mimetypes.guess_type(source)
+        print(f"load_sound calling: {int(_time.time() * 1000)}")
         buffer = _strype_sound_internal.loadAndWaitForAudioBuffer(f"data:{mime_type};base64,{encoded}")
 
     return Sound(buffer, -4242)

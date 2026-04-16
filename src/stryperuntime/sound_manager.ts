@@ -21,6 +21,7 @@ export class SoundManager {
             const decode = (dataURL : string) =>
                 this.audioContext.decodeAudioData(Uint8Array.from(atob(dataURL.split(",")[1]), (char) => char.charCodeAt(0)).buffer)
                     .then((b) => {
+                        console.log("Decoded audio data " + Date.now());
                         if (!b) {
                             throw Error("Cannot load audio file \"" + url.slice(0, 200) + "\"");
                         }
@@ -39,6 +40,7 @@ export class SoundManager {
                 });
             }
             else {
+                console.log("Sending for decoding: " + Date.now());
                 promise = decode(url);
             }
         }
