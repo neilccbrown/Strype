@@ -174,4 +174,22 @@ print(type(s.get_samples()))`]);
 <class 'list'>
 `.trimStart());
     });
+
+    test("Create zero length Sound", async ({page}) => {
+        await enterCode(page, ["from strype.sound import *", "", `
+s = Sound([])
+# Playing sound should not hang things:
+s.play_and_wait()
+# Nor copy to mono:
+s.copy_to_mono()
+print(s.get_samples())
+print(type(s.get_samples()))
+print(len(s.get_samples()))`]);
+        await runToFinish(page);
+        await checkConsoleContent(page, `
+[0]
+<class 'list'>
+1
+`.trimStart());
+    });
 });
