@@ -254,7 +254,7 @@ test.describe("Check graphics works when shared with turtle", () => {
         await checkGraphicsAreaContent(page, "shared-graphics-mouse-at-mouse-click");
     });
 
-    test("Check graphics example responds to mouse in large view", async ({page, browserName,}) => {
+    test("Check graphics example responds to mouse in large view", async ({page, browserName}) => {
         if (browserName === "webkit" && process.platform === "linux") {
             // On Linux+Webkit the background is black not grey, in a way that doesn't affect MacOS where we care about Webkit:
             return;

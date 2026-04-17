@@ -92,7 +92,7 @@ function testNavigation(code: string, navigate: (page: Page) => Promise<void>, e
     });
 }
 
-test.describe.only("Home goes to start of whole label slots structure", () => {
+test.describe("Home goes to start of whole label slots structure", () => {
     testNavigation("123", pressN("Home", 1), "{$123}");
     // Extra presses shouldn't matter:
     testNavigation("456", pressN("Home", 2), "{$456}");
