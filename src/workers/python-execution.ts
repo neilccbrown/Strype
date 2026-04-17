@@ -118,7 +118,7 @@ async function loadOnly() : Promise<PyodideInterface> {
     
     return pyodide;
 }
-const reloader = new PyodideFatalErrorReloader(loadOnly);
+const reloader = (window as any)?.TestingNoPyodide ? null : new PyodideFatalErrorReloader(loadOnly);
 
 export interface ErrorDetails {
     error_type: string,
@@ -136,7 +136,7 @@ const executePython = pyodideExpose(async (
     // Important all requests (sync and async) go through one function to avoid them racing each other:
     otherRequest: Comlink.Remote<(req: SyncOrAsyncStrypePyodideWorkerRequest) => void>
 ) : Promise<ErrorDetails | null> => {
-    return await reloader.withPyodide(async (pyodide : PyodideInterface) => {
+    return reloader == null ? null : await reloader.withPyodide(async (pyodide : PyodideInterface) => {
         const runner = pyodide.runPython(`from python_runner import PyodideRunner
 import traceback
 from itertools import dropwhile
@@ -224,7 +224,9 @@ StrypePyodideRunner()`);
 });
 
 const onReady = pyodideExpose(async (extras: PyodideExtras, callOnceReady:  Comlink.Remote<() => void>)=> {
-    await reloader.withPyodide(async () => callOnceReady());
+    if (reloader != null) {
+        await reloader.withPyodide(async () => callOnceReady());
+    }
 });
 
 Comlink.expose({

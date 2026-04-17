@@ -568,6 +568,9 @@ export default defineComponent({
                 // getPythonClient() can change value if restarted so important we take one
                 // const reference to it for the duration of a Python run: 
                 const client = getPythonClient();
+                if (client == null) {
+                    return;
+                }
                 
                 const syncBridgePromise = handleSyncRequests(renderer, soundManager as SoundManager, turtlePixiHandler, {
                     getPressedKeys: () => pressedKeys,
