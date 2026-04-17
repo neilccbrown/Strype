@@ -69,6 +69,9 @@
 //   "Async" (see above) so fast, but queries (mainly: what colour is this pixel) are "Sync" meaning they need a reply
 //   and are slow.
 
+// NOTE: DO NOT EXPORT ANYTHING FROM THIS FILE!  Shared helper functions must go elsewhere.  Otherwise
+// we accidentally end up loading Pyodide in the main thread, too.  (Speaking from experience.)
+
 // Tell Typescript we are on a web worker, so we can access web worker bits but not the DOM:
 /// <reference lib="webworker" />
 import type { PyodideInterface } from "pyodide";
@@ -81,23 +84,10 @@ import { SpriteManager } from "@/stryperuntime/image_and_collisions";
 import { PyodideWorkerGlobalScope } from "@/workers/python_execution_type";
 import {getFSForEmscripten} from "@/stryperuntime/pyodide-emscripten-cloud-fs";
 import {createLazyFetchAssetsFS} from "@/stryperuntime/pyodide-emscripten-assets-fs";
+import { PyodideErrorDetails } from "@/workers/shared_helpers";
 
 // We only specify updatePort here as we don't want other files using it directly:
 declare const self: PyodideWorkerGlobalScope & { updatePort: MessagePort };
-
-export async function serviceWorkerReadyAndInControl() : Promise<void> {
-    await navigator.serviceWorker.ready;
-
-    // If already controlled, all is fine:
-    if (navigator.serviceWorker.controller) {
-        return;
-    }
-    // Wait until the service worker takes control:
-    await new Promise((resolve) => {
-        navigator.serviceWorker.addEventListener("controllerchange", resolve, { once: true });
-    });
-}
-
 
 async function loadOnly() : Promise<PyodideInterface> {
     const pyodide = await loadPyodideAndPackage({url: `${import.meta.env.BASE_URL}pysrc.zip`, format: "zip"}, loadPyodide);
@@ -118,14 +108,7 @@ async function loadOnly() : Promise<PyodideInterface> {
     
     return pyodide;
 }
-const reloader = (window as any)?.TestingNoPyodide ? null : new PyodideFatalErrorReloader(loadOnly);
-
-export interface ErrorDetails {
-    error_type: string,
-    error_message: string,
-    text: string,
-    traceback: {filename: string, lineno: number}[]
-}
+const reloader = new PyodideFatalErrorReloader(loadOnly);
 
 const executePython = pyodideExpose(async (
     extras: PyodideExtras,
@@ -135,7 +118,7 @@ const executePython = pyodideExpose(async (
     requestInput: Comlink.Remote<(prompt: string) => void>,
     // Important all requests (sync and async) go through one function to avoid them racing each other:
     otherRequest: Comlink.Remote<(req: SyncOrAsyncStrypePyodideWorkerRequest) => void>
-) : Promise<ErrorDetails | null> => {
+) : Promise<PyodideErrorDetails | null> => {
     return reloader == null ? null : await reloader.withPyodide(async (pyodide : PyodideInterface) => {
         const runner = pyodide.runPython(`from python_runner import PyodideRunner
 import traceback
@@ -192,7 +175,7 @@ StrypePyodideRunner()`);
         }
         pyodide.FS.mount(pyodide.FS.filesystems.ASSETSFS, {}, "/strype");
         
-        let error : ErrorDetails | null = null;
+        let error : PyodideErrorDetails | null = null;
         const callback = makeRunnerCallback(extras, {
             output: (outputText: OutputPart[]) => {
                 const stdoutParts = outputText.filter((t) => t.type == "stdout");
@@ -202,7 +185,7 @@ StrypePyodideRunner()`);
                 const errorParts = outputText.filter((t) => t.type == "traceback");
                 if (errorParts.length == 1) {
                     // As per the Python above:
-                    const details = errorParts[0] as unknown as ErrorDetails;
+                    const details = errorParts[0] as unknown as PyodideErrorDetails;
                     error = details;
                 }
                 else if (errorParts.length > 1) {

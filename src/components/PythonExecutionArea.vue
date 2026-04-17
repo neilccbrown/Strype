@@ -78,7 +78,7 @@ import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { BTab, BTabs } from "bootstrap-vue-next";
 import * as Comlink from "comlink";
 import {handleErrorTrace, setSInputConsole, sInput} from "@/helpers/execPythonCode";
-import {ErrorDetails, serviceWorkerReadyAndInControl} from "@/workers/python-execution";
+import {PyodideErrorDetails, serviceWorkerReadyAndInControl} from "@/workers/shared_helpers";
 import {SpriteHandle, SyncOrAsyncStrypePyodideWorkerRequest} from "@/stryperuntime/worker_bridge_type";
 import {SoundManager} from "@/stryperuntime/sound_manager";
 import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
@@ -645,7 +645,7 @@ export default defineComponent({
                             });
                         }
                     }))
-                ) as Promise<ErrorDetails | null>).then((possibleError) => {
+                ) as Promise<PyodideErrorDetails | null>).then((possibleError) => {
                     if (possibleError != null) {
                         handleErrorTrace(possibleError.text, possibleError.traceback, () => {}, parser.getFramePositionMap());
                     }
