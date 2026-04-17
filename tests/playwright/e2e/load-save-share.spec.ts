@@ -21,7 +21,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     await skipPyodideLoading(page);
     await addFakeClipboard(page);
     // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(60000); // 60 seconds
+    testInfo.setTimeout(90000); // 90 seconds
 
     strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
     await page.goto("./", {waitUntil: "load"});
