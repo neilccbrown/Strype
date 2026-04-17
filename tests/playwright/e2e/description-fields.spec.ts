@@ -10,6 +10,9 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         // On Windows+Webkit it just can't seem to load the page for some reason:
         testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
     }
+
+    // These tests can take longer than the default 30 seconds:
+    testInfo.setTimeout(90000); // 90 seconds
     
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
@@ -247,7 +250,6 @@ print(myString)
         expect(readFileSync(await save(page, false), "utf-8")).toEqual(expected);
     });
     test("Navigates up/down in funcdoc slots then edits #2", async ({page}) => {
-        test.setTimeout(90_000);
         await loadContent(page, multilineExample);
         // Cursor all the way to end, then back up to function:
         for (let i = 0; i < 30; i++) {
