@@ -62,7 +62,8 @@ test.describe("Media literal copying", () => {
         const clipboardItemCount : string = await page.evaluate("navigator.clipboard.read().then((items) => items.length)");
         expect(clipboardItemCount).toEqual(1);
     });
-    test("Test copying only image literal puts an image on clipboard", async ({page}, testInfo) => {
+    
+    test("Test copying only image literal puts an image on clipboard", async ({page}) => {
         await page.keyboard.press("End");
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
@@ -120,12 +121,68 @@ test.describe("Media literal copying", () => {
             });
 `);
         expect(clipboardImage).toEqual("data:image/jpeg;base64," + image);
-        
-        // Finally, try to paste it a second time in a frame inside:
-        await page.keyboard.press("ArrowDown");
+    });
+
+
+    test("Test copying only sound literal puts a sound on clipboard", async ({page}) => {
+        await page.keyboard.press("End");
+        await page.keyboard.press("Backspace");
+        await page.keyboard.press("Backspace");
         await page.keyboard.type("i");
         await page.waitForTimeout(100);
-        await typeIndividually(page, "set_background(");
+        await assertStateOfIfFrame(page, "{$}");
+        await typeIndividually(page, "type(");
+        const sound = fs.readFileSync("src/assetsFilesystem/sounds/cat-test-meow.wav").toString("base64");
+        await doPagePaste(page, sound, "audio/x-wav");
+        await typeIndividually(page, ")");
+        const startIndex = "type(".length;
+        const endIndex = startIndex + 1;
+        await doTextHomeEndKeyPress(page, false, false); // equivalent to "Home", see method for details
+        await page.waitForTimeout(1000);
+        // First copy a single character to effectively clear the clipboard:
+        await page.keyboard.press("Shift+ArrowRight");
+        await page.waitForTimeout(200);
+        await page.keyboard.press("ControlOrMeta+c");
+        await page.waitForTimeout(300);
+        expect(await page.evaluate("navigator.clipboard.readText()")).toEqual("t");
+        // Back to start again:
+        await page.keyboard.press("ArrowLeft");
+
+        for (let i = 0; i < startIndex; i++) {
+            await page.keyboard.press("ArrowRight");
+            await page.waitForTimeout(1000);
+        }
+        for (let i = startIndex; i < endIndex; i++) {
+            await page.keyboard.press("Shift+ArrowRight");
+            await page.waitForTimeout(75);
+        }
+        await page.waitForTimeout(200);
+        await page.keyboard.press("ControlOrMeta+c");
+        await page.waitForTimeout(300);
+        const clipboardItemCount : string = await page.evaluate("navigator.clipboard.read().then((items) => items.length)");
+        expect(clipboardItemCount).toEqual(1);
+        const clipboardImage : string = await page.evaluate(`
+            navigator.clipboard.read().then(async (items) => {
+                const item = items[0];
+                for (const type of item.types) {
+                    if (type.startsWith("audio/")) {
+                        const blob = await item.getType(type);
+                
+                        // Convert Blob to base64
+                        const base64 = await new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => resolve(reader.result);
+                            reader.onerror = reject;
+                            reader.readAsDataURL(blob); // Data URL includes base64-encoded image
+                        });
+                
+                        return base64;
+                      }
+                }
+                return JSON.stringify(items.types);
+            });
+`);
+        expect(clipboardImage).toEqual("data:audio/x-wav;base64," + sound);
     });
 
     test("Test pasting image at frame cursor focuses on frame cursor", async ({page}) => {
