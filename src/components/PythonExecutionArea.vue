@@ -323,7 +323,10 @@ export default defineComponent({
             const maxWidth = (4 / 3) * maxHeight;
             targetCanvas = new OffscreenCanvas(maxWidth, maxHeight);
             targetContext = targetCanvas?.getContext("2d", {alpha: true}) as OffscreenCanvasRenderingContext2D;
-            this.redrawImportMessage();
+            this.$nextTick(() => {
+                this.redrawCanvas();
+                this.redrawImportMessage();
+            });
         };
         // Listen to size changes, and call now:
         new ResizeObserver(adjustCanvasSize).observe(domCanvas);
@@ -495,8 +498,8 @@ export default defineComponent({
             if (!ctx) {
                 return;
             }
-            ctx.clearRect(0, 0, domCanvas.width, domCanvas.height);
             if (this.graphicsImported == "none") {
+                ctx.clearRect(0, 0, domCanvas.width, domCanvas.height);
                 ctx.font = "15px sans-serif";
                 ctx.fillStyle = "white";
                 ctx.textAlign = "center";
