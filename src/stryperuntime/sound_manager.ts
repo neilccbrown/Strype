@@ -202,4 +202,15 @@ export class SoundManager {
             });
         }
     }
+    
+    stopAllSounds() : void {
+        this.bufferToSource.values().forEach((buffer) => {
+            try {
+                buffer.stop();
+            }
+            catch {
+                // Ignore any errors while stopping.
+            }
+        });
+    }
 }

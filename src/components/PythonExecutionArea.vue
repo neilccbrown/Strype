@@ -84,6 +84,7 @@ import {SoundManager} from "@/stryperuntime/sound_manager";
 import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
 import {getPythonClient, isPythonWorkerReady, renderer, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
 import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
+import {createOrGetAudioContext} from "@/helpers/audioContext";
 
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
@@ -94,7 +95,6 @@ const enum PEATabIndexes {graphics, console}
 let domContext : CanvasRenderingContext2D | null = null;
 let targetContext : OffscreenCanvasRenderingContext2D | null = null;
 let targetCanvas : OffscreenCanvas | null = null;
-let audioContext : AudioContext | null = null; // Important we don't initialise here, for permission reasons
 let mostRecentClickedItems : SpriteHandle[] = []; // All the items under the mouse cursor at last click
 let mostRecentClickDetails : { x: number, y: number, button: number, clickCount: number } | null = null; // x, y, button, click_count
 let mostRecentMouseDetails : {x: number, y: number, buttonsPressed: boolean[]} = {x:0, y:0, buttonsPressed: [false, false, false]}; // X, Y, three button states
@@ -471,13 +471,15 @@ export default defineComponent({
             switch (useStore().pythonExecRunningState) {
             case PythonExecRunningState.NotRunning:
                 useStore().pythonExecRunningState = PythonExecRunningState.Running;
+                soundManager?.stopAllSounds();
                 // Important to call this when responding to a click, because browser won't allow
                 // sound to start unless we create it in direct response to a user action:
-                audioContext = new AudioContext();
-                soundManager = new SoundManager(audioContext, this);
+                soundManager = new SoundManager(createOrGetAudioContext(), this);
+                // Note that any old SoundManager will then have its sounds garbage-collected
                 this.execPythonCode();
                 return;
             case PythonExecRunningState.Running:
+                soundManager?.stopAllSounds();
                 terminateAndRestartPyodide();
                 useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                 return;
@@ -651,6 +653,7 @@ export default defineComponent({
                     }
                     useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                     setPythonExecAreaLayoutButtonPos();
+                    soundManager?.stopAllSounds();
                     // We always restart Pyodide for a clean state:
                     terminateAndRestartPyodide();
                 });
