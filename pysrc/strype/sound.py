@@ -37,6 +37,15 @@ class Sound:
         :return: The length of the sound, in number of samples.
         """
         return _strype_sound_internal.getNumSamples(self.__buffer)
+
+    def get_duration(self):
+        # type: () -> float
+        """
+        Gets the duration of the sound, in seconds.  This is calculated by dividing the number of samples by the sample rate.
+        
+        :return: The duration of the sound, in seconds.
+        """
+        return self.get_num_samples() / self.get_sample_rate()
     
     def get_samples(self):
         # type: () -> list[float]
