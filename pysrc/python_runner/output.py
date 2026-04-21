@@ -51,11 +51,13 @@ class OutputBuffer:
         - It's been at least a second since the last flush
         - The combined length of all the 'text' values is at least 1000 characters
         """
-        return (
-            len(self.parts) > 1
-            or self.last_time and time.time() - self.last_time > self.flush_time
-            or sum(len(p["text"]) for p in self.parts) >= self.flush_length
-        )
+        #return (
+        #    len(self.parts) > 1
+        #    or self.last_time and time.time() - self.last_time > self.flush_time
+        #    or sum(len(p["text"]) for p in self.parts) >= self.flush_length
+        #)
+        # NCCB changed: always flush, i.e. turn off the caching functionality
+        return True
 
     def flush(self):
         if not self.parts:
