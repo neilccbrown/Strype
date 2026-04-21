@@ -151,7 +151,7 @@ export class SoundManager {
     downloadWAV(indexOrSound: number | AudioBuffer, filenameStem: string) : void {
         const wavArrayBuffer = typeof(indexOrSound) === "number" ? this.getAsWAV(indexOrSound) : audioBufferToWav(indexOrSound);
         const blob = new Blob([wavArrayBuffer], { type: "audio/wav" });
-        saveAs(blob, `${filenameStem}_${getDateTimeFormatted(new Date(Date.now()))}.png`);
+        saveAs(blob, `${filenameStem}_${getDateTimeFormatted(new Date(Date.now()))}.wav`);
     }
 
     cloneSound(index: number, toMono: boolean) : Promise<number> {
