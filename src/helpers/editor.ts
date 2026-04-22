@@ -7,7 +7,7 @@ import {getContentForACPrefix} from "@/autocompletion/acManager";
 import scssVars  from "@/assets/style/_export.module.scss";
 import html2canvas, { Options } from "html2canvas";
 import { nextTick } from "vue";
-// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { debounce } from "lodash";
 // #v-endif
 import {toUnicodeEscapes} from "@/parser/parser";
@@ -70,7 +70,7 @@ export enum CustomEventTypes {
     hideStrypeModal = "bv::hide::modal", // request a modal closing, param is a BvTriggerableEvent event
     strypeModalHidden = "bv::modal::hidden", // event after a modal is closed: param is a BvTriggerableEvent event
     // end events for modal dialogs
-    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+    // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
     pythonExecAreaMounted = "peaMounted",
     pythonExecAreaExpandCollapseChanged = "peaExpandCollapsChanged",
     pythonConsoleRequestFocus = "pythonConsoleReqFocus",
@@ -205,7 +205,7 @@ export function getAppLangSelectId(): string {
     return "strypeLangSelect";
 }
 
-// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 /** This section contains accessors for the PEA components' ID, used within the application */
 export function getPEAComponentRefId(): string {
     return "peaComponent";
@@ -1119,6 +1119,12 @@ document.addEventListener(CustomEventTypes.dropFramePositionsUpdated, () => {
 });
 
 export function notifyDragStarted(frameId?: number):void {
+    // There is only one case where dragging is stop right from the root: frozen frames.
+    // If a frame (or that frame of a selection) is frozen, or its ancestor is, then we don't allow drag.
+    if((frameId && useStore().isEffectivelyFrozen(frameId)) || (!frameId && useStore().selectedFrames.some((frameId) => useStore().isEffectivelyFrozen(frameId)))){
+        return;
+    }
+
     const renderingCanvas = document.getElementById(companionCanvasId) as HTMLCanvasElement;
     let html2canvasOptions: Partial<Options> = {backgroundColor: null, canvas: renderingCanvas, scale: companionImgScalingRatio};
     // If we move a single frame, we keep a reference of it, and set undefinfed if not (see variable definition)
@@ -1856,7 +1862,7 @@ export function getNumPrecedingBackslashes(content: string, cursorPos : number) 
 /**
  * Turtle  related bits for the editor
  */
-// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 // This method acts the turtle module being imported or not in the editor's frame
 export function actOnTurtleImport(): void {
     // Matches types in recipient in PythonExecutionArea

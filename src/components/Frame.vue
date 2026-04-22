@@ -388,6 +388,12 @@ export default defineComponent({
         // Same as above, not sure it is required to remove the event since anyway the event loop won't be raised
         // however, just to keep things tidy, let's clear the frame focus event listener when the frame is destroyed
         document.getElementById(this.frameHeaderId)?.removeEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);
+
+        // Remove any event bus listeners
+        eventBus.off(CustomEventTypes.cutFrameSelection, this.cutIfFirstInSelection);
+        eventBus.off(CustomEventTypes.copyFrameSelection, this.copyIfFirstInSelection);
+        eventBus.off(CustomEventTypes.duplicateFrameSelection, this.duplicateIfFirstInSelection);
+        eventBus.off(CustomEventTypes.disableOrEnableFrameSelection, this.disableOrEnableFirstInSelection);
         
         // Remove the component's API instance
         if(vueComponentsAPIHandler.frameComponentAPI?.forInstance[this.frameId]){
