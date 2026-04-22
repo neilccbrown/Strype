@@ -1067,8 +1067,7 @@ export default defineComponent({
         downloadWAV(src: AudioBuffer, filenameStem: string) {
             if (soundManager == null) {
                 // Since downloadWAV is triggered by a mouse click we should be able to create the sound manager now:
-                audioContext = new AudioContext();
-                soundManager = new SoundManager(audioContext, this);
+                soundManager = new SoundManager(createOrGetAudioContext(), this);
             }
             soundManager?.downloadWAV(src, filenameStem);
         },
