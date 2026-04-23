@@ -76,14 +76,14 @@
 /// <reference lib="webworker" />
 import type { PyodideInterface } from "pyodide";
 import { loadPyodide } from "pyodide";
-import { loadPyodideAndPackage, makeRunnerCallback, OutputPart, pyodideExpose, PyodideExtras, PyodideFatalErrorReloader } from "pyodide-worker-runner";
+import { loadPyodideAndPackage, OutputPart, pyodideExpose, PyodideExtras, PyodideFatalErrorReloader } from "pyodide-worker-runner";
 import * as Comlink from "comlink";
 import { strype_bridge } from "@/stryperuntime/pyodide_bridge";
 import { ResponseFor, SyncOrAsyncStrypePyodideWorkerRequest, SyncStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse } from "@/stryperuntime/worker_bridge_type";
 import { SpriteManager } from "@/stryperuntime/image_and_collisions";
-import { asyncBridge, PyodideWorkerGlobalScope } from "@/workers/python_execution_type";
-import {getFSForEmscripten} from "@/stryperuntime/pyodide-emscripten-cloud-fs";
-import {createLazyFetchAssetsFS} from "@/stryperuntime/pyodide-emscripten-assets-fs";
+import { asyncBridge, PyodideWorkerGlobalScope, syncBridge } from "@/workers/python_execution_type";
+import { getFSForEmscripten } from "@/stryperuntime/pyodide-emscripten-cloud-fs";
+import { createLazyFetchAssetsFS } from "@/stryperuntime/pyodide-emscripten-assets-fs";
 import { PyodideErrorDetails } from "@/workers/shared_helpers";
 
 // We only specify updatePort here as we don't want other files using it directly:
@@ -174,8 +174,19 @@ StrypePyodideRunner()`);
         pyodide.FS.mount(pyodide.FS.filesystems.ASSETSFS, {}, "/strype");
         
         let error : PyodideErrorDetails | null = null;
-        const callback = makeRunnerCallback(extras, {
-            output: (outputText: OutputPart[]) => {
+        const callback = function (type: string, data: any) {
+            if (data.toJs) {
+                data = data.toJs({dict_converter: Object.fromEntries});
+            }
+
+            if (type === "input") {
+                return syncBridge({request: "console_input"}) + "\n";
+            }
+            else if (type === "sleep") {
+                extras.syncSleep(data.seconds * 1000);
+            }
+            else if (type === "output") {
+                const outputText = data.parts as OutputPart[];
                 // We print out "stdout" and "input_prompt", but not "input" because that has already been added to the console
                 // when the user entered it there in the HTML input element.
                 const stdoutParts = outputText.filter((t) => t.type == "stdout" || t.type == "input_prompt");
@@ -184,24 +195,18 @@ StrypePyodideRunner()`);
                 }
                 const errorParts = outputText.filter((t) => t.type == "traceback");
                 if (errorParts.length == 1) {
-                    // As per the Python above:
-                    const details = errorParts[0] as unknown as PyodideErrorDetails;
-                    error = details;
+                    // As per the Python above at the start of executePython that serialises the traceback:
+                    error = errorParts[0] as unknown as PyodideErrorDetails;
                 }
                 else if (errorParts.length > 1) {
                     // I don't think this should happen, but log it in case:
                     console.error("Unexpected multiple error parts from one call: " + JSON.stringify(errorParts));
                 }
-            },
-            // We fire off the input request and it asynchronously gives back the input by writing a message,
-            // NOT by directly returning it:
-            input: (prompt: string) => {
-                asyncBridge({request: "console_input"});
-            },
-            other: (type: string, data: any) => {
-                // This is for sleep events that we are not necessarily interested in
-            },
-        });
+            }
+            else {
+                // We don't currently handle any other callbacks
+            }
+        };
         runner.set_callback(callback);
         await runner.run_async(pythonCode, {});
         return error;

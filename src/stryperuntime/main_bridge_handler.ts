@@ -32,6 +32,9 @@ export const handleSyncRequests : (
     callbacks : SyncRequestCallbacks,
 ) => SyncPromiseStrypePyodideHandlerFunction = (renderer, soundManager, turtle, callbacks) => (req) => {
     switch (req.request) {
+    case "console_input": {
+        return {request: req.request, response: sInput()};
+    }
     case "loadImage": {
         callbacks.switchToGraphicsTab("ifFirstCallDuringExecute");
         return {request: req.request, response: renderer.loadImage(req.url)};
@@ -176,14 +179,10 @@ export const handleSyncRequests : (
 };
 
 // Ironically, almost all the "Async" (fire-and-forget) requests are executed synchronously in one step, it's just that we don't need to know the result 
-export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundManager, printStdout: (output: string) => void, sendStdinInput: (input: string) => Promise<void>) => AsyncStrypePyodideHandlerFunction = (renderer, soundManager, printStdout, sendStdinInput) => (req) => {
+export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundManager, printStdout: (output: string) => void) => AsyncStrypePyodideHandlerFunction = (renderer, soundManager, printStdout) => (req) => {
     switch (req.request) {
     case "console_print": {
         printStdout(req.text);
-        return undefined;
-    }
-    case "console_input": {
-        sInput().then(sendStdinInput);
         return undefined;
     }
     case "canvas_setFill": {

@@ -592,15 +592,6 @@ export default defineComponent({
                 
                 const asyncBridge = handleAsyncRequests(renderer, soundManager as SoundManager, (output: string) => {
                     pythonConsole.value = pythonConsole.value + output;
-                }, async (s : string) => {
-                    // We send the output back via writeMessage rather than a direct return:
-                    await serviceWorkerReadyAndInControl();
-                    try {
-                        await client.writeMessage(s);
-                    }
-                    catch (e) {
-                        console.error(e);
-                    }
                 });
                 
                 // Apparently we can use a promise as a queue to ensure we process the requests in order,

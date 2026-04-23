@@ -43,6 +43,7 @@ import { Expect, IsSerializable } from "@/stryperuntime/check_serializable";
 export type CloudFileInfo = {fileId: CloudFileId, name: string; isDir: true;} | {fileId: CloudFileId, name: string; isDir: false; fileSize: number};
 
 export type SyncStrypePyodideWorkerRequest =
+    | { request: "console_input" }    
     | { request: "loadImage"; url: string }
     | { request: "loadLibraryAsset"; libraryShortName: string; fileName: string }
     | { request: "loadFont"; provider: string; fontName: string }
@@ -77,6 +78,7 @@ export type SyncStrypePyodideWorkerRequest =
 // Note that if there is an error, it is sent with an "error" string field; we can't easily specify this in the type without
 // cluttering it up (as the error could be for any request) so we do that part dynamically without telling Typescript.
 export type SyncStrypePyodideWorkerResponse =
+    | { request: "console_input"; response: string; }
     | { request: "loadImage"; response: RemoteImage;}
     | { request: "loadLibraryAsset"; response: string | undefined; }
     | { request: "loadFont"; response: boolean; }
@@ -114,7 +116,6 @@ type PromisedResponse<T> = T extends {request: infer REQ; response: infer RESP }
 // The requests are still done in order without overlapping by the main thread (incl not overlapping any sync requests)
 export type AsyncStrypePyodideWorkerRequest =
     | { request: "console_print"; text: string; }
-    | { request: "console_input" } // This is returned via a special route of sending back directly.
     | { request: "canvas_drawImagePart"; dest: RemoteCanvas, src : RemoteImage | RemoteCanvas, dx : number, dy : number, sx : number, sy : number, sw: number, sh : number, scale : number }
     | { request: "canvas_clearRect"; img: RemoteCanvas, x: number; y: number; width: number; height: number }
     | { request: "canvas_fillWhole"; img: RemoteCanvas }
