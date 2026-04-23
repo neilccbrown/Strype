@@ -77,7 +77,7 @@ import turtleImgURL from "@/assets/images/turtle.png" ;
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { BTab, BTabs } from "bootstrap-vue-next";
 import * as Comlink from "comlink";
-import {handleErrorTrace, setSInputConsole, sInput} from "@/helpers/execPythonCode";
+import {handleErrorTrace, setSInputConsole} from "@/helpers/execPythonCode";
 import {PyodideErrorDetails, serviceWorkerReadyAndInControl} from "@/workers/shared_helpers";
 import {SpriteHandle, SyncOrAsyncStrypePyodideWorkerRequest} from "@/stryperuntime/worker_bridge_type";
 import {SoundManager} from "@/stryperuntime/sound_manager";
