@@ -79,7 +79,7 @@
                     </div>
                 </div>
             </ModalDlg>
-            <ModalDlg :dlgId="saveOnLoadModalDlgId" :okCustomTitle="$t('buttonLabel.saveChanges')" :cancelCustomTitle="$t('buttonLabel.discardChanges')">
+            <ModalDlg :dlgId="saveOnLoadModalDlgId" :okCustomTitle="$t('buttonLabel.saveChanges')" :cancelCustomTitle="$t('buttonLabel.discardChanges')" showCloseBtn>
                 <div>
                     <span class="load-project-lost-span">{{ $t("appMessage.editorAskSaveChangedCode") }}</span>
                     <br/>
