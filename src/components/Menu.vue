@@ -1195,24 +1195,27 @@ export default defineComponent({
                             const emitPayload: AppEvent = {requestAttention: true};
                             emitPayload.message = this.$t("appMessage.editorFileUpload");
                             this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);
-                            const reader = new FileReader();
-                            reader.addEventListener("load", () => {
-                                // name is not always available so we also check if content starts with a {,
-                                // which it will do for old-style spy files:
-                                if (file.name.endsWith(".py") || !(reader.result as string).trimStart().startsWith("{")) {
-                                    vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(reader.result as string, fileHandles[0].name, file.lastModified, true, fileHandles[0]);
-                                }
-                                else {
-                                    this.appStore.setStateFromJSONStr(
-                                        {
-                                            stateJSONStr: reader.result as string,
-                                        }
-                                    ).then(() => fileHandles[0].getFile().then((file)=> this.onFileLoaded(fileHandles[0].name, file.lastModified, fileHandles[0])), () => {});
-                                }
-                                emitPayload.requestAttention=false;
-                                this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);  
-                            });
-                            reader.readAsText(file);
+                            // Make sure we have a delay for the main event loop to let us display the progress bar triggered above
+                            setTimeout(() => {
+                                const reader = new FileReader();
+                                reader.addEventListener("load", () => {
+                                    // name is not always available so we also check if content starts with a {,
+                                    // which it will do for old-style spy files:
+                                    if (file.name.endsWith(".py") || !(reader.result as string).trimStart().startsWith("{")) {
+                                        vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(reader.result as string, fileHandles[0].name, file.lastModified, true, fileHandles[0]);
+                                    }
+                                    else {
+                                        this.appStore.setStateFromJSONStr(
+                                            {
+                                                stateJSONStr: reader.result as string,
+                                            }
+                                        ).then(() => fileHandles[0].getFile().then((file)=> this.onFileLoaded(fileHandles[0].name, file.lastModified, fileHandles[0])), () => {});
+                                    }
+                                    emitPayload.requestAttention=false;
+                                    this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);  
+                                });
+                                reader.readAsText(file); 
+                            }, 100);                            
                         });
                     });                        
                 }
