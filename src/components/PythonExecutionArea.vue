@@ -590,7 +590,18 @@ export default defineComponent({
                     consumeLastClickDetails: this.consumeLastClickDetails,
                 });
                 
-                const asyncBridge = handleAsyncRequests(renderer, soundManager as SoundManager);
+                const asyncBridge = handleAsyncRequests(renderer, soundManager as SoundManager, (output: string) => {
+                    pythonConsole.value = pythonConsole.value + output;
+                }, async (s : string) => {
+                    // We send the output back via writeMessage rather than a direct return:
+                    await serviceWorkerReadyAndInControl();
+                    try {
+                        await client.writeMessage(s);
+                    }
+                    catch (e) {
+                        console.error(e);
+                    }
+                });
                 
                 // Apparently we can use a promise as a queue to ensure we process the requests in order,
                 // and not try to service another while one is still going (especially sync ones which may yield,
@@ -606,21 +617,6 @@ export default defineComponent({
                     client.workerProxy.executePython,
                     userCode,
                     typeof(this.appStore.strypeProjectLocation) === "string",
-                    Comlink.proxy((output: string) => {
-                        pythonConsole.value = pythonConsole.value + output;
-                    }),
-                    Comlink.proxy((prompt: string) => {
-                        sInput(prompt).then(async (s : string) => {
-                            // We send the output back via writeMessage rather than a direct return:
-                            await serviceWorkerReadyAndInControl();
-                            try {
-                                await client.writeMessage(s);
-                            }
-                            catch (e) {
-                                console.error(e);
-                            }
-                        });
-                    }),
                     Comlink.proxy((asreq : SyncOrAsyncStrypePyodideWorkerRequest) => serialize(() => { 
                         if (asreq.kind == "async") {
                             asyncBridge(asreq.request);

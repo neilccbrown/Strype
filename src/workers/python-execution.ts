@@ -81,7 +81,7 @@ import * as Comlink from "comlink";
 import { strype_bridge } from "@/stryperuntime/pyodide_bridge";
 import { ResponseFor, SyncOrAsyncStrypePyodideWorkerRequest, SyncStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse } from "@/stryperuntime/worker_bridge_type";
 import { SpriteManager } from "@/stryperuntime/image_and_collisions";
-import { PyodideWorkerGlobalScope } from "@/workers/python_execution_type";
+import { asyncBridge, PyodideWorkerGlobalScope } from "@/workers/python_execution_type";
 import {getFSForEmscripten} from "@/stryperuntime/pyodide-emscripten-cloud-fs";
 import {createLazyFetchAssetsFS} from "@/stryperuntime/pyodide-emscripten-assets-fs";
 import { PyodideErrorDetails } from "@/workers/shared_helpers";
@@ -114,10 +114,8 @@ const executePython = pyodideExpose(async (
     extras: PyodideExtras,
     pythonCode: string,
     startInSlashCloud: boolean,
-    printStdout: Comlink.Remote<(output: string) => void>,
-    requestInput: Comlink.Remote<(prompt: string) => void>,
     // Important all requests (sync and async) go through one function to avoid them racing each other:
-    otherRequest: Comlink.Remote<(req: SyncOrAsyncStrypePyodideWorkerRequest) => void>
+    makeRequest: Comlink.Remote<(req: SyncOrAsyncStrypePyodideWorkerRequest) => void>
 ) : Promise<PyodideErrorDetails | null> => {
     return reloader == null ? null : await reloader.withPyodide(async (pyodide : PyodideInterface) => {
         const runner = pyodide.runPython(`from python_runner import PyodideRunner
@@ -133,7 +131,7 @@ class StrypePyodideRunner(PyodideRunner):
         return dict(error_type=type(exc).__name__, error_message=str(exc), traceback=filtered, text=type(exc).__name__ + ": " + str(exc))
 StrypePyodideRunner()`);
         const bridgeSync: SyncStrypePyodideHandlerFunction = <R extends SyncStrypePyodideWorkerRequest> (req : R) : ResponseFor<R> => {
-            otherRequest({kind: "sync", request: req});
+            makeRequest({kind: "sync", request: req});
             const reply = extras.readMessage() as (SyncStrypePyodideWorkerResponse | {request: string, error: string});
             if (reply.request != req.request) {
                 throw new Error(`Internal error: Pyodide worker received ${reply.request} but had asked for ${req.request}`);
@@ -150,7 +148,7 @@ StrypePyodideRunner()`);
 
         // Set the global fields used by Javascript code (and by the pyodide cloud file mounting, just below): 
         self.syncStrypePyodideWorkerBridge = bridgeSync;
-        self.asyncStrypePyodideWorkerBridge = (r) => otherRequest({kind: "async", request: r});
+        self.asyncStrypePyodideWorkerBridge = (r) => makeRequest({kind: "async", request: r});
         self.spriteManager = new SpriteManager((u) => self.updatePort.postMessage(u));
         self.pyodide = pyodide;
         
@@ -178,9 +176,11 @@ StrypePyodideRunner()`);
         let error : PyodideErrorDetails | null = null;
         const callback = makeRunnerCallback(extras, {
             output: (outputText: OutputPart[]) => {
-                const stdoutParts = outputText.filter((t) => t.type == "stdout");
+                // We print out "stdout" and "input_prompt", but not "input" because that has already been added to the console
+                // when the user entered it there in the HTML input element.
+                const stdoutParts = outputText.filter((t) => t.type == "stdout" || t.type == "input_prompt");
                 if (stdoutParts.length > 0) {
-                    printStdout(stdoutParts.map((t) => t.text).join(""));
+                    asyncBridge({request: "console_print", text: stdoutParts.map((t) => t.text).join("")});
                 }
                 const errorParts = outputText.filter((t) => t.type == "traceback");
                 if (errorParts.length == 1) {
@@ -195,7 +195,9 @@ StrypePyodideRunner()`);
             },
             // We fire off the input request and it asynchronously gives back the input by writing a message,
             // NOT by directly returning it:
-            input: requestInput,
+            input: (prompt: string) => {
+                asyncBridge({request: "console_input"});
+            },
             other: (type: string, data: any) => {
                 // This is for sleep events that we are not necessarily interested in
             },
