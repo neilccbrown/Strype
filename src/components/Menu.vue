@@ -1578,6 +1578,7 @@ export default defineComponent({
     display: block;
     margin: auto;
     font-size: 14px;
+    background-color: transparent; // this is required for FF (at last from v150) to not apply some custom background
 }
 
 .menu-icon-centered-entry {
