@@ -10,7 +10,7 @@ class Sound:
     def __init__(self, samples, samples_per_second = 44100):
         # type: (float, float) -> None
         """
-        Creates a new soond object.  The first parameter is a list of samples from -1 to +1,
+        Creates a new sound object.  The first parameter is a list of samples from -1 to +1,
         and the optional second parameter indicates the sample rate (samples per second).
                  
         :param samples: A list of sound samples with values ranging from -1 to +1.  This list should not be empty; if it is, a single sample of value 0 will be used.
@@ -37,6 +37,15 @@ class Sound:
         :return: The length of the sound, in number of samples.
         """
         return _strype_sound_internal.getNumSamples(self.__buffer)
+
+    def get_duration(self):
+        # type: () -> float
+        """
+        Gets the duration of the sound, in seconds.  This is calculated by dividing the number of samples by the sample rate.
+        
+        :return: The duration of the sound, in seconds.
+        """
+        return self.get_num_samples() / self.get_sample_rate()
     
     def get_samples(self):
         # type: () -> list[float]

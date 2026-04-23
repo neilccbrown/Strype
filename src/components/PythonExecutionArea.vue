@@ -77,13 +77,14 @@ import turtleImgURL from "@/assets/images/turtle.png" ;
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { BTab, BTabs } from "bootstrap-vue-next";
 import * as Comlink from "comlink";
-import {handleErrorTrace, setSInputConsole, sInput} from "@/helpers/execPythonCode";
+import {handleErrorTrace, setSInputConsole} from "@/helpers/execPythonCode";
 import {PyodideErrorDetails, serviceWorkerReadyAndInControl} from "@/workers/shared_helpers";
 import {SpriteHandle, SyncOrAsyncStrypePyodideWorkerRequest} from "@/stryperuntime/worker_bridge_type";
 import {SoundManager} from "@/stryperuntime/sound_manager";
 import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
 import {getPythonClient, isPythonWorkerReady, renderer, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
 import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
+import {createOrGetAudioContext} from "@/helpers/audioContext";
 
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
@@ -94,7 +95,6 @@ const enum PEATabIndexes {graphics, console}
 let domContext : CanvasRenderingContext2D | null = null;
 let targetContext : OffscreenCanvasRenderingContext2D | null = null;
 let targetCanvas : OffscreenCanvas | null = null;
-let audioContext : AudioContext | null = null; // Important we don't initialise here, for permission reasons
 let mostRecentClickedItems : SpriteHandle[] = []; // All the items under the mouse cursor at last click
 let mostRecentClickDetails : { x: number, y: number, button: number, clickCount: number } | null = null; // x, y, button, click_count
 let mostRecentMouseDetails : {x: number, y: number, buttonsPressed: boolean[]} = {x:0, y:0, buttonsPressed: [false, false, false]}; // X, Y, three button states
@@ -323,7 +323,10 @@ export default defineComponent({
             const maxWidth = (4 / 3) * maxHeight;
             targetCanvas = new OffscreenCanvas(maxWidth, maxHeight);
             targetContext = targetCanvas?.getContext("2d", {alpha: true}) as OffscreenCanvasRenderingContext2D;
-            this.redrawImportMessage();
+            this.$nextTick(() => {
+                this.redrawCanvas();
+                this.redrawImportMessage();
+            });
         };
         // Listen to size changes, and call now:
         new ResizeObserver(adjustCanvasSize).observe(domCanvas);
@@ -471,13 +474,15 @@ export default defineComponent({
             switch (useStore().pythonExecRunningState) {
             case PythonExecRunningState.NotRunning:
                 useStore().pythonExecRunningState = PythonExecRunningState.Running;
+                soundManager?.stopAllSounds();
                 // Important to call this when responding to a click, because browser won't allow
                 // sound to start unless we create it in direct response to a user action:
-                audioContext = new AudioContext();
-                soundManager = new SoundManager(audioContext, this);
+                soundManager = new SoundManager(createOrGetAudioContext(), this);
+                // Note that any old SoundManager will then have its sounds garbage-collected
                 this.execPythonCode();
                 return;
             case PythonExecRunningState.Running:
+                soundManager?.stopAllSounds();
                 terminateAndRestartPyodide();
                 useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                 return;
@@ -493,8 +498,8 @@ export default defineComponent({
             if (!ctx) {
                 return;
             }
-            ctx.clearRect(0, 0, domCanvas.width, domCanvas.height);
             if (this.graphicsImported == "none") {
+                ctx.clearRect(0, 0, domCanvas.width, domCanvas.height);
                 ctx.font = "15px sans-serif";
                 ctx.fillStyle = "white";
                 ctx.textAlign = "center";
@@ -585,7 +590,9 @@ export default defineComponent({
                     consumeLastClickDetails: this.consumeLastClickDetails,
                 });
                 
-                const asyncBridge = handleAsyncRequests(renderer, soundManager as SoundManager);
+                const asyncBridge = handleAsyncRequests(renderer, soundManager as SoundManager, (output: string) => {
+                    pythonConsole.value = pythonConsole.value + output;
+                });
                 
                 // Apparently we can use a promise as a queue to ensure we process the requests in order,
                 // and not try to service another while one is still going (especially sync ones which may yield,
@@ -601,21 +608,6 @@ export default defineComponent({
                     client.workerProxy.executePython,
                     userCode,
                     typeof(this.appStore.strypeProjectLocation) === "string",
-                    Comlink.proxy((output: string) => {
-                        pythonConsole.value = pythonConsole.value + output;
-                    }),
-                    Comlink.proxy((prompt: string) => {
-                        sInput(prompt).then(async (s : string) => {
-                            // We send the output back via writeMessage rather than a direct return:
-                            await serviceWorkerReadyAndInControl();
-                            try {
-                                await client.writeMessage(s);
-                            }
-                            catch (e) {
-                                console.error(e);
-                            }
-                        });
-                    }),
                     Comlink.proxy((asreq : SyncOrAsyncStrypePyodideWorkerRequest) => serialize(() => { 
                         if (asreq.kind == "async") {
                             asyncBridge(asreq.request);
@@ -651,6 +643,7 @@ export default defineComponent({
                     }
                     useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                     setPythonExecAreaLayoutButtonPos();
+                    soundManager?.stopAllSounds();
                     // We always restart Pyodide for a clean state:
                     terminateAndRestartPyodide();
                 });
@@ -1059,6 +1052,10 @@ export default defineComponent({
         },
         
         downloadWAV(src: AudioBuffer, filenameStem: string) {
+            if (soundManager == null) {
+                // Since downloadWAV is triggered by a mouse click we should be able to create the sound manager now:
+                soundManager = new SoundManager(createOrGetAudioContext(), this);
+            }
             soundManager?.downloadWAV(src, filenameStem);
         },
         

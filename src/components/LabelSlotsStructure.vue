@@ -573,13 +573,20 @@ export default defineComponent({
                     // There is a selection already, we can directly set the text in the browser's clipboard here
                     const selectionText = getEditableSelectionText();
                     if (selectionText) {
-                        // If it's a media literal, we copy the literal content and text to the clipboard:
-                        const litMatch = selectionText.match(/^load_(image|sound)\("data:([^;]+);base64,([^"]+)"\)$/);
+                        // If it's a PNG image literal, we copy the literal content and text to the clipboard:
+                        // If it's a sound literal -- most browsers (incl. Safari and Firefox at least) don't allow copying sounds
+                        //   as sounds from the browser, so we must fall back on copying the text version.  Can't be pasted into
+                        //   other apps, but it will work if pasted back into Strype
+                        // Safari also restricts non-PNG so we also use text fallback for non-PNG literals.
+                        //
+                        // Note: we can't do a write then check because write is asynchronous and if we read the clipboard in a .then()
+                        // the browser won't let us access the clipboard because we're no longer responding to a user keypress.  Sigh.
+                        const litMatch = selectionText.match(/^load_image\("data:(image\/png);base64,([^"]+)"\)$/);
                         if (litMatch) {
-                            const mimeType = litMatch[2];
+                            const mimeType = litMatch[1];
     
                             // Convert base64 to binary data:
-                            const binary = atob(litMatch[3]);
+                            const binary = atob(litMatch[2]);
                             const bytes = new Uint8Array(binary.length);
                             for (let i = 0; i < binary.length; i++) {
                                 bytes[i] = binary.charCodeAt(i);

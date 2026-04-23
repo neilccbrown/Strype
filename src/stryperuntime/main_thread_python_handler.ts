@@ -22,7 +22,7 @@ let pythonClient : PyodideClient<any> | null = pythonWorker == null ? null: make
 
 function makeNewPyodideWorker() : Worker | null {
     if ((window as any)?.TestingNoPyodide) {
-        console.log("Skipping Pyodide as in testing mode");
+        console.info("Skipping Pyodide as in testing mode");
         return null;
     }
     

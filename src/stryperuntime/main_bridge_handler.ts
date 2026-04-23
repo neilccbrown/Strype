@@ -10,6 +10,7 @@ import {getDateTimeFormatted} from "@/helpers/common";
 import {cloudCloseFile, cloudCreate, cloudListDir, cloudLookupFile, cloudOpenFile, cloudReadFile, cloudTruncateFile, cloudWriteFile} from "@/helpers/cloudFileIO";
 import {useStore} from "@/store/store";
 import { handleTurtle, TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
+import { sInput } from "@/helpers/execPythonCode";
 
 // These are callbacks passed from PythonExecutionArea.vue to do things that are tied to the DOM or wider Strype state.
 // This means we don't have to make reference to the PythonExecutionArea component itself.
@@ -31,6 +32,9 @@ export const handleSyncRequests : (
     callbacks : SyncRequestCallbacks,
 ) => SyncPromiseStrypePyodideHandlerFunction = (renderer, soundManager, turtle, callbacks) => (req) => {
     switch (req.request) {
+    case "console_input": {
+        return {request: req.request, response: sInput()};
+    }
     case "loadImage": {
         callbacks.switchToGraphicsTab("ifFirstCallDuringExecute");
         return {request: req.request, response: renderer.loadImage(req.url)};
@@ -175,8 +179,12 @@ export const handleSyncRequests : (
 };
 
 // Ironically, almost all the "Async" (fire-and-forget) requests are executed synchronously in one step, it's just that we don't need to know the result 
-export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundManager) => AsyncStrypePyodideHandlerFunction = (renderer, soundManager) => (req) => {
+export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundManager, printStdout: (output: string) => void) => AsyncStrypePyodideHandlerFunction = (renderer, soundManager, printStdout) => (req) => {
     switch (req.request) {
+    case "console_print": {
+        printStdout(req.text);
+        return undefined;
+    }
     case "canvas_setFill": {
         renderer.getCanvasContext(req.img.handle).fillStyle = req.fill;
         return undefined;

@@ -24,12 +24,11 @@ function outf(text: string) {
     });
 }
 
-// The function used for "transpiling" the input function of Python to some JS handled by Skulpt.
-// The function is to be registered against the Skulpt object.
-export function sInput(prompt: string) : Promise<string> {
+// Ask the user for input, e.g. because the Python input() function was called.  Note that the prompt is printed
+// out separately using the output hook.
+export function sInput() : Promise<string> {
     // When we encounter an input call, we make sure the console has focus (i.e. turtle is not shown, for example)
     return new Promise(function(resolve,reject){
-        outf(prompt); 
         // make the text area enabled to allow the user to type something (if it was disabled)
         const isConsoleTextAreaLocked = consoleTextArea.disabled;
         if(isConsoleTextAreaLocked){

@@ -198,3 +198,29 @@ print(len(s.get_samples()))`]);
 `.trimStart());
     });
 });
+
+test.describe("Test console flushing and ordering", () => {
+    test("Check output shows when asking for input", async ({page}) => {
+        await enterCode(page, ["", "", "print('Began')\nname = input('What is your name?\\n')\nprint('Hello ' + name)\n"]);
+        const button = await startRunning(page);
+        await expect(page.locator("#peaConsole")).toBeEnabled();
+        await expect(page.locator("#peaConsole")).toBeFocused();
+        await checkConsoleContent(page, "Began\nWhat is your name?\n");
+        // Stop it:
+        await page.click("#runButton");
+        // Then it should not be running, because it has been terminated:
+        await runButtonShowsRun(button);
+    });
+    test("Check output shows when printing then sleeping", async ({page}) => {
+        await enterCode(page, ["import time", "", "print('Began')\ntime.sleep(60)\n"]);
+        const button = await startRunning(page);
+        // Give it two seconds:
+        await page.waitForTimeout(2000);
+        // Then it should have appeared:
+        await checkConsoleContent(page, "Began\n");
+        // Stop it:
+        await page.click("#runButton");
+        // Then it should not be running, because it has been terminated:
+        await runButtonShowsRun(button);
+    });
+});
