@@ -1,4 +1,4 @@
-import {test, expect} from "@playwright/test";
+import {test, expect, Page} from "@playwright/test";
 import {loadContent, save} from "../support/loading-saving";
 import {readFileSync} from "node:fs";
 import {skipPyodideLoading} from "../support/general";
@@ -27,7 +27,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     });
 });
 
-test.describe("Load/save specific items", () => {
+test.describe("Load/save near empty files", () => {
     test("Load and save a completely empty file", async ({page}) => {
         await loadContent(page, "");
         // It should output a near-blank SPY:
@@ -60,5 +60,41 @@ test.describe("Load/save specific items", () => {
 #(=> Section:Main
 #(=> Section:End
 `);
+    });
+});
+
+async function testLoadSaveMainLines(page: Page, content: string) {
+    await loadContent(page, content + "\n");
+    const output = readFileSync(await save(page, false), "utf8").replace(/\r\n/g, "\n");
+    expect(output).toEqual(`#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+${content}
+#(=> Section:End
+`);
+}
+
+test.describe("Load/save unusual operators", () => {
+    test("Load and save slices", async ({page}) => {
+        await testLoadSaveMainLines(page, `
+a[1:5] 
+b[:6] 
+c[2:] 
+d[:] 
+e[::9] 
+f[4:10:3] 
+g[::-1] 
+h[:7:] 
+i[::] 
+j[8::] `.trimStart());
+    });
+    test("Load and save slices (assignment variant)", async ({page}) => {
+        await testLoadSaveMainLines(page, `
+a[1:5]  = b[:6] 
+c[2:]  = d[:] 
+e[::9]  = f[4:10:3] 
+g[::-1]  = h[:7:] 
+i[::]  = j[8::] `.trimStart());
     });
 });
