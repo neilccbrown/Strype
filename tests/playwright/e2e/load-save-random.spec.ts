@@ -1169,7 +1169,7 @@ test.describe("Enters, saves and loads specific frames", () => {
         ]]);
     });
 
-    test.only("Advanced keyword operators", async ({page}) => {
+    test("Advanced keyword operators", async ({page}) => {
         await testSpecific(page, [[], [], [
             {frameType: "varassign", slotContent: ["expr_alpha", "value_alpha if cond_alpha else alt_alpha"]},
             {frameType: "varassign", slotContent: ["expr_beta", "(x_beta if cond_beta else y_beta) if outer_beta else z_beta"]},
