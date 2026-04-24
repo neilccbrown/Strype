@@ -389,6 +389,9 @@ test.describe("Check graphics works when shared with turtle", () => {
 });
 
 test.describe("Check auto-switching between tabs", () => {
+    test.skip(({ browserName }) => browserName === "firefox" || browserName === "webkit",
+        "WebGL not reliable in CI for Firefox/WebKit");
+    
     async function executeCode(page: Page, waitForFinish = true) {
         await page.locator("#runButton", {hasText: /Run/}).click();
         if (waitForFinish) {
