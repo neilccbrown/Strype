@@ -855,7 +855,32 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
                 ps.nextIndex += 1;
                 continue;
             }
-            
+        }
+        
+        if (child.type === Sk.ParseTables.sym.comp_for && child.children && child.children?.length >= 4) {
+            // A list comprehension; this will be:
+            //   for
+            //   <expression>
+            //   in
+            //   <expression>
+            // Optionally followed by:
+            //   comp_iter:
+            //     comp_if:
+            //       if
+            //       <expression>
+            latest = concatSlots(latest, "for", concatSlots(toSlots(child.children[1]), "in", toSlots(child.children[3])));
+            if (child.children.length >= 5 
+                && child.children[4].type === Sk.ParseTables.sym.comp_iter
+                && (child.children[4].children?.length ?? 0) >= 1
+                && child.children[4].children?.[0]?.type === Sk.ParseTables.sym.comp_if) {
+                const ifNode = child.children[4]?.children?.[0];
+                if (ifNode && ifNode.children && ifNode.children.length >= 2) {
+                    // First child is if keyword, second child is the expression:
+                    latest = concatSlots(latest, "if", toSlots(ifNode.children[1]));
+                }
+            }
+            ps.nextIndex += 1;
+            continue;
         }
         
         // Now we expect a binary operator:        
