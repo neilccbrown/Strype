@@ -1344,7 +1344,7 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
     //  - we're loading a .spy with section headings, or
     //  - we're loading a .py where we must infer it.
     // Easy way to find out: check if the first line is a .spy header:
-    if (allLines[0].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *" + AppName + " *:"))) {
+    if (allLines.length > 0 && allLines[0].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *" + AppName + " *:"))) {
         // It's a .spy!  Easy street, let's find the headings:
         let line = 1;
         const r = {
