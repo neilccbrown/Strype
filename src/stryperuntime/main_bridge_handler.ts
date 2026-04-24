@@ -179,10 +179,10 @@ export const handleSyncRequests : (
 };
 
 // Ironically, almost all the "Async" (fire-and-forget) requests are executed synchronously in one step, it's just that we don't need to know the result 
-export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundManager, printStdout: (output: string) => void) => AsyncStrypePyodideHandlerFunction = (renderer, soundManager, printStdout) => (req) => {
+export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundManager, printStdout: (output: string, containsInputPrompt: boolean) => void) => AsyncStrypePyodideHandlerFunction = (renderer, soundManager, printStdout) => (req) => {
     switch (req.request) {
     case "console_print": {
-        printStdout(req.text);
+        printStdout(req.text, req.containsInputPrompt);
         return undefined;
     }
     case "canvas_setFill": {

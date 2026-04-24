@@ -191,7 +191,7 @@ StrypePyodideRunner()`);
                 // when the user entered it there in the HTML input element.
                 const stdoutParts = outputText.filter((t) => t.type == "stdout" || t.type == "input_prompt");
                 if (stdoutParts.length > 0) {
-                    asyncBridge({request: "console_print", text: stdoutParts.map((t) => t.text).join("")});
+                    asyncBridge({request: "console_print", text: stdoutParts.map((t) => t.text).join(""), containsInputPrompt: outputText.some((t) => t.type == "input_prompt")});
                 }
                 const errorParts = outputText.filter((t) => t.type == "traceback");
                 if (errorParts.length == 1) {
