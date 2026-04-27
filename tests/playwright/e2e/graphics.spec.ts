@@ -7,7 +7,7 @@ import { PNG } from "pngjs";
 import fs from "fs";
 import { enterCode } from "../support/editor";
 import { dragDividerTo } from "../support/dividers";
-import { loadContent } from "../support/loading-saving";
+import { load, loadContent } from "../support/loading-saving";
 import { checkConsoleContent, startRunning } from "../support/execution";
 
 let browser = "";
@@ -503,5 +503,20 @@ while True  :
         await expect(button).toHaveText(/Stop/);
         // Check console is blank:
         await checkConsoleContent(page, "");
+    });
+    
+    test("Test get_clicked_actor returns the right item", async ({page}) => {
+        // First load the file into the editor:
+        await load(page, "tests/cypress/fixtures/data-graph.spy");
+        await startRunning(page);
+        await page.waitForTimeout(2000);
+        const g = page.locator("#peaGraphicsContainerDiv");
+        const bb = await g.boundingBox();
+        expect(bb).not.toBeNull();
+        // Click near top right:
+        await g.click({position: {x: (bb?.width ?? 0) - 10, y: 10}});
+        await page.waitForTimeout(1000);
+        await page.click("#consolePEATab");
+        await checkConsoleContent(page, /\nClicked: button\s*$/s);
     });
 });

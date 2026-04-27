@@ -22,7 +22,12 @@ export async function runToFinish(page: Page) : Promise<void> {
     await runButtonShowsRun(button);
 }
 
-export async function checkConsoleContent(page: Page, expectedContent : string) : Promise<void> {
+export async function checkConsoleContent(page: Page, expectedContent : string | RegExp) : Promise<void> {
     const actual = await page.locator("#peaConsole").inputValue();
-    expect(actual).toEqual(expectedContent);
+    if (typeof expectedContent === "string") {
+        expect(actual).toEqual(expectedContent);
+    }
+    else {
+        expect(actual).toMatch(expectedContent);
+    }
 }
