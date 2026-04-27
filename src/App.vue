@@ -772,7 +772,7 @@ export default defineComponent({
                                         stateJSONStr: resp.data,
                                         showMessage: false,
                                     }) :
-                                    this.setStateFromPythonFile(resp.data, filename, 0, false)
+                                    this.setStateFromPythonFile(resp.data, filename, 0, false, "import")
                                 ).then(() => {
                                     // A generic project is saved in memory, so we must make sure there is no target destination saved.
                                     vueComponentsAPIHandler.menuComponentAPI?.saveTargetChoice(StrypeSyncTarget.none);
@@ -823,7 +823,7 @@ export default defineComponent({
                 const binary = Base64.toUint8Array(param);
                 const spyContent = inflateRaw(binary, { to: "string" });
 
-                const loadSpy = () => this.setStateFromPythonFile(spyContent, this.$t("defaultProjName"), 0, false);
+                const loadSpy = () => this.setStateFromPythonFile(spyContent, this.$t("defaultProjName"), 0, false, "import");
                 
                 this.checkLocalStorageHasProject().then(() => {
                     // A project exists in the local storage, we ask the user if they want to keep it (and cancel the load of the shared project)
@@ -1610,7 +1610,7 @@ export default defineComponent({
             // #v-endif
         },
         
-        setStateFromPythonFile(completeSource: string, fileName: string, lastSaveDate: number, requestFSFileLoadedNotification: boolean, fileLocation?: FileSystemFileHandle) : Promise<void> {
+        setStateFromPythonFile(completeSource: string, fileName: string, lastSaveDate: number, requestFSFileLoadedNotification: boolean, fileLocation: FileSystemFileHandle | "local" | "cloud" | "import") : Promise<void> {
             return new Promise((resolve) => {
                 const s = pasteMixedPython(completeSource, true);
                 if (s != null) {

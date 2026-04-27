@@ -1160,7 +1160,7 @@ export default defineComponent({
                     if (selectedDemo) {
                         selectedDemo.demoFile.then((content) => {
                             if (content) {
-                                vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(content, selectedDemo.name ?? "Demo", 0, false)
+                                vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(content, selectedDemo.name ?? "Demo", 0, false, "import")
                                     .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
                             }
                         });
@@ -1243,14 +1243,14 @@ export default defineComponent({
                                 // name is not always available so we also check if content starts with a {,
                                 // which it will do for spy files:
                                 if (fileName.endsWith(".py") || !content.trimStart().startsWith("{")) {
-                                    vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(content, fileName, lastModified, true);
+                                    vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(content, fileName, lastModified, true, "local");
                                 }
                                 else {
                                     this.appStore.setStateFromJSONStr(
                                         {
                                             stateJSONStr: content,
                                         }
-                                    ).then(() => this.onFileLoaded(fileName, lastModified), () => {});
+                                    ).then(() => this.onFileLoaded(fileName, lastModified, "local"), () => {});
                                 }
                                 emitPayload.requestAttention=false;
                                 this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);
@@ -1278,15 +1278,18 @@ export default defineComponent({
             }
         },
 
-        onFileLoaded(fileName: string, lastSaveDate: number, fileLocation?: FileSystemFileHandle):void {
+        onFileLoaded(fileName: string, lastSaveDate: number, fileLocation: FileSystemFileHandle | "local" | "cloud" | "import"):void {
             this.saveTargetChoice(StrypeSyncTarget.fs);
             eventBus.emit(CustomEventTypes.addFunctionToEditorProjectSave, {syncTarget: StrypeSyncTarget.fs, function: (saveReason: SaveRequestReason) => this.saveCurrentProject(saveReason)});
 
             // Strip the extension from the file, if it was left in. Then we can update the file name and location (if avaiable)
             const noExtFileName = (fileName.includes(".")) ? fileName.substring(0, fileName.lastIndexOf(".")) : fileName;
             this.appStore.projectName = noExtFileName;
-            if(fileLocation){
+            if(typeof fileLocation !== "string"){
                 this.appStore.strypeProjectLocation = fileLocation;
+            }
+            else if (fileLocation === "local" || fileLocation === "import") {
+                this.appStore.strypeProjectLocation = undefined;
             }
             this.appStore.projectLastSaveDate = lastSaveDate;
             // Make sure we show the project is unmodified
