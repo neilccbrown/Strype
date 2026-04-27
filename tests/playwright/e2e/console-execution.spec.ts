@@ -1,5 +1,6 @@
-import {Page, test, expect, Locator} from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import { enterCode } from "../support/editor";
+import { checkConsoleContent, runButtonShowsRun, runToFinish, startRunning } from "../support/execution";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && process.platform === "win32") {
@@ -20,27 +21,6 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         console.log("Browser log:", msg.text());
     });
 });
-
-async function checkConsoleContent(page: Page, expectedContent : string) {
-    const actual = await page.locator("#peaConsole").inputValue();
-    expect(actual).toEqual(expectedContent);
-}
-
-async function startRunning(page: Page) {
-    // It should not be running:
-    const button = page.locator("#runButton");
-    // It can take a while for Pyodide to load up:
-    await expect(button).toHaveText("Run", {timeout: 60000});
-    // Click it:
-    await page.click("#runButton");
-    return button;
-}
-
-async function runToFinish(page: Page) {
-    const button = await startRunning(page);
-    // Then it should not be running again, because it has finished:
-    await runButtonShowsRun(button);
-}
 
 test.describe("Check console after execution", () => {
     test("Check default code works", async ({page}) => {
@@ -67,11 +47,6 @@ test.describe("Check console after execution", () => {
         await checkConsoleContent(page, "Line 1\nLine 2\nLine 3.0\\nLine 3.1\n");
     });
 });
-
-async function runButtonShowsRun(button: Locator) {
-    // Firefox is incredibly slow to reinitialise on CI, so we have a huge timeout:
-    await expect(button).toHaveText("Run", {timeout: 60000});
-}
 
 test.describe("Test stdin works", () => {
     test("Check input/output works", async ({page}) => {
