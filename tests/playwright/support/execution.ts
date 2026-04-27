@@ -1,4 +1,4 @@
-import { Page, expect, Locator, test } from "@playwright/test";
+import { Page, expect, Locator } from "@playwright/test";
 
 export async function startRunning(page: Page) : Promise<Locator> {
     // It should not be running:
