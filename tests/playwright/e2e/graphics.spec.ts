@@ -520,3 +520,26 @@ while True  :
         await checkConsoleContent(page, /\nClicked: button\s*$/s);
     });
 });
+
+test.describe.only("Test get_key", () => {
+    test("Test typing with get_key", async ({page}) => {
+        await loadContent(page, `
+from strype.graphics import *
+set_background("blue")
+s = ""
+while True:
+    k = get_key()
+    if k:
+        if k == "space":
+            k = " "
+        s = s + k
+        show_text(s, font_size=120)
+    pace()
+`);
+        await startRunning(page);
+        await page.waitForTimeout(1000);
+        await page.keyboard.type("Hello world", {delay: 100});
+        await page.waitForTimeout(1000);
+        await checkGraphicsAreaContent(page, "type-get-key-show-text");
+    });
+});
