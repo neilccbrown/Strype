@@ -884,6 +884,9 @@ def get_clicked_actor():
     """
     clicked = _strype_input_internal.getAndResetClickedItems()
     if clicked:
+        # Sorting by actor ID is equivalent to sorting by insertion order.
+        # We then take the last one, meaning the most recently inserted actor:
+        clicked = sorted(clicked)
         return _actorsInWorld[clicked[-1]]
     else:
         return None
