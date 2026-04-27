@@ -882,7 +882,11 @@ def get_clicked_actor():
     
     :return: The most recently clicked :class:`Actor`, or None if no actor was clicked since the last call.
     """
-    return _strype_input_internal.getAndResetClickedItem()
+    clicked = _strype_input_internal.getAndResetClickedItems()
+    if clicked:
+        return _actorsInWorld[clicked[-1]]
+    else:
+        return None
 
 _ClickDetails = _collections.namedtuple("ClickDetails", ["x", "y", "button", "click_count"])
 

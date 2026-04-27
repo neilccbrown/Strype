@@ -2,11 +2,13 @@
 // This test here is for things Playwright is handy at:
 //  - screenshotting arbitrary elements (to check Strype graphics vs Turtle)
 //  - sending real keyboard events (ditto)
-import {Page, test, expect} from "@playwright/test";
-import {PNG} from "pngjs";
+import { expect, Page, test } from "@playwright/test";
+import { PNG } from "pngjs";
 import fs from "fs";
 import { enterCode } from "../support/editor";
-import {dragDividerTo} from "../support/dividers";
+import { dragDividerTo } from "../support/dividers";
+import { loadContent } from "../support/loading-saving";
+import { checkConsoleContent, startRunning } from "../support/execution";
 
 let browser = "";
 
@@ -474,4 +476,32 @@ test.describe("Check auto-switching between tabs", () => {
     testSequence("graphics", "PPPTPI", "graphics");
     testSequence("graphics", "PPPTPIAB", "graphics");
     testSequence("graphics", "IAIA", "graphics");
+});
+
+test.describe("Test clicking", () => {
+    test("Test get_clicked_actor doesn't throw an exception", async ({page}) => {
+        await loadContent(page, `#(=> Strype:1:std
+#(=> peaLayoutMode:splitCollapsed
+#(=> peaExpandedSplitterPane2Size:{"splitExpanded":50}
+'''This is the default Strype starter project'''
+#(=> Section:Imports
+from strype.graphics import * 
+#(=> Section:Definitions
+#(=> Section:Main
+img  = Image(500,200) 
+img.draw_rect(0,0,500,200) 
+Actor(img) 
+while True  :
+    get_clicked_actor() 
+    pace(10) 
+#(=> Section:End
+`);
+        // Previously, this caused an exception just by running it (see #820 on Github), so make sure that doesn't happen:
+        const button = await startRunning(page);
+        // Now check it's still running a few seconds later:
+        await page.waitForTimeout(2000);
+        await expect(button).toHaveText(/Stop/);
+        // Check console is blank:
+        await checkConsoleContent(page, "");
+    });
 });
