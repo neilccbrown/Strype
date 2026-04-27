@@ -521,7 +521,7 @@ while True  :
     });
 });
 
-test.describe.only("Test get_key", () => {
+test.describe("Test get_key", () => {
     test("Test typing with get_key", async ({page}) => {
         await loadContent(page, `
 from strype.graphics import *
