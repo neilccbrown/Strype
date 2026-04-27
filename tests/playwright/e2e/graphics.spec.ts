@@ -387,3 +387,106 @@ test.describe("Check graphics works when shared with turtle", () => {
         await checkGraphicsAreaContent(page, "shared-graphics-circle-at-mouse-click-get-mouse-large");
     });
 });
+
+test.describe("Check auto-switching between tabs", () => {
+    test.skip(({ browserName }) => browserName === "firefox" || browserName === "webkit",
+        "WebGL not reliable in CI for Firefox/WebKit");
+    
+    async function executeCode(page: Page, waitForFinish = true) {
+        await page.locator("#runButton", {hasText: /Run/}).click();
+        if (waitForFinish) {
+            // Wait for it to finish:
+            await page.waitForTimeout(1000);
+            // Assert it has finished, by looking at the run button:
+            await expect(page.locator("#runButton")).toHaveText(/Run/, {timeout: 30000});
+        }
+    }
+    
+    async function checkTab(page: Page, selected : "graphics" | "console") {
+        if (selected == "console") {
+            await expect(page.locator("#graphicsPEATab")).not.toHaveClass(/active/);
+            await expect(page.locator("#consolePEATab")).toHaveClass(/active/);
+        }
+        else {
+            await expect(page.locator("#graphicsPEATab")).toHaveClass(/active/);
+            await expect(page.locator("#consolePEATab")).not.toHaveClass(/active/);
+        }
+    }
+
+    // Semantics are:
+    // - Start program
+    // - First use:
+    //   - If console output, switch to console
+    //   - If graphics, switch to graphics
+    // - Further use:
+    //   - If graphics and so far uses have only been console output, switch, otherwise don't switch again
+    //   - If console output, never switch again.
+    // - If console input, always switch.  But after that, if we were on graphics, switch back.
+    
+    // To abbreviate the tests I've used a letter sequence for code:
+    // A = Actor construction, B = set_background, T = turtle, P = print, I = input
+    // Input automatically checks the console is showing.
+    
+    function testSequence(start: "graphics" | "console", codeAbbreviated: string, end: "graphics" | "console") {
+        test("Test " + start + " then " + codeAbbreviated, async ({page}) => {
+            let numInputs = 0;
+            let codeLines = [];
+            for (const letter of codeAbbreviated) {
+                switch (letter) {
+                case "A":
+                    codeLines.push("Actor('cat-test.jpg')");
+                    break;
+                case "B":
+                    codeLines.push("set_background('cat-test-2.png')");
+                    break;
+                case "T":
+                    codeLines.push("forward(90)");
+                    break;
+                case "P":
+                    codeLines.push("print('Hello')");
+                    break;
+                case "I":
+                    codeLines.push("input('Tell me something')");
+                    numInputs += 1;
+                    break;
+                default:
+                    expect(letter).toMatch("[ABTPI]");
+                    break;
+                }
+            }
+            // We always include the graphical imports, regardless of whether we use them:
+            await enterCode(page, ["from strype.graphics import *\nfrom turtle import *\n", "", codeLines.join("\n")]);
+            await page.click(start == "graphics" ? "#graphicsPEATab" : "#consolePEATab");
+            await executeCode(page, false);
+            // We need to check at each input and also respond to them so the code can continue:
+            for (let i = 0; i < numInputs; i++) {
+                await checkTab(page, "console");
+                await expect(page.locator("#peaConsole")).toBeEnabled();
+                await expect(page.locator("#peaConsole")).toBeFocused();
+                await page.locator("#peaConsole").pressSequentially("Hi\n", {delay: 75});
+            }
+            // Assert it has finished, by looking at the run button:
+            await expect(page.locator("#runButton")).toHaveText(/Run/, {timeout: 30000});
+            await checkTab(page, end);
+        });
+    }
+    
+    // First uses switch:
+    testSequence("graphics", "P", "console");
+    testSequence("graphics", "I", "console");
+    testSequence("console", "P", "console");
+    testSequence("console", "A", "graphics");
+    testSequence("console", "B", "graphics");
+    testSequence("console", "T", "graphics");
+    // Further uses of output don't switch back:
+    testSequence("console", "AP", "graphics");
+    testSequence("console", "TP", "graphics");
+    // First use of graphics switches back to graphics:
+    testSequence("graphics", "PA", "graphics");
+    testSequence("graphics", "IA", "graphics");
+    testSequence("graphics", "PPPTPP", "graphics");
+    // Input does switch back though (but will switch back to graphics after):
+    testSequence("graphics", "PPPTPI", "graphics");
+    testSequence("graphics", "PPPTPIAB", "graphics");
+    testSequence("graphics", "IAIA", "graphics");
+});

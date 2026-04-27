@@ -1158,4 +1158,29 @@ test.describe("Enters, saves and loads specific frames", () => {
             {frameType: "funccall", slotContent: ["print(myDict)"]},
         ]]);
     });
+    
+    test("Slice operators", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "varassign", slotContent: ["a[1:5]", "b[:6]"]},
+            {frameType: "varassign", slotContent: ["c[2:]", "d[:]"]},
+            {frameType: "varassign", slotContent: ["e[::9]", "f[4:10:3]"]},
+            {frameType: "varassign", slotContent: ["g[::-1]", "h[:7:]"]},
+            {frameType: "varassign", slotContent: ["i[::]", "j[8::]"]},
+        ]]);
+    });
+
+    test("Advanced keyword operators", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "varassign", slotContent: ["expr_alpha", "value_alpha if cond_alpha else alt_alpha"]},
+            {frameType: "varassign", slotContent: ["expr_beta", "(x_beta if cond_beta else y_beta) if outer_beta else z_beta"]},
+            {frameType: "varassign", slotContent: ["expr_gamma", "[g_gamma for g_gamma in seq_gamma]"]},
+            {frameType: "varassign", slotContent: ["expr_delta", "[d_delta for d_delta in seq_delta if d_delta>0]"]},
+            {frameType: "varassign", slotContent: ["expr_epsilon", "{e_epsilon for e_epsilon in seq_epsilon if e_epsilon%2==0}"]},
+            {frameType: "varassign", slotContent: ["expr_zeta", "{k_zeta:v_zeta for (k_zeta,v_zeta) in pairs_zeta}"]},
+            {frameType: "varassign", slotContent: ["expr_eta", "tuple(h_eta for h_eta in seq_eta)"]},
+            {frameType: "varassign", slotContent: ["expr_theta", "sum(t_theta for t_theta in seq_theta if t_theta<10)"]},
+            {frameType: "varassign", slotContent: ["expr_iota", "[i_iota async for i_iota in aseq_iota]"]},
+            {frameType: "varassign", slotContent: ["expr_kappa", "await coro_kappa()"]},
+        ]]);
+    });
 });

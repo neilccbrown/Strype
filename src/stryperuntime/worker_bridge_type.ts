@@ -115,7 +115,7 @@ type PromisedResponse<T> = T extends {request: infer REQ; response: infer RESP }
 // Async here is not about promises etc, but rather that we don't need a response and we don't wait for a response after sending the request.
 // The requests are still done in order without overlapping by the main thread (incl not overlapping any sync requests)
 export type AsyncStrypePyodideWorkerRequest =
-    | { request: "console_print"; text: string; }
+    | { request: "console_print"; text: string; containsInputPrompt: boolean }
     | { request: "canvas_drawImagePart"; dest: RemoteCanvas, src : RemoteImage | RemoteCanvas, dx : number, dy : number, sx : number, sy : number, sw: number, sh : number, scale : number }
     | { request: "canvas_clearRect"; img: RemoteCanvas, x: number; y: number; width: number; height: number }
     | { request: "canvas_fillWhole"; img: RemoteCanvas }

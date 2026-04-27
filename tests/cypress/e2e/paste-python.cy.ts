@@ -93,7 +93,7 @@ describe("Python round-trip", () => {
     it("Shows an error for invalid code with wrong code", () => {
         // Since the default code contains a project doc, we need to include it to the code
         testRoundTripImportAndDownload("tests/cypress/fixtures/python-invalid-hints-extract.py", defaultProjectDocFullLine);
-        assertVisibleError(/invalid.*import.*if.*line: 22/si);
+        assertVisibleError(/invalid.*import.*operator.*line: 24/si);
     });
 
     it("Shows an error for invalid code when mixed with invalid placement", () => {

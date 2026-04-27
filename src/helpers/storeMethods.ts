@@ -55,16 +55,16 @@ export const retrieveParentSlotFromSlotInfos = (slotInfos: SlotCoreInfos): Field
 // if the root slot as 3 level children and the second of them has 3 same level children (again field/operator/field), ids will respectively be:
 // "0", "1,0", "1,0", "1,1", "2"
 // The first argument can be passed a FrameLabel, or just the allowedSlotContent part.
-export const generateFlatSlotBases = (slot: { allowedSlotContent?: AllowedSlotContent }, slotStructure: SlotsStructure, parentId?: string, flatSlotConsumer?: (slot: FlatSlotBase, besidesOp: boolean, opAfter?: string) => void, transformEachLevel?: (oneLevel: SlotsStructure, topLevel?: {frameType: string, slotIndex: number}) => SlotsStructure, topLevel?: {frameType: string, slotIndex: number}): FlatSlotBase[] => {
+export const generateFlatSlotBases = (slot: { allowedSlotContent?: AllowedSlotContent }, slotStructure: SlotsStructure, parentId?: string, flatSlotConsumer?: (slot: FlatSlotBase, besidesOp: boolean, opBefore?: string, opAfter?: string) => void, transformEachLevel?: (oneLevel: SlotsStructure, topLevel?: {frameType: string, slotIndex: number}) => SlotsStructure, topLevel?: {frameType: string, slotIndex: number}): FlatSlotBase[] => {
     // The operators always get in between the fields, and we always have one 1 root structure for a label,
     // and bracketed structures can never be found at 1st or last position
     let currIndex = -1;
     const flatSlotBases: FlatSlotBase[] = [];
-    const addFlatSlot = (flatSlot: FlatSlotBase, besidesOp: boolean, opAfter?: string) => {
+    const addFlatSlot = (flatSlot: FlatSlotBase, besidesOp: boolean, opBefore?: string, opAfter?: string) => {
         flatSlotBases.push(flatSlot);
         // If a flat slot consumer is defined, we call it here
         if(flatSlotConsumer){
-            flatSlotConsumer(flatSlot, besidesOp, opAfter);
+            flatSlotConsumer(flatSlot, besidesOp, opBefore, opAfter);
         }
     };
     
@@ -101,11 +101,13 @@ export const generateFlatSlotBases = (slot: { allowedSlotContent?: AllowedSlotCo
             // otherwise we consider it is just a code slot
             
             // We pass true if we're beside an operator and the other side is the end or a non-blank operator
+            
+            const opBefore = slotStructure.operators[index - 1]?.code;
             const adjacentOp =
-                ((operatorSlot.code !== "" && (index == 0 || slotStructure.operators[index - 1].code != ""))
-                || (index > 0 && slotStructure.operators[index - 1].code != "" && operatorSlot.code !== ""))
-                && !["not", "~"].includes(operatorSlot.code.trim());
-            addFlatSlot({...(fieldSlot as BaseSlot), id: slotId, type: evaluateSlotType(slot, fieldSlot)}, adjacentOp, operatorSlot.code);
+                operatorSlot.code !== "" &&
+                (index == 0 || opBefore !== "") &&
+                !["not", "~"].includes(operatorSlot.code.trim());
+            addFlatSlot({...(fieldSlot as BaseSlot), id: slotId, type: evaluateSlotType(slot, fieldSlot)}, adjacentOp, opBefore, operatorSlot.code);
         }   
 
         // Add this operator only if it is not blank
@@ -116,7 +118,8 @@ export const generateFlatSlotBases = (slot: { allowedSlotContent?: AllowedSlotCo
 
     // Add the last remaining field and call the consumer (if provided)
     currIndex++;
-    addFlatSlot({...(slotStructure.fields.at(-1) as BaseSlot), id: getSlotIdFromParentIdAndIndexSplit(parentId??"", currIndex), type: evaluateSlotType(slot, slotStructure.fields.at(-1) as FieldSlot)}, slotStructure.operators.length > 0 && slotStructure.operators.at(-1)?.code != "");
+    const opBefore = slotStructure.operators.at(-1)?.code;
+    addFlatSlot({...(slotStructure.fields.at(-1) as BaseSlot), id: getSlotIdFromParentIdAndIndexSplit(parentId??"", currIndex), type: evaluateSlotType(slot, slotStructure.fields.at(-1) as FieldSlot)}, slotStructure.operators.length > 0 && slotStructure.operators.at(-1)?.code != "", opBefore);
 
     return flatSlotBases;
 };

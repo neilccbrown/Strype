@@ -840,6 +840,49 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
             ps.nextIndex += 1;
             continue;
         }
+
+        if (child.type === Sk.ParseTables.sym.sliceop && child.children && child.children?.length >= 1) {
+            // The a:b:c syntax has a slice_op child for the :c part which includes the operator and operand:
+            const op = digValue(child.children[0]);
+            if (op == ":" && child.children?.length == 1) {
+                // Can be blank on RHS of colon
+                latest = concatSlots(latest, op, {fields: [{code: ""}], operators: []});
+                ps.nextIndex += 1;
+                continue;
+            }
+            else if (child.children?.length == 2) {
+                latest = concatSlots(latest, op, toSlots(child.children[1]));
+                ps.nextIndex += 1;
+                continue;
+            }
+        }
+        
+        if (child.type === Sk.ParseTables.sym.comp_for && child.children && child.children?.length >= 4) {
+            // A list comprehension; this will be:
+            //   for
+            //   <expression>
+            //   in
+            //   <expression>
+            // Optionally followed by:
+            //   comp_iter:
+            //     comp_if:
+            //       if
+            //       <expression>
+            latest = concatSlots(latest, "for", concatSlots(toSlots(child.children[1]), "in", toSlots(child.children[3])));
+            if (child.children.length >= 5 
+                && child.children[4].type === Sk.ParseTables.sym.comp_iter
+                && (child.children[4].children?.length ?? 0) >= 1
+                && child.children[4].children?.[0]?.type === Sk.ParseTables.sym.comp_if) {
+                const ifNode = child.children[4]?.children?.[0];
+                if (ifNode && ifNode.children && ifNode.children.length >= 2) {
+                    // First child is if keyword, second child is the expression:
+                    latest = concatSlots(latest, "if", toSlots(ifNode.children[1]));
+                }
+            }
+            ps.nextIndex += 1;
+            continue;
+        }
+        
         // Now we expect a binary operator:        
         let op;
         try {
@@ -1344,7 +1387,7 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
     //  - we're loading a .spy with section headings, or
     //  - we're loading a .py where we must infer it.
     // Easy way to find out: check if the first line is a .spy header:
-    if (allLines[0].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *" + AppName + " *:"))) {
+    if (allLines.length > 0 && allLines[0].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *" + AppName + " *:"))) {
         // It's a .spy!  Easy street, let's find the headings:
         let line = 1;
         const r = {

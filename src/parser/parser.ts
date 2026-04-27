@@ -813,7 +813,7 @@ export default class Parser {
         let nestingLevel = 0;
         let startOfTopLevelParamName = true;
         let inTopLevelParamValue = false;
-        generateFlatSlotBases({allowedSlotContent: allowed }, slotStructures, "", (flatSlot: FlatSlotBase, besidesOp: boolean, opAfter: undefined | string) => {
+        generateFlatSlotBases({allowedSlotContent: allowed }, slotStructures, "", (flatSlot: FlatSlotBase, besidesOp: boolean, opBefore: undefined | string, opAfter: undefined | string) => {
             if(isSlotQuoteType(flatSlot.type) || isSlotBracketType(flatSlot.type) || flatSlot.type === SlotType.media){
                 // a quote or a bracket is a 1 character token, shown in the code
                 // but it's not editable so we don't include it in the slot positions
@@ -856,7 +856,11 @@ export default class Parser {
                 // we trim the field's code when we are not in a string literal
                 let flatSlotCode = (isSlotStringLiteralType(flatSlot.type) ? flatSlot.code : flatSlot.code.trim());
                 if (flatSlot.type != SlotType.string) {
-                    if (besidesOp && this.saveAsSPY && flatSlotCode === "" && allowed != AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
+                    // Blanks are allowed before colons in slices:
+                    if (opBefore === ":" || opAfter === ":") {
+                        // Don't substitute the special blank marker.
+                    }
+                    else if (besidesOp && this.saveAsSPY && flatSlotCode === "" && allowed != AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
                         flatSlotCode = STRYPE_EXPRESSION_BLANK;
                     }
                     if (this.saveAsSPY && flatSlotCode != "") {

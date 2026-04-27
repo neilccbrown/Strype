@@ -3,7 +3,7 @@
         <div :id="controlsDivId" :class="{'pea-controls-div': true, 'expanded-PEA-controls': isExpandedPEA}">           
             <BTabs v-show="isTabsLayout" v-model:index="peaDisplayTabIndex" no-key-nav>
                 <BTab v-show="isTabsLayout" :button-id="graphicsTabId" :title="'\uD83D\uDC22 '+$t('PEA.Graphics')" title-link-class="pea-display-tab"></BTab>
-                <BTab v-show="isTabsLayout" :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab"></BTab>
+                <BTab v-show="isTabsLayout" :button-id="consoleTabId" :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab"></BTab>
             </BTabs>
             <!-- IMPORTANT: keep this div with "invisible" text for proper layout rendering, it replaces the tabs -->
             <span v-if="!isTabsLayout" :class="scssVars.peaNoTabsPlaceholderSpanClassName">c+g</span>
@@ -101,6 +101,7 @@ let mostRecentMouseDetails : {x: number, y: number, buttonsPressed: boolean[]} =
 let pressedKeys : {[key: string]: boolean} = {};
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
 let switchedToGraphicsTabAlreadyThisExecute = false;
+let switchedToConsoleTabAlreadyThisExecute = false;
 
 let soundManager : SoundManager | null = null; // Can't initialise this here as we need permissions for audio context
 const turtleCanvas = new OffscreenCanvas(800, 600);
@@ -358,6 +359,10 @@ export default defineComponent({
             return "graphicsPEATab";
         },
 
+        consoleTabId(): string {
+            return "consolePEATab";
+        },
+
         tabContentContainerDivId(): string {
             return getPEATabContentContainerDivId();
         },
@@ -466,6 +471,13 @@ export default defineComponent({
             }
         },
 
+        switchToConsoleTab(condition: "always" | "ifFirstCallDuringExecute") {
+            if (condition == "always" || (!switchedToGraphicsTabAlreadyThisExecute && !switchedToConsoleTabAlreadyThisExecute)) {
+                this.peaDisplayTabIndex = PEATabIndexes.console;
+                switchedToConsoleTabAlreadyThisExecute = true;
+            }
+        },
+
         runClicked() {
             // The Python code execution has a 3-ways states:
             // - not running when nothing happens, click will trigger "running"
@@ -546,6 +558,7 @@ export default defineComponent({
                     targetContext?.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
                 }
                 switchedToGraphicsTabAlreadyThisExecute = false;
+                switchedToConsoleTabAlreadyThisExecute = false;
                 renderer.resetDirty();
                 
                 // Clear input:
@@ -590,8 +603,9 @@ export default defineComponent({
                     consumeLastClickDetails: this.consumeLastClickDetails,
                 });
                 
-                const asyncBridge = handleAsyncRequests(renderer, soundManager as SoundManager, (output: string) => {
+                const asyncBridge = handleAsyncRequests(renderer, soundManager as SoundManager, (output: string, containsInputPrompt: boolean) => {
                     pythonConsole.value = pythonConsole.value + output;
+                    this.switchToConsoleTab(containsInputPrompt ? "always" : "ifFirstCallDuringExecute");
                 });
                 
                 // Apparently we can use a promise as a queue to ensure we process the requests in order,

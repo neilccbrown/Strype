@@ -1237,7 +1237,7 @@ export const operators = [".","+","-","/","*","%",":","//","**","&","|","~","^",
 // as they will always come from a combination of writing one word then the other (the first will be added as operator);
 // "as" is added in the operator list for imports, but it will be discarded when not dealing with import frames.
 // Important that the longer operators come before the shorter ones with the same prefix:
-export const keywordOperatorsWithSurroundSpaces = [" and ", " in ", " is not ", " is ", " or ", " not in ", " not ", " as "];
+export const keywordOperatorsWithSurroundSpaces = [" and ", " in ", " is not ", " is ", " or ", " not in ", " not ", " as ", " if ", " else ", " for "];
 export const trimmedKeywordOperators = keywordOperatorsWithSurroundSpaces.map((spacedOp) => spacedOp.trim());
 
 
