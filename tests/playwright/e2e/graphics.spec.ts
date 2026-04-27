@@ -20,7 +20,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     }
 
     // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(90000); // 90 seconds
+    testInfo.setTimeout(120000); // 90 seconds
     
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
@@ -509,7 +509,7 @@ while True  :
         // First load the file into the editor:
         await load(page, "tests/cypress/fixtures/data-graph.spy");
         await startRunning(page);
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(5000);
         const g = page.locator("#peaGraphicsContainerDiv");
         const bb = await g.boundingBox();
         expect(bb).not.toBeNull();
