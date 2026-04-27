@@ -924,7 +924,7 @@ def key_pressed(keyname):
 
     The names of printable keys are the character they print (e.g. "a" for the a-key). Other keys have names 
     describing their function. These include "left", "right", "up, "down", "enter", "tab", "escape", "shift", 
-    "control", "alt", "backspace", delete".
+    "control", "alt", "backspace", "delete", "space".
     
     :param keyname: The name of the key to check.
     :return: True if the key is currently pressed down, False otherwise.
@@ -940,6 +940,9 @@ def key_pressed(keyname):
     if now - _last_pressed_keys_fetch > 30:
         _cached_pressed_keys = _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys().to_py())
         _last_pressed_keys_fetch = now
+    # Allow " " as a synonym for "space":
+    if keyname == " ":
+        keyname = "space"
     return _cached_pressed_keys[keyname.lower()]
 
 def set_background(image_or_color, scale_to_fit = False):

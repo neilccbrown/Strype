@@ -99,7 +99,7 @@ let mostRecentClickedItems : SpriteHandle[] = []; // All the items under the mou
 let mostRecentClickDetails : { x: number, y: number, button: number, clickCount: number } | null = null; // x, y, button, click_count
 let mostRecentMouseDetails : {x: number, y: number, buttonsPressed: boolean[]} = {x:0, y:0, buttonsPressed: [false, false, false]}; // X, Y, three button states
 let pressedKeys : {[key: string]: boolean} = {};
-const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
+const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"], [" ", "space"]]);
 let switchedToGraphicsTabAlreadyThisExecute = false;
 let switchedToConsoleTabAlreadyThisExecute = false;
 
@@ -536,6 +536,9 @@ export default defineComponent({
             this.appStore.wasLastRuntimeErrorFrameId = undefined;
             // Make sure there is no document selection for our editor
             this.appStore.setSlotTextCursors(undefined, undefined);
+            
+            // Blur run button so space bar doesn't retrigger it:
+            (this.$refs.runButton as HTMLButtonElement).blur();
                 
             // Before doing anything, we make sure there are no errors found in the code
             // We DELAY the action to make sure every other UI actions has been done, notably the error checking from LabelSlotsStructure.
