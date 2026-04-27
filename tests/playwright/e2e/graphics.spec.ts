@@ -5,7 +5,7 @@
 import {Page, test, expect} from "@playwright/test";
 import {PNG} from "pngjs";
 import fs from "fs";
-import {doPagePaste} from "../support/editor";
+import { enterCode } from "../support/editor";
 import {dragDividerTo} from "../support/dividers";
 
 let browser = "";
@@ -30,21 +30,6 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         console.log("Browser log:", msg.text());
     });
 });
-
-async function enterCode(page: Page, codeSections : string[]) : Promise<void> {
-    await page.keyboard.press("ArrowDown");
-    await page.keyboard.press("ArrowDown");
-    await page.keyboard.press("Backspace");
-    await page.keyboard.press("Backspace");
-    await page.waitForTimeout(500);
-    await page.keyboard.press("ArrowUp");
-    await page.keyboard.press("ArrowUp");
-    for (const codeSection of codeSections) {
-        await doPagePaste(page, codeSection);
-        await page.waitForTimeout(1000);
-        await page.keyboard.press("ArrowDown");
-    }
-}
 
 enum ImageComparison {
     COMPARE_TO_EXISTING,

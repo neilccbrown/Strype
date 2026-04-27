@@ -1,5 +1,5 @@
 import {Page, test, expect, Locator} from "@playwright/test";
-import {doPagePaste} from "../support/editor";
+import { enterCode } from "../support/editor";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && process.platform === "win32") {
@@ -20,21 +20,6 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         console.log("Browser log:", msg.text());
     });
 });
-
-async function enterCode(page: Page, codeSections : string[]) : Promise<void> {
-    await page.keyboard.press("ArrowDown");
-    await page.keyboard.press("ArrowDown");
-    await page.keyboard.press("Backspace");
-    await page.keyboard.press("Backspace");
-    await page.waitForTimeout(500);
-    await page.keyboard.press("ArrowUp");
-    await page.keyboard.press("ArrowUp");
-    for (const codeSection of codeSections) {
-        await doPagePaste(page, codeSection);
-        await page.waitForTimeout(1000);
-        await page.keyboard.press("ArrowDown");
-    }
-}
 
 async function checkConsoleContent(page: Page, expectedContent : string) {
     const actual = await page.locator("#peaConsole").inputValue();
