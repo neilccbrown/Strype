@@ -15,7 +15,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     // Since it works in the real browsers, and on Webkit and Firefox, we just skip the tests in Chromium
     test.skip(testInfo.project.name == "chromium", "Cannot run in Chromium");
 
-    addFakeClipboard(page);
+    await addFakeClipboard(page);
 
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
