@@ -99,6 +99,7 @@ let mostRecentClickedItems : SpriteHandle[] = []; // All the items under the mou
 let mostRecentClickDetails : { x: number, y: number, button: number, clickCount: number } | null = null; // x, y, button, click_count
 let mostRecentMouseDetails : {x: number, y: number, buttonsPressed: boolean[]} = {x:0, y:0, buttonsPressed: [false, false, false]}; // X, Y, three button states
 let pressedKeys : {[key: string]: boolean} = {};
+let mostRecentKey : string | undefined = undefined;
 const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"], [" ", "space"]]);
 let switchedToGraphicsTabAlreadyThisExecute = false;
 let switchedToConsoleTabAlreadyThisExecute = false;
@@ -569,6 +570,7 @@ export default defineComponent({
                 mostRecentClickDetails = null;
                 mostRecentMouseDetails = {x: 0, y: 0, buttonsPressed: [false, false, false]};
                 pressedKeys = {};
+                mostRecentKey = undefined;
                 window.addEventListener("keydown", this.graphicsCanvasKeyDown);
                 window.addEventListener("keyup", this.graphicsCanvasKeyUp);
                 // Start the redraw loop:
@@ -595,6 +597,11 @@ export default defineComponent({
                 
                 const syncBridgePromise = handleSyncRequests(renderer, soundManager as SoundManager, turtlePixiHandler, {
                     getPressedKeys: () => pressedKeys,
+                    getAndResetLastKey: () => {
+                        const k = mostRecentKey;
+                        mostRecentKey = undefined;
+                        return k;
+                    },
                     loadLibraryAsset: this.loadLibraryAsset,
                     switchToGraphicsTab: this.switchToGraphicsTab,
                     markTurtleDirty: () => {
@@ -804,6 +811,10 @@ export default defineComponent({
                 useStore().pythonExecRunningState = PythonExecRunningState.RunningAwaitingStop;              
             }
             pressedKeys = {};
+            mostRecentClickDetails = null;
+            mostRecentClickedItems = [];
+            mostRecentMouseDetails = {x:0, y:0, buttonsPressed: [false, false, false]};
+            mostRecentKey = undefined;
             renderer.clear();
             this.redrawCanvas();
         },
@@ -1009,7 +1020,9 @@ export default defineComponent({
             pressedKeys[keyMapping.get(event.key) ?? event.key.toLowerCase()] = true;
         },
         graphicsCanvasKeyUp(event: KeyboardEvent) {
-            pressedKeys[keyMapping.get(event.key) ?? event.key.toLowerCase()] = false;
+            const keyname = keyMapping.get(event.key) ?? event.key.toLowerCase();
+            pressedKeys[keyname] = false;
+            mostRecentKey = keyname; 
         },
 
         handleContextMenuOpened() {
