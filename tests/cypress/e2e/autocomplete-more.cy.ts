@@ -2,7 +2,7 @@ require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
 // Get all the beforeEach parts:
 import "../support/autocomplete-test-support";
-import { checkExactlyOneItem, checkNoItems, focusEditorAC, scssVars, withAC} from "../support/autocomplete-test-support";
+import {checkExactlyOneItem, checkNoItems, focusEditorAC, MYVARS, scssVars, withAC} from "../support/autocomplete-test-support";
 
 // Needed for the "be.sorted" assertion:
 chai.use(require("chai-sorted"));
@@ -25,6 +25,23 @@ describe("Control flow", () => {
             checkNoItems(acIDSel, "<any>");
             checkExactlyOneItem(acIDSel, null, "lower()");
             checkExactlyOneItem(acIDSel, null, "upper()");
+        }, true);
+    });
+});
+
+describe("Loop vars", () => {
+    it("Offers both loop vars in for loop", () => {
+        focusEditorAC();
+        // Go down and enter for index, val in enumerate(myString), then function call in body:
+        cy.get("body").type("{downarrow}findex,val{rightarrow}enumerate(myString){rightarrow} ");
+        cy.wait(500);
+        // Trigger auto-complete:
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel, frameId) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkNoItems(acIDSel, "<any>");
+            checkExactlyOneItem(acIDSel, MYVARS, "index");
+            checkExactlyOneItem(acIDSel, MYVARS, "val");
         }, true);
     });
 });

@@ -167,8 +167,13 @@ function getAllUserDefinedVariablesWithinUpTo(framesForParentId: FrameObject[], 
         }
         // Get iterator variables from for loops:
         if (frame.frameType.type === AllFrameTypesIdentifier.for && !frame.isDisabled) {
-            if ((frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code) {
-                soFar.add((frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code);
+            const loopVarFields = frame.labelSlotsDict[0].slotStructures.fields;
+            const loopVarOperators = frame.labelSlotsDict[0].slotStructures.operators;
+            // Get all comma separated tokens:
+            for (let i = 0; i < loopVarFields.length; i++) {
+                if ((i == 0 || loopVarOperators[i - 1]?.code === ",") && (loopVarFields[i] as BaseSlot).code) {
+                    soFar.add((loopVarFields[i] as BaseSlot).code);
+                }
             }
         }
         
