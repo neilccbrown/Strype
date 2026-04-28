@@ -195,6 +195,11 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
     let curFrameId = frameId;
     for (;;) {
         const frame = useStore().frameObjects[curFrameId];
+        // If a joint frame, we go to the joint parent and go from there:
+        if (frame.jointParentId > 0) {
+            curFrameId = frame.jointParentId;
+            continue;
+        }
         const parentId = frame.parentId;
         const isParentUserDefinedClass = useStore().frameObjects[parentId].frameType.type == AllFrameTypesIdentifier.classdef;
         if ((parentId == useStore().getDefsFrameContainerId || isParentUserDefinedClass) && frame.frameType.type == AllFrameTypesIdentifier.funcdef) {

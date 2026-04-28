@@ -25,7 +25,7 @@ describe("Control flow", () => {
             checkNoItems(acIDSel, "<any>");
             checkExactlyOneItem(acIDSel, null, "lower()");
             checkExactlyOneItem(acIDSel, null, "upper()");
-        }, true);
+        }, false);
     });
 });
 
@@ -43,5 +43,40 @@ describe("Loop vars", () => {
             checkExactlyOneItem(acIDSel, MYVARS, "index");
             checkExactlyOneItem(acIDSel, MYVARS, "val");
         }, true);
+    });
+});
+
+describe("Function params", () => {
+    it("Shows function param in if", () => {
+        focusEditorAC();
+        // Go up to functions section, add a function named "foo", a description "bar", then go into body:
+        cy.get("body").type("{uparrow}fgetGuess{rightarrow}alreadyGuessed{rightarrow}{downarrow}");
+        cy.get("body").type("=guess=input('Guess a letter:'){downarrow}");
+        cy.get("body").type("i");
+        cy.wait(500);
+        // Trigger auto-complete:
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel, frameId) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkNoItems(acIDSel, "<any>");
+            checkExactlyOneItem(acIDSel, MYVARS, "guess");
+            checkExactlyOneItem(acIDSel, MYVARS, "alreadyGuessed");
+        }, false);
+    });
+    it("Shows function param in elif", () => {
+        focusEditorAC();
+        // Go up to functions section, add a function named "foo", a description "bar", then go into body:
+        cy.get("body").type("{uparrow}fgetGuess{rightarrow}alreadyGuessed{rightarrow}{downarrow}");
+        cy.get("body").type("=guess=input('Guess a letter:'){downarrow}");
+        cy.get("body").type("iguess==''{downarrow}l");
+        cy.wait(500);
+        // Trigger auto-complete:
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel, frameId) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkNoItems(acIDSel, "<any>");
+            checkExactlyOneItem(acIDSel, MYVARS, "guess");
+            checkExactlyOneItem(acIDSel, MYVARS, "alreadyGuessed");
+        }, false);
     });
 });
