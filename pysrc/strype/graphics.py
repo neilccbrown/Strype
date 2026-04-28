@@ -1167,7 +1167,10 @@ def show_text(text, x = 0, y = 0, font_size = 24):
         textOnlyImg.set_stroke("black")
         textDimensions = textOnlyImg.draw_text(text, 0, 0, font_size, 800, 600, "Inconsolata")
         # Now we prepare an image of the right size:
-        croppedImg = Image(textDimensions.width, textDimensions.height)
+        croppedImg = Image(textDimensions.width + font_size, textDimensions.height + font_size)
         # We draw a rounded rect for the background, then draw the text on:
-        croppedImg._draw_part_of_image(textOnlyImg, 0, 0, 0, 0, textDimensions.width, textDimensions.height)
+        croppedImg.set_fill(Color(0, 0, 0, 80))
+        croppedImg.set_stroke(None)
+        croppedImg.draw_rounded_rect(0, 0, croppedImg.get_width(), croppedImg.get_height())
+        croppedImg._draw_part_of_image(textOnlyImg, round(font_size / 2), round(font_size / 2), 0, 0, textDimensions.width, textDimensions.height)
         _shown_text[(x, y)] = Actor(croppedImg, x, y)
