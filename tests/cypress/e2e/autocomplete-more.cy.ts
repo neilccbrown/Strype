@@ -80,3 +80,23 @@ describe("Function params", () => {
         }, false);
     });
 });
+
+describe("Overlapping imports", () => {
+    it("Offers all imports from module even where is overlapping from import:", () => {
+        focusEditorAC();
+        // Add two imports: import math, and from math import sin, cos
+        cy.get("body").type("{uparrow}{uparrow}imath{downarrow}fmath{rightarrow}sin,cos{downarrow}{downarrow}{downarrow}");
+        // Now we're back in main body, make a function call with math.:
+        cy.get("body").type(" math.");
+        cy.wait(500);
+        // Trigger auto-complete:
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel, frameId) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkNoItems(acIDSel, "<any>");
+            checkExactlyOneItem(acIDSel, "math", "sin(x)");
+            checkExactlyOneItem(acIDSel, "math", "cos(x)");
+            checkExactlyOneItem(acIDSel, "math", "tan(x)");
+        }, true);
+    });
+});

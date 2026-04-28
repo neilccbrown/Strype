@@ -359,8 +359,8 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
                 // #v-endif
             }
         }
-        else{
-            soFar[module] = [];
+        else if (isSimpleImport || context == ""){
+            soFar[module] = soFar[module] ?? [];
         
             let allItems : AcResultType[] = [];
 
