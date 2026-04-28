@@ -406,6 +406,7 @@ export default defineComponent({
                 const items =  tppCompletions.filter((s) => !s.acResult.startsWith("_") || token.startsWith("_")).map((s) => ({
                     acResult: s.acResult,
                     documentation: s.documentation,
+                    signature: s.signature,
                     params: s.params == null ? [] : s.params.map((p) => ({name: p})),
                     type: ["function", "module", "variable", "type"].includes(s.type ?? "") ? [s.type] : [],
                     version: version0 + mbVersionExtra,
