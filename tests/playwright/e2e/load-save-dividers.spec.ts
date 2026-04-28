@@ -197,6 +197,7 @@ test.describe("Loads divider states", () => {
         // Move divider:
         const hx = (page.viewportSize()?.width ?? 9999) / 2;
         await dragDividerTo(page, CODE_VS_SIDEBAR, hx, 300);
+        await page.waitForTimeout(2 * 1000);
         // Check it moved:
         const posA = await getSplitterPos(page, CODE_VS_SIDEBAR);
         expect(Math.abs(hx - posA.x)).toBeLessThanOrEqual(5);
