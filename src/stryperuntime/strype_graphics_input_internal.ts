@@ -28,6 +28,10 @@ export function getPressedKeys() : {[key: string]: boolean} {
     return syncBridge({request: "getPressedKeys"});
 }
 
+export function getAndResetLastKey() : string | undefined {
+    return syncBridge({request: "getAndResetLastKey"});
+}
+
 export function checkCollision(idA : number, idB : number) : boolean {
     return globalThis.spriteManager.checkCollision(idA, idB);
 }

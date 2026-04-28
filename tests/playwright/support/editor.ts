@@ -166,3 +166,18 @@ export function pressN(key: string, n : number, enforceWaitBetween?: boolean) : 
 export function getDefaultStrypeProjectDocumentationFullLine(): string {
     return "'''This is the default Strype starter project'''\n";
 }
+
+export async function enterCode(page: Page, codeSections : string[]) : Promise<void> {
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Backspace");
+    await page.keyboard.press("Backspace");
+    await page.waitForTimeout(500);
+    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("ArrowUp");
+    for (const codeSection of codeSections) {
+        await doPagePaste(page, codeSection);
+        await page.waitForTimeout(1000);
+        await page.keyboard.press("ArrowDown");
+    }
+}

@@ -2,11 +2,13 @@
 // This test here is for things Playwright is handy at:
 //  - screenshotting arbitrary elements (to check Strype graphics vs Turtle)
 //  - sending real keyboard events (ditto)
-import {Page, test, expect} from "@playwright/test";
-import {PNG} from "pngjs";
+import { expect, Page, test } from "@playwright/test";
+import { PNG } from "pngjs";
 import fs from "fs";
-import {doPagePaste} from "../support/editor";
-import {dragDividerTo} from "../support/dividers";
+import { enterCode } from "../support/editor";
+import { dragDividerTo } from "../support/dividers";
+import { load, loadContent } from "../support/loading-saving";
+import { checkConsoleContent, startRunning } from "../support/execution";
 
 let browser = "";
 
@@ -18,7 +20,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     }
 
     // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(90000); // 90 seconds
+    testInfo.setTimeout(120000); // 90 seconds
     
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
@@ -30,21 +32,6 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         console.log("Browser log:", msg.text());
     });
 });
-
-async function enterCode(page: Page, codeSections : string[]) : Promise<void> {
-    await page.keyboard.press("ArrowDown");
-    await page.keyboard.press("ArrowDown");
-    await page.keyboard.press("Backspace");
-    await page.keyboard.press("Backspace");
-    await page.waitForTimeout(500);
-    await page.keyboard.press("ArrowUp");
-    await page.keyboard.press("ArrowUp");
-    for (const codeSection of codeSections) {
-        await doPagePaste(page, codeSection);
-        await page.waitForTimeout(1000);
-        await page.keyboard.press("ArrowDown");
-    }
-}
 
 enum ImageComparison {
     COMPARE_TO_EXISTING,
@@ -489,4 +476,70 @@ test.describe("Check auto-switching between tabs", () => {
     testSequence("graphics", "PPPTPI", "graphics");
     testSequence("graphics", "PPPTPIAB", "graphics");
     testSequence("graphics", "IAIA", "graphics");
+});
+
+test.describe("Test clicking", () => {
+    test("Test get_clicked_actor doesn't throw an exception", async ({page}) => {
+        await loadContent(page, `#(=> Strype:1:std
+#(=> peaLayoutMode:splitCollapsed
+#(=> peaExpandedSplitterPane2Size:{"splitExpanded":50}
+'''This is the default Strype starter project'''
+#(=> Section:Imports
+from strype.graphics import * 
+#(=> Section:Definitions
+#(=> Section:Main
+img  = Image(500,200) 
+img.draw_rect(0,0,500,200) 
+Actor(img) 
+while True  :
+    get_clicked_actor() 
+    pace(10) 
+#(=> Section:End
+`);
+        // Previously, this caused an exception just by running it (see #820 on Github), so make sure that doesn't happen:
+        const button = await startRunning(page);
+        // Now check it's still running a few seconds later:
+        await page.waitForTimeout(2000);
+        await expect(button).toHaveText(/Stop/);
+        // Check console is blank:
+        await checkConsoleContent(page, "");
+    });
+    
+    test("Test get_clicked_actor returns the right item", async ({page}) => {
+        // First load the file into the editor:
+        await load(page, "tests/cypress/fixtures/data-graph.spy");
+        await startRunning(page);
+        await page.waitForTimeout(5000);
+        const g = page.locator("#peaGraphicsContainerDiv");
+        const bb = await g.boundingBox();
+        expect(bb).not.toBeNull();
+        // Click near top right:
+        await g.click({position: {x: (bb?.width ?? 0) - 10, y: 10}});
+        await page.waitForTimeout(1000);
+        await page.click("#consolePEATab");
+        await checkConsoleContent(page, /\nClicked: button\s*$/s);
+    });
+});
+
+test.describe("Test get_key", () => {
+    test("Test typing with get_key", async ({page}) => {
+        await loadContent(page, `
+from strype.graphics import *
+set_background("blue")
+s = ""
+while True:
+    k = get_key()
+    if k:
+        if k == "space":
+            k = " "
+        s = s + k
+        show_text(s, font_size=120)
+    pace()
+`);
+        await startRunning(page);
+        await page.waitForTimeout(1000);
+        await page.keyboard.type("Hello world", {delay: 100});
+        await page.waitForTimeout(1000);
+        await checkGraphicsAreaContent(page, "type-get-key-show-text");
+    });
 });

@@ -4,6 +4,12 @@ import ts from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import vueParser from "vue-eslint-parser";
 
+import { fileURLToPath } from "url";
+import path from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 export default [
     {
         ignores: [
@@ -75,25 +81,6 @@ export default [
         },
     },
 
-    {
-        files: [
-            "**/tests/unit/**/*.spec.{j,t}s?(x)",
-        ],
-
-        languageOptions: {
-            globals: {
-                mocha: true,
-            },            
-        },
-    },
-
-    {
-        files: ["*.ts", "*.mts", "*.cts", "*.tsx", "*.vue"],
-        rules: {
-            "no-undef": "off",
-        },
-    },
-
     // No exports from workers:
     {
         files: ["src/workers/python-execution.ts", "src/workers/service-worker.ts"],
@@ -113,6 +100,24 @@ export default [
                     message: "Do not export from worker files.",
                 },
             ],
+        },
+    },
+    
+    // No missing await in Playwright tests:
+    {
+        files: ["**/*.spec.ts"],
+        languageOptions: {
+            parser: vueParser,
+            parserOptions: {
+                parser: tsParser,
+                project: "./tsconfig.json",
+                tsconfigRootDir: __dirname,
+                ecmaVersion: 2020,
+                sourceType: "module",
+            },
+        },
+        rules: {
+            "@typescript-eslint/no-floating-promises": "error",
         },
     },
 ];

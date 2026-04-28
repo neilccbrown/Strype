@@ -26,7 +26,7 @@ import { BvTriggerableEvent } from "bootstrap-vue-next";
 
 export type AppComponentAPI = {
   applyShowAppProgress: (event: AppEvent) => void;
-  setStateFromPythonFile: (completeSource: string, fileName: string, lastSaveDate: number, requestFSFileLoadedNotification: boolean, fileLocation?: FileSystemFileHandle) => Promise<void>,
+  setStateFromPythonFile: (completeSource: string, fileName: string, lastSaveDate: number, requestFSFileLoadedNotification: boolean, fileLocation: FileSystemFileHandle | "local" | "cloud" | "import") => Promise<void>,
   finaliseOpenShareProject: (message?: {key: string, param: string}) => void,
   onExpandedPythonExecAreaSplitPaneResize: (event: any, calledForResize?: boolean) => void,
   onStrypeCommandsSplitPaneResize: (event: any, useSpecificPEALayout?: StrypePEALayoutMode) => void,
@@ -56,7 +56,7 @@ export type MenuComponentAPI = {
   setOpenSharedProjectTarget: (v: StrypeSyncTarget) => void,
   setOpenSharedProjectId: (v: string) => void,
   handleSaveMenuClick: (event: MouseEvent | undefined, saveReason?: SaveRequestReason | undefined) => void,
-  onFileLoaded: (fileName: string, lastSaveDate: number, fileLocation?: FileSystemFileHandle | undefined) => void,
+  onFileLoaded: (fileName: string, lastSaveDate: number, fileLocation: FileSystemFileHandle | "local"| "cloud" | "import") => void,
 }
 
 export type CloudDriveHandlerComponentAPI = {

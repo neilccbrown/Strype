@@ -882,7 +882,14 @@ def get_clicked_actor():
     
     :return: The most recently clicked :class:`Actor`, or None if no actor was clicked since the last call.
     """
-    return _strype_input_internal.getAndResetClickedItem()
+    clicked = _strype_input_internal.getAndResetClickedItems()
+    if clicked:
+        # Sorting by actor ID is equivalent to sorting by insertion order.
+        # We then take the last one, meaning the most recently inserted actor:
+        clicked = sorted(clicked)
+        return _actorsInWorld[clicked[-1]]
+    else:
+        return None
 
 _ClickDetails = _collections.namedtuple("ClickDetails", ["x", "y", "button", "click_count"])
 
@@ -924,7 +931,7 @@ def key_pressed(keyname):
 
     The names of printable keys are the character they print (e.g. "a" for the a-key). Other keys have names 
     describing their function. These include "left", "right", "up, "down", "enter", "tab", "escape", "shift", 
-    "control", "alt", "backspace", delete".
+    "control", "alt", "backspace", "delete", "space".
     
     :param keyname: The name of the key to check.
     :return: True if the key is currently pressed down, False otherwise.
@@ -940,7 +947,27 @@ def key_pressed(keyname):
     if now - _last_pressed_keys_fetch > 30:
         _cached_pressed_keys = _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys().to_py())
         _last_pressed_keys_fetch = now
+    # Allow " " as a synonym for "space":
+    if keyname == " ":
+        keyname = "space"
     return _cached_pressed_keys[keyname.lower()]
+
+def get_key():
+    """
+    Gets the last key that was pressed.
+    
+    If no key was pressed since the last call to this function, None is returned.  Be careful that you should not
+    call this function twice in quick succession as the result will change.  So if you want to check against multiple
+    possibilities, call it once and save it to a variable, then compare the variable.
+    
+    Sometimes you may want to wait for a key (for example, a "press any key to continue" or "press a key to choose")
+    and you want to avoid receiving old (or "stale") key presses, then call get_key() once and ignore the result,
+    then show your prompt, then loop with a pace() call waiting for get_key() to be non-None. 
+    
+    :return: The key that was most recently pressed, or None if no key has been pressed since the last call to this function.
+    """
+    # Note that this is not cached, unlike key_pressed: 
+    return _strype_input_internal.getAndResetLastKey()
 
 def set_background(image_or_color, scale_to_fit = False):
     # type: (Image | str, bool) -> None

@@ -338,9 +338,9 @@ test.describe("Saves collapsed state after icon clicks", () => {
         // Right arrow should go past header and into frame, then right again should go past
         // the next frame, so right, and right again should both end up with a frame cursor:
         await page.keyboard.press("ArrowRight");
-        checkFrameXorTextCursor(page, true);
+        await checkFrameXorTextCursor(page, true);
         await page.keyboard.press("ArrowRight");
-        checkFrameXorTextCursor(page, true);
+        await checkFrameXorTextCursor(page, true);
         
     });
 

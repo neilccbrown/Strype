@@ -171,6 +171,23 @@ StrypePyodideRunner()`);
                 console.error("Problem mounting cloud file system: ", e);
             }
         }
+        else {
+            // Do mkdir in a separate catch because it will expectedly fail if the directory exists:
+            try {
+                pyodide.FS.mkdir("/local");
+            }
+            catch {
+                // Ignore errors
+            }
+            try {
+                pyodide.FS.chdir("/local");
+            }
+            catch (e) {
+                // This one shouldn't fail, but don't let it stop execution:
+                console.error(e);
+            }
+                
+        }
         pyodide.FS.mount(pyodide.FS.filesystems.ASSETSFS, {}, "/strype");
         
         let error : PyodideErrorDetails | null = null;

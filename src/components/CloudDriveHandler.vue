@@ -343,7 +343,7 @@ export default defineComponent({
                                     // We need to check if we're loading the new SPY format or the old one.
                                     const isSpyNewFormat = decodedURIFileContent.startsWith(AppSPYFullPrefix);
                                     const loadFn = (isSpyNewFormat) 
-                                        ? vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(decodedURIFileContent, projectName, -1, false)
+                                        ? vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(decodedURIFileContent, projectName, -1, false, "import")
                                         : this.appStore.setStateFromJSONStr({stateJSONStr: decodedURIFileContent, showMessage: false });                            
                                     return loadFn
                                         ?.then(() => {
@@ -617,7 +617,7 @@ export default defineComponent({
                 const isSpyNewFormat = (otherParams.fileName?.endsWith(`.${strypeFileExtension}`)??false) && fileContent.startsWith(AppSPYFullPrefix);
                 if(isPurePython){
                     // The loading mechanisms for a Python file differs from a Strype file AND it doens't maintain a "link" to Google Drive.
-                    vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(fileContent, otherParams.fileName as string, lastSaveDate, false).then(() => {
+                    vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(fileContent, otherParams.fileName as string, lastSaveDate, false, "cloud").then(() => {
                         this.saveFileId = undefined;
                         this.updateSignInStatus(cloudTarget, false);
                         this.appStore.strypeProjectLocation = undefined;
@@ -640,7 +640,7 @@ export default defineComponent({
                     // Load the file content in the editor
                     const isOpenedSharedProject = (this.openSharedProjectFileId.length > 0);
                     const fileLoadFn = (isSpyNewFormat) 
-                        ? vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(fileContent, otherParams.fileName as string, lastSaveDate, false)
+                        ? vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(fileContent, otherParams.fileName as string, lastSaveDate, false, "cloud")
                         : this.appStore.setStateFromJSONStr({stateJSONStr: fileContent, showMessage: !isOpenedSharedProject});
                     fileLoadFn?.then(() => {
                         // Give focus to the current (focusable) frame element so interaction can happen
