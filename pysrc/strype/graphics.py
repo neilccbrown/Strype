@@ -364,7 +364,7 @@ class Image:
         _strype_graphics_internal.canvas_arc(self.__image, centre_x, centre_y, x_radius, y_radius, angle_start, angle_amount)
 
     def draw_circle(self, centre_x = None, centre_y = None, radius = None):
-        # type: (float, float, float) -> None
+        # type: (float | None, float | None, float | None) -> None
         """
         Draw a circle at a given position.  The border is drawn using the stroke color (see `set_stroke`) 
         and filled using the current fill color (see `set_fill`).
