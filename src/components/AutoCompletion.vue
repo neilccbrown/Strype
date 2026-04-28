@@ -331,10 +331,7 @@ export default defineComponent({
                 // For the specific case of a call after "self." within a function defintion of 
                 // a user defined class, we pass the full class code (see above) to TigerPython
                 // and add an extra line after that class that call as "<class name>()." to replace self.   
-                let preamble = "";
-                // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
-                preamble = "from builtins import *\n";
-                // #v-endif
+                let preamble = "from builtins import *\n";
                 const extraLineContent = (isGettingWholeClassContext) 
                     ? `${(this.appStore.frameObjects[currentStrypeLocationForClassInfos.locationFrameId].labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code}().` 
                     : parser.getStoppedIndentation() + context + ".";

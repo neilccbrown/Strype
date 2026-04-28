@@ -74,7 +74,7 @@
         "sync-message": "^0.0.12",
         "tess2-ts": "^1.0.8",
         "textarea-caret": "^3.1.0",
-        "tigerpython-parser": "git+https://github.com/neilccbrown/TigerPython-Parser.git",
+        "tigerpython-parser": "github:neilccbrown/TigerPython-Parser",
         "timed-cache": "^2.0.0",
         "ts-enum-util": "^4.1.0",
         "ts-node": "^10.9.1",

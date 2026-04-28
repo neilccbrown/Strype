@@ -16,9 +16,11 @@ import pythonAPI from "@/autocompletion/python-api.json";
 import graphicsMod from "@/../pysrc/strype/graphics.py?raw";
 import soundMod from "@/../pysrc/strype/sound.py?raw";
 import turtleMod from "@/../pysrc/pyi/turtle.pyi?raw";
+import builtinsMod from "@/../pysrc/pyi/builtins.pyi?raw";
 TPyParser.defineModule("strype.graphics", extractPYI(graphicsMod), "pyi");
 TPyParser.defineModule("strype.sound", extractPYI(soundMod), "pyi");
 TPyParser.defineModule("turtle", turtleMod, "pyi");
+TPyParser.defineModule("builtins", builtinsMod, "pyi");
 // #v-else
 import microbitPythonAPI from "@/autocompletion/microbit-api.json";
 import microbitDescriptions from "@/autocompletion/microbit.json";
