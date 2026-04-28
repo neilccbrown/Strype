@@ -485,6 +485,9 @@ export default defineComponent({
                         continueSavingProcess();
                     })
                     .catch((responseStatusCode) => {
+                        // In this generic Cloud Drive handler, we are not sure what the nature of responseStatusCode is: it can be number, a number as string, or
+                        // a proper response object that contains the status property. So we evaluate if the status property exists on responseStatusCode first and 
+                        // if it doesn't exist, we assume responseStatusCode is a number-like variable.
                         const errorCode = responseStatusCode.status ?? responseStatusCode;
                         // The following error status codes were relevant for Google Drive. 
                         // We keep them for the general cases, but add a catch up case for other error codes
