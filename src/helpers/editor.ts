@@ -2125,6 +2125,13 @@ export function getEditableSelectionText() : string {
                 if (selectableText == "yes_quote") {
                     nodeContent = nodeContent.replaceAll(/[“”]/g, "\"").replaceAll(/[‘’]/g, "'");
                 }
+                else{
+                    // For the specific case when the node is an operator, we make sure we add spacing around the operator 
+                    // so that textual operators stay separated from their operands.
+                    if(node.parentElement?.classList.contains(scssVars.frameOperatorSlotClassName)){
+                        nodeContent = " " + nodeContent + " ";
+                    }
+                }
                 allNodes.push(nodeContent);
             }
         }
