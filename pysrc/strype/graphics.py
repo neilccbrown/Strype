@@ -363,16 +363,22 @@ class Image:
         """
         _strype_graphics_internal.canvas_arc(self.__image, centre_x, centre_y, x_radius, y_radius, angle_start, angle_amount)
 
-    def draw_circle(self, centre_x, centre_y, radius):
+    def draw_circle(self, centre_x = None, centre_y = None, radius = None):
         # type: (float, float, float) -> None
         """
         Draw a circle at a given position.  The border is drawn using the stroke color (see `set_stroke`) 
         and filled using the current fill color (see `set_fill`).
         
-        :param centre_x: The x coordinate of the centre of the circle.
-        :param centre_y: The y coordinate of the centre of the circle.
-        :param radius: The radius of the circle.
+        :param centre_x: The x coordinate of the centre of the circle.  If omitted, it will be the horizontal centre of the image.
+        :param centre_y: The y coordinate of the centre of the circle.  If omitted, it will be the vertical centre of the image.
+        :param radius: The radius of the circle.  If omitted, it will be half of the smaller of the width or the height (that is, the largest radius that won't be cut off if drawn at the centre). 
         """
+        if centre_x is None:
+            centre_x = self.get_width() / 2
+        if centre_y is None:
+            centre_y = self.get_height() / 2
+        if radius is None:
+            radius = min(self.get_width(), self.get_height()) / 2
         self.draw_oval(centre_x, centre_y, radius, radius)
 
     def draw_polygon(self, points):
