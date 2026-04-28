@@ -538,7 +538,7 @@ while True:
 `);
         await startRunning(page);
         await page.waitForTimeout(1000);
-        await page.keyboard.type("Hello world", {delay: 100});
+        await page.keyboard.type("Hello world", {delay: 500});
         await page.waitForTimeout(1000);
         await checkGraphicsAreaContent(page, "type-get-key-show-text");
     });
