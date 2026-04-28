@@ -906,6 +906,12 @@ export function checkCodeErrors(frameIdForPrecompiled?: number): void {
     }); 
 }
 
+export function clearAllRuntimeErrors(): void {
+    Object.values(useStore().frameObjects).forEach((frame: FrameObject) => {
+        delete useStore().frameObjects[frame.id].runTimeError;
+    });
+}
+
 export function getAllEnabledUserDefinedFunctions() : FrameObject[] {
     // All enabled user-defined functions except those of used-defined classes (even if the user is inside the class):
     return Object.values(useStore().frameObjects).filter((f) => f.frameType.type === AllFrameTypesIdentifier.funcdef && !f.isDisabled  && (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.length > 0 && useStore().frameObjects[f.parentId].frameType.type != AllFrameTypesIdentifier.classdef);
