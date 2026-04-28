@@ -85,6 +85,7 @@ import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_brid
 import {getPythonClient, isPythonWorkerReady, renderer, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
 import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 import {createOrGetAudioContext} from "@/helpers/audioContext";
+import { clearAllRuntimeErrors } from "@/helpers/storeMethods";
 
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
@@ -533,7 +534,10 @@ export default defineComponent({
             
             // Make sure the text area is disabled when we run the code
             pythonConsole.disabled = true;
+            // Clear all runtime errors
             this.appStore.wasLastRuntimeErrorFrameId = undefined;
+            clearAllRuntimeErrors();
+
             // Make sure there is no document selection for our editor
             this.appStore.setSlotTextCursors(undefined, undefined);
                 
