@@ -432,7 +432,7 @@ function doGetAllExplicitlyImportedItems(importRHS: SlotsStructure | undefined, 
                         explicitList.push((f as BaseSlot).code.trim());
                     }
                 }
-                soFar[module].push(...allItems.filter((ac) => explicitList.includes(ac.acResult)));
+                soFar[module].push(...allItems.filter((ac) => explicitList.includes(ac.acResult) || explicitList.some((exp) => ac.acResult.startsWith(exp + "."))));
             }
             else {
                 // If it's a from import with a context, then we look for items that begin with that prefix
