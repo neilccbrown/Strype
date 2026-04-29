@@ -426,8 +426,14 @@ function doGetAllExplicitlyImportedItems(importRHS: FieldSlot[] | undefined, mod
             else {
                 // If it's a from import with a context, then we look for items that begin with that prefix
                 // and strip said prefix and file it under context, not module:
-                soFar[context] = soFar[context] ?? [];
-                soFar[context].push(...allItems.filter((ac) => ac.acResult.startsWith(context + ".")).map((ac) => ({...ac, acResult: ac.acResult.slice(context.length + 1)})));
+                
+                const matchingItems = allItems.filter((ac) => ac.acResult.startsWith(context + "."));
+                if (matchingItems.length > 0) {
+                    // Important to only insert an entry if there's actually something found:
+                    soFar[context] = soFar[context] ?? [];
+                    soFar[context].push(...matchingItems.map((ac) => ({...ac, acResult: ac.acResult.slice(context.length + 1)})));
+                }
+                    
             }
         }
     }
