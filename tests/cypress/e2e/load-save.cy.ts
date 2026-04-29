@@ -190,12 +190,26 @@ describe("Tests blanks", () => {
         //     return
         // raise ___strype_blank
         // ___strype_blank = 1 + ___strype_blank * ___strype_blank / () - __strype_blank
+        // test.___strype_blank() 
+        // test.a+() 
+        // test.___strype_blank 
+        // test.___strype_blank.___strype_blank() 
+        // test.___strype_blank()+1 
+        // test+()+1 
+        // ___strype_blank.___strype_blank() 
 
         //(function and if are followed by a pause, because it can take a bit longer to add their body/joint section)
         testEntryDisableAndSave(["{uparrow}{uparrow}" +
             "ix {rightarrow}f{downarrow}{downarrow}" +
             "f","{downarrow}{downarrow}i","{rightarrow} {downarrow}{downarrow}r{rightarrow}{downarrow}{downarrow}" +
-            "a{rightarrow}={rightarrow}1+*/()-"], [], "tests/cypress/fixtures/project-blanks.spy");
+            "a{rightarrow}={rightarrow}1+*/()-{downarrow}" +
+            " test.{downarrow}" +
+            " test.a+{downarrow}" +
+            " test.{del}{downarrow}" +
+            " test..{downarrow}" +
+            " test.()+1{downarrow}" +
+            " test+()+1{downarrow}" +
+            " ."], [], "tests/cypress/fixtures/project-blanks.spy");
     });
     it("Loads and saves with lots of blanks", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-blanks.spy");
