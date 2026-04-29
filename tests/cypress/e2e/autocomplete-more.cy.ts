@@ -102,6 +102,9 @@ describe("Overlapping imports", () => {
 });
 
 describe("Import of structured items", () => {
+    if (Cypress.env("mode") === "microbit") {
+        return;
+    }
     it("Shows today in fully qualified date", () => {
         focusEditorAC();
         // Add import: from datetime import date

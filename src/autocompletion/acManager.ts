@@ -10,17 +10,16 @@ import Parser from "@/parser/parser";
 import {extractPYI} from "@/helpers/python-pyi";
 import {findCurrentStrypeLocation, STRYPE_LOCATION} from "@/helpers/pythonToFrames";
 import {AcResultsWithCategorySchema} from "@/types/ac-types-zod";
+import builtinsMod from "@/../pysrc/pyi/builtins.pyi?raw";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import {OUR_PUBLIC_LIBRARY_MODULES, pythonBuiltins} from "@/autocompletion/pythonBuiltins";
 import pythonAPI from "@/autocompletion/python-api.json";
 import graphicsMod from "@/../pysrc/strype/graphics.py?raw";
 import soundMod from "@/../pysrc/strype/sound.py?raw";
 import turtleMod from "@/../pysrc/pyi/turtle.pyi?raw";
-import builtinsMod from "@/../pysrc/pyi/builtins.pyi?raw";
 TPyParser.defineModule("strype.graphics", extractPYI(graphicsMod), "pyi");
 TPyParser.defineModule("strype.sound", extractPYI(soundMod), "pyi");
 TPyParser.defineModule("turtle", turtleMod, "pyi");
-TPyParser.defineModule("builtins", builtinsMod, "pyi");
 // #v-else
 import microbitPythonAPI from "@/autocompletion/microbit-api.json";
 import microbitDescriptions from "@/autocompletion/microbit.json";
@@ -42,6 +41,7 @@ mbPYContextPaths.forEach((mbPYContextPath) => {
     }   
 });
 // #v-endif
+TPyParser.defineModule("builtins", builtinsMod, "pyi");
 
 // Given a FieldSlot, get the program code corresponding to it, to use
 // as the prefix (context) for code completion.
