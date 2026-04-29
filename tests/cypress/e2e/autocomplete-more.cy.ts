@@ -100,3 +100,36 @@ describe("Overlapping imports", () => {
         }, true);
     });
 });
+
+describe("Import of structured items", () => {
+    it("Shows today in fully qualified date", () => {
+        focusEditorAC();
+        // Add import: from datetime import date
+        cy.get("body").type("{uparrow}{uparrow}fdatetime{rightarrow}date{downarrow}{downarrow}{downarrow}");
+        // Now we're back in main body, make a function call with math.:
+        cy.get("body").type(" ");
+        cy.wait(500);
+        // Trigger auto-complete:
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel, frameId) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkNoItems(acIDSel, "<any>");
+            checkExactlyOneItem(acIDSel, "datetime", "date.today()");
+        }, true);
+    });
+    it("Shows today in after date.", () => {
+        focusEditorAC();
+        // Add import: from datetime import date
+        cy.get("body").type("{uparrow}{uparrow}fdatetime{rightarrow}date{downarrow}{downarrow}{downarrow}");
+        // Now we're back in main body, make a function call with math.:
+        cy.get("body").type(" date.");
+        cy.wait(500);
+        // Trigger auto-complete:
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel, frameId) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkNoItems(acIDSel, "<any>");
+            checkExactlyOneItem(acIDSel, "date", "today()");
+        }, true);
+    });
+});
