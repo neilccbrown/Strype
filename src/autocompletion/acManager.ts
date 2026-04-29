@@ -266,7 +266,7 @@ export async function getAllExplicitlyImportedItems(context: string) : Promise<A
     // We loop through all the import frames:
     const importFrames : FrameObject[] = Object.values(useStore().frameObjects) as FrameObject[];
     loopImportFrames: for (const frame of importFrames) {
-        const frameRHS : FieldSlot[] | undefined = frame.labelSlotsDict[1]?.slotStructures?.fields;
+        const frameRHS : SlotsStructure | undefined = frame.labelSlotsDict[1]?.slotStructures;
         if (!frame.isDisabled && (frame.frameType.type === AllFrameTypesIdentifier.fromimport || frame.frameType.type === AllFrameTypesIdentifier.import)) {
             const importKind : "import" | "from" = (frame.frameType.type === AllFrameTypesIdentifier.import) ? "import" : "from";
             // Possible import syntaxes:
@@ -328,9 +328,9 @@ export async function getAllExplicitlyImportedItems(context: string) : Promise<A
 
 // A helper function for getAllExplicitlyImportedItems.  Processes the RHS of an import frame
 // to find all relevant imports
-function doGetAllExplicitlyImportedItems(importRHS: FieldSlot[] | undefined, module: string, importKind: "import" | "from", soFar: AcResultsWithCategory, context: string, importedAliasedModules: {[alias: string]: string}, availableLibraries: AcResultsWithCategory): void {
+function doGetAllExplicitlyImportedItems(importRHS: SlotsStructure | undefined, module: string, importKind: "import" | "from", soFar: AcResultsWithCategory, context: string, importedAliasedModules: {[alias: string]: string}, availableLibraries: AcResultsWithCategory): void {
     const importedModulesCategory = i18n.global.t("autoCompletion.importedModules");
-    if (importKind == "from" && importRHS?.length == 1 && (importRHS[0] as BaseSlot).code === "*") {
+    if (importKind == "from" && importRHS && importRHS.fields.some((f) => (f as BaseSlot)?.code === "*")) {
         // Import *; we need to find everything available in the module
         
         // Depending on whether we are microbit or Pyodide, access the appropriate JSON file and retrieve
@@ -420,8 +420,19 @@ function doGetAllExplicitlyImportedItems(importRHS: FieldSlot[] | undefined, mod
             // #v-endif
         
             // If it's a plain import or there's no context, include everything:
-            if (importKind == "import" || context == "") {
+            if (importKind == "import") {
                 soFar[module].push(...allItems);
+            }
+            else if (importKind == "from" && importRHS && !context) {
+                // Find all the RHS items (we know there are no stars because that was handled earlier):
+                const explicitList : string[] = [];
+                for (let i = 0; i < importRHS.fields.length; i++) {
+                    const f = importRHS.fields[i];
+                    if (isFieldBaseSlot(f) && (i == 0 || importRHS.operators[i-1].code == ",")) {
+                        explicitList.push((f as BaseSlot).code.trim());
+                    }
+                }
+                soFar[module].push(...allItems.filter((ac) => explicitList.includes(ac.acResult)));
             }
             else {
                 // If it's a from import with a context, then we look for items that begin with that prefix
