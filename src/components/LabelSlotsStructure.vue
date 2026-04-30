@@ -800,7 +800,7 @@ export default defineComponent({
             if (!(event.shiftKey || event.metaKey || event.altKey || event.ctrlKey)) {
                 for(const subSlot of this.subSlots){
                     const subSlotCoreInfos = {frameId: this.frameId, labelSlotsIndex: this.labelIndex, slotId: subSlot.id, slotType: subSlot.type};
-                    if(vueComponentsAPIHandler.labelSlotComponentAPI?.forInstance[getLabelSlotUID(subSlotCoreInfos)].handleUpDown(event)){
+                    if(vueComponentsAPIHandler.labelSlotComponentAPI?.forInstance[getLabelSlotUID(subSlotCoreInfos)]?.handleUpDown(event)){
                         // Consumed by focused slot which is showing autocomplete:
                         return;
                     }

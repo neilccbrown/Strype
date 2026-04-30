@@ -13,7 +13,7 @@ describe("Parameter prompts objects graphics", () => {
     if (Cypress.env("mode") !== "microbit") {
         rawFuncs.push(["strype.graphics", "Actor(s).move", ["distance"]]);
         rawFuncs.push(["strype.graphics", "Actor(t).set_location", ["x", "y"]]);
-        rawFuncs.push(["strype.graphics", "get_background().draw_circle", ["centre_x", "centre_y", "radius"]]);
+        rawFuncs.push(["strype.graphics", "get_background().draw_image", ["image", "x", "y"]]);
         rawFuncs.push(["strype.graphics", "load_image(‘’).draw_text", ["text", "x", "y", "font_size=32", "max_width=0", "max_height=0", "font_family=None"]]);
     }
     // TODO remove the true param once we've investigated fully qualified imports

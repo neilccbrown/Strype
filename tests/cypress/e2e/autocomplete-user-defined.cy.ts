@@ -281,12 +281,12 @@ describe("User-defined items", () => {
         }, true);
     });
 
-    it("Offers auto-complete for user-defined class overwriting " + ((Cypress.env("mode") == "microbit") ? "microbit's NeoPixel" : "Strype Graphics' Actor"), () => {
+    it("Offers auto-complete for user-defined class overriding " + ((Cypress.env("mode") == "microbit") ? "microbit's NeoPixel" : "Strype Graphics' Actor"), () => {
         const isTestingMicrobitVersion = Cypress.env("mode") == "microbit";
         const parentImport = (isTestingMicrobitVersion) ? ["neopixel", "NeoPixel"] : ["strype.graphics", "Actor"];
         const parentClassName = (isTestingMicrobitVersion) ? "NeoPixel" : "Actor";
         const parentClassInitParamsToTest = (isTestingMicrobitVersion) ? "pin, n, bpp" : "image, x, y, tag";
-        const parentClassMethodWithParamsToTest = (isTestingMicrobitVersion) ? "fill(colour)" : "get_in_range(distance)";
+        const parentClassMethodWithParamsToTest = (isTestingMicrobitVersion) ? "fill(colour)" : "get_in_range(distance, tag)";
         const parentClassMethodWithoutParamsToTest = (isTestingMicrobitVersion) ? "clear()" : "remove()";
         focusEditorAC();
         // Add the right import to get Actor or NeoPixel

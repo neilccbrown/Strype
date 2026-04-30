@@ -165,5 +165,9 @@ export default defineConfig(({mode}) => {
         optimizeDeps: { exclude: ["pyodide"] },
 
         worker: { format: 'es' },
+
+        server: {
+            hmr: mode !== 'e2e' // disable HMR during Cypress
+        }
     };
 });

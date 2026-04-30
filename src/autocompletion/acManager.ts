@@ -1,4 +1,4 @@
-import {AcResultsWithCategory, AllFrameTypesIdentifier, BaseSlot, FrameObject, AcResultType, SlotsStructure, FieldSlot, StringSlot, isFieldBaseSlot, CaretPosition} from "@/types/types";
+import {AcResultsWithCategory, AcResultType, AllFrameTypesIdentifier, BaseSlot, CaretPosition, FieldSlot, FrameObject, isFieldBaseSlot, SlotsStructure, StringSlot} from "@/types/types";
 
 import {useStore} from "@/store/store";
 import {extractFormalParamsFromSlot, getMatchingBracket, transformFieldPlaceholders} from "@/helpers/editor";
@@ -8,8 +8,9 @@ import {Signature, TPyParser} from "tigerpython-parser";
 import {getAvailablePyPyiFromLibrary, getPossibleImports, getTextFileFromLibraries} from "@/helpers/libraryManager";
 import Parser from "@/parser/parser";
 import {extractPYI} from "@/helpers/python-pyi";
-import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
+import {findCurrentStrypeLocation, STRYPE_LOCATION} from "@/helpers/pythonToFrames";
 import {AcResultsWithCategorySchema} from "@/types/ac-types-zod";
+import builtinsMod from "@/../pysrc/pyi/builtins.pyi?raw";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import {OUR_PUBLIC_LIBRARY_MODULES, pythonBuiltins} from "@/autocompletion/pythonBuiltins";
 import pythonAPI from "@/autocompletion/python-api.json";
@@ -40,6 +41,7 @@ mbPYContextPaths.forEach((mbPYContextPath) => {
     }   
 });
 // #v-endif
+TPyParser.defineModule("builtins", builtinsMod, "pyi");
 
 // Given a FieldSlot, get the program code corresponding to it, to use
 // as the prefix (context) for code completion.
@@ -165,8 +167,13 @@ function getAllUserDefinedVariablesWithinUpTo(framesForParentId: FrameObject[], 
         }
         // Get iterator variables from for loops:
         if (frame.frameType.type === AllFrameTypesIdentifier.for && !frame.isDisabled) {
-            if ((frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code) {
-                soFar.add((frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code);
+            const loopVarFields = frame.labelSlotsDict[0].slotStructures.fields;
+            const loopVarOperators = frame.labelSlotsDict[0].slotStructures.operators;
+            // Get all comma separated tokens:
+            for (let i = 0; i < loopVarFields.length; i++) {
+                if ((i == 0 || loopVarOperators[i - 1]?.code === ",") && (loopVarFields[i] as BaseSlot).code) {
+                    soFar.add((loopVarFields[i] as BaseSlot).code);
+                }
             }
         }
         
@@ -188,6 +195,11 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
     let curFrameId = frameId;
     for (;;) {
         const frame = useStore().frameObjects[curFrameId];
+        // If a joint frame, we go to the joint parent and go from there:
+        if (frame.jointParentId > 0) {
+            curFrameId = frame.jointParentId;
+            continue;
+        }
         const parentId = frame.parentId;
         const isParentUserDefinedClass = useStore().frameObjects[parentId].frameType.type == AllFrameTypesIdentifier.classdef;
         if ((parentId == useStore().getDefsFrameContainerId || isParentUserDefinedClass) && frame.frameType.type == AllFrameTypesIdentifier.funcdef) {
@@ -217,6 +229,17 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
     }
 }
 
+// Goes through all the import frames and finds all the imported items
+// which would be available after the given context.  A context is the part
+// before a dot; this is not the same as the partially-typed token which is
+// used by the caller to narrow down the options to display.  But if the context
+// is math, we know that we only show options from the math module if it
+// was imported using "import math".
+// Note that this function does not look for members of a
+// math object, that kind of lookup is done elsewhere (e.g. updateAC).
+// This only looks for standalone things that are imported.
+//
+// The function is async because it may need to fetch info from a library.
 export async function getAllExplicitlyImportedItems(context: string) : Promise<AcResultsWithCategory> {
     // Reset the aliases dictionary
     const importedAliasedModules: {[alias: string]: string} = {};
@@ -238,62 +261,78 @@ export async function getAllExplicitlyImportedItems(context: string) : Promise<A
         }
     }
     
-
+    // soFar is an accumulator that builds up everything we find:
     const soFar : AcResultsWithCategory = {};
-    const imports : FrameObject[] = Object.values(useStore().frameObjects) as FrameObject[];
-    loopImportFrames: for (let i = 0; i < imports.length; i++) {
-        const frame = imports[i];
+    // We loop through all the import frames:
+    const importFrames : FrameObject[] = Object.values(useStore().frameObjects) as FrameObject[];
+    loopImportFrames: for (const frame of importFrames) {
+        const frameRHS : SlotsStructure | undefined = frame.labelSlotsDict[1]?.slotStructures;
         if (!frame.isDisabled && (frame.frameType.type === AllFrameTypesIdentifier.fromimport || frame.frameType.type === AllFrameTypesIdentifier.import)) {
-            // We need to distinguish 2 cases: when explicit imports are done with "from...import..." or just "import...".
-            // In the latter, if context is empty, we add the module under the section "Imported modules" in the A/C.
-            // Otherwise we only add it if the module matches the context.
-            const isSimpleImport = (frame.frameType.type === AllFrameTypesIdentifier.import);
+            const importKind : "import" | "from" = (frame.frameType.type === AllFrameTypesIdentifier.import) ? "import" : "from";
+            // Possible import syntaxes:
+            //   import math
+            //   import math, sys, os
+            //   import math as m
+            //   import numpy as np, pandas as pd
+            // Possible from import syntaxes:
+            //   from math import sin
+            //   from math import sin, cos, tan
+            //   from math import sin as sine
+            //   from math import sin as s, cos
+            //   from math import *
+            // We don't support relative imports (we are not in a package in Strype), or bracketed imports (should we?)
             let module = "";
+            // Loop through slot fields in the first item, which is always the module name (for import ..., or from ...)
             for (let j = 0; j < frame.labelSlotsDict[0].slotStructures.fields.length; j++) {
                 module += (frame.labelSlotsDict[0].slotStructures.fields[j] as BaseSlot).code;
                 if (j < frame.labelSlotsDict[0].slotStructures.operators.length) {
-                    // Should be a dot or a comma or "as" (for simple imports):
-                    if (frame.labelSlotsDict[0].slotStructures.operators[j].code !== "." && (!isSimpleImport || (isSimpleImport && frame.labelSlotsDict[0].slotStructures.operators[j].code !== "," && frame.labelSlotsDict[0].slotStructures.operators[j].code !== "as"))) {
+                    // Should be a dot (for either import kind); or a comma or "as" (for "import"):
+                    const op = frame.labelSlotsDict[0].slotStructures.operators[j].code;
+                    if (op !== "." && (importKind == "from" || (importKind == "import" && op !== "," && op !== "as"))) {
                         // Error; ignore this import
                         continue loopImportFrames;
                     }
-                    else if(isSimpleImport && (frame.labelSlotsDict[0].slotStructures.operators[j].code === "," || frame.labelSlotsDict[0].slotStructures.operators[j].code === "as")){
+                    else if (importKind == "import" && (op === "," || op === "as")){
                         // When we import several modules at once we process them one by one
-                        if(frame.labelSlotsDict[0].slotStructures.operators[j].code == "as") {
+                        if(op === "as") {
                             // If we have an alias, we feed the module alias dictionary so we can know what module
                             // the alias refers to, and we use the name of alias as module for a/c.
                             // If no alias name is provided, we don't add the module/alias at all
                             const aliasName = (frame.labelSlotsDict[0].slotStructures.fields[j + 1] as BaseSlot).code;
                             if(aliasName.length > 0){
                                 importedAliasedModules[aliasName] = module;
-                                doGetAllExplicitlyImportedItems(frame, aliasName, true, soFar, context, importedAliasedModules, fromLibraries);    
+                                doGetAllExplicitlyImportedItems(frameRHS, aliasName, importKind, soFar, context, importedAliasedModules, fromLibraries);    
                                 // We already retrieved the alias, so we skip a slot for the next module
                                 j++;
                             }                 
                         }
                         else{
-                            doGetAllExplicitlyImportedItems(frame, module, true, soFar, context, importedAliasedModules, fromLibraries);
+                            doGetAllExplicitlyImportedItems(frameRHS, module, importKind, soFar, context, importedAliasedModules, fromLibraries);
                         }
                         module = "";
                         continue;
                     }
-                    module += frame.labelSlotsDict[0].slotStructures.operators[j].code;
+                    module += op;
                 }
             }
 
             // If the module is empty (which happens when user has only added a frame), we skip it
             if(module.length > 0) {
-                doGetAllExplicitlyImportedItems(frame, module, isSimpleImport, soFar, context, importedAliasedModules, fromLibraries);
+                // If it is filled in, process it:
+                doGetAllExplicitlyImportedItems(frameRHS, module, importKind, soFar, context, importedAliasedModules, fromLibraries);
             }
         }
     }
     return soFar;
 }
 
-function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isSimpleImport: boolean, soFar: AcResultsWithCategory, context: string, importedAliasedModules: {[alias: string]: string}, availableLibraries: AcResultsWithCategory): void {
+// A helper function for getAllExplicitlyImportedItems.  Processes the RHS of an import frame
+// to find all relevant imports
+function doGetAllExplicitlyImportedItems(importRHS: SlotsStructure | undefined, module: string, importKind: "import" | "from", soFar: AcResultsWithCategory, context: string, importedAliasedModules: {[alias: string]: string}, availableLibraries: AcResultsWithCategory): void {
     const importedModulesCategory = i18n.global.t("autoCompletion.importedModules");
-    if (!isSimpleImport && frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*") {
-                
+    if (importKind == "from" && importRHS && importRHS.fields.some((f) => (f as BaseSlot)?.code === "*")) {
+        // Import *; we need to find everything available in the module
+        
         // Depending on whether we are microbit or Pyodide, access the appropriate JSON file and retrieve
         // the contents of the specific module:
         
@@ -319,9 +358,13 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
         // #v-endif
     }
     else {
+        // It's not a * import:
+        
         // The module name might be an alias: we need to get the right module to retrieve the data.
         const realModule = (importedAliasedModules[module]) ? importedAliasedModules[module] : module;
-        if(isSimpleImport && context != module) {
+        if (importKind == "import" && context != module) {
+            // They have done an "import math" or "import random as math" and the context is NOT math,
+            // so we need to include "math" itself as a completion possibility in the importedModulesCategory
             if (soFar[importedModulesCategory] == undefined || !soFar[importedModulesCategory].some((acRes) => acRes.acResult.localeCompare(realModule) == 0)) {
                 // In the case of an import frame, we can add the module in the a/c as such in the imported module modules section (if non-present)
                 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
@@ -347,8 +390,12 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
                 // #v-endif
             }
         }
-        else{
-            soFar[module] = [];
+        else {
+            // Either it's a from import, meaning everything is available without context,
+            // or it's an import but context does match the module name.  Either way, everything
+            // imported via this frame is potentially available.
+            
+            soFar[module] = soFar[module] ?? [];
         
             let allItems : AcResultType[] = [];
 
@@ -372,17 +419,32 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
             }
             // #v-endif
         
-            // Find the relevant item from allItems (if it exists):
-            if (isSimpleImport) {
+            // If it's a plain import or there's no context, include everything:
+            if (importKind == "import") {
                 soFar[module].push(...allItems);
             }
-            else {
-                for (const f of frame.labelSlotsDict[1].slotStructures.fields) {
-                    // We find either:
-                    // - Results which match the thing imported, e.g. Turtle when the user has written "from turtle import Turtle"
-                    // - Results where the part before the first dot matches, e.g. date.fromtimestamp when the user has written "from datetime import date"
-                    soFar[module].push(...allItems.filter((ac) => ac.acResult === (f as BaseSlot).code.trim() || (ac.acResult.includes(".") && ac.acResult.startsWith((f as BaseSlot).code.trim() + "."))));
+            else if (importKind == "from" && importRHS && !context) {
+                // Find all the RHS items (we know there are no stars because that was handled earlier):
+                const explicitList : string[] = [];
+                for (let i = 0; i < importRHS.fields.length; i++) {
+                    const f = importRHS.fields[i];
+                    if (isFieldBaseSlot(f) && (i == 0 || importRHS.operators[i-1].code == ",")) {
+                        explicitList.push((f as BaseSlot).code.trim());
+                    }
                 }
+                soFar[module].push(...allItems.filter((ac) => explicitList.includes(ac.acResult) || explicitList.some((exp) => ac.acResult.startsWith(exp + "."))));
+            }
+            else {
+                // If it's a from import with a context, then we look for items that begin with that prefix
+                // and strip said prefix and file it under context, not module:
+                
+                const matchingItems = allItems.filter((ac) => ac.acResult.startsWith(context + "."));
+                if (matchingItems.length > 0) {
+                    // Important to only insert an entry if there's actually something found:
+                    soFar[context] = soFar[context] ?? [];
+                    soFar[context].push(...matchingItems.map((ac) => ({...ac, acResult: ac.acResult.slice(context.length + 1)})));
+                }
+                    
             }
         }
     }
