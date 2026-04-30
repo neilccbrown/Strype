@@ -100,11 +100,12 @@ export const generateFlatSlotBases = (slot: { allowedSlotContent?: AllowedSlotCo
             // we have a simple slot, we check if we can infer the detailed type (i.e. number or boolean literals)
             // otherwise we consider it is just a code slot
             
-            // We pass true if we're beside an operator and the other side is the end or a non-blank operator
+            // We pass true if we're beside an operator and the other side is the end or a non-blank operator,
+            // or if we are in between a bracket structure (operator is empty) and a dot.
             
             const opBefore = slotStructure.operators[index - 1]?.code;
             const adjacentOp =
-                operatorSlot.code !== "" &&
+                (operatorSlot.code !== "" || (operatorSlot.code === "" && opBefore === ".")) &&
                 (index == 0 || opBefore !== "") &&
                 !["not", "~"].includes(operatorSlot.code.trim());
             addFlatSlot({...(fieldSlot as BaseSlot), id: slotId, type: evaluateSlotType(slot, fieldSlot)}, adjacentOp, opBefore, operatorSlot.code);

@@ -10,4 +10,11 @@ def ___strype_blank ( ) :
 #(=> Section:Main
 raise  
 ___strype_blank  = 1+___strype_blank*___strype_blank/()-___strype_blank 
+test.___strype_blank() 
+test.a+() 
+test.___strype_blank 
+test.___strype_blank.___strype_blank() 
+test.___strype_blank()+1 
+test+()+1 
+___strype_blank.___strype_blank() 
 #(=> Section:End
