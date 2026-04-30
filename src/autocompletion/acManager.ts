@@ -363,7 +363,7 @@ function doGetAllExplicitlyImportedItems(importRHS: SlotsStructure | undefined, 
         // The module name might be an alias: we need to get the right module to retrieve the data.
         const realModule = (importedAliasedModules[module]) ? importedAliasedModules[module] : module;
         if (importKind == "import" && context != module) {
-            // They have done an "import math" or "from import random as math" and the context is NOT math,
+            // They have done an "import math" or "import random as math" and the context is NOT math,
             // so we need to include "math" itself as a completion possibility in the importedModulesCategory
             if (soFar[importedModulesCategory] == undefined || !soFar[importedModulesCategory].some((acRes) => acRes.acResult.localeCompare(realModule) == 0)) {
                 // In the case of an import frame, we can add the module in the a/c as such in the imported module modules section (if non-present)
