@@ -589,6 +589,8 @@ export default defineComponent({
                 requestAnimationFrame(redraw);
                 
                 this.libraries = parser.getLibraries();
+                const micropipLibraries = this.libraries.filter((str) => str.startsWith("micropip:"))
+                    .map((str) => str.slice("micropip:".length));
 
                 setSInputConsole(pythonConsole);
                 
@@ -635,6 +637,7 @@ export default defineComponent({
                 (client.call(
                     client.workerProxy.executePython,
                     userCode,
+                    micropipLibraries,
                     typeof(this.appStore.strypeProjectLocation) === "string",
                     Comlink.proxy((asreq : SyncOrAsyncStrypePyodideWorkerRequest) => serialize(() => { 
                         if (asreq.kind == "async") {

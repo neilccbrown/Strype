@@ -113,6 +113,7 @@ const reloader = new PyodideFatalErrorReloader(loadOnly);
 const executePython = pyodideExpose(async (
     extras: PyodideExtras,
     pythonCode: string,
+    micropipLibraries: string[],
     startInSlashCloud: boolean,
     // Important all requests (sync and async) go through one function to avoid them racing each other:
     makeRequest: Comlink.Remote<(req: SyncOrAsyncStrypePyodideWorkerRequest) => void>
@@ -133,6 +134,15 @@ class StrypePyodideRunner(PyodideRunner):
         filtered = [dict(filename=frame.filename, lineno=frame.lineno) for frame in list(dropwhile(lambda f: f.filename != self.filename, tbe.stack))]
         return dict(error_type=type(exc).__name__, error_message=str(exc), traceback=filtered, text=type(exc).__name__ + ": " + str(exc))
 StrypePyodideRunner()`);
+        
+        if (micropipLibraries.length > 0) {
+            await pyodide.loadPackage("micropip");
+            const micropip = pyodide.pyimport("micropip");
+            for (let micropipLibrary of micropipLibraries) {
+                await micropip.install(micropipLibrary);
+            }
+        }
+        
         const bridgeSync: SyncStrypePyodideHandlerFunction = <R extends SyncStrypePyodideWorkerRequest> (req : R) : ResponseFor<R> => {
             makeRequest({kind: "sync", request: req});
             const reply = extras.readMessage() as (SyncStrypePyodideWorkerResponse | {request: string, error: string});

@@ -74,7 +74,7 @@ New column C:
     });
 
     test("Check pandas and numpy", async ({page}) => {
-        await enterCode(page, ["import numpy as np", "import pandas as pd", "", `
+        await enterCode(page, ["import numpy as np\nimport pandas as pd", "", `
 arr = np.arange(1, 6)
 print("NumPy array:", arr)
 df = pd.DataFrame({"Numbers": arr})
@@ -103,6 +103,15 @@ Squared column:
 Sum of squared: 55
 `.trimStart());
     });
+});
 
-
+test.describe("Check micropip packages", () => {
+    test("Check micropip package", async ({page}) => {
+        await enterCode(page, ["#(=> Library:micropip:snowballstemmer\nimport snowballstemmer as ss", "", `
+stemmer = ss.stemmer('english')
+print(stemmer.stemWords('go goes going gone'.split()))
+`]);
+        await runToFinish(page);
+        await checkConsoleContent(page, "['go', 'goe', 'go', 'gone']\n");
+    });
 });
