@@ -74,7 +74,7 @@
 
 // Tell Typescript we are on a web worker, so we can access web worker bits but not the DOM:
 /// <reference lib="webworker" />
-import type { PyodideInterface } from "pyodide";
+import type {PyodideConfig, PyodideInterface} from "pyodide";
 import { loadPyodide } from "pyodide";
 import { loadPyodideAndPackage, OutputPart, pyodideExpose, PyodideExtras, PyodideFatalErrorReloader } from "pyodide-worker-runner";
 import * as Comlink from "comlink";
@@ -90,7 +90,7 @@ import { PyodideErrorDetails } from "@/workers/shared_helpers";
 declare const self: PyodideWorkerGlobalScope & { updatePort: MessagePort };
 
 async function loadOnly() : Promise<PyodideInterface> {
-    const pyodide = await loadPyodideAndPackage({url: `${import.meta.env.BASE_URL}pysrc.zip`, format: "zip"}, loadPyodide);
+    const pyodide = await loadPyodideAndPackage({url: `${import.meta.env.BASE_URL}pysrc.zip`, format: "zip"}, () => loadPyodide({indexURL: `${import.meta.env.BASE_URL}pyodide/`}));
     
     // Register our strype.graphics etc modules with Pyodide by pointing it to the Javascript:
     pyodide.registerJsModule("strype_bridge", strype_bridge);
@@ -118,6 +118,9 @@ const executePython = pyodideExpose(async (
     makeRequest: Comlink.Remote<(req: SyncOrAsyncStrypePyodideWorkerRequest) => void>
 ) : Promise<PyodideErrorDetails | null> => {
     return reloader == null ? null : await reloader.withPyodide(async (pyodide : PyodideInterface) => {
+        // Load any in-built packages they've used (e.g. numpy, pandas):
+        await pyodide.loadPackagesFromImports(pythonCode, {messageCallback: console.log, errorCallback: console.error});
+        
         const runner = pyodide.runPython(`from python_runner import PyodideRunner
 import traceback
 from itertools import dropwhile
