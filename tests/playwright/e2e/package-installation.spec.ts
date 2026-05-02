@@ -1,0 +1,108 @@
+import { test } from "@playwright/test";
+import { enterCode } from "../support/editor";
+import { checkConsoleContent, runToFinish } from "../support/execution";
+
+test.beforeEach(async ({ page, browserName }, testInfo) => {
+    if (browserName === "webkit" && process.platform === "win32") {
+        // On Windows+Webkit it just can't seem to load the page for some reason:
+        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
+    }
+
+    // These tests can take longer than the default 30 seconds:
+    testInfo.setTimeout(90000); // 90 seconds
+
+    await page.goto("./", {waitUntil: "load"});
+    await page.waitForSelector("body");
+    await page.evaluate(() => {
+        (window as any).Playwright = true;
+    });
+    // Make browser's console.log output visible in our logs (useful for debugging):
+    page.on("console", (msg) => {
+        console.log("Browser log:", msg.text());
+    });
+});
+
+test.describe("Check in-built packages", () => {
+    test("Check numpy", async ({page}) => {
+        await enterCode(page, ["import numpy as np", "", `
+print("NumPy version:", np.__version__)
+a = np.array([1, 2, 3])
+b = np.array([4, 5, 6])
+print("Array a:", a)
+print("Array b:", b)
+c = a + b
+print("a + b:", c)
+print("Mean of c:", np.mean(c))
+`]);
+        await runToFinish(page);
+        await checkConsoleContent(page, `
+NumPy version: 2.2.5
+Array a: [1 2 3]
+Array b: [4 5 6]
+a + b: [5 7 9]
+Mean of c: 7.0
+`.trimStart());
+    });
+
+    test("Check pandas", async ({page}) => {
+        await enterCode(page, ["import pandas as pd", "", `
+print("Pandas version:", pd.__version__)
+data = {"A": [1, 2, 3], "B": [4, 5, 6]}
+df = pd.DataFrame(data)
+print("DataFrame:\\n", df)
+print("Column A sum:", df["A"].sum())
+print("Column B mean:", df["B"].mean())
+df["C"] = df["A"] + df["B"]
+print("New column C:\\n", df)
+`]);
+        await runToFinish(page);
+        await checkConsoleContent(page, `
+Pandas version: 2.3.3
+DataFrame:
+    A  B
+0  1  4
+1  2  5
+2  3  6
+Column A sum: 6
+Column B mean: 5.0
+New column C:
+    A  B  C
+0  1  4  5
+1  2  5  7
+2  3  6  9
+`.trimStart());
+    });
+
+    test("Check pandas and numpy", async ({page}) => {
+        await enterCode(page, ["import numpy as np", "import pandas as pd", "", `
+arr = np.arange(1, 6)
+print("NumPy array:", arr)
+df = pd.DataFrame({"Numbers": arr})
+print("DataFrame:\\n", df)
+df["Squared"] = df["Numbers"] ** 2
+print("Squared column:\\n", df)
+print("Sum of squared:", df["Squared"].sum())
+`]);
+        await runToFinish(page);
+        await checkConsoleContent(page, `
+NumPy array: [1 2 3 4 5]
+DataFrame:
+    Numbers
+0        1
+1        2
+2        3
+3        4
+4        5
+Squared column:
+    Numbers  Squared
+0        1        1
+1        2        4
+2        3        9
+3        4       16
+4        5       25
+Sum of squared: 55
+`.trimStart());
+    });
+
+
+});
