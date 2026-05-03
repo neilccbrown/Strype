@@ -27,7 +27,8 @@
         "test:cypress:python-only": "cross-env WAIT_ON_TIMEOUT=90000 start-server-and-test test:cypress:serve-both http-get://localhost:8081/editor/ cy:run:python",
         "test:cypress": "cross-env WAIT_ON_TIMEOUT=90000 start-server-and-test test:cypress:serve-both http-get://localhost:8081/editor/ cy:run:python && cross-env WAIT_ON_TIMEOUT=90000 start-server-and-test serve:microbit http-get://localhost:8081/microbit/ cy:run:microbit",
         "playwright:run": "npx playwright test",
-        "test:playwright": "cross-env BASE_URL=http://localhost:8081/editor/ start-server-and-test serve:python:dist:playwright http-get://localhost:8081/editor/ playwright:run"
+        "test:playwright:serve-both": "concurrently \"npm run serve:python:dist:playwright\" \"npm run test:cypress:serve-assets\"",
+        "test:playwright": "cross-env BASE_URL=http://localhost:8081/editor/ start-server-and-test test:playwright:serve-both http-get://localhost:8081/editor/ playwright:run"
     },
     "dependencies": {
         "@azure/msal-browser": "^4.15.0",

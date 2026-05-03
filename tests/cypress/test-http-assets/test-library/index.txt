@@ -1,4 +1,5 @@
 autocomplete.json
 mediacomp.py
+print_message.py
 demos/index.yaml
 demos/demo.spy

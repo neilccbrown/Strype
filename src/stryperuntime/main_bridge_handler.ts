@@ -11,6 +11,7 @@ import {cloudCloseFile, cloudCreate, cloudListDir, cloudLookupFile, cloudOpenFil
 import {useStore} from "@/store/store";
 import { handleTurtle, TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 import { sInput } from "@/helpers/execPythonCode";
+import {getRawFileFromLibraries} from "@/helpers/libraryManager";
 
 // These are callbacks passed from PythonExecutionArea.vue to do things that are tied to the DOM or wider Strype state.
 // This means we don't have to make reference to the PythonExecutionArea component itself.
@@ -163,6 +164,16 @@ export const handleSyncRequests : (
     }
     case "assetFile_fetch": {
         return {request: req.request, response: fetch(req.url).then((resp) => resp.arrayBuffer()).then((arr) => encodeUint8ToString(new Uint8ClampedArray(arr)))};
+    }
+    case "libraryFile_fetch": {
+        return {request: req.request, response: getRawFileFromLibraries([req.libraryURL], req.filename).then((resp) => {
+            if (resp?.buffer) {
+                return resp?.buffer;
+            }
+            else {
+                throw new Error("Could not fetch file " + req.filename + " from " + req.libraryURL);
+            }
+        }).then((arr) => encodeUint8ToString(new Uint8ClampedArray(arr)))};
     }
     case "turtle": {
         // Assume all turtle interactions require a redraw:

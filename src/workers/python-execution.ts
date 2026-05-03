@@ -74,17 +74,18 @@
 
 // Tell Typescript we are on a web worker, so we can access web worker bits but not the DOM:
 /// <reference lib="webworker" />
-import type {PyodideConfig, PyodideInterface} from "pyodide";
-import { loadPyodide } from "pyodide";
-import { loadPyodideAndPackage, OutputPart, pyodideExpose, PyodideExtras, PyodideFatalErrorReloader } from "pyodide-worker-runner";
+import type {PyodideInterface} from "pyodide";
+import {loadPyodide} from "pyodide";
+import {loadPyodideAndPackage, OutputPart, pyodideExpose, PyodideExtras, PyodideFatalErrorReloader} from "pyodide-worker-runner";
 import * as Comlink from "comlink";
-import { strype_bridge } from "@/stryperuntime/pyodide_bridge";
-import { ResponseFor, SyncOrAsyncStrypePyodideWorkerRequest, SyncStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse } from "@/stryperuntime/worker_bridge_type";
-import { SpriteManager } from "@/stryperuntime/image_and_collisions";
-import { asyncBridge, PyodideWorkerGlobalScope, syncBridge } from "@/workers/python_execution_type";
-import { getFSForEmscripten } from "@/stryperuntime/pyodide-emscripten-cloud-fs";
-import { createLazyFetchAssetsFS } from "@/stryperuntime/pyodide-emscripten-assets-fs";
-import { PyodideErrorDetails } from "@/workers/shared_helpers";
+import {strype_bridge} from "@/stryperuntime/pyodide_bridge";
+import {ResponseFor, SyncOrAsyncStrypePyodideWorkerRequest, SyncStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse} from "@/stryperuntime/worker_bridge_type";
+import {SpriteManager} from "@/stryperuntime/image_and_collisions";
+import {asyncBridge, PyodideWorkerGlobalScope, syncBridge} from "@/workers/python_execution_type";
+import {getFSForEmscripten} from "@/stryperuntime/pyodide-emscripten-cloud-fs";
+import {createLazyFetchAssetsFS} from "@/stryperuntime/pyodide-emscripten-assets-fs";
+import {PyodideErrorDetails} from "@/workers/shared_helpers";
+import {createLazyFetchFS} from "@/stryperuntime/pyodide-emscript-fetch-fs";
 
 // We only specify updatePort here as we don't want other files using it directly:
 declare const self: PyodideWorkerGlobalScope & { updatePort: MessagePort };
@@ -105,15 +106,36 @@ async function loadOnly() : Promise<PyodideInterface> {
     
     pyodide.FS.filesystems.ASSETSFS = createLazyFetchAssetsFS(pyodide);
     pyodide.FS.mkdir("/strype");
+
+    pyodide.FS.mkdir("/strype_libraries");
     
     return pyodide;
 }
 const reloader = new PyodideFatalErrorReloader(loadOnly);
 
+async function urlToDirName(url: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(url);
+
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+
+    const hashHex = hashArray
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+
+    return `userlib_${hashHex}`;
+}
+
+// These caches should outlive a Pyodide run, to avoid re-fetching library content:
+// Maps a URL to a cache:
+const libraryCaches : Map<string, Map<string, Uint8ClampedArray>> = new Map();
+
 const executePython = pyodideExpose(async (
     extras: PyodideExtras,
     pythonCode: string,
     micropipLibraries: string[],
+    userLibrariesFileIndexes: { [url: string]: Record<string, string>},
     startInSlashCloud: boolean,
     // Important all requests (sync and async) go through one function to avoid them racing each other:
     makeRequest: Comlink.Remote<(req: SyncOrAsyncStrypePyodideWorkerRequest) => void>
@@ -121,6 +143,27 @@ const executePython = pyodideExpose(async (
     return reloader == null ? null : await reloader.withPyodide(async (pyodide : PyodideInterface) => {
         // Load any in-built packages they've used (e.g. numpy, pandas):
         await pyodide.loadPackagesFromImports(pythonCode, {messageCallback: console.log, errorCallback: console.error});
+
+        for (let url in userLibrariesFileIndexes) {
+            const libDir = "/strype_libraries/" + await urlToDirName(url);
+            pyodide.FS.mkdirTree(libDir);
+            
+            
+            let cache = libraryCaches.get(url);
+            if (!cache) {
+                cache = new Map();
+                libraryCaches.set(url, cache);
+            }
+            
+            const fs = createLazyFetchFS(pyodide, userLibrariesFileIndexes[url], url, cache);
+            pyodide.FS.mount(fs, {}, libDir);
+            
+            // Add the Pyodide FS path to the search dir for packages:
+            pyodide.runPython(`
+import sys
+sys.path.append("${libDir}")
+`);
+        }
         
         const runner = pyodide.runPython(`from python_runner import PyodideRunner
 import traceback

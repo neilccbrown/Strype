@@ -70,7 +70,7 @@ import SVGIcon from "@/components/SVGIcon.vue";
 import { Splitpanes, Pane } from "splitpanes";
 import { debounce } from "lodash";
 import scssVars from "@/assets/style/_export.module.scss";
-import { getLibraryName, getRawFileFromLibraries } from "@/helpers/libraryManager";
+import {getAvailableFilesFromLibrary, getLibraryName, getRawFileFromLibraries} from "@/helpers/libraryManager";
 import { getDateTimeFormatted } from "@/helpers/common";
 import { bufferToBase64 } from "@/helpers/media";
 import turtleImgURL from "@/assets/images/turtle.png" ;
@@ -547,7 +547,7 @@ export default defineComponent({
                 
             // Before doing anything, we make sure there are no errors found in the code
             // We DELAY the action to make sure every other UI actions has been done, notably the error checking from LabelSlotsStructure.
-            setTimeout(() => {
+            setTimeout(async () => {
                 // In case the error happens in the current frame (empty body) we have to give the UI time to update to be able to notify changes
                 if(hasPrecompiledCodeError()) {
                     this.$nextTick().then(() => {
@@ -589,8 +589,23 @@ export default defineComponent({
                 requestAnimationFrame(redraw);
                 
                 this.libraries = parser.getLibraries();
-                const micropipLibraries = this.libraries.filter((str) => str.startsWith("micropip:"))
-                    .map((str) => str.slice("micropip:".length));
+                const micropipLibraries = [];
+                const userLibraries = {} as {[url: string] : Record<string, string>};
+                for (const lib of this.libraries) {
+                    if (lib.startsWith("micropip:")) {
+                        micropipLibraries.push(lib.slice("micropip:".length));
+                    }
+                    else {
+                        const files = await getAvailableFilesFromLibrary(lib);
+                        if (files != null) {
+                            const paths : Record<string, string> = {};
+                            for (let file of files) {
+                                paths[file] = lib + files;
+                            }
+                            userLibraries[lib] = Object.fromEntries(files.map(v => [v, v]));
+                        }
+                    }
+                }
 
                 setSInputConsole(pythonConsole);
                 
@@ -638,6 +653,7 @@ export default defineComponent({
                     client.workerProxy.executePython,
                     userCode,
                     micropipLibraries,
+                    userLibraries,
                     typeof(this.appStore.strypeProjectLocation) === "string",
                     Comlink.proxy((asreq : SyncOrAsyncStrypePyodideWorkerRequest) => serialize(() => { 
                         if (asreq.kind == "async") {

@@ -115,3 +115,35 @@ print(stemmer.stemWords('go goes going gone'.split()))
         await checkConsoleContent(page, "['go', 'goe', 'go', 'gone']\n");
     });
 });
+
+test.describe("Check user libraries", () => {
+    test("Check http library shows files", async ({page}) => {
+        await enterCode(page, ["#(=> Library:http://localhost:8089/test-library/\nfrom pathlib import Path\n", "", `
+for item in sorted(next(Path("/strype_libraries").glob("*/")).iterdir()):
+    print(item.name)
+`]);
+        await runToFinish(page);
+        await checkConsoleContent(page, `
+autocomplete.json
+demos
+mediacomp.py
+print_message.py
+`.trimStart());
+    });
+    test("Check http library", async ({page}) => {
+        await enterCode(page, ["#(=> Library:http://localhost:8089/test-library/\nimport print_message as p", "", `
+p.print_message_1()
+`]);
+        await runToFinish(page);
+        await checkConsoleContent(page, "Hello everyone!\n");
+    });
+    test("Check http library, run twice", async ({page}) => {
+        await enterCode(page, ["#(=> Library:http://localhost:8089/test-library/\nimport print_message as p", "", `
+p.print_message_1()
+p.print_message_2()
+`]);
+        await runToFinish(page);
+        await runToFinish(page);
+        await checkConsoleContent(page, "Hello everyone!\nGoodbye!\n");
+    });
+});
