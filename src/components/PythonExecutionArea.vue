@@ -602,7 +602,7 @@ export default defineComponent({
                             for (let file of files) {
                                 paths[file] = lib + files;
                             }
-                            userLibraries[lib] = Object.fromEntries(files.map(v => [v, v]));
+                            userLibraries[lib] = Object.fromEntries(files.map((v) => [v, v]));
                         }
                     }
                 }
