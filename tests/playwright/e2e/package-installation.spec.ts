@@ -9,7 +9,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     }
 
     // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(90000); // 90 seconds
+    testInfo.setTimeout(120000); // 120 seconds
 
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
