@@ -31,6 +31,8 @@ jobs:
               uses: volta-cli/action@v4
             - name: NPM Install
               run: npm install
+            - name: Install Pyodide
+              run: npm run build:download-pyodide-libs              
             - name: NPM Build
               run: npm run build:github-pages
             - name: Upload artifact
