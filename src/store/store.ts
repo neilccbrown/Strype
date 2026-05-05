@@ -1507,7 +1507,7 @@ export const useStore = defineStore("app", {
                 arraysToClean.forEach((arrayToClean) => {
                     for(let arrayIndex = arrayToClean.length; arrayIndex >=0; arrayIndex--){
                         if(arrayToClean[arrayIndex] === null){
-                            delete arrayToClean[arrayIndex];
+                            arrayToClean.splice(arrayIndex,1);
                         }
                     }
                 }); 
