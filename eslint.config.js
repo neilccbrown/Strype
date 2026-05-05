@@ -20,6 +20,7 @@ export default [
             "**/*.min.js",
             "assets/**",
             "public/**/*.js",
+            "public/**/*.ts",
             "temp-scripts/**",
             "scripts/compiled/**",
             "docs-sphinx/**",

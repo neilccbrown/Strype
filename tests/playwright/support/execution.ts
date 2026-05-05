@@ -23,11 +23,7 @@ export async function runToFinish(page: Page) : Promise<void> {
 }
 
 export async function checkConsoleContent(page: Page, expectedContent : string | RegExp) : Promise<void> {
-    const actual = await page.locator("#peaConsole").inputValue();
-    if (typeof expectedContent === "string") {
-        expect(actual).toEqual(expectedContent);
-    }
-    else {
-        expect(actual).toMatch(expectedContent);
-    }
+    const consoleLoc = page.locator("#peaConsole");
+    await expect(consoleLoc).toHaveCount(1);
+    await expect(consoleLoc).toHaveValue(expectedContent, {timeout: 3000});
 }
