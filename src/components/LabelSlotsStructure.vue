@@ -370,7 +370,7 @@ export default defineComponent({
             return true;
         },
 
-        checkSlotRefactoring(slotUID: string, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, doAfterCursorSet?: VoidFunction, useFlatMediaDataCode?: boolean}) {
+        checkSlotRefactoring(slotUID: string, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, skipStateSaveOnly?: boolean, doAfterCursorSet?: VoidFunction, useFlatMediaDataCode?: boolean}) {
             // Slot errors will be check later again. We clear off the notification on the parent (frame header) for slot errors so it can reset the triangle error indicator
             vueComponentsAPIHandler.frameHeaderComponentAPI?.forInstance[this.frameId].setHasErroneousSlot(false);
             // Comments do not need to be checked, so we do nothing special for them, but just enforce the caret to be placed at the right place and the code value to be updated
@@ -506,7 +506,9 @@ export default defineComponent({
                                             this.appStore.setSlotTextCursors(cursorInfos, cursorInfos);
                                             options?.doAfterCursorSet?.();
                                             // Save changes only when arrived here (for undo/redo)
-                                            this.appStore.saveStateChanges(stateBeforeChanges);
+                                            if(!options?.skipStateSaveOnly){
+                                                this.appStore.saveStateChanges(stateBeforeChanges);
+                                            }
                                         }
                                     }
                                 }                            

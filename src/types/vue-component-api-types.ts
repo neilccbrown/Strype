@@ -106,7 +106,7 @@ export type OpenDemoDlgComponentAPI = {
 export type LabelSlotsStructureComponentAPI = {
   forInstance: {
     [componentInstanceKey: string]: {
-      checkSlotRefactoring: (slotUID: string, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, doAfterCursorSet?: VoidFunction, useFlatMediaDataCode?: boolean}) => void,
+      checkSlotRefactoring: (slotUID: string, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, skipStateSaveOnly?: boolean, doAfterCursorSet?: VoidFunction, useFlatMediaDataCode?: boolean}) => void,
       updatePrependText: () => void,
       updatePrependTextAndCheckErrors: () => void,
     },
