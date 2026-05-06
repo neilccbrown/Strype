@@ -839,6 +839,7 @@ export default defineComponent({
             }
             
             this.appStore.isEditing = false;
+            this.appStore.isSelectingMultiSlots = false;
             this.blurEditableSlot(undefined, true);
             document.getSelection()?.removeAllRanges();
             
