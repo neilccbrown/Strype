@@ -522,10 +522,6 @@ export const useStore = defineStore("app", {
                 ? errorTitle
                 : i18n.global.t("errorMessage.errorTitle"); 
         },
-
-        preCompileErrorExists: (state) => (id: string) => {
-            return state.preCompileErrors.includes(id);
-        },
         
         isMessageBannerOn: (state) => {
             return state.currentMessage.type !== MessageDefinitions.NoMessage.type;
