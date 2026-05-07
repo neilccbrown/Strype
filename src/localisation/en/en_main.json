@@ -23,7 +23,9 @@
       "comment": "comment ",
       "projectDescription": "project description",
       "funcDescription": "function description",
-      "classDescription": "class description"
+      "classDescription": "class description",
+      "match": "expression",
+      "case": "matching values"
     },
     "classdef_desc": "class definition",
     "funcdef_desc": "function definition",

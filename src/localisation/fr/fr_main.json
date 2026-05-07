@@ -23,7 +23,9 @@
       "comment": "commentaire ",
       "projectDescription": "description du projet",
       "funcDescription": "description de la fonction",
-      "classDescription": "description de la classe"
+      "classDescription": "description de la classe",
+      "match": "expression",
+      "case": "valeurs correspondantes"
     },
     "classdef_desc": "définition de classe",
     "funcdef_desc": "définition de fonction",
