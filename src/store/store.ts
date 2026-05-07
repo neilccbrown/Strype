@@ -454,18 +454,16 @@ export const useStore = defineStore("app", {
                 );
             }
 
-            //"return" and "global" statements can't be added when in the main container frame
-            //We don't forbid them to be in the main container, but we don't provide a way to add them directly.
-            //They can be added when in the function definition container though.
-            const canShowReturnStatement = isContainedInFrame(frameId,caretPosition, [DefsContainerDefinition.type]);
-            if(!canShowReturnStatement){
+            //"return" and "global" statements can't be added when in the main container frame, except if in a case block for "return"
+            // We don't forbid them to be in the main container, but we don't provide a way to add them directly.
+            // They can be added when in the function definition container though.
+            const canShowGlobalStatement = isContainedInFrame(frameId,caretPosition, [DefsContainerDefinition.type]);
+            const canShowReturnStatement = canShowGlobalStatement || isContainedInFrame(frameId,caretPosition, [AllFrameTypesIdentifier.case]);
+            const extraForbiddenTypes = [...(!canShowGlobalStatement ? [AllFrameTypesIdentifier.global] : []), ...(!canShowReturnStatement ? [AllFrameTypesIdentifier.return] : [])];
+            if(extraForbiddenTypes.length > 0){
                 //by default, "break" and "continue" are NOT forbidden to any frame which can host children frames,
                 //so if we cannot show "break" and "continue" : we add them from the list of forbidden
-                forbiddenTypes.splice(
-                    0,
-                    0,
-                    ...[AllFrameTypesIdentifier.return, AllFrameTypesIdentifier.global]
-                );
+                forbiddenTypes.splice(0, 0, ...extraForbiddenTypes);
             }
             const addCommandsDefs = getAddCommandsDefs();
             const filteredCommands: {[id: string]: AddFrameCommandDef[]} = cloneDeep(addCommandsDefs);
