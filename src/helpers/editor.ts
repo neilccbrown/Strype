@@ -1,7 +1,7 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesAction, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameSectionIdFromFrameId } from "./storeMethods";
+import { checkCodeErrors, getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameSectionIdFromFrameId } from "./storeMethods";
 import { splitByRegexMatches, strypeFileExtension } from "./common";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
 import scssVars  from "@/assets/style/_export.module.scss";
@@ -1092,6 +1092,7 @@ const bodyMouseUpEventHandlerForFrameDnD = (event: MouseEvent): void => {
         // Drop the frame at the current drop caret location only if drop is allowed
         if(areDropFramesAllowed){
             // We either reorder the frames (most commont drag and drop case) OR add a copy if the drop is made with the ctrl or option keys held.
+            const currentDraggedFirstFrameParentFrameId = useStore().frameObjects[currentDraggedSingleFrameId ?? useStore().selectedFrames[0]].parentId;
             if(event.ctrlKey || event.altKey){
                 if(currentDraggedSingleFrameId){
                     useStore().doCopyFrame(currentDraggedSingleFrameId);
@@ -1104,6 +1105,16 @@ const bodyMouseUpEventHandlerForFrameDnD = (event: MouseEvent): void => {
             }
             else {
                 useStore().updateDroppedFramesOrder(currentCaretDropPosFrameId, currentCaretDropPosCaretPos, currentDraggedSingleFrameId);
+            }
+
+            // The specific case of match frames: we need to check the source and destination match frames error (to see if it contains a valid case)            
+            if(useStore().frameObjects[currentDraggedFirstFrameParentFrameId].frameType.type == AllFrameTypesIdentifier.match){
+                nextTick(() => {
+                    // Source match frame
+                    checkCodeErrors(currentDraggedFirstFrameParentFrameId);
+                    // Destination match frame
+                    checkCodeErrors(currentCaretDropPosFrameId);
+                });                
             }
         }
 

@@ -101,6 +101,7 @@
     "cloudDrivePublicShareFailed":"The project could not be shared publicly.<br>(Error: {error})",
     "clouldFileRestoreSharingStatus":"An error occurred when trying to restore the file sharing status in {drivename}.<br>Details: {errordetails}",
     "unexpectedCharsPython": "unexpected character(s)",
+    "matchFrameWithoutCase": "A match frame must contain at least one case frame.",
     "fileIO": {
       "openReadingError":"Strype ran into an internal error when opening the file (reading content issue).",
       "cannotCreateDirectory":  "Creating directories is not currently supported.",

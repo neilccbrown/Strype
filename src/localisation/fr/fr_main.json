@@ -100,6 +100,7 @@
     "cloudDriveSharePreparationFailed": "La préparation du partage a échoué.<br>(Récupération du statut de partage actuel du fichier sur le Cloud impossible.)",
     "cloudDrivePublicShareFailed": "Le projet n'a pas pu être partagé publiquement.<br>(Erreur : {error})",
     "clouldFileRestoreSharingStatus": "Une erreur est survenue lors de la tentative de restauration du partage de ficher dans {drivename}.<br>Détails : {errordetails}",
+    "matchFrameWithoutCase": "Un cadre match doit au moins contenir un cadre case.",
     "fileIO": {
       "openReadingError": "Strype a rencontré une erreur interne lors de l'ouverture du fichier (problème de lecture du contenu).",
       "notConnectedToCloud": "l'accès aux fichiers lors d'opérations d'entrées/sorties n'est possible qu'à partir d'un projet Strype enregistré dans le Cloud.",
