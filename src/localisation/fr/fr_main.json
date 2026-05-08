@@ -46,7 +46,8 @@
     "invalidPythonParseImport": "Code Python importé invalide : {errorMsg}",
     "invalidPythonParsePaste": "Code Python collé invalide : {errorMsg}",
     "wrongPythonStructCopied": "impossible de coller else/elif/except/finally suivi d'autre contenu en une fois",
-    "incompatiblePythonStrypeSection": "le code Python copié ne peut pas être collé dans la section actuelle de Strype"
+    "incompatiblePythonStrypeSection": "le code Python copié ne peut pas être collé dans la section actuelle de Strype",
+    "invalidMatchStmtContent": "ce contenu n'est pas autorisé dans une instruction 'match'"
   },
   "buttonLabel": {
     "undo": "Annuler",

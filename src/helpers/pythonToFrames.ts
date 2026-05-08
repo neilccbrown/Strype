@@ -1002,6 +1002,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         if (p.children) {
             const index = p.children.findIndex((x) => x.value === "=");
             if (index >= 0) {
+                checkValidMatchContent(s.parent?.frameType.type, p.lineno);
                 // An assignment
                 const lhs = toSlots({...p, children: p.children.slice(0, index)});
                 const rhs = toSlots({...p, children: p.children.slice(index + 1)});
@@ -1015,6 +1016,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
                     s = addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: comment}], operators: []}}}, s.isSPY), p.lineno, s);    
                 }
                 else if (slots.fields.length == 1 && (slots.fields[0] as BaseSlot)?.code && (slots.fields[0] as BaseSlot).code.startsWith(STRYPE_LIBRARY_PREFIX)) {
+                    checkValidMatchContent(s.parent?.frameType.type, p.lineno);
                     const library = fromUnicodeEscapes((slots.fields[0] as BaseSlot).code.slice(STRYPE_LIBRARY_PREFIX.length));
                     s = addFrame(makeFrame(AllFrameTypesIdentifier.library, {0: {slotStructures: {fields: [{code: library}], operators: []}}}, s.isSPY), p.lineno, s);
                 }
@@ -1023,6 +1025,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
                 }
                 else {
                     // Everything else goes in method call:
+                    checkValidMatchContent(s.parent?.frameType.type, p.lineno);
                     const misc = makeFrame(AllFrameTypesIdentifier.funccall, {0: {slotStructures: slots}}, s.isSPY);
                     if (misc.frameType.type == AllFrameTypesIdentifier.comment && s.transformTopComment) {
                         s.transformTopComment(misc.labelSlotsDict[0].slotStructures);
@@ -1264,10 +1267,13 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         break;
     }
     case Sk.ParseTables.sym.match_stmt: {
-        // (case not supported by original Skulpt version)
-        // First child is keyword, second is the expression to evaluate, third is colon, forth is body.     
+        // First child is keyword, second is the expression to evaluate, third is colon, forth is body.
+        // This case not supported by original Skulpt version - so to limit the changes in Skulpt, the Skulpt parser
+        // is permissive and allows cases (normal) + pass (for us) + simple statements (for us).
+        // The simple statements are therefore limiting the accepted content to things like "a", "a()", "a=b", but not if or while etc.
+        // So we make a check in checkValidMatchContent() when parsing the children of a match statement to cover the permissive Skupt version.
         const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.match, 0, [1], 3, s);
-        s = r.s;        
+        s = r.s;
         break;
     }
     case Sk.ParseTables.sym.case_block: {
@@ -1631,4 +1637,15 @@ const transformTripleQuotesStrings = (slots: {[index: number]: LabelSlotsContent
         
     };
     Object.values(slots).forEach((slotsStruct) => doTransformTripleQuotesStringsOnSlotStructs(slotsStruct.slotStructures));
+};
+
+const checkValidMatchContent = (parentType?: string, lineno?: number): void => {
+    // See copyFramesToPyton() - case Sk.ParseTables.sym.match_stmt - for why we need this.
+    // This method is only to be called on ambigious cases allowed by Skulpt permissibilty :
+    // normal cases or handled Strype comments or handled Strype blank lines are parsed anyway.
+    // If we are in a match statement (parentType is set and is for "match"), we return an error.
+    if(parentType == AllFrameTypesIdentifier.match){
+        // Error format to match what's expected in copyFramesFromParsedPython        
+        throw {$msg: {$mangled: i18n.global.t("messageBannerMessage.invalidMatchStmtContent")}, traceback: [{lineno: lineno}]};
+    }
 };

@@ -887,7 +887,7 @@ export function checkPrecompiledErrorsForFrame(frameId: number): void {
     // We need to check both ways: that if we're on match frame it has a case,
     // and that if we're on a case frame that it can clear its parent's error.
     if(frameObject.frameType.type == AllFrameTypesIdentifier.match && !frameObject.isDisabled
-        && frameObject.childrenIds.filter((caseFrameId) => !useStore().frameObjects[caseFrameId].isDisabled).length == 0){
+        && !frameObject.childrenIds.some((matchChildFrameId) => useStore().frameObjects[matchChildFrameId].frameType.type == AllFrameTypesIdentifier.case && !useStore().frameObjects[matchChildFrameId].isDisabled)){
         useStore().setFrameErroneous(frameId, i18n.global.t("errorMessage.matchFrameWithoutCase"));
         useStore().addPreCompileErrors(getPrecompiledErrorFrameId(frameId));
     }
