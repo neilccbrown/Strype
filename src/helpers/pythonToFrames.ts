@@ -959,6 +959,13 @@ function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, keywo
     else {
         slots = childrenIndicesForSlots;
     }
+    
+    // When we parse an "if" guarded case pattern, we don't want 2 slots structures, we have only 1 and the operator between them is "if"
+    if(frameType == AllFrameTypesIdentifier.case && Array.isArray(childrenIndicesForSlots) && childrenIndicesForSlots.length > 1){
+        slots[0].slotStructures.fields.push(...slots[1].slotStructures.fields);
+        slots[0].slotStructures.operators.push({code: "if"}, ...slots[1].slotStructures.operators);
+    }
+
     const frame = makeFrame(frameType, slots, s.isSPY);    
     s = addFrame(frame, applyIndex(p, keywordIndexForLineno).lineno, s);
     const frameChildren = children(p);
@@ -982,7 +989,8 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
     case Sk.ParseTables.sym.small_stmt:
     case Sk.ParseTables.sym.flow_stmt:
     case Sk.ParseTables.sym.compound_stmt:
-    case Sk.ParseTables.sym.import_stmt: 
+    case Sk.ParseTables.sym.import_stmt:
+    case Sk.ParseTables.sym.case_stmt:        
         // Wrappers where we just skip to the children:
         for (const child of children(p)) {
             s = copyFramesFromPython(child, s);
@@ -1253,6 +1261,35 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         if (!(2 in r.frame.labelSlotsDict)) {
             r.frame.labelSlotsDict[2] = {slotStructures: {operators: [], fields: [{code: ""}]}};
         }
+        break;
+    }
+    case Sk.ParseTables.sym.match_stmt: {
+        // (case not supported by original Skulpt version)
+        // First child is keyword, second is the expression to evaluate, third is colon, forth is body.     
+        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.match, 0, [1], 3, s);
+        s = r.s;        
+        break;
+    }
+    case Sk.ParseTables.sym.case_block: {
+        console.log("getting a block ?");
+        // (case not supported by upstream Skulpt version)
+        // First child is keyword, second is the pattern expression, then the remaining parts depends whether we have an "if" guard:
+        let r;
+        if((p.children?.length??0) > 5){
+            // There is an "if" guard:
+            // third is the "if" keyword, 
+            // forth the guard expression,
+            // fifth is the colon
+            // sixth is the body (of "case")
+            r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.case, 0, [1, 3], 5, s);
+        }
+        else{
+            // There is not an "if" guard:
+            // third is the colon, 
+            // forth is the body
+            r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.case, 0, [1], 3, s);
+        }
+        s = r.s;        
         break;
     }
     }
