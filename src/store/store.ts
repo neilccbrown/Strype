@@ -2046,6 +2046,15 @@ export const useStore = defineStore("app", {
         // Note: this will not always do the delete, for example if frozen frames are involved
         // Returns true if the deletion ocurred or false if it did not.
         deleteFrames(key: string, ignoreBackState?: boolean) : boolean {
+            // If we are trying to delete a match or case frame from its body, the action is cancelled if this body isn't empty-like (i.e. if not empty, or only containing comments/blanks): 
+            // catch statements cannot live outside a match statement and match statements cannot contain anything but cases or comments/blanks
+            if(this.selectedFrames.length == 0 && key == "Backspace" && this.currentFrame.caretPosition == CaretPosition.body 
+                && (this.frameObjects[this.currentFrame.id].frameType.type == AllFrameTypesIdentifier.match || this.frameObjects[this.currentFrame.id].frameType.type == AllFrameTypesIdentifier.case) 
+                && this.frameObjects[this.currentFrame.id].childrenIds.length > 0 
+                    && this.frameObjects[this.currentFrame.id].childrenIds.map((childFrameId) => this.frameObjects[childFrameId].frameType.type).some((frameType) => frameType != AllFrameTypesIdentifier.comment && frameType != AllFrameTypesIdentifier.blank)){
+                return false;
+            }
+
             const stateBeforeChanges = cloneDeep(this.$state);
             
             // we remove the editable slots from the available positions
