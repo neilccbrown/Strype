@@ -1184,7 +1184,8 @@ export default defineComponent({
             // The logic is as such, we handle the insertion in the slot (with adequate adaptation if needed, see above)
             // let the parsing and slot factorisation do the checkup later
             // (we handle the insertion even if there is specific adapation because in the call to emit, the DOM has not updated)
-            return () => this.$emit(CustomEventTypes.requestSlotsRefactoring, refactorFocusSpanUID, stateBeforeChanges, {useFlatMediaDataCode: true});
+            // The blur event might be ignore, we set a flag and let the refactoring method evaluate the need for acknowledge this flat.
+            return () => this.$emit(CustomEventTypes.requestSlotsRefactoring, refactorFocusSpanUID, stateBeforeChanges, {useFlatMediaDataCode: true, ignoreBlurEditableSlot: true});
         },
 
         handleFastUDNavKeys(event: KeyboardEvent){
