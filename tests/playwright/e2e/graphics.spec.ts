@@ -375,30 +375,31 @@ test.describe("Check graphics works when shared with turtle", () => {
     });
 });
 
+async function executeCode(page: Page, waitForFinish = true) {
+    await page.locator("#runButton", {hasText: /Run/}).click();
+    if (waitForFinish) {
+        // Wait for it to finish:
+        await page.waitForTimeout(1000);
+        // Assert it has finished, by looking at the run button:
+        await expect(page.locator("#runButton")).toHaveText(/Run/, {timeout: 30000});
+    }
+}
+
+async function checkTab(page: Page, selected : "graphics" | "console") {
+    if (selected == "console") {
+        await expect(page.locator("#graphicsPEATab")).not.toHaveClass(/active/);
+        await expect(page.locator("#consolePEATab")).toHaveClass(/active/);
+    }
+    else {
+        await expect(page.locator("#graphicsPEATab")).toHaveClass(/active/);
+        await expect(page.locator("#consolePEATab")).not.toHaveClass(/active/);
+    }
+}
+
 test.describe("Check auto-switching between tabs", () => {
     test.skip(({ browserName }) => browserName === "firefox" || browserName === "webkit",
         "WebGL not reliable in CI for Firefox/WebKit");
-    
-    async function executeCode(page: Page, waitForFinish = true) {
-        await page.locator("#runButton", {hasText: /Run/}).click();
-        if (waitForFinish) {
-            // Wait for it to finish:
-            await page.waitForTimeout(1000);
-            // Assert it has finished, by looking at the run button:
-            await expect(page.locator("#runButton")).toHaveText(/Run/, {timeout: 30000});
-        }
-    }
-    
-    async function checkTab(page: Page, selected : "graphics" | "console") {
-        if (selected == "console") {
-            await expect(page.locator("#graphicsPEATab")).not.toHaveClass(/active/);
-            await expect(page.locator("#consolePEATab")).toHaveClass(/active/);
-        }
-        else {
-            await expect(page.locator("#graphicsPEATab")).toHaveClass(/active/);
-            await expect(page.locator("#consolePEATab")).not.toHaveClass(/active/);
-        }
-    }
+
 
     // Semantics are:
     // - Start program
@@ -476,6 +477,46 @@ test.describe("Check auto-switching between tabs", () => {
     testSequence("graphics", "PPPTPI", "graphics");
     testSequence("graphics", "PPPTPIAB", "graphics");
     testSequence("graphics", "IAIA", "graphics");
+});
+
+test.describe("Check switching to console on runtime error", () => {
+    test("Test switching and scrolling after graphics error", async ({page}) => {
+        await enterCode(page, ["from strype.graphics import *", "", `
+a = Actor('cat-test.jpg')
+while True:
+  a.move(5)
+  print(a.get_x())
+  if a.is_at_edge():
+    a.remove()
+    # Will provoke an error:
+    set_background([])
+  pace()
+`.trimStart()]);
+        // Start on graphics so we can check it switched back to console:
+        await page.click("#graphicsPEATab");
+        await executeCode(page, true);
+        // Check it switched to console:
+        await checkTab(page, "console");
+        // Check error is present:
+        await checkConsoleContent(page, /^5\n10\n15\n.*< TypeError.*must be an Image.*From the highlighted call in your code$/s);
+        // Check it has scrolled to the bottom:
+        const textarea = page.locator("#peaConsole");
+        const isWithinLast5Percent = await textarea.evaluate((el) => {
+            const remaining = el.scrollHeight - el.clientHeight - el.scrollTop;
+            const totalScrollable = el.scrollHeight - el.clientHeight;
+
+            // Handle non-scrollable case
+            if (totalScrollable <= 0) {
+                return true;
+            }
+
+            return remaining / totalScrollable <= 0.05;
+        });
+
+        expect(isWithinLast5Percent).toBe(true);
+        // Also check for runtime error marker:
+        await expect(page.locator(".fa-exclamation-triangle")).toHaveCount(1);
+    });
 });
 
 test.describe("Test clicking", () => {
