@@ -1384,7 +1384,7 @@ export default defineComponent({
                 this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: newPos}, {slotInfos: this.coreSlotInfo, cursorPos: newPos});
 
                 // part 4
-                this.$emit(CustomEventTypes.requestSlotsRefactoring, this.UID, stateBeforeChanges);     
+                this.$emit(CustomEventTypes.requestSlotsRefactoring, this.UID, stateBeforeChanges, {skipStateSaveOnly: true});     
             }
         },
 
