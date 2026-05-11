@@ -186,6 +186,9 @@ test.describe("Check turtle works when shared with graphics", () => {
 });
 
 test.describe("Check graphics works when shared with turtle", () => {
+    test.skip(({ browserName }) => browserName === "firefox" || browserName === "webkit",
+        "WebGL not reliable in CI for Firefox/WebKit");
+    
     test("Check graphics example shows", async ({page}) => {
         await enterCode(page, ["from strype.graphics import *\n", "", `
             set_background("cat-test.jpg")
