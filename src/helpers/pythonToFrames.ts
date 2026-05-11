@@ -1277,7 +1277,6 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         break;
     }
     case Sk.ParseTables.sym.case_block: {
-        console.log("getting a block ?");
         // (case not supported by upstream Skulpt version)
         // First child is keyword, second is the pattern expression, then the remaining parts depends whether we have an "if" guard:
         let r;
