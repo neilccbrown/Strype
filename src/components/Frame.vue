@@ -1156,7 +1156,7 @@ export default defineComponent({
                         newParentId: (this.isJointFrame)
                             ? getParentId(this.appStore.frameObjects[this.frameId])
                             : getParentOrJointParent(this.frameId),
-                        keepSelection: keepSelection,
+                        keepSelection,
                     }
                 );
             }
