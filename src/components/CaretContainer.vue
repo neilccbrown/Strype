@@ -37,7 +37,7 @@ import { AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, P
 import { getCaretUID, setContextMenuEventClientXY, getAddFrameCmdElementUID, CustomEventTypes, getCaretContainerUID } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { cloneDeep } from "lodash";
-import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
+import { checkCodeErrors, getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import { pasteMixedPython } from "@/helpers/pythonToFrames";
 import scssVars  from "@/assets/style/_export.module.scss";
 import {detectBrowser} from "@/helpers/browser";
@@ -440,9 +440,10 @@ export default defineComponent({
             this.appStore.saveStateChanges(stateBeforeChanges);
 
             const framesAdded = frameIdsAfterPaste.filter((frameId) => !frameIdsBeforePaste.has(frameId));
-            // Then after nextTick tell all the new frames to update their prompts:
+            // Then after nextTick tell all the new frames to update their prompts and check potential errors:
             this.$nextTick(() => {
                 eventBus.emit(CustomEventTypes.updateParamPrompts, framesAdded);
+                framesAdded.forEach((pastedFrameId) => checkCodeErrors(pastedFrameId));
             });
         },
     

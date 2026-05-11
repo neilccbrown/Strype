@@ -48,3 +48,4 @@ tests/cypress/expected-screenshots/diff/*
 public/pysrc.zip
 public/compiled-service-worker.js
 public/pyodide/
+components.d.ts

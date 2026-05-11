@@ -23,7 +23,9 @@
       "comment": "commentaire ",
       "projectDescription": "description du projet",
       "funcDescription": "description de la fonction",
-      "classDescription": "description de la classe"
+      "classDescription": "description de la classe",
+      "match": "expression",
+      "case": "valeurs correspondantes"
     },
     "classdef_desc": "définition de classe",
     "funcdef_desc": "définition de fonction",
@@ -44,7 +46,8 @@
     "invalidPythonParseImport": "Code Python importé invalide : {errorMsg}",
     "invalidPythonParsePaste": "Code Python collé invalide : {errorMsg}",
     "wrongPythonStructCopied": "impossible de coller else/elif/except/finally suivi d'autre contenu en une fois",
-    "incompatiblePythonStrypeSection": "le code Python copié ne peut pas être collé dans la section actuelle de Strype"
+    "incompatiblePythonStrypeSection": "le code Python copié ne peut pas être collé dans la section actuelle de Strype",
+    "invalidMatchStmtContent": "ce contenu n'est pas autorisé dans une instruction 'match'"
   },
   "buttonLabel": {
     "undo": "Annuler",
@@ -98,6 +101,7 @@
     "cloudDriveSharePreparationFailed": "La préparation du partage a échoué.<br>(Récupération du statut de partage actuel du fichier sur le Cloud impossible.)",
     "cloudDrivePublicShareFailed": "Le projet n'a pas pu être partagé publiquement.<br>(Erreur : {error})",
     "clouldFileRestoreSharingStatus": "Une erreur est survenue lors de la tentative de restauration du partage de ficher dans {drivename}.<br>Détails : {errordetails}",
+    "matchFrameWithoutCase": "Un cadre match doit au moins contenir un cadre case.",
     "fileIO": {
       "openReadingError": "Strype a rencontré une erreur interne lors de l'ouverture du fichier (problème de lecture du contenu).",
       "notConnectedToCloud": "l'accès aux fichiers lors d'opérations d'entrées/sorties n'est possible qu'à partir d'un projet Strype enregistré dans le Cloud.",

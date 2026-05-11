@@ -239,8 +239,15 @@ export default defineComponent({
         },
 
         frameMarginStyle(): Record<string, Record<string, string>> {
+            // The rules for margin are generic, except for the match/case frames
+            // where we specifically reduce the body indent to half the usual (so that the case content aligns with the body of the match frame's siblings).
+            const genericBodyMargins = {...(this.isJointFrame)? {"margin-left": "28px"} : {"margin-left": "30px"}, "margin-right": "28px"}; 
+            const matchOrCaseFrameBodyMargins = {"margin-left": "14px", "margin-right": "14px"};
+            const bodyMargins = (this.frameType.type == AllFrameTypesIdentifier.match || this.frameType.type == AllFrameTypesIdentifier.case) 
+                ? matchOrCaseFrameBodyMargins 
+                : genericBodyMargins; 
             return {"header": (this.isJointFrame)? {"margin-left": "5px"} : {"margin-left": "6px"},
-                "body": {...(this.isJointFrame)? {"margin-left": "28px"} : {"margin-left": "30px"}, "margin-right": "28px"}};
+                "body": bodyMargins};
         },
 
         frameSelectedCssClass(): string {
@@ -1149,7 +1156,7 @@ export default defineComponent({
                         newParentId: (this.isJointFrame)
                             ? getParentId(this.appStore.frameObjects[this.frameId])
                             : getParentOrJointParent(this.frameId),
-                        keepSelection: keepSelection,
+                        keepSelection,
                     }
                 );
             }

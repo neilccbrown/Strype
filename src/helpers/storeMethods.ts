@@ -779,6 +779,10 @@ export const getAvailableNavigationPositions = function(showIsInCollapsedFrameCo
     }).filter((navigationPosition) => useStore().frameObjects[navigationPosition.frameId] && !(navigationPosition.isSlotNavigationPosition && useStore().frameObjects[navigationPosition.frameId].isDisabled)) as NavigationPosition[]; 
 };
 
+const getPrecompiledErrorFrameId = (frameId: number): string => {
+    return "precompilederr_" + frameId;
+};
+
 export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
     // This method for checking errors is called when a frame has been edited (and lost focus), or during undo/redo changes. As we don't have a way to
     // find which errors are from TigerPython or precompiled errors, and that we wouldn't know what specific error to remove anyway,
@@ -839,6 +843,9 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
 };
 
 export function checkPrecompiledErrorsForFrame(frameId: number): void {
+    // If the frame itself as a precompiled error, we clear it up
+    useStore().removePreCompileErrors(getPrecompiledErrorFrameId(frameId));
+
     // We wil need to recreate the slot ID while parsing each slots of the frame to check errors on them
     // so we use the FlatSlotBase generator (only on that frame), and apply the error checks for each flat slot
     // ONLY on code type slots
@@ -874,6 +881,21 @@ export function checkPrecompiledErrorsForFrame(frameId: number): void {
             }
         });
     });
+
+    // Check that a match statement frame contains at least one enabled case statement.
+    // The precompiled error is not set on the slot, but on the frame itself.
+    // We need to check both ways: that if we're on match frame it has a case,
+    // and that if we're on a case frame that it can clear its parent's error.
+    if(frameObject.frameType.type == AllFrameTypesIdentifier.match && !frameObject.isDisabled
+        && !frameObject.childrenIds.some((matchChildFrameId) => useStore().frameObjects[matchChildFrameId].frameType.type == AllFrameTypesIdentifier.case && !useStore().frameObjects[matchChildFrameId].isDisabled)){
+        useStore().setFrameErroneous(frameId, i18n.global.t("errorMessage.matchFrameWithoutCase"));
+        useStore().addPreCompileErrors(getPrecompiledErrorFrameId(frameId));
+    }
+    else if(frameObject.frameType.type == AllFrameTypesIdentifier.case && !frameObject.isDisabled){
+        useStore().setFrameErroneous(frameObject.parentId,"");
+        useStore().addPreCompileErrors(getPrecompiledErrorFrameId(frameObject.parentId));
+    }
+
 }
 
 export function checkCodeErrors(frameIdForPrecompiled?: number): void {
@@ -884,9 +906,11 @@ export function checkCodeErrors(frameIdForPrecompiled?: number): void {
         checkPrecompiledErrorsForFrame(parseInt(frameId));
     } 
 
-    //  2) clear all frame parsing (TP) errors explicitly
+    //  2) clear all frame parsing (TP) errors explicitly (making sure we don't delete a frame-wide precompiled error!)
     Object.keys(useStore().frameObjects).forEach((frameId) => {
-        useStore().setFrameErroneous(parseInt(frameId),"");
+        if(!useStore().preCompileErrors.includes(getPrecompiledErrorFrameId(parseInt(frameId)))){
+            useStore().setFrameErroneous(parseInt(frameId),"");
+        }
     });
 
     //  3) check for TP errors for the whole code

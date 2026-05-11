@@ -23,7 +23,9 @@
       "comment": "comment ",
       "projectDescription": "project description",
       "funcDescription": "function description",
-      "classDescription": "class description"
+      "classDescription": "class description",
+      "match": "expression",
+      "case": "matching values"
     },
     "classdef_desc": "class definition",
     "funcdef_desc": "function definition",
@@ -44,7 +46,8 @@
     "invalidPythonParseImport": "Invalid Python code imported: {errorMsg}",
     "invalidPythonParsePaste": "Invalid Python code pasted: {errorMsg}",
     "wrongPythonStructCopied": "cannot paste else/elif/except/finally and further content in one paste",
-    "incompatiblePythonStrypeSection": "the Python code cannot be placed in the target Strype section"
+    "incompatiblePythonStrypeSection": "the Python code cannot be placed in the target Strype section",
+    "invalidMatchStmtContent": "this content is not allowed inside a 'match' statement"
   },
   "buttonLabel": {
     "undo": "Undo",
@@ -99,6 +102,7 @@
     "cloudDrivePublicShareFailed":"The project could not be shared publicly.<br>(Error: {error})",
     "clouldFileRestoreSharingStatus":"An error occurred when trying to restore the file sharing status in {drivename}.<br>Details: {errordetails}",
     "unexpectedCharsPython": "unexpected character(s)",
+    "matchFrameWithoutCase": "A match frame must contain at least one case frame.",
     "fileIO": {
       "openReadingError":"Strype ran into an internal error when opening the file (reading content issue).",
       "cannotCreateDirectory":  "Creating directories is not currently supported.",

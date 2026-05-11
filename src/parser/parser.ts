@@ -624,7 +624,10 @@ export default class Parser {
         }
 
         try {
-            return TPyParser.findAllErrors(code);
+            const tp_errors = TPyParser.findAllErrors(code);
+            // We already handle the empty match statement error ourselves as a precompiled error.
+            // So, we should discard this one from TigerPython as it is conflictual with our mechanism and can even be set on the wrong frame.
+            return tp_errors.filter((errorInfo) => errorInfo.code != "CASE_REQUIRED");
         }
         catch {
             return [{line:1, offset: 0, msg: "Unknown TigerPython error", code: ""}];

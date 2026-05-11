@@ -415,6 +415,8 @@ const StandardFrameTypesIdentifiers = {
     return: "return",
     varassign: "varassign",
     global: "global",
+    match: "match",
+    case: "case",
     ...JointFrameIdentifiers,
 };
 
@@ -444,7 +446,7 @@ export const BlockDefinition: FramesDefinitions = {
     allowChildren: true,
     forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
         .concat(Object.values(DefIdentifiers))
-        .concat([StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
+        .concat([StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally, StandardFrameTypesIdentifiers.case]),
 };
 
 export const StatementDefinition: FramesDefinitions = {
@@ -639,7 +641,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         colour: "#E0DFE4",
         forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
             .concat(Object.values(DefIdentifiers))
-            .concat([StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
+            .concat([StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally, StandardFrameTypesIdentifiers.case]),
     };
 
     const ElifDefinition: FramesDefinitions = {
@@ -671,7 +673,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ],
         allowJointChildren: true,
         jointFrameTypes: [StandardFrameTypesIdentifiers.else],
-        colour: "#E4D6CE",
+        colour: "#E4D5D5",
     };
 
     const WhileDefinition: FramesDefinitions = {
@@ -761,6 +763,30 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         colour: "#ede8f2",
     };
 
+    const CaseDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: AllFrameTypesIdentifier.case,
+        labels: [
+            { label: "case ", defaultText: i18n.global.t("frame.defaultText.case") },
+            { label: " :", showSlots: false, defaultText: "" },
+        ],
+        colour: "#E0DFE4",        
+    };
+
+    const MatchDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.match,
+        labels: [
+            { label: "match ", defaultText: i18n.global.t("frame.defaultText.match") },
+            { label: " :", showSlots: false, defaultText: "" },
+        ],
+        colour: "#E0DFE4",
+        forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier).filter((type) => type != StandardFrameTypesIdentifiers.case && type != StandardFrameTypesIdentifiers.blank && type != StandardFrameTypesIdentifiers.comment),
+        // A match statement must always have one case at least, so we enforce it upon frame creation
+        defaultChildrenTypes: [{...EmptyFrameObject, frameType: CaseDefinition, labelSlotsDict: {0: {slotStructures:{fields:[{code:"_"}], operators: []}}, 1: {slotStructures:{fields:[{code:""}], operators: []}}}}],
+
+    };
+
     /*2) update the Defintions variable holding all the definitions */
     Definitions = {
         IfDefinition,
@@ -786,6 +812,8 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         LibraryDefinition,
         CommentDefinition,
         GlobalDefinition,
+        MatchDefinition,
+        CaseDefinition,
         ProjectDocumentationDefinition,
         // also add the frame containers as we might need to retrieve them too
         ...FrameContainersDefinitions,
