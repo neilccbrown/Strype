@@ -686,7 +686,11 @@ export default defineComponent({
                     }))
                 ) as Promise<PyodideErrorDetails | null>).then((possibleError) => {
                     if (possibleError != null) {
-                        handleErrorTrace(possibleError.text, possibleError.traceback, () => {}, parser.getFramePositionMap());
+                        handleErrorTrace(possibleError.text, possibleError.traceback, (hadError) => {
+                            if (hadError) {
+                                this.switchToConsoleTab("always");
+                            }
+                        }, parser.getFramePositionMap());
                     }
                     useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                     setPythonExecAreaLayoutButtonPos();
