@@ -1949,9 +1949,11 @@ export const useStore = defineStore("app", {
                 this.copySelection();
                 // For deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
                 this.deleteFrames("Delete", true);
+                // The general rule is to copy the wrapped frame inside the wrapper's body,
+                // one exception: for match frames, we don't wrap the content inside the match frame body but inside it's case child frame body.
                 this.pasteSelection(
                     {
-                        clickedFrameId: newFrame.id,
+                        clickedFrameId: (newFrame.frameType.type == AllFrameTypesIdentifier.match) ? newFrame.childrenIds[0] : newFrame.id,
                         caretPosition: CaretPosition.body,
                         ignoreStateBackup: true,
                     }

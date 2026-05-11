@@ -219,6 +219,24 @@ print(myString)
 #(=> Section:End
 `.trimStart());
     });
+
+    test("Wrap with match", async ({page}) => {
+        // Select the 2 frames of the default project code (in the main code section)
+        await page.keyboard.press((process.platform == "darwin" ? "Meta" : "Control") + "+a");
+        // Then wrap with a match statement
+        await page.keyboard.press("m");
+        expect(readFileSync(await save(page), "utf-8")).toEqual(`
+#(=> Strype:1:std
+${defaultStandardStrypeProjectDocLiteral}#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+match ___strype_blank  :
+    case _  :
+        myString  = "Hello from Strype" 
+        print(myString) 
+#(=> Section:End
+`.trimStart());
+    });
 });
 
 test.describe("Delete Match statemen", () => {
