@@ -597,9 +597,6 @@ export default defineComponent({
         },
         
         updateAC() : void {
-            // Note: code in created() debounces this function to stop it running too often
-            // You cannot assume it has run just after you called it.
-            
             const frame: FrameObject = this.appStore.frameObjects[this.frameId];
             const selectionStart = getFocusedEditableSlotTextSelectionStartEnd(this.UID).selectionStart;
 
