@@ -686,17 +686,18 @@ class _Screen:
 
     def _handle_events(self, blocking):
         events = get_event_log(blocking)
-        for event in events:
-            eventstr = event['name'] + event['key']
-            pos = event['pos'] if 'pos' in event else None
-            if eventstr in _EVENT_FUNC_DICT:
-                if pos:
-                    _EVENT_FUNC_DICT[eventstr](pos[0], pos[1])
-                else:
-                    _EVENT_FUNC_DICT[eventstr]()
-            eventstrany = event['name'] + 'any'
-            if eventstrany in _EVENT_FUNC_DICT:
-                _EVENT_FUNC_DICT[eventstrany](event['key'])
+        if events:
+            for event in events:
+                eventstr = event['name'] + event['key']
+                pos = event['pos'] if 'pos' in event else None
+                if eventstr in _EVENT_FUNC_DICT:
+                    if pos:
+                        _EVENT_FUNC_DICT[eventstr](pos[0], pos[1])
+                    else:
+                        _EVENT_FUNC_DICT[eventstr]()
+                eventstrany = event['name'] + 'any'
+                if eventstrany in _EVENT_FUNC_DICT:
+                    _EVENT_FUNC_DICT[eventstrany](event['key'])
         _dispatch_buffer()
 
     def mainloop(self):
@@ -1349,7 +1350,10 @@ Pen = Turtle
 
 def get_event_log(blocking: bool = True):
     eventLog = _return_action(_GETEVENTLOG, blocking)
-    return eventLog.to_py()
+    if eventLog is None:
+        return None
+    else:
+        return eventLog.to_py()
 
 
 def set_event_mode(state: bool):
