@@ -179,6 +179,7 @@ export default defineComponent({
             contextAC: "",
             // tokenAC can be null if code completion is invalid here
             tokenAC: "" as string | null,
+            kindAC: "code" as "code" | "string",
             //used to force a text cursor position, for example after inserting an AC candidate
             textCursorPos: 0,    
             //flags to indicate whether the user has explicitly marked a pause when deleting text with backspace
@@ -467,7 +468,7 @@ export default defineComponent({
 
         // Event callback equivalent to what would happen for a focus event callback 
         // (the spans don't get focus anymore because the containg editable div grab it)
-        onGetCaret(event: MouseEvent, fromNaturalClick?: boolean): void {
+        onGetCaret(event: MouseEvent | Event | null, fromNaturalClick?: boolean): void {
             this.$nextTick(() => vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex)].updatePrependText());
 
             // When this method is triggered by a natural click on the text slot, we delay the chain of actions a bit,
@@ -476,9 +477,9 @@ export default defineComponent({
             setTimeout(() => {
                 // If the user's code is being executed, or if the frame is disabled, we don't focus any slot, but we make sure we show the adequate frame cursor instead.
                 if(this.isPythonExecuting || this.isDisabled || this.isFrozen){
-                    event.stopImmediatePropagation();
-                    event.stopPropagation();
-                    event.preventDefault();
+                    event?.stopImmediatePropagation();
+                    event?.stopPropagation();
+                    event?.preventDefault();
                     // Call the method which handles a click on the frame instead, we need to find the associated frame object:
                     // the corresponding frame div under that click in the general case, or the outmost disabled ancester frame if the frame is disabled.
                     const outmostDisabledFrameAncestorId = getOutmostDisabledAncestorFrameId(this.frameId);
@@ -486,7 +487,7 @@ export default defineComponent({
                     if(frameDiv){
                         const frameComponentId = (this.isDisabled) ? outmostDisabledFrameAncestorId: this.frameId;
                         // The frame component can only be a frame (and not a frame container) since we've clicked on a slot...
-                        vueComponentsAPIHandler.frameComponentAPI?.forInstance[frameComponentId].changeToggledCaretPosition(event.clientY, frameDiv);
+                        vueComponentsAPIHandler.frameComponentAPI?.forInstance[frameComponentId].changeToggledCaretPosition(event instanceof MouseEvent ? event.clientY : 0, frameDiv);
                         // Even if visually and logically in the app the slot doesn't have focus, the browser will see differently
                         // (a click happened on the span...) - to make sure no undesirable effect occur, we set the focus on the frame div
                         (document.getElementById(getFrameUID(frameComponentId)))?.focus();                        
@@ -499,7 +500,7 @@ export default defineComponent({
                 // If we arrive here by a click, and the slot is a bracket, a quote or an operator, we should get the focus to the nearest editable frame.
                 // We should have neigbours because brackets, quotes and operators are always surronded by fields, but keep TS happy
                 if(this.slotType != SlotType.code && this.slotType != SlotType.string && this.slotType != SlotType.comment){
-                    const clickXValue = event.x;
+                    const clickXValue = event instanceof MouseEvent ? event.x : 0;
                     const slotWidth = document.getElementById(getLabelSlotUID(this.coreSlotInfo))?.offsetWidth??0;
                     const slotXPos = document.getElementById(getLabelSlotUID(this.coreSlotInfo))?.getBoundingClientRect().x??0; 
 
@@ -525,7 +526,7 @@ export default defineComponent({
                         }
                     
                         // Focus on the nearest neighbour to the click
-                        event.preventDefault();
+                        event?.preventDefault();
                         this.$nextTick(() => {
                             const neighbourCursorSlotInfos: SlotCursorInfos = {slotInfos: neighbourSlotInfos, cursorPos: cursorPos};
                             document.getElementById(getLabelSlotUID(neighbourSlotInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
@@ -641,9 +642,10 @@ export default defineComponent({
                     const resultsAC = getCandidatesForAC(frame.labelSlotsDict[this.labelSlotsIndex].slotStructures, new RegExp("[0-9,]+$").exec(this.slotId)?.[0]?.trim()?.split(",")?.map((x) => parseInt(x)) ?? []);
                     this.contextAC = resultsAC.contextAC;
                     this.tokenAC = resultsAC.tokenAC;
+                    this.kindAC = resultsAC.kindAC;
   
                     this.$nextTick(() => {
-                        vueComponentsAPIHandler.autoCompletionComponentAPI?.forInstance[this.AC_UID].updateAC(this.frameId, this.tokenAC, this.contextAC);                        
+                        vueComponentsAPIHandler.autoCompletionComponentAPI?.forInstance[this.AC_UID].updateAC(this.frameId, this.tokenAC, this.contextAC, this.kindAC);                        
                     });
                 }
             }
@@ -1100,6 +1102,8 @@ export default defineComponent({
                     if((currentSlot as StringSlot).quote == inputString){
                         this.removeLastInput(inputString);
                     }
+                    // Must call onGetCaret to make sure AC is updated:
+                    this.onGetCaret(null);
                     return;
                 }
                 else{

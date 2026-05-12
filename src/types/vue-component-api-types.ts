@@ -147,7 +147,7 @@ export type AutoCompletionComponentAPI = {
     [componentInstanceKey: string]: {
       updateACForModuleImport: (token: string) => Promise<void>,
       updateACForImportFrom: (token: string, module: string) => void,
-      updateAC: (frameId: number, token : string | null, context: string) => Promise<void>
+      updateAC: (frameId: number, token : string | null, context: string, kind: "code" | "string") => Promise<void>
     },
   },
 }

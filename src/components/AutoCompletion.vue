@@ -92,6 +92,21 @@ import microbitDescriptions from "@/autocompletion/microbit.json";
 import microbitAPI from "@/autocompletion/microbit-api.json";
 // #v-endif
 
+const assetFileList : string[] = Object.keys(import.meta.glob(
+    "/src/assetsFilesystem/**/*",
+    {
+        eager: true,
+        query: "?url",
+        import: "default",
+    }
+)).map((path) => path.replace(/^\/src\/assetsFilesystem/, "/strype"))
+    // Leave out cat-test.jpg etc:
+    .filter((path) => !path.includes("-test"));
+
+const assetFileCompletions : AcResultType[] = assetFileList.map((path) => {
+    return {acResult: path, documentation: "A file built in to Strype.", type: [], version: 0};
+});
+
 //////////////////////
 export default defineComponent({
     name: "AutoCompletion",
@@ -282,7 +297,7 @@ export default defineComponent({
         // frameId is which frame we're in.
         // token is the string token being edited, or null if it's invalid to show code completion here
         // context is the part before any preceding dot before us 
-        async updateAC(frameId: number, token : string | null, context: string): Promise<void> {
+        async updateAC(frameId: number, token : string | null, context: string, kind: "code" | "string"): Promise<void> {
             const tokenStartsWithUnderscore = (token ?? "").startsWith("_");
             const parser = new Parser(false, "py", true);
             const inFuncDef = getFrameContainer(frameId) == useStore().getDefsFrameContainerId;
@@ -310,7 +325,11 @@ export default defineComponent({
             this.showFunctionBrackets = true;
             const imported = await getAllExplicitlyImportedItems(context);
             this.acResults = {};
-            if (token === null) {
+            if (token != null && kind == "string") {
+                this.acResults["Files"] = assetFileCompletions;
+                this.showSuggestionsAC(token);
+            }
+            else if (token === null) {
                 this.showSuggestionsAC("");
             }
             else if (context !== "" && imported[context as keyof typeof imported]) {
