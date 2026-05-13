@@ -8,7 +8,7 @@ import fs from "fs";
 import { enterCode } from "../support/editor";
 import { dragDividerTo } from "../support/dividers";
 import { load, loadContent } from "../support/loading-saving";
-import { checkConsoleContent, startRunning } from "../support/execution";
+import { checkConsoleContent, runToFinish, startRunning } from "../support/execution";
 
 let browser = "";
 
@@ -585,3 +585,74 @@ while True:
         await checkGraphicsAreaContent(page, "type-get-key-show-text");
     });
 });
+
+test.describe("Test matplotlib", () => {
+    test("Test simple plot with matplotlib", async ({page}) => {
+        await loadContent(page, `
+import matplotlib.pyplot
+
+# Sample data
+x = [1, 2, 3, 4, 5]
+y = [1, 4, 9, 16, 25]
+
+# Create the plot
+matplotlib.pyplot.plot(x, y)
+
+# Labels and title
+matplotlib.pyplot.xlabel("X axis")
+matplotlib.pyplot.ylabel("Y axis")
+matplotlib.pyplot.title("Simple Matplotlib Graph")
+
+# Show the graph
+matplotlib.pyplot.show()
+`);
+
+        await runToFinish(page);
+        await checkGraphicsAreaContent(page, "matplotlib-simple");
+    });
+    
+    test("Test facet plot with matplotlib", async ({page}) => {
+        await loadContent(page, `
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Sample data
+x = np.linspace(0, 10, 200)
+
+fig, axes = plt.subplots(
+    nrows=2,
+    ncols=2,
+    figsize=(10, 6),
+    constrained_layout=True,
+)
+
+# Flatten axes array for easy iteration
+axes = axes.flatten()
+
+plots = [
+    ("Sine", np.sin(x)),
+    ("Cosine", np.cos(x)),
+    ("Tangent", np.tan(x) / 5),
+    ("Sine * Cosine", np.sin(x) * np.cos(x)),
+]
+
+for ax, (title, y) in zip(axes, plots):
+    ax.plot(x, y)
+
+    ax.set_title(title)
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+
+    ax.grid(True)
+
+# Overall figure title
+fig.suptitle("Multi-panel Matplotlib Example", fontsize=16)
+
+plt.show()        
+`);
+
+        await runToFinish(page);
+        await checkGraphicsAreaContent(page, "matplotlib-facet");
+    });
+});
+
