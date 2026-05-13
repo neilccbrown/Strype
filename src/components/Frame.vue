@@ -768,14 +768,14 @@ export default defineComponent({
             const anyCanDisable = this.isPartOfSelection ? this.appStore.selectedFrames.some((frameId) => this.canEnableOrDisableFrame(frameId, false)) : this.canEnableOrDisableFrame(this.frameId, false);            
             let disabilityInitPosIndex = this.frameContextMenuItems.findIndex((entry) => entry.label === this.$t("contextMenu.disable"));
             // Insert the 2 extra menus for frames selection case
-            if(this.appStore.selectedFrames.length > 1){
+            if(this.isPartOfSelection  && this.appStore.selectedFrames.length > 1){
                 const enableDisableAllOptions = [{label: this.$t("contextMenu.enableAll"), onClick: () => this.enableDisable({isDisabling: false}), disabled: !anyCanEnable},
                     {label: this.$t("contextMenu.disableAll"), onClick: () => this.enableDisable({isDisabling: true}), disabled: !anyCanDisable}];
                 this.frameContextMenuItems.splice(disabilityInitPosIndex, 0, ...enableDisableAllOptions);
                 disabilityInitPosIndex += 2;
             }
             // Update the last "disability" related menu item based on the context
-            const disableOrEnableOrToggleOption = (this.appStore.selectedFrames.length > 1) 
+            const disableOrEnableOrToggleOption = (this.isPartOfSelection && this.appStore.selectedFrames.length > 1) 
                 ?  {label: this.$t("contextMenu.toggleDisability"), onClick: () => this.toggleSelectedFrameDisability(), disabled: !anyCanDisable && !anyCanEnable} // toggle
                 :  ((this.appStore.frameObjects[this.frameId].isDisabled) // either disable or enable, the menu entry is disabled if no corresponding action is possible
                     ? {label: this.$t("contextMenu.enable"), onClick: () => this.enableDisable({isDisabling: false}), disabled: !anyCanEnable} 
