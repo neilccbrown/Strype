@@ -17,7 +17,7 @@ import {getRawFileFromLibraries} from "@/helpers/libraryManager";
 // This means we don't have to make reference to the PythonExecutionArea component itself.
 interface SyncRequestCallbacks {
     getPressedKeys : () => {[key: string]: boolean},
-    getAndResetLastKey : () => string | undefined,
+    waitForNextKey : () => Promise<string>,
     loadLibraryAsset : (libraryShortName: string, fileName: string) => Promise<string | undefined>,
     switchToGraphicsTab: (condition: "always" | "ifFirstCallDuringExecute") => void,
     markTurtleDirty: () => void,
@@ -51,8 +51,8 @@ export const handleSyncRequests : (
     case "getPressedKeys": {
         return {request: req.request, response: Promise.resolve(callbacks.getPressedKeys())};
     }
-    case "getAndResetLastKey": {
-        return {request: req.request, response: Promise.resolve(callbacks.getAndResetLastKey())};
+    case "waitForNextKey": {
+        return {request: req.request, response: callbacks.waitForNextKey()};
     }
     case "getMouseDetails": {
         return {request: req.request, response: Promise.resolve(callbacks.getMouseDetails())};

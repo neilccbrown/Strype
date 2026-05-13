@@ -959,21 +959,15 @@ def key_pressed(keyname):
     return _cached_pressed_keys[keyname.lower()]
 
 def get_key():
+    # type: () -> str 
     """
-    Gets the last key that was pressed.
+    Waits for a key to be pressed and returns it.
     
-    If no key was pressed since the last call to this function, None is returned.  Be careful that you should not
-    call this function twice in quick succession as the result will change.  So if you want to check against multiple
-    possibilities, call it once and save it to a variable, then compare the variable.
+    This function will wait until a key is pressed, and your program will be paused until the key is pressed. 
     
-    Sometimes you may want to wait for a key (for example, a "press any key to continue" or "press a key to choose")
-    and you want to avoid receiving old (or "stale") key presses, then call get_key() once and ignore the result,
-    then show your prompt, then loop with a pace() call waiting for get_key() to be non-None. 
-    
-    :return: The key that was most recently pressed, or None if no key has been pressed since the last call to this function.
+    :return: The key that was pressed.
     """
-    # Note that this is not cached, unlike key_pressed: 
-    return _strype_input_internal.getAndResetLastKey()
+    return _strype_input_internal.waitForNextKey()
 
 def set_background(image_or_color, scale_to_fit = False):
     # type: (Image | str, bool) -> None

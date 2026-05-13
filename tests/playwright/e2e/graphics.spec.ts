@@ -573,16 +573,14 @@ set_background("blue")
 s = ""
 while True:
     k = get_key()
-    if k:
-        if k == "space":
-            k = " "
-        s = s + k
-        show_text(s, font_size=120)
-    pace()
+    if k == "space":
+        k = " "
+    s = s + k
+    show_text(s, font_size=120)
 `);
         await startRunning(page);
         await page.waitForTimeout(1000);
-        await page.keyboard.type("Hello world", {delay: 500});
+        await page.keyboard.type("Hello world", {delay: 200});
         await page.waitForTimeout(1000);
         await checkGraphicsAreaContent(page, "type-get-key-show-text");
     });
