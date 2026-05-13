@@ -253,6 +253,32 @@ export const evaluateSlotType = (def: { allowedSlotContent?: AllowedSlotContent 
     }
 };
 
+// This helper function compares 2 label slots structure in an isomorphic way: that is we check the internal structure
+// is equivalent, without paying attention to the slot's code values.
+// We assume the structures are well formed so we can only care about the fields, and not look at operators.
+export const areSlotStructuresIsomorphic = (struct1: SlotsStructure, struct2: SlotsStructure): boolean => {
+    if(struct1.fields.length != struct2.fields.length){
+        return false;
+    }
+    else{
+        // We need to compare each slots inner content, to be sure their inner structure doesn't differ too.
+        return !struct1.fields.map((fieldSlot, index) =>  {
+            const fieldSlot1Type = evaluateSlotType({}, fieldSlot);
+            const fieldSlot2Type = evaluateSlotType({}, struct2.fields[index]);
+            if(fieldSlot1Type != fieldSlot2Type){
+                return false;
+            }
+            else if(isFieldBracketedSlot(fieldSlot)){
+                return areSlotStructuresIsomorphic(fieldSlot, struct2.fields[index] as SlotsStructure);
+            }
+            else{
+                // Any other type of slots, when they are of the same type, will be isomorphic
+                return true;
+            }
+        }).some((_)=> !_);
+    }
+};
+
 export const removeFrameInFrameList = (frameId: number): void => {
     // When removing a frame in the list, we remove all its sub levels,
     // then update its parent and then delete the frame itself
