@@ -264,7 +264,7 @@ export default defineComponent({
             pythonConsole.addEventListener(CustomEventTypes.pythonConsoleAfterInput, this.handlePostInputConsole);
 
             // Register an event listener on this component for the notification of the turtle library import usage
-            (this.$refs.peaComponent as HTMLDivElement).addEventListener(CustomEventTypes.notifyTurtleUsage, (event) => {
+            (this.$refs.peaComponent as HTMLDivElement).addEventListener(CustomEventTypes.notifyGraphicsUsage, (event) => {
                 this.graphicsImported = (event as CustomEvent<"turtle" | "strype" | "none">).detail;
                 this.redrawImportMessage();
             });

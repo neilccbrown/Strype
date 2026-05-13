@@ -7,7 +7,7 @@ import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CollapsedState, C
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 import {AppSPYFullPrefix} from "@/helpers/appContext";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
-import { actOnTurtleImport } from "@/helpers/editor";
+import { actOnGraphicsImport } from "@/helpers/editor";
 // #v-endif
 import {STRYPE_DUMMY_FIELD, STRYPE_EXPRESSION_BLANK, STRYPE_INVALID_OP, STRYPE_INVALID_OPS_WRAPPER, STRYPE_INVALID_SLOT} from "@/helpers/pythonToFrames";
 
@@ -582,7 +582,7 @@ export default class Parser {
 
         // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
         // We look if Turtle has been imported to notify the editor UI
-        actOnTurtleImport();
+        actOnGraphicsImport();
         // #v-endif
 
         let parentInsideAClass = false;

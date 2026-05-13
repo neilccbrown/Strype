@@ -17,7 +17,7 @@ import { BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import $ from "jquery";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
-import { actOnTurtleImport } from "@/helpers/editor";
+import { actOnGraphicsImport } from "@/helpers/editor";
 // #v-endif
 
 function getState(): StateAppObject {
@@ -2618,7 +2618,7 @@ export const useStore = defineStore("app", {
             return new Promise((resolve) => {
                 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                 // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
-                actOnTurtleImport();
+                actOnGraphicsImport();
 
                 // Clear the Python Execution Area as it could have be run before.
                 vueComponentsAPIHandler.peaComponentAPI?.clear(); 

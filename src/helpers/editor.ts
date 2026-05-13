@@ -75,7 +75,7 @@ export enum CustomEventTypes {
     pythonExecAreaExpandCollapseChanged = "peaExpandCollapsChanged",
     pythonConsoleRequestFocus = "pythonConsoleReqFocus",
     pythonConsoleAfterInput = "pythonConsoleAfterInput",
-    notifyTurtleUsage = "turtleUsage",
+    notifyGraphicsUsage = "graphicsUsage",
     pythonExecAreaSizeChanged = "peaSizeChanged",
     highlightPythonRunningState = "highlightPythonRunningState"
     // #v-endif
@@ -1890,7 +1890,7 @@ export function getNumPrecedingBackslashes(content: string, cursorPos : number) 
  */
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 // This method acts the turtle module being imported or not in the editor's frame
-export function actOnTurtleImport(): void {
+export function actOnGraphicsImport(): void {
     // Matches types in recipient in PythonExecutionArea
     let graphicsImport = "none" as "strype" | "turtle" | "none";
    
@@ -1918,7 +1918,7 @@ export function actOnTurtleImport(): void {
     });
 
     // We notify the Python exec area about the presence or absence of the turtle module
-    document.getElementById(getPEAComponentRefId())?.dispatchEvent(new CustomEvent(CustomEventTypes.notifyTurtleUsage, {detail: graphicsImport}));
+    document.getElementById(getPEAComponentRefId())?.dispatchEvent(new CustomEvent(CustomEventTypes.notifyGraphicsUsage, {detail: graphicsImport}));
 }
 
 // UI-related method to calculate and set the max height of the Python Execution Area tabs content.
