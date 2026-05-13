@@ -2942,19 +2942,20 @@ export const useStore = defineStore("app", {
             this.unselectAllFrames();
         },
 
-        changeDisableSelection(payload: {isDisabling: boolean, keepSelection?: boolean}) {
+        changeDisableSelection(payload: {isDisabling?: boolean, keepSelection?: boolean}) {
             const stateBeforeChanges = cloneDeep(this.$state);
             
-            this.selectedFrames.forEach( (id) => {
+            // When isDisabling is not set, toggling is requested.
+            this.selectedFrames.forEach((id) => {
                 // Can't change frozen frames or children of frozen frames or comments or blanks:
                 if (this.frameObjects[id].frozenState != FrozenState.FROZEN &&
                     this.frameObjects[this.frameObjects[id].parentId].frozenState != FrozenState.FROZEN &&
                     // And can't disable blanks (can enable, in case of old projects where this was allowed):
-                    (!payload.isDisabling || this.frameObjects[id].frameType.type != AllFrameTypesIdentifier.blank)) {
+                    (!(payload.isDisabling??(!this.frameObjects[id].isDisabled)) || this.frameObjects[id].frameType.type != AllFrameTypesIdentifier.blank)) {
                     this.doChangeDisableFrame(
                         {
                             frameId: id,
-                            isDisabling: payload.isDisabling,
+                            isDisabling: payload.isDisabling??(!this.frameObjects[id].isDisabled),
                         }
                     );
                 }
