@@ -105,6 +105,10 @@ _Dimension = _collections.namedtuple("Dimension", ["width", "height"])
 class Image:
     """
     An editable image of fixed width and height.
+    
+    Note that the coordinate system for editing images is different to that for Actors.  In Image, (0, 0) is
+    at the top-left of the image, and Y values increase as you go down the image.  The X and Y limits are one
+    less than the width and height of the image respectively.
     """
 
     # Attributes:
