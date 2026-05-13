@@ -1892,7 +1892,7 @@ export function getNumPrecedingBackslashes(content: string, cursorPos : number) 
 // This method acts the turtle module being imported or not in the editor's frame
 export function actOnGraphicsImport(): void {
     // Matches types in recipient in PythonExecutionArea
-    let graphicsImport = "none" as "strype" | "turtle" | "none";
+    let graphicsImport = "none" as "strype" | "turtle" | "matplotlib" | "none";
    
     Object.values(useStore().frameObjects).forEach((frame) => {
         // If the frame is disabled, or is not an import/for...import frame, it definitely do not imports turtle.
@@ -1913,6 +1913,10 @@ export function actOnGraphicsImport(): void {
             // Spaces are added in code above:
             else if (module.localeCompare("strype . graphics") == 0 || module.startsWith("strype . graphics as ")){
                 graphicsImport = "strype";
+            }
+            // Matplotlib or any of its submodules:
+            else if (module.localeCompare("matplotlib") == 0 || module.startsWith("matplotlib as ") || module.startsWith("matplotlib . ")) {
+                graphicsImport = "matplotlib";
             }
         });
     });
