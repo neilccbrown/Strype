@@ -142,7 +142,10 @@ const executePython = pyodideExpose(async (
 ) : Promise<PyodideErrorDetails | null> => {
     return reloader == null ? null : await reloader.withPyodide(async (pyodide : PyodideInterface) => {
         // Load any in-built packages they've used (e.g. numpy, pandas):
-        await pyodide.loadPackagesFromImports(pythonCode, {messageCallback: console.log, errorCallback: console.error});
+        const loaded = await pyodide.loadPackagesFromImports(pythonCode, {messageCallback: console.log, errorCallback: console.error});
+        
+        // Useful for debugging, and the user may also want to see:
+        console.info("Loaded packages: " + loaded.map((p) => p.name).join(", "));
 
         for (let url in userLibrariesFileIndexes) {
             const libDir = "/strype_libraries/" + await urlToDirName(url);
@@ -165,6 +168,13 @@ sys.path.append("${libDir}")
 `);
         }
         
+        const usingMatplotlib = loaded.some((pd) => pd.name == "matplotlib");
+        if (usingMatplotlib) {
+            // Matplotlib takes ages (7 seconds on my fast Windows+Firefox machine!) so let's print a message:
+            makeRequest({kind: "async", request: {request:"console_print", text: "Loading Matplotlib (this may take some time)", containsInputPrompt: false}});
+        }
+        
+        
         const runner = pyodide.runPython(`from python_runner import PyodideRunner
 import traceback
 from itertools import dropwhile
@@ -176,7 +186,42 @@ class StrypePyodideRunner(PyodideRunner):
         # and translate to dict for easy transformation into Javascript object:
         filtered = [dict(filename=frame.filename, lineno=frame.lineno) for frame in list(dropwhile(lambda f: f.filename != self.filename, tbe.stack))]
         return dict(error_type=type(exc).__name__, error_message=str(exc), traceback=filtered, text=type(exc).__name__ + ": " + str(exc))
-StrypePyodideRunner()`);
+runner = StrypePyodideRunner()
+
+# Work around from Pyodide repo, then used in WebTigerPython, then adapted by us for the 800x600 part:
+if ${usingMatplotlib ? "True" : "False"}:
+    try:
+        import matplotlib
+        # Must set backend before importing pyplot:
+        matplotlib.use("Agg", force=True)
+    
+        # workaround from https://github.com/pyodide/pyodide/issues/1518
+        import base64
+        from io import BytesIO
+    
+        import matplotlib.pyplot
+    
+        def show():
+            fig = matplotlib.pyplot.gcf()
+            # Current figure size in inches
+            w_in, h_in = fig.get_size_inches()
+            # Compute DPI that fits within bounds:
+            dpi = min(800 / w_in, 600 / h_in)
+        
+            buf = BytesIO()
+            matplotlib.pyplot.savefig(buf, format="png", dpi=dpi, bbox_inches="tight")
+            buf.seek(0)
+            # encode to a base64 str
+            img = "data:image/png;base64," + base64.b64encode(buf.read()).decode("utf-8")
+            matplotlib.pyplot.clf()
+            runner.callback("matplotlib_img", data=img)
+    
+        matplotlib.pyplot.show = show
+    except ModuleNotFoundError:
+        pass
+
+# Now return the runner object:
+runner`);
         
         if (micropipLibraries.length > 0) {
             await pyodide.loadPackage("micropip");
@@ -247,6 +292,7 @@ StrypePyodideRunner()`);
         pyodide.FS.mount(pyodide.FS.filesystems.ASSETSFS, {}, "/strype");
         
         let error : PyodideErrorDetails | null = null;
+        let matPlotLibSpriteId : number | null = null;
         const callback = function (type: string, data: any) {
             if (data.toJs) {
                 data = data.toJs({dict_converter: Object.fromEntries});
@@ -275,6 +321,22 @@ StrypePyodideRunner()`);
                     // I don't think this should happen, but log it in case:
                     console.error("Unexpected multiple error parts from one call: " + JSON.stringify(errorParts));
                 }
+            }
+            else if (type === "matplotlib_img") {
+                // This comes from the override above.  The image is in a base64 string in the data field.
+                
+                // Remove previous:
+                if (matPlotLibSpriteId != null) {
+                    self.spriteManager.removeSprite(matPlotLibSpriteId);
+                }
+                
+                // First, load it:
+                const image = syncBridge({request: "loadImage", url: data.data as string});
+                // Note that the image should already fit 800x600 as best it can due to our code in show(), above.
+                // So no need to scale.
+                
+                // Then add it as a sprite (default 0, 0 position is fine):
+                matPlotLibSpriteId = self.spriteManager.addSprite(image, false);
             }
             else {
                 // We don't currently handle any other callbacks
