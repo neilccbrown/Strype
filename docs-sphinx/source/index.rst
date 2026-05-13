@@ -1,12 +1,16 @@
-.. Strype documentation master file, created by
-   sphinx-quickstart on Thu Nov  7 18:41:02 2024.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+Available Python libraries in Strype
+==================================== 
+
+Strype comes with `almost all <https://pyodide.org/en/0.29.3/usage/wasm-constraints.html>`__ the standard Python functions, as well as its own graphics and sound libraries which are explained below.
+
+Strype also has various popular Python libraries available for use automatically, including scipy, numpy, pandas, and more.  You can see the full list on the `Pyodide web site <https://pyodide.org/en/0.29.3/usage/packages-in-pyodide.html>`__.
+Advanced users can use pure-Python libraries with `micropip <https://micropip.pyodide.org/>`__ via a library frame in the imports section (e.g. "micropip:snowballstemmer" in a library frame).
+
+But for most users, the Strype graphics and sound API below is all that is needed; see the documentation below.
 
 Strype API documentation
 ========================
 
-.. Note: the double underscore after the link is necessary syntax:
 You can see more documentation for Strype on the `main documentation page <https://strype.org/doc/>`__
 
 Module strype.graphics
