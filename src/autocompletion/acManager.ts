@@ -99,24 +99,29 @@ export function getContentForACPrefix(item : FieldSlot, excludeLast? : boolean) 
 // the full AC content isn't recreated every time, but only do so when we detect a change of context.
 // The return is a token (or null if code completion is invalid here)
 // and context (prefix) which is the part before a dot before the token.
-export function getCandidatesForAC(slotCode: SlotsStructure, location: number[]): {tokenAC: string | null; contextAC: string} {
+export function getCandidatesForAC(slotCode: SlotsStructure, location: number[]): {tokenAC: string | null; contextAC: string, kindAC: "code" | "string"} {
     // If anything goes wrong we make sure not to throw an exception; just show the AC with "No completion available":
     try {
         if (location.length == 1) {
             let fieldIndex = location[0];
             const ourField = slotCode.fields[fieldIndex];
             // We only offer completions for basic slots that are not string literals:
-            if (ourField != undefined && ("code" in ourField && !("quote" in ourField))) {
-                let prefix = "";
-                // Glue together any previous slots that are joined by dots (or blank operators):
-                if (fieldIndex > 0 && slotCode.operators[fieldIndex - 1].code === ".") {
-                    while (fieldIndex > 0 && (slotCode.operators[fieldIndex - 1].code === "." || slotCode.operators[fieldIndex - 1].code === "")) {
-                        fieldIndex -= 1;
-                        prefix = getContentForACPrefix(slotCode.fields[fieldIndex]) + (prefix ? slotCode.operators[fieldIndex].code : "") + prefix;
+            if (ourField != undefined && "code" in ourField) {
+                if (!("quote" in ourField)) {
+                    let prefix = "";
+                    // Glue together any previous slots that are joined by dots (or blank operators):
+                    if (fieldIndex > 0 && slotCode.operators[fieldIndex - 1].code === ".") {
+                        while (fieldIndex > 0 && (slotCode.operators[fieldIndex - 1].code === "." || slotCode.operators[fieldIndex - 1].code === "")) {
+                            fieldIndex -= 1;
+                            prefix = getContentForACPrefix(slotCode.fields[fieldIndex]) + (prefix ? slotCode.operators[fieldIndex].code : "") + prefix;
+                        }
                     }
+
+                    return {tokenAC: ourField.code, contextAC: prefix, kindAC: "code"};
                 }
-                
-                return {tokenAC: ourField.code, contextAC: prefix};
+                else {
+                    return {tokenAC: ourField.code, contextAC: "", kindAC: "string"};
+                }
             }
         }
         else {
@@ -130,7 +135,7 @@ export function getCandidatesForAC(slotCode: SlotsStructure, location: number[])
     catch (e) {
         console.warn("Exception while constructing code for autocompletion:" + e);
     }
-    return {tokenAC: null, contextAC: ""};
+    return {tokenAC: null, contextAC: "", kindAC: "code"};
 }
 
 // Given a slot, find all identifiers that are between two commas (or between a comma

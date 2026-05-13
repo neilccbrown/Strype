@@ -233,6 +233,7 @@
     "myVariables": "My variables",
     "myClasses": "My classes",
     "importedModules": "Imported modules",
+    "builtinFiles": "Built-in files",
     "invalidState": "No completion available",
     "noDocumentation": "No documentation available"
   },
