@@ -228,6 +228,7 @@
     "myVariables": "Mes variables",
     "myClasses": "Mes classes",
     "importedModules": "Modules importés",
+    "builtinFiles": "Fichiers intégrés",
     "invalidState": "Aucune complétion disponible",
     "noDocumentation": "Aucune documentation disponible"
   },

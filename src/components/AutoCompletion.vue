@@ -326,7 +326,7 @@ export default defineComponent({
             const imported = await getAllExplicitlyImportedItems(context);
             this.acResults = {};
             if (token != null && kind == "string") {
-                this.acResults["Files"] = assetFileCompletions;
+                this.acResults[this.$t("autoCompletion.builtinFiles")] = assetFileCompletions;
                 this.showSuggestionsAC(token);
             }
             else if (token === null) {
