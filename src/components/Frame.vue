@@ -737,6 +737,7 @@ export default defineComponent({
 
             // Should we show any deleting options (Delete, Cut); requires all selected frames to be deleteable.
             // The only thing that prevents deletion is being frozen:
+            let deleteMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.actionName === FrameContextMenuActionName.delete);
             this.contextMenuAllCanBeDeleted = !ancestorIsFrozen && (this.isPartOfSelection
                 ? this.appStore
                     .selectedFrames
@@ -746,11 +747,17 @@ export default defineComponent({
                 const cutMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.actionName === FrameContextMenuActionName.cut);
                 if(cutMenuPos > -1){
                     this.frameContextMenuItems.splice(cutMenuPos, 1);
+                    // Cut is above "delete" so we should update the delete position index:
+                    deleteMenuPos--;
                 }
-                const deleteMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.actionName === FrameContextMenuActionName.delete);
                 if(deleteMenuPos > -1){
                     this.frameContextMenuItems.splice(deleteMenuPos, 1);
                 }
+            }
+
+            // Remove the separator above the delete entries block if no entry is showing
+            if(!this.contextMenuAllCanBeDeleted && !this.contextMenuCanDeleteOuter){
+                this.frameContextMenuItems.splice(deleteMenuPos - 1, 1);
             }
 
             // The disable/enable logic depends primarily on the the frame(s) target:
