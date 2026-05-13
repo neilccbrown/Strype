@@ -62,7 +62,7 @@ export enum CustomEventTypes {
     cutFrameSelection = "cutFrameSelection",
     copyFrameSelection = "copyFrameSelection",
     duplicateFrameSelection = "duplicateFrameSelection",
-    disableOrEnableFrameSelection = "disableOrEnableFrameSelection",
+    toggleFrameSelectionDisability = "toggleFrameSelectionDisability",
     updateParamPrompts = "updateParamPrompts",
     // The following events are used for our modal dialogs, a wrapping mechanism around Bootstrap modals
     showStrypeModal = "bv::show::modal", // request a modal opening, param is a dialog ID
@@ -89,6 +89,7 @@ export const frameContextMenuShortcuts: FrameContextMenuShortcut[] = [
     {actionName: FrameContextMenuActionName.delete, mainKey: "delete"},
     {actionName: FrameContextMenuActionName.enable, mainKey: "/"},
     {actionName: FrameContextMenuActionName.disable, mainKey: "/"},
+    {actionName: FrameContextMenuActionName.toggleDisability, mainKey: "/"},
 ];
 
 export function getFrameContainerUID(frameId: number): string {

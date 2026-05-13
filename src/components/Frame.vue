@@ -385,7 +385,7 @@ export default defineComponent({
         eventBus.on(CustomEventTypes.cutFrameSelection, this.cutIfFirstInSelection);
         eventBus.on(CustomEventTypes.copyFrameSelection, this.copyIfFirstInSelection);
         eventBus.on(CustomEventTypes.duplicateFrameSelection, this.duplicateIfFirstInSelection);
-        eventBus.on(CustomEventTypes.disableOrEnableFrameSelection, this.disableOrEnableFirstInSelection);
+        eventBus.on(CustomEventTypes.toggleFrameSelectionDisability, this.toggleDisabilityFirstInSelection);
 
         // The frame header can listen for events from the editable slots focus to manage header level error messages
         document.getElementById(this.frameHeaderId)?.addEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);
@@ -400,7 +400,7 @@ export default defineComponent({
         eventBus.off(CustomEventTypes.cutFrameSelection, this.cutIfFirstInSelection);
         eventBus.off(CustomEventTypes.copyFrameSelection, this.copyIfFirstInSelection);
         eventBus.off(CustomEventTypes.duplicateFrameSelection, this.duplicateIfFirstInSelection);
-        eventBus.off(CustomEventTypes.disableOrEnableFrameSelection, this.disableOrEnableFirstInSelection);
+        eventBus.off(CustomEventTypes.toggleFrameSelectionDisability, this.toggleDisabilityFirstInSelection);
         
         // Remove the component's API instance
         if(vueComponentsAPIHandler.frameComponentAPI?.forInstance[this.frameId]){
@@ -437,22 +437,12 @@ export default defineComponent({
             }
         },
 
-        disableOrEnableFirstInSelection(){
-            // Disabling or enabling frames by shortcut is only available for a frame selection*, and if the user's code isn't being executed.
+        toggleDisabilityFirstInSelection(){
+            // Toggling the disability status of frames by shortcut is only available for a frame selection*, and if the user's code isn't being executed.
             // To prevent the command to be called on all frames, but only once (first of a selection), we check that the current frame is a first of a selection.
             // * "this.isPartOfSelection" is necessary because it is only set at the right value in a subsequent call. 
             if(!this.isPythonExecuting && this.isPartOfSelection && (this.appStore.getFrameSelectionPosition(this.frameId) as string).startsWith("first")) {
-                // The action to perform isn't dictated by the status of the first frame: it depends on all the frames.
-                // We follow the same logic we would use when creating the context menu to know which situation we're in: enabling, disabling and if allowed at all
-                const anyCanEnable =  this.appStore.selectedFrames.some((frameId) => this.canEnableOrDisableFrame(frameId, true));
-                const anyCanDisable = this.appStore.selectedFrames.some((frameId) => this.canEnableOrDisableFrame(frameId, false));
-
-                if(!anyCanDisable && anyCanEnable){
-                    this.enable(true);
-                }
-                else if(anyCanDisable){
-                    this.disable(true);
-                }
+                this.toggleSelectedFrameDisability(true);
             }
         },
 
@@ -537,7 +527,7 @@ export default defineComponent({
                 {label: this.$t("contextMenu.pasteAbove"), onClick: this.pasteAbove},
                 {label: this.$t("contextMenu.pasteBelow"), onClick: this.pasteBelow},
                 {divided: "self"},
-                {label: this.$t("contextMenu.disable"), onClick: () => this.disable()},
+                {label: this.$t("contextMenu.disable"), onClick: () => this.enableDisable({})},
                 {divided: "self"},
                 {label: this.$t("contextMenu.delete"), onClick: this.delete, actionName: FrameContextMenuActionName.delete, attrs: {"action-name": FrameContextMenuActionName.delete}, shortcut: this.$t("shortcut.delete")},
                 {label: this.$t("contextMenu.deleteOuter"), onClick: this.deleteOuter, actionName: FrameContextMenuActionName.deleteOuter}];
@@ -763,22 +753,45 @@ export default defineComponent({
                 }
             }
 
-            // Check which, between "enable" and "disable", we should show in the menu, and if we need to disable the menu entry
-            // (see canEnableOrDisableFrame() for details)            
+            // The disable/enable logic depends primarily on the the frame(s) target:
+            // - if the action is performed on a single frame, we toggle the current disability status and show "disable" or "enable" accordingly (if action is allowed); ctrl+/ is associated with this action
+            // - if the action is performed on several frames at once, we can either disable them all, or enable them all, or toggle their disability status (if actions are allowed); ctrl+/ is associated with the toggling action
+            // (see canEnableOrDisableFrame() for details when a disability change for a frame is not allowed)            
             const anyCanEnable = this.isPartOfSelection ? this.appStore.selectedFrames.some((frameId) => this.canEnableOrDisableFrame(frameId, true)) : this.canEnableOrDisableFrame(this.frameId, true);
-            const anyCanDisable = this.isPartOfSelection ? this.appStore.selectedFrames.some((frameId) => this.canEnableOrDisableFrame(frameId, false)) : this.canEnableOrDisableFrame(this.frameId, false);
-            
-            const disableOrEnableOption = (!anyCanDisable && anyCanEnable) 
-                ?  {label: this.$t("contextMenu.enable"), onClick: () => this.enable(), disabled: false}
-                :  {label: this.$t("contextMenu.disable"), onClick: () => this.disable(), disabled: !anyCanDisable && !anyCanEnable};
+            const anyCanDisable = this.isPartOfSelection ? this.appStore.selectedFrames.some((frameId) => this.canEnableOrDisableFrame(frameId, false)) : this.canEnableOrDisableFrame(this.frameId, false);            
+            let disabilityInitPosIndex = this.frameContextMenuItems.findIndex((entry) => entry.label === this.$t("contextMenu.disable"));
+            // Insert the 2 extra menus for frames selection case
+            if(this.appStore.selectedFrames.length > 1){
+                const enableDisableAllOptions = [{label: this.$t("contextMenu.enableAll"), onClick: () => this.enableDisable({isDisabling: false}), disabled: !anyCanEnable},
+                    {label: this.$t("contextMenu.disableAll"), onClick: () => this.enableDisable({isDisabling: true}), disabled: !anyCanDisable}];
+                this.frameContextMenuItems.splice(disabilityInitPosIndex, 0, ...enableDisableAllOptions);
+                disabilityInitPosIndex += 2;
+            }
+            // Update the last "disability" related menu item based on the context
+            const disableOrEnableOrToggleOption = (this.appStore.selectedFrames.length > 1) 
+                ?  {label: this.$t("contextMenu.toggleDisability"), onClick: () => this.toggleSelectedFrameDisability(), disabled: !anyCanDisable && !anyCanEnable} // toggle
+                :  ((this.appStore.frameObjects[this.frameId].isDisabled) // either disable or enable, the menu entry is disabled if no corresponding action is possible
+                    ? {label: this.$t("contextMenu.enable"), onClick: () => this.enableDisable({isDisabling: false}), disabled: !anyCanEnable} 
+                    : {label: this.$t("contextMenu.disable"), onClick: () => this.enableDisable({isDisabling: true}), disabled: !anyCanDisable});
             // Set the keyboard shortcut indicator and the attribute "action-name" so the keyboard shorcut can be effective, only when the menu entry isn't disabled
             // (note: this is only relevant to handling the shortcut when the menu is showing, otherwise it is handled in a different manner)
-            if(!disableOrEnableOption.disabled){
-                (disableOrEnableOption as StrypeContextMenuItem).shortcut = (isMacOSPlatform()) ? "⌘/" : this.$t("shortcut.ctrlPlus") + "/";
-                (disableOrEnableOption as StrypeContextMenuItem).attrs = {"action-name": (!anyCanDisable && anyCanEnable) ? FrameContextMenuActionName.enable : FrameContextMenuActionName.disable};
+            if(!disableOrEnableOrToggleOption.disabled){
+                let actionName = FrameContextMenuActionName.disable; // default case: disable
+                switch (disableOrEnableOrToggleOption.label){
+                case this.$t("contextMenu.enable"):
+                    actionName = FrameContextMenuActionName.enable;
+                    break;
+                case this.$t("contextMenu.toggleDisability"):
+                    actionName = FrameContextMenuActionName.toggleDisability;
+                    break;
+                default: // disable
+                    break;
+                }
+                (disableOrEnableOrToggleOption as StrypeContextMenuItem).shortcut = (isMacOSPlatform()) ? "⌘/" : this.$t("shortcut.ctrlPlus") + "/";
+                (disableOrEnableOrToggleOption as StrypeContextMenuItem).attrs = {"action-name": actionName};
             }
             const enableDisableIndex = this.frameContextMenuItems.findIndex((entry) => entry.label === this.$t("contextMenu.enable") || entry.label === this.$t("contextMenu.disable") );
-            this.frameContextMenuItems.splice(enableDisableIndex, 1, disableOrEnableOption);
+            this.frameContextMenuItems.splice(enableDisableIndex, 1, disableOrEnableOrToggleOption);
             
             // Overwrite readonly properties clientX and clientY (to position the menu if needed)
             setContextMenuEventClientXY(event, positionForMenu);             
@@ -1364,29 +1377,16 @@ export default defineComponent({
          
         },
 
-        disable(keepSelection?: boolean): void {
+        enableDisable(options: {isDisabling?: boolean, keepSelection?: boolean}): void {
+            const {isDisabling, keepSelection} = options;
             if(this.isPartOfSelection){
-                this.appStore.changeDisableSelection({isDisabling: true, keepSelection: keepSelection});
+                this.appStore.changeDisableSelection({isDisabling, keepSelection});
             }
             else {
                 this.appStore.changeDisableFrame(
                     {
                         frameId: this.frameId,
-                        isDisabling: true,
-                    }
-                );
-            }
-        },
-        
-        enable(keepSelection?: boolean): void {
-            if(this.isPartOfSelection){
-                this.appStore.changeDisableSelection({isDisabling: false, keepSelection: keepSelection});
-            }
-            else {
-                this.appStore.changeDisableFrame(
-                    {
-                        frameId: this.frameId,
-                        isDisabling: false,
+                        isDisabling: !!isDisabling, // must be a valid value in this case
                     }
                 );
             }
@@ -1413,6 +1413,11 @@ export default defineComponent({
                 this.appStore.setCurrentFrame(newCurrentFrame);
                 this.appStore.deleteFrames("Backspace");
             }       
+        },
+
+        toggleSelectedFrameDisability(keepSelection?: boolean){
+            // Enable/disable each selected frames based on their status.
+            this.enableDisable({keepSelection});
         },
 
         deleteOuter(): void {
