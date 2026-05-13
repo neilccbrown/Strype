@@ -53,6 +53,7 @@ export type SyncStrypePyodideWorkerRequest =
     | { request: "canvas_drawText", img: RemoteCanvas, text: string, x: number, y: number, fontSize: number, maxWidth: number, maxHeight: number, fontName: string }
     | { request: "turtle", buffer: [string, string, any][]}    
     | { request: "getPressedKeys" }
+    | { request: "waitForNextKey" }
     | { request: "getMouseDetails" }
     | { request: "consumeLastClickDetails" }
     | { request: "consumeLastClickedItems" }
@@ -89,6 +90,7 @@ export type SyncStrypePyodideWorkerResponse =
     | { request: "canvas_drawText"; response: { width: number; height: number; } }
     | { request: "turtle"; response: boolean; } // We don't need a return value as such, we're just using the response to wait
     | { request: "getPressedKeys"; response: {[key: string]: boolean} }
+    | { request: "waitForNextKey"; response: string }
     | { request: "getMouseDetails", response: {x : number, y: number, buttonsPressed: boolean[] } }
     | { request: "consumeLastClickDetails", response: { x: number, y: number, button: number, clickCount: number } | null }
     | { request: "consumeLastClickedItems", response: SpriteHandle[] }

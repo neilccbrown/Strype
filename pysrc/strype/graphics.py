@@ -958,6 +958,17 @@ def key_pressed(keyname):
         keyname = "space"
     return _cached_pressed_keys[keyname.lower()]
 
+def get_key():
+    # type: () -> str 
+    """
+    Waits for a key to be pressed and returns it.
+    
+    This function will wait until a key is pressed, and your program will be paused until the key is pressed. 
+    
+    :return: The key that was pressed.
+    """
+    return _strype_input_internal.waitForNextKey()
+
 def set_background(image_or_color, scale_to_fit = False):
     # type: (Image | str, bool) -> None
     """
