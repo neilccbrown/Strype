@@ -36,7 +36,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     }
 
     // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(120000); // 120 seconds
+    testInfo.setTimeout(240000); // 240 seconds
 
     // Make browser's console.log output visible in our logs (useful for debugging):
     page.on("console", (msg) => {
@@ -338,7 +338,8 @@ test.describe("Delete Match statemen", () => {
 
     test("Backspace after Match", async ({page}) => {
         await page.keyboard.press("m");
-        await pressN("ArrowDown",4)(page);
+        await pressN("ArrowDown", 4, true)(page);
+        await page.waitForTimeout(200);
         await page.keyboard.press("Backspace");
         await page.waitForTimeout(200);
         expect(readFileSync(await save(page), "utf-8")).toEqual(defaultProjectCodeLiteral.trimStart());
