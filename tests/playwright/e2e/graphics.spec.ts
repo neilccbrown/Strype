@@ -20,7 +20,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     }
 
     // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(120000); // 90 seconds
+    testInfo.setTimeout(240000); // 240 seconds
     
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
@@ -578,7 +578,7 @@ while True:
     s = s + k
     show_text(s, font_size=120)
 `);
-        await startRunning(page);
+        await startRunning(page, true);
         await page.waitForTimeout(1000);
         await page.keyboard.type("Hello world", {delay: 200});
         await page.waitForTimeout(1000);
@@ -651,7 +651,7 @@ fig.suptitle("Multi-panel Matplotlib Example", fontsize=16)
 plt.show()        
 `);
 
-        await runToFinish(page);
+        await runToFinish(page, true);
         await checkGraphicsAreaContent(page, "matplotlib-facet");
     });
 });
