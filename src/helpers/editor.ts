@@ -75,7 +75,7 @@ export enum CustomEventTypes {
     pythonExecAreaExpandCollapseChanged = "peaExpandCollapsChanged",
     pythonConsoleRequestFocus = "pythonConsoleReqFocus",
     pythonConsoleAfterInput = "pythonConsoleAfterInput",
-    notifyTurtleUsage = "turtleUsage",
+    notifyGraphicsUsage = "graphicsUsage",
     pythonExecAreaSizeChanged = "peaSizeChanged",
     highlightPythonRunningState = "highlightPythonRunningState"
     // #v-endif
@@ -1890,9 +1890,9 @@ export function getNumPrecedingBackslashes(content: string, cursorPos : number) 
  */
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 // This method acts the turtle module being imported or not in the editor's frame
-export function actOnTurtleImport(): void {
+export function actOnGraphicsImport(): void {
     // Matches types in recipient in PythonExecutionArea
-    let graphicsImport = "none" as "strype" | "turtle" | "none";
+    let graphicsImport = "none" as "strype" | "turtle" | "matplotlib" | "none";
    
     Object.values(useStore().frameObjects).forEach((frame) => {
         // If the frame is disabled, or is not an import/for...import frame, it definitely do not imports turtle.
@@ -1914,11 +1914,15 @@ export function actOnTurtleImport(): void {
             else if (module.localeCompare("strype . graphics") == 0 || module.startsWith("strype . graphics as ")){
                 graphicsImport = "strype";
             }
+            // Matplotlib or any of its submodules:
+            else if (module.localeCompare("matplotlib") == 0 || module.startsWith("matplotlib as ") || module.startsWith("matplotlib . ")) {
+                graphicsImport = "matplotlib";
+            }
         });
     });
 
     // We notify the Python exec area about the presence or absence of the turtle module
-    document.getElementById(getPEAComponentRefId())?.dispatchEvent(new CustomEvent(CustomEventTypes.notifyTurtleUsage, {detail: graphicsImport}));
+    document.getElementById(getPEAComponentRefId())?.dispatchEvent(new CustomEvent(CustomEventTypes.notifyGraphicsUsage, {detail: graphicsImport}));
 }
 
 // UI-related method to calculate and set the max height of the Python Execution Area tabs content.

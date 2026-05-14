@@ -199,7 +199,7 @@ export default defineComponent({
             isExpandedPEA: false,
             isTabsLayout: true, // flag to indicate the PEA's layout - tabs by default
             graphicsTemporaryHidden: false, //flag to use when we need to temporary hide the graphics for UI reasons (like before a layout of the PEA is performed, so we can compute things right)
-            graphicsImported: "none" as "turtle" | "strype" | "none", // by default, graphics isn't imported - this flag is updated when we detect the import (see event registration in mounted())
+            graphicsImported: "none" as "turtle" | "strype" | "matplotlib" | "none", // by default, graphics isn't imported - this flag is updated when we detect the import (see event registration in mounted())
             peaDisplayTabIndex: PEATabIndexes.console, // (see mounted() for details) - flag of the tab index, used equally as a flag to indicate if we are on one or other tab
             isTabContentHovered: false,
             scaleToFit: 1,
@@ -264,8 +264,8 @@ export default defineComponent({
             pythonConsole.addEventListener(CustomEventTypes.pythonConsoleAfterInput, this.handlePostInputConsole);
 
             // Register an event listener on this component for the notification of the turtle library import usage
-            (this.$refs.peaComponent as HTMLDivElement).addEventListener(CustomEventTypes.notifyTurtleUsage, (event) => {
-                this.graphicsImported = (event as CustomEvent<"turtle" | "strype" | "none">).detail;
+            (this.$refs.peaComponent as HTMLDivElement).addEventListener(CustomEventTypes.notifyGraphicsUsage, (event) => {
+                this.graphicsImported = (event as CustomEvent<"turtle" | "strype" | "matplotlib" | "none">).detail;
                 this.redrawImportMessage();
             });
             
