@@ -143,7 +143,7 @@
         "mochapack": "^2.1.4",
         "pixelmatch": "^7.1.0",
         "pngjs": "^7.0.0",
-        "pyodide": "^0.29.3",
+        "pyodide": "^0.29.4",
         "rimraf": "^5.0.10",
         "sass": "^1.97.2",
         "seedrandom": "^3.0.5",
