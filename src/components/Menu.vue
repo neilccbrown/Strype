@@ -648,7 +648,12 @@ export default defineComponent({
         },
 
         getAppVersion(): string {
-            return appPackageJson.version;
+            // The version is suffixed by "m" for Strype microbit
+            let versionPlatform = "";
+            // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
+            versionPlatform = "m";
+            // #v-endif
+            return appPackageJson.version+versionPlatform;
         },
         
         getLocaleBuildDate(): string {
