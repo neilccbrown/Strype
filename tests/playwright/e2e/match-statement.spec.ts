@@ -325,7 +325,7 @@ match ___strype_blank  :
     });
 });
 
-test.describe("Delete Match statemen", () => {
+test.describe("Delete Match statement", () => {
     test("Delete before Match", async ({page}) => {
         await page.keyboard.press("m");
         expect(readFileSync(await save(page), "utf-8")).toEqual(basicMatchLiteral.trimStart());
@@ -339,11 +339,12 @@ test.describe("Delete Match statemen", () => {
     test("Backspace after Match", async ({page}) => {
         await page.keyboard.press("m");
         await page.waitForTimeout(200);
-        await pressN("ArrowDown", 4, true)(page);
+        expect(readFileSync(await save(page), "utf-8")).toEqual(basicMatchLiteral.trimStart());
+        await pressN("ArrowDown", 3, true)(page);
         await page.waitForTimeout(200);
         await page.keyboard.press("Backspace");
         await page.waitForTimeout(200);
-        expect(readFileSync(await save(page), "utf-8")).toEqual(defaultProjectCodeLiteral.trimStart());
+        expect(readFileSync(await save(page, false), "utf-8")).toEqual(defaultProjectCodeLiteral.trimStart());
     });
 
     test("Backspace inside Match", async ({page}) => {
