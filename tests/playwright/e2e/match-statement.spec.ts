@@ -338,6 +338,7 @@ test.describe("Delete Match statemen", () => {
 
     test("Backspace after Match", async ({page}) => {
         await page.keyboard.press("m");
+        await page.waitForTimeout(200);
         await pressN("ArrowDown", 4, true)(page);
         await page.waitForTimeout(200);
         await page.keyboard.press("Backspace");
