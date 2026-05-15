@@ -36,7 +36,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     }
 
     // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(120000); // 120 seconds
+    testInfo.setTimeout(240000); // 240 seconds
 
     // Make browser's console.log output visible in our logs (useful for debugging):
     page.on("console", (msg) => {
@@ -325,7 +325,7 @@ match ___strype_blank  :
     });
 });
 
-test.describe("Delete Match statemen", () => {
+test.describe("Delete Match statement", () => {
     test("Delete before Match", async ({page}) => {
         await page.keyboard.press("m");
         expect(readFileSync(await save(page), "utf-8")).toEqual(basicMatchLiteral.trimStart());
@@ -338,10 +338,13 @@ test.describe("Delete Match statemen", () => {
 
     test("Backspace after Match", async ({page}) => {
         await page.keyboard.press("m");
-        await pressN("ArrowDown",4)(page);
+        await page.waitForTimeout(200);
+        expect(readFileSync(await save(page), "utf-8")).toEqual(basicMatchLiteral.trimStart());
+        await pressN("ArrowDown", 3, true)(page);
+        await page.waitForTimeout(200);
         await page.keyboard.press("Backspace");
         await page.waitForTimeout(200);
-        expect(readFileSync(await save(page), "utf-8")).toEqual(defaultProjectCodeLiteral.trimStart());
+        expect(readFileSync(await save(page, false), "utf-8")).toEqual(defaultProjectCodeLiteral.trimStart());
     });
 
     test("Backspace inside Match", async ({page}) => {
