@@ -1141,9 +1141,10 @@ def show_text(text, x = 0, y = 0, font_size = 24):
     """
         Shows the text at the given X, Y position in the world.
         
-        This allows you to easily draw text on the world, for example a "Game Over" message.  If you want to change the text,
+        This allows you to easily draw text on the world, for example a "Game Over" message.  You can show multiple text items if you supply
+        different X, Y positions for each.  If you want to change the text at a particular position,
         call this function again with the same X, Y position and a new string; this will replace the previous text at that position.
-        To clear the text entirely, pass None as the text, with the same X, Y position. 
+        To clear the text entirely at that position, pass None as the text, with the same X, Y position. 
     
         :param text: The text to show, or None to show no text.  Passing None allows you to clear text previously drawn at the same position. 
         :param x: The X position of the centre of the text.  This is rounded to the nearest integer.
