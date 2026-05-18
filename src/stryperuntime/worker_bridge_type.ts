@@ -254,7 +254,7 @@ export type AsyncStrypePyodideHandlerFunction = (req : AsyncStrypePyodideWorkerR
 export type StrypeSpriteStateUpdate =
     | {request: "clear"}
     | {request: "add", id: SpriteHandle, x: number, y: number, rotation: number, scale: number, image: RemoteImage | RemoteCanvas, collidable: boolean}
-    | {request: "remove", id: SpriteHandle}
+    | {request: "remove", id: SpriteHandle, removeAtTime: number | null} // null means remove immediately
     | {request: "update", id: SpriteHandle, x: number, y: number, rotation: number, scale: number, image: RemoteImage | RemoteCanvas, collidable: boolean}
 ;
 

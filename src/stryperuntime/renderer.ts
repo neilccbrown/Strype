@@ -63,7 +63,7 @@ export class Renderer  {
                 break;
             }
             case "remove": {
-                this.sprites.removeSprite(update.id.handle);
+                this.sprites.removeSprite(update.id.handle, update.removeAtTime);
                 break;
             }
             }

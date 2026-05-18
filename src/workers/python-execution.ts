@@ -327,7 +327,7 @@ runner`);
                 
                 // Remove previous:
                 if (matPlotLibSpriteId != null) {
-                    self.spriteManager.removeSprite(matPlotLibSpriteId);
+                    self.spriteManager.removeSprite(matPlotLibSpriteId, null);
                 }
                 
                 // First, load it:

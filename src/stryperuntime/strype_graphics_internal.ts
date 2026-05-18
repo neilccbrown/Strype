@@ -124,11 +124,11 @@ export function getImageScale(img : number) : number | undefined {
     return globalThis.spriteManager.getSpriteScale(img);
 }
 export function removeImage(img: number) : void {
-    globalThis.spriteManager.removeSprite(img);
+    globalThis.spriteManager.removeSprite(img, null);
 }
-// Removes an image after a timeout.  Can be cancelled with cancelRemoveImageAfter (passing same img)
+// Removes an image after a timeout.
 export function removeImageAfter(img : number, secs : number) : void {
-    globalThis.spriteManager.removeSpriteAfter(img, secs);
+    globalThis.spriteManager.removeSprite(img, Date.now() + secs * 1000);
 }
 
 export function makeImageEditableForSprite(spriteId : number) : RemoteCanvas | null {
