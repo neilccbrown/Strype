@@ -103,6 +103,18 @@ def test():
         await runToFinish(page);
         await checkConsoleContent(page, "< SyntaxError: name 'a' is assigned to before global declaration >\n  From the highlighted call in your code");
     });
+
+    test("Check error shows after manually printing", async ({page}) => {
+        await enterCode(page, ["import traceback", "", `
+try:
+    print(len(None))
+except Exception:
+    traceback.print_exc()
+`]);
+        await runToFinish(page);
+        // Should be an error, but only one:
+        await checkConsoleContent(page, /.*TypeError: object of type 'NoneType' has no len\(\).*/);
+    });
 });
 
 test.describe("Test assets filesystem", () => {

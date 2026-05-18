@@ -306,9 +306,9 @@ runner`);
             }
             else if (type === "output") {
                 const outputText = data.parts as OutputPart[];
-                // We print out "stdout" and "input_prompt", but not "input" because that has already been added to the console
+                // We print out "stdout", "stderr" and "input_prompt", but not "input" because that has already been added to the console
                 // when the user entered it there in the HTML input element.
-                const stdoutParts = outputText.filter((t) => t.type == "stdout" || t.type == "input_prompt");
+                const stdoutParts = outputText.filter((t) => t.type == "stdout" || t.type == "stderr" || t.type == "input_prompt");
                 if (stdoutParts.length > 0) {
                     asyncBridge({request: "console_print", text: stdoutParts.map((t) => t.text).join(""), containsInputPrompt: outputText.some((t) => t.type == "input_prompt")});
                 }
