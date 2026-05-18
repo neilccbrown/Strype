@@ -255,6 +255,6 @@ export function canvas_downloadPNG(src : RemoteCanvas, filenameStem : string) : 
     asyncBridge({request: "canvas_downloadPNG", img: src, filenameStem});
 }
 
-export function cloneImage(img: RemoteCanvas, scale: number, rotate: number, flip: "horizontal" | "vertical" | "none") {
+export function cloneImage(img: RemoteCanvas, scale: number, rotate: number, flip: "horizontal" | "vertical" | "none") : RemoteCanvas {
     return syncBridge({request: "canvas_makeCopy", img, scale, rotate, flip});
 }
