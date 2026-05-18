@@ -154,7 +154,7 @@ function checkImageViaDownload(functions: string, main: string, downloadStem: st
     });
 }
 
-function enterAndExecuteCode(functions: string, main: string, timeToWaitMillis = 2000) {
+function enterAndExecuteCode(functions: string, main: string, timeToWaitMillis = 2000, terminationExpected = true) {
     cy.get("body").type("{uparrow}{uparrow}");
     (cy.get("body") as any).paste("from strype.graphics import *\nfrom time import sleep\nimport math\n");
     cy.wait(1000);
@@ -169,13 +169,15 @@ function enterAndExecuteCode(functions: string, main: string, timeToWaitMillis =
     cy.get("#runButton").click();
     // Wait for it to finish:
     cy.wait(timeToWaitMillis);
-    // Assert it has finished, by looking at the run button:
-    cy.get("#runButton").contains("Run", {timeout: 30000});
+    if (terminationExpected) {
+        // Assert it has finished, by looking at the run button:
+        cy.get("#runButton").contains("Run", {timeout: 30000});
+    }
 }
 
-function runCodeAndCheckImage(functions: string, main: string, expectedImageFileName : string, comparison = ImageComparison.COMPARE_TO_EXISTING, timeToWaitMillis = 2000) : void {
+function runCodeAndCheckImage(functions: string, main: string, expectedImageFileName : string, comparison = ImageComparison.COMPARE_TO_EXISTING, timeToWaitMillis = 2000, terminationExpected = true) : void {
     focusEditorPasteAndClear();
-    enterAndExecuteCode(functions, main, timeToWaitMillis);
+    enterAndExecuteCode(functions, main, timeToWaitMillis, terminationExpected);
     // Check the image matches expected:
     checkGraphicsCanvasContent(expectedImageFileName, comparison);
 }
@@ -767,13 +769,36 @@ describe("Saying", () => {
     
     it("Says top-right when room", () => {
         runCodeAndCheckImage("", `
-            Actor(load_image("cat-test.jpg").clone(0.5)).say("Meow!", 48);
+            Actor(load_image("cat-test.jpg").clone(0.5)).say("Meow!", 48)
         `, "saying-top-right");
     });
     it("Says top-left when not room top-right", () => {
         runCodeAndCheckImage("", `
-            Actor(load_image("cat-test.jpg").clone(0.5), 300).say("Meow!", 48);
+            Actor(load_image("cat-test.jpg").clone(0.5), 300).say("Meow!", 48)
         `, "saying-top-left");
+    });
+
+    it("Says then removes", () => {
+        runCodeAndCheckImage("", `
+            a = Actor(load_image("cat-test.jpg").clone(0.5))
+            a.say("Meow!", 100)
+            a.say("")
+        `, "saying-for-removed");
+    });
+
+    it("Says for a specified time then disappears - still visible", () => {
+        runCodeAndCheckImage("", `
+            Actor(load_image("cat-test.jpg").clone(0.5)).say_for("Meow!", 15, 100)
+            sleep(1)
+        `, "saying-for-still-visible");
+    });
+
+    it("Says for a specified time then disappears - gone", () => {
+        runCodeAndCheckImage("", `
+            Actor(load_image("cat-test.jpg").clone(0.5)).say_for("Meow!", 2, 100)
+            while True:
+                pass
+        `, "saying-for-disappeared", ImageComparison.COMPARE_TO_EXISTING, 5000, false);
     });
 });
 
