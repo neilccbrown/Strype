@@ -51,6 +51,26 @@ Module strype.sound
 
     Module strype.sound
 
+Module strype.builtins
+-------------------
+
+.. container:: module-wrapper
+
+  .. container:: module-content
+      
+    Note that everything from this module is automatically imported so you should not ever need to import it yourself.  For example, if you want to call `clear_console()` you can just call it, without needing to add an import.
+
+    .. automodule:: strype.builtins
+       :members:
+       :undoc-members:
+       :show-inheritance:
+
+  .. container:: module-indicator
+
+    Module strype.builtins.
+    
+    
+
 
 .. toctree::
    :maxdepth: 2

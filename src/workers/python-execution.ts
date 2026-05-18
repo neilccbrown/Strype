@@ -186,6 +186,16 @@ class StrypePyodideRunner(PyodideRunner):
         # and translate to dict for easy transformation into Javascript object:
         filtered = [dict(filename=frame.filename, lineno=frame.lineno) for frame in list(dropwhile(lambda f: f.filename != self.filename, tbe.stack))]
         return dict(error_type=type(exc).__name__, error_message=str(exc), traceback=filtered, text=type(exc).__name__ + ": " + str(exc))
+    def reset(self):
+        super().reset()
+        # The dict we need to add the names to:
+        target = self.console.locals
+        # Effectively does: from strype.builtins import *
+        import importlib
+        strype_builtins = importlib.import_module("strype.builtins")
+        for name in getattr(strype_builtins, "__all__", dir(strype_builtins)):
+            if not name.startswith("_"):
+                target[name] = getattr(strype_builtins, name)
 runner = StrypePyodideRunner()
 
 # Work around from Pyodide repo, then used in WebTigerPython, then adapted by us for the 800x600 part:
