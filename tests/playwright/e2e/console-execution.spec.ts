@@ -92,6 +92,17 @@ test.describe("Check errors show", () => {
         await runToFinish(page);
         await checkConsoleContent(page, "< FileNotFoundError: [Errno 44] No such file or directory: '/does/not/exist.txt' >\n  From the highlighted call in your code");
     });
+    
+    // Check syntax error too, this use of global shows a syntax error:
+    test("Check error shows for global mis-use", async ({page}) => {
+        await enterCode(page, ["", `
+def test():
+    a = 2
+    global a
+`.trimStart(), "print(\"Hi!\")\n"]);
+        await runToFinish(page);
+        await checkConsoleContent(page, "< SyntaxError: name 'a' is assigned to before global declaration >\n  From the highlighted call in your code");
+    });
 });
 
 test.describe("Test assets filesystem", () => {
