@@ -837,3 +837,81 @@ describe("Show text", () => {
         `, "show-text-items-toggle");
     });
 });
+
+
+describe("Cloning", () => {
+    if (Cypress.env("mode") == "microbit") {
+        // Graphics tests can't run in microbit
+        return;
+    }
+
+    it("Straight clone", () => {
+        runCodeAndCheckImage("", `
+            set_background("skyblue")
+            Actor(load_image("cat-test.jpg").clone())
+        `, "clone-unmodified");
+    });
+
+    it("Clone smaller", () => {
+        runCodeAndCheckImage("", `
+            set_background("skyblue")
+            Actor(load_image("cat-test.jpg").clone(0.5))
+        `, "clone-smaller");
+    });
+
+    it("Clone bigger", () => {
+        runCodeAndCheckImage("", `
+            set_background("skyblue")
+            Actor(load_image("cat-test.jpg").clone(2))
+        `, "clone-bigger");
+    });
+
+    it("Clone bigger flipped vertical", () => {
+        runCodeAndCheckImage("", `
+            set_background("skyblue")
+            Actor(load_image("cat-test.jpg").clone(2, flip = "vertical"))
+        `, "clone-bigger-flip-vertical");
+    });
+
+    it("Clone smaller flipped horizontal", () => {
+        runCodeAndCheckImage("", `
+            set_background("skyblue")
+            Actor(load_image("cat-test.jpg").clone(scale=0.5, flip = "horizontal"))
+        `, "clone-smaller-flip-horizontal");
+    });
+
+    it("Clone rotate +90", () => {
+        runCodeAndCheckImage("", `
+            set_background("skyblue")
+            Actor(load_image("cat-test.jpg").clone(rotate=90))
+        `, "clone-rotate-plus90");
+    });
+
+    it("Clone rotate -90", () => {
+        runCodeAndCheckImage("", `
+            set_background("skyblue")
+            Actor(load_image("cat-test.jpg").clone(rotate=-90))
+        `, "clone-rotate-minus90");
+    });
+
+    it("Clone rotate +45", () => {
+        runCodeAndCheckImage("", `
+            set_background("skyblue")
+            Actor(load_image("cat-test.jpg").clone(rotate=45))
+        `, "clone-rotate-plus45");
+    });
+
+    it("Clone rotate +45 flipped horizontal", () => {
+        runCodeAndCheckImage("", `
+            set_background("skyblue")
+            Actor(load_image("cat-test.jpg").clone(rotate=45, flip="horizontal"))
+        `, "clone-rotate-plus45-flip-horizontal");
+    });
+
+    it("Clone rotate -45 flipped vertical triple size", () => {
+        runCodeAndCheckImage("", `
+            set_background("skyblue")
+            Actor(load_image("cat-test.jpg").clone(3, 45, "vertical"))
+        `, "clone-rotate-minus45-flip-vertical-scale-triple");
+    });
+});

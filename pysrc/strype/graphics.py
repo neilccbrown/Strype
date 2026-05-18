@@ -398,23 +398,33 @@ class Image:
         # Need to convert tuple into list:
         _strype_graphics_internal.polygon_xy_pairs(self.__image, [list(xy) for xy in points])
 
-    def clone(self, scale = 1.0):
-        # type: (float) -> Image
+    def clone(self, scale = 1.0, rotate = 0, flip = None):
+        # type: (float, float, str | None) -> Image
         """
-        Return a copy of this image.
+        Return a copy of this image, transformed if you supply any of the additional parameters. 
         
-        :param: The scaling factor of the new image.  1.0 returns an identical image,
+        :param: The scaling factor of the new image.  1.0 returns an image of the same size,
                 0.5 will return an image half the size, 2.0 will return an image double the size.
+        :param: The rotation of the new image.  0 returns an unrotated image, 90 rotates it 90 degrees clockwise.
+                If the new image is not an exact rectangle then the new image will be the minimum
+                size needed to contain the rotated image, and the corners will be left transparent.
+        :param: The flip of the new image.  None does not flip it, the string "horizontal" will flip
+                horizontally, "vertical" will flip vertically.  If you supply flip and rotation,
+                the flip will be applied first, followed by the rotation.
         :return: The new :class:`Image` that is a copy of this image.
         """
-        if scale == 1:
+        # Most common case; unmodified image:
+        if scale == 1 and rotate == 0 and flip is None:
             copy = Image(self.get_width(), self.get_height())
             copy.draw_image(self, 0, 0)
         elif scale <= 0:
             raise ValueError("Clone scale must be greater than zero")
+        elif flip is not None and flip != "horizontal" and flip != "vertical":
+            raise ValueError("Clone flip must be \"horizontal\", \"vertical\", or None")
         else:
-            copy = Image(self.get_width() * scale, self.get_height() * scale)
-            copy._draw_part_of_image(self, 0, 0, 0, 0, self.get_width(), self.get_height(), scale)
+            copy = Image(-42, -42)
+            # Passing None is awkward so we change flip to pure string:
+            copy.__image = _strype_graphics_internal.cloneImage(self.__image, scale, rotate, "none" if flip is None else flip)
         return copy
 
     def download(self, filename="strype-image"):

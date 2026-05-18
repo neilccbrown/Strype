@@ -111,6 +111,9 @@ export const handleSyncRequests : (
     case "canvas_drawText": {
         return {request: req.request, response: Promise.resolve(drawText(renderer.getCanvasContext(req.img.handle), req.text, req.x, req.y, req.fontSize, req.maxWidth, req.maxHeight, req.fontName)) };
     }
+    case "canvas_makeCopy": {
+        return {request: req.request, response: Promise.resolve(renderer.makeCopy(req.img.handle, req.scale, req.rotate, req.flip)) };
+    }
     case "ensureCanvas": {
         if (isRemoteImage(req.img)) {
             // Ideally we'd remove the old Image but we don't actually have a mechanism for that at the moment:
