@@ -19,6 +19,10 @@ Module strype.graphics
 .. container:: module-wrapper
 
   .. container:: module-content
+      
+    The strype.graphics module contains all the classes and functions related to graphical output in Strype.  The central classes are `Image` and `Actor`: `Image` is an editable image of a fixed size, but it only appears on screen if it is used in an `Actor`.  An `Actor` has an X, Y position and a rotation and can move around the screen.  Actors are automatically drawn on the screen in real time; no paint or redraw calls are needed.  To make your program run at a consistent speed you may want to use a `while True` loop with a call to `pace()` which will lead to your code updating regularly.
+    
+    This module also contains functions related to getting information on keyboard and mouse input.
 
     .. automodule:: strype.graphics
        :members:
@@ -35,6 +39,8 @@ Module strype.sound
 .. container:: module-wrapper
 
   .. container:: module-content
+      
+    The strype.sound module contains the `Sound` class which allows manipulation and playing of sounds.
 
     .. automodule:: strype.sound
        :members:
