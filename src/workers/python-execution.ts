@@ -312,7 +312,7 @@ runner`);
                 if (stdoutParts.length > 0) {
                     asyncBridge({request: "console_print", text: stdoutParts.map((t) => t.text).join(""), containsInputPrompt: outputText.some((t) => t.type == "input_prompt")});
                 }
-                const errorParts = outputText.filter((t) => t.type == "traceback");
+                const errorParts = outputText.filter((t) => t.type == "traceback" || t.type == "syntax_error");
                 if (errorParts.length == 1) {
                     // As per the Python above at the start of executePython that serialises the traceback:
                     error = errorParts[0] as unknown as PyodideErrorDetails;
