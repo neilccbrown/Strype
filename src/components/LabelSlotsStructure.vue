@@ -378,7 +378,13 @@ export default defineComponent({
             const allowed = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelIndex].allowedSlotContent;
             if (allowed !== undefined && [AllowedSlotContent.FREE_TEXT_DOCUMENTATION, AllowedSlotContent.LIBRARY_ADDRESS].includes(allowed) && (currentFocusSlotCursorInfos || options?.skipCursorSetAndStateSave)) {
                 if (currentFocusSlotCursorInfos) {
-                    (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields[0] as BaseSlot).code = (document.getElementById(getLabelSlotUID(currentFocusSlotCursorInfos.slotInfos))?.textContent ?? "").replace(/\u200B/g, "");
+                    const field = this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields[0] as BaseSlot;
+                    // We need to remove zero-width spaces.  Also, Firefox doesn't seem to remove trailing single newlines
+                    // like Chrome and Safari do (or at least, not at the same point) so we do it ourselves to enforce consistency.
+                    // We don't remove if there are multiple newlines at the end, as we do that to allow the cursor to be beyond the "last" (really penultimate) newline.
+                    field.code = (document.getElementById(getLabelSlotUID(currentFocusSlotCursorInfos.slotInfos))?.textContent ?? "")
+                        .replace(/\u200B/g, "")
+                        .replace(/(?<!\n)\n$/, "");
                     this.$nextTick(() => {
                         if (!options?.skipCursorSetAndStateSave) {
                             setDocumentSelection(currentFocusSlotCursorInfos, currentFocusSlotCursorInfos);
