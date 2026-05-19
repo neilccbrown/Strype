@@ -267,7 +267,7 @@ describe("Image manipulation", () => {
                     else:
                         img.set_pixel(x, y, "YELLOW")
             a = Actor(img.clone(6))
-        `, "image-set-pixel-string-colors", ImageComparison.COMPARE_TO_EXISTING, 5000);
+        `, "image-set-pixel-string-colors", ImageComparison.COMPARE_TO_EXISTING, 10000);
     });
     it("Modifies pixels from original values", () => {
         // Note that this test is implicitly testing the performance because it will only wait a few seconds

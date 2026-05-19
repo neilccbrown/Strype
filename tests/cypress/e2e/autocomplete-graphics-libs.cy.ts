@@ -108,7 +108,7 @@ describe("Graphics library", () => {
                 cy.get(acIDSel).should("be.visible");
                 checkExactlyOneItem(acIDSel, null, "get_width()");
                 checkExactlyOneItem(acIDSel, null, "draw_image(image, x, y)");
-                checkExactlyOneItem(acIDSel, null, "clone(scale)");
+                checkExactlyOneItem(acIDSel, null, "clone(scale, rotate, flip)");
                 checkExactlyOneItem(acIDSel, null, "draw_circle(centre_x, centre_y, radius)");
             }, false);
         });
