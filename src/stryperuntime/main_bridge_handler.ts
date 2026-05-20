@@ -111,6 +111,9 @@ export const handleSyncRequests : (
     case "canvas_drawText": {
         return {request: req.request, response: Promise.resolve(drawText(renderer.getCanvasContext(req.img.handle), req.text, req.x, req.y, req.fontSize, req.maxWidth, req.maxHeight, req.fontName)) };
     }
+    case "canvas_makeCopy": {
+        return {request: req.request, response: Promise.resolve(renderer.makeCopy(req.img.handle, req.scale, req.rotate, req.flip)) };
+    }
     case "ensureCanvas": {
         if (isRemoteImage(req.img)) {
             // Ideally we'd remove the old Image but we don't actually have a mechanism for that at the moment:
@@ -193,11 +196,16 @@ export const handleSyncRequests : (
     }
 };
 
-// Ironically, almost all the "Async" (fire-and-forget) requests are executed synchronously in one step, it's just that we don't need to know the result 
-export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundManager, printStdout: (output: string, containsInputPrompt: boolean) => void) => AsyncStrypePyodideHandlerFunction = (renderer, soundManager, printStdout) => (req) => {
+// Ironically, almost all the "Async" (fire-and-forget) requests are executed synchronously in one step, it's just that we don't need to know the result
+// If you pass null to printStdout it's a signal to clear the console
+export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundManager, printStdout: (output: string | null, containsInputPrompt: boolean) => void) => AsyncStrypePyodideHandlerFunction = (renderer, soundManager, printStdout) => (req) => {
     switch (req.request) {
     case "console_print": {
         printStdout(req.text, req.containsInputPrompt);
+        return undefined;
+    }
+    case "console_clear": {
+        printStdout(null, false);
         return undefined;
     }
     case "canvas_setFill": {

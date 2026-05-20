@@ -63,7 +63,7 @@ export class Renderer  {
                 break;
             }
             case "remove": {
-                this.sprites.removeSprite(update.id.handle);
+                this.sprites.removeSprite(update.id.handle, update.removeAtTime);
                 break;
             }
             }
@@ -82,6 +82,56 @@ export class Renderer  {
         const canvas = new OffscreenCanvas(width, height);
         this.canvases.push(canvas);
         return {handle: makeCanvasHandle(this.canvases.length - 1), width, height};
+    }
+    
+    makeCopy(ch: CanvasHandle, scale: number, rotate: number, flip: "horizontal"| "vertical" | "none") : RemoteCanvas {
+        const c = this.getCanvas(ch);
+
+        const radians = (rotate * Math.PI) / 180;
+
+        // Original size after scaling
+        const scaledWidth = c.width * scale;
+        const scaledHeight = c.height * scale;
+
+        // Compute bounding box after rotation
+        const cos = Math.abs(Math.cos(radians));
+        const sin = Math.abs(Math.sin(radians));
+        const outWidth = Math.ceil(scaledWidth * cos + scaledHeight * sin);
+        const outHeight = Math.ceil(scaledWidth * sin + scaledHeight * cos);
+
+        const out = new OffscreenCanvas(outWidth, outHeight);
+        const ctx = out.getContext("2d");
+
+        if (!ctx) {
+            throw new Error("Could not get 2D context");
+        }
+
+        // Move origin to center of output canvas
+        ctx.translate(outWidth / 2, outHeight / 2);
+
+        // Apply rotation AFTER flip
+        ctx.rotate(radians);
+
+        // Apply flip first
+        switch (flip) {
+        case "horizontal":
+            ctx.scale(-scale, scale);
+            break;
+
+        case "vertical":
+            ctx.scale(scale, -scale);
+            break;
+
+        case "none":
+            ctx.scale(scale, scale);
+            break;
+        }
+
+        // Draw centered:
+        ctx.drawImage(c, -c.width / 2, -c.height / 2, c.width, c.height);
+
+        this.canvases.push(out);
+        return {handle: makeCanvasHandle(this.canvases.length - 1), width: outWidth, height: outHeight};
     }
 
     getImage(i : ImageHandle) : ImageBitmap {

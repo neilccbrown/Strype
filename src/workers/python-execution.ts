@@ -186,6 +186,16 @@ class StrypePyodideRunner(PyodideRunner):
         # and translate to dict for easy transformation into Javascript object:
         filtered = [dict(filename=frame.filename, lineno=frame.lineno) for frame in list(dropwhile(lambda f: f.filename != self.filename, tbe.stack))]
         return dict(error_type=type(exc).__name__, error_message=str(exc), traceback=filtered, text=type(exc).__name__ + ": " + str(exc))
+    def reset(self):
+        super().reset()
+        # The dict we need to add the names to:
+        target = self.console.locals
+        # Effectively does: from strype.builtins import *
+        import importlib
+        strype_builtins = importlib.import_module("strype.builtins")
+        for name in getattr(strype_builtins, "__all__", dir(strype_builtins)):
+            if not name.startswith("_"):
+                target[name] = getattr(strype_builtins, name)
 runner = StrypePyodideRunner()
 
 # Work around from Pyodide repo, then used in WebTigerPython, then adapted by us for the 800x600 part:
@@ -306,13 +316,13 @@ runner`);
             }
             else if (type === "output") {
                 const outputText = data.parts as OutputPart[];
-                // We print out "stdout" and "input_prompt", but not "input" because that has already been added to the console
+                // We print out "stdout", "stderr" and "input_prompt", but not "input" because that has already been added to the console
                 // when the user entered it there in the HTML input element.
-                const stdoutParts = outputText.filter((t) => t.type == "stdout" || t.type == "input_prompt");
+                const stdoutParts = outputText.filter((t) => t.type == "stdout" || t.type == "stderr" || t.type == "input_prompt");
                 if (stdoutParts.length > 0) {
                     asyncBridge({request: "console_print", text: stdoutParts.map((t) => t.text).join(""), containsInputPrompt: outputText.some((t) => t.type == "input_prompt")});
                 }
-                const errorParts = outputText.filter((t) => t.type == "traceback");
+                const errorParts = outputText.filter((t) => t.type == "traceback" || t.type == "syntax_error");
                 if (errorParts.length == 1) {
                     // As per the Python above at the start of executePython that serialises the traceback:
                     error = errorParts[0] as unknown as PyodideErrorDetails;
@@ -327,7 +337,7 @@ runner`);
                 
                 // Remove previous:
                 if (matPlotLibSpriteId != null) {
-                    self.spriteManager.removeSprite(matPlotLibSpriteId);
+                    self.spriteManager.removeSprite(matPlotLibSpriteId, null);
                 }
                 
                 // First, load it:

@@ -51,6 +51,7 @@ export type SyncStrypePyodideWorkerRequest =
     | { request: "ensureCanvas"; img: RemoteCanvas | RemoteImage }
     | { request: "canvas_getAllPixelsRGBA"; img: RemoteCanvas }
     | { request: "canvas_drawText", img: RemoteCanvas, text: string, x: number, y: number, fontSize: number, maxWidth: number, maxHeight: number, fontName: string }
+    | { request: "canvas_makeCopy", img: RemoteCanvas, scale: number, rotate: number, flip: "horizontal" | "vertical" | "none"  }
     | { request: "turtle", buffer: [string, string, any][]}    
     | { request: "getPressedKeys" }
     | { request: "waitForNextKey" }
@@ -88,6 +89,7 @@ export type SyncStrypePyodideWorkerResponse =
     | { request: "ensureCanvas"; response: RemoteCanvas; }
     | { request: "canvas_getAllPixelsRGBA"; response: string } // See encodeRGBA/decodeRGBA below
     | { request: "canvas_drawText"; response: { width: number; height: number; } }
+    | { request: "canvas_makeCopy"; response: RemoteCanvas }
     | { request: "turtle"; response: boolean; } // We don't need a return value as such, we're just using the response to wait
     | { request: "getPressedKeys"; response: {[key: string]: boolean} }
     | { request: "waitForNextKey"; response: string }
@@ -120,6 +122,7 @@ type PromisedResponse<T> = T extends {request: infer REQ; response: infer RESP }
 // The requests are still done in order without overlapping by the main thread (incl not overlapping any sync requests)
 export type AsyncStrypePyodideWorkerRequest =
     | { request: "console_print"; text: string; containsInputPrompt: boolean }
+    | { request: "console_clear" }
     | { request: "canvas_drawImagePart"; dest: RemoteCanvas, src : RemoteImage | RemoteCanvas, dx : number, dy : number, sx : number, sy : number, sw: number, sh : number, scale : number }
     | { request: "canvas_clearRect"; img: RemoteCanvas, x: number; y: number; width: number; height: number }
     | { request: "canvas_fillWhole"; img: RemoteCanvas }
@@ -254,7 +257,7 @@ export type AsyncStrypePyodideHandlerFunction = (req : AsyncStrypePyodideWorkerR
 export type StrypeSpriteStateUpdate =
     | {request: "clear"}
     | {request: "add", id: SpriteHandle, x: number, y: number, rotation: number, scale: number, image: RemoteImage | RemoteCanvas, collidable: boolean}
-    | {request: "remove", id: SpriteHandle}
+    | {request: "remove", id: SpriteHandle, removeAtTime: number | null} // null means remove immediately
     | {request: "update", id: SpriteHandle, x: number, y: number, rotation: number, scale: number, image: RemoteImage | RemoteCanvas, collidable: boolean}
 ;
 

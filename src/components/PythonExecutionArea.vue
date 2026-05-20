@@ -634,9 +634,15 @@ export default defineComponent({
                     consumeLastClickDetails: this.consumeLastClickDetails,
                 });
                 
-                const asyncBridge = handleAsyncRequests(renderer, soundManager as SoundManager, (output: string, containsInputPrompt: boolean) => {
-                    pythonConsole.value = pythonConsole.value + output;
-                    this.switchToConsoleTab(containsInputPrompt ? "always" : "ifFirstCallDuringExecute");
+                const asyncBridge = handleAsyncRequests(renderer, soundManager as SoundManager, (output: string | null, containsInputPrompt: boolean) => {
+                    if (output == null) {
+                        // Clear console (but no need to switch for this):
+                        pythonConsole.value = "";
+                    }
+                    else {
+                        pythonConsole.value = pythonConsole.value + output;
+                        this.switchToConsoleTab(containsInputPrompt ? "always" : "ifFirstCallDuringExecute");
+                    }
                 });
                 
                 // Apparently we can use a promise as a queue to ensure we process the requests in order,

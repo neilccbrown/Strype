@@ -154,7 +154,7 @@ function checkImageViaDownload(functions: string, main: string, downloadStem: st
     });
 }
 
-function enterAndExecuteCode(functions: string, main: string, timeToWaitMillis = 2000) {
+function enterAndExecuteCode(functions: string, main: string, timeToWaitMillis = 2000, terminationExpected = true) {
     cy.get("body").type("{uparrow}{uparrow}");
     (cy.get("body") as any).paste("from strype.graphics import *\nfrom time import sleep\nimport math\n");
     cy.wait(1000);
@@ -169,13 +169,15 @@ function enterAndExecuteCode(functions: string, main: string, timeToWaitMillis =
     cy.get("#runButton").click();
     // Wait for it to finish:
     cy.wait(timeToWaitMillis);
-    // Assert it has finished, by looking at the run button:
-    cy.get("#runButton").contains("Run", {timeout: 30000});
+    if (terminationExpected) {
+        // Assert it has finished, by looking at the run button:
+        cy.get("#runButton").contains("Run", {timeout: 30000});
+    }
 }
 
-function runCodeAndCheckImage(functions: string, main: string, expectedImageFileName : string, comparison = ImageComparison.COMPARE_TO_EXISTING, timeToWaitMillis = 2000) : void {
+function runCodeAndCheckImage(functions: string, main: string, expectedImageFileName : string, comparison = ImageComparison.COMPARE_TO_EXISTING, timeToWaitMillis = 2000, terminationExpected = true) : void {
     focusEditorPasteAndClear();
-    enterAndExecuteCode(functions, main, timeToWaitMillis);
+    enterAndExecuteCode(functions, main, timeToWaitMillis, terminationExpected);
     // Check the image matches expected:
     checkGraphicsCanvasContent(expectedImageFileName, comparison);
 }
@@ -265,7 +267,7 @@ describe("Image manipulation", () => {
                     else:
                         img.set_pixel(x, y, "YELLOW")
             a = Actor(img.clone(6))
-        `, "image-set-pixel-string-colors", ImageComparison.COMPARE_TO_EXISTING, 5000);
+        `, "image-set-pixel-string-colors", ImageComparison.COMPARE_TO_EXISTING, 10000);
     });
     it("Modifies pixels from original values", () => {
         // Note that this test is implicitly testing the performance because it will only wait a few seconds
@@ -767,13 +769,36 @@ describe("Saying", () => {
     
     it("Says top-right when room", () => {
         runCodeAndCheckImage("", `
-            Actor(load_image("cat-test.jpg").clone(0.5)).say("Meow!", 48);
+            Actor(load_image("cat-test.jpg").clone(0.5)).say("Meow!", 48)
         `, "saying-top-right");
     });
     it("Says top-left when not room top-right", () => {
         runCodeAndCheckImage("", `
-            Actor(load_image("cat-test.jpg").clone(0.5), 300).say("Meow!", 48);
+            Actor(load_image("cat-test.jpg").clone(0.5), 300).say("Meow!", 48)
         `, "saying-top-left");
+    });
+
+    it("Says then removes", () => {
+        runCodeAndCheckImage("", `
+            a = Actor(load_image("cat-test.jpg").clone(0.5))
+            a.say("Meow!", 100)
+            a.say("")
+        `, "saying-for-removed");
+    });
+
+    it("Says for a specified time then disappears - still visible", () => {
+        runCodeAndCheckImage("", `
+            Actor(load_image("cat-test.jpg").clone(0.5)).say_for("Meow!", 15, 100)
+            sleep(1)
+        `, "saying-for-still-visible");
+    });
+
+    it("Says for a specified time then disappears - gone", () => {
+        runCodeAndCheckImage("", `
+            Actor(load_image("cat-test.jpg").clone(0.5)).say_for("Meow!", 2, 100)
+            while True:
+                pass
+        `, "saying-for-disappeared", ImageComparison.COMPARE_TO_EXISTING, 5000, false);
     });
 });
 
@@ -810,5 +835,83 @@ describe("Show text", () => {
             show_text("Player 1", 300.25, 200.25, 30)
             show_text("Anonymous", 300.75, 200, 30)
         `, "show-text-items-toggle");
+    });
+});
+
+
+describe("Cloning", () => {
+    if (Cypress.env("mode") == "microbit") {
+        // Graphics tests can't run in microbit
+        return;
+    }
+
+    it("Straight clone", () => {
+        runCodeAndCheckImage("", `
+            set_background("skyblue")
+            Actor(load_image("cat-test.jpg").clone())
+        `, "clone-unmodified");
+    });
+
+    it("Clone smaller", () => {
+        runCodeAndCheckImage("", `
+            set_background("skyblue")
+            Actor(load_image("cat-test.jpg").clone(0.5))
+        `, "clone-smaller");
+    });
+
+    it("Clone bigger", () => {
+        runCodeAndCheckImage("", `
+            set_background("skyblue")
+            Actor(load_image("cat-test.jpg").clone(2))
+        `, "clone-bigger");
+    });
+
+    it("Clone bigger flipped vertical", () => {
+        runCodeAndCheckImage("", `
+            set_background("skyblue")
+            Actor(load_image("cat-test.jpg").clone(2, flip = "vertical"))
+        `, "clone-bigger-flip-vertical");
+    });
+
+    it("Clone smaller flipped horizontal", () => {
+        runCodeAndCheckImage("", `
+            set_background("skyblue")
+            Actor(load_image("cat-test.jpg").clone(scale=0.5, flip = "horizontal"))
+        `, "clone-smaller-flip-horizontal");
+    });
+
+    it("Clone rotate +90", () => {
+        runCodeAndCheckImage("", `
+            set_background("skyblue")
+            Actor(load_image("cat-test.jpg").clone(rotate=90))
+        `, "clone-rotate-plus90");
+    });
+
+    it("Clone rotate -90", () => {
+        runCodeAndCheckImage("", `
+            set_background("skyblue")
+            Actor(load_image("cat-test.jpg").clone(rotate=-90))
+        `, "clone-rotate-minus90");
+    });
+
+    it("Clone rotate +45", () => {
+        runCodeAndCheckImage("", `
+            set_background("skyblue")
+            Actor(load_image("cat-test.jpg").clone(rotate=45))
+        `, "clone-rotate-plus45");
+    });
+
+    it("Clone rotate +45 flipped horizontal", () => {
+        runCodeAndCheckImage("", `
+            set_background("skyblue")
+            Actor(load_image("cat-test.jpg").clone(rotate=45, flip="horizontal"))
+        `, "clone-rotate-plus45-flip-horizontal");
+    });
+
+    it("Clone rotate -45 flipped vertical triple size", () => {
+        runCodeAndCheckImage("", `
+            set_background("skyblue")
+            Actor(load_image("cat-test.jpg").clone(3, 45, "vertical"))
+        `, "clone-rotate-minus45-flip-vertical-scale-triple");
     });
 });

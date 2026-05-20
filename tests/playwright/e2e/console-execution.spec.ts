@@ -92,6 +92,29 @@ test.describe("Check errors show", () => {
         await runToFinish(page);
         await checkConsoleContent(page, "< FileNotFoundError: [Errno 44] No such file or directory: '/does/not/exist.txt' >\n  From the highlighted call in your code");
     });
+    
+    // Check syntax error too, this use of global shows a syntax error:
+    test("Check error shows for global mis-use", async ({page}) => {
+        await enterCode(page, ["", `
+def test():
+    a = 2
+    global a
+`.trimStart(), "print(\"Hi!\")\n"]);
+        await runToFinish(page);
+        await checkConsoleContent(page, "< SyntaxError: name 'a' is assigned to before global declaration >\n  From the highlighted call in your code");
+    });
+
+    test("Check error shows after manually printing", async ({page}) => {
+        await enterCode(page, ["import traceback", "", `
+try:
+    print(len(None))
+except Exception:
+    traceback.print_exc()
+`]);
+        await runToFinish(page);
+        // Should be an error, but only one:
+        await checkConsoleContent(page, /.*TypeError: object of type 'NoneType' has no len\(\).*/);
+    });
 });
 
 test.describe("Test assets filesystem", () => {
@@ -182,5 +205,56 @@ test.describe("Test console flushing and ordering", () => {
         await page.click("#runButton");
         // Then it should not be running, because it has been terminated:
         await runButtonShowsRun(button);
+    });
+});
+
+test.describe("Test console clearing", () => {
+    test("Check console clears stdout #1", async ({page}) => {
+        await enterCode(page, ["", "", "print('Hello')\nclear_console()\n"]);
+        await runToFinish(page);
+        await checkConsoleContent(page, "");
+    });
+    test("Check console clears stdout #2", async ({page}) => {
+        await enterCode(page, ["", "", "print('Hello')\nclear_console()\nprint('Goodbye')\n"]);
+        await runToFinish(page);
+        await checkConsoleContent(page, "Goodbye\n");
+    });
+    test("Check console clears stdout #3", async ({page}) => {
+        await enterCode(page, ["", "", "print('First')\nclear_console()\nprint('Second')\nclear_console()\nprint('Third')\nprint('Fourth')\n"]);
+        await runToFinish(page);
+        await checkConsoleContent(page, "Third\nFourth\n");
+    });
+    test("Check console clears stderr #1", async ({page}) => {
+        await enterCode(page, ["import traceback", "", `
+try:
+    print(len(None))
+except Exception:
+    traceback.print_exc()
+clear_console()
+print("Hi")
+`]);
+        await runToFinish(page);
+        await checkConsoleContent(page, "Hi\n");
+    });
+    test("Check console clears stderr #2", async ({page}) => {
+        await enterCode(page, ["import traceback", "", `
+try:
+    print(len(None))
+except Exception:
+    traceback.print_exc()
+clear_console()
+try:
+    print(len(None))
+except Exception:
+    traceback.print_exc()
+`]);
+        await runToFinish(page);
+        // Should be an error, but only one:
+        await checkConsoleContent(page, `Traceback (most recent call last):
+  File "/home/pyodide/my_program.py", line 8, in <module>
+    print(len(None))
+          ~~~^^^^^^
+TypeError: object of type 'NoneType' has no len()
+`);
     });
 });

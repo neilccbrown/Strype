@@ -13,6 +13,7 @@ export interface Sprite {
     rotation: number, // degrees
     scale: number, // 1.0 means same size as original image
     collisionBox: Box | null, // The item in the collision detection system.  Null if the object is not collidable
+    removeAtTime: number | null, // The time to remove at in millis, to compare against Date.now().  Used to schedule future timed removal, e.g. for say_f0r
 }
 
 export const WORLD_WIDTH = 800;
@@ -53,6 +54,7 @@ export class SpriteManager {
             rotation: 0,
             scale: 1.0,
             collisionBox: null,
+            removeAtTime: null,
         };
         this.sprites.set(0, bk);
         this.notify({request: "add", id: makeSpriteHandle(0), x: bk.x, y: bk.y, rotation: bk.rotation, scale: bk.scale, image: bk.img, collidable: false});
@@ -82,7 +84,7 @@ export class SpriteManager {
         }
         const id = forceId ?? this.nextSpriteId++;
         const box = collidable ? this.collisionSystem.createBox({x:0, y:0}, imageOrCanvas.width, imageOrCanvas.height, {isCentered: true}) : null;
-        const newImage = {id, img: imageOrCanvas, x: 0, y: 0, rotation: 0, scale: 1, collisionBox : box};
+        const newImage = {id, img: imageOrCanvas, x: 0, y: 0, rotation: 0, scale: 1, collisionBox : box, removeAtTime: null};
         this.sprites.set(id, newImage);
         if (box != null) {
             this.boxToImageMap.set(box, newImage);
@@ -93,27 +95,44 @@ export class SpriteManager {
     }
 
     public hasSprite(id: number) : boolean {
-        return this.sprites.has(id);
+        const sprite = this.sprites.get(id);
+        if (sprite !== undefined && (sprite?.removeAtTime == null || sprite.removeAtTime < Date.now())) {
+            return true;
+        }
+        else {
+            // Remove it if it was present, as it was scheduled for it:
+            this.sprites.delete(id);
+            return false;
+        }
     }
     
-    public removeSprite(id: number): void {
+    public removeSprite(id: number, removeAtTime: number | null): void {
         if (id <= 0) {
             // Don't remove the background image:
             return;
         }
-        
-        this.dirty = true;
-        const box = this.sprites.get(id)?.collisionBox;
-        if (box != undefined) {
-            this.collisionSystem.remove(box);
-            this.boxToImageMap.delete(box);
-        }
-        this.sprites.delete(id);
-        this.notify({request: "remove", id: makeSpriteHandle(id)});
-    }
 
-    public removeSpriteAfter(id: number, secs: number): void {
-        setTimeout(() => this.removeSprite(id), secs * 1000);
+        if (removeAtTime != null && removeAtTime > Date.now()) {
+            // For the future; just schedule it:
+            const sprite = this.sprites.get(id);
+            if (sprite) {
+                sprite.removeAtTime = removeAtTime;
+            }
+        }
+        else {
+            // Make it immediate:
+            removeAtTime = null;
+            
+            this.dirty = true;
+            const box = this.sprites.get(id)?.collisionBox;
+            if (box != undefined) {
+                this.collisionSystem.remove(box);
+                this.boxToImageMap.delete(box);
+            }
+            this.sprites.delete(id);
+        }
+        // Notify whether it was scheduled or immediate:
+        this.notify({request: "remove", id: makeSpriteHandle(id), removeAtTime});
     }
 
     public setSpriteImage(id: number, imageOrCanvas : RemoteImage | RemoteCanvas): void {
@@ -227,6 +246,8 @@ export class SpriteManager {
     }
     
     public isDirty() : boolean {
+        // We might become dirty if something is overdue a removal:
+        this.checkForScheduledRemovals();
         return this.dirty;
     }
 
@@ -234,11 +255,25 @@ export class SpriteManager {
         this.dirty = false;
     }
     
+    private checkForScheduledRemovals() : void {
+        const t = Date.now();
+        // Unlike Java, Typescript is okay with us deleting values while iterating
+        // (see https://stackoverflow.com/questions/35940216/es6-is-it-dangerous-to-delete-elements-from-set-map-during-set-map-iteration )
+        for (const [id, sprite] of this.sprites) {
+            if (sprite.removeAtTime != null && sprite.removeAtTime <= t) {
+                this.sprites.delete(id);
+                this.dirty = true;
+            }
+        }
+    }
+    
     public getSprites() : IterableIterator<Sprite> {
+        this.checkForScheduledRemovals();
         return this.sprites.values();
     }
     
     public calculateAllOverlappingAtPos(x: number, y: number) : Sprite[] {
+        this.checkForScheduledRemovals();
         const collisionPoint = new Point({x:x, y:y});
         this.collisionSystem.insert(collisionPoint);
         const all : Sprite[] = [];
@@ -253,6 +288,7 @@ export class SpriteManager {
     }
     
     public checkCollision(idA: number, idB: number) : boolean {
+        this.checkForScheduledRemovals();
         const boxA = this.sprites.get(idA)?.collisionBox;
         const boxB = this.sprites.get(idB)?.collisionBox;
         if (boxA && boxB) {
@@ -265,6 +301,7 @@ export class SpriteManager {
     
     // Gets the idof all items which overlap the given persistent image id.
     public getAllOverlapping(id: number) : number[] {
+        this.checkForScheduledRemovals();
         const r : number[] = [];
         const box = this.sprites.get(id)?.collisionBox;
         if (box) {
@@ -280,11 +317,13 @@ export class SpriteManager {
     
     // Gets ids of all actors in the world:
     public getAllActors() : number[] {
-        return Array.from(this.sprites.values()).map((p) => p.id);
+        return Array.from(this.getSprites()).map((p) => p.id);
     }
 
     // Gets the associatedObject of all items which have centres within the specific radius of the given persistent image id.
     public getAllNearby(id: number, radius: number) : number[] {
+        this.checkForScheduledRemovals();
+        
         const us = this.sprites.get(id);
         const all: number[] = [];
         if (us) {
