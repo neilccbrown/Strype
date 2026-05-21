@@ -1606,7 +1606,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         // Note: we need to pass (all) imageLiterals to the recursive calls because they might reverse our replacement:
         const {slots: structBeforeBracket, cursorOffset: beforeBracketCursorOffset} = parseCodeLiteral(beforeBracketCode, {isInsideString:false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         cursorOffset += beforeBracketCursorOffset;
-        const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, {isInsideString: false, cursorPos: (flags?.cursorPos) ? flags.cursorPos - (firstOpenedBracketPos + 1) : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
+        const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, {isInsideString: false, cursorPos: (flags?.cursorPos !== undefined) ? flags.cursorPos - (firstOpenedBracketPos + 1) : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         if (openingBracketValue === "(") {
             // First scan and find all the comma-separated parameters:
             const {params, keyValues} = extractFormalParamsFromSlot(structOfBracket);
@@ -1638,7 +1638,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             actualCodeClosingBracketPos -= (placeholder.length - 1);
         });
 
-        const {slots: structAfterBracket, cursorOffset: afterBracketCursorOffset} = parseCodeLiteral(afterBracketCode, {isInsideString: false, cursorPos: (flags && flags.cursorPos && afterBracketCode.startsWith(bracketPlaceholder)) ? flags.cursorPos - (actualCodeClosingBracketPos + 1) + bracketPlaceholder.length : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
+        const {slots: structAfterBracket, cursorOffset: afterBracketCursorOffset} = parseCodeLiteral(afterBracketCode, {isInsideString: false, cursorPos: (flags && flags.cursorPos !== undefined && afterBracketCode.startsWith(bracketPlaceholder)) ? flags.cursorPos - (actualCodeClosingBracketPos + 1) + bracketPlaceholder.length : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         cursorOffset += afterBracketCursorOffset;
         // Remove the bracket field placeholder from structAfterBracket: we trim the placeholder value from the start of the first field of the structure.
         // (the conditional test may be overdoing it, but at least we are sure we won't get fooled by the user code...)
@@ -1671,7 +1671,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             const {slots: structBeforeString, cursorOffset: beforeStringCursortOffset} = parseCodeLiteral(beforeStringCode, {isInsideString: false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
             cursorOffset += beforeStringCursortOffset;
             const structOfString: StringSlot = {code: stringContentCode, quote: openingQuoteValue};
-            const {slots: structAfterString, cursorOffset: afterStringCursorOffset} = parseCodeLiteral(afterStringCode, {isInsideString: false, cursorPos: (flags?.cursorPos??0) - closingQuoteIndex + (2*(quoteTokenLength -1)) + stringPlaceholder.length, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
+            const {slots: structAfterString, cursorOffset: afterStringCursorOffset} = parseCodeLiteral(afterStringCode, {isInsideString: false, cursorPos: flags?.cursorPos !== undefined ? flags?.cursorPos - closingQuoteIndex + (2*(quoteTokenLength -1)) + stringPlaceholder.length : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
             cursorOffset += afterStringCursorOffset;
             (structAfterString.fields[0] as BaseSlot).code = removePossibleFieldPlaceholderFromStart((structAfterString.fields[0] as BaseSlot).code);
             resStructSlot.fields.push(...structBeforeString.fields, structOfString, ...structAfterString.fields );

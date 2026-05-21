@@ -256,5 +256,10 @@ export function canvas_downloadPNG(src : RemoteCanvas, filenameStem : string) : 
 }
 
 export function cloneImage(img: RemoteCanvas, scale: number, rotate: number, flip: "horizontal" | "vertical" | "none") : RemoteCanvas {
+    // Force flush any pending pixel writes without evicting:
+    const cached = pixelsCache.get(img.handle.handle);
+    if (cached) {
+        cached.update.flush();
+    }
     return syncBridge({request: "canvas_makeCopy", img, scale, rotate, flip});
 }
