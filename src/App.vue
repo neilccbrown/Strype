@@ -105,7 +105,6 @@
             <MediaPreviewPopup ref="mediaPreviewPopup" />
             <EditImageDlg dlgId="editImageDlg" ref="editImageDlg" :imgToEdit="imgToEditInDialog" :showImgPreview="showImgPreview" />
             <EditSoundDlg dlgId="editSoundDlg" ref="editSoundDlg" :soundToEdit="soundToEditInDialog" />
-            <div :id="getSkulptBackendTurtleDivId" class="hidden"></div>
             <canvas v-show="appStore.isDraggingFrame" :id="getCompanionDndCanvasId" class="companion-canvas-dnd"/>
             <ModalDlg :dlgId="confirmResetLSOnShareProjectLoadDlgId" :okCustomTitle="$t('buttonLabel.continue')" :cancelCustomTitle="$t('buttonLabel.cancelLoadSharedProject')" >
                 <div>
@@ -343,10 +342,6 @@ export default defineComponent({
 
         confirmNewProjectModalDlgId(): string {
             return "confirmNewProjectModalDlg";
-        },
-
-        getSkulptBackendTurtleDivId(): string {
-            return "TODOremovethismethodwhenturtlereplaced";
         },
 
         isPythonExecuting(): boolean {
