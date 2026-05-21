@@ -127,6 +127,8 @@ def get_argspec_and_binding(func):
         # and pure-Python classmethods on either class or instance)
         inspect.ismethod(func)
         or
+        inspect.isclass(func) # For constructors
+        or
         # C-level builtin bound to a type (e.g. bool.from_bytes,
         # int.from_bytes) — these are classmethods in C extensions
         # where __self__ is a type object

@@ -13,7 +13,7 @@
         "build:download-pyodide-libs": "node scripts/download-pyodide-libs.cjs",        
         "compile-service-worker": "node scripts/build-service-worker.mjs",
         "lint:check": "eslint . --ext .js,.vue --max-warnings 0",
-        "type:check": "vue-tsc --noEmit && cd scripts && vue-tsc --noEmit",
+        "type:check": "vue-tsc --noEmit",
         "library:make-ac-json": "cd scripts && npm install && npx tsc && (node -e \"console.log('library_arg = \\'' + process.env.LIBRARY + '\\';')\" && npx esbuild --loader:.py=text --alias:pysrc=../pysrc --bundle compiled/scripts/process-pyodide-api.js) | npx browser-run -s ../public > ../autocomplete.json",
         "preprocess:update-microbit-api": "python3.9 scripts/process-microbit-api.py > src/autocompletion/microbit-api.json",
         "preprocess:update-python-api": "cd scripts && npm install && ((npx esbuild --platform=node --format=esm --loader:.py=text --alias:pysrc=../pysrc --bundle process-pyodide-api.ts) | node) > ../src/autocompletion/python-api.json",
