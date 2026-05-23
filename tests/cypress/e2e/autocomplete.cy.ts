@@ -22,6 +22,13 @@ describe("Built-ins", () => {
             checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
             // We had a previous bug with multiple sum items in microbit:
             checkExactlyOneItem(acIDSel, BUILTIN, "sum(iterable, start)");
+            // Should show our built-in, clear_console, but not in microbit:
+            if (Cypress.env("mode") === "microbit") {
+                checkNoItems(acIDSel, "clear_console")
+            }
+            else {
+                checkExactlyOneItem(acIDSel, BUILTIN, "clear_console()");
+            }
             checkExactlyOneItem(acIDSel, BUILTIN, "ZeroDivisionError()");
             checkExactlyOneItem(acIDSel, BUILTIN, "zip()");
             checkNoItems(acIDSel, "__name__");
@@ -30,6 +37,8 @@ describe("Built-ins", () => {
             cy.wait(600);
             checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
             checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
+            // Now shouldn't be there either way:
+            checkNoItems(acIDSel, "clear_console");
             checkNoItems(acIDSel, "ZeroDivisionError");
             checkNoItems(acIDSel, "zip");
             checkAutocompleteSorted(acIDSel, true);

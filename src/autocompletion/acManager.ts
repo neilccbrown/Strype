@@ -16,9 +16,11 @@ import {OUR_PUBLIC_LIBRARY_MODULES, pythonBuiltins} from "@/autocompletion/pytho
 import pythonAPI from "@/autocompletion/python-api.json";
 import graphicsMod from "@/../pysrc/strype/graphics.py?raw";
 import soundMod from "@/../pysrc/strype/sound.py?raw";
+import strypeBuiltinsMod from "@/../pysrc/strype/builtins.py?raw";
 import turtleMod from "@/../pysrc/pyi/turtle.pyi?raw";
 TPyParser.defineModule("strype.graphics", extractPYI(graphicsMod), "pyi");
 TPyParser.defineModule("strype.sound", extractPYI(soundMod), "pyi");
+TPyParser.defineModule("strype.builtins", extractPYI(strypeBuiltinsMod), "pyi");
 TPyParser.defineModule("turtle", turtleMod, "pyi");
 // #v-else
 import microbitPythonAPI from "@/autocompletion/microbit-api.json";
@@ -528,7 +530,7 @@ export async function getAvailableItemsForImportFromModule(module: string) : Pro
 export function getBuiltins() : AcResultType[] {
     // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
     // Must return a clone as caller may later modify the list:
-    return [...pythonAPI[""] as AcResultType[]];
+    return [...pythonAPI[""] as AcResultType[], ...pythonAPI["strype.builtins"] as AcResultType[]];
     // #v-else
     // Must return a clone as caller may later modify the list:
     return [...microbitPythonAPI[""] as AcResultType[]];
@@ -701,7 +703,7 @@ async function getFormalParamsSlotStructureOrSignatureForUserDefinedClass(userCl
         const className = (userClassFrame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code;     
         // Add the part ot get the actual __init__ (called by Python using MRO), and use a valid code that
         // allows us to call autocomplete after the dot (one character before the end)
-        const totalCode = `${userCode}${className}().x`;
+        const totalCode = `from strype.builtins import *\n${userCode}${className}().x`;
         const tppCompletions = TPyParser.autoCompleteExt(totalCode, totalCode.length - 1);
         const match = tppCompletions?.filter((c) => c.acResult === "__init__");
         if (match && match.length > 0 && match[0].signature) {
