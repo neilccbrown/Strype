@@ -2399,7 +2399,7 @@ export const useStore = defineStore("app", {
             this.currentFrame.id = nextPosition.frameId;
         },
 
-        async generateStateJSONStrWithCheckpoint(compress?: boolean) {
+        generateStateJSONStrWithCheckpoint(compress?: boolean) : string {
             /** This function was defined as a getter before, check details as to why it needs to be an action:
              *  the goal of this function is to make a "copy" of the state in a JSON format, with a few extra bits like the checkpoint.
                 However, if defined as a getter, the state object we get in a getter is not exactly "just" the state object as we write it: 
@@ -2423,9 +2423,7 @@ export const useStore = defineStore("app", {
                 stateCopy["frameObjects"][frameId].frameType = stateCopy["frameObjects"][frameId].frameType.type;
             });
 
-            const checksum = await getSHA1HashForObject(stateCopy, false);
-            //add the checksum and other backup flags in the state object to be saved
-            stateCopy["checksum"] = checksum;
+            //add other backup flags in the state object to be saved
             stateCopy["version"] = AppVersion;
             stateCopy["platform"] = AppPlatform;
             

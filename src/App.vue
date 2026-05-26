@@ -914,13 +914,12 @@ export default defineComponent({
                     localStorage.setItem(AutoSaveKeyNames.settingsState, JSON.stringify(this.settingsStore.$state));
                 }
                 else{
-                    this.appStore.generateStateJSONStrWithCheckpoint(true).then((stateJSONStrWithCheckpoint) => {
-                        localStorage.setItem(this.localStorageAutosaveEditorKey, stateJSONStrWithCheckpoint);
-                        // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
-                        if(reason==SaveRequestReason.loadProject && projectSaveFunctionsState.length == 1){
-                            eventBus.emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
-                        }
-                    });
+                    const stateJSONStrWithCheckpoint = this.appStore.generateStateJSONStrWithCheckpoint(true);
+                    localStorage.setItem(this.localStorageAutosaveEditorKey, stateJSONStrWithCheckpoint);
+                    // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
+                    if(reason==SaveRequestReason.loadProject && projectSaveFunctionsState.length == 1){
+                        eventBus.emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                    }
                 }
             }
         },
