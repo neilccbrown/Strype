@@ -1033,7 +1033,7 @@ export default defineComponent({
                 }
                 else{
                     // If the user declined: restore the autosave timer and the registration to the "beforeunload" event
-                    window.addEventListener("beforeunload", this.beforeUnloadHandler);
+                    window.addEventListener("visibilitychange", this.visibilityHandler);
                     this.setAutoSaveState();
                 }
             }
@@ -1162,7 +1162,7 @@ export default defineComponent({
             // 1) stop the autosave timer
             window.clearInterval(autoSaveTimerId);
             // 2) De-register the "beforeunload" event so we can handle the "continue/cancel" process ourselves if needed
-            window.removeEventListener("beforeunload", this.beforeUnloadHandler);
+            window.removeEventListener("visibilitychange", this.visibilityHandler);
             // 3) 2 situations: Strype knows we are in a saved state* --> just do like if we confirmed the project update (see below)
             //                  otherwise --> show the modal dialog for user confirmation
             const isSavedProject = this.appStore.syncTarget != StrypeSyncTarget.none && !this.appStore.isEditorContentModified;
