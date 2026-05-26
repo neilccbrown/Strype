@@ -700,6 +700,9 @@ export default defineComponent({
                     }
                     useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                     setPythonExecAreaLayoutButtonPos();
+                    // A runtime error may happen whenever the user code failed, therefore we should check if an error
+                    // when Skulpt indicates the code execution has finished.
+                    this.checkNonePrecompiledErrors();
                     soundManager?.stopAllSounds();
                     // We always restart Pyodide for a clean state:
                     terminateAndRestartPyodide();
