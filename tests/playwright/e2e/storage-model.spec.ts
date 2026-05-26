@@ -27,6 +27,22 @@ async function assertStartingProject(page: Page)  {
     await expect(page.locator("span", {hasText: "This is the default Strype starter project"})).toHaveCount(1);
 }
 
+async function assertStartingPlus(page: Page, paramContent: string) {
+    await expect(page.locator(".frame-div")).toHaveCount(3);
+    await expect(page.locator("span", {hasText: "Hello from Strype"})).toHaveCount(1);
+    await expect(page.locator("span", {hasText: "This is the default Strype starter project"})).toHaveCount(1);
+    await expect(page.locator("span", {hasText: paramContent})).toHaveCount(1);
+}
+
+// Helper function for changing the page content with a custom string
+async function appendContent(page: Page, paramContent: string) {
+    await page.keyboard.press("End");
+    await page.keyboard.type("p\"" + paramContent);
+    await page.keyboard.press("Enter");
+    // Sanity check it actually appeared:
+    await assertStartingPlus(page, paramContent);
+}
+
 test.describe("Test basic operation", () => {
     test("Test initial fresh load", async ({page}) => {
         await page.goto("./", {waitUntil: "load"});
@@ -41,5 +57,17 @@ test.describe("Test basic operation", () => {
         await page.reload();
         await page.waitForSelector(".frame-container");
         await assertStartingProject(page);
+    });
+
+    test("Test reload preserves content", async ({page}) => {
+        await page.goto("./", {waitUntil: "load"});
+        await page.waitForSelector(".frame-container");
+        await assertStartingProject(page);
+        const str = "Going to do a reload #1";
+        await appendContent(page, str);
+        await assertStartingPlus(page, str);
+        await page.reload();
+        await page.waitForSelector(".frame-container");
+        await assertStartingPlus(page, str);
     });
 });
