@@ -24,7 +24,7 @@ describe("Built-ins", () => {
             checkExactlyOneItem(acIDSel, BUILTIN, "sum(iterable, start)");
             // Should show our built-in, clear_console, but not in microbit:
             if (Cypress.env("mode") === "microbit") {
-                checkNoItems(acIDSel, "clear_console")
+                checkNoItems(acIDSel, "clear_console");
             }
             else {
                 checkExactlyOneItem(acIDSel, BUILTIN, "clear_console()");
