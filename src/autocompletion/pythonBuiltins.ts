@@ -30,6 +30,7 @@ export const pythonBuiltins : Record<string, { type: "module", documentation?: s
 };
 
 export const OUR_PUBLIC_LIBRARY_MODULES = [
+    "strype.builtins",
     "strype.graphics",
     "strype.sound",
 ];

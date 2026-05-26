@@ -14964,6 +14964,70 @@
             "version": 0
         }
     ],
+    "strype.builtins": [
+        {
+            "acResult": "__builtins__",
+            "documentation": "dict() -> new empty dictionary\ndict(mapping) -> new dictionary initialized from a mapping object's\n    (key, value) pairs\ndict(iterable) -> new dictionary initialized as if via:\n    d = {}\n    for k, v in iterable:\n        d[k] = v\ndict(**kwargs) -> new dictionary initialized with the name=value pairs\n    in the keyword argument list.  For example:  dict(one=1, two=2)",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__cached__",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to 'utf-8'.\nerrors defaults to 'strict'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "The type of the None singleton.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__file__",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to 'utf-8'.\nerrors defaults to 'strict'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__loader__",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to 'utf-8'.\nerrors defaults to 'strict'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to 'utf-8'.\nerrors defaults to 'strict'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__spec__",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "_strype_input_internal",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "clear_console",
+            "documentation": "Clears the console.\n\nAll previous output will be cleared (and will not appear in the scroll history either),\nincluding any errors that might have occurred.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        }
+    ],
     "strype.graphics": [
         {
             "acResult": "Actor",
