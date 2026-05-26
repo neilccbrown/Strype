@@ -413,6 +413,13 @@ export default defineComponent({
         );
 
         window.addEventListener("keydown", (event: KeyboardEvent) => {
+            // When code is executed, we should ignore all key events internally to the editor, 
+            // only the PEA graphics or console should consume the events.
+            if(this.isPythonExecuting){
+                event.preventDefault();
+                return;
+            }
+
             this.appStore.updateKeyModifiers(event);
             const activeContextMenu = getActiveContextMenu();
             if(activeContextMenu != null){
