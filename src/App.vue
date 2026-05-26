@@ -389,7 +389,7 @@ export default defineComponent({
         this.setStrypeLocale();
 
         projectSaveFunctionsState[0] = {syncTarget: StrypeSyncTarget.ws, function: (reason: SaveRequestReason) => this.autoSaveStateToWebLocalStorage(reason)};
-        window.addEventListener("beforeunload", this.beforeUnloadHandler);
+        window.addEventListener("visibilitychange", this.visibilityHandler);
 
         // By means of protection against browser crashes or anything that could prevent auto-backup, we do a backup every 2 minutes
         this.setAutoSaveState();
@@ -925,7 +925,11 @@ export default defineComponent({
             }
         },
 
-        beforeUnloadHandler(event: BeforeUnloadEvent) {
+        visibilityHandler() {
+            if (document.visibilityState !== "hidden") {
+                // Only interested in when we're being hidden (incl. closed), ignore other changess:
+                return;
+            }
             // No matter the choice the user will make on saving the page, and because it is not straight forward to know what action has been done,
             // we systematically exit any slot being edited to have a state showing the blue caret.
             // We do so by simulating a key down event (which exits the current slot)
@@ -938,10 +942,6 @@ export default defineComponent({
                     })
                 );
             }
-
-            // Browsers won't display a customised message, and can detect when to prompt the user,
-            // so we don't need to do anything special.
-            event.returnValue = true;
 
             // Save the state before exiting            
             this.autoSaveStateToWebLocalStorage(SaveRequestReason.unloadPage);            
