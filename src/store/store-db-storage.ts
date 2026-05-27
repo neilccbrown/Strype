@@ -6,7 +6,6 @@
 // be larger than that.
 
 import { AutoSaveKeyNames } from "@/helpers/editor";
-import { getEditorTabId } from "@/store/store";
 
 // How long a session is dead before we automatically clean it up; 8 days (weekly class + one day):
 const MAX_SESSION_AGE_MILLIS = 8 * 24 * 60 * 60 * 1000;
@@ -29,7 +28,7 @@ enum DatabaseFieldNames {
     lastAliveAt = "lastAliveAt", // timestamp; The last time the tab was confirmed as alive.  Used to clear out old tab sessions.
 }
 
-function openDB(): Promise<IDBDatabase> {
+export function openIndexedDBConnection(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
 
@@ -50,8 +49,8 @@ function openDB(): Promise<IDBDatabase> {
 
 // This saves the session state.  If the state has changed (as decided by string comparison),
 // the lastModifiedAt is updated.  Regardless of that, lastAliveAt is always modified
-export async function saveSessionState(tabId: string, data: string) : Promise<void> {
-    const db = await openDB();
+export async function saveSessionState(tabId: string, data: string, db?: IDBDatabase) : Promise<void> {
+    db = db ?? await openIndexedDBConnection();
 
     return new Promise<void>((resolve, reject) => {
         const tx = db.transaction(STORE, "readwrite");
@@ -88,12 +87,12 @@ export async function saveSessionState(tabId: string, data: string) : Promise<vo
 
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
-    }).finally(() => db.close());
+    });
 }
 
 // Load session state, if it exists, or return undefined if not found:
-export async function loadSessionState(tabId: string) : Promise<string | null> {
-    const db = await openDB();
+export async function loadSessionState(tabId: string, db?: IDBDatabase) : Promise<string | null> {
+    db = db ?? await openIndexedDBConnection();
 
     return new Promise<string | null>((resolve, reject) => {
         const tx = db.transaction(STORE, "readonly");
@@ -111,7 +110,7 @@ export async function loadSessionState(tabId: string) : Promise<string | null> {
         };
 
         request.onerror = () => reject(request.error);
-    }).finally(() => db.close());
+    });
 }
 
 // This cleans up old sessions.  Old here means sessions that were not seen alive recently.
@@ -123,9 +122,7 @@ export async function loadSessionState(tabId: string) : Promise<string | null> {
 // - User closes tab, the code wakes up and handles the tab closing, which means auto-save, no data lost
 // - Browser or machine die unexpectedly, data is lost even though the tab was open.  But it hadn't been used in
 //   a long time, so that's tough luck.
-async function cleanupOldSessions() : Promise<void> {
-    const db = await openDB();
-
+async function cleanupOldSessions(db: IDBDatabase) : Promise<void> {
     const cutoff = Date.now() - MAX_SESSION_AGE_MILLIS;
 
     return new Promise<void>((resolve, reject) => {
@@ -161,7 +158,7 @@ async function cleanupOldSessions() : Promise<void> {
 // moves any old local storage (which can exist from a version before we added indexed DB)
 // into indexed DB, plus any emergency-sync-written state from a page unload into the DB too.
 // That way, all code after this function only has to look at the DB.
-export async function tidyUpDatabaseState(ourTabId : string) : Promise<void> {
+export async function tidyUpDatabaseState(ourTabId : string, db: IDBDatabase) : Promise<void> {
     // We need to find any "emergency" localStorage items which were saved during page unload or refresh,
     // and move them into the database where they belong:
     const toAddToDatabase: Record<string, string> = {};
@@ -185,15 +182,15 @@ export async function tidyUpDatabaseState(ourTabId : string) : Promise<void> {
     }
     
     for (const tabId of Object.keys(toAddToDatabase)) {
-        await saveSessionState(tabId, toAddToDatabase[tabId]);
+        await saveSessionState(tabId, toAddToDatabase[tabId], db);
     }
     
     // We also claim any old storage item and associate it with the current tab:
     const oldSingleItem = localStorage.getItem(storeKey);
     if (oldSingleItem) {
         localStorage.removeItem(storeKey);
-        await saveSessionState(ourTabId, oldSingleItem);
+        await saveSessionState(ourTabId, oldSingleItem, db);
     }
     
-    await cleanupOldSessions();
+    await cleanupOldSessions(db);
 }
