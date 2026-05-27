@@ -2666,7 +2666,16 @@ export const useStore = defineStore("app", {
             stateCopy["previousDAPWrapper"] = {};
             stateCopy["currentMessage"] = MessageDefinitions.NoMessage;
             stateCopy["pythonExecRunningState"] = PythonExecRunningState.NotRunning;
-            
+
+            // Strip analytics fields — these are session-scoped and re-initialised by bootstrapApp on every load.
+            // Persisting them would cause sessionId, active-session timers, throttle timestamps, and per-session
+            // counters to leak across reloads.
+            Object.keys(stateCopy).forEach((key) => {
+                if (key.startsWith("analytics")) {
+                    delete stateCopy[key];
+                }
+            });
+
             //simplify the storage of frame types by their type names only
             Object.keys(stateCopy["frameObjects"] as EditorFrameObjects).forEach((frameId) => {
                 stateCopy["frameObjects"][frameId].frameType = stateCopy["frameObjects"][frameId].frameType.type;
