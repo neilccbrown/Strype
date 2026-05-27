@@ -18,25 +18,39 @@ import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import $ from "jquery";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { actOnGraphicsImport } from "@/helpers/editor";
+import { loadSessionState, tidyUpDatabaseState } from "@/store/store-db-storage";
 // #v-endif
 
-function getState(): StateAppObject {
+export function getEditorTabId() : string {
+   
+    let tabId = sessionStorage.getItem(AutoSaveKeyNames.strypeEditorTabId);
+
+    if (!tabId) {
+        // None found, generate one and save it:
+        tabId = crypto.randomUUID();
+        sessionStorage.setItem(AutoSaveKeyNames.strypeEditorTabId, tabId);
+    }
+    return tabId;
+}
+
+async function getState(): Promise<StateAppObject> {
     // If we have a state available in the local (browser's) storage, we strip off the frame contents
     // from the default state, for a smoother visual rendering. Note that App.vue is responsible for
     // loading the local state later. Here, we only check something exists in the local storage.
     let isExistingStateLocated = false;
     let returnedState;
+    // Because we will have called tidyUpDatabaseState() before this function, we only need check the IndexedDB: 
+    
     if(typeof(Storage) !== "undefined") {
-        let storageString = AutoSaveKeyNames.pythonEditorState;
-        // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
-        storageString = AutoSaveKeyNames.mbEditor;
-        // #v-endif
-        const savedState = localStorage.getItem(storageString);
+        const savedState = await loadSessionState(getEditorTabId());
+        
         if(savedState) {
             isExistingStateLocated = true;
             returnedState = initialStates["initialEmptyState"];        
         }
     }
+     
+    
     
     if(!isExistingStateLocated) {
         // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
@@ -48,7 +62,9 @@ function getState(): StateAppObject {
     return (returnedState as StateAppObject);
 }
 
-const initialState = getState();
+// Important to do this tidy up before checking the state:
+await tidyUpDatabaseState(getEditorTabId());
+const initialState = await getState();
 
 // These are deliberately held outside the store because:
 // (a) we used to blank them on page load anyway

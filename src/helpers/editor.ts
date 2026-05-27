@@ -28,6 +28,10 @@ export enum AutoSaveKeyNames {
     settingsState = "StrypeSettingsState",
     pythonEditorState = "PythonStrypeSavedState",
     mbEditor = "MicrobitStrypeSavedState",
+    strypeEditorTabId = "StrypeEditorTabId",
+    strypePythonDBStore = "StrypeStorePython",
+    strypeMicrobitDBStore = "StrypeStoreMicrobit:",
+    strypeIndexDatabaseName = "StrypeStateDatabase",
 }
 
 // Custom JS events in Strype
