@@ -43,25 +43,29 @@ async function appendContent(page: Page, paramContent: string) {
     await assertStartingPlus(page, paramContent);
 }
 
+async function loadAndWaitForEditor(page: Page) {
+    await page.goto("./", {waitUntil: "load"});
+    await page.waitForSelector(".frame-container");
+}
+
 test.describe("Test basic operation", () => {
     test("Test initial fresh load", async ({page}) => {
-        await page.goto("./", {waitUntil: "load"});
-        await page.waitForSelector(".frame-container");
+        await loadAndWaitForEditor(page);
         await assertStartingProject(page);
     });
 
     test("Test reload on fresh page", async ({page}) => {
-        await page.goto("./", {waitUntil: "load"});
-        await page.waitForSelector(".frame-container");
+        await loadAndWaitForEditor(page);
         await assertStartingProject(page);
         await page.reload();
         await page.waitForSelector(".frame-container");
         await assertStartingProject(page);
     });
 
+    // Under the new model, a reload should automatically re-use the latest content
+    // without asking.
     test("Test reload preserves content", async ({page}) => {
-        await page.goto("./", {waitUntil: "load"});
-        await page.waitForSelector(".frame-container");
+        await loadAndWaitForEditor(page);
         await assertStartingProject(page);
         const str = "Going to do a reload #1";
         await appendContent(page, str);
@@ -69,5 +73,44 @@ test.describe("Test basic operation", () => {
         await page.reload();
         await page.waitForSelector(".frame-container");
         await assertStartingPlus(page, str);
+    });
+});
+
+// Note: it's important in all these tests to use a shared context.  If you call
+// browser.newPage() they each get their own context which means they each get
+// their own local storage, and the test is no longer valid for testing the scenario
+// of opening multiple tabs/windows in the same browser.
+test.describe("Test multi-page operation", () => {
+    // The issue with this test is that the first project might not have been auto-saved,
+    // but still worth testing:
+    test("Second tab shows empty project", async ({browser}) => {
+        const context = await browser.newContext();
+        const page1 = await context.newPage();
+        await loadAndWaitForEditor(page1);
+        await assertStartingProject(page1);
+        const str = "Going to open a second page #1";
+        await appendContent(page1, str);
+        await assertStartingPlus(page1, str);
+        // Now open the second page, which should be the starting project still:
+        const page2 = await context.newPage();
+        await loadAndWaitForEditor(page2);
+        await assertStartingProject(page2);
+    });
+    // To force an autosave, we refresh first tab before opening second:
+    test("Second tab shows empty project after refreshing first", async ({browser}) => {
+        const context = await browser.newContext();
+        const page1 = await context.newPage();
+        await loadAndWaitForEditor(page1);
+        await assertStartingProject(page1);
+        const str = "Going to open a second page #2";
+        await appendContent(page1, str);
+        await assertStartingPlus(page1, str);
+        await page1.reload();
+        await page1.waitForSelector(".frame-container");
+        await assertStartingPlus(page1, str);
+        // Now open the second page, which should be the starting project still:
+        const page2 = await context.newPage();
+        await loadAndWaitForEditor(page2);
+        await assertStartingProject(page2);
     });
 });
