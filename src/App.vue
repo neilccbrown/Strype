@@ -389,7 +389,7 @@ export default defineComponent({
         this.setStrypeLocale();
 
         projectSaveFunctionsState[0] = {syncTarget: StrypeSyncTarget.ws, function: (reason: SaveRequestReason) => this.autoSaveStateToWebLocalStorage(reason)};
-        window.addEventListener("beforeunload", this.beforeUnloadHandler);
+        window.addEventListener("visibilitychange", this.visibilityHandler);
 
         // By means of protection against browser crashes or anything that could prevent auto-backup, we do a backup every 2 minutes
         this.setAutoSaveState();
@@ -914,18 +914,21 @@ export default defineComponent({
                     localStorage.setItem(AutoSaveKeyNames.settingsState, JSON.stringify(this.settingsStore.$state));
                 }
                 else{
-                    this.appStore.generateStateJSONStrWithCheckpoint(true).then((stateJSONStrWithCheckpoint) => {
-                        localStorage.setItem(this.localStorageAutosaveEditorKey, stateJSONStrWithCheckpoint);
-                        // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
-                        if(reason==SaveRequestReason.loadProject && projectSaveFunctionsState.length == 1){
-                            eventBus.emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
-                        }
-                    });
+                    const stateJSONStrWithCheckpoint = this.appStore.generateStateJSONStrWithCheckpoint(true);
+                    localStorage.setItem(this.localStorageAutosaveEditorKey, stateJSONStrWithCheckpoint);
+                    // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
+                    if(reason==SaveRequestReason.loadProject && projectSaveFunctionsState.length == 1){
+                        eventBus.emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                    }
                 }
             }
         },
 
-        beforeUnloadHandler(event: BeforeUnloadEvent) {
+        visibilityHandler() {
+            if (document.visibilityState !== "hidden") {
+                // Only interested in when we're being hidden (incl. closed), ignore other changess:
+                return;
+            }
             // No matter the choice the user will make on saving the page, and because it is not straight forward to know what action has been done,
             // we systematically exit any slot being edited to have a state showing the blue caret.
             // We do so by simulating a key down event (which exits the current slot)
@@ -938,10 +941,6 @@ export default defineComponent({
                     })
                 );
             }
-
-            // Browsers won't display a customised message, and can detect when to prompt the user,
-            // so we don't need to do anything special.
-            event.returnValue = true;
 
             // Save the state before exiting            
             this.autoSaveStateToWebLocalStorage(SaveRequestReason.unloadPage);            
@@ -1034,7 +1033,7 @@ export default defineComponent({
                 }
                 else{
                     // If the user declined: restore the autosave timer and the registration to the "beforeunload" event
-                    window.addEventListener("beforeunload", this.beforeUnloadHandler);
+                    window.addEventListener("visibilitychange", this.visibilityHandler);
                     this.setAutoSaveState();
                 }
             }
@@ -1163,7 +1162,7 @@ export default defineComponent({
             // 1) stop the autosave timer
             window.clearInterval(autoSaveTimerId);
             // 2) De-register the "beforeunload" event so we can handle the "continue/cancel" process ourselves if needed
-            window.removeEventListener("beforeunload", this.beforeUnloadHandler);
+            window.removeEventListener("visibilitychange", this.visibilityHandler);
             // 3) 2 situations: Strype knows we are in a saved state* --> just do like if we confirmed the project update (see below)
             //                  otherwise --> show the modal dialog for user confirmation
             const isSavedProject = this.appStore.syncTarget != StrypeSyncTarget.none && !this.appStore.isEditorContentModified;
