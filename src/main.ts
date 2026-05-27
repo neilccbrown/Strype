@@ -9,6 +9,8 @@ import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from 
 import {getAppLangSelectId, getEditorID, getEditorMenuUID, getFrameBodyUID, getFrameContainerUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getImportFileInputId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNewProjectLinkId, getSaveProjectLinkId, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, getShareProjectLinkId} from "./helpers/editor";
 import "@imengyu/vue3-context-menu/lib/vue3-context-menu.css";
 import ContextMenu from "@imengyu/vue3-context-menu";
+import { openIndexedDBConnection, tidyUpDatabaseState } from "@/store/store-db-storage";
+import { getEditorTabId } from "@/store/store";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import {getPEATabContentContainerDivId} from "./helpers/editor";
 // #v-endif
@@ -22,7 +24,7 @@ const loadServiceWorker = async () => {
         try {
             const registration = await navigator.serviceWorker.register(swUrl, {
                 type: "module",
-                scope: import.meta.env.BASE_URL
+                scope: import.meta.env.BASE_URL,
             });
             console.log("SW registered:", registration);
         }
@@ -99,6 +101,10 @@ app.directive("blur", {
 
 // Context menu package
 app.use(ContextMenu);
+
+// Important to do this tidy up before checking the state:
+const initialDBConnection = await openIndexedDBConnection();
+await tidyUpDatabaseState(getEditorTabId(), initialDBConnection);
 
 // Mount the app
 app.mount("#app");

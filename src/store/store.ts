@@ -18,7 +18,6 @@ import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import $ from "jquery";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { actOnGraphicsImport } from "@/helpers/editor";
-import { loadSessionState, openIndexedDBConnection, tidyUpDatabaseState } from "@/store/store-db-storage";
 // #v-endif
 
 export function getEditorTabId() : string {
@@ -33,39 +32,7 @@ export function getEditorTabId() : string {
     return tabId;
 }
 
-async function getState(db: IDBDatabase): Promise<StateAppObject> {
-    // If we have a state available in the local (browser's) storage, we strip off the frame contents
-    // from the default state, for a smoother visual rendering. Note that App.vue is responsible for
-    // loading the local state later. Here, we only check something exists in the local storage.
-    let isExistingStateLocated = false;
-    let returnedState;
-    // Because we will have called tidyUpDatabaseState() before this function, we only need check the IndexedDB: 
-    
-    if(typeof(Storage) !== "undefined") {
-        const savedState = await loadSessionState(getEditorTabId(), db);
-        
-        if(savedState) {
-            isExistingStateLocated = true;
-            returnedState = initialStates["initialEmptyState"];        
-        }
-    }
-     
-    
-    
-    if(!isExistingStateLocated) {
-        // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
-        returnedState = initialStates["initialPythonState"];
-        // #v-else
-        returnedState = initialStates["initialMicrobitState"];
-        // #v-endif
-    }
-    return (returnedState as StateAppObject);
-}
-
-// Important to do this tidy up before checking the state:
-const initialDBConnection = await openIndexedDBConnection();
-await tidyUpDatabaseState(getEditorTabId(), initialDBConnection);
-const initialState = await getState(initialDBConnection);
+const initialState = initialStates["initialEmptyState"] as StateAppObject;
 
 // These are deliberately held outside the store because:
 // (a) we used to blank them on page load anyway
