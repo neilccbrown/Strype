@@ -167,7 +167,10 @@ export default defineConfig(({mode}) => {
         worker: { format: 'es' },
 
         server: {
-            hmr: mode !== 'e2e' // disable HMR during Cypress
+            hmr: mode !== "e2e", // disable HMR during Cypress
+            watch: mode !== "e2e" ? undefined : { // This is also needed to disable HMR
+                 ignored: ['**/*']
+            }
         }
     };
 });
