@@ -1,7 +1,9 @@
+import { scssVars } from "../support/standard-setup";
+
 require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
 import "../support/autocomplete-test-support";
-import {checkAutocompleteSorted, checkExactlyOneItem, checkNoItems, focusEditorAC, withAC, scssVars} from "../support/autocomplete-test-support";
+import {checkAutocompleteSorted, checkExactlyOneItem, checkNoItems, focusEditorAC, withAC} from "../support/autocomplete-test-support";
 
 // Needed for the "be.sorted" assertion:
 chai.use(require("chai-sorted"));

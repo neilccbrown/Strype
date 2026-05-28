@@ -1,18 +1,8 @@
 // To avoid passing arguments in all the functions defined in this file, we fetch the shared IDs
 // and CSS class names of Strype (we only do it if they are not already saved in this file)
 import { isMacOSPlatform } from "@/helpers/common";
-import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
-let scssVars: {[varName: string]: string};
-let strypeElIds: {[varName: string]: (...args: any[]) => string};
-Cypress.Commands.add("initialiseSupportStrypeGlobals", () => {
-    if(scssVars == undefined){
-        cy.window().then((win) => {
-            scssVars = (win as any)[WINDOW_STRYPE_SCSSVARS_PROPNAME];
-            strypeElIds = (win as any)[WINDOW_STRYPE_HTMLIDS_PROPNAME];
-        });
-    }
-});
 import {cleanFromHTML} from "../support/test-support";
+import { scssVars, strypeElIds } from "./standard-setup";
 
 export function assertState(expectedState : string, assertMessage?: string) : void {
     withSelection((info) => {

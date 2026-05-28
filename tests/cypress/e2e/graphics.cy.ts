@@ -1,17 +1,11 @@
 require("cypress-terminal-report/src/installLogsCollector")();
 import {PNG} from "pngjs";
+import { standardBeforeEach } from "../support/standard-setup";
 import pixelmatch from "pixelmatch";
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 
-// Must clear all local storage between tests to reset the state:
-beforeEach(() => {
-    cy.clearLocalStorage();
-    cy.visit("/",  {onBeforeLoad: (win) => {
-        win.localStorage.clear();
-        win.sessionStorage.clear();
-    }});
-});
+beforeEach(standardBeforeEach);
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore

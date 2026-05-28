@@ -4,7 +4,6 @@
 // We have two kinds of things to test.  One is loading .spy files, which we then check can be saved again to get
 // the same result.  The other is that if we enter some code (especially code with metadata-required things like disabled frames)
 // it should save correctly.
-
 require("cypress-terminal-report/src/installLogsCollector")();
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
@@ -13,38 +12,11 @@ failOnConsoleError();
 import en from "@/localisation/en/en_main.json";
 
 import "../support/expression-test-support";
+import { scssVars, standardBeforeEach, strypeElIds } from "../support/standard-setup";
 import {checkDownloadedFileEquals, loadFile} from "../support/load-save-support";
-import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
 import { getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
 
-
-
-// Must clear all local storage between tests to reset the state,
-// and also retrieve the shared CSS and HTML elements IDs exposed
-// by Strype via the Window object of the app.
-let scssVars: {[varName: string]: string};
-let strypeElIds: {[varName: string]: (...args: any[]) => string};
-beforeEach(() => {
-    cy.clearLocalStorage();
-    cy.visit("/",  {onBeforeLoad: (win) => {
-        win.localStorage.clear();
-        win.sessionStorage.clear();
-    }}).then(() => {
-        // Only need to get the global variables if we haven't done so
-        if(scssVars == undefined){
-            cy.window().then((win) => {
-                scssVars = (win as any)[WINDOW_STRYPE_SCSSVARS_PROPNAME];
-                strypeElIds = (win as any)[WINDOW_STRYPE_HTMLIDS_PROPNAME];
-            });
-        }
-        // The Strype IDs and CSS class names aren't directly used in the test
-        // but they are used in the support file, so we make them available.
-        cy.initialiseSupportStrypeGlobals();
-
-        // Wait for code initialisation
-        cy.wait(2000);
-    });
-});
+beforeEach(standardBeforeEach);
 
 const defaultProjectDocFullLine = getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"));
 

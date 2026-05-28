@@ -4,33 +4,12 @@ import {focusEditor} from "../support/expression-test-support";
 
 // imports the locale files we need for the locales used by this test
 import en from "@/localisation/en/en_main.json";
+import { standardBeforeEach, strypeElIds } from "./standard-setup";
 
 // Must clear all local storage between tests to reset the state,
 // and also retrieve the shared CSS and HTML elements IDs exposed
 // by Strype via the Window object of the app.
-export let scssVars: {[varName: string]: string};
-let strypeElIds: {[varName: string]: (...args: any[]) => string};
-beforeEach(() => {
-    cy.clearLocalStorage();
-    cy.visit("/",  {onBeforeLoad: (win) => {
-        win.localStorage.clear();
-        win.sessionStorage.clear();
-    }}).then(() => {
-        // Only need to get the global variables if we haven't done so
-        if(scssVars == undefined){
-            cy.window().then((win) => {
-                scssVars = (win as any)[WINDOW_STRYPE_SCSSVARS_PROPNAME];
-                strypeElIds = (win as any)[WINDOW_STRYPE_HTMLIDS_PROPNAME];
-            });
-        }
-        // The Strype IDs and CSS class names aren't directly used in the test
-        // but they are used in the support file, so we make them available.
-        cy.initialiseSupportStrypeGlobals();
-
-        // Wait for code initialisation
-        cy.wait(2000);
-    });
-});
+beforeEach(standardBeforeEach);
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
