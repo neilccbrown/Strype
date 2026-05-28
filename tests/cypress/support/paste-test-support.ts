@@ -1,5 +1,4 @@
 import path from "path";
-import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
 import {focusEditor} from "../support/expression-test-support";
 
 // imports the locale files we need for the locales used by this test

@@ -1,6 +1,5 @@
 
 
-import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
 import {cleanFromHTML} from "./test-support";
 import {Signature, SignatureArg} from "tigerpython-parser";
 import { scssVars, standardBeforeEach, strypeElIds } from "./standard-setup";

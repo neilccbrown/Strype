@@ -9,7 +9,6 @@ import de from "@/localisation/de/de_main.json";
 import {expect} from "chai";
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
-import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
 import { scssVars, standardBeforeEach, strypeElIds } from "../support/standard-setup";
 
 /**

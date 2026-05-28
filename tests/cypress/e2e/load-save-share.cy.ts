@@ -3,7 +3,7 @@
 
 require("cypress-terminal-report/src/installLogsCollector")();
 import { getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
-import { initialiseSupportStrypeGlobals, scssVars, standardBeforeEach, strypeElIds } from "../support/standard-setup";
+import { initialiseSupportStrypeGlobals, standardBeforeEach, strypeElIds } from "../support/standard-setup";
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 
@@ -13,7 +13,6 @@ import en from "@/localisation/en/en_main.json";
 import {deflateRaw} from "pako";
 import "../support/expression-test-support";
 import {checkDownloadedFileEquals} from "../support/load-save-support";
-import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
 
 beforeEach(standardBeforeEach);
 
