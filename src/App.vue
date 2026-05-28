@@ -128,7 +128,7 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore, settingsStore, getEditorTabId } from "@/store/store";
-import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState, LoadRequestReason } from "@/types/types";
+import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState, LoadRequestReason, StateAppObject } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
 import {getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getActiveContextMenu, actOnGraphicsImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
@@ -155,6 +155,7 @@ import { Base64 } from "js-base64";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { loadSessionState, saveSessionState } from "@/store/store-db-storage";
+import initialStates from "@/store/initial-states";
 
 let autoSaveTimerId = -1;
 let projectSaveFunctionsState : ProjectSaveFunction[] = [];
@@ -995,12 +996,13 @@ export default defineComponent({
         },
 
         loadLocalStorageProjectOnStart() {
+            // Just to make sure when reaching this path from a cancelled shared project load,
+            // we remove the query parameters in the URL (it won't change if we came in normal case so no problem)
+            window.history.replaceState({}, document.title, window.location.pathname);
+            
             // Check the local storage (WebStorage) to see if there is a saved project from the previous time the user entered the system
             // if browser supports localstorage
             this.checkLocalStorageHasProject().then((savedState) => {
-                // Just to make sure when reaching this path from a cancelled shared project load,
-                // we remove the query parameters in the URL (it won't change if we came in normal case so no problem)
-                window.history.replaceState({}, document.title, window.location.pathname);
                 this.appStore.setStateFromJSONStr( 
                     {
                         stateJSONStr: savedState,
@@ -1036,50 +1038,74 @@ export default defineComponent({
                         vueComponentsAPIHandler.menuComponentAPI?.saveTargetChoice(StrypeSyncTarget.none);
                     }
 
-
-                    // If the user does a hard reload (Ctrl/Cmd-Shift-R on most browsers) then according to
-                    // browser security policy, the service worker will not take control of the page because
-                    // it's trying to give a "fresh" version of the page.  But for us that means if the user
-                    // does a hard reload of the page, Pyodide communication won't work when they hit Run!
-                    // The solution is a bit horrible; in this case we need to perform an additional "soft"
-                    // reload of the page to get the service worker to take control again.  To avoid getting
-                    // stuck in a reload loop if there is a constant service worker failure (for some other
-                    // reason?) we use an item in the session storage to not do it repeatedly if we refreshed
-                    // recently:
-                    const RELOAD_KEY = "sw-reload-attempted";
-
-                    await navigator.serviceWorker.ready;
-
-                    // If the service worker hasn't taken control of us, controller will be null (but ready
-                    // just above will still succeed):
-                    if (!navigator.serviceWorker.controller) {
-                        console.error("No service worker controller; considering reloading");
-
-                        const reloadTime = sessionStorage.getItem(RELOAD_KEY);
-                        // Don't reload again if we did this soft-reload in the last 30 seconds:
-                        const reloadRecently = reloadTime && (Date.now() - parseInt(reloadTime)) < 30000;
-
-                        if (reloadRecently) {
-                            console.error("Service worker unavailable even after reload attempt");
-                        }
-                        else {
-                            sessionStorage.setItem(RELOAD_KEY, Date.now().toString());
-                            // Vue/Vite's dev mode intercepts the reload, so we have to circumvent that in dev mode:
-                            if (import.meta.env.DEV) {
-                                window.location.replace(window.location.href);
-                            }
-                            else {
-                                window.location.reload();
-                            }
-                            console.error("Reload did not work"); // this should NOT appear if reload worked
-                            // Block forever to avoid anything else happening — we're about to reload anyway
-                            await new Promise(() => {});
-                        }
-                    }
-                    sessionStorage.removeItem(RELOAD_KEY);
+                    this.reloadForServiceWorkerIfNeeded();
 
                 }, () => {});
-            }, () => {});
+            }, async () => {
+                // No local storage; load fresh:
+                let state : StateAppObject;
+                // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
+                state = initialStates["initialPythonState"];
+                // #v-else
+                state = initialStates["initialMicrobitState"];
+                // #v-endif
+
+                this.appStore.nextAvailableId = state.nextAvailableId;
+                this.appStore.frameObjects = cloneDeep(state.initialState);
+                
+                this.reloadForServiceWorkerIfNeeded();
+            });
+        },
+        
+        async reloadForServiceWorkerIfNeeded(retryInAMoment = true) {
+
+            // If the user does a hard reload (Ctrl/Cmd-Shift-R on most browsers) then according to
+            // browser security policy, the service worker will not take control of the page because
+            // it's trying to give a "fresh" version of the page.  But for us that means if the user
+            // does a hard reload of the page, Pyodide communication won't work when they hit Run!
+            // The solution is a bit horrible; in this case we need to perform an additional "soft"
+            // reload of the page to get the service worker to take control again.  To avoid getting
+            // stuck in a reload loop if there is a constant service worker failure (for some other
+            // reason?) we use an item in the session storage to not do it repeatedly if we refreshed
+            // recently:
+            const RELOAD_KEY = "sw-reload-attempted";
+
+            await navigator.serviceWorker.ready;
+
+            // If the service worker hasn't taken control of us, controller will be null (but ready
+            // just above will still succeed):
+            if (!navigator.serviceWorker.controller) {
+                // There is an awkward moment which can occur between the service worker being "ready" which we just awaited,
+                // and having taken control of the page.  To avoid an unnecessary reload we check again in 200ms:
+                if (retryInAMoment) {
+                    // Important to pass false so we don't end up in an infinite loop of re-checking:
+                    setTimeout(() => this.reloadForServiceWorkerIfNeeded(false), 200);
+                    return;
+                }
+                console.error("No service worker controller; considering reloading");
+
+                const reloadTime = sessionStorage.getItem(RELOAD_KEY);
+                // Don't reload again if we did this soft-reload in the last 30 seconds:
+                const reloadRecently = reloadTime && (Date.now() - parseInt(reloadTime)) < 30000;
+
+                if (reloadRecently) {
+                    console.error("Service worker unavailable even after reload attempt");
+                }
+                else {
+                    sessionStorage.setItem(RELOAD_KEY, Date.now().toString());
+                    // Vue/Vite's dev mode intercepts the reload, so we have to circumvent that in dev mode:
+                    if (import.meta.env.DEV) {
+                        window.location.replace(window.location.href);
+                    }
+                    else {
+                        window.location.reload();
+                    }
+                    console.error("Reload did not work"); // this should NOT appear if reload worked
+                    // Block forever to avoid anything else happening — we're about to reload anyway
+                    await new Promise(() => {});
+                }
+            }
+            sessionStorage.removeItem(RELOAD_KEY);
         },
 
         resyncToCloudDriveAtStartup(isLoadingRequested: boolean, dialogOK: VoidFunction){

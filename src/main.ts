@@ -36,8 +36,7 @@ const loadServiceWorker = async () => {
         console.error("No service worker support");
     }
 };
-// Because we do top-level awaits in store.ts, it's possible the page has loaded by the time
-// we reach this code:
+// Just in case the page has loaded by the time we reach this code:
 if (document.readyState === "complete") {
     void loadServiceWorker();
 }
