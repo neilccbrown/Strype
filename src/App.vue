@@ -160,6 +160,8 @@ import initialStates from "@/store/initial-states";
 let autoSaveTimerId = -1;
 let projectSaveFunctionsState : ProjectSaveFunction[] = [];
 
+const RELOAD_KEY = "sw-reload-attempted";
+
 //////////////////////
 //     Component    //
 //////////////////////
@@ -921,10 +923,14 @@ export default defineComponent({
             this.autoSaveStateToWebLocalStorage(SaveRequestReason.unloadPage);            
 
             // We clear the session storage as well. This is notably used to clear MSAL authentication data (when using OneDrive).
-            // With the exception of the Tab ID which we explicitly retain:
+            // With the exception of the Tab ID and optional reload key which we explicitly retain:
             const tabId = getEditorTabId();
+            const reloadValue = sessionStorage.getItem(RELOAD_KEY);
             sessionStorage.clear();
             sessionStorage.setItem(AutoSaveKeyNames.strypeEditorTabId, tabId);
+            if (reloadValue) {
+                sessionStorage.setItem(RELOAD_KEY, reloadValue);
+            }
         },
 
         setStrypeLocale() {
@@ -1068,7 +1074,7 @@ export default defineComponent({
             // stuck in a reload loop if there is a constant service worker failure (for some other
             // reason?) we use an item in the session storage to not do it repeatedly if we refreshed
             // recently:
-            const RELOAD_KEY = "sw-reload-attempted";
+            
 
             await navigator.serviceWorker.ready;
 
