@@ -2502,6 +2502,11 @@ export const useStore = defineStore("app", {
                                     else {
                                         // Check 3) as 2) is validated
                                         isVersionCorrect = (newStateObj["version"] == AppVersion);
+                                        // Specific case we don't care about: version 6 to 7 just dropped saving the checksum so it's fine to load
+                                        // 6 from 7:
+                                        if (newStateObj["version"] === "6" && AppVersion === "7") {
+                                            isVersionCorrect = true;
+                                        }
                                         if(Number.parseInt(newStateObj["version"]) > 1 && newStateObj["platform"] != AppPlatform) {
                                             isStateJSONStrValid = false;
                                             errorDetailMessage = i18n.global.t("errorMessage.stateWrongPlatform");
