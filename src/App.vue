@@ -1044,7 +1044,7 @@ export default defineComponent({
                         vueComponentsAPIHandler.menuComponentAPI?.saveTargetChoice(StrypeSyncTarget.none);
                     }
 
-                    this.reloadForServiceWorkerIfNeeded();
+                    void this.reloadForServiceWorkerIfNeeded();
 
                 }, () => {});
             }, async () => {
@@ -1059,11 +1059,11 @@ export default defineComponent({
                 this.appStore.nextAvailableId = state.nextAvailableId;
                 this.appStore.frameObjects = cloneDeep(state.initialState);
                 
-                this.reloadForServiceWorkerIfNeeded();
+                void this.reloadForServiceWorkerIfNeeded();
             });
         },
-        
-        async reloadForServiceWorkerIfNeeded(retryInAMoment = true) {
+
+        async reloadForServiceWorkerIfNeeded() {
 
             // If the user does a hard reload (Ctrl/Cmd-Shift-R on most browsers) then according to
             // browser security policy, the service worker will not take control of the page because
@@ -1073,19 +1073,32 @@ export default defineComponent({
             // reload of the page to get the service worker to take control again.  To avoid getting
             // stuck in a reload loop if there is a constant service worker failure (for some other
             // reason?) we use an item in the session storage to not do it repeatedly if we refreshed
-            // recently:
-            
+            // recently.
 
             await navigator.serviceWorker.ready;
 
-            // If the service worker hasn't taken control of us, controller will be null (but ready
-            // just above will still succeed):
+            // If the service worker hasn't taken control of us yet, controller will be null (but
+            // ready just above will still succeed).  There is an awkward race between "ready" and
+            // the worker actually calling clients.claim(), so we wait for a controllerchange event
+            // before concluding the worker is truly absent.  A hard-reload bypass will never fire
+            // that event, so the timeout acts as our give-up signal:
             if (!navigator.serviceWorker.controller) {
-                // There is an awkward moment which can occur between the service worker being "ready" which we just awaited,
-                // and having taken control of the page.  To avoid an unnecessary reload we check again in 200ms:
-                if (retryInAMoment) {
-                    // Important to pass false so we don't end up in an infinite loop of re-checking:
-                    setTimeout(() => this.reloadForServiceWorkerIfNeeded(false), 200);
+                const tookControl = await new Promise((resolve) => {
+                    const timeout = setTimeout(() => resolve(false), 500);
+
+                    navigator.serviceWorker.addEventListener(
+                        "controllerchange",
+                        () => {
+                            clearTimeout(timeout);
+                            resolve(true);
+                        },
+                        { once: true }
+                    );
+                });
+
+                if (tookControl) {
+                    // Resolved the race legitimately — no reload needed:
+                    sessionStorage.removeItem(RELOAD_KEY);
                     return;
                 }
                 console.error("No service worker controller; considering reloading");
@@ -1096,20 +1109,20 @@ export default defineComponent({
 
                 if (reloadRecently) {
                     console.error("Service worker unavailable even after reload attempt");
+                    return;
+                }
+
+                sessionStorage.setItem(RELOAD_KEY, Date.now().toString());
+                // Vue/Vite's dev mode intercepts the reload, so we have to circumvent that in dev mode:
+                if (import.meta.env.DEV) {
+                    window.location.replace(window.location.href);
                 }
                 else {
-                    sessionStorage.setItem(RELOAD_KEY, Date.now().toString());
-                    // Vue/Vite's dev mode intercepts the reload, so we have to circumvent that in dev mode:
-                    if (import.meta.env.DEV) {
-                        window.location.replace(window.location.href);
-                    }
-                    else {
-                        window.location.reload();
-                    }
-                    console.error("Reload did not work"); // this should NOT appear if reload worked
-                    // Block forever to avoid anything else happening — we're about to reload anyway
-                    await new Promise(() => {});
+                    window.location.reload();
                 }
+                console.error("Reload did not work"); // this should NOT appear if reload worked
+                // Block forever to avoid anything else happening — we're about to reload anyway
+                await new Promise(() => {});
             }
             sessionStorage.removeItem(RELOAD_KEY);
         },
