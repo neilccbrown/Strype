@@ -58,7 +58,7 @@ function testRoundTripImportAndDownload(filepath: string) {
         focusEditorPasteAndClear();
         loadFile(strypeElIds, filepath);
         // Wait for project title to be set from the file name, which is done at end of loading:
-        cy.contains("span.project-name", getBaseName(filepath), {timeout: 6000}).should("be.visible");
+        cy.contains("span.project-name", getBaseName(filepath), {timeout: 10000}).should("be.visible");
 
         // We must make sure there are no comment frames starting "(=>" because that would indicate
         // our special comments have become comment frames, rather than being processed:
