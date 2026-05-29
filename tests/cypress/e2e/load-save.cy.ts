@@ -44,6 +44,11 @@ function adjustIfMicrobit(filepath: string) {
     return filepath;
 }
 
+function getBaseName(filePath: string): string {
+    const file = filePath.split(/[\\/]/).pop() || "";
+    return file.replace(/\.[^/.]+$/, "");
+}
+
 function testRoundTripImportAndDownload(filepath: string) {
     filepath = adjustIfMicrobit(filepath);
 
@@ -52,6 +57,8 @@ function testRoundTripImportAndDownload(filepath: string) {
         // Delete existing:
         focusEditorPasteAndClear();
         loadFile(strypeElIds, filepath);
+        // Wait for project title to be set from the file name, which is done at end of loading:
+        cy.contains("span.project-name", getBaseName(filepath), {timeout: 6000}).should("be.visible");
 
         // We must make sure there are no comment frames starting "(=>" because that would indicate
         // our special comments have become comment frames, rather than being processed:
@@ -68,9 +75,7 @@ function testRoundTripImportAndDownload(filepath: string) {
             const matching = spans.filter((el) => el.textContent?.includes("___strype_"));
             expect(matching.length).to.eq(0);
         });
-
-        // We make sure our loading has completed before saving, so that the save mechanism is based on an loaded file...
-        cy.wait(1000);
+        
         checkDownloadedFileEquals(strypeElIds, spy.replaceAll("\r\n", "\n"), filepath.split("/").pop() ?? "My project.spy");
     });
 }

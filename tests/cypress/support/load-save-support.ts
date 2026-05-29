@@ -36,5 +36,4 @@ export function loadFile(strypeElIds: {[varName: string]: (...args: any[]) => st
     cy.get("#" + strypeElIds.getLoadFromFSStrypeButtonId()).click();
     // Must force because the <input> is hidden:
     cy.get("#" + strypeElIds.getImportFileInputId()).selectFile(filepath, {force: true});
-    cy.wait(4000);
 }
