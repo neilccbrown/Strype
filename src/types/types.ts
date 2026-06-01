@@ -82,7 +82,7 @@ export function isFieldBracketedSlot(field: FieldSlot): field is SlotsStructure 
     return (field as SlotsStructure).openingBracketValue !== undefined;
 }
 
-export function isFieldMediaSlot(field: FieldSlot): field is SlotsStructure {
+export function isFieldMediaSlot(field: FieldSlot): field is MediaSlot {
     return (field as MediaSlot).mediaType !== undefined;
 }
 
