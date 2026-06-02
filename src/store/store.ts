@@ -17,10 +17,19 @@ import { BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import $ from "jquery";
 import { fetchUserCountry, type UserCountry } from "@/helpers/analyticsCountry";
-import { Analytics_run_save_flush_ms } from "@/helpers/analyticsConstants";
+import { Analytics_batch_max_events, Analytics_queue_overflow_cap } from "@/helpers/analyticsConstants";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import { actOnTurtleImport } from "@/helpers/editor";
 // #v-endif
+
+export interface AnalyticsEvent {
+    eventId: string;
+    eventType: string;
+    recordTime: string;
+    payload: Record<string, unknown>;
+}
+
+export type AnalyticsFlushReason = "interval" | "size_cap" | "critical" | "unload";
 
 function getState(): StateAppObject {
     // If we have a state available in the local (browser's) storage, we strip off the frame contents
@@ -249,29 +258,17 @@ export const useStore = defineStore("app", {
 
             analyticsFrameCount: 0 as number,
 
-            analyticsFrameTypeCounts: {} as Record<string, number>,
-
-            analyticsUsedBuiltinDemoCounts: undefined as Record<string, number> | undefined,
-
-            analyticsUsedMediacompDemoCounts: undefined as Record<string, number> | undefined,
-
-            analyticsStorageLocationCounts: {} as Record<string, number>,
-
             analyticsSessionId: "" as string,
 
             analyticsPlatform: "editor" as "editor" | "microbit",
 
-            analyticsLastIngestAt: 0 as number,
-
             analyticsLocale: "" as string,
 
-            analyticsLocaleChangeCounts: {} as Record<string, number>,
+            analyticsEventQueue: [] as AnalyticsEvent[],
 
-            analyticsMenuActionCounts: {} as Record<string, number>,
+            analyticsPendingOutputChars: 0 as number,
 
-            analyticsInputCallCount: 0,
-
-            analyticsOutputCharCount: 0,
+            analyticsFlushInProgress: false as boolean,
         };
     },
 
@@ -794,7 +791,7 @@ export const useStore = defineStore("app", {
             // #v-endif
         },
 
-        buildAnalyticsSnapshot(reason: "run" | "save") {
+        computeFrameSnapshot() {
             const frameTypeCounts: Record<string, number> = {};
             const importFrameCounts = {import: 0, fromimport: 0, library: 0};
             const sectionFrameCounts = {imports: 0, defs: 0, main: 0};
@@ -837,59 +834,91 @@ export const useStore = defineStore("app", {
             const classdefCount = frameTypeCounts[AllFrameTypesIdentifier.classdef] ?? 0;
             const funcdefCount = frameTypeCounts[AllFrameTypesIdentifier.funcdef] ?? 0;
             return {
-                reason,
-                recordedAt: new Date().toISOString(),
-                platform: this.analyticsPlatform,
-                userId: this.analyticsUserId,
-                sessionId: this.analyticsSessionId,
-                countryCode: this.analyticsCountryCode,
-                countryName: this.analyticsCountryName,
-                activeSessionTimeMs: this.analyticsActiveSessionTime,
                 frameTypeCounts,
                 importFrameCounts,
                 sectionFrameCounts,
-                oopSignals: {
-                    classdefCount,
-                    funcdefCount,
-                    oopHint: classdefCount > 0 && funcdefCount > 0,
-                },
-                usedBuiltinDemoCounts: this.analyticsUsedBuiltinDemoCounts ?? {},
-                usedMediacompDemoCounts: this.analyticsUsedMediacompDemoCounts ?? {},
-                storageLocationCounts: this.analyticsStorageLocationCounts ?? {},
-                locale: this.analyticsLocale,
-                localeChangeCounts: this.analyticsLocaleChangeCounts,
-                menuActionCounts: this.analyticsMenuActionCounts,
-                inputCallCount: this.analyticsInputCallCount,
-                outputCharCount: this.analyticsOutputCharCount,
+                oopHint: classdefCount > 0 && funcdefCount > 0,
             };
         },
 
-        requestAnalyticsFlush(reason: "run" | "save") {
+        enqueueAnalyticsEvent(eventType: string, payload: Record<string, unknown> = {}) {
+            this.analyticsEventQueue.push({
+                eventId: crypto.randomUUID(),
+                eventType,
+                recordTime: new Date().toISOString(),
+                payload,
+            });
+            if (this.analyticsEventQueue.length >= Analytics_batch_max_events) {
+                this.flushAnalyticsQueue("size_cap");
+            }
+        },
+
+        flushAnalyticsQueue(reason: AnalyticsFlushReason) {
             const ingestUrl = import.meta.env.VITE_ANALYTICS_INGEST_URL?.trim();
             if (!ingestUrl) {
-                if (import.meta.env.DEV) {
-                    console.debug("[analytics] VITE_ANALYTICS_INGEST_URL not set; skip flush:", reason);
-                }
                 return;
             }
-            const now = Date.now();
-            if (now - this.analyticsLastIngestAt < Analytics_run_save_flush_ms) {
+            // Skip if another flush is already in flight, unless this is an unload
+            // (sendBeacon is fire-and-forget and ordering doesn't matter on unload).
+            if (this.analyticsFlushInProgress && reason !== "unload") {
                 return;
             }
-            this.analyticsLastIngestAt = now;
-            const payload = this.buildAnalyticsSnapshot(reason);
+
+            // Coalesce pending output chars into a single event right before sending.
+            if (this.analyticsPendingOutputChars > 0) {
+                this.analyticsEventQueue.push({
+                    eventId: crypto.randomUUID(),
+                    eventType: "output_chunk",
+                    recordTime: new Date().toISOString(),
+                    payload: {chars: this.analyticsPendingOutputChars},
+                });
+                this.analyticsPendingOutputChars = 0;
+            }
+
+            if (this.analyticsEventQueue.length === 0) {
+                return;
+            }
+
+            const batch = this.analyticsEventQueue;
+            this.analyticsEventQueue = [];
+
+            const body = JSON.stringify({
+                userId: this.analyticsUserId,
+                sessionId: this.analyticsSessionId,
+                platform: this.analyticsPlatform,
+                countryCode: this.analyticsCountryCode,
+                countryName: this.analyticsCountryName,
+                flushReason: reason,
+                events: batch,
+            });
+
+            if (reason === "unload" && typeof navigator !== "undefined" && navigator.sendBeacon) {
+                navigator.sendBeacon(ingestUrl, new Blob([body], {type: "text/plain"}));
+                return;
+            }
+
+            this.analyticsFlushInProgress = true;
             void fetch(ingestUrl, {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
-                body: JSON.stringify(payload),
+                body,
                 mode: "cors",
-            }).catch(() => {
-                if (import.meta.env.DEV) {
-                    console.debug("[analytics] ingest request failed:", reason);
+                keepalive: reason === "unload",
+            }).then((res) => {
+                if (!res.ok) {
+                    throw new Error(`ingest returned ${res.status}`);
                 }
+            }).catch(() => {
+                // Restore the batch at the front of the queue; drop oldest if we exceed the cap.
+                this.analyticsEventQueue = [...batch, ...this.analyticsEventQueue];
+                if (this.analyticsEventQueue.length > Analytics_queue_overflow_cap) {
+                    this.analyticsEventQueue = this.analyticsEventQueue.slice(-Analytics_queue_overflow_cap);
+                }
+            }).finally(() => {
+                this.analyticsFlushInProgress = false;
             });
         },
-        
+
         // ALL ANALYTICS CAPTURING WILL BE IMPLEMENTED FROM HERE ON OUT
         setAnalyticsCountry(country: UserCountry) {
             this.analyticsCountryCode = country.countryCode;
@@ -897,15 +926,15 @@ export const useStore = defineStore("app", {
         },
 
         trackMenuAction(actionId: string) {
-            this.analyticsMenuActionCounts[actionId] = (this.analyticsMenuActionCounts[actionId] ?? 0) + 1;
+            this.enqueueAnalyticsEvent("menu_action", {actionId});
         },
 
         trackInputCall() {
-            this.analyticsInputCallCount += 1;
+            this.enqueueAnalyticsEvent("input_call");
         },
 
         trackOutputChars(charCount: number) {
-            this.analyticsOutputCharCount += charCount;
+            this.analyticsPendingOutputChars += charCount;
         },
 
         initAnalyticsLocale(locale: string) {
@@ -918,8 +947,7 @@ export const useStore = defineStore("app", {
                 this.analyticsLocale = newLocale;
                 return;
             }
-            const key = `${previousLocale}->${newLocale}`;
-            this.analyticsLocaleChangeCounts[key] = (this.analyticsLocaleChangeCounts[key] ?? 0) + 1;
+            this.enqueueAnalyticsEvent("locale_change", {from: previousLocale, to: newLocale});
             this.analyticsLocale = newLocale;
         },
 
@@ -932,54 +960,26 @@ export const useStore = defineStore("app", {
             });
         },
 
-        captureFrameTypes() {
-            const frameTypeCounts: Record<string, number> = {};
-            Object.values(this.frameObjects)
-                .filter((frame) => frame.id > 0)
-                .forEach((frame) => {
-                    frameTypeCounts[frame.frameType.type] = (frameTypeCounts[frame.frameType.type] ?? 0) + 1;
-                });
-            this.analyticsFrameTypeCounts = frameTypeCounts;
-            console.log("Frame type counts:", frameTypeCounts);
-        },
-
         trackUsedDemo(demoName: string, source: "builtin" | "mediacomp-strype") {
             const cleanDemoName = demoName.trim();
             if (cleanDemoName.length === 0) {
                 return;
             }
-            if (source === "mediacomp-strype") {
-                if (this.analyticsUsedMediacompDemoCounts == undefined) {
-                    this.analyticsUsedMediacompDemoCounts = {};
-                }
-                this.analyticsUsedMediacompDemoCounts[cleanDemoName] = (this.analyticsUsedMediacompDemoCounts[cleanDemoName] ?? 0) + 1;
-                console.log("Used mediacomp demo counts:", this.analyticsUsedMediacompDemoCounts);
-            }
-            else {
-                if (this.analyticsUsedBuiltinDemoCounts == undefined) {
-                    this.analyticsUsedBuiltinDemoCounts = {};
-                }
-                this.analyticsUsedBuiltinDemoCounts[cleanDemoName] = (this.analyticsUsedBuiltinDemoCounts[cleanDemoName] ?? 0) + 1;
-                console.log("Used builtin demo counts:", this.analyticsUsedBuiltinDemoCounts);
-            }
+            this.enqueueAnalyticsEvent("demo_used", {demoName: cleanDemoName, source});
         },
 
         trackStorageLocation(target: StrypeSyncTarget) {
-            let locationType: "local" | "cloud" | null = null;
+            let storageLocation: "local" | "cloud" | null = null;
             if (target == StrypeSyncTarget.fs) {
-                locationType = "local";
+                storageLocation = "local";
             }
             else if (target == StrypeSyncTarget.gd || target == StrypeSyncTarget.od) {
-                locationType = "cloud";
+                storageLocation = "cloud";
             }
-            if (locationType == null) {
+            if (storageLocation == null) {
                 return;
             }
-            if (this.analyticsStorageLocationCounts == undefined) {
-                this.analyticsStorageLocationCounts = {};
-            }
-            this.analyticsStorageLocationCounts[locationType] = (this.analyticsStorageLocationCounts[locationType] ?? 0) + 1;
-            console.log("Storage location counts:", this.analyticsStorageLocationCounts);
+            this.enqueueAnalyticsEvent("save", {storageLocation});
         },
 
         updateKeyModifiers(e: KeyboardEvent | MouseEvent) {
@@ -2297,7 +2297,6 @@ export const useStore = defineStore("app", {
                     }
                 );
 
-            this.captureFrameTypes();
             return newFrame.id;
         },
 
@@ -2666,7 +2665,16 @@ export const useStore = defineStore("app", {
             stateCopy["previousDAPWrapper"] = {};
             stateCopy["currentMessage"] = MessageDefinitions.NoMessage;
             stateCopy["pythonExecRunningState"] = PythonExecRunningState.NotRunning;
-            
+
+            // Strip analytics fields — these are session-scoped and re-initialised by bootstrapApp on every load.
+            // Persisting them would cause sessionId, active-session timers, throttle timestamps, and per-session
+            // counters to leak across reloads.
+            Object.keys(stateCopy).forEach((key) => {
+                if (key.startsWith("analytics")) {
+                    delete stateCopy[key];
+                }
+            });
+
             //simplify the storage of frame types by their type names only
             Object.keys(stateCopy["frameObjects"] as EditorFrameObjects).forEach((frameId) => {
                 stateCopy["frameObjects"][frameId].frameType = stateCopy["frameObjects"][frameId].frameType.type;
