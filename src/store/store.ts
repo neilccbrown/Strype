@@ -893,7 +893,7 @@ export const useStore = defineStore("app", {
             });
 
             if (reason === "unload" && typeof navigator !== "undefined" && navigator.sendBeacon) {
-                navigator.sendBeacon(ingestUrl, new Blob([body], {type: "application/json"}));
+                navigator.sendBeacon(ingestUrl, new Blob([body], {type: "text/plain"}));
                 return;
             }
 
