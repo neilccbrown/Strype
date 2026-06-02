@@ -57,7 +57,6 @@ export enum CustomEventTypes {
     acItemClicked = "acItemClicked",
     openSharedFileDone = "openSharedFileDone",
     dropFramePositionsUpdated = "dropFramePositionsUpdated",
-    resetLSOnShareProjectLoadConfirmed = "resetLSOnShareProjectLoadConfirmed",
     requestedCloudDrivePickerPickedItem = "requestedCloudDrivePickerPickedItme",
     exposedCloudDrivePickerPickedItem = "exposedCloudDrivePickerPickedItem",
     requestedCloudDriveItemChildren = "requestedCloudDriveItemChildren",
