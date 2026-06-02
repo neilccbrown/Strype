@@ -27,10 +27,20 @@ export function startSessionTracking(store: ReturnType<typeof useStore>): void {
 
     setInterval(tick, Analytics_session_tick_ms);
 
-    window.addEventListener("beforeunload", () => {
+    let sessionEnded = false;
+    const emitSessionEnd = () => {
+        if (sessionEnded) {
+            return;
+        }
+        sessionEnded = true;
         tick();
         store.analyticsFrameCount = Object.values(store.frameObjects).filter((f) => f.id > 0).length;
-        console.log("Session active time:", Math.round(store.analyticsActiveSessionTime / 1000), "seconds");
-        console.log("Frame count:", store.analyticsFrameCount);
-    });
+        store.enqueueAnalyticsEvent("session_end", {
+            activeDurationMs: store.analyticsActiveSessionTime,
+            frameCount: store.analyticsFrameCount,
+        });
+    };
+
+    window.addEventListener("beforeunload", emitSessionEnd);
+    window.addEventListener("pagehide", emitSessionEnd);
 }
