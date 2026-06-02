@@ -10,9 +10,11 @@ import {getAppLangSelectId, getEditorID, getEditorMenuUID, getFrameBodyUID, getF
 import "@imengyu/vue3-context-menu/lib/vue3-context-menu.css";
 import ContextMenu from "@imengyu/vue3-context-menu";
 import { openIndexedDBConnection, tidyUpDatabaseState } from "@/store/store-db-storage";
-import { getEditorTabId } from "@/store/store";
+import { getEditorTabId, useStore } from "@/store/store";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import {getPEATabContentContainerDivId} from "./helpers/editor";
+import {MessageDefinitions} from "@/types/types";
+import {showIndexDBError} from "@/helpers/storeMethods";
 // #v-endif
 
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
@@ -102,8 +104,10 @@ app.directive("blur", {
 app.use(ContextMenu);
 
 // Important to do this tidy up before checking the state:
-const initialDBConnection = await openIndexedDBConnection();
-await tidyUpDatabaseState(getEditorTabId(), initialDBConnection);
+await openIndexedDBConnection()
+    .then((initialDBConnection) => tidyUpDatabaseState(getEditorTabId(), initialDBConnection, showIndexDBError))
+    .catch(showIndexDBError);
+
 
 // Mount the app
 app.mount("#app");

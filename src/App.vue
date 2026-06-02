@@ -139,7 +139,7 @@ import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
 // #v-endif
 import { mapStores } from "pinia";
-import { getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos, getFrameBelowCaretPosition, checkCodeErrors, calculateNextCollapseState } from "./helpers/storeMethods";
+import {getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos, getFrameBelowCaretPosition, checkCodeErrors, calculateNextCollapseState, showIndexDBError} from "./helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import {pasteMixedPython} from "@/helpers/pythonToFrames";
 import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
@@ -886,7 +886,8 @@ export default defineComponent({
                     const stateJSONStrWithCheckpoint = this.appStore.generateStateJSONStrWithCheckpoint(true);
                     if (reason !== SaveRequestReason.unloadPage && reason !== SaveRequestReason.reloadBrowser) {
                         // We have time, so we save normally (which is async):
-                        saveSessionState(getEditorTabId(), stateJSONStrWithCheckpoint);
+                        saveSessionState(getEditorTabId(), stateJSONStrWithCheckpoint)
+                            .catch(showIndexDBError);
                     }
                     else {
                         // Async might get killed during the closing process so we save to local storage as an alternative:
@@ -973,7 +974,10 @@ export default defineComponent({
         checkLocalStorageHasProject(): Promise<string> {
             // Check if a local storage project exists.
             // The promise returns the local storage content on fulfillment.
-            return loadSessionState(getEditorTabId()).then((value) => {
+            return loadSessionState(getEditorTabId()).catch((err) => {
+                showIndexDBError(err);
+                return null;
+            }).then((value) => {
                 if (value === null) {
                     throw new Error("Stored session state not found");
                 }

@@ -52,6 +52,9 @@ test.describe("Test basic operation", () => {
     test("Test initial fresh load", async ({page}) => {
         await loadAndWaitForEditor(page);
         await assertStartingProject(page);
+        const scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
+        // Check no error showing:
+        await expect(page.locator("." + scssVars.messageBannerContainerClassName)).not.toBeVisible();
     });
 
     test("Test reload on fresh page", async ({page}) => {
@@ -169,5 +172,27 @@ test.describe("Test migration from old system", () => {
         const page2 = await context.newPage();
         await loadAndWaitForEditor(page2);
         await assertStartingProject(page2);
+    });
+});
+
+test.describe("Test IndexedDB failure", () => {
+    test("Failure message when IndexedDB won't open", async ({page, browserName}) => {
+        if (browserName === "webkit") {
+            // Webkit doesn't allow stubbing out the indexedDB.open call, so can't test on that:
+            return;
+        }
+        await page.addInitScript(() => {
+            indexedDB.open = () => {
+                throw new DOMException(
+                    "Simulated failure",
+                    "InvalidStateError"
+                );
+            };
+        });
+        await loadAndWaitForEditor(page);
+        // Now should show error:
+        const scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
+        await expect(page.locator("." + scssVars.messageBannerContainerClassName)).toBeVisible();
+        await expect(page.locator("." + scssVars.messageBannerContainerClassName)).toContainText("Simulated failure");
     });
 });

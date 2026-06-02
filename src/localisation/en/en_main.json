@@ -47,7 +47,8 @@
     "invalidPythonParsePaste": "Invalid Python code pasted: {errorMsg}",
     "wrongPythonStructCopied": "cannot paste else/elif/except/finally and further content in one paste",
     "incompatiblePythonStrypeSection": "the Python code cannot be placed in the target Strype section",
-    "invalidMatchStmtContent": "this content is not allowed inside a 'match' statement"
+    "invalidMatchStmtContent": "this content is not allowed inside a 'match' statement",
+    "errorAccessingIndexedDB": "Error accessing browser storage (possibly due to private browsing).  State cannot be loaded and may be irretrievable on reload or close.  (Error: {errorMsg})"
   },
   "buttonLabel": {
     "undo": "Undo",
