@@ -40,6 +40,8 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     await skipPyodideLoading(page);
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
+    // Wait for content to load:
+    await expect(page.locator(".frame-div")).toHaveCount(2);
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
     //strypeElIds = await page.evaluate(() => (window as any)["StrypeHTMLELementsIDsGlobals"]);
     await page.evaluate(() => {

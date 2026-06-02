@@ -28,6 +28,10 @@ export enum AutoSaveKeyNames {
     settingsState = "StrypeSettingsState",
     pythonEditorState = "PythonStrypeSavedState",
     mbEditor = "MicrobitStrypeSavedState",
+    strypeEditorTabId = "StrypeEditorTabId",
+    strypePythonDBStore = "StrypeStorePython",
+    strypeMicrobitDBStore = "StrypeStoreMicrobit:",
+    strypeIndexDatabaseName = "StrypeStateDatabase",
 }
 
 // Custom JS events in Strype
@@ -53,7 +57,6 @@ export enum CustomEventTypes {
     acItemClicked = "acItemClicked",
     openSharedFileDone = "openSharedFileDone",
     dropFramePositionsUpdated = "dropFramePositionsUpdated",
-    resetLSOnShareProjectLoadConfirmed = "resetLSOnShareProjectLoadConfirmed",
     requestedCloudDrivePickerPickedItem = "requestedCloudDrivePickerPickedItme",
     exposedCloudDrivePickerPickedItem = "exposedCloudDrivePickerPickedItem",
     requestedCloudDriveItemChildren = "requestedCloudDriveItemChildren",

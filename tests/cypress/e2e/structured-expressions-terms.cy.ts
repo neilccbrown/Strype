@@ -1,3 +1,5 @@
+import { standardBeforeEach } from "../support/standard-setup";
+
 require("cypress-terminal-report/src/installLogsCollector")();
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
@@ -13,17 +15,7 @@ Cypress.on("uncaught:exception", (err, runnable) => {
 });
 
 // Must clear all local storage between tests to reset the state:
-beforeEach(() => {
-    cy.clearLocalStorage();
-    cy.visit("/",  {onBeforeLoad: (win) => {
-        win.localStorage.clear();
-        win.sessionStorage.clear();
-    }}).then(() => {
-        // The Strype IDs and CSS class names aren't directly used in the test
-        // but they are used in the support file, so we make them available.
-        cy.initialiseSupportStrypeGlobals();
-    });
-});
+beforeEach(standardBeforeEach);
 
 
 describe("Stride TestExpressionSlot.testStrings()", () => {

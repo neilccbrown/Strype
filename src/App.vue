@@ -106,12 +106,6 @@
             <EditImageDlg dlgId="editImageDlg" ref="editImageDlg" :imgToEdit="imgToEditInDialog" :showImgPreview="showImgPreview" />
             <EditSoundDlg dlgId="editSoundDlg" ref="editSoundDlg" :soundToEdit="soundToEditInDialog" />
             <canvas v-show="appStore.isDraggingFrame" :id="getCompanionDndCanvasId" class="companion-canvas-dnd"/>
-            <ModalDlg :dlgId="confirmResetLSOnShareProjectLoadDlgId" :okCustomTitle="$t('buttonLabel.continue')" :cancelCustomTitle="$t('buttonLabel.cancelLoadSharedProject')" >
-                <div>
-                    <span v-html="$t('appMessage.LSOnShareProjectLoad')"/>
-                    <br/>
-                </div>
-            </ModalDlg>
             <ModalDlg :dlgId="confirmNewProjectModalDlgId" :okCustomTitle="$t('buttonLabel.continue')">
                 <span style="white-space:pre-wrap" v-html="$t('appMessage.newProjectConfirmation')"></span>
             </ModalDlg>
@@ -133,8 +127,8 @@ import Menu from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
-import { useStore, settingsStore } from "@/store/store";
-import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState, LoadRequestReason } from "@/types/types";
+import { useStore, settingsStore, getEditorTabId } from "@/store/store";
+import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState, LoadRequestReason, StateAppObject } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
 import {getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getActiveContextMenu, actOnGraphicsImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
@@ -160,9 +154,13 @@ import {inflateRaw} from "pako";
 import { Base64 } from "js-base64";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { loadSessionState, saveSessionState } from "@/store/store-db-storage";
+import initialStates from "@/store/initial-states";
 
 let autoSaveTimerId = -1;
 let projectSaveFunctionsState : ProjectSaveFunction[] = [];
+
+const RELOAD_KEY = "sw-reload-attempted";
 
 //////////////////////
 //     Component    //
@@ -294,10 +292,6 @@ export default defineComponent({
 
         commandsContainerId(): string {
             return getCommandsRightPaneContainerId();
-        },
-
-        confirmResetLSOnShareProjectLoadDlgId(): string {
-            return "confirmResetLSOnShareProjectLoadDlg";
         },
 
         localStorageAutosaveEditorKey(): string {
@@ -707,111 +701,95 @@ export default defineComponent({
         // mode that does not ask for the target selection (which shows with "open" in the menu) and breaks links to the Cloud Drive
         // (it's only a retrieval of the code)
         if(shareProjectId && sharedProjectTarget && isSyncTargetCloudDrive(parseInt(sharedProjectTarget))) {
-            const loadCloudSharedProject = () => {
-                const cloudTarget = parseInt(sharedProjectTarget) as StrypeSyncTarget;
-                vueComponentsAPIHandler.menuComponentAPI?.setOpenSharedProjectTarget(cloudTarget);
-                vueComponentsAPIHandler.menuComponentAPI?.setOpenSharedProjectId(shareProjectId);
-                const afterAPILoaded = () => {
-                    document.getElementById(getLoadProjectLinkId())?.click();
-                };
-                const cloudDriveHandlerComponentAPI = vueComponentsAPIHandler.cloudDriveHandlerComponentAPI;
-                // For Google API, we wait a bit as it must have been loaded first.
-                const specifcDriveComponent = cloudDriveHandlerComponentAPI?.getSpecificCloudDriveComponent(cloudTarget);
-                if(cloudTarget == StrypeSyncTarget.gd){                    
-                    cloudDriveHandlerComponentAPI?.getCloudAPIStatusWhenLoadedOrFailed(StrypeSyncTarget.gd)
-                        ?.then((gapiState) =>{
-                            // Only open the project is the GAPI is loaded, and show a message of error if it hasn't.
-                            if(gapiState == CloudDriveAPIState.LOADED){
-                                afterAPILoaded();
-                            }
-                            else{
-                                this.finaliseOpenShareProject({key: "errorMessage.retrievedSharedGenericProject", param: this.$t("errorMessage.cloudAPIFailed",{apiname: specifcDriveComponent?.driveAPIName})});
-                            }
-                        });
-                }
-                else {
-                    // We don't use a client OneDrive API so we can request the file right away.
-                    afterAPILoaded();
-                }
+            const cloudTarget = parseInt(sharedProjectTarget) as StrypeSyncTarget;
+            vueComponentsAPIHandler.menuComponentAPI?.setOpenSharedProjectTarget(cloudTarget);
+            vueComponentsAPIHandler.menuComponentAPI?.setOpenSharedProjectId(shareProjectId);
+            const afterAPILoaded = () => {
+                document.getElementById(getLoadProjectLinkId())?.click();
             };
-
-            this.checkLocalStorageHasProject().then(() => {
-                // A project exists in the local storage, we ask the user if they want to keep it (and cancel the load of the shared project)
-                this.confirmResetLSOnShareProjectLoad().then((continueLoadingSharedProject) => (continueLoadingSharedProject) ? loadCloudSharedProject() : this.loadLocalStorageProjectOnStart());
-            },
-            // No project in the local storage, we can continue loading the shared project
-            () => loadCloudSharedProject());            
+            const cloudDriveHandlerComponentAPI = vueComponentsAPIHandler.cloudDriveHandlerComponentAPI;
+            // For Google API, we wait a bit as it must have been loaded first.
+            const specifcDriveComponent = cloudDriveHandlerComponentAPI?.getSpecificCloudDriveComponent(cloudTarget);
+            if(cloudTarget == StrypeSyncTarget.gd){                    
+                cloudDriveHandlerComponentAPI?.getCloudAPIStatusWhenLoadedOrFailed(StrypeSyncTarget.gd)
+                    ?.then((gapiState) =>{
+                        // Only open the project is the GAPI is loaded, and show a message of error if it hasn't.
+                        if(gapiState == CloudDriveAPIState.LOADED){
+                            afterAPILoaded();
+                        }
+                        else{
+                            this.finaliseOpenShareProject({key: "errorMessage.retrievedSharedGenericProject", param: this.$t("errorMessage.cloudAPIFailed",{apiname: specifcDriveComponent?.driveAPIName})});
+                        }
+                    });
+            }
+            else {
+                // We don't use a client OneDrive API so we can request the file right away.
+                afterAPILoaded();
+            }            
         }        
         // Generic opening
         else if(shareProjectId && shareProjectId.match(/^https?:\/\/.*$/g) != null){
             // The "fall out" case of a generic share: we don't care about the source target, it is only a URL to get to and retrive the Strype file.
             // We just do a small sanity check that it is a HTTP(S) link.
             // IMPORTANT: it is custom to the source to expose the file as such or not. So the generic share does NOT guarantee we can get the Strype file.
-            const loadPublicSharedProject = () => {
-                const googleDrivePublicURLPreamble = "https://drive.google.com/file/d/";
-                const isPublicShareFromGD = shareProjectId.startsWith(googleDrivePublicURLPreamble);
-                let alertMsgKey = "";
-                let alertParams = "";
-                if(isPublicShareFromGD){
-                    // Google Drive will not expose the file directly, so we can *try* to extract the file ID and then get the data with the API (without authentication).
-                    // Extract the file ID and attempt a retrieving of the file with the Google Drive API (it waits a bit for the API to be loaded)
-                    const sharedFileID = shareProjectId.substring(googleDrivePublicURLPreamble.length).match(/^([^/]+)\/.*$/)?.[1];
-                    vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getPublicSharedProjectContent(StrypeSyncTarget.gd, sharedFileID??"");
-                }
-                else{
-                    // Show a progress indication on the editor
-                    vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: true, message: this.$t("appMessage.editorFileUpload")});
-                    axios.get<string>(shareProjectId)
-                        .then((resp) => {
-                            if(resp.status == 200){
-                                // Find the filename from the URL:
-                                const cleaned = shareProjectId.replace(/\/+$/, "");
-                                const lastSlash = cleaned.lastIndexOf("/");
-                                const filename = lastSlash !== -1 ? cleaned.substring(lastSlash + 1) : cleaned;
-                            
-                                return (resp.data.startsWith("{") ?
-                                    this.appStore.setStateFromJSONStr({
-                                        stateJSONStr: resp.data,
-                                        showMessage: false,
-                                    }) :
-                                    this.setStateFromPythonFile(resp.data, filename, 0, false, "import")
-                                ).then(() => {
-                                    // A generic project is saved in memory, so we must make sure there is no target destination saved.
-                                    vueComponentsAPIHandler.menuComponentAPI?.saveTargetChoice(StrypeSyncTarget.none);
+            
+            const googleDrivePublicURLPreamble = "https://drive.google.com/file/d/";
+            const isPublicShareFromGD = shareProjectId.startsWith(googleDrivePublicURLPreamble);
+            let alertMsgKey = "";
+            let alertParams = "";
+            if(isPublicShareFromGD){
+                // Google Drive will not expose the file directly, so we can *try* to extract the file ID and then get the data with the API (without authentication).
+                // Extract the file ID and attempt a retrieving of the file with the Google Drive API (it waits a bit for the API to be loaded)
+                const sharedFileID = shareProjectId.substring(googleDrivePublicURLPreamble.length).match(/^([^/]+)\/.*$/)?.[1];
+                vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getPublicSharedProjectContent(StrypeSyncTarget.gd, sharedFileID??"");
+            }
+            else{
+                // Show a progress indication on the editor
+                vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: true, message: this.$t("appMessage.editorFileUpload")});
+                axios.get<string>(shareProjectId)
+                    .then((resp) => {
+                        if(resp.status == 200){
+                            // Find the filename from the URL:
+                            const cleaned = shareProjectId.replace(/\/+$/, "");
+                            const lastSlash = cleaned.lastIndexOf("/");
+                            const filename = lastSlash !== -1 ? cleaned.substring(lastSlash + 1) : cleaned;
+                        
+                            return (resp.data.startsWith("{") ?
+                                this.appStore.setStateFromJSONStr({
+                                    stateJSONStr: resp.data,
+                                    showMessage: false,
+                                }) :
+                                this.setStateFromPythonFile(resp.data, filename, 0, false, "import")
+                            ).then(() => {
+                                // A generic project is saved in memory, so we must make sure there is no target destination saved.
+                                vueComponentsAPIHandler.menuComponentAPI?.saveTargetChoice(StrypeSyncTarget.none);
 
-                                    // And we make sure we show the project is unmodified
-                                    this.appStore.isEditorContentModified = false;
-                                },
-                                (reason) => {
-                                    alertMsgKey = "errorMessage.retrievedSharedGenericProject";
-                                    alertParams = reason;
-                                });
-                            }
-                            else{
+                                // And we make sure we show the project is unmodified
+                                this.appStore.isEditorContentModified = false;
+                            },
+                            (reason) => {
                                 alertMsgKey = "errorMessage.retrievedSharedGenericProject";
-                                alertParams = resp.status.toString();
-                            }
-                        })
-                        .catch((error) => {
+                                alertParams = reason;
+                            });
+                        }
+                        else{
                             alertMsgKey = "errorMessage.retrievedSharedGenericProject";
-                            alertParams = `${error?.message??error.toString()}<br/><br/><b>${this.$t("appMessage.publicSharedProjectUserDownloadAttempt")}`;
-                            setTimeout(() => {
-                                window.open(shareProjectId, "_blank");
-                            }, 3000);                            
-                        })
-                        .finally(() => {
-                            // Make sure the progress indication on the editor is removed.
-                            vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: false});
-                            this.finaliseOpenShareProject((alertMsgKey) ? {key: alertMsgKey, param: alertParams} : undefined);
-                        });
-                }
-            };
-            this.checkLocalStorageHasProject().then(() => {
-                // A project exists in the local storage, we ask the user if they want to keep it (and cancel the load of the shared project)
-                this.confirmResetLSOnShareProjectLoad().then((continueLoadingSharedProject) => (continueLoadingSharedProject) ? loadPublicSharedProject() : this.loadLocalStorageProjectOnStart());
-            },
-            // No project in the local storage, we can continue loading the shared project
-            () => loadPublicSharedProject());
+                            alertParams = resp.status.toString();
+                        }
+                    })
+                    .catch((error) => {
+                        alertMsgKey = "errorMessage.retrievedSharedGenericProject";
+                        alertParams = `${error?.message??error.toString()}<br/><br/><b>${this.$t("appMessage.publicSharedProjectUserDownloadAttempt")}`;
+                        setTimeout(() => {
+                            window.open(shareProjectId, "_blank");
+                        }, 3000);                            
+                    })
+                    .finally(() => {
+                        // Make sure the progress indication on the editor is removed.
+                        vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: false});
+                        this.finaliseOpenShareProject((alertMsgKey) ? {key: alertMsgKey, param: alertParams} : undefined);
+                    });
+            }
         }
         // Load source code encoded in URL:
         else if(shareProjectId && shareProjectId.match(/^spy:.*$/) != null) {
@@ -825,18 +803,9 @@ export default defineComponent({
                 const binary = Base64.toUint8Array(param);
                 const spyContent = inflateRaw(binary, { to: "string" });
 
-                const loadSpy = () => this.setStateFromPythonFile(spyContent, this.$t("defaultProjName"), 0, false, "import");
-                
-                this.checkLocalStorageHasProject().then(() => {
-                    // A project exists in the local storage, we ask the user if they want to keep it (and cancel the load of the shared project)
-                    this.confirmResetLSOnShareProjectLoad().then((continueLoadingSharedProject) => (continueLoadingSharedProject) ? loadSpy() : this.loadLocalStorageProjectOnStart());
-                },
-                // No project in the local storage, we can continue loading the shared project
-                loadSpy)
-                    .finally(() => {
-                        // In any case, we want to clear the query parameters of the URL.
-                        this.finaliseOpenShareProject();
-                    });
+                this.setStateFromPythonFile(spyContent, this.$t("defaultProjName"), 0, false, "import");
+                // We want to clear the query parameters of the URL:
+                this.finaliseOpenShareProject();
             }
         }
         else{
@@ -915,7 +884,15 @@ export default defineComponent({
                 }
                 else{
                     const stateJSONStrWithCheckpoint = this.appStore.generateStateJSONStrWithCheckpoint(true);
-                    localStorage.setItem(this.localStorageAutosaveEditorKey, stateJSONStrWithCheckpoint);
+                    if (reason !== SaveRequestReason.unloadPage && reason !== SaveRequestReason.reloadBrowser) {
+                        // We have time, so we save normally (which is async):
+                        saveSessionState(getEditorTabId(), stateJSONStrWithCheckpoint);
+                    }
+                    else {
+                        // Async might get killed during the closing process so we save to local storage as an alternative:
+                        localStorage.setItem(this.localStorageAutosaveEditorKey + ":" + getEditorTabId(), stateJSONStrWithCheckpoint);
+                    }
+                    
                     // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
                     if(reason==SaveRequestReason.loadProject && projectSaveFunctionsState.length == 1){
                         eventBus.emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
@@ -946,7 +923,14 @@ export default defineComponent({
             this.autoSaveStateToWebLocalStorage(SaveRequestReason.unloadPage);            
 
             // We clear the session storage as well. This is notably used to clear MSAL authentication data (when using OneDrive).
+            // With the exception of the Tab ID and optional reload key which we explicitly retain:
+            const tabId = getEditorTabId();
+            const reloadValue = sessionStorage.getItem(RELOAD_KEY);
             sessionStorage.clear();
+            sessionStorage.setItem(AutoSaveKeyNames.strypeEditorTabId, tabId);
+            if (reloadValue) {
+                sessionStorage.setItem(RELOAD_KEY, reloadValue);
+            }
         },
 
         setStrypeLocale() {
@@ -989,44 +973,22 @@ export default defineComponent({
         checkLocalStorageHasProject(): Promise<string> {
             // Check if a local storage project exists.
             // The promise returns the local storage content on fulfillment.
-            return new Promise<string>((resolve, reject) => {
-                if (typeof(Storage) !== "undefined") {
-                    const savedState = localStorage.getItem(this.localStorageAutosaveEditorKey);
-                    if(savedState != null) {
-                        resolve(savedState);
-                    }  
-                    else{
-                        reject("No saved Strype project in local storage.");
-                    }
+            return loadSessionState(getEditorTabId()).then((value) => {
+                if (value === null) {
+                    throw new Error("Stored session state not found");
                 }
-                else{
-                    reject("Browser's local storage not available.");
-                }
-            });
-        },
-
-        confirmResetLSOnShareProjectLoad(): Promise<boolean> {
-            // A method to handle a confirmation from the user when a local storage project exists in the browser and a shared project is requested
-            return new Promise<boolean>((resolve) => {
-                const handleConfirmationFromDlg = (event: Event) => {
-                    document.removeEventListener(CustomEventTypes.resetLSOnShareProjectLoadConfirmed, handleConfirmationFromDlg);
-                    resolve((event as CustomEvent).detail as boolean);
-                };
-                document.addEventListener(CustomEventTypes.resetLSOnShareProjectLoadConfirmed, handleConfirmationFromDlg);
-                eventBus.emit(CustomEventTypes.showStrypeModal, this.confirmResetLSOnShareProjectLoadDlgId);                
+                return value;
             });
         },
 
         onHideModalDlg(event: BvTriggerableEvent) {
             const dlgId = event.componentId;
-            if(dlgId == this.confirmResetLSOnShareProjectLoadDlgId) {
-                document.dispatchEvent(new CustomEvent(CustomEventTypes.resetLSOnShareProjectLoadConfirmed, {detail: (event.trigger == "ok")}));
-            }
-            else if(dlgId == this.confirmNewProjectModalDlgId){
+            if(dlgId == this.confirmNewProjectModalDlgId){
                 if(event.trigger == "ok"){
-                    // If the user confirmed: delete the WebStorage key that refers to the current autosaved project
+                    // If the user confirmed: delete the WebStorage key that refers to the current tab, so that when they reload
+                    // it will be a fresh tab (but the old state is actually retained if they want to get back to it)
                     if (typeof(Storage) !== "undefined") {
-                        localStorage.removeItem(this.localStorageAutosaveEditorKey);
+                        sessionStorage.removeItem(AutoSaveKeyNames.strypeEditorTabId);
                     }
                     // ... and reload the page to reload the Strype default project (removing potential query parameters)
                     window.location.href = window.location.pathname;
@@ -1040,12 +1002,13 @@ export default defineComponent({
         },
 
         loadLocalStorageProjectOnStart() {
+            // Just to make sure when reaching this path from a cancelled shared project load,
+            // we remove the query parameters in the URL (it won't change if we came in normal case so no problem)
+            window.history.replaceState({}, document.title, window.location.pathname);
+            
             // Check the local storage (WebStorage) to see if there is a saved project from the previous time the user entered the system
             // if browser supports localstorage
             this.checkLocalStorageHasProject().then((savedState) => {
-                // Just to make sure when reaching this path from a cancelled shared project load,
-                // we remove the query parameters in the URL (it won't change if we came in normal case so no problem)
-                window.history.replaceState({}, document.title, window.location.pathname);
                 this.appStore.setStateFromJSONStr( 
                     {
                         stateJSONStr: savedState,
@@ -1081,50 +1044,87 @@ export default defineComponent({
                         vueComponentsAPIHandler.menuComponentAPI?.saveTargetChoice(StrypeSyncTarget.none);
                     }
 
-
-                    // If the user does a hard reload (Ctrl/Cmd-Shift-R on most browsers) then according to
-                    // browser security policy, the service worker will not take control of the page because
-                    // it's trying to give a "fresh" version of the page.  But for us that means if the user
-                    // does a hard reload of the page, Pyodide communication won't work when they hit Run!
-                    // The solution is a bit horrible; in this case we need to perform an additional "soft"
-                    // reload of the page to get the service worker to take control again.  To avoid getting
-                    // stuck in a reload loop if there is a constant service worker failure (for some other
-                    // reason?) we use an item in the session storage to not do it repeatedly if we refreshed
-                    // recently:
-                    const RELOAD_KEY = "sw-reload-attempted";
-
-                    await navigator.serviceWorker.ready;
-
-                    // If the service worker hasn't taken control of us, controller will be null (but ready
-                    // just above will still succeed):
-                    if (!navigator.serviceWorker.controller) {
-                        console.error("No service worker controller; considering reloading");
-
-                        const reloadTime = sessionStorage.getItem(RELOAD_KEY);
-                        // Don't reload again if we did this soft-reload in the last 30 seconds:
-                        const reloadRecently = reloadTime && (Date.now() - parseInt(reloadTime)) < 30000;
-
-                        if (reloadRecently) {
-                            console.error("Service worker unavailable even after reload attempt");
-                        }
-                        else {
-                            sessionStorage.setItem(RELOAD_KEY, Date.now().toString());
-                            // Vue/Vite's dev mode intercepts the reload, so we have to circumvent that in dev mode:
-                            if (import.meta.env.DEV) {
-                                window.location.replace(window.location.href);
-                            }
-                            else {
-                                window.location.reload();
-                            }
-                            console.error("Reload did not work"); // this should NOT appear if reload worked
-                            // Block forever to avoid anything else happening — we're about to reload anyway
-                            await new Promise(() => {});
-                        }
-                    }
-                    sessionStorage.removeItem(RELOAD_KEY);
+                    void this.reloadForServiceWorkerIfNeeded();
 
                 }, () => {});
-            }, () => {});
+            }, async () => {
+                // No local storage; load fresh:
+                let state : StateAppObject;
+                // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
+                state = initialStates["initialPythonState"];
+                // #v-else
+                state = initialStates["initialMicrobitState"];
+                // #v-endif
+
+                this.appStore.nextAvailableId = state.nextAvailableId;
+                this.appStore.frameObjects = cloneDeep(state.initialState);
+                
+                void this.reloadForServiceWorkerIfNeeded();
+            });
+        },
+
+        async reloadForServiceWorkerIfNeeded() {
+
+            // If the user does a hard reload (Ctrl/Cmd-Shift-R on most browsers) then according to
+            // browser security policy, the service worker will not take control of the page because
+            // it's trying to give a "fresh" version of the page.  But for us that means if the user
+            // does a hard reload of the page, Pyodide communication won't work when they hit Run!
+            // The solution is a bit horrible; in this case we need to perform an additional "soft"
+            // reload of the page to get the service worker to take control again.  To avoid getting
+            // stuck in a reload loop if there is a constant service worker failure (for some other
+            // reason?) we use an item in the session storage to not do it repeatedly if we refreshed
+            // recently.
+
+            await navigator.serviceWorker.ready;
+
+            // If the service worker hasn't taken control of us yet, controller will be null (but
+            // ready just above will still succeed).  There is an awkward race between "ready" and
+            // the worker actually calling clients.claim(), so we wait for a controllerchange event
+            // before concluding the worker is truly absent.  A hard-reload bypass will never fire
+            // that event, so the timeout acts as our give-up signal:
+            if (!navigator.serviceWorker.controller) {
+                const tookControl = await new Promise((resolve) => {
+                    const timeout = setTimeout(() => resolve(false), 500);
+
+                    navigator.serviceWorker.addEventListener(
+                        "controllerchange",
+                        () => {
+                            clearTimeout(timeout);
+                            resolve(true);
+                        },
+                        { once: true }
+                    );
+                });
+
+                if (tookControl) {
+                    // Resolved the race legitimately — no reload needed:
+                    sessionStorage.removeItem(RELOAD_KEY);
+                    return;
+                }
+                console.error("No service worker controller; considering reloading");
+
+                const reloadTime = sessionStorage.getItem(RELOAD_KEY);
+                // Don't reload again if we did this soft-reload in the last 30 seconds:
+                const reloadRecently = reloadTime && (Date.now() - parseInt(reloadTime)) < 30000;
+
+                if (reloadRecently) {
+                    console.error("Service worker unavailable even after reload attempt");
+                    return;
+                }
+
+                sessionStorage.setItem(RELOAD_KEY, Date.now().toString());
+                // Vue/Vite's dev mode intercepts the reload, so we have to circumvent that in dev mode:
+                if (import.meta.env.DEV) {
+                    window.location.replace(window.location.href);
+                }
+                else {
+                    window.location.reload();
+                }
+                console.error("Reload did not work"); // this should NOT appear if reload worked
+                // Block forever to avoid anything else happening — we're about to reload anyway
+                await new Promise(() => {});
+            }
+            sessionStorage.removeItem(RELOAD_KEY);
         },
 
         resyncToCloudDriveAtStartup(isLoadingRequested: boolean, dialogOK: VoidFunction){

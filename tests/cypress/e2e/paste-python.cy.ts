@@ -6,8 +6,9 @@ failOnConsoleError();
 import path from "path";
 import * as os from "os";
 import "../support/paste-test-support";
-import { focusEditorAndClear, checkDownloadedCodeEquals, testRoundTripPasteAndDownload, testRoundTripImportAndDownload, scssVars } from "../support/paste-test-support";
+import { focusEditorAndClear, checkDownloadedCodeEquals, testRoundTripPasteAndDownload, testRoundTripImportAndDownload } from "../support/paste-test-support";
 import { getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
+import { scssVars } from "../support/standard-setup";
 
 const defaultProjectDocFullLine = getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"));
 

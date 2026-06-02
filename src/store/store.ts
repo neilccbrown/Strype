@@ -20,35 +20,19 @@ import $ from "jquery";
 import { actOnGraphicsImport } from "@/helpers/editor";
 // #v-endif
 
-function getState(): StateAppObject {
-    // If we have a state available in the local (browser's) storage, we strip off the frame contents
-    // from the default state, for a smoother visual rendering. Note that App.vue is responsible for
-    // loading the local state later. Here, we only check something exists in the local storage.
-    let isExistingStateLocated = false;
-    let returnedState;
-    if(typeof(Storage) !== "undefined") {
-        let storageString = AutoSaveKeyNames.pythonEditorState;
-        // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
-        storageString = AutoSaveKeyNames.mbEditor;
-        // #v-endif
-        const savedState = localStorage.getItem(storageString);
-        if(savedState) {
-            isExistingStateLocated = true;
-            returnedState = initialStates["initialEmptyState"];        
-        }
+export function getEditorTabId() : string {
+   
+    let tabId = sessionStorage.getItem(AutoSaveKeyNames.strypeEditorTabId);
+
+    if (!tabId) {
+        // None found, generate one and save it:
+        tabId = crypto.randomUUID();
+        sessionStorage.setItem(AutoSaveKeyNames.strypeEditorTabId, tabId);
     }
-    
-    if(!isExistingStateLocated) {
-        // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
-        returnedState = initialStates["initialPythonState"];
-        // #v-else
-        returnedState = initialStates["initialMicrobitState"];
-        // #v-endif
-    }
-    return (returnedState as StateAppObject);
+    return tabId;
 }
 
-const initialState = getState();
+const initialState = initialStates["initialEmptyState"] as StateAppObject;
 
 // These are deliberately held outside the store because:
 // (a) we used to blank them on page load anyway
@@ -2518,6 +2502,11 @@ export const useStore = defineStore("app", {
                                     else {
                                         // Check 3) as 2) is validated
                                         isVersionCorrect = (newStateObj["version"] == AppVersion);
+                                        // Specific case we don't care about: version 6 to 7 just dropped saving the checksum so it's fine to load
+                                        // 6 from 7:
+                                        if (newStateObj["version"] === "6" && AppVersion === "7") {
+                                            isVersionCorrect = true;
+                                        }
                                         if(Number.parseInt(newStateObj["version"]) > 1 && newStateObj["platform"] != AppPlatform) {
                                             isStateJSONStrValid = false;
                                             errorDetailMessage = i18n.global.t("errorMessage.stateWrongPlatform");

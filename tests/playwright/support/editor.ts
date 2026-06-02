@@ -168,6 +168,7 @@ export function getDefaultStrypeProjectDocumentationFullLine(): string {
 }
 
 export async function enterCode(page: Page, codeSections : string[]) : Promise<void> {
+    await expect(page.locator(".frame-div")).toHaveCount(2);
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Backspace");
