@@ -6,8 +6,8 @@ import { useStore } from "@/store/store";
 import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CollapsedState, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, FrozenState, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 import {AppSPYFullPrefix} from "@/helpers/appContext";
-// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
-import { actOnTurtleImport } from "@/helpers/editor";
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
+import { actOnGraphicsImport } from "@/helpers/editor";
 // #v-endif
 import {STRYPE_DUMMY_FIELD, STRYPE_EXPRESSION_BLANK, STRYPE_INVALID_OP, STRYPE_INVALID_OPS_WRAPPER, STRYPE_INVALID_SLOT} from "@/helpers/pythonToFrames";
 
@@ -580,9 +580,9 @@ export default class Parser {
             this.ignoreSpecificFrameId = ignoreSpecificFrameId;
         }
 
-        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+        // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
         // We look if Turtle has been imported to notify the editor UI
-        actOnTurtleImport();
+        actOnGraphicsImport();
         // #v-endif
 
         let parentInsideAClass = false;
@@ -624,7 +624,10 @@ export default class Parser {
         }
 
         try {
-            return TPyParser.findAllErrors(code);
+            const tp_errors = TPyParser.findAllErrors(code);
+            // We already handle the empty match statement error ourselves as a precompiled error.
+            // So, we should discard this one from TigerPython as it is conflictual with our mechanism and can even be set on the wrong frame.
+            return tp_errors.filter((errorInfo) => errorInfo.code != "CASE_REQUIRED");
         }
         catch {
             return [{line:1, offset: 0, msg: "Unknown TigerPython error", code: ""}];
@@ -813,7 +816,7 @@ export default class Parser {
         let nestingLevel = 0;
         let startOfTopLevelParamName = true;
         let inTopLevelParamValue = false;
-        generateFlatSlotBases({allowedSlotContent: allowed }, slotStructures, "", (flatSlot: FlatSlotBase, besidesOp: boolean, opAfter: undefined | string) => {
+        generateFlatSlotBases({allowedSlotContent: allowed }, slotStructures, "", (flatSlot: FlatSlotBase, besidesOp: boolean, opBefore: undefined | string, opAfter: undefined | string) => {
             if(isSlotQuoteType(flatSlot.type) || isSlotBracketType(flatSlot.type) || flatSlot.type === SlotType.media){
                 // a quote or a bracket is a 1 character token, shown in the code
                 // but it's not editable so we don't include it in the slot positions
@@ -856,7 +859,11 @@ export default class Parser {
                 // we trim the field's code when we are not in a string literal
                 let flatSlotCode = (isSlotStringLiteralType(flatSlot.type) ? flatSlot.code : flatSlot.code.trim());
                 if (flatSlot.type != SlotType.string) {
-                    if (besidesOp && this.saveAsSPY && flatSlotCode === "" && allowed != AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
+                    // Blanks are allowed before colons in slices:
+                    if (opBefore === ":" || opAfter === ":") {
+                        // Don't substitute the special blank marker.
+                    }
+                    else if (besidesOp && this.saveAsSPY && flatSlotCode === "" && allowed != AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
                         flatSlotCode = STRYPE_EXPRESSION_BLANK;
                     }
                     if (this.saveAsSPY && flatSlotCode != "") {

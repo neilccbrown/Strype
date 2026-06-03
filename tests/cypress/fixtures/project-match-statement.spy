@@ -1,0 +1,55 @@
+#(=> Strype:1:std
+'''This is a test fixture project'''
+#(=> Section:Imports
+#(=> Section:Definitions
+def handle_value (value ) :
+    match value  :
+        # 1. Literal patterns
+        case 0  :
+            return "Got zero" 
+        case 1|2|3  :
+            return "Got a small number (1–3)" 
+        
+        # 7. Guard conditions
+        case int(n) if n<0  :
+            return "Negative integer" 
+        case int(n) if n>100  :
+            return "Large integer" 
+        
+        # 6. OR-patterns with structure
+        case ("yes"|"y"|"ok")  :
+            return "Affirmative" 
+        
+        # 2. Type patterns
+        case str()  :
+            return f"Got a string: {value}" 
+        case int()  :
+            return f"Got an integer: {value}" 
+        
+        # 3. Sequence patterns
+        case [x,y]  :
+            return f"Got a 2‑item list: x={x}, y={y}" 
+        #case [x, y, *rest]:
+        #    return f"List with at least 2 items: x={x}, y={y}, rest={rest}"
+        
+        # 4. Mapping patterns
+        case {"type":"point","x":x,"y":y}  :
+            return f"Got a point: ({x}, {y})" 
+        #case {"type": "user", "name": name, **extra}:
+        #    return f"User {name} with extra fields {extra}"
+        
+        # 5. Class patterns
+        case complex(real=r,imag=i)  :
+            return f"Complex number: real={r}, imag={i}" 
+        
+        # 8. Default catch-all
+        case _  :
+            return f"Something else: {value}" 
+#(=> Section:Main
+# --- Demo ---
+tests  = [0,2,"hello",42,[10,20],[1,2,3,4],{"type":"point","x":5,"y":7},{"type":"user","name":"Alice","age":30},complex(3,4),"yes",-5,999,{"unexpected":True}] 
+
+for t  in tests  :
+    print(f"{t!r} → {handle_value(t)}") 
+    print("\n") 
+#(=> Section:End

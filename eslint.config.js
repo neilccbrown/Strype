@@ -4,6 +4,12 @@ import ts from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import vueParser from "vue-eslint-parser";
 
+import { fileURLToPath } from "url";
+import path from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 export default [
     {
         ignores: [
@@ -14,9 +20,11 @@ export default [
             "**/*.min.js",
             "assets/**",
             "public/**/*.js",
+            "public/**/*.ts",
             "temp-scripts/**",
             "scripts/compiled/**",
             "docs-sphinx/**",
+            "tests/playwright/html-report/**",
         ],
     },
     {
@@ -75,22 +83,43 @@ export default [
         },
     },
 
+    // No exports from workers:
     {
-        files: [
-            "**/tests/unit/**/*.spec.{j,t}s?(x)",
-        ],
-
-        languageOptions: {
-            globals: {
-                mocha: true,
-            },            
+        files: ["src/workers/python-execution.ts", "src/workers/service-worker.ts"],
+        rules: {
+            "no-restricted-syntax": [
+                "error",
+                {
+                    selector: "ExportNamedDeclaration",
+                    message: "Do not export from worker files.",
+                },
+                {
+                    selector: "ExportDefaultDeclaration",
+                    message: "Do not export from worker files.",
+                },
+                {
+                    selector: "ExportAllDeclaration",
+                    message: "Do not export from worker files.",
+                },
+            ],
         },
     },
-
+    
+    // No missing await in Playwright tests:
     {
-        files: ["*.ts", "*.mts", "*.cts", "*.tsx", "*.vue"],
+        files: ["**/*.spec.ts"],
+        languageOptions: {
+            parser: vueParser,
+            parserOptions: {
+                parser: tsParser,
+                project: "./tsconfig.json",
+                tsconfigRootDir: __dirname,
+                ecmaVersion: 2020,
+                sourceType: "module",
+            },
+        },
         rules: {
-            "no-undef": "off",
+            "@typescript-eslint/no-floating-promises": "error",
         },
     },
 ];

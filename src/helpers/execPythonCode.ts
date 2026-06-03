@@ -25,13 +25,12 @@ function outf(text: string) {
     });
 }
 
-// The function used for "transpiling" the input function of Python to some JS handled by Skulpt.
-// The function is to be registered against the Skulpt object.
-export function sInput(prompt: string) : Promise<string> {
+// Ask the user for input, e.g. because the Python input() function was called.  Note that the prompt is printed
+// out separately using the output hook.
+export function sInput() : Promise<string> {
     // When we encounter an input call, we make sure the console has focus (i.e. turtle is not shown, for example)
     useStore().trackInputCall();
     return new Promise(function(resolve,reject){
-        outf(prompt);
         // make the text area enabled to allow the user to type something (if it was disabled)
         const isConsoleTextAreaLocked = consoleTextArea.disabled;
         if(isConsoleTextAreaLocked){
@@ -142,13 +141,23 @@ export function handleErrorTrace(errorType : string, traceback: { filename: stri
     // We can use the mechanism in place in the Parser for the TigerPython errors mapping to find 
     // what line of code maps with what frame in case of an execution error.
     // We need to extract the line from the error message sent by Skulpt.
-    const skulptErrStr: string = errorType;
-    if (skulptErrStr.startsWith("SystemExit")) {
+    if (errorType.startsWith("SystemExit")) {
         // SystemExit is an error, but not one we print out because it is a deliberate
         // exit from the program (e.g. from strype.graphics.stop()).  So we just silently stop for that one:
         handleExecutionFinished(false);
         return;
     }
+    if (!traceback || traceback.length == 0) {
+        // Sometimes, e.g. for SyntaxError, the filename and line number is in the message:
+        const r = / *\(my_program\.py, line (\d+)\)/;
+        const m = errorType.match( r);
+        if (m) {
+            // If it is, turn it into a traceback and remove it from the message:
+            traceback = [{filename: "my_program.py", lineno: Number(m[1])}];
+            errorType = errorType.replace(r, "");
+        }
+    }    
+    
     let moreInfo = "";
     let errorLine = -1;
     if (traceback) {
@@ -158,7 +167,7 @@ export function handleErrorTrace(errorType : string, traceback: { filename: stri
         // so we must reverse it for the loop:
         for (const [index, entry] of traceback.reverse().entries()) {
             const filename = entry.filename as string;
-            if (filename == "<stdin>.py" || filename == "/home/pyodide/my_program.py") {
+            if (filename == "<stdin>.py" || filename == "/home/pyodide/my_program.py"  || filename == "my_program.py") {
                 errorLine = entry.lineno;
                 break;
             }
@@ -185,7 +194,7 @@ export function handleErrorTrace(errorType : string, traceback: { filename: stri
         }
     }
     else {
-        const errLineMatchArray = skulptErrStr.match(/( on line )(\d+)/);
+        const errLineMatchArray = errorType.match(/( on line )(\d+)/);
         if (errLineMatchArray !== null) {
             errorLine = parseInt(errLineMatchArray[2]);
         }
@@ -203,11 +212,11 @@ export function handleErrorTrace(errorType : string, traceback: { filename: stri
         // We then show the error on the last frame available in the list (that is, before the EOF, 2 lines ahead)
         frameId = (locatableError) ? lineFrameMapping[errorLine - 1].frameId : lineFrameMapping[errorLine - 3].frameId;
 
-        const noLineSkulptErrStr = (locatableError) ? skulptErrStr.replaceAll(/ on line \d+/g, "") : i18n.global.t("errorMessage.EOFError") as string;
+        const noLineSkulptErrStr = (locatableError) ? errorType.replaceAll(/ on line \d+/g, "") : i18n.global.t("errorMessage.EOFError") as string;
         // In order to show the Skulpt error in the editor, we set an error on all the frames. That approach is the best compromise between
         // our current error related code implementation and clarity for the user.
         // Exception: if we have a "running action" message, we don't show anything (no message and no error).
-        if (!skulptErrStr.startsWith(STRYPE_INPUT_INTERRUPT_ERR_MSG)) {
+        if (!errorType.startsWith(STRYPE_INPUT_INTERRUPT_ERR_MSG)) {
             consoleTextArea.value += ("< " + noLineSkulptErrStr + " >" + moreInfo);
             // Set the error on the frame header -- do not use editable slots here as we can't give a detailed error location
             useStore().frameObjects[frameId].runTimeError = noLineSkulptErrStr;
@@ -219,8 +228,8 @@ export function handleErrorTrace(errorType : string, traceback: { filename: stri
     else {
         // In case we couldn't get the line and the frame correctly, we just display a simple message,
         // EXCEPT if we have a "running action" message, which doesn't need to be displayed as the UI already gives cues.
-        if (skulptErrStr.localeCompare(STRYPE_RUN_ACTION_MSG) != 0) {
-            consoleTextArea.value += ("< " + skulptErrStr + " >" + moreInfo);
+        if (errorType.localeCompare(STRYPE_RUN_ACTION_MSG) != 0) {
+            consoleTextArea.value += ("< " + errorType + " >" + moreInfo);
         }
     }
     handleExecutionFinished(true);

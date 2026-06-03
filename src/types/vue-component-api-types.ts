@@ -19,14 +19,14 @@
 
 import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileSharingStatus, SaveExistingCloudProjectInfos } from "@/types/cloud-drive-types";
 import { AppEvent, LoadRequestReason, Position, SaveRequestReason, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
-// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { LoadedMedia } from "@/types/types";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
 // #v-end-if
 
 export type AppComponentAPI = {
   applyShowAppProgress: (event: AppEvent) => void;
-  setStateFromPythonFile: (completeSource: string, fileName: string, lastSaveDate: number, requestFSFileLoadedNotification: boolean, fileLocation?: FileSystemFileHandle) => Promise<void>,
+  setStateFromPythonFile: (completeSource: string, fileName: string, lastSaveDate: number, requestFSFileLoadedNotification: boolean, fileLocation: FileSystemFileHandle | "local" | "cloud" | "import") => Promise<void>,
   finaliseOpenShareProject: (message?: {key: string, param: string}) => void,
   onExpandedPythonExecAreaSplitPaneResize: (event: any, calledForResize?: boolean) => void,
   onStrypeCommandsSplitPaneResize: (event: any, useSpecificPEALayout?: StrypePEALayoutMode) => void,
@@ -36,7 +36,7 @@ export type CommandsComponentAPI = {
   onCommandsSplitterResize: (event: any) => void,
   resetPEACommmandsSplitterDefaultState: () => Promise<void>,
   setCommandsSplitterPane2Size: (v: number) => void,
-  // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+  // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
   setPEACommandsSplitterPanesMinSize: (onlyResizePEA?: boolean) => void,
   setIsExpandedPEA: (v: boolean) => void,
   setLogicalORHasPEAExpanded: (v: boolean) => void,
@@ -56,7 +56,7 @@ export type MenuComponentAPI = {
   setOpenSharedProjectTarget: (v: StrypeSyncTarget) => void,
   setOpenSharedProjectId: (v: string) => void,
   handleSaveMenuClick: (event: MouseEvent | undefined, saveReason?: SaveRequestReason | undefined) => void,
-  onFileLoaded: (fileName: string, lastSaveDate: number, fileLocation?: FileSystemFileHandle | undefined) => void,
+  onFileLoaded: (fileName: string, lastSaveDate: number, fileLocation: FileSystemFileHandle | "local"| "cloud" | "import") => void,
 }
 
 export type CloudDriveHandlerComponentAPI = {
@@ -106,7 +106,7 @@ export type OpenDemoDlgComponentAPI = {
 export type LabelSlotsStructureComponentAPI = {
   forInstance: {
     [componentInstanceKey: string]: {
-      checkSlotRefactoring: (slotUID: string, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, doAfterCursorSet?: VoidFunction, useFlatMediaDataCode?: boolean}) => void,
+      checkSlotRefactoring: (slotUID: string, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, skipStateSaveOnly?: boolean, doAfterCursorSet?: VoidFunction, useFlatMediaDataCode?: boolean}) => void,
       updatePrependText: () => void,
       updatePrependTextAndCheckErrors: () => void,
     },
@@ -147,12 +147,12 @@ export type AutoCompletionComponentAPI = {
     [componentInstanceKey: string]: {
       updateACForModuleImport: (token: string) => Promise<void>,
       updateACForImportFrom: (token: string, module: string) => void,
-      updateAC: (frameId: number, token : string | null, context: string) => Promise<void>
+      updateAC: (frameId: number, token : string | null, context: string, kind: "code" | "string") => Promise<void>
     },
   },
 }
 
-// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 export type PEAComponentAPI = {
   togglePEALayout:(layoutMode: StrypePEALayoutMode, userTriggeredAction?: boolean) => void,
   clear: () => void,
@@ -160,8 +160,6 @@ export type PEAComponentAPI = {
   getIsGraphicsAreaShowing: () => boolean,
   focusClickRunButton: () => void,
   blurRunButton: () => void,
-  getIsTurtleListeningKeyEvents: () => boolean,
-  getIsRunningStrypeGraphics: () =>  boolean,
   downloadWAV: (src: AudioBuffer, filenameStem: string) => void,
   redrawCanvas: () => void,
   overrideGraphics: (background: OffscreenCanvas | HTMLImageElement | null, imageToShowCentered: OffscreenCanvas | HTMLImageElement | null) => void,

@@ -6,8 +6,9 @@ failOnConsoleError();
 import path from "path";
 import * as os from "os";
 import "../support/paste-test-support";
-import { focusEditorAndClear, checkDownloadedCodeEquals, testRoundTripPasteAndDownload, testRoundTripImportAndDownload, scssVars } from "../support/paste-test-support";
+import { focusEditorAndClear, checkDownloadedCodeEquals, testRoundTripPasteAndDownload, testRoundTripImportAndDownload } from "../support/paste-test-support";
 import { getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
+import { scssVars } from "../support/standard-setup";
 
 const defaultProjectDocFullLine = getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"));
 
@@ -93,7 +94,7 @@ describe("Python round-trip", () => {
     it("Shows an error for invalid code with wrong code", () => {
         // Since the default code contains a project doc, we need to include it to the code
         testRoundTripImportAndDownload("tests/cypress/fixtures/python-invalid-hints-extract.py", defaultProjectDocFullLine);
-        assertVisibleError(/invalid.*import.*if.*line: 22/si);
+        assertVisibleError(/invalid.*import.*operator.*line: 24/si);
     });
 
     it("Shows an error for invalid code when mixed with invalid placement", () => {

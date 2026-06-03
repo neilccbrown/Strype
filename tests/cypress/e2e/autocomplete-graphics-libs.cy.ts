@@ -1,7 +1,9 @@
+import { scssVars } from "../support/standard-setup";
+
 require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
 import "../support/autocomplete-test-support";
-import {checkAutocompleteSorted, checkExactlyOneItem, checkNoItems, focusEditorAC, withAC, scssVars} from "../support/autocomplete-test-support";
+import {checkAutocompleteSorted, checkExactlyOneItem, checkNoItems, focusEditorAC, withAC} from "../support/autocomplete-test-support";
 
 // Needed for the "be.sorted" assertion:
 chai.use(require("chai-sorted"));
@@ -107,6 +109,9 @@ describe("Graphics library", () => {
             withAC((acIDSel, frameId) => {
                 cy.get(acIDSel).should("be.visible");
                 checkExactlyOneItem(acIDSel, null, "get_width()");
+                checkExactlyOneItem(acIDSel, null, "draw_image(image, x, y)");
+                checkExactlyOneItem(acIDSel, null, "clone(scale, rotate, flip)");
+                checkExactlyOneItem(acIDSel, null, "draw_circle(centre_x, centre_y, radius)");
             }, false);
         });
     });
@@ -144,9 +149,9 @@ describe("Graphics library", () => {
         cy.get("body").type("a.{ctrl} ");
         withAC((acIDSel, frameId) => {
             cy.get(acIDSel).should("be.visible");
-            checkExactlyOneItem(acIDSel, null, "is_at_edge()");
+            checkExactlyOneItem(acIDSel, null, "is_at_edge(distance)");
             checkExactlyOneItem(acIDSel, null, "move(distance)");
-            checkExactlyOneItem(acIDSel, null, "get_all_touching()");
+            checkExactlyOneItem(acIDSel, null, "get_all_touching(tag)");
             checkExactlyOneItem(acIDSel, null, "set_location(x, y)");
             checkNoItems(acIDSel, "__name__");
             // Shouldn't show methods from top-level:

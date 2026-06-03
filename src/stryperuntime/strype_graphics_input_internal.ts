@@ -1,7 +1,7 @@
 // This file contains the internal mouse+keyboard input API for the Strype graphics world.
 // These functions are not directly exposed to users, but are used by graphics.py to
 // form the actual public API.
-import { PyodideWorkerGlobalScope, syncBridge } from "@/workers/python_execution_type";
+import { asyncBridge, PyodideWorkerGlobalScope, syncBridge } from "@/workers/python_execution_type";
 import { SpriteHandle } from "@/stryperuntime/worker_bridge_type";
 
 declare const globalThis: PyodideWorkerGlobalScope;
@@ -28,6 +28,10 @@ export function getPressedKeys() : {[key: string]: boolean} {
     return syncBridge({request: "getPressedKeys"});
 }
 
+export function waitForNextKey() : string | undefined {
+    return syncBridge({request: "waitForNextKey"});
+}
+
 export function checkCollision(idA : number, idB : number) : boolean {
     return globalThis.spriteManager.checkCollision(idA, idB);
 }
@@ -50,4 +54,8 @@ export function getAllNearbyAssociated(id : number, radius : number) : number[] 
 
 export function setCollidable(id : number, collidable : boolean) : void {
     globalThis.spriteManager.setSpriteCollidable(id, collidable);
+}
+
+export function clearConsole() : void {
+    asyncBridge({request: "console_clear"});
 }

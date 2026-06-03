@@ -10,29 +10,42 @@ import {getAppLangSelectId, getEditorID, getEditorMenuUID, getFrameBodyUID, getF
 import "@imengyu/vue3-context-menu/lib/vue3-context-menu.css";
 import ContextMenu from "@imengyu/vue3-context-menu";
 import { bootstrapApp } from "./helpers/bootstrapApp";
-// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
-/* IFTRUE_isPython */
+import { openIndexedDBConnection, tidyUpDatabaseState } from "@/store/store-db-storage";
+import { getEditorTabId } from "@/store/store";
+import { showIndexDBError } from "@/helpers/storeMethods";
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import {getPEATabContentContainerDivId} from "./helpers/editor";
 // #v-endif
 
-// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 // We have to register the service worker ourselves so that it works in dev.
 // (If we used the Vite PWA auto-register it would only work in production.)
-if ("serviceWorker" in navigator) {
-    window.addEventListener("load", async () => {
+const loadServiceWorker = async () => {
+    if ("serviceWorker" in navigator) {
         const swUrl = import.meta.env.BASE_URL + "compiled-service-worker.js";
         try {
-            const registration = await navigator.serviceWorker.register(swUrl, {type: "module", scope: import.meta.env.BASE_URL});
+            const registration = await navigator.serviceWorker.register(swUrl, {
+                type: "module",
+                scope: import.meta.env.BASE_URL,
+            });
             console.log("SW registered:", registration);
         }
         catch (err) {
             console.error(`SW registration failed for ${swUrl} because:`, err);
         }
-    });
+    }
+    else {
+        console.error("No service worker support");
+    }
+};
+// Just in case the page has loaded by the time we reach this code:
+if (document.readyState === "complete") {
+    void loadServiceWorker();
 }
 else {
-    console.error("No service worker support");
+    window.addEventListener("load", loadServiceWorker);
 }
+
 // #v-endif
 
 
@@ -57,7 +70,7 @@ else {
     getFrameLabelSlotId: getLabelSlotUID,
     getStrypeSaveProjectNameInputId: getStrypeSaveProjectNameInputId,
     getSaveStrypeProjectToFSButtonId: getSaveStrypeProjectToFSButtonId,
-    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+    // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
     getPEATabContentContainerDivId: getPEATabContentContainerDivId,
     // #v-endif
 };
@@ -90,6 +103,12 @@ app.directive("blur", {
 
 // Context menu package
 app.use(ContextMenu);
+
+// Important to do this tidy up before checking the state:
+await openIndexedDBConnection()
+    .then((initialDBConnection) => tidyUpDatabaseState(getEditorTabId(), initialDBConnection, showIndexDBError))
+    .catch(showIndexDBError);
+
 
 // Mount the app
 app.mount("#app");

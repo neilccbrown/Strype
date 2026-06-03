@@ -3,7 +3,7 @@
         <div :id="controlsDivId" :class="{'pea-controls-div': true, 'expanded-PEA-controls': isExpandedPEA}">           
             <BTabs v-show="isTabsLayout" v-model:index="peaDisplayTabIndex" no-key-nav>
                 <BTab v-show="isTabsLayout" :button-id="graphicsTabId" :title="'\uD83D\uDC22 '+$t('PEA.Graphics')" title-link-class="pea-display-tab"></BTab>
-                <BTab v-show="isTabsLayout" :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab"></BTab>
+                <BTab v-show="isTabsLayout" :button-id="consoleTabId" :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab"></BTab>
             </BTabs>
             <!-- IMPORTANT: keep this div with "invisible" text for proper layout rendering, it replaces the tabs -->
             <span v-if="!isTabsLayout" :class="scssVars.peaNoTabsPlaceholderSpanClassName">c+g</span>
@@ -22,9 +22,6 @@
                     <pane :id="graphicsSplitPaneId" key="1" v-show="isGraphicsAreaShowing" :size="(isTabsLayout) ? 100 : currentSplitterPane1Size" min-size="5">
                         <div :id="graphicsContainerDivId" @wheel.stop :class="{'pea-graphics-container': true, hidden: graphicsTemporaryHidden}" @contextmenu="handleContextMenu">
                             <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @mousedown.stop="graphicsCanvasMouseDown" @mouseup.stop="graphicsCanvasMouseUp" @mousemove="graphicsCanvasMouseMove"></canvas>
-                            <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
-                                <div :id="graphicsDivId" ref="pythonTurtleDiv" class="pea-graphics-div"></div>
-                            </div> 
                         </div>
                     </pane>
                     <pane key="2" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)" min-size="5">
@@ -66,27 +63,29 @@ import { defineComponent } from "vue";
 import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
 import { mapStores } from "pinia";
-import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, hasPrecompiledCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
+import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEATabContentContainerDivId, hasPrecompiledCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
 import { CoordPosition, defaultEmptyStrypeLayoutDividerSettings, PythonExecRunningState, StrypeContextMenuItem, StrypePEALayoutData, StrypePEALayoutMode } from "@/types/types";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
 import SVGIcon from "@/components/SVGIcon.vue";
 import { Splitpanes, Pane } from "splitpanes";
 import { debounce } from "lodash";
 import scssVars from "@/assets/style/_export.module.scss";
-import { getLibraryName, getRawFileFromLibraries } from "@/helpers/libraryManager";
+import {getAvailableFilesFromLibrary, getLibraryName, getRawFileFromLibraries} from "@/helpers/libraryManager";
 import { getDateTimeFormatted } from "@/helpers/common";
 import { bufferToBase64 } from "@/helpers/media";
 import turtleImgURL from "@/assets/images/turtle.png" ;
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { BTab, BTabs } from "bootstrap-vue-next";
 import * as Comlink from "comlink";
-import {handleErrorTrace, setSInputConsole, sInput} from "@/helpers/execPythonCode";
-import {ErrorDetails, serviceWorkerReadyAndInControl} from "@/workers/python-execution";
+import {handleErrorTrace, setSInputConsole} from "@/helpers/execPythonCode";
+import {PyodideErrorDetails, serviceWorkerReadyAndInControl} from "@/workers/shared_helpers";
 import {SpriteHandle, SyncOrAsyncStrypePyodideWorkerRequest} from "@/stryperuntime/worker_bridge_type";
 import {SoundManager} from "@/stryperuntime/sound_manager";
 import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
 import {getPythonClient, isPythonWorkerReady, renderer, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
 import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
+import {createOrGetAudioContext} from "@/helpers/audioContext";
+import { clearAllRuntimeErrors } from "@/helpers/storeMethods";
 
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
@@ -97,12 +96,14 @@ const enum PEATabIndexes {graphics, console}
 let domContext : CanvasRenderingContext2D | null = null;
 let targetContext : OffscreenCanvasRenderingContext2D | null = null;
 let targetCanvas : OffscreenCanvas | null = null;
-let audioContext : AudioContext | null = null; // Important we don't initialise here, for permission reasons
 let mostRecentClickedItems : SpriteHandle[] = []; // All the items under the mouse cursor at last click
 let mostRecentClickDetails : { x: number, y: number, button: number, clickCount: number } | null = null; // x, y, button, click_count
 let mostRecentMouseDetails : {x: number, y: number, buttonsPressed: boolean[]} = {x:0, y:0, buttonsPressed: [false, false, false]}; // X, Y, three button states
 let pressedKeys : {[key: string]: boolean} = {};
-const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"]]);
+let sendNextKey : ((s: string) => void) = () => {}; 
+const keyMapping = new Map<string, string>([["ArrowUp", "up"], ["ArrowDown", "down"], ["ArrowLeft", "left"], ["ArrowRight", "right"], [" ", "space"]]);
+let switchedToGraphicsTabAlreadyThisExecute = false;
+let switchedToConsoleTabAlreadyThisExecute = false;
 
 let soundManager : SoundManager | null = null; // Can't initialise this here as we need permissions for audio context
 const turtleCanvas = new OffscreenCanvas(800, 600);
@@ -163,7 +164,7 @@ export default defineComponent({
         hasDefault43Ratio: Boolean,
     },
 
-    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+    // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
     created() {
         // Expose this component that other components might need.
         // Vue 3 has deprecated direct access to components.
@@ -179,12 +180,6 @@ export default defineComponent({
             },
             blurRunButton: () => {
                 (this.$refs.runButton as HTMLButtonElement).blur();
-            },
-            getIsTurtleListeningKeyEvents: () => {
-                return this.isTurtleListeningKeyEvents;
-            },
-            getIsRunningStrypeGraphics: () => {
-                return this.isRunningStrypeGraphics;
             },
             downloadWAV: this.downloadWAV,
             overrideGraphics: this.overrideGraphics,
@@ -204,17 +199,11 @@ export default defineComponent({
             isExpandedPEA: false,
             isTabsLayout: true, // flag to indicate the PEA's layout - tabs by default
             graphicsTemporaryHidden: false, //flag to use when we need to temporary hide the graphics for UI reasons (like before a layout of the PEA is performed, so we can compute things right)
-            turtleGraphicsImported: false, // by default, Turtle isn't imported - this flag is updated when we detect the import (see event registration in mounted())
+            graphicsImported: "none" as "turtle" | "strype" | "matplotlib" | "none", // by default, graphics isn't imported - this flag is updated when we detect the import (see event registration in mounted())
             peaDisplayTabIndex: PEATabIndexes.console, // (see mounted() for details) - flag of the tab index, used equally as a flag to indicate if we are on one or other tab
-            interruptedTurtle: false,
             isTabContentHovered: false,
-            isTurtleListeningKeyEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for key events on Turtle
-            isTurtleListeningMouseEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for mouse events on Turtle
-            isTurtleListeningTimerEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for timer events on Turtle
-            isRunningStrypeGraphics : false,
             scaleToFit: 1,
             libraries: [] as string[],
-            stopTurtleUIEventListeners: undefined as ((keepShowingTurtleUI: boolean)=>void) | undefined, // registered callback method to clear the Turtle listeners mentioned above
             PEALayoutsData: [
                 {iconName: "PEA-layout-tabs-collapsed", mode: StrypePEALayoutMode.tabsCollapsed},
                 {iconName: "PEA-layout-tabs-expanded", mode: StrypePEALayoutMode.tabsExpanded},
@@ -264,11 +253,10 @@ export default defineComponent({
         }));
 
         const pythonConsole = document.getElementById(getPEAConsoleId());
-        const turtlePlaceholderDiv = document.getElementById(getPEAGraphicsDivId());
         const tabContentContainerDiv = document.getElementById(getPEATabContentContainerDivId());
         const graphicsSplitPaneDiv = document.getElementById(this.graphicsSplitPaneId);
 
-        if(pythonConsole != undefined && turtlePlaceholderDiv != undefined && tabContentContainerDiv != undefined && graphicsSplitPaneDiv != undefined){
+        if(pythonConsole != undefined && tabContentContainerDiv != undefined && graphicsSplitPaneDiv != undefined){
             // Register an event listener on the textarea for the request focus event
             pythonConsole.addEventListener(CustomEventTypes.pythonConsoleRequestFocus, this.handleConsoleFocusRequest);
 
@@ -276,32 +264,10 @@ export default defineComponent({
             pythonConsole.addEventListener(CustomEventTypes.pythonConsoleAfterInput, this.handlePostInputConsole);
 
             // Register an event listener on this component for the notification of the turtle library import usage
-            (this.$refs.peaComponent as HTMLDivElement).addEventListener(CustomEventTypes.notifyTurtleUsage, (event) => {
-                this.turtleGraphicsImported = (event as CustomEvent).detail;
-                const pythonTurtleDiv = document.getElementById(getPEAGraphicsDivId());
-                if(!this.turtleGraphicsImported && pythonTurtleDiv != undefined) {
-                    // If we don't import turtle anymore, we "clear" any potential graphics to have the "import Turtle" message clearly showing.
-                    document.querySelectorAll("#" + getPEAGraphicsDivId() + " canvas").forEach((canvasEl) => pythonTurtleDiv.removeChild(canvasEl));                    
-                }
-            });    
-
-            // Register a mutation observer on the Turtle div placeholder to know when canvases are added/removed,
-            // so we can, in turn, set a resize observer on these canvases to compute how to scale them.
-            // (Note: that is very important because every time the user code is run, Skulpt regenerates the canvases)
-            const turtleDivPlaceholderObserver = new MutationObserver(() => {
-                if(document.querySelectorAll("#" + getPEAGraphicsDivId() + " canvas").length >= 1){
-                    // Adding graphics in the split view may mess up with our styling (scroll bars are added) so before running 
-                    // we hide the graphics container, it will be shown again later when scalling is called
-                    this.graphicsTemporaryHidden = true;
-                    setTimeout(() => {
-                        this.scaleTurtleCanvas(tabContentContainerDiv, graphicsSplitPaneDiv, turtlePlaceholderDiv);
-                    }, 100);
-
-                    // When a canvas has been added we can select the Graphics tab
-                    this.peaDisplayTabIndex = PEATabIndexes.graphics;
-                }
+            (this.$refs.peaComponent as HTMLDivElement).addEventListener(CustomEventTypes.notifyGraphicsUsage, (event) => {
+                this.graphicsImported = (event as CustomEvent<"turtle" | "strype" | "matplotlib" | "none">).detail;
+                this.redrawImportMessage();
             });
-            turtleDivPlaceholderObserver.observe(turtlePlaceholderDiv, {childList: true});   
             
             // Register an observer when the tab content dimension changes: we need to reflect this on the canvas scaling (cf. above)
             // DO NOT use ResizeObserver to do so: it gets messy with the events loop ("ResizeObserver loop completed with undelivered notifications.")
@@ -313,38 +279,18 @@ export default defineComponent({
                     this.$emit(CustomEventTypes.pythonExecAreaMounted);
                 }
 
-                setTimeout(() => {
-                    // We should only scale the canvas if there is at least a canvas to scale! (i.e. we show turtle graphics...)
-                    const graphicsCanvasSelector = "#" + getPEAGraphicsDivId() + " canvas";
-                    if (document.querySelectorAll(graphicsCanvasSelector).length > 0) {
-                        this.graphicsTemporaryHidden = true;
-                        setTimeout(() => {
-                            if(document.querySelectorAll(graphicsCanvasSelector).length > 0){
-                                this.scaleTurtleCanvas(tabContentContainerDiv,graphicsSplitPaneDiv, turtlePlaceholderDiv);
-                            }
-                        }, 100);                    
-                    }
-                
+                setTimeout(() => {                
                     setTimeout(() => {
                         if(!onlyResizePEA){
                             debounceComputeAddFrameCommandContainerSize(this.isExpandedPEA);
                         }
                         setPythonExecAreaLayoutButtonPos();
+                        this.redrawImportMessage();
                     }, 100);
                 }, waitSplitterToAdaptTimeout);
             }, 100);
             
             tabContentContainerDiv.addEventListener(CustomEventTypes.pythonExecAreaSizeChanged, ((event) => debouncePEASizeChangedCallback((event as CustomEvent<boolean|undefined>).detail)));
-
-            // Register to the window event listener for Skulpt Turtle mouse and timer events listening off notification
-            window.addEventListener(CustomEventTypes.skulptMouseEventListenerOff, () => {
-                this.isTurtleListeningMouseEvents=false; 
-                this.updateTurtleListeningEvents();
-            });
-            window.addEventListener(CustomEventTypes.skulptTimerEventListenerOff, () => {
-                this.isTurtleListeningTimerEvents=false; 
-                this.updateTurtleListeningEvents();
-            });
         }
 
         // One last thing we want to do is update the Turtle emoji to something consistent across machines/browsers
@@ -360,7 +306,7 @@ export default defineComponent({
         const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
         domContext = domCanvas.getContext("2d", {alpha: true}) as CanvasRenderingContext2D | null;
         // Need to resize off-screen canvas to match, if the on-screen canvas changes size: 
-        let adjustCanvasSize = function() {
+        let adjustCanvasSize = () => {
             // This confused me at first: the <canvas> has a width and height property.  These are initially set
             // to 300 and 150 if you don't specify them.  They stay at these defaults even if the HTML <canvas> element
             // changes its on-screen size, but it will then scale up the displayed image from 300 x 150 to whatever its
@@ -380,6 +326,10 @@ export default defineComponent({
             const maxWidth = (4 / 3) * maxHeight;
             targetCanvas = new OffscreenCanvas(maxWidth, maxHeight);
             targetContext = targetCanvas?.getContext("2d", {alpha: true}) as OffscreenCanvasRenderingContext2D;
+            this.$nextTick(() => {
+                this.redrawCanvas();
+                this.redrawImportMessage();
+            });
         };
         // Listen to size changes, and call now:
         new ResizeObserver(adjustCanvasSize).observe(domCanvas);
@@ -411,16 +361,16 @@ export default defineComponent({
             return "graphicsPEATab";
         },
 
+        consoleTabId(): string {
+            return "consolePEATab";
+        },
+
         tabContentContainerDivId(): string {
             return getPEATabContentContainerDivId();
         },
 
         graphicsContainerDivId(): string {
             return getPEAGraphicsContainerDivId();
-        },
-
-        graphicsDivId(): string {
-            return getPEAGraphicsDivId();
         },
 
         graphicsSplitPaneId(): string {
@@ -477,10 +427,6 @@ export default defineComponent({
             }
         },
 
-        isTurtleListeningEvents(): boolean {
-            return this.isTurtleListeningKeyEvents || this.isTurtleListeningMouseEvents || this.isTurtleListeningTimerEvents;
-        },
-
         currentPEALayoutMode() : StrypePEALayoutMode | undefined {
             return this.appStore.peaLayoutMode ?? StrypePEALayoutMode.tabsCollapsed;
         },
@@ -519,6 +465,20 @@ export default defineComponent({
             // Notify a resize of the PEA happened
             document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
         },
+        
+        switchToGraphicsTab(condition: "always" | "ifFirstCallDuringExecute") {
+            if (condition == "always" || !switchedToGraphicsTabAlreadyThisExecute) {
+                this.peaDisplayTabIndex = PEATabIndexes.graphics;
+                switchedToGraphicsTabAlreadyThisExecute = true;
+            }
+        },
+
+        switchToConsoleTab(condition: "always" | "ifFirstCallDuringExecute") {
+            if (condition == "always" || (!switchedToGraphicsTabAlreadyThisExecute && !switchedToConsoleTabAlreadyThisExecute)) {
+                this.peaDisplayTabIndex = PEATabIndexes.console;
+                switchedToConsoleTabAlreadyThisExecute = true;
+            }
+        },
 
         runClicked() {
             // The Python code execution has a 3-ways states:
@@ -530,43 +490,43 @@ export default defineComponent({
                 useStore().pythonExecRunningState = PythonExecRunningState.Running;
                 useStore().enqueueAnalyticsEvent("run", useStore().computeFrameSnapshot());
                 useStore().flushAnalyticsQueue("critical");
+                soundManager?.stopAllSounds();
                 // Important to call this when responding to a click, because browser won't allow
                 // sound to start unless we create it in direct response to a user action:
-                audioContext = new AudioContext();
-                soundManager = new SoundManager(audioContext, this);
+                soundManager = new SoundManager(createOrGetAudioContext(), this);
+                // Note that any old SoundManager will then have its sounds garbage-collected
                 this.execPythonCode();
                 return;
             case PythonExecRunningState.Running:
+                soundManager?.stopAllSounds();
                 terminateAndRestartPyodide();
                 useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
-                // There are 2 possible scenarios, which depends on the user code:
-                // 1) the code contains some "event" listening functions but is written in a way that Turtle execution ends (Skulpt) and still listens:
-                // 2) there is no "event" listening function in the code, or the code is written in a way that Turtle execution keeps pending (Skulpt)
-
-                // Case 1): we know we are in this case when we have registered a function to call to "manually" stop the listeners,
-                // that is all that needs to be done, Skulpt has already effectively terminated, we can just call the function and change the state.
-                if(this.stopTurtleUIEventListeners){
-                    this.isTurtleListeningKeyEvents = false;
-                    this.isTurtleListeningMouseEvents = false;
-                    this.isTurtleListeningTimerEvents = false;
-                    this.updateTurtleListeningEvents();
-                    return;
-                }
-
                 return;
             case PythonExecRunningState.RunningAwaitingStop:
                 // Else, nothing more we can do at the moment, just waiting for Skulpt to see it
                 return;
             }
         },
-        
-        updateTurtleListeningEvents(): void {
-            // We should check if we are still in need to maintain the running state as "Running" (just for listening the events)
-            // but if the state is already stopped (which can have been naturally from Skulpt then we don't need to do anything)
-            if((useStore().pythonExecRunningState == PythonExecRunningState.Running || useStore().pythonExecRunningState == PythonExecRunningState.RunningAwaitingStop) && this.stopTurtleUIEventListeners){
-                this.stopTurtleUIEventListeners(true);
-                this.stopTurtleUIEventListeners = undefined;
-                useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
+
+        redrawImportMessage() {
+            const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
+            const ctx = domCanvas?.getContext("2d");
+            if (!ctx) {
+                return;
+            }
+            if (this.graphicsImported == "none") {
+                ctx.clearRect(0, 0, domCanvas.width, domCanvas.height);
+                ctx.font = "15px sans-serif";
+                ctx.fillStyle = "white";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+
+                // Calculate center position
+                const x = domCanvas.width / 2;
+                const y = domCanvas.height / 2;
+
+                // Draw text
+                ctx.fillText(this.$t("PEA.importTurtleOrGraphics"), x, y);
             }
         },
         
@@ -577,13 +537,19 @@ export default defineComponent({
             
             // Make sure the text area is disabled when we run the code
             pythonConsole.disabled = true;
+            // Clear all runtime errors
             this.appStore.wasLastRuntimeErrorFrameId = undefined;
+            clearAllRuntimeErrors();
+
             // Make sure there is no document selection for our editor
             this.appStore.setSlotTextCursors(undefined, undefined);
+            
+            // Blur run button so space bar doesn't retrigger it:
+            (this.$refs.runButton as HTMLButtonElement).blur();
                 
             // Before doing anything, we make sure there are no errors found in the code
             // We DELAY the action to make sure every other UI actions has been done, notably the error checking from LabelSlotsStructure.
-            setTimeout(() => {
+            setTimeout(async () => {
                 // In case the error happens in the current frame (empty body) we have to give the UI time to update to be able to notify changes
                 if(hasPrecompiledCodeError()) {
                     this.$nextTick().then(() => {
@@ -601,11 +567,16 @@ export default defineComponent({
                 if (targetCanvas != null) {
                     targetContext?.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
                 }
+                switchedToGraphicsTabAlreadyThisExecute = false;
+                switchedToConsoleTabAlreadyThisExecute = false;
+                renderer.resetDirty();
+                
                 // Clear input:
                 mostRecentClickedItems = [];
                 mostRecentClickDetails = null;
                 mostRecentMouseDetails = {x: 0, y: 0, buttonsPressed: [false, false, false]};
                 pressedKeys = {};
+                sendNextKey = () => {};
                 window.addEventListener("keydown", this.graphicsCanvasKeyDown);
                 window.addEventListener("keyup", this.graphicsCanvasKeyUp);
                 // Start the redraw loop:
@@ -620,21 +591,44 @@ export default defineComponent({
                 requestAnimationFrame(redraw);
                 
                 this.libraries = parser.getLibraries();
+                const micropipLibraries = [];
+                const userLibraries = {} as {[url: string] : Record<string, string>};
+                for (const lib of this.libraries) {
+                    if (lib.startsWith("micropip:")) {
+                        micropipLibraries.push(lib.slice("micropip:".length));
+                    }
+                    else {
+                        const files = await getAvailableFilesFromLibrary(lib);
+                        if (files != null) {
+                            const paths : Record<string, string> = {};
+                            for (let file of files) {
+                                paths[file] = lib + files;
+                            }
+                            userLibraries[lib] = Object.fromEntries(files.map((v) => [v, v]));
+                        }
+                    }
+                }
 
                 setSInputConsole(pythonConsole);
                 
                 // getPythonClient() can change value if restarted so important we take one
                 // const reference to it for the duration of a Python run: 
                 const client = getPythonClient();
+                if (client == null) {
+                    return;
+                }
                 
                 const syncBridgePromise = handleSyncRequests(renderer, soundManager as SoundManager, turtlePixiHandler, {
                     getPressedKeys: () => pressedKeys,
-                    loadLibraryAsset: this.loadLibraryAsset,
-                    switchToGraphicsTab: () => {
-                        this.isRunningStrypeGraphics = true;
-                        this.peaDisplayTabIndex = PEATabIndexes.graphics;
+                    waitForNextKey: () => {
+                        return new Promise<string>((resolve) => {
+                            sendNextKey = resolve;
+                        });
                     },
+                    loadLibraryAsset: this.loadLibraryAsset,
+                    switchToGraphicsTab: this.switchToGraphicsTab,
                     markTurtleDirty: () => {
+                        this.switchToGraphicsTab("ifFirstCallDuringExecute");
                         turtleDirty = true;
                     },
                     getMouseDetails: this.getMouseDetails,
@@ -642,7 +636,17 @@ export default defineComponent({
                     consumeLastClickDetails: this.consumeLastClickDetails,
                 });
                 
-                const asyncBridge = handleAsyncRequests(renderer, soundManager as SoundManager);
+                const asyncBridge = handleAsyncRequests(renderer, soundManager as SoundManager, (output: string | null, containsInputPrompt: boolean) => {
+                    if (output == null) {
+                        // Clear console (but no need to switch for this):
+                        pythonConsole.value = "";
+                    }
+                    else {
+                        pythonConsole.value = pythonConsole.value + output;
+                        useStore().trackOutputChars(output.length);
+                        this.switchToConsoleTab(containsInputPrompt ? "always" : "ifFirstCallDuringExecute");
+                    }
+                });
                 
                 // Apparently we can use a promise as a queue to ensure we process the requests in order,
                 // and not try to service another while one is still going (especially sync ones which may yield,
@@ -657,24 +661,10 @@ export default defineComponent({
                 (client.call(
                     client.workerProxy.executePython,
                     userCode,
+                    micropipLibraries,
+                    userLibraries,
                     typeof(this.appStore.strypeProjectLocation) === "string",
-                    Comlink.proxy((output: string) => {
-                        pythonConsole.value = pythonConsole.value + output;
-                        useStore().trackOutputChars(output.length);
-                    }),
-                    Comlink.proxy((prompt: string) => {
-                        sInput(prompt).then(async (s : string) => {
-                            // We send the output back via writeMessage rather than a direct return:
-                            await serviceWorkerReadyAndInControl();
-                            try {
-                                await client.writeMessage(s);
-                            }
-                            catch (e) {
-                                console.error(e);
-                            }
-                        });
-                    }),
-                    Comlink.proxy((asreq : SyncOrAsyncStrypePyodideWorkerRequest) => serialize(() => { 
+                    Comlink.proxy((asreq : SyncOrAsyncStrypePyodideWorkerRequest) => serialize(() => {
                         if (asreq.kind == "async") {
                             asyncBridge(asreq.request);
                         }
@@ -703,45 +693,24 @@ export default defineComponent({
                             });
                         }
                     }))
-                ) as Promise<ErrorDetails | null>).then((possibleError) => {
+                ) as Promise<PyodideErrorDetails | null>).then((possibleError) => {
                     if (possibleError != null) {
-                        handleErrorTrace(possibleError.text, possibleError.traceback, () => {}, parser.getFramePositionMap());
+                        handleErrorTrace(possibleError.text, possibleError.traceback, (hadError) => {
+                            if (hadError) {
+                                this.switchToConsoleTab("always");
+                            }
+                        }, parser.getFramePositionMap());
                     }
                     useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
-                    this.isRunningStrypeGraphics = false;
-                    setPythonExecAreaLayoutButtonPos();
-                    // We always restart Pyodide for a clean state:
-                    terminateAndRestartPyodide();
-                });
-
-                // Trigger the actual Python code execution launch
-                /*
-                execPythonCode(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),parser.getLibraries(), () => useStore().pythonExecRunningState != PythonExecRunningState.RunningAwaitingStop, (finishedWithError: boolean, isTurtleListeningKeyEvents: boolean, isTurtleListeningMouseEvents: boolean, isTurtleListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => {
-                    // After Skulpt has executed the user code, we need to check if a keyboard listener is still pending from that user code.
-                    this.isTurtleListeningKeyEvents = !!isTurtleListeningKeyEvents; 
-                    this.isTurtleListeningMouseEvents = !!isTurtleListeningMouseEvents; 
-                    this.isTurtleListeningTimerEvents = !!isTurtleListeningTimerEvents;
-                    this.stopTurtleUIEventListeners = stopTurtleListeners;
-                    if (finishedWithError) {
-                        this.updateTurtleListeningEvents();
-                        // Don't draw last state if we finished with an error because we may be in an inconsistent state:
-                        SpriteManager.resetDirty();
-                        for (let Sprite of SpriteManager.getSprites()) {
-                            Sprite.dirty = false;
-                        }
-                    }
-                    if(!this.isTurtleListeningEvents) {
-                        useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
-                    }
-                    window.removeEventListener("keydown", this.graphicsCanvasKeyDown);
-                    window.removeEventListener("keyup", this.graphicsCanvasKeyUp);
-                    this.isRunningStrypeGraphics = false;
                     setPythonExecAreaLayoutButtonPos();
                     // A runtime error may happen whenever the user code failed, therefore we should check if an error
                     // when Skulpt indicates the code execution has finished.
                     this.checkNonePrecompiledErrors();
+                    soundManager?.stopAllSounds();
+                    // We always restart Pyodide for a clean state:
+                    terminateAndRestartPyodide();
                 });
-                */
+                
                 // We make sure the number of errors shown in the interface is in line with the current state of the code
                 // Note that a run time error can still occur later.                
                 this.checkNonePrecompiledErrors();
@@ -772,7 +741,6 @@ export default defineComponent({
             
             //First we switch between Graphics and the console shall the Turtle be showing at the moment
             if(this.peaDisplayTabIndex == PEATabIndexes.graphics){
-                this.interruptedTurtle = true;
                 this.peaDisplayTabIndex = PEATabIndexes.console;
             }
 
@@ -783,8 +751,7 @@ export default defineComponent({
         handlePostInputConsole(): void {
             // This method is responsible for handling what to do after the console input (Python) has been invoked.
             // If there was a Turtle being shown, we get back to it. If not, we just stay on the console.
-            if(this.turtleGraphicsImported && this.interruptedTurtle){
-                this.interruptedTurtle = false;
+            if(this.graphicsImported != "none" && switchedToGraphicsTabAlreadyThisExecute){
                 this.peaDisplayTabIndex = PEATabIndexes.graphics;
             }
         },
@@ -842,13 +809,6 @@ export default defineComponent({
                     vueComponentsAPIHandler.commandsComponentAPI?.setCommandsSplitterPane2Size(this.appStore.peaCommandsSplitterPane2Size[layoutMode] as number);
                 }
 
-                // If we are switching to the split view (or between split views) and graphics exists, it can add scrolling bars which then mess up the rendering.
-                // So before the reactive the splitter, we make the Graphics area hidden to make sure no scroll bar will be involved.
-                // Further calls to events will resize the Graphics are as it should.
-                if((tabsLayoutChanged || (expandLayoutChanged && !tabsLayoutChanged && !this.isTabsLayout)) && !newTabsLayout && document.querySelectorAll("#" + getPEAGraphicsDivId() + " canvas").length > 0){
-                    this.graphicsTemporaryHidden = true;
-                }
-
                 // A delay can occur when we swap between the tabs / split layout or between split directions,
                 // so we need a delay to make sure the splitter has operated properly (we do it in any case)
                 const refreshUITimeout = 100;
@@ -869,35 +829,6 @@ export default defineComponent({
             }
         },
 
-        scaleTurtleCanvas(tabContentContainerDiv: HTMLElement, graphicsSplitterPaneDiv: HTMLElement, turtlePlaceholderDiv: HTMLElement){
-            // Resize and scale the Python Exec Area (PEA) Turtle container accordingly to the Turtle canvas:
-            // - scale the placeholder to fit the viewport (the tab content) and preserve the canvas ratio, no scroll bar should appear
-            // - set the placeholder container (the flex div) to the correct dimension to make sure the positioning (centered) is preserved
-            //    -- SCALING WITH CSS DOES NOT MAKES THE DOM "SEEING" NEW DIMENSIONS
-            // Note that when we are in split layout view, we need to work with the split pane.
-            const turtleCanvas = document.querySelector("#" + getPEAGraphicsDivId() + " canvas") as HTMLCanvasElement;
-            const canvasW = turtleCanvas.width;
-            const canvasH = turtleCanvas.height;
-            const tabContentElementBoundingClientRect = (this.isTabsLayout) ? tabContentContainerDiv.getBoundingClientRect() : graphicsSplitterPaneDiv.getBoundingClientRect();
-            let {width: tabContentW, height: tabContentH} = tabContentElementBoundingClientRect;
-            
-
-            // Scale to fit: we scale to fit whichever dimension will be scaled-limited by the viewport.
-            const preCheckTurtleCanvasWScaleRatio =  (tabContentW / canvasW);
-            const preCheckTurtleCanvasHSCaleRatio = (tabContentH / canvasH);
-            const turtleCanvasScaleRatio = Math.min(preCheckTurtleCanvasWScaleRatio, preCheckTurtleCanvasHSCaleRatio);
-            (turtlePlaceholderDiv as HTMLDivElement).style.scale = ""+turtleCanvasScaleRatio;
-   
-            // We can now set the dimension of the flex div (containing the Turtle div) to fit to the scaled content new dimensions: 
-            // the rule is: check what is each dimension of the scaled canvas and use the max between that scaled dimension and the tab content dimension
-            // (to make sure we don't fit to a smaller size than the tab content itself!)
-            (turtlePlaceholderDiv.parentElement as HTMLDivElement).style.width = Math.max((canvasW * turtleCanvasScaleRatio), tabContentW) +"px";
-            (turtlePlaceholderDiv.parentElement as HTMLDivElement).style.height = Math.max((canvasH * turtleCanvasScaleRatio), tabContentH) +"px";
-
-            // Restore the Graphics container visibility
-            this.graphicsTemporaryHidden = false;
-        },
-
         reachFirstError(): void {
             setTimeout(() => {
                 // We should get only the run time error here, or at least 1 precompiled error
@@ -914,20 +845,15 @@ export default defineComponent({
         clear(): void {
             // This method clears the UI elements and flags related to Python code execution.
             (document.getElementById(getPEAConsoleId()) as HTMLTextAreaElement).value = "";
-            const pythonTurtleDiv = document.getElementById(getPEAGraphicsDivId());
-            if(pythonTurtleDiv != undefined) {
-                document.querySelectorAll("#" + getPEAGraphicsDivId() + " canvas").forEach((canvasEl) => pythonTurtleDiv.removeChild(canvasEl));                    
-            }
-            this.isTurtleListeningKeyEvents = false; 
-            this.isTurtleListeningMouseEvents = false;
-            this.isTurtleListeningTimerEvents = false;
-            this.stopTurtleUIEventListeners = undefined;
 
             if(useStore().pythonExecRunningState) {
                 useStore().pythonExecRunningState = PythonExecRunningState.RunningAwaitingStop;              
             }
-            this.isRunningStrypeGraphics = false;
             pressedKeys = {};
+            mostRecentClickDetails = null;
+            mostRecentClickedItems = [];
+            mostRecentMouseDetails = {x:0, y:0, buttonsPressed: [false, false, false]};
+            sendNextKey = () => {};
             renderer.clear();
             this.redrawCanvas();
         },
@@ -959,11 +885,13 @@ export default defineComponent({
             else {
                 this.graphicsOverride = null;
             }
+            this.switchToGraphicsTab("always");
         },
         
         redrawCanvasIfNeeded() : void {
             // Draws canvas if anything has changed:
             if (renderer.isDirty() || turtleDirty) {
+                this.switchToGraphicsTab("ifFirstCallDuringExecute");
                 this.redrawCanvas();
             }
         },
@@ -1131,7 +1059,9 @@ export default defineComponent({
             pressedKeys[keyMapping.get(event.key) ?? event.key.toLowerCase()] = true;
         },
         graphicsCanvasKeyUp(event: KeyboardEvent) {
-            pressedKeys[keyMapping.get(event.key) ?? event.key.toLowerCase()] = false;
+            const keyname = keyMapping.get(event.key) ?? event.key.toLowerCase();
+            pressedKeys[keyname] = false; 
+            sendNextKey(keyname);
         },
 
         handleContextMenuOpened() {
@@ -1168,38 +1098,13 @@ export default defineComponent({
 
         async screenshotGraphicsArea() {
             // The screenshot Graphics area can take two paths depending on the context:
-            // if we are using Strype Graphics (Media API), then we convert the offscreen canvas "directly",
-            // if we are using Turtle, it's a bit less straight forward because Turtle is handled by Skulpt 
-            // which makes the canvases for us.            
-            // We detect the Turtle case if canvases exist in #peaGraphicsDiv
-            const peaGraphicsDiv = document.getElementById(getPEAGraphicsDivId());
-            const turtleCanvases =  Array.from(peaGraphicsDiv?.children??[]);
-            const forTurtle = turtleCanvases.some((el)=>el.tagName.toLowerCase() == "canvas");
-
-            if (!targetCanvas && !forTurtle) {
+            // if we are using Strype Graphics (Media API), then we convert the Strype offscreen canvas "directly",
+            // if we are using Turtle, we convert the turtle offscreen canvas "directly".
+            if (this.graphicsImported == "none") {
                 return;
             }
 
-            let canvasW = 0, canvasH = 0;
-            if(forTurtle && peaGraphicsDiv){
-                const peaGraphicsDivRect = peaGraphicsDiv.getClientRects();
-                const peaGraphicsDivScale = peaGraphicsDiv.style.scale ? peaGraphicsDiv.style.scale : "1";
-                canvasW = peaGraphicsDivRect[0].width / parseFloat(peaGraphicsDivScale);
-                canvasH = peaGraphicsDivRect[0].height / parseFloat(peaGraphicsDivScale);                
-            }
-
-            let offScreenCanvasToUse = (forTurtle) ? new OffscreenCanvas(canvasW, canvasH) : targetCanvas;
-            // Prepare the canvas content for Turtle if required
-            if(forTurtle && peaGraphicsDiv && offScreenCanvasToUse){
-                const ctx = offScreenCanvasToUse.getContext("2d") as OffscreenCanvasRenderingContext2D;
-                // Turtle's background is white by default
-                const turtleBackgroundColor = getComputedStyle(peaGraphicsDiv).backgroundColor;
-                ctx.fillStyle =turtleBackgroundColor;            
-                ctx.fillRect(0, 0, canvasW, canvasH),
-                turtleCanvases.forEach((el) => {
-                    ctx?.drawImage(el as HTMLCanvasElement, 0, 0);
-                });                
-            }
+            let offScreenCanvasToUse = (this.graphicsImported == "turtle") ? turtleCanvas : targetCanvas;
 
             const blob : Blob = await (offScreenCanvasToUse as any).convertToBlob({ type: "image/png" });
 
@@ -1212,13 +1117,14 @@ export default defineComponent({
             link.click();
             document.body.removeChild(link);
             // Clean up
-            URL.revokeObjectURL(url); 
-            if(forTurtle){
-                offScreenCanvasToUse = null;
-            }
+            URL.revokeObjectURL(url);
         },
         
         downloadWAV(src: AudioBuffer, filenameStem: string) {
+            if (soundManager == null) {
+                // Since downloadWAV is triggered by a mouse click we should be able to create the sound manager now:
+                soundManager = new SoundManager(createOrGetAudioContext(), this);
+            }
             soundManager?.downloadWAV(src, filenameStem);
         },
         

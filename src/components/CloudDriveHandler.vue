@@ -343,7 +343,7 @@ export default defineComponent({
                                     // We need to check if we're loading the new SPY format or the old one.
                                     const isSpyNewFormat = decodedURIFileContent.startsWith(AppSPYFullPrefix);
                                     const loadFn = (isSpyNewFormat) 
-                                        ? vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(decodedURIFileContent, projectName, -1, false)
+                                        ? vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(decodedURIFileContent, projectName, -1, false, "import")
                                         : this.appStore.setStateFromJSONStr({stateJSONStr: decodedURIFileContent, showMessage: false });                            
                                     return loadFn
                                         ?.then(() => {
@@ -485,17 +485,21 @@ export default defineComponent({
                         continueSavingProcess();
                     })
                     .catch((responseStatusCode) => {
+                        // In this generic Cloud Drive handler, we are not sure what the nature of responseStatusCode is: it can be number, a number as string, or
+                        // a proper response object that contains the status property. So we evaluate if the status property exists on responseStatusCode first and 
+                        // if it doesn't exist, we assume responseStatusCode is a number-like variable.
+                        const errorCode = responseStatusCode.status ?? responseStatusCode;
                         // The following error status codes were relevant for Google Drive. 
                         // We keep them for the general cases, but add a catch up case for other error codes
                         // that may be sent by other Cloud Drives.
                         // Connection issue?
-                        if(responseStatusCode == 401 || responseStatusCode == 403){
+                        if(errorCode){
                             this.proceedFailedConnectionCheckOnSave(cloudTarget);
                             return;
                         }
                         
                         // Folder not found and any other error (400+).
-                        if(responseStatusCode - 400 >= 0){
+                        if(errorCode - 400 >= 0){
                             this.appStore.strypeProjectLocation = undefined;
                             this.appStore.strypeProjectLocationAlias = "";
                             this.appStore.strypeProjectLocationPath = "";
@@ -613,7 +617,7 @@ export default defineComponent({
                 const isSpyNewFormat = (otherParams.fileName?.endsWith(`.${strypeFileExtension}`)??false) && fileContent.startsWith(AppSPYFullPrefix);
                 if(isPurePython){
                     // The loading mechanisms for a Python file differs from a Strype file AND it doens't maintain a "link" to Google Drive.
-                    vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(fileContent, otherParams.fileName as string, lastSaveDate, false).then(() => {
+                    vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(fileContent, otherParams.fileName as string, lastSaveDate, false, "cloud").then(() => {
                         this.saveFileId = undefined;
                         this.updateSignInStatus(cloudTarget, false);
                         this.appStore.strypeProjectLocation = undefined;
@@ -636,7 +640,7 @@ export default defineComponent({
                     // Load the file content in the editor
                     const isOpenedSharedProject = (this.openSharedProjectFileId.length > 0);
                     const fileLoadFn = (isSpyNewFormat) 
-                        ? vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(fileContent, otherParams.fileName as string, lastSaveDate, false)
+                        ? vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(fileContent, otherParams.fileName as string, lastSaveDate, false, "cloud")
                         : this.appStore.setStateFromJSONStr({stateJSONStr: fileContent, showMessage: !isOpenedSharedProject});
                     fileLoadFn?.then(() => {
                         // Give focus to the current (focusable) frame element so interaction can happen

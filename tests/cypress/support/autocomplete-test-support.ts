@@ -1,29 +1,10 @@
 // Must clear all local storage between tests to reset the state,
 // and also retrieve the shared CSS and HTML elements IDs exposed
 // by Strype via the Window object of the app.
-import {WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME} from "@/helpers/sharedIdCssWithTests";
 import {cleanFromHTML} from "../support/test-support";
+import { scssVars, standardBeforeEach, strypeElIds } from "./standard-setup";
 
-export let scssVars: {[varName: string]: string};
-export let strypeElIds: {[varName: string]: (...args: any[]) => string};
-beforeEach(() => {
-    cy.clearLocalStorage();
-    cy.visit("/",  {onBeforeLoad: (win) => {
-        win.localStorage.clear();
-        win.sessionStorage.clear();
-    }}).then(() => {
-        // Only need to get the global variables if we haven't done so
-        if(scssVars == undefined){
-            cy.window().then((win) => {
-                scssVars = (win as any)[WINDOW_STRYPE_SCSSVARS_PROPNAME];
-                strypeElIds = (win as any)[WINDOW_STRYPE_HTMLIDS_PROPNAME];
-            });
-        }
-
-        // Wait for code initialisation
-        cy.wait(2000);
-    });
-});
+beforeEach(standardBeforeEach);
 
 chai.Assertion.addMethod("beLocaleSorted", function () {
     const $element = this._obj;

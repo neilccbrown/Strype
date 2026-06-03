@@ -105,6 +105,10 @@ _Dimension = _collections.namedtuple("Dimension", ["width", "height"])
 class Image:
     """
     An editable image of fixed width and height.
+    
+    Note that the coordinate system for editing images is different to that for Actors.  In Image, (0, 0) is
+    at the top-left of the image, and Y values increase as you go down the image.  The X and Y limits are one
+    less than the width and height of the image respectively.
     """
 
     # Attributes:
@@ -363,16 +367,22 @@ class Image:
         """
         _strype_graphics_internal.canvas_arc(self.__image, centre_x, centre_y, x_radius, y_radius, angle_start, angle_amount)
 
-    def draw_circle(self, centre_x, centre_y, radius):
-        # type: (float, float, float) -> None
+    def draw_circle(self, centre_x = None, centre_y = None, radius = None):
+        # type: (float | None, float | None, float | None) -> None
         """
         Draw a circle at a given position.  The border is drawn using the stroke color (see `set_stroke`) 
         and filled using the current fill color (see `set_fill`).
         
-        :param centre_x: The x coordinate of the centre of the circle.
-        :param centre_y: The y coordinate of the centre of the circle.
-        :param radius: The radius of the circle.
+        :param centre_x: The x coordinate of the centre of the circle.  If omitted, it will be the horizontal centre of the image.
+        :param centre_y: The y coordinate of the centre of the circle.  If omitted, it will be the vertical centre of the image.
+        :param radius: The radius of the circle.  If omitted, it will be half of the smaller of the width or the height (that is, the largest radius that won't be cut off if drawn at the centre). 
         """
+        if centre_x is None:
+            centre_x = self.get_width() / 2
+        if centre_y is None:
+            centre_y = self.get_height() / 2
+        if radius is None:
+            radius = min(self.get_width(), self.get_height()) / 2
         self.draw_oval(centre_x, centre_y, radius, radius)
 
     def draw_polygon(self, points):
@@ -388,23 +398,33 @@ class Image:
         # Need to convert tuple into list:
         _strype_graphics_internal.polygon_xy_pairs(self.__image, [list(xy) for xy in points])
 
-    def clone(self, scale = 1.0):
-        # type: (float) -> Image
+    def clone(self, scale = 1.0, rotate = 0, flip = None):
+        # type: (float, float, str | None) -> Image
         """
-        Return a copy of this image.
+        Return a copy of this image, transformed if you supply any of the additional parameters. 
         
-        :param: The scaling factor of the new image.  1.0 returns an identical image,
+        :param: The scaling factor of the new image.  1.0 returns an image of the same size,
                 0.5 will return an image half the size, 2.0 will return an image double the size.
+        :param: The rotation of the new image.  0 returns an unrotated image, 90 rotates it 90 degrees clockwise.
+                If the new image is not an exact rectangle then the new image will be the minimum
+                size needed to contain the rotated image, and the corners will be left transparent.
+        :param: The flip of the new image.  None does not flip it, the string "horizontal" will flip
+                horizontally, "vertical" will flip vertically.  If you supply flip and rotation,
+                the flip will be applied first, followed by the rotation.
         :return: The new :class:`Image` that is a copy of this image.
         """
-        if scale == 1:
+        # Most common case; unmodified image:
+        if scale == 1 and rotate == 0 and flip is None:
             copy = Image(self.get_width(), self.get_height())
             copy.draw_image(self, 0, 0)
         elif scale <= 0:
             raise ValueError("Clone scale must be greater than zero")
+        elif flip is not None and flip != "horizontal" and flip != "vertical":
+            raise ValueError("Clone flip must be \"horizontal\", \"vertical\", or None")
         else:
-            copy = Image(self.get_width() * scale, self.get_height() * scale)
-            copy._draw_part_of_image(self, 0, 0, 0, 0, self.get_width(), self.get_height(), scale)
+            copy = Image(-42, -42)
+            # Passing None is awkward so we change flip to pure string:
+            copy.__image = _strype_graphics_internal.cloneImage(self.__image, scale, rotate, "none" if flip is None else flip)
         return copy
 
     def download(self, filename="strype-image"):
@@ -882,7 +902,14 @@ def get_clicked_actor():
     
     :return: The most recently clicked :class:`Actor`, or None if no actor was clicked since the last call.
     """
-    return _strype_input_internal.getAndResetClickedItem()
+    clicked = _strype_input_internal.getAndResetClickedItems()
+    if clicked:
+        # Sorting by actor ID is equivalent to sorting by insertion order.
+        # We then take the last one, meaning the most recently inserted actor:
+        clicked = sorted(clicked)
+        return _actorsInWorld[clicked[-1]]
+    else:
+        return None
 
 _ClickDetails = _collections.namedtuple("ClickDetails", ["x", "y", "button", "click_count"])
 
@@ -924,7 +951,7 @@ def key_pressed(keyname):
 
     The names of printable keys are the character they print (e.g. "a" for the a-key). Other keys have names 
     describing their function. These include "left", "right", "up, "down", "enter", "tab", "escape", "shift", 
-    "control", "alt", "backspace", delete".
+    "control", "alt", "backspace", "delete", "space".
     
     :param keyname: The name of the key to check.
     :return: True if the key is currently pressed down, False otherwise.
@@ -940,7 +967,21 @@ def key_pressed(keyname):
     if now - _last_pressed_keys_fetch > 30:
         _cached_pressed_keys = _collections.defaultdict(lambda: False, _strype_input_internal.getPressedKeys().to_py())
         _last_pressed_keys_fetch = now
+    # Allow " " as a synonym for "space":
+    if keyname == " ":
+        keyname = "space"
     return _cached_pressed_keys[keyname.lower()]
+
+def get_key():
+    # type: () -> str 
+    """
+    Waits for a key to be pressed and returns it.
+    
+    This function will wait until a key is pressed, and your program will be paused until the key is pressed. 
+    
+    :return: The key that was pressed.
+    """
+    return _strype_input_internal.waitForNextKey()
 
 def set_background(image_or_color, scale_to_fit = False):
     # type: (Image | str, bool) -> None
@@ -960,48 +1001,44 @@ def set_background(image_or_color, scale_to_fit = False):
     :param scale_to_fit: If True, scale the image to the world size. If False, tile the image on the world. 
     """
 
-    # We use an oversize image to avoid slivers of other colour appearing at the edges
-    # due to the size not being perfectly 800 x 600 on the actual webpage,
-    # which means we are scaling and using anti-aliased sub-pixel rendering:
-        
     # Note we always take a copy, even if the size is fine, because
     # we don't want later changes to affect the background:
-    def background_808_606(image):
-        dest = Image(808, 606)
+    def background_800_600(image):
+        dest = Image(800, 600)
         w = image.get_width()
         h = image.get_height()
         if not scale_to_fit:
             # Since we centre, even if two copies would fit, we will need 3 because we need half a copy
             # each side of the centre.  So just always draw one more than we need:
-            horiz_copies = (_math.ceil(808 / w) if w < 808 else 0) + 1
-            vert_copies = (_math.ceil(606 / h) if h < 606 else 0) + 1
+            horiz_copies = (_math.ceil(800 / w) if w < 800 else 0) + 1
+            vert_copies = (_math.ceil(600 / h) if h < 600 else 0) + 1
             # We want one copy bang in the centre, so we need to work out the offset:
             # These offsets will either be zero or negative because we start by drawing
             # the far left or far top image.  We work out the position of the central
             # image then subtract the width/height of half of the copies we need: 
-            x_offset = (808 - w) / 2 - (horiz_copies - 1) / 2 * w
-            y_offset = (606 - h) / 2 - (vert_copies - 1) / 2 * h
+            x_offset = (800 - w) / 2 - (horiz_copies - 1) / 2 * w
+            y_offset = (600 - h) / 2 - (vert_copies - 1) / 2 * h
             for i in range(0, horiz_copies):
                 for j in range(0, vert_copies):
                     dest.draw_image(image, x_offset + i * w, y_offset + j * h)
         else:
-            scale = max(808 / w, 606 / h)
-            dest._draw_part_of_image(image, (808 - scale * w) / 2, (606 - scale * h) / 2, 0, 0, w, h, scale)
+            scale = max(800 / w, 600 / h)
+            dest._draw_part_of_image(image, (800 - scale * w) / 2, (600 - scale * h) / 2, 0, 0, w, h, scale)
         return dest
         
     if isinstance(image_or_color, Image):
-        bk_image = background_808_606(image_or_color)
+        bk_image = background_800_600(image_or_color)
     elif isinstance(image_or_color, str):
         # We follow this heuristic: if it has a dot, slash or colon it's a filename/URL
         # otherwise it's a color name/value.
         if _re.search(r"[.:/]", image_or_color):
-            bk_image = background_808_606(load_image(image_or_color))
+            bk_image = background_800_600(load_image(image_or_color))
         else:
-            bk_image = Image(808, 606)
+            bk_image = Image(800, 600)
             bk_image.set_fill(image_or_color)
             bk_image.fill()
     elif isinstance(image_or_color, Color):
-        bk_image = Image(808, 606)
+        bk_image = Image(800, 600)
         bk_image.set_fill(image_or_color)
         bk_image.fill()
     else:
@@ -1020,9 +1057,7 @@ def get_background():
     Any changes to the image (such as drawing on it) will be shown on the live display.
     
     Note that the image returned by get_background() will not be the same as that passed
-    to set_background().  The image may have been tiled or stretched.  It may also not be exactly
-    800 x 600; the image may be slightly oversized (e.g. 808 x 606) to make sure it covers
-    the edges fully.  But its centre will be at (0, 0).
+    to set_background().  The image may have been tiled or stretched.
     
     :return: The live background image, or None if one has not been set.
     """
@@ -1116,9 +1151,10 @@ def show_text(text, x = 0, y = 0, font_size = 24):
     """
         Shows the text at the given X, Y position in the world.
         
-        This allows you to easily draw text on the world, for example a "Game Over" message.  If you want to change the text,
+        This allows you to easily draw text on the world, for example a "Game Over" message.  You can show multiple text items if you supply
+        different X, Y positions for each.  If you want to change the text at a particular position,
         call this function again with the same X, Y position and a new string; this will replace the previous text at that position.
-        To clear the text entirely, pass None as the text, with the same X, Y position. 
+        To clear the text entirely at that position, pass None as the text, with the same X, Y position. 
     
         :param text: The text to show, or None to show no text.  Passing None allows you to clear text previously drawn at the same position. 
         :param x: The X position of the centre of the text.  This is rounded to the nearest integer.
@@ -1140,7 +1176,10 @@ def show_text(text, x = 0, y = 0, font_size = 24):
         textOnlyImg.set_stroke("black")
         textDimensions = textOnlyImg.draw_text(text, 0, 0, font_size, 800, 600, "Inconsolata")
         # Now we prepare an image of the right size:
-        croppedImg = Image(textDimensions.width, textDimensions.height)
+        croppedImg = Image(textDimensions.width + font_size, textDimensions.height + font_size)
         # We draw a rounded rect for the background, then draw the text on:
-        croppedImg._draw_part_of_image(textOnlyImg, 0, 0, 0, 0, textDimensions.width, textDimensions.height)
+        croppedImg.set_fill(Color(0, 0, 0, 80))
+        croppedImg.set_stroke(None)
+        croppedImg.draw_rounded_rect(0, 0, croppedImg.get_width(), croppedImg.get_height())
+        croppedImg._draw_part_of_image(textOnlyImg, round(font_size / 2), round(font_size / 2), 0, 0, textDimensions.width, textDimensions.height)
         _shown_text[(x, y)] = Actor(croppedImg, x, y)

@@ -840,6 +840,49 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
             ps.nextIndex += 1;
             continue;
         }
+
+        if (child.type === Sk.ParseTables.sym.sliceop && child.children && child.children?.length >= 1) {
+            // The a:b:c syntax has a slice_op child for the :c part which includes the operator and operand:
+            const op = digValue(child.children[0]);
+            if (op == ":" && child.children?.length == 1) {
+                // Can be blank on RHS of colon
+                latest = concatSlots(latest, op, {fields: [{code: ""}], operators: []});
+                ps.nextIndex += 1;
+                continue;
+            }
+            else if (child.children?.length == 2) {
+                latest = concatSlots(latest, op, toSlots(child.children[1]));
+                ps.nextIndex += 1;
+                continue;
+            }
+        }
+        
+        if (child.type === Sk.ParseTables.sym.comp_for && child.children && child.children?.length >= 4) {
+            // A list comprehension; this will be:
+            //   for
+            //   <expression>
+            //   in
+            //   <expression>
+            // Optionally followed by:
+            //   comp_iter:
+            //     comp_if:
+            //       if
+            //       <expression>
+            latest = concatSlots(latest, "for", concatSlots(toSlots(child.children[1]), "in", toSlots(child.children[3])));
+            if (child.children.length >= 5 
+                && child.children[4].type === Sk.ParseTables.sym.comp_iter
+                && (child.children[4].children?.length ?? 0) >= 1
+                && child.children[4].children?.[0]?.type === Sk.ParseTables.sym.comp_if) {
+                const ifNode = child.children[4]?.children?.[0];
+                if (ifNode && ifNode.children && ifNode.children.length >= 2) {
+                    // First child is if keyword, second child is the expression:
+                    latest = concatSlots(latest, "if", toSlots(ifNode.children[1]));
+                }
+            }
+            ps.nextIndex += 1;
+            continue;
+        }
+        
         // Now we expect a binary operator:        
         let op;
         try {
@@ -916,6 +959,13 @@ function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, keywo
     else {
         slots = childrenIndicesForSlots;
     }
+    
+    // When we parse an "if" guarded case pattern, we don't want 2 slots structures, we have only 1 and the operator between them is "if"
+    if(frameType == AllFrameTypesIdentifier.case && Array.isArray(childrenIndicesForSlots) && childrenIndicesForSlots.length > 1){
+        slots[0].slotStructures.fields.push(...slots[1].slotStructures.fields);
+        slots[0].slotStructures.operators.push({code: "if"}, ...slots[1].slotStructures.operators);
+    }
+
     const frame = makeFrame(frameType, slots, s.isSPY);    
     s = addFrame(frame, applyIndex(p, keywordIndexForLineno).lineno, s);
     const frameChildren = children(p);
@@ -939,7 +989,8 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
     case Sk.ParseTables.sym.small_stmt:
     case Sk.ParseTables.sym.flow_stmt:
     case Sk.ParseTables.sym.compound_stmt:
-    case Sk.ParseTables.sym.import_stmt: 
+    case Sk.ParseTables.sym.import_stmt:
+    case Sk.ParseTables.sym.case_stmt:        
         // Wrappers where we just skip to the children:
         for (const child of children(p)) {
             s = copyFramesFromPython(child, s);
@@ -951,6 +1002,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         if (p.children) {
             const index = p.children.findIndex((x) => x.value === "=");
             if (index >= 0) {
+                checkValidMatchContent(s.parent?.frameType.type, p.lineno);
                 // An assignment
                 const lhs = toSlots({...p, children: p.children.slice(0, index)});
                 const rhs = toSlots({...p, children: p.children.slice(index + 1)});
@@ -964,6 +1016,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
                     s = addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: comment}], operators: []}}}, s.isSPY), p.lineno, s);    
                 }
                 else if (slots.fields.length == 1 && (slots.fields[0] as BaseSlot)?.code && (slots.fields[0] as BaseSlot).code.startsWith(STRYPE_LIBRARY_PREFIX)) {
+                    checkValidMatchContent(s.parent?.frameType.type, p.lineno);
                     const library = fromUnicodeEscapes((slots.fields[0] as BaseSlot).code.slice(STRYPE_LIBRARY_PREFIX.length));
                     s = addFrame(makeFrame(AllFrameTypesIdentifier.library, {0: {slotStructures: {fields: [{code: library}], operators: []}}}, s.isSPY), p.lineno, s);
                 }
@@ -972,6 +1025,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
                 }
                 else {
                     // Everything else goes in method call:
+                    checkValidMatchContent(s.parent?.frameType.type, p.lineno);
                     const misc = makeFrame(AllFrameTypesIdentifier.funccall, {0: {slotStructures: slots}}, s.isSPY);
                     if (misc.frameType.type == AllFrameTypesIdentifier.comment && s.transformTopComment) {
                         s.transformTopComment(misc.labelSlotsDict[0].slotStructures);
@@ -1212,6 +1266,37 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         }
         break;
     }
+    case Sk.ParseTables.sym.match_stmt: {
+        // First child is keyword, second is the expression to evaluate, third is colon, forth is body.
+        // This case not supported by original Skulpt version - so to limit the changes in Skulpt, the Skulpt parser
+        // is permissive and allows cases (normal) + pass (for us) + simple statements (for us).
+        // The simple statements are therefore limiting the accepted content to things like "a", "a()", "a=b", but not if or while etc.
+        // So we make a check in checkValidMatchContent() when parsing the children of a match statement to cover the permissive Skupt version.
+        const r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.match, 0, [1], 3, s);
+        s = r.s;
+        break;
+    }
+    case Sk.ParseTables.sym.case_block: {
+        // (case not supported by upstream Skulpt version)
+        // First child is keyword, second is the pattern expression, then the remaining parts depends whether we have an "if" guard:
+        let r;
+        if((p.children?.length??0) > 5){
+            // There is an "if" guard:
+            // third is the "if" keyword, 
+            // forth the guard expression,
+            // fifth is the colon
+            // sixth is the body (of "case")
+            r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.case, 0, [1, 3], 5, s);
+        }
+        else{
+            // There is not an "if" guard:
+            // third is the colon, 
+            // forth is the body
+            r = makeAndAddFrameWithBody(p, AllFrameTypesIdentifier.case, 0, [1], 3, s);
+        }
+        s = r.s;        
+        break;
+    }
     }
     return s;
 }
@@ -1344,7 +1429,7 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
     //  - we're loading a .spy with section headings, or
     //  - we're loading a .py where we must infer it.
     // Easy way to find out: check if the first line is a .spy header:
-    if (allLines[0].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *" + AppName + " *:"))) {
+    if (allLines.length > 0 && allLines[0].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *" + AppName + " *:"))) {
         // It's a .spy!  Easy street, let's find the headings:
         let line = 1;
         const r = {
@@ -1466,6 +1551,7 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
         allLines.pop();
     }
     const s = splitLinesToSections(allLines);
+    const curLocation = findCurrentStrypeLocation().strypeLocation;
     
     // Bit awkward but we first attempt to copy each to check for errors because
     // if there are any errors we don't want to paste any:
@@ -1474,7 +1560,12 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
         err = copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.DEFS_SECTION, s.format, s.defsMapping, "dryrun");
     }
     if (typeof err != "string") {
-        err = copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION, s.format, s.mainMapping, "dryrun");
+        // We may be trying to paste something inside a function defintion.
+        // The "content" to paste is seen as if it was to paste in the main section,
+        // however the rules are slightly different: we use the current location to decide
+        // what container we should check the code against.
+        const pastingSectionTarget = (curLocation == STRYPE_LOCATION.IN_FUNCDEF) ? STRYPE_LOCATION.IN_FUNCDEF : STRYPE_LOCATION.MAIN_CODE_SECTION;
+        err = copyFramesFromParsedPython(s.main, pastingSectionTarget, s.format, s.mainMapping, "dryrun");
     }
     if (typeof err != "string") {
         err = copyFramesFromParsedPython(s.projectDoc, STRYPE_LOCATION.PROJECT_DOC_SECTION, s.format, s.mainMapping, "dryrun");
@@ -1495,7 +1586,6 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
         
         // The logic for pasting is: every frame that are allowed at the current cursor's position are added.
         // Frames that are related to another section where the caret is not present are added in that section.
-        const curLocation = findCurrentStrypeLocation().strypeLocation;
         const isCurLocationInImportsSection = curLocation == STRYPE_LOCATION.IMPORTS_SECTION, isCurLocationInDefsSection = curLocation == STRYPE_LOCATION.DEFS_SECTION, 
             isCurLocationInMainCodeSection = curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION, isCurLocationInAFuncDefFrame = curLocation == STRYPE_LOCATION.IN_FUNCDEF;
 
@@ -1551,4 +1641,15 @@ const transformTripleQuotesStrings = (slots: {[index: number]: LabelSlotsContent
         
     };
     Object.values(slots).forEach((slotsStruct) => doTransformTripleQuotesStringsOnSlotStructs(slotsStruct.slotStructures));
+};
+
+const checkValidMatchContent = (parentType?: string, lineno?: number): void => {
+    // See copyFramesToPyton() - case Sk.ParseTables.sym.match_stmt - for why we need this.
+    // This method is only to be called on ambigious cases allowed by Skulpt permissibilty :
+    // normal cases or handled Strype comments or handled Strype blank lines are parsed anyway.
+    // If we are in a match statement (parentType is set and is for "match"), we return an error.
+    if(parentType == AllFrameTypesIdentifier.match){
+        // Error format to match what's expected in copyFramesFromParsedPython        
+        throw {$msg: {$mangled: i18n.global.t("messageBannerMessage.invalidMatchStmtContent")}, traceback: [{lineno: lineno}]};
+    }
 };

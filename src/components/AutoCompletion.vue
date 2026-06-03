@@ -87,10 +87,25 @@ import {Completion, Signature, SignatureArg, TPyParser} from "tigerpython-parser
 import scssVars from "@/assets/style/_export.module.scss";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
-// #v-ifdef MODE == VITE_MICROBIT_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
 import microbitDescriptions from "@/autocompletion/microbit.json";
 import microbitAPI from "@/autocompletion/microbit-api.json";
 // #v-endif
+
+const assetFileList : string[] = Object.keys(import.meta.glob(
+    "/src/assetsFilesystem/**/*",
+    {
+        eager: true,
+        query: "?url",
+        import: "default",
+    }
+)).map((path) => path.replace(/^\/src\/assetsFilesystem/, "/strype"))
+    // Leave out cat-test.jpg etc:
+    .filter((path) => !path.includes("-test"));
+
+const assetFileCompletions : AcResultType[] = assetFileList.map((path) => {
+    return {acResult: path, documentation: "A file built in to Strype.", type: [], version: 0};
+});
 
 //////////////////////
 export default defineComponent({
@@ -170,7 +185,7 @@ export default defineComponent({
             }; 
         },
 
-        // #v-ifdef MODE == VITE_MICROBIT_MODE
+        // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
         allMicrobitAnnotatedVariables(): AcMicrobitResultType[] {
             // We retrieve the micro:bit annoted variables only once, as this won't change.
             // See updateAC() why.
@@ -282,7 +297,7 @@ export default defineComponent({
         // frameId is which frame we're in.
         // token is the string token being edited, or null if it's invalid to show code completion here
         // context is the part before any preceding dot before us 
-        async updateAC(frameId: number, token : string | null, context: string): Promise<void> {
+        async updateAC(frameId: number, token : string | null, context: string, kind: "code" | "string"): Promise<void> {
             const tokenStartsWithUnderscore = (token ?? "").startsWith("_");
             const parser = new Parser(false, "py", true);
             const inFuncDef = getFrameContainer(frameId) == useStore().getDefsFrameContainerId;
@@ -310,7 +325,11 @@ export default defineComponent({
             this.showFunctionBrackets = true;
             const imported = await getAllExplicitlyImportedItems(context);
             this.acResults = {};
-            if (token === null) {
+            if (token != null && kind == "string") {
+                this.acResults[this.$t("autoCompletion.builtinFiles")] = assetFileCompletions;
+                this.showSuggestionsAC(token);
+            }
+            else if (token === null) {
                 this.showSuggestionsAC("");
             }
             else if (context !== "" && imported[context as keyof typeof imported]) {
@@ -331,10 +350,7 @@ export default defineComponent({
                 // For the specific case of a call after "self." within a function defintion of 
                 // a user defined class, we pass the full class code (see above) to TigerPython
                 // and add an extra line after that class that call as "<class name>()." to replace self.   
-                let preamble = "";
-                // #v-ifdef MODE == VITE_MICROBIT_MODE
-                preamble = "from builtins import *\n";
-                // #v-endif
+                let preamble = "from builtins import *\n";
                 const extraLineContent = (isGettingWholeClassContext) 
                     ? `${(this.appStore.frameObjects[currentStrypeLocationForClassInfos.locationFrameId].labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code}().` 
                     : parser.getStoppedIndentation() + context + ".";
@@ -343,7 +359,7 @@ export default defineComponent({
                 if (tppCompletions == null) {
                     tppCompletions = [];                    
                 }
-                // #v-ifdef MODE == VITE_MICROBIT_MODE
+                // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
                 // TODO 
                 // TPP, at least now, doesn't interpret module annotated-only variable in PYI properly,
                 // like for "button_a: Button" for the microbit init file :
@@ -401,7 +417,7 @@ export default defineComponent({
 
                 let version0 = 0;
                 let mbVersionExtra = 0;
-                // #v-ifdef MODE == VITE_MICROBIT_MODE
+                // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
                 //for micro:bit we can get the version from the version reference JSON
                 mbVersionExtra = this.getMicrobitVersionFor(context + "." + token);
                 // #v-endif
@@ -409,6 +425,7 @@ export default defineComponent({
                 const items =  tppCompletions.filter((s) => !s.acResult.startsWith("_") || token.startsWith("_")).map((s) => ({
                     acResult: s.acResult,
                     documentation: s.documentation,
+                    signature: s.signature,
                     params: s.params == null ? [] : s.params.map((p) => ({name: p})),
                     type: ["function", "module", "variable", "type"].includes(s.type ?? "") ? [s.type] : [],
                     version: version0 + mbVersionExtra,
@@ -632,7 +649,7 @@ export default defineComponent({
             return Object.values(this.resultsToShow)?.length > 0;
         },  
 
-        // #v-ifdef MODE == VITE_MICROBIT_MODE
+        // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
         getMicrobitVersionFor(elementPath: string): number {
             // Get through the version definitions to find the version.
             // The version is listed for things v2+.

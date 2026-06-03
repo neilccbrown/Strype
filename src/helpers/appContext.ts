@@ -12,7 +12,7 @@ export const eventBus = mitt<Record<string, any>>();
 // Version of the application to check code's import compatibility in the editor
 // note: that is not an offical software version of Strype, just a way to help us dealing with compatibility issues.
 // it MUST be kept as an integer matching value
-export const AppVersion = "6";
+export const AppVersion = "7";
 // The version used in the new .spy file format.  We may increment this in future
 // if we introduce a breaking change to that file format.
 export const AppSPYSaveVersion = "1";
@@ -22,7 +22,7 @@ export const AppName = "Strype";
 export const AppSPYPrefix = "(=>";
 export const AppSPYFullPrefix = "#" + AppSPYPrefix;
 let appPlatform = StrypePlatform.standard;
-// #v-ifdef MODE == VITE_MICROBIT_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
 appPlatform = StrypePlatform.microbit;
 // #v-endif
 export const AppPlatform = appPlatform;

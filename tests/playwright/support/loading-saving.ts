@@ -7,7 +7,9 @@ import { randomUUID } from "node:crypto";
 
 
 export async function load(page: Page, filepath: string) : Promise<void> {
-
+    // Wait for page load:
+    await page.waitForSelector(".frame-container");
+    
     await page.click("#" + await strypeElIds(page).getEditorMenuUID());
     await page.click("#" + await strypeElIds(page).getLoadProjectLinkId());
     // A modification update might arise because we had changed something in the editor:
@@ -39,6 +41,9 @@ export async function loadContent(page: Page, spyToLoad: string) : Promise<void>
 
 // Returns the file path
 export async function save(page: Page, firstSave = true) : Promise<string> {
+    // Wait for page load:
+    await page.waitForSelector(".frame-container");
+    
     // Save is located in the menu, so we need to open it first, then find the link and click on it:
     await page.click("#" + await strypeElIds(page).getEditorMenuUID());
     await page.waitForTimeout(1000);

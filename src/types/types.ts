@@ -82,7 +82,7 @@ export function isFieldBracketedSlot(field: FieldSlot): field is SlotsStructure 
     return (field as SlotsStructure).openingBracketValue !== undefined;
 }
 
-export function isFieldMediaSlot(field: FieldSlot): field is SlotsStructure {
+export function isFieldMediaSlot(field: FieldSlot): field is MediaSlot {
     return (field as MediaSlot).mediaType !== undefined;
 }
 
@@ -232,6 +232,7 @@ export enum FrameContextMenuActionName {
     deleteOuter,
     enable,
     disable,
+    toggleDisability,
     collapseToHeader,
     collapseToDocumentation,
     collapseToFull,
@@ -415,6 +416,8 @@ const StandardFrameTypesIdentifiers = {
     return: "return",
     varassign: "varassign",
     global: "global",
+    match: "match",
+    case: "case",
     ...JointFrameIdentifiers,
 };
 
@@ -444,7 +447,7 @@ export const BlockDefinition: FramesDefinitions = {
     allowChildren: true,
     forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
         .concat(Object.values(DefIdentifiers))
-        .concat([StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
+        .concat([StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally, StandardFrameTypesIdentifiers.case]),
 };
 
 export const StatementDefinition: FramesDefinitions = {
@@ -639,7 +642,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         colour: "#E0DFE4",
         forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
             .concat(Object.values(DefIdentifiers))
-            .concat([StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally]),
+            .concat([StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.finally, StandardFrameTypesIdentifiers.case]),
     };
 
     const ElifDefinition: FramesDefinitions = {
@@ -671,7 +674,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ],
         allowJointChildren: true,
         jointFrameTypes: [StandardFrameTypesIdentifiers.else],
-        colour: "#E4D6CE",
+        colour: "#E4D5D5",
     };
 
     const WhileDefinition: FramesDefinitions = {
@@ -761,6 +764,30 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         colour: "#ede8f2",
     };
 
+    const CaseDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: AllFrameTypesIdentifier.case,
+        labels: [
+            { label: "case ", defaultText: i18n.global.t("frame.defaultText.case") },
+            { label: " :", showSlots: false, defaultText: "" },
+        ],
+        colour: "#E0DFE4",        
+    };
+
+    const MatchDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.match,
+        labels: [
+            { label: "match ", defaultText: i18n.global.t("frame.defaultText.match") },
+            { label: " :", showSlots: false, defaultText: "" },
+        ],
+        colour: "#E0DFE4",
+        forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier).filter((type) => type != StandardFrameTypesIdentifiers.case && type != StandardFrameTypesIdentifiers.blank && type != StandardFrameTypesIdentifiers.comment),
+        // A match statement must always have one case at least, so we enforce it upon frame creation
+        defaultChildrenTypes: [{...EmptyFrameObject, frameType: CaseDefinition, labelSlotsDict: {0: {slotStructures:{fields:[{code:"_"}], operators: []}}, 1: {slotStructures:{fields:[{code:""}], operators: []}}}}],
+
+    };
+
     /*2) update the Defintions variable holding all the definitions */
     Definitions = {
         IfDefinition,
@@ -786,6 +813,8 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         LibraryDefinition,
         CommentDefinition,
         GlobalDefinition,
+        MatchDefinition,
+        CaseDefinition,
         ProjectDocumentationDefinition,
         // also add the frame containers as we might need to retrieve them too
         ...FrameContainersDefinitions,
@@ -915,6 +944,7 @@ export const MessageTypes = {
     gdriveFileAlreadyExists: "gdriveFileAlreadyExists",
     invalidPythonParseImport: "invalidPythonParseImport",
     invalidPythonParsePaste: "invalidPythonParsePaste",
+    errorAccessingIndexedDB: "errorAccessingIndexedDB",
 };
 
 //empty message
@@ -1036,6 +1066,17 @@ const InvalidPythonParsePaste: MessageDefinition = {
     },
 };
 
+const ErrorAccessingIndexedDB: MessageDefinition = {
+    ...NoMessage,
+    type: MessageTypes.errorAccessingIndexedDB,
+    message: {
+        path: "messageBannerMessage.errorAccessingIndexedDB",
+        args: {
+            [FormattedMessageArgKeyValuePlaceholders.error.key]: FormattedMessageArgKeyValuePlaceholders.error.placeholderName,
+        },
+    },
+};
+
 
 export const MessageDefinitions = {
     NoMessage,
@@ -1052,6 +1093,7 @@ export const MessageDefinitions = {
     GDriveCantCreateStrypeFolder,
     InvalidPythonParseImport,
     InvalidPythonParsePaste,
+    ErrorAccessingIndexedDB,
 };
 
 //WebUSB listener
@@ -1185,7 +1227,7 @@ export interface VoidFunction {
 }
 
 //Representation of an item of the (microbit) API using a coded identifier with its potential children
-// #v-ifdef MODE == VITE_MICROBIT_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
 export interface APICodedItem {
     name: string, //a UUID coded name that represent a single item of the API description (** do not use "." in the coded names, it messes i18n **)
     codePortion: string, //the code portion that will builds an example use in the editor (code builder)

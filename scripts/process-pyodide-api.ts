@@ -15,6 +15,15 @@ import pRetry from "p-retry";
 import path from "path";
 import fs from "node:fs/promises";
 import pythonInspectionCode from "pysrc/fetch-ac-info-from-python.py";
+import yargs from "yargs/yargs";
+import { hideBin } from "yargs/helpers";
+
+const argv = yargs(hideBin(process.argv))
+    .option("library", {
+        type: "string",
+        demandOption: false,
+    })
+    .parseSync();
 
 /*
  * Prepare code to be run by Pyodide in order to find out completions for autocomplete.
@@ -121,7 +130,7 @@ interface Module {
 }
 let library: string | undefined;
 let modulesPromise : Promise<Module[]>;
-declare const library_arg: string | undefined;
+const library_arg = argv.library;
 if (library_arg) {
     library = library_arg;
     modulesPromise = getAvailablePyPyiFromLibrary(library).then(async (files) => {

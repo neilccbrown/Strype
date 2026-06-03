@@ -9,7 +9,7 @@ import de from "@/localisation/de/de_main.json";
 import {expect} from "chai";
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
-import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
+import { scssVars, standardBeforeEach, strypeElIds } from "../support/standard-setup";
 
 /**
  * Given a JQuery with multiple results and an array of expected string content,
@@ -26,23 +26,7 @@ function checkTextEquals(ws: JQuery, expecteds : string[]) : void {
 // Must clear all local storage between tests to reset the state,
 // and also retrieve the shared CSS and HTML elements IDs exposed
 // by Strype via the Window object of the app.
-let scssVars: {[varName: string]: string};
-let strypeElIds: {[varName: string]: (...args: any[]) => string};
-beforeEach(() => {
-    cy.clearLocalStorage();
-    cy.visit("/",  {onBeforeLoad: (win) => {
-        win.localStorage.clear();
-        win.sessionStorage.clear();
-    }}).then(() => {       
-        // Only need to get the global variables if we haven't done so
-        if(scssVars == undefined){
-            cy.window().then((win) => {
-                scssVars = (win as any)[WINDOW_STRYPE_SCSSVARS_PROPNAME];
-                strypeElIds = (win as any)[WINDOW_STRYPE_HTMLIDS_PROPNAME];
-            });
-        }
-    });
-});
+beforeEach(standardBeforeEach);
 
 // Helper method that needs to be called in a test before typing text in Strype
 // (not clear why, but it's just required... otherwise when a typing triggers a frame addition, following typing fails)
@@ -178,6 +162,10 @@ describe("Locale persistence", () => {
             // Accept the change for a new project
             cy.wait(500);
             return cy.contains("button:visible", getLocalisedString("buttonLabel.continue", localeForTest)).click({force: true}).then(() => {
+                // Wait for the starting project to load fully:
+                cy.get(".frame-div", { timeout: 10000 })
+                    .should("have.length.at.least", 2);
+                
                 // Check the editor contains the initial state code: we download the conversion and compare with the backed up Python file
                 changeCodeThenDownloadPy({locale: localeForTest});
                 cy.wait(500);            

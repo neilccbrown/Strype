@@ -14,16 +14,16 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     // These tests can take longer than the default 30 seconds:
     testInfo.setTimeout(120_000); // 120 seconds
 
+    // Make browser's console.log output visible in our logs (useful for debugging):
+    page.on("console", (msg) => {
+        console.log("Browser log:", msg.text());
+    });
     await addFakeClipboard(page);
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
     
     await page.evaluate(() => {
         (window as any).Playwright = true;
-    });
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
     });
 });
 
@@ -338,9 +338,9 @@ test.describe("Saves collapsed state after icon clicks", () => {
         // Right arrow should go past header and into frame, then right again should go past
         // the next frame, so right, and right again should both end up with a frame cursor:
         await page.keyboard.press("ArrowRight");
-        checkFrameXorTextCursor(page, true);
+        await checkFrameXorTextCursor(page, true);
         await page.keyboard.press("ArrowRight");
-        checkFrameXorTextCursor(page, true);
+        await checkFrameXorTextCursor(page, true);
         
     });
 

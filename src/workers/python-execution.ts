@@ -69,38 +69,29 @@
 //   "Async" (see above) so fast, but queries (mainly: what colour is this pixel) are "Sync" meaning they need a reply
 //   and are slow.
 
+// NOTE: DO NOT EXPORT ANYTHING FROM THIS FILE!  Shared helper functions must go elsewhere.  Otherwise
+// we accidentally end up loading Pyodide in the main thread, too.  (Speaking from experience.)
+
 // Tell Typescript we are on a web worker, so we can access web worker bits but not the DOM:
 /// <reference lib="webworker" />
-import type { PyodideInterface } from "pyodide";
-import { loadPyodide } from "pyodide";
-import { loadPyodideAndPackage, makeRunnerCallback, OutputPart, pyodideExpose, PyodideExtras, PyodideFatalErrorReloader } from "pyodide-worker-runner";
+import type {PyodideInterface} from "pyodide";
+import {loadPyodide} from "pyodide";
+import {loadPyodideAndPackage, OutputPart, pyodideExpose, PyodideExtras, PyodideFatalErrorReloader} from "pyodide-worker-runner";
 import * as Comlink from "comlink";
-import { strype_bridge } from "@/stryperuntime/pyodide_bridge";
-import { ResponseFor, SyncOrAsyncStrypePyodideWorkerRequest, SyncStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse } from "@/stryperuntime/worker_bridge_type";
-import { SpriteManager } from "@/stryperuntime/image_and_collisions";
-import { PyodideWorkerGlobalScope } from "@/workers/python_execution_type";
+import {strype_bridge} from "@/stryperuntime/pyodide_bridge";
+import {ResponseFor, SyncOrAsyncStrypePyodideWorkerRequest, SyncStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse} from "@/stryperuntime/worker_bridge_type";
+import {SpriteManager} from "@/stryperuntime/image_and_collisions";
+import {asyncBridge, PyodideWorkerGlobalScope, syncBridge} from "@/workers/python_execution_type";
 import {getFSForEmscripten} from "@/stryperuntime/pyodide-emscripten-cloud-fs";
 import {createLazyFetchAssetsFS} from "@/stryperuntime/pyodide-emscripten-assets-fs";
+import {PyodideErrorDetails} from "@/workers/shared_helpers";
+import {createLazyFetchFS} from "@/stryperuntime/pyodide-emscript-fetch-fs";
 
 // We only specify updatePort here as we don't want other files using it directly:
 declare const self: PyodideWorkerGlobalScope & { updatePort: MessagePort };
 
-export async function serviceWorkerReadyAndInControl() : Promise<void> {
-    await navigator.serviceWorker.ready;
-
-    // If already controlled, all is fine:
-    if (navigator.serviceWorker.controller) {
-        return;
-    }
-    // Wait until the service worker takes control:
-    await new Promise((resolve) => {
-        navigator.serviceWorker.addEventListener("controllerchange", resolve, { once: true });
-    });
-}
-
-
 async function loadOnly() : Promise<PyodideInterface> {
-    const pyodide = await loadPyodideAndPackage({url: `${import.meta.env.BASE_URL}pysrc.zip`, format: "zip"}, loadPyodide);
+    const pyodide = await loadPyodideAndPackage({url: `${import.meta.env.BASE_URL}pysrc.zip`, format: "zip"}, () => loadPyodide({indexURL: `${import.meta.env.BASE_URL}pyodide/`}));
     
     // Register our strype.graphics etc modules with Pyodide by pointing it to the Javascript:
     pyodide.registerJsModule("strype_bridge", strype_bridge);
@@ -115,28 +106,75 @@ async function loadOnly() : Promise<PyodideInterface> {
     
     pyodide.FS.filesystems.ASSETSFS = createLazyFetchAssetsFS(pyodide);
     pyodide.FS.mkdir("/strype");
+
+    pyodide.FS.mkdir("/strype_libraries");
     
     return pyodide;
 }
 const reloader = new PyodideFatalErrorReloader(loadOnly);
 
-export interface ErrorDetails {
-    error_type: string,
-    error_message: string,
-    text: string,
-    traceback: {filename: string, lineno: number}[]
+async function urlToDirName(url: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(url);
+
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+
+    const hashHex = hashArray
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+
+    return `userlib_${hashHex}`;
 }
+
+// These caches should outlive a Pyodide run, to avoid re-fetching library content:
+// Maps a URL to a cache:
+const libraryCaches : Map<string, Map<string, Uint8ClampedArray>> = new Map();
 
 const executePython = pyodideExpose(async (
     extras: PyodideExtras,
     pythonCode: string,
+    micropipLibraries: string[],
+    userLibrariesFileIndexes: { [url: string]: Record<string, string>},
     startInSlashCloud: boolean,
-    printStdout: Comlink.Remote<(output: string) => void>,
-    requestInput: Comlink.Remote<(prompt: string) => void>,
     // Important all requests (sync and async) go through one function to avoid them racing each other:
-    otherRequest: Comlink.Remote<(req: SyncOrAsyncStrypePyodideWorkerRequest) => void>
-) : Promise<ErrorDetails | null> => {
-    return await reloader.withPyodide(async (pyodide : PyodideInterface) => {
+    makeRequest: Comlink.Remote<(req: SyncOrAsyncStrypePyodideWorkerRequest) => void>
+) : Promise<PyodideErrorDetails | null> => {
+    return reloader == null ? null : await reloader.withPyodide(async (pyodide : PyodideInterface) => {
+        // Load any in-built packages they've used (e.g. numpy, pandas):
+        const loaded = await pyodide.loadPackagesFromImports(pythonCode, {messageCallback: console.log, errorCallback: console.error});
+        
+        // Useful for debugging, and the user may also want to see:
+        console.info("Loaded packages: " + loaded.map((p) => p.name).join(", "));
+
+        for (let url in userLibrariesFileIndexes) {
+            const libDir = "/strype_libraries/" + await urlToDirName(url);
+            pyodide.FS.mkdirTree(libDir);
+            
+            
+            let cache = libraryCaches.get(url);
+            if (!cache) {
+                cache = new Map();
+                libraryCaches.set(url, cache);
+            }
+            
+            const fs = createLazyFetchFS(pyodide, userLibrariesFileIndexes[url], url, cache);
+            pyodide.FS.mount(fs, {}, libDir);
+            
+            // Add the Pyodide FS path to the search dir for packages:
+            pyodide.runPython(`
+import sys
+sys.path.append("${libDir}")
+`);
+        }
+        
+        const usingMatplotlib = loaded.some((pd) => pd.name == "matplotlib");
+        if (usingMatplotlib) {
+            // Matplotlib takes ages (7 seconds on my fast Windows+Firefox machine!) so let's print a message:
+            makeRequest({kind: "async", request: {request:"console_print", text: "Loading Matplotlib (this may take some time)", containsInputPrompt: false}});
+        }
+        
+        
         const runner = pyodide.runPython(`from python_runner import PyodideRunner
 import traceback
 from itertools import dropwhile
@@ -148,9 +186,63 @@ class StrypePyodideRunner(PyodideRunner):
         # and translate to dict for easy transformation into Javascript object:
         filtered = [dict(filename=frame.filename, lineno=frame.lineno) for frame in list(dropwhile(lambda f: f.filename != self.filename, tbe.stack))]
         return dict(error_type=type(exc).__name__, error_message=str(exc), traceback=filtered, text=type(exc).__name__ + ": " + str(exc))
-StrypePyodideRunner()`);
+    def reset(self):
+        super().reset()
+        # The dict we need to add the names to:
+        target = self.console.locals
+        # Effectively does: from strype.builtins import *
+        import importlib
+        strype_builtins = importlib.import_module("strype.builtins")
+        for name in getattr(strype_builtins, "__all__", dir(strype_builtins)):
+            if not name.startswith("_"):
+                target[name] = getattr(strype_builtins, name)
+runner = StrypePyodideRunner()
+
+# Work around from Pyodide repo, then used in WebTigerPython, then adapted by us for the 800x600 part:
+if ${usingMatplotlib ? "True" : "False"}:
+    try:
+        import matplotlib
+        # Must set backend before importing pyplot:
+        matplotlib.use("Agg", force=True)
+    
+        # workaround from https://github.com/pyodide/pyodide/issues/1518
+        import base64
+        from io import BytesIO
+    
+        import matplotlib.pyplot
+    
+        def show():
+            fig = matplotlib.pyplot.gcf()
+            # Current figure size in inches
+            w_in, h_in = fig.get_size_inches()
+            # Compute DPI that fits within bounds:
+            dpi = min(800 / w_in, 600 / h_in)
+        
+            buf = BytesIO()
+            matplotlib.pyplot.savefig(buf, format="png", dpi=dpi, bbox_inches="tight")
+            buf.seek(0)
+            # encode to a base64 str
+            img = "data:image/png;base64," + base64.b64encode(buf.read()).decode("utf-8")
+            matplotlib.pyplot.clf()
+            runner.callback("matplotlib_img", data=img)
+    
+        matplotlib.pyplot.show = show
+    except ModuleNotFoundError:
+        pass
+
+# Now return the runner object:
+runner`);
+        
+        if (micropipLibraries.length > 0) {
+            await pyodide.loadPackage("micropip");
+            const micropip = pyodide.pyimport("micropip");
+            for (let micropipLibrary of micropipLibraries) {
+                await micropip.install(micropipLibrary);
+            }
+        }
+        
         const bridgeSync: SyncStrypePyodideHandlerFunction = <R extends SyncStrypePyodideWorkerRequest> (req : R) : ResponseFor<R> => {
-            otherRequest({kind: "sync", request: req});
+            makeRequest({kind: "sync", request: req});
             const reply = extras.readMessage() as (SyncStrypePyodideWorkerResponse | {request: string, error: string});
             if (reply.request != req.request) {
                 throw new Error(`Internal error: Pyodide worker received ${reply.request} but had asked for ${req.request}`);
@@ -167,7 +259,7 @@ StrypePyodideRunner()`);
 
         // Set the global fields used by Javascript code (and by the pyodide cloud file mounting, just below): 
         self.syncStrypePyodideWorkerBridge = bridgeSync;
-        self.asyncStrypePyodideWorkerBridge = (r) => otherRequest({kind: "async", request: r});
+        self.asyncStrypePyodideWorkerBridge = (r) => makeRequest({kind: "async", request: r});
         self.spriteManager = new SpriteManager((u) => self.updatePort.postMessage(u));
         self.pyodide = pyodide;
         
@@ -190,33 +282,76 @@ StrypePyodideRunner()`);
                 console.error("Problem mounting cloud file system: ", e);
             }
         }
+        else {
+            // Do mkdir in a separate catch because it will expectedly fail if the directory exists:
+            try {
+                pyodide.FS.mkdir("/local");
+            }
+            catch {
+                // Ignore errors
+            }
+            try {
+                pyodide.FS.chdir("/local");
+            }
+            catch (e) {
+                // This one shouldn't fail, but don't let it stop execution:
+                console.error(e);
+            }
+                
+        }
         pyodide.FS.mount(pyodide.FS.filesystems.ASSETSFS, {}, "/strype");
         
-        let error : ErrorDetails | null = null;
-        const callback = makeRunnerCallback(extras, {
-            output: (outputText: OutputPart[]) => {
-                const stdoutParts = outputText.filter((t) => t.type == "stdout");
+        let error : PyodideErrorDetails | null = null;
+        let matPlotLibSpriteId : number | null = null;
+        const callback = function (type: string, data: any) {
+            if (data.toJs) {
+                data = data.toJs({dict_converter: Object.fromEntries});
+            }
+
+            if (type === "input") {
+                return syncBridge({request: "console_input"}) + "\n";
+            }
+            else if (type === "sleep") {
+                extras.syncSleep(data.seconds * 1000);
+            }
+            else if (type === "output") {
+                const outputText = data.parts as OutputPart[];
+                // We print out "stdout", "stderr" and "input_prompt", but not "input" because that has already been added to the console
+                // when the user entered it there in the HTML input element.
+                const stdoutParts = outputText.filter((t) => t.type == "stdout" || t.type == "stderr" || t.type == "input_prompt");
                 if (stdoutParts.length > 0) {
-                    printStdout(stdoutParts.map((t) => t.text).join(""));
+                    asyncBridge({request: "console_print", text: stdoutParts.map((t) => t.text).join(""), containsInputPrompt: outputText.some((t) => t.type == "input_prompt")});
                 }
-                const errorParts = outputText.filter((t) => t.type == "traceback");
+                const errorParts = outputText.filter((t) => t.type == "traceback" || t.type == "syntax_error");
                 if (errorParts.length == 1) {
-                    // As per the Python above:
-                    const details = errorParts[0] as unknown as ErrorDetails;
-                    error = details;
+                    // As per the Python above at the start of executePython that serialises the traceback:
+                    error = errorParts[0] as unknown as PyodideErrorDetails;
                 }
                 else if (errorParts.length > 1) {
                     // I don't think this should happen, but log it in case:
                     console.error("Unexpected multiple error parts from one call: " + JSON.stringify(errorParts));
                 }
-            },
-            // We fire off the input request and it asynchronously gives back the input by writing a message,
-            // NOT by directly returning it:
-            input: requestInput,
-            other: (type: string, data: any) => {
-                // This is for sleep events that we are not necessarily interested in
-            },
-        });
+            }
+            else if (type === "matplotlib_img") {
+                // This comes from the override above.  The image is in a base64 string in the data field.
+                
+                // Remove previous:
+                if (matPlotLibSpriteId != null) {
+                    self.spriteManager.removeSprite(matPlotLibSpriteId, null);
+                }
+                
+                // First, load it:
+                const image = syncBridge({request: "loadImage", url: data.data as string});
+                // Note that the image should already fit 800x600 as best it can due to our code in show(), above.
+                // So no need to scale.
+                
+                // Then add it as a sprite (default 0, 0 position is fine):
+                matPlotLibSpriteId = self.spriteManager.addSprite(image, false);
+            }
+            else {
+                // We don't currently handle any other callbacks
+            }
+        };
         runner.set_callback(callback);
         await runner.run_async(pythonCode, {});
         return error;
@@ -224,7 +359,9 @@ StrypePyodideRunner()`);
 });
 
 const onReady = pyodideExpose(async (extras: PyodideExtras, callOnceReady:  Comlink.Remote<() => void>)=> {
-    await reloader.withPyodide(async () => callOnceReady());
+    if (reloader != null) {
+        await reloader.withPyodide(async () => callOnceReady());
+    }
 });
 
 Comlink.expose({

@@ -1,13 +1,13 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesAction, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameSectionIdFromFrameId } from "./storeMethods";
+import { checkCodeErrors, getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameSectionIdFromFrameId } from "./storeMethods";
 import { splitByRegexMatches, strypeFileExtension } from "./common";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
 import scssVars  from "@/assets/style/_export.module.scss";
 import html2canvas, { Options } from "html2canvas";
 import { nextTick } from "vue";
-// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { debounce } from "lodash";
 // #v-endif
 import {toUnicodeEscapes} from "@/parser/parser";
@@ -28,6 +28,10 @@ export enum AutoSaveKeyNames {
     settingsState = "StrypeSettingsState",
     pythonEditorState = "PythonStrypeSavedState",
     mbEditor = "MicrobitStrypeSavedState",
+    strypeEditorTabId = "StrypeEditorTabId",
+    strypePythonDBStore = "StrypeStorePython",
+    strypeMicrobitDBStore = "StrypeStoreMicrobit:",
+    strypeIndexDatabaseName = "StrypeStateDatabase",
 }
 
 // Custom JS events in Strype
@@ -53,7 +57,6 @@ export enum CustomEventTypes {
     acItemClicked = "acItemClicked",
     openSharedFileDone = "openSharedFileDone",
     dropFramePositionsUpdated = "dropFramePositionsUpdated",
-    resetLSOnShareProjectLoadConfirmed = "resetLSOnShareProjectLoadConfirmed",
     requestedCloudDrivePickerPickedItem = "requestedCloudDrivePickerPickedItme",
     exposedCloudDrivePickerPickedItem = "exposedCloudDrivePickerPickedItem",
     requestedCloudDriveItemChildren = "requestedCloudDriveItemChildren",
@@ -62,7 +65,7 @@ export enum CustomEventTypes {
     cutFrameSelection = "cutFrameSelection",
     copyFrameSelection = "copyFrameSelection",
     duplicateFrameSelection = "duplicateFrameSelection",
-    disableOrEnableFrameSelection = "disableOrEnableFrameSelection",
+    toggleFrameSelectionDisability = "toggleFrameSelectionDisability",
     updateParamPrompts = "updateParamPrompts",
     // The following events are used for our modal dialogs, a wrapping mechanism around Bootstrap modals
     showStrypeModal = "bv::show::modal", // request a modal opening, param is a dialog ID
@@ -70,15 +73,13 @@ export enum CustomEventTypes {
     hideStrypeModal = "bv::hide::modal", // request a modal closing, param is a BvTriggerableEvent event
     strypeModalHidden = "bv::modal::hidden", // event after a modal is closed: param is a BvTriggerableEvent event
     // end events for modal dialogs
-    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+    // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
     pythonExecAreaMounted = "peaMounted",
     pythonExecAreaExpandCollapseChanged = "peaExpandCollapsChanged",
     pythonConsoleRequestFocus = "pythonConsoleReqFocus",
     pythonConsoleAfterInput = "pythonConsoleAfterInput",
-    notifyTurtleUsage = "turtleUsage",
+    notifyGraphicsUsage = "graphicsUsage",
     pythonExecAreaSizeChanged = "peaSizeChanged",
-    skulptMouseEventListenerOff = "skMouseEventsOff",
-    skulptTimerEventListenerOff = "skTimerEventsOff",
     highlightPythonRunningState = "highlightPythonRunningState"
     // #v-endif
 }
@@ -91,6 +92,7 @@ export const frameContextMenuShortcuts: FrameContextMenuShortcut[] = [
     {actionName: FrameContextMenuActionName.delete, mainKey: "delete"},
     {actionName: FrameContextMenuActionName.enable, mainKey: "/"},
     {actionName: FrameContextMenuActionName.disable, mainKey: "/"},
+    {actionName: FrameContextMenuActionName.toggleDisability, mainKey: "/"},
 ];
 
 export function getFrameContainerUID(frameId: number): string {
@@ -207,7 +209,7 @@ export function getAppLangSelectId(): string {
     return "strypeLangSelect";
 }
 
-// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 /** This section contains accessors for the PEA components' ID, used within the application */
 export function getPEAComponentRefId(): string {
     return "peaComponent";
@@ -223,10 +225,6 @@ export function getPEATabContentContainerDivId(): string {
 
 export function getPEAGraphicsContainerDivId(): string {
     return "peaGraphicsContainerDiv";
-}
-
-export function getPEAGraphicsDivId(): string {
-    return "peaGraphicsDiv";
 }
 
 export function getPEAConsoleId(): string {
@@ -798,11 +796,20 @@ export function generateAllFrameCommandsDefs():void {
                 index:2,
             },
         ],
-        "c": [{
-            type: getFrameDefType(AllFrameTypesIdentifier.classdef),
-            description: i18n.global.t("frame.classdef_desc"),
-            shortcuts: ["c"],
-        }],
+        "c": [
+            {
+                type: getFrameDefType(AllFrameTypesIdentifier.classdef),
+                description: i18n.global.t("frame.classdef_desc"),
+                shortcuts: ["c"],
+                index: 0,
+            },
+            {
+                type: getFrameDefType(AllFrameTypesIdentifier.case),
+                description: "case",
+                shortcuts: ["c"],
+                index: 1,
+            },
+        ],
         "w": [{
             type: getFrameDefType(AllFrameTypesIdentifier.while),
             description: "while",
@@ -859,6 +866,11 @@ export function generateAllFrameCommandsDefs():void {
             type: getFrameDefType(AllFrameTypesIdentifier.with),
             description: "with",
             shortcuts: ["h"],
+        }],
+        "m": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.match),
+            description: "match",
+            shortcuts: ["m"],
         }],
     };
 
@@ -1084,6 +1096,7 @@ const bodyMouseUpEventHandlerForFrameDnD = (event: MouseEvent): void => {
         // Drop the frame at the current drop caret location only if drop is allowed
         if(areDropFramesAllowed){
             // We either reorder the frames (most commont drag and drop case) OR add a copy if the drop is made with the ctrl or option keys held.
+            const currentDraggedFirstFrameParentFrameId = useStore().frameObjects[currentDraggedSingleFrameId ?? useStore().selectedFrames[0]].parentId;
             if(event.ctrlKey || event.altKey){
                 if(currentDraggedSingleFrameId){
                     useStore().doCopyFrame(currentDraggedSingleFrameId);
@@ -1096,6 +1109,16 @@ const bodyMouseUpEventHandlerForFrameDnD = (event: MouseEvent): void => {
             }
             else {
                 useStore().updateDroppedFramesOrder(currentCaretDropPosFrameId, currentCaretDropPosCaretPos, currentDraggedSingleFrameId);
+            }
+
+            // The specific case of match frames: we need to check the source and destination match frames error (to see if it contains a valid case)            
+            if(useStore().frameObjects[currentDraggedFirstFrameParentFrameId].frameType.type == AllFrameTypesIdentifier.match){
+                nextTick(() => {
+                    // Source match frame
+                    checkCodeErrors(currentDraggedFirstFrameParentFrameId);
+                    // Destination match frame
+                    checkCodeErrors(currentCaretDropPosFrameId);
+                });                
             }
         }
 
@@ -1125,6 +1148,12 @@ document.addEventListener(CustomEventTypes.dropFramePositionsUpdated, () => {
 });
 
 export function notifyDragStarted(frameId?: number):void {
+    // There is only one case where dragging is stop right from the root: frozen frames.
+    // If a frame (or that frame of a selection) is frozen, or its ancestor is, then we don't allow drag.
+    if((frameId && useStore().isEffectivelyFrozen(frameId)) || (!frameId && useStore().selectedFrames.some((frameId) => useStore().isEffectivelyFrozen(frameId)))){
+        return;
+    }
+
     const renderingCanvas = document.getElementById(companionCanvasId) as HTMLCanvasElement;
     let html2canvasOptions: Partial<Options> = {backgroundColor: null, canvas: renderingCanvas, scale: companionImgScalingRatio};
     // If we move a single frame, we keep a reference of it, and set undefinfed if not (see variable definition)
@@ -1237,7 +1266,7 @@ export const operators = [".","+","-","/","*","%",":","//","**","&","|","~","^",
 // as they will always come from a combination of writing one word then the other (the first will be added as operator);
 // "as" is added in the operator list for imports, but it will be discarded when not dealing with import frames.
 // Important that the longer operators come before the shorter ones with the same prefix:
-export const keywordOperatorsWithSurroundSpaces = [" and ", " in ", " is not ", " is ", " or ", " not in ", " not ", " as "];
+export const keywordOperatorsWithSurroundSpaces = [" and ", " in ", " is not ", " is ", " or ", " not in ", " not ", " as ", " if ", " else ", " for "];
 export const trimmedKeywordOperators = keywordOperatorsWithSurroundSpaces.map((spacedOp) => spacedOp.trim());
 
 
@@ -1580,7 +1609,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         // Note: we need to pass (all) imageLiterals to the recursive calls because they might reverse our replacement:
         const {slots: structBeforeBracket, cursorOffset: beforeBracketCursorOffset} = parseCodeLiteral(beforeBracketCode, {isInsideString:false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         cursorOffset += beforeBracketCursorOffset;
-        const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, {isInsideString: false, cursorPos: (flags?.cursorPos) ? flags.cursorPos - (firstOpenedBracketPos + 1) : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
+        const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, {isInsideString: false, cursorPos: (flags?.cursorPos !== undefined) ? flags.cursorPos - (firstOpenedBracketPos + 1) : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         if (openingBracketValue === "(") {
             // First scan and find all the comma-separated parameters:
             const {params, keyValues} = extractFormalParamsFromSlot(structOfBracket);
@@ -1612,7 +1641,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             actualCodeClosingBracketPos -= (placeholder.length - 1);
         });
 
-        const {slots: structAfterBracket, cursorOffset: afterBracketCursorOffset} = parseCodeLiteral(afterBracketCode, {isInsideString: false, cursorPos: (flags && flags.cursorPos && afterBracketCode.startsWith(bracketPlaceholder)) ? flags.cursorPos - (actualCodeClosingBracketPos + 1) + bracketPlaceholder.length : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
+        const {slots: structAfterBracket, cursorOffset: afterBracketCursorOffset} = parseCodeLiteral(afterBracketCode, {isInsideString: false, cursorPos: (flags && flags.cursorPos !== undefined && afterBracketCode.startsWith(bracketPlaceholder)) ? flags.cursorPos - (actualCodeClosingBracketPos + 1) + bracketPlaceholder.length : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         cursorOffset += afterBracketCursorOffset;
         // Remove the bracket field placeholder from structAfterBracket: we trim the placeholder value from the start of the first field of the structure.
         // (the conditional test may be overdoing it, but at least we are sure we won't get fooled by the user code...)
@@ -1645,7 +1674,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             const {slots: structBeforeString, cursorOffset: beforeStringCursortOffset} = parseCodeLiteral(beforeStringCode, {isInsideString: false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
             cursorOffset += beforeStringCursortOffset;
             const structOfString: StringSlot = {code: stringContentCode, quote: openingQuoteValue};
-            const {slots: structAfterString, cursorOffset: afterStringCursorOffset} = parseCodeLiteral(afterStringCode, {isInsideString: false, cursorPos: (flags?.cursorPos??0) - closingQuoteIndex + (2*(quoteTokenLength -1)) + stringPlaceholder.length, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
+            const {slots: structAfterString, cursorOffset: afterStringCursorOffset} = parseCodeLiteral(afterStringCode, {isInsideString: false, cursorPos: flags?.cursorPos !== undefined ? flags?.cursorPos - closingQuoteIndex + (2*(quoteTokenLength -1)) + stringPlaceholder.length : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
             cursorOffset += afterStringCursorOffset;
             (structAfterString.fields[0] as BaseSlot).code = removePossibleFieldPlaceholderFromStart((structAfterString.fields[0] as BaseSlot).code);
             resStructSlot.fields.push(...structBeforeString.fields, structOfString, ...structAfterString.fields );
@@ -1862,10 +1891,11 @@ export function getNumPrecedingBackslashes(content: string, cursorPos : number) 
 /**
  * Turtle  related bits for the editor
  */
-// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 // This method acts the turtle module being imported or not in the editor's frame
-export function actOnTurtleImport(): void {
-    let hasTurtleImported = false;
+export function actOnGraphicsImport(): void {
+    // Matches types in recipient in PythonExecutionArea
+    let graphicsImport = "none" as "strype" | "turtle" | "matplotlib" | "none";
    
     Object.values(useStore().frameObjects).forEach((frame) => {
         // If the frame is disabled, or is not an import/for...import frame, it definitely do not imports turtle.
@@ -1879,11 +1909,23 @@ export function actOnTurtleImport(): void {
             .map((slot)=>slot.code)
             // We add spaces around the modules so we can also extract "as" (aliases)
             .reduce((accModules, currentSlotVal,i) => (accModules + ((i > 0) ? " " + frame.labelSlotsDict[0].slotStructures.operators[i-1].code + " " : "") + currentSlotVal), "");
-        hasTurtleImported ||= importedModules.split(" , ").some((module) => module.localeCompare("turtle") == 0 || module.startsWith("turtle as "));
+        importedModules.split(" , ").forEach((module) => {
+            if (module.localeCompare("turtle") == 0 || module.startsWith("turtle as ")){
+                graphicsImport = "turtle";
+            }
+            // Spaces are added in code above:
+            else if (module.localeCompare("strype . graphics") == 0 || module.startsWith("strype . graphics as ")){
+                graphicsImport = "strype";
+            }
+            // Matplotlib or any of its submodules:
+            else if (module.localeCompare("matplotlib") == 0 || module.startsWith("matplotlib as ") || module.startsWith("matplotlib . ")) {
+                graphicsImport = "matplotlib";
+            }
+        });
     });
 
     // We notify the Python exec area about the presence or absence of the turtle module
-    document.getElementById(getPEAComponentRefId())?.dispatchEvent(new CustomEvent(CustomEventTypes.notifyTurtleUsage, {detail: hasTurtleImported}));
+    document.getElementById(getPEAComponentRefId())?.dispatchEvent(new CustomEvent(CustomEventTypes.notifyGraphicsUsage, {detail: graphicsImport}));
 }
 
 // UI-related method to calculate and set the max height of the Python Execution Area tabs content.
@@ -2115,6 +2157,13 @@ export function getEditableSelectionText() : string {
                 let nodeContent = node.nodeValue ?? "";
                 if (selectableText == "yes_quote") {
                     nodeContent = nodeContent.replaceAll(/[“”]/g, "\"").replaceAll(/[‘’]/g, "'");
+                }
+                else{
+                    // For the specific case when the node is a keyword operator, we make sure we add spacing around the operator 
+                    // so that textual operators stay separated from their operands.
+                    if(node.parentElement?.classList.contains(scssVars.frameOperatorSlotClassName) && trimmedKeywordOperators.includes(nodeContent)){
+                        nodeContent = " " + nodeContent + " ";
+                    }
                 }
                 allNodes.push(nodeContent);
             }

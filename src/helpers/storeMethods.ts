@@ -2,7 +2,7 @@ import { getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
-import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameLabel, FrameObject, FrozenState, getFrameDefType, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
+import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameLabel, FrameObject, FrozenState, getFrameDefType, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, MessageDefinitions, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
 import { nextTick} from "vue";
 import { checkEditorCodeErrors, countEditorCodeErrors, getCaretContainerUID, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID } from "./editor";
 import { cloneDeep, isEqual } from "lodash";
@@ -55,16 +55,16 @@ export const retrieveParentSlotFromSlotInfos = (slotInfos: SlotCoreInfos): Field
 // if the root slot as 3 level children and the second of them has 3 same level children (again field/operator/field), ids will respectively be:
 // "0", "1,0", "1,0", "1,1", "2"
 // The first argument can be passed a FrameLabel, or just the allowedSlotContent part.
-export const generateFlatSlotBases = (slot: { allowedSlotContent?: AllowedSlotContent }, slotStructure: SlotsStructure, parentId?: string, flatSlotConsumer?: (slot: FlatSlotBase, besidesOp: boolean, opAfter?: string) => void, transformEachLevel?: (oneLevel: SlotsStructure, topLevel?: {frameType: string, slotIndex: number}) => SlotsStructure, topLevel?: {frameType: string, slotIndex: number}): FlatSlotBase[] => {
+export const generateFlatSlotBases = (slot: { allowedSlotContent?: AllowedSlotContent }, slotStructure: SlotsStructure, parentId?: string, flatSlotConsumer?: (slot: FlatSlotBase, besidesOp: boolean, opBefore?: string, opAfter?: string) => void, transformEachLevel?: (oneLevel: SlotsStructure, topLevel?: {frameType: string, slotIndex: number}) => SlotsStructure, topLevel?: {frameType: string, slotIndex: number}): FlatSlotBase[] => {
     // The operators always get in between the fields, and we always have one 1 root structure for a label,
     // and bracketed structures can never be found at 1st or last position
     let currIndex = -1;
     const flatSlotBases: FlatSlotBase[] = [];
-    const addFlatSlot = (flatSlot: FlatSlotBase, besidesOp: boolean, opAfter?: string) => {
+    const addFlatSlot = (flatSlot: FlatSlotBase, besidesOp: boolean, opBefore?: string, opAfter?: string) => {
         flatSlotBases.push(flatSlot);
         // If a flat slot consumer is defined, we call it here
         if(flatSlotConsumer){
-            flatSlotConsumer(flatSlot, besidesOp, opAfter);
+            flatSlotConsumer(flatSlot, besidesOp, opBefore, opAfter);
         }
     };
     
@@ -100,12 +100,15 @@ export const generateFlatSlotBases = (slot: { allowedSlotContent?: AllowedSlotCo
             // we have a simple slot, we check if we can infer the detailed type (i.e. number or boolean literals)
             // otherwise we consider it is just a code slot
             
-            // We pass true if we're beside an operator and the other side is the end or a non-blank operator
+            // We pass true if we're beside an operator and the other side is the end or a non-blank operator,
+            // or if we are in between a bracket structure (operator is empty) and a dot.
+            
+            const opBefore = slotStructure.operators[index - 1]?.code;
             const adjacentOp =
-                ((operatorSlot.code !== "" && (index == 0 || slotStructure.operators[index - 1].code != ""))
-                || (index > 0 && slotStructure.operators[index - 1].code != "" && operatorSlot.code !== ""))
-                && !["not", "~"].includes(operatorSlot.code.trim());
-            addFlatSlot({...(fieldSlot as BaseSlot), id: slotId, type: evaluateSlotType(slot, fieldSlot)}, adjacentOp, operatorSlot.code);
+                (operatorSlot.code !== "" || (operatorSlot.code === "" && opBefore === ".")) &&
+                (index == 0 || opBefore !== "") &&
+                !["not", "~"].includes(operatorSlot.code.trim());
+            addFlatSlot({...(fieldSlot as BaseSlot), id: slotId, type: evaluateSlotType(slot, fieldSlot)}, adjacentOp, opBefore, operatorSlot.code);
         }   
 
         // Add this operator only if it is not blank
@@ -116,7 +119,8 @@ export const generateFlatSlotBases = (slot: { allowedSlotContent?: AllowedSlotCo
 
     // Add the last remaining field and call the consumer (if provided)
     currIndex++;
-    addFlatSlot({...(slotStructure.fields.at(-1) as BaseSlot), id: getSlotIdFromParentIdAndIndexSplit(parentId??"", currIndex), type: evaluateSlotType(slot, slotStructure.fields.at(-1) as FieldSlot)}, slotStructure.operators.length > 0 && slotStructure.operators.at(-1)?.code != "");
+    const opBefore = slotStructure.operators.at(-1)?.code;
+    addFlatSlot({...(slotStructure.fields.at(-1) as BaseSlot), id: getSlotIdFromParentIdAndIndexSplit(parentId??"", currIndex), type: evaluateSlotType(slot, slotStructure.fields.at(-1) as FieldSlot)}, slotStructure.operators.length > 0 && slotStructure.operators.at(-1)?.code != "", opBefore);
 
     return flatSlotBases;
 };
@@ -246,6 +250,32 @@ export const evaluateSlotType = (def: { allowedSlotContent?: AllowedSlotContent 
     else {
         // Other things are just "code"
         return SlotType.code;
+    }
+};
+
+// This helper function compares 2 label slots structure in an isomorphic way: that is we check the internal structure
+// is equivalent, without paying attention to the slot's code values.
+// We assume the structures are well formed so we can only care about the fields, and not look at operators.
+export const areSlotStructuresIsomorphic = (struct1: SlotsStructure, struct2: SlotsStructure): boolean => {
+    if(struct1.fields.length != struct2.fields.length){
+        return false;
+    }
+    else{
+        // We need to compare each slots inner content, to be sure their inner structure doesn't differ too.
+        return !struct1.fields.map((fieldSlot, index) =>  {
+            const fieldSlot1Type = evaluateSlotType({}, fieldSlot);
+            const fieldSlot2Type = evaluateSlotType({}, struct2.fields[index]);
+            if(fieldSlot1Type != fieldSlot2Type){
+                return false;
+            }
+            else if(isFieldBracketedSlot(fieldSlot)){
+                return areSlotStructuresIsomorphic(fieldSlot, struct2.fields[index] as SlotsStructure);
+            }
+            else{
+                // Any other type of slots, when they are of the same type, will be isomorphic
+                return true;
+            }
+        }).some((_)=> !_);
     }
 };
 
@@ -453,15 +483,19 @@ export const getAllChildrenAndJointFramesIds = function(frameId: number): number
 
 export const checkStateDataIntegrity = async function(obj: {[id: string]: any}): Promise<boolean> {
     //check the checksum and version properties are present and checksum is as expected, if not, the document doesn't have integrity
-    if(obj["checksum"] === undefined || obj["version"] === undefined){
+    if (obj["version"] === undefined) {
         return false;
     }
-    else{
+    const foundVersion = obj["version"];
+    delete obj["version"];    
+    if (obj["checksum"] === undefined && foundVersion < 7) {
+        return false;
+    }
+    else {
         //take the checkpoints out the object to check the checksum
         const foundChecksum = obj["checksum"];
         delete obj["checksum"];
-        const foundVersion = obj["version"];
-        delete obj["version"];
+        
         let foundPlatform = undefined;
         if(obj["platform"]){
             foundPlatform = obj["platform"];
@@ -473,7 +507,7 @@ export const checkStateDataIntegrity = async function(obj: {[id: string]: any}):
         obj["version"] = foundVersion;
         obj["platform"] = foundPlatform ?? StrypePlatform.standard;
         //and return if the checksum was right
-        return foundChecksum === expectedChecksum;        
+        return foundChecksum === undefined || foundChecksum === expectedChecksum;
     }
 };
 
@@ -775,6 +809,10 @@ export const getAvailableNavigationPositions = function(showIsInCollapsedFrameCo
     }).filter((navigationPosition) => useStore().frameObjects[navigationPosition.frameId] && !(navigationPosition.isSlotNavigationPosition && useStore().frameObjects[navigationPosition.frameId].isDisabled)) as NavigationPosition[]; 
 };
 
+const getPrecompiledErrorFrameId = (frameId: number): string => {
+    return "precompilederr_" + frameId;
+};
+
 export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
     // This method for checking errors is called when a frame has been edited (and lost focus), or during undo/redo changes. As we don't have a way to
     // find which errors are from TigerPython or precompiled errors, and that we wouldn't know what specific error to remove anyway,
@@ -789,7 +827,7 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
     );
     delete (slot as BaseSlot).errorTitle;
 
-    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+    // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
     // If the frame of this slot has a runtime error, we also clear it
     delete useStore().frameObjects[slotInfos.frameId].runTimeError;
     // #v-endif
@@ -835,6 +873,9 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
 };
 
 export function checkPrecompiledErrorsForFrame(frameId: number): void {
+    // If the frame itself as a precompiled error, we clear it up
+    useStore().removePreCompileErrors(getPrecompiledErrorFrameId(frameId));
+
     // We wil need to recreate the slot ID while parsing each slots of the frame to check errors on them
     // so we use the FlatSlotBase generator (only on that frame), and apply the error checks for each flat slot
     // ONLY on code type slots
@@ -870,6 +911,21 @@ export function checkPrecompiledErrorsForFrame(frameId: number): void {
             }
         });
     });
+
+    // Check that a match statement frame contains at least one enabled case statement.
+    // The precompiled error is not set on the slot, but on the frame itself.
+    // We need to check both ways: that if we're on match frame it has a case,
+    // and that if we're on a case frame that it can clear its parent's error.
+    if(frameObject.frameType.type == AllFrameTypesIdentifier.match && !frameObject.isDisabled
+        && !frameObject.childrenIds.some((matchChildFrameId) => useStore().frameObjects[matchChildFrameId].frameType.type == AllFrameTypesIdentifier.case && !useStore().frameObjects[matchChildFrameId].isDisabled)){
+        useStore().setFrameErroneous(frameId, i18n.global.t("errorMessage.matchFrameWithoutCase"));
+        useStore().addPreCompileErrors(getPrecompiledErrorFrameId(frameId));
+    }
+    else if(frameObject.frameType.type == AllFrameTypesIdentifier.case && !frameObject.isDisabled){
+        useStore().setFrameErroneous(frameObject.parentId,"");
+        useStore().addPreCompileErrors(getPrecompiledErrorFrameId(frameObject.parentId));
+    }
+
 }
 
 export function checkCodeErrors(frameIdForPrecompiled?: number): void {
@@ -880,9 +936,11 @@ export function checkCodeErrors(frameIdForPrecompiled?: number): void {
         checkPrecompiledErrorsForFrame(parseInt(frameId));
     } 
 
-    //  2) clear all frame parsing (TP) errors explicitly
+    //  2) clear all frame parsing (TP) errors explicitly (making sure we don't delete a frame-wide precompiled error!)
     Object.keys(useStore().frameObjects).forEach((frameId) => {
-        useStore().setFrameErroneous(parseInt(frameId),"");
+        if(!useStore().preCompileErrors.includes(getPrecompiledErrorFrameId(parseInt(frameId)))){
+            useStore().setFrameErroneous(parseInt(frameId),"");
+        }
     });
 
     //  3) check for TP errors for the whole code
@@ -901,6 +959,12 @@ export function checkCodeErrors(frameIdForPrecompiled?: number): void {
         checkEditorCodeErrors();
         useStore().errorCount = countEditorCodeErrors();
     }); 
+}
+
+export function clearAllRuntimeErrors(): void {
+    Object.values(useStore().frameObjects).forEach((frame: FrameObject) => {
+        delete useStore().frameObjects[frame.id].runTimeError;
+    });
 }
 
 export function getAllEnabledUserDefinedFunctions() : FrameObject[] {
@@ -1035,4 +1099,12 @@ export function calculateNextCollapseState(frameList: FrameObject[], parentIsFro
         }
         return {overall: nextState, individual: decided};
     }
+}
+
+// Show an error using the ErrorAccessingIndexedDB message
+export function showIndexDBError(errorMsg:string) : void {
+    const msg = cloneDeep(MessageDefinitions.ErrorAccessingIndexedDB);
+    const msgObj = msg.message as FormattedMessage;
+    msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, errorMsg);
+    useStore().showMessage(msg, null);
 }

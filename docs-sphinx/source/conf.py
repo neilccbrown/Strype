@@ -7,7 +7,7 @@ import sys
 # Note: this path command must come before the shared import because otherwise is not located correctly:
 sys.path.insert(0, os.path.abspath('.'))
 import strype_sphinx_conf_defaults
-sys.path.insert(0, os.path.abspath('../../public/public_libraries'))
+sys.path.insert(0, os.path.abspath('../../pysrc'))
 sys.path.insert(0, os.path.abspath('./_dummy'))
 
 
@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.abspath('./_dummy'))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'Strype'
-copyright = '2024-2025, K-PET Group, King\'s College London'
+copyright = '2024-2026, K-PET Group, King\'s College London'
 author = 'K-PET Group, King\'s College London'
 
 # -- General configuration ---------------------------------------------------

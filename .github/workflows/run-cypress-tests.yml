@@ -2,7 +2,7 @@ name: Cypress tests
 on: [push,pull_request]
 jobs:
   Build-And-Run-Tests:
-    timeout-minutes: 90
+    timeout-minutes: 125
     strategy:
       fail-fast: false
       matrix:
@@ -20,6 +20,8 @@ jobs:
       - name: NPM Install
         # ci is better than npm install for CI jobs, apparently (quicker + more predictable):
         run: npm ci
+      - name: Install Pyodide
+        run: npm run build:download-pyodide-libs
       - name: NPM Build
         run: npm run build:${{ matrix.testtype }}
       - name: NPM Test (Cypress)

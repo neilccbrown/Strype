@@ -43,6 +43,7 @@ import { Expect, IsSerializable } from "@/stryperuntime/check_serializable";
 export type CloudFileInfo = {fileId: CloudFileId, name: string; isDir: true;} | {fileId: CloudFileId, name: string; isDir: false; fileSize: number};
 
 export type SyncStrypePyodideWorkerRequest =
+    | { request: "console_input" }    
     | { request: "loadImage"; url: string }
     | { request: "loadLibraryAsset"; libraryShortName: string; fileName: string }
     | { request: "loadFont"; provider: string; fontName: string }
@@ -50,8 +51,10 @@ export type SyncStrypePyodideWorkerRequest =
     | { request: "ensureCanvas"; img: RemoteCanvas | RemoteImage }
     | { request: "canvas_getAllPixelsRGBA"; img: RemoteCanvas }
     | { request: "canvas_drawText", img: RemoteCanvas, text: string, x: number, y: number, fontSize: number, maxWidth: number, maxHeight: number, fontName: string }
+    | { request: "canvas_makeCopy", img: RemoteCanvas, scale: number, rotate: number, flip: "horizontal" | "vertical" | "none"  }
     | { request: "turtle", buffer: [string, string, any][]}    
     | { request: "getPressedKeys" }
+    | { request: "waitForNextKey" }
     | { request: "getMouseDetails" }
     | { request: "consumeLastClickDetails" }
     | { request: "consumeLastClickedItems" }
@@ -71,12 +74,14 @@ export type SyncStrypePyodideWorkerRequest =
     | { request: "file_listDir"; parent: CloudFileId }
     | { request: "file_getRoot"; }
     | { request: "assetFile_fetch"; url: string }
+    | { request: "libraryFile_fetch"; libraryURL: string; filename: string; }    
 ;
 
 // All types above should map into this type:
 // Note that if there is an error, it is sent with an "error" string field; we can't easily specify this in the type without
 // cluttering it up (as the error could be for any request) so we do that part dynamically without telling Typescript.
 export type SyncStrypePyodideWorkerResponse =
+    | { request: "console_input"; response: string; }
     | { request: "loadImage"; response: RemoteImage;}
     | { request: "loadLibraryAsset"; response: string | undefined; }
     | { request: "loadFont"; response: boolean; }
@@ -84,8 +89,10 @@ export type SyncStrypePyodideWorkerResponse =
     | { request: "ensureCanvas"; response: RemoteCanvas; }
     | { request: "canvas_getAllPixelsRGBA"; response: string } // See encodeRGBA/decodeRGBA below
     | { request: "canvas_drawText"; response: { width: number; height: number; } }
+    | { request: "canvas_makeCopy"; response: RemoteCanvas }
     | { request: "turtle"; response: boolean; } // We don't need a return value as such, we're just using the response to wait
     | { request: "getPressedKeys"; response: {[key: string]: boolean} }
+    | { request: "waitForNextKey"; response: string }
     | { request: "getMouseDetails", response: {x : number, y: number, buttonsPressed: boolean[] } }
     | { request: "consumeLastClickDetails", response: { x: number, y: number, button: number, clickCount: number } | null }
     | { request: "consumeLastClickedItems", response: SpriteHandle[] }
@@ -105,6 +112,7 @@ export type SyncStrypePyodideWorkerResponse =
     | { request: "file_createNode"; response: CloudFileId }
     | { request: "file_getRoot"; response: CloudFileId }
     | { request: "assetFile_fetch"; response: string }
+    | { request: "libraryFile_fetch"; response: string }
 ;
 
 // Wraps the response field of a type in a promise:
@@ -113,6 +121,8 @@ type PromisedResponse<T> = T extends {request: infer REQ; response: infer RESP }
 // Async here is not about promises etc, but rather that we don't need a response and we don't wait for a response after sending the request.
 // The requests are still done in order without overlapping by the main thread (incl not overlapping any sync requests)
 export type AsyncStrypePyodideWorkerRequest =
+    | { request: "console_print"; text: string; containsInputPrompt: boolean }
+    | { request: "console_clear" }
     | { request: "canvas_drawImagePart"; dest: RemoteCanvas, src : RemoteImage | RemoteCanvas, dx : number, dy : number, sx : number, sy : number, sw: number, sh : number, scale : number }
     | { request: "canvas_clearRect"; img: RemoteCanvas, x: number; y: number; width: number; height: number }
     | { request: "canvas_fillWhole"; img: RemoteCanvas }
@@ -247,7 +257,7 @@ export type AsyncStrypePyodideHandlerFunction = (req : AsyncStrypePyodideWorkerR
 export type StrypeSpriteStateUpdate =
     | {request: "clear"}
     | {request: "add", id: SpriteHandle, x: number, y: number, rotation: number, scale: number, image: RemoteImage | RemoteCanvas, collidable: boolean}
-    | {request: "remove", id: SpriteHandle}
+    | {request: "remove", id: SpriteHandle, removeAtTime: number | null} // null means remove immediately
     | {request: "update", id: SpriteHandle, x: number, y: number, rotation: number, scale: number, image: RemoteImage | RemoteCanvas, collidable: boolean}
 ;
 

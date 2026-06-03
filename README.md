@@ -20,12 +20,15 @@ Then, to run a local test version you can run the following commands in the top 
 
 ```
 npm install
+npm run build:download-pyodide-libs
 npm run serve:python
 ```
 
-If you want to create a packaged version to distribute or host somewhere, run:
+If you want to create a packaged version to distribute or host somewhere, instead run:
 
 ```
+npm install
+npm run build:download-pyodide-libs
 npm run build
 ```
 

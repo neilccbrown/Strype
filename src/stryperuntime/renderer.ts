@@ -5,7 +5,7 @@ import { SpriteManager } from "@/stryperuntime/image_and_collisions";
 // also has the actual ImageBitmap/OffscreenCanvas object references.  When asked, can render its mirror of the 
 // Pyodide web worker state by combining all this together.
 export class Renderer  {
-    // Always has a single black 808x606 image first for the default background:
+    // Always has a single black 800x600 image first for the default background:
     private loadedImages : ImageBitmap[]  = [];
     private canvases : OffscreenCanvas[] = [];
     // Mirrored (as in echoed, not as in horizontally flipped) from the Pyodide thread:
@@ -20,9 +20,9 @@ export class Renderer  {
         // So no need to do anything when this sprite manager changes:
         this.sprites = new SpriteManager(() => {});
         
-        // We have one special image to begin with for the default background; a black 808x606 image:
-        const width = 808;
-        const height = 606;
+        // We have one special image to begin with for the default background; a black 800x600 image:
+        const width = 800;
+        const height = 600;
 
         const canvas = new OffscreenCanvas(width, height);
         const ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D;
@@ -63,7 +63,7 @@ export class Renderer  {
                 break;
             }
             case "remove": {
-                this.sprites.removeSprite(update.id.handle);
+                this.sprites.removeSprite(update.id.handle, update.removeAtTime);
                 break;
             }
             }
@@ -82,6 +82,56 @@ export class Renderer  {
         const canvas = new OffscreenCanvas(width, height);
         this.canvases.push(canvas);
         return {handle: makeCanvasHandle(this.canvases.length - 1), width, height};
+    }
+    
+    makeCopy(ch: CanvasHandle, scale: number, rotate: number, flip: "horizontal"| "vertical" | "none") : RemoteCanvas {
+        const c = this.getCanvas(ch);
+
+        const radians = (rotate * Math.PI) / 180;
+
+        // Original size after scaling
+        const scaledWidth = c.width * scale;
+        const scaledHeight = c.height * scale;
+
+        // Compute bounding box after rotation
+        const cos = Math.abs(Math.cos(radians));
+        const sin = Math.abs(Math.sin(radians));
+        const outWidth = Math.ceil(scaledWidth * cos + scaledHeight * sin);
+        const outHeight = Math.ceil(scaledWidth * sin + scaledHeight * cos);
+
+        const out = new OffscreenCanvas(outWidth, outHeight);
+        const ctx = out.getContext("2d");
+
+        if (!ctx) {
+            throw new Error("Could not get 2D context");
+        }
+
+        // Move origin to center of output canvas
+        ctx.translate(outWidth / 2, outHeight / 2);
+
+        // Apply rotation AFTER flip
+        ctx.rotate(radians);
+
+        // Apply flip first
+        switch (flip) {
+        case "horizontal":
+            ctx.scale(-scale, scale);
+            break;
+
+        case "vertical":
+            ctx.scale(scale, -scale);
+            break;
+
+        case "none":
+            ctx.scale(scale, scale);
+            break;
+        }
+
+        // Draw centered:
+        ctx.drawImage(c, -c.width / 2, -c.height / 2, c.width, c.height);
+
+        this.canvases.push(out);
+        return {handle: makeCanvasHandle(this.canvases.length - 1), width: outWidth, height: outHeight};
     }
 
     getImage(i : ImageHandle) : ImageBitmap {

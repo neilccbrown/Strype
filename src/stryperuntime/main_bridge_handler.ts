@@ -10,13 +10,16 @@ import {getDateTimeFormatted} from "@/helpers/common";
 import {cloudCloseFile, cloudCreate, cloudListDir, cloudLookupFile, cloudOpenFile, cloudReadFile, cloudTruncateFile, cloudWriteFile} from "@/helpers/cloudFileIO";
 import {useStore} from "@/store/store";
 import { handleTurtle, TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
+import { sInput } from "@/helpers/execPythonCode";
+import {getRawFileFromLibraries} from "@/helpers/libraryManager";
 
 // These are callbacks passed from PythonExecutionArea.vue to do things that are tied to the DOM or wider Strype state.
 // This means we don't have to make reference to the PythonExecutionArea component itself.
 interface SyncRequestCallbacks {
     getPressedKeys : () => {[key: string]: boolean},
+    waitForNextKey : () => Promise<string>,
     loadLibraryAsset : (libraryShortName: string, fileName: string) => Promise<string | undefined>,
-    switchToGraphicsTab: () => void,
+    switchToGraphicsTab: (condition: "always" | "ifFirstCallDuringExecute") => void,
     markTurtleDirty: () => void,
     getMouseDetails: () => {x : number, y: number, buttonsPressed: boolean[] },
     consumeLastClickDetails: () => { x: number, y: number, button: number, clickCount: number } | null,
@@ -31,19 +34,25 @@ export const handleSyncRequests : (
     callbacks : SyncRequestCallbacks,
 ) => SyncPromiseStrypePyodideHandlerFunction = (renderer, soundManager, turtle, callbacks) => (req) => {
     switch (req.request) {
+    case "console_input": {
+        return {request: req.request, response: sInput()};
+    }
     case "loadImage": {
-        callbacks.switchToGraphicsTab();
+        callbacks.switchToGraphicsTab("ifFirstCallDuringExecute");
         return {request: req.request, response: renderer.loadImage(req.url)};
     }
     case "loadLibraryAsset": {
         return {request: req.request, response: callbacks.loadLibraryAsset(req.libraryShortName, req.fileName)};
     }
     case "makeOffscreenCanvas": {
-        callbacks.switchToGraphicsTab();
+        callbacks.switchToGraphicsTab("ifFirstCallDuringExecute");
         return {request: req.request, response: Promise.resolve(renderer.makeCanvas(req.width, req.height))};
     }
     case "getPressedKeys": {
         return {request: req.request, response: Promise.resolve(callbacks.getPressedKeys())};
+    }
+    case "waitForNextKey": {
+        return {request: req.request, response: callbacks.waitForNextKey()};
     }
     case "getMouseDetails": {
         return {request: req.request, response: Promise.resolve(callbacks.getMouseDetails())};
@@ -102,6 +111,9 @@ export const handleSyncRequests : (
     case "canvas_drawText": {
         return {request: req.request, response: Promise.resolve(drawText(renderer.getCanvasContext(req.img.handle), req.text, req.x, req.y, req.fontSize, req.maxWidth, req.maxHeight, req.fontName)) };
     }
+    case "canvas_makeCopy": {
+        return {request: req.request, response: Promise.resolve(renderer.makeCopy(req.img.handle, req.scale, req.rotate, req.flip)) };
+    }
     case "ensureCanvas": {
         if (isRemoteImage(req.img)) {
             // Ideally we'd remove the old Image but we don't actually have a mechanism for that at the moment:
@@ -156,6 +168,16 @@ export const handleSyncRequests : (
     case "assetFile_fetch": {
         return {request: req.request, response: fetch(req.url).then((resp) => resp.arrayBuffer()).then((arr) => encodeUint8ToString(new Uint8ClampedArray(arr)))};
     }
+    case "libraryFile_fetch": {
+        return {request: req.request, response: getRawFileFromLibraries([req.libraryURL], req.filename).then((resp) => {
+            if (resp?.buffer) {
+                return resp?.buffer;
+            }
+            else {
+                throw new Error("Could not fetch file " + req.filename + " from " + req.libraryURL);
+            }
+        }).then((arr) => encodeUint8ToString(new Uint8ClampedArray(arr)))};
+    }
     case "turtle": {
         // Assume all turtle interactions require a redraw:
         if (turtle != null) {
@@ -174,9 +196,18 @@ export const handleSyncRequests : (
     }
 };
 
-// Ironically, almost all the "Async" (fire-and-forget) requests are executed synchronously in one step, it's just that we don't need to know the result 
-export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundManager) => AsyncStrypePyodideHandlerFunction = (renderer, soundManager) => (req) => {
+// Ironically, almost all the "Async" (fire-and-forget) requests are executed synchronously in one step, it's just that we don't need to know the result
+// If you pass null to printStdout it's a signal to clear the console
+export const handleAsyncRequests : (renderer : Renderer, soundManager : SoundManager, printStdout: (output: string | null, containsInputPrompt: boolean) => void) => AsyncStrypePyodideHandlerFunction = (renderer, soundManager, printStdout) => (req) => {
     switch (req.request) {
+    case "console_print": {
+        printStdout(req.text, req.containsInputPrompt);
+        return undefined;
+    }
+    case "console_clear": {
+        printStdout(null, false);
+        return undefined;
+    }
     case "canvas_setFill": {
         renderer.getCanvasContext(req.img.handle).fillStyle = req.fill;
         return undefined;

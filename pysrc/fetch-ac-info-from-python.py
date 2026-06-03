@@ -9,7 +9,7 @@ import pydoc
 import re
 from operator import attrgetter
 import traceback
-from types import ModuleType
+from types import BuiltinFunctionType, ModuleType
 
 def make_default(v):
     defValStr = str(v)
@@ -20,7 +20,7 @@ def make_default(v):
     return defValStr
 
 
-def convert_argspec_to_signature(func, argspec, owner_class):
+def convert_argspec_to_signature(func, argspec, first_param_is_self_or_cls):
     def make_arg(name, default_value, arg_type):
         return {
             "name": name,
@@ -36,25 +36,6 @@ def convert_argspec_to_signature(func, argspec, owner_class):
     kwonlyargs = argspec.kwonlyargs or []
     defaults = argspec.defaults or []
     kw_defaults = argspec.kwonlydefaults or {}
-
-
-    # Determine if the method is a static method
-    is_static = owner_class is not None and isinstance(
-        getattr(owner_class, func.__name__, None),
-        staticmethod
-    )
-
-    # Check if first param is 'self' or 'cls' and it's not a static method
-    first_param_is_self_or_cls = (
-        bool(args)
-        and (owner_class is not None
-             # This section part checks for bound methods, e.g. in random, randint = _inst.randint
-             or (hasattr(func, '__self__') and hasattr(func, '__func__'))
-             # Check for constructors:
-             or (getattr(func, '__name__', None) in {'__init__', '__new__'})
-             or inspect.isclass(func))
-        and not is_static
-    )
     
     if len(posonlyargs) == 0 and len(args) > 0 and first_param_is_self_or_cls:
         posonlyargs.append(args.pop(0))
@@ -121,20 +102,45 @@ def convert_inspect_signature_to_signature(sig):
         "firstParamIsSelf": False
     }
 
+def get_argspec_and_binding(func):
+    """
+    Returns (argspec, first_param_is_bound) where:
+    - argspec is from inspect.getfullargspec
+    - first_param_is_bound is True if the first formal parameter
+      is already bound (i.e. not needed as an actual argument)
+    """
+    try:
+        argspec = inspect.getfullargspec(func)
+    except TypeError:
+        # Some builtins have no inspectable signature
+        argspec = None
 
-def get_class_and_func(ac_result, imp_mod):
-    parts = ac_result.split('.')
-    for i in range(len(parts) - 1, 0, -1):
-        class_path = parts[:i]
-        method_name = parts[i]
-        try:
-            clsName = '.'.join(class_path)
-            cls = attrgetter(clsName)(imp_mod)
-            func = inspect.getfullargspec(attrgetter(method_name)(cls))
-            return clsName, func
-        except AttributeError:
-            continue
-    return None, inspect.getfullargspec(attrgetter(ac_result)(imp_mod))  # fallback
+    # inspect.ismethod returns True for:
+    #   - instance methods accessed on an instance (self is bound)
+    #   - classmethods accessed on either the class or an instance (cls is bound)
+    # It returns False for:
+    #   - plain functions
+    #   - static methods
+    #   - unbound functions retrieved from a class (e.g. MyClass.my_method)
+    first_param_is_bound = (
+        # Python-level bound methods (instance methods on instances,
+        # and pure-Python classmethods on either class or instance)
+        inspect.ismethod(func)
+        or
+        inspect.isclass(func) # For constructors
+        or
+        # C-level builtin bound to a type (e.g. bool.from_bytes,
+        # int.from_bytes) — these are classmethods in C extensions
+        # where __self__ is a type object
+        (
+            isinstance(func, BuiltinFunctionType)
+            and hasattr(func, '__self__')
+            and not isinstance(func.__self__, ModuleType)            
+        )
+    )
+
+    return argspec, first_param_is_bound
+
 
 def parse_arguments(text, func_name):
     # Split the text into lines
@@ -232,11 +238,11 @@ def ac_for(mod, itemName):
     # Signature:
     if 'function' in item['type']:
         try:
-             cls, argspec = get_class_and_func(itemName, imp_mod)
+             argspec, first_self_or_cls = get_argspec_and_binding(attrgetter(itemName)(imp_mod))
              # The args item in the tuple is a list of names of positional arguments:
              numArgs = len(argspec.args)
              if numArgs > 0:
-                 item['signature'] = convert_argspec_to_signature(attrgetter(itemName)(imp_mod), argspec, cls)                        
+                 item['signature'] = convert_argspec_to_signature(attrgetter(itemName)(imp_mod), argspec, first_self_or_cls)                        
         except Exception as e:
             error_desc = str(e) + traceback.format_exc()
             try:

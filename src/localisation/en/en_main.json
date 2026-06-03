@@ -23,7 +23,9 @@
       "comment": "comment ",
       "projectDescription": "project description",
       "funcDescription": "function description",
-      "classDescription": "class description"
+      "classDescription": "class description",
+      "match": "expression",
+      "case": "matching values"
     },
     "classdef_desc": "class definition",
     "funcdef_desc": "function definition",
@@ -44,7 +46,9 @@
     "invalidPythonParseImport": "Invalid Python code imported: {errorMsg}",
     "invalidPythonParsePaste": "Invalid Python code pasted: {errorMsg}",
     "wrongPythonStructCopied": "cannot paste else/elif/except/finally and further content in one paste",
-    "incompatiblePythonStrypeSection": "the Python code cannot be placed in the target Strype section"
+    "incompatiblePythonStrypeSection": "the Python code cannot be placed in the target Strype section",
+    "invalidMatchStmtContent": "this content is not allowed inside a 'match' statement",
+    "errorAccessingIndexedDB": "Error accessing browser storage (possibly due to private browsing).  State cannot be loaded and may be irretrievable on reload or close.  (Error: {errorMsg})"
   },
   "buttonLabel": {
     "undo": "Undo",
@@ -64,7 +68,6 @@
     "discardChanges": "Discard changes",
     "copyLink": "Copy link",
     "continue" :"Continue",
-    "cancelLoadSharedProject":"Cancel (load backup)",
     "select": "Select",
     "refresh": "refresh",
     "choose": "Choose"
@@ -99,6 +102,7 @@
     "cloudDrivePublicShareFailed":"The project could not be shared publicly.<br>(Error: {error})",
     "clouldFileRestoreSharingStatus":"An error occurred when trying to restore the file sharing status in {drivename}.<br>Details: {errordetails}",
     "unexpectedCharsPython": "unexpected character(s)",
+    "matchFrameWithoutCase": "A match frame must contain at least one case frame.",
     "fileIO": {
       "openReadingError":"Strype ran into an internal error when opening the file (reading content issue).",
       "cannotCreateDirectory":  "Creating directories is not currently supported.",
@@ -169,7 +173,6 @@
     "gdriveTab": "My Drive",
     "editorErrors": "Errors",
     "resyncToCloudDriveAtStartup": "<b>Reconnect to {drivename}?</b>\n\nLast time you were editing, you were saving to {drivename}.\nDo you want to load the remote version from {drivename} or save this local version to {drivename}?",
-    "LSOnShareProjectLoad":"An existing project backup has been detected.<br>Loading the shared project will erase this backup.",
     "methodSnapshotLink": "Snapshot link",
     "methodSnapshotLinkExplanation": "The current code (via a long link)",
     "methodCloudLink": "Cloud link",
@@ -189,7 +192,10 @@
     "pasteBelow": "Paste below",
     "pasteBelowJointRoot": "Paste under root",
     "enable": "Enable",
+    "enableAll": "Enable all",
     "disable": "Disable",
+    "disableAll": "Disable all",
+    "toggleDisability": "Toggle disability",
     "undo": "Undo",
     "redo": "Redo",
     "delete": "Delete",
@@ -226,6 +232,7 @@
     "myVariables": "My variables",
     "myClasses": "My classes",
     "importedModules": "Imported modules",
+    "builtinFiles": "Built-in files",
     "invalidState": "No completion available",
     "noDocumentation": "No documentation available"
   },
@@ -240,7 +247,7 @@
     "runtimeErrorConsole": "Runtime error",
     "console": "Console",
     "Graphics": "Graphics",
-    "importTurtle": "Import the module 'turtle' to use Turtle Graphics.",
+    "importTurtleOrGraphics": "Import 'strype.graphics' or 'turtle' to use Graphics.",
     "PEA-layout-tabs-collapsed": "Collapsed and tabs layout",
     "PEA-layout-tabs-expanded":"Expanded and tabs layout",
     "PEA-layout-split-collapsed": "Collapsed and split layout",

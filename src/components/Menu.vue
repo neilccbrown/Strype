@@ -79,7 +79,7 @@
                     </div>
                 </div>
             </ModalDlg>
-            <ModalDlg :dlgId="saveOnLoadModalDlgId" :okCustomTitle="$t('buttonLabel.saveChanges')" :cancelCustomTitle="$t('buttonLabel.discardChanges')">
+            <ModalDlg :dlgId="saveOnLoadModalDlgId" :okCustomTitle="$t('buttonLabel.saveChanges')" :cancelCustomTitle="$t('buttonLabel.discardChanges')" showCloseBtn>
                 <div>
                     <span class="load-project-lost-span">{{ $t("appMessage.editorAskSaveChangedCode") }}</span>
                     <br/>
@@ -89,7 +89,7 @@
             <div class="menu-separator-div"></div>           
             <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLoadDemoProjectModal">{{$t('appMenu.loadDemoProject')}}</a>
             <OpenDemoDlg ref="openDemoDlg" :dlg-id="loadDemoProjectModalDlgId"/>
-            <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
+            <!-- #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE -->
             <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLibraryDoc">{{$t('appMenu.apiDocumentation')}}</a>
             <!-- #v-endif-->
             <!-- category: export -->
@@ -141,7 +141,7 @@
                         </div>
                     </ModalDlg>
             <!-- download python/hex project -->
-            <!-- #v-ifdef MODE == VITE_MICROBIT_MODE-->
+            <!-- #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE-->
             <a v-if="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="downloadHex();showMenu=false;">{{ $t("appMenu.downloadHex") }}</a>
             <!-- #v-endif-->
             <a v-if="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="downloadPython();showMenu=false;">{{ $t("appMenu.downloadPython") }}</a>
@@ -648,7 +648,12 @@ export default defineComponent({
         },
 
         getAppVersion(): string {
-            return appPackageJson.version;
+            // The version is suffixed by "m" for Strype microbit
+            let versionPlatform = "";
+            // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
+            versionPlatform = "m";
+            // #v-endif
+            return appPackageJson.version+versionPlatform;
         },
         
         getLocaleBuildDate(): string {
@@ -1174,7 +1179,7 @@ export default defineComponent({
                         selectedDemo.demoFile.then((content) => {
                             if (content) {
                                 this.appStore.trackUsedDemo(selectedDemo.name ?? "Demo", selectedDemo.source);
-                                vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(content, selectedDemo.name ?? "Demo", 0, false)
+                                vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(content, selectedDemo.name ?? "Demo", 0, false, "import")
                                     .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
                             }
                         });
@@ -1209,24 +1214,27 @@ export default defineComponent({
                             const emitPayload: AppEvent = {requestAttention: true};
                             emitPayload.message = this.$t("appMessage.editorFileUpload");
                             this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);
-                            const reader = new FileReader();
-                            reader.addEventListener("load", () => {
-                                // name is not always available so we also check if content starts with a {,
-                                // which it will do for old-style spy files:
-                                if (file.name.endsWith(".py") || !(reader.result as string).trimStart().startsWith("{")) {
-                                    vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(reader.result as string, fileHandles[0].name, file.lastModified, true, fileHandles[0]);
-                                }
-                                else {
-                                    this.appStore.setStateFromJSONStr(
-                                        {
-                                            stateJSONStr: reader.result as string,
-                                        }
-                                    ).then(() => fileHandles[0].getFile().then((file)=> this.onFileLoaded(fileHandles[0].name, file.lastModified, fileHandles[0])), () => {});
-                                }
-                                emitPayload.requestAttention=false;
-                                this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);  
-                            });
-                            reader.readAsText(file);
+                            // Make sure we have a delay for the main event loop to let us display the progress bar triggered above
+                            setTimeout(() => {
+                                const reader = new FileReader();
+                                reader.addEventListener("load", () => {
+                                    // name is not always available so we also check if content starts with a {,
+                                    // which it will do for old-style spy files:
+                                    if (file.name.endsWith(".py") || !(reader.result as string).trimStart().startsWith("{")) {
+                                        vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(reader.result as string, fileHandles[0].name, file.lastModified, true, fileHandles[0]);
+                                    }
+                                    else {
+                                        this.appStore.setStateFromJSONStr(
+                                            {
+                                                stateJSONStr: reader.result as string,
+                                            }
+                                        ).then(() => fileHandles[0].getFile().then((file)=> this.onFileLoaded(fileHandles[0].name, file.lastModified, fileHandles[0])), () => {});
+                                    }
+                                    emitPayload.requestAttention=false;
+                                    this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);  
+                                });
+                                reader.readAsText(file); 
+                            }, 100);                            
                         });
                     });                        
                 }
@@ -1254,14 +1262,14 @@ export default defineComponent({
                                 // name is not always available so we also check if content starts with a {,
                                 // which it will do for spy files:
                                 if (fileName.endsWith(".py") || !content.trimStart().startsWith("{")) {
-                                    vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(content, fileName, lastModified, true);
+                                    vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(content, fileName, lastModified, true, "local");
                                 }
                                 else {
                                     this.appStore.setStateFromJSONStr(
                                         {
                                             stateJSONStr: content,
                                         }
-                                    ).then(() => this.onFileLoaded(fileName, lastModified), () => {});
+                                    ).then(() => this.onFileLoaded(fileName, lastModified, "local"), () => {});
                                 }
                                 emitPayload.requestAttention=false;
                                 this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);
@@ -1289,15 +1297,18 @@ export default defineComponent({
             }
         },
 
-        onFileLoaded(fileName: string, lastSaveDate: number, fileLocation?: FileSystemFileHandle):void {
+        onFileLoaded(fileName: string, lastSaveDate: number, fileLocation: FileSystemFileHandle | "local" | "cloud" | "import"):void {
             this.saveTargetChoice(StrypeSyncTarget.fs);
             eventBus.emit(CustomEventTypes.addFunctionToEditorProjectSave, {syncTarget: StrypeSyncTarget.fs, function: (saveReason: SaveRequestReason) => this.saveCurrentProject(saveReason)});
 
             // Strip the extension from the file, if it was left in. Then we can update the file name and location (if avaiable)
             const noExtFileName = (fileName.includes(".")) ? fileName.substring(0, fileName.lastIndexOf(".")) : fileName;
             this.appStore.projectName = noExtFileName;
-            if(fileLocation){
+            if(typeof fileLocation !== "string"){
                 this.appStore.strypeProjectLocation = fileLocation;
+            }
+            else if (fileLocation === "local" || fileLocation === "import") {
+                this.appStore.strypeProjectLocation = undefined;
             }
             this.appStore.projectLastSaveDate = lastSaveDate;
             // Make sure we show the project is unmodified
@@ -1325,7 +1336,7 @@ export default defineComponent({
         toggleMenuOnOff(e: Event | null): void {
             if(e && this.isPythonRunning){
                 // When the project runs, we can't open the menu, but we show some "notification" in the PEA
-                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                 document.dispatchEvent(new Event(CustomEventTypes.highlightPythonRunningState));
                 // #v-endif
                 return;
@@ -1591,6 +1602,7 @@ export default defineComponent({
     display: block;
     margin: auto;
     font-size: 14px;
+    background-color: transparent; // this is required for FF (at last from v150) to not apply some custom background
 }
 
 .menu-icon-centered-entry {

@@ -1,0 +1,119 @@
+#(=> Strype:1:std
+#(=> Section:Imports
+from strype.graphics import * 
+from datetime import datetime 
+#(=> Section:Definitions
+def retrieve_data ( ) :
+    elec_data.clear() 
+    gas_data.clear() 
+    global is_on_cloud 
+    try :
+        with open(data_file)  as datafile  :
+            for line  in datafile.readlines()  :
+                '''We asssume the data is valid, no verification is made.
+                The expected line format is shown in add_new_format()'''
+                rDate,rType,rValue,rNotes  = line.split(",") 
+                #Update the bounds. If one bound value is None, we consider there was none and use the current data point
+                for key,val  in {"dates":rDate,"values":rValue}.items()  :
+                    typedVar  = ___strype_opsinvalid(float,___strype_operator_,(val),___strype_operator_,___strype_invalid_u0069u0066u0020u006bu0065u0079,___strype_operator_u003du003d,___strype_blank,___strype_operator_,"values",___strype_operator_,___strype_invalid_u0065u006cu0073u0065u0020u0069u006eu0074,___strype_operator_,(val),___strype_operator_,___strype_blank) 
+                    if data_bounds[key]["min"] is None or typedVar<data_bounds[key]["min"]  :
+                        data_bounds[key]["min"]  = typedVar 
+                    if data_bounds[key]["max"] is None or typedVar>data_bounds[key]["max"]  :
+                        data_bounds[key]["max"]  = typedVar 
+                #Set the data point in our list
+                if rType=="e"  :
+                    elec_data.append({'date':int(rDate),"value":float(rValue),'notes':rNotes.rstrip("\n")}) 
+                else :
+                    gas_data.append({'date':int(rDate),"value":float(rValue),'notes':rNotes.rstrip("\n")}) 
+    except ___strype_invalid_u0045u0078u0063u0065u0070u0074u0069u006fu006eu0020u0061u0073u0020u0065  :
+        if data_file not in str(e)  :
+            #If the error was becaue we're not in the Cloud, we'll have a flag set to update the message to show.
+            is_on_cloud  = False 
+        else :
+            pass
+            #File doesn't exist, no worries we just have no data yet.
+def prepare_display ( ) :
+    #background color
+    set_background("WhiteSmoke") 
+    #title
+    titleImg  = Image(801,50) 
+    titleImg.set_fill("blue") 
+    titleImg.draw_text("⚡My energy consumption🔥",200,0) 
+    Actor(titleImg,0,250,tag="title") 
+    print("added title actor") 
+    
+    #Show existing data
+    show_data() 
+    
+    #Show add data button
+    addDataImg  = Image(50,50) 
+    addDataImg.set_fill("green") 
+    addDataImg.draw_text("➕",0,0) 
+    Actor(addDataImg,375,280,"button") 
+    print("added button actor") 
+def show_data ( ) :
+    #We will need to translate the data bounds to graph bounds, rule is we keep a small distance off the axes for clarity
+    minPlotX  = -370 
+    maxPlotX  = 380 
+    minPlotY  = -260 
+    maxPlotY  = 200 
+    #If we have only one data point single coordinate across the whole data, we don't have a min/max, we use the middle point of the graph
+    for energyDataPoints  in [elec_data,gas_data]  :
+        for dataPoint  in energyDataPoints  :
+            dateValDiff  = (datetime.strptime(str(dataPoint["date"]),"%Y%m%d").date()-datetime.strptime(str(data_bounds["dates"]["min"]),"%Y%m%d").date()).days 
+            dataBoundsDiff  = (datetime.strptime(str(data_bounds["dates"]["max"]),"%Y%m%d").date()-datetime.strptime(str(data_bounds["dates"]["min"]),"%Y%m%d").date()).days 
+            percentVal  = dateValDiff/dataBoundsDiff 
+            dataPoint["x"]  = (maxPlotX-minPlotX)*percentVal+minPlotX 
+            
+            percentVal  = (dataPoint["value"]-data_bounds["values"]["min"])/(data_bounds["values"]["max"]-data_bounds["values"]["min"]) 
+            dataPoint["y"]  = (maxPlotY-minPlotY)*percentVal+minPlotY 
+            
+            dpImg  = Image(10,10) 
+            #(=> Disabled:dpImg.set_fill(___strype_invalid_u0065u006cu0065u0063u005fu0063u006fu006cu006fu0072u0020u0069u0066u0020u0069u006eu0064u0065u0078==___strype_invalid_u0030u0020u0065u006cu0073u0065u0020u0067u0061u0073u005fu0063u006fu006cu006fu0072) 
+            dpImg.set_fill("yellow") 
+            dpImg.draw_circle(5,5,4) 
+            Actor(dpImg,dataPoint["x"],dataPoint["y"]) 
+        dpImg  = Image(800,600) 
+        dpImg.set_stroke("pink") 
+        for i  in range(len(energyDataPoints)-1)  :
+            x1,y1  = 400+energyDataPoints[i]['x'],300-energyDataPoints[i]['y'] 
+            x2,y2  = 400+energyDataPoints[i+1]['x'],300-energyDataPoints[i+1]['y'] 
+            dpImg.draw_line(x1,y1,x2,y2) 
+            #(=> Disabled:dpImg.set_fill("lightgray") 
+            #(=> Disabled:dpImg.fill() 
+            Actor(dpImg,tag="seg") 
+            print("added segment actor") 
+def listen_mouse ( ) :
+    target  = get_clicked_actor() 
+    if target is not None  :
+        print("Clicked: " + target.get_tag()) 
+    if not data_inserting and target is not None and target.get_tag()=="button"  :
+        #show an overlay
+        overlayImg  = Image(801,550) 
+        maxPlotX  = 794 
+        overlayImg.set_fill(Color(125,125,125,235)) 
+        overlayImg.fill() 
+        overlayImg.set_fill("lime") 
+        overlayImg.draw_text(">> go to the console to add your new data <<",40,80) 
+        Actor(overlayImg,0,-50,"overlay") 
+        #call loop for adding new data
+#(=> Section:Main
+elec_color  = "Gold" 
+gas_color  = "DodgerBlue" 
+#Assume we are on the Cloud initially, will flag if not when reading a file.
+is_on_cloud  = True 
+elec_data  = [] 
+gas_data  = [] 
+data_bounds  = {"dates":{"min":None,"max":None},"values":{"min":None,"max":None}} 
+data_inserting  = False 
+data_file  = "data.csv" 
+# Since we're not on cloud, we write the data here:
+csv_content = '20250112,e,39.3,Usage audit\n20250227,e,36,Billing adjustment\n20250305,g,18.3,Routine check\n20250329,g,21.7,No anomalies\n20250410,g,22.1,Weather-related drop\n20250419,g,16.8,Low activity period\n20250503,g,17.9,Meter replacement\n20250606,e,41.9,System recalibration\n20250630,g,20.9,Standard usage\n20250714,g,19.8,Normal pattern\n20250725,e,40.2,Energy-saving measures\n20250808,g,23.5,Routine inspection\n20250822,e,38.5,Efficiency upgrade\n20250902,e,44.1,Seasonal spike\n20250911,e,125,nothing special\n20250921,g,25.6,Stable consumption\n20250922,g,52.5,"pierre anniv"\n20251018,g,20.4,Consistent usage\n20251101,e,45.6,Peak demand\n20251109,g,105,nothing again\n20251112,e,37,plumito\n20251113,e,42.7,Monthly usage spike\n20251130,e,47.2,Holiday increase\n20251209,e,33.1,Unexpected surge\n20251109,g,22,"last addition"\n19830922,e,"AQUOPS test"\n'
+with open(data_file, "w") as text_file:
+    text_file.write(csv_content)
+retrieve_data() 
+prepare_display() 
+while True  :
+    listen_mouse() 
+    pace(1) 
+#(=> Section:End

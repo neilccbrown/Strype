@@ -59,6 +59,7 @@ import { BButton, BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus } from "@/helpers/appContext";
 import { CustomEventTypes } from "@/helpers/editor";
+import {createOrGetAudioContext} from "@/helpers/audioContext";
 
 const previewImageWidth = 300;
 const previewImageHeight = 100;
@@ -194,7 +195,7 @@ export default defineComponent({
                 document.getElementsByClassName("vue-preview__wrapper")?.[0].append(playbackLine);
                 
                 // We are handling a user-triggered click event, which allows us to play sound:
-                const ctx = new AudioContext();
+                const ctx = createOrGetAudioContext();
                 const src = ctx.createBufferSource();
                 src.buffer = this.soundToEdit;
                 var gainNode = ctx.createGain();

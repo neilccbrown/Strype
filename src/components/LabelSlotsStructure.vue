@@ -44,7 +44,7 @@ import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
 import { CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID } from "@/helpers/editor";
-import { checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId} from "@/helpers/storeMethods";
+import { checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId, areSlotStructuresIsomorphic} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import { calculateParamPrompt } from "@/autocompletion/acManager";
 import scssVars from "@/assets/style/_export.module.scss";
@@ -370,7 +370,7 @@ export default defineComponent({
             return true;
         },
 
-        checkSlotRefactoring(slotUID: string, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, doAfterCursorSet?: VoidFunction, useFlatMediaDataCode?: boolean}) {
+        checkSlotRefactoring(slotUID: string, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, skipStateSaveOnly?: boolean, doAfterCursorSet?: VoidFunction, useFlatMediaDataCode?: boolean, ignoreBlurEditableSlot?: boolean}) {
             // Slot errors will be check later again. We clear off the notification on the parent (frame header) for slot errors so it can reset the triangle error indicator
             vueComponentsAPIHandler.frameHeaderComponentAPI?.forInstance[this.frameId].setHasErroneousSlot(false);
             // Comments do not need to be checked, so we do nothing special for them, but just enforce the caret to be placed at the right place and the code value to be updated
@@ -378,7 +378,13 @@ export default defineComponent({
             const allowed = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelIndex].allowedSlotContent;
             if (allowed !== undefined && [AllowedSlotContent.FREE_TEXT_DOCUMENTATION, AllowedSlotContent.LIBRARY_ADDRESS].includes(allowed) && (currentFocusSlotCursorInfos || options?.skipCursorSetAndStateSave)) {
                 if (currentFocusSlotCursorInfos) {
-                    (this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields[0] as BaseSlot).code = (document.getElementById(getLabelSlotUID(currentFocusSlotCursorInfos.slotInfos))?.textContent ?? "").replace(/\u200B/g, "");
+                    const field = this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures.fields[0] as BaseSlot;
+                    // We need to remove zero-width spaces.  Also, Firefox doesn't seem to remove trailing single newlines
+                    // like Chrome and Safari do (or at least, not at the same point) so we do it ourselves to enforce consistency.
+                    // We don't remove if there are multiple newlines at the end, as we do that to allow the cursor to be beyond the "last" (really penultimate) newline.
+                    field.code = (document.getElementById(getLabelSlotUID(currentFocusSlotCursorInfos.slotInfos))?.textContent ?? "")
+                        .replace(/\u200B/g, "")
+                        .replace(/(?<!\n)\n$/, "");
                     this.$nextTick(() => {
                         if (!options?.skipCursorSetAndStateSave) {
                             setDocumentSelection(currentFocusSlotCursorInfos, currentFocusSlotCursorInfos);
@@ -399,6 +405,11 @@ export default defineComponent({
                 let {uiLiteralCode, focusSpanPos: focusCursorAbsPos, hasStringSlots, mediaLiterals} = getFrameLabelSlotLiteralCodeAndFocus(labelDiv, slotUID, {useFlatMediaDataCode: options?.useFlatMediaDataCode});
                 const parsedCodeRes = parseCodeLiteral(uiLiteralCode, {frameType: this.appStore.frameObjects[this.frameId].frameType.type, isInsideString: false, cursorPos: options?.skipCursorSetAndStateSave ? undefined : focusCursorAbsPos, skipStringEscape: hasStringSlots, imageLiterals: mediaLiterals});
                 const majorChange = this.majorChange(this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures, parsedCodeRes.slots);
+                // Chrome triggers a loss of focus when the slots structure (and only structurally speaking) are changed in the store, typically when inserting operators
+                // so might want to ignore the event in this situation.
+                if(detectBrowser() == "chrome" && !areSlotStructuresIsomorphic(this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures, parsedCodeRes.slots)){
+                    this.appStore.ignoreBlurEditableSlot = options?.ignoreBlurEditableSlot??false;
+                }
                 this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures = parsedCodeRes.slots;
                 // The parser can be return a different size "code" of the slots than the code literal
                 // (that is for example the case with textual operators which requires spacing in typing, not in the UI)
@@ -506,7 +517,9 @@ export default defineComponent({
                                             this.appStore.setSlotTextCursors(cursorInfos, cursorInfos);
                                             options?.doAfterCursorSet?.();
                                             // Save changes only when arrived here (for undo/redo)
-                                            this.appStore.saveStateChanges(stateBeforeChanges);
+                                            if(!options?.skipStateSaveOnly){
+                                                this.appStore.saveStateChanges(stateBeforeChanges);
+                                            }
                                         }
                                     }
                                 }                            
@@ -573,13 +586,20 @@ export default defineComponent({
                     // There is a selection already, we can directly set the text in the browser's clipboard here
                     const selectionText = getEditableSelectionText();
                     if (selectionText) {
-                        // If it's a media literal, we copy the literal content and text to the clipboard:
-                        const litMatch = selectionText.match(/^load_(image|sound)\("data:([^;]+);base64,([^"]+)"\)$/);
+                        // If it's a PNG image literal, we copy the literal content and text to the clipboard:
+                        // If it's a sound literal -- most browsers (incl. Safari and Firefox at least) don't allow copying sounds
+                        //   as sounds from the browser, so we must fall back on copying the text version.  Can't be pasted into
+                        //   other apps, but it will work if pasted back into Strype
+                        // Safari also restricts non-PNG so we also use text fallback for non-PNG literals.
+                        //
+                        // Note: we can't do a write then check because write is asynchronous and if we read the clipboard in a .then()
+                        // the browser won't let us access the clipboard because we're no longer responding to a user keypress.  Sigh.
+                        const litMatch = selectionText.match(/^load_image\("data:(image\/png);base64,([^"]+)"\)$/);
                         if (litMatch) {
-                            const mimeType = litMatch[2];
+                            const mimeType = litMatch[1];
     
                             // Convert base64 to binary data:
-                            const binary = atob(litMatch[3]);
+                            const binary = atob(litMatch[2]);
                             const bytes = new Uint8Array(binary.length);
                             for (let i = 0; i < binary.length; i++) {
                                 bytes[i] = binary.charCodeAt(i);
@@ -662,7 +682,7 @@ export default defineComponent({
             if (event.clipboardData && focusSlotCursorInfos) {
                 // First we need to check if it's a media item on the clipboard, because that needs
                 // to become a media literal rather than plain text:
-                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                 if (preparePasteMediaData(event, (code: string, dataAndDim : MediaDataAndDim) => {
                     // The code is the code to load the literal from its base64 string representation:                    
                     document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos))
@@ -793,7 +813,7 @@ export default defineComponent({
             if (!(event.shiftKey || event.metaKey || event.altKey || event.ctrlKey)) {
                 for(const subSlot of this.subSlots){
                     const subSlotCoreInfos = {frameId: this.frameId, labelSlotsIndex: this.labelIndex, slotId: subSlot.id, slotType: subSlot.type};
-                    if(vueComponentsAPIHandler.labelSlotComponentAPI?.forInstance[getLabelSlotUID(subSlotCoreInfos)].handleUpDown(event)){
+                    if(vueComponentsAPIHandler.labelSlotComponentAPI?.forInstance[getLabelSlotUID(subSlotCoreInfos)]?.handleUpDown(event)){
                         // Consumed by focused slot which is showing autocomplete:
                         return;
                     }
@@ -832,6 +852,7 @@ export default defineComponent({
             }
             
             this.appStore.isEditing = false;
+            this.appStore.isSelectingMultiSlots = false;
             this.blurEditableSlot(undefined, true);
             document.getSelection()?.removeAllRanges();
             

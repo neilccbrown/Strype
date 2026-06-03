@@ -1,6 +1,6 @@
 import { nextTick} from "vue";
 import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia, ModifierKeyCode } from "@/types/types";
-import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
+import { getObjectPropertiesDifferences } from "@/helpers/common";
 import i18n from "@/i18n";
 import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { AppPlatform, AppVersion, eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
@@ -18,8 +18,8 @@ import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import $ from "jquery";
 import { fetchUserCountry, type UserCountry } from "@/helpers/analyticsCountry";
 import { Analytics_batch_max_events, Analytics_queue_overflow_cap } from "@/helpers/analyticsConstants";
-// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
-import { actOnTurtleImport } from "@/helpers/editor";
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
+import { actOnGraphicsImport } from "@/helpers/editor";
 // #v-endif
 
 export interface AnalyticsEvent {
@@ -31,35 +31,19 @@ export interface AnalyticsEvent {
 
 export type AnalyticsFlushReason = "interval" | "size_cap" | "critical" | "unload";
 
-function getState(): StateAppObject {
-    // If we have a state available in the local (browser's) storage, we strip off the frame contents
-    // from the default state, for a smoother visual rendering. Note that App.vue is responsible for
-    // loading the local state later. Here, we only check something exists in the local storage.
-    let isExistingStateLocated = false;
-    let returnedState;
-    if(typeof(Storage) !== "undefined") {
-        let storageString = AutoSaveKeyNames.pythonEditorState;
-        // #v-ifdef MODE == VITE_MICROBIT_MODE
-        storageString = AutoSaveKeyNames.mbEditor;
-        // #v-endif
-        const savedState = localStorage.getItem(storageString);
-        if(savedState) {
-            isExistingStateLocated = true;
-            returnedState = initialStates["initialEmptyState"];        
-        }
+export function getEditorTabId() : string {
+
+    let tabId = sessionStorage.getItem(AutoSaveKeyNames.strypeEditorTabId);
+
+    if (!tabId) {
+        // None found, generate one and save it:
+        tabId = crypto.randomUUID();
+        sessionStorage.setItem(AutoSaveKeyNames.strypeEditorTabId, tabId);
     }
-    
-    if(!isExistingStateLocated) {
-        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
-        returnedState = initialStates["initialPythonState"];
-        // #v-else
-        returnedState = initialStates["initialMicrobitState"];
-        // #v-endif
-    }
-    return (returnedState as StateAppObject);
+    return tabId;
 }
 
-const initialState = getState();
+const initialState = initialStates["initialEmptyState"] as StateAppObject;
 
 // These are deliberately held outside the store because:
 // (a) we used to blank them on page load anyway
@@ -119,7 +103,7 @@ export const useStore = defineStore("app", {
              ***/ 
             editorCommandsSplitterPane2Size: undefined as StrypeLayoutDividerSettings | undefined, // same as above for the divider between the editor and the commands (pane 2), default is 34%
             
-            // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+            // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
             peaLayoutMode:  undefined as StrypePEALayoutMode | undefined, // the project layout view is saved with the store
             
             // The size of the commands/PEA splitter pane 2 size is saved with the store.
@@ -489,18 +473,16 @@ export const useStore = defineStore("app", {
                 );
             }
 
-            //"return" and "global" statements can't be added when in the main container frame
-            //We don't forbid them to be in the main container, but we don't provide a way to add them directly.
-            //They can be added when in the function definition container though.
-            const canShowReturnStatement = isContainedInFrame(frameId,caretPosition, [DefsContainerDefinition.type]);
-            if(!canShowReturnStatement){
+            //"return" and "global" statements can't be added when in the main container frame, except if in a case block for "return"
+            // We don't forbid them to be in the main container, but we don't provide a way to add them directly.
+            // They can be added when in the function definition container though.
+            const canShowGlobalStatement = isContainedInFrame(frameId,caretPosition, [DefsContainerDefinition.type]);
+            const canShowReturnStatement = canShowGlobalStatement || isContainedInFrame(frameId,caretPosition, [AllFrameTypesIdentifier.case]);
+            const extraForbiddenTypes = [...(!canShowGlobalStatement ? [AllFrameTypesIdentifier.global] : []), ...(!canShowReturnStatement ? [AllFrameTypesIdentifier.return] : [])];
+            if(extraForbiddenTypes.length > 0){
                 //by default, "break" and "continue" are NOT forbidden to any frame which can host children frames,
                 //so if we cannot show "break" and "continue" : we add them from the list of forbidden
-                forbiddenTypes.splice(
-                    0,
-                    0,
-                    ...[AllFrameTypesIdentifier.return, AllFrameTypesIdentifier.global]
-                );
+                forbiddenTypes.splice(0, 0, ...extraForbiddenTypes);
             }
             const addCommandsDefs = getAddCommandsDefs();
             const filteredCommands: {[id: string]: AddFrameCommandDef[]} = cloneDeep(addCommandsDefs);
@@ -556,10 +538,6 @@ export const useStore = defineStore("app", {
             return (errorTitle) 
                 ? errorTitle
                 : i18n.global.t("errorMessage.errorTitle"); 
-        },
-
-        preCompileErrorExists: (state) => (id: string) => {
-            return state.preCompileErrors.includes(id);
         },
         
         isMessageBannerOn: (state) => {
@@ -1760,7 +1738,7 @@ export const useStore = defineStore("app", {
                 arraysToClean.forEach((arrayToClean) => {
                     for(let arrayIndex = arrayToClean.length; arrayIndex >=0; arrayIndex--){
                         if(arrayToClean[arrayIndex] === null){
-                            delete arrayToClean[arrayIndex];
+                            arrayToClean.splice(arrayIndex,1);
                         }
                     }
                 }); 
@@ -2208,9 +2186,11 @@ export const useStore = defineStore("app", {
                 this.copySelection();
                 // For deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
                 this.deleteFrames("Delete", true);
+                // The general rule is to copy the wrapped frame inside the wrapper's body,
+                // one exception: for match frames, we don't wrap the content inside the match frame body but inside it's case child frame body.
                 this.pasteSelection(
                     {
-                        clickedFrameId: newFrame.id,
+                        clickedFrameId: (newFrame.frameType.type == AllFrameTypesIdentifier.match) ? newFrame.childrenIds[0] : newFrame.id,
                         caretPosition: CaretPosition.body,
                         ignoreStateBackup: true,
                     }
@@ -2303,6 +2283,15 @@ export const useStore = defineStore("app", {
         // Note: this will not always do the delete, for example if frozen frames are involved
         // Returns true if the deletion ocurred or false if it did not.
         deleteFrames(key: string, ignoreBackState?: boolean) : boolean {
+            // If we are trying to delete a match or case frame from its body, the action is cancelled if this body isn't empty-like (i.e. if not empty, or only containing comments/blanks): 
+            // catch statements cannot live outside a match statement and match statements cannot contain anything but cases or comments/blanks
+            if(this.selectedFrames.length == 0 && key == "Backspace" && this.currentFrame.caretPosition == CaretPosition.body 
+                && (this.frameObjects[this.currentFrame.id].frameType.type == AllFrameTypesIdentifier.match || this.frameObjects[this.currentFrame.id].frameType.type == AllFrameTypesIdentifier.case) 
+                && this.frameObjects[this.currentFrame.id].childrenIds.length > 0 
+                    && this.frameObjects[this.currentFrame.id].childrenIds.map((childFrameId) => this.frameObjects[childFrameId].frameType.type).some((frameType) => frameType != AllFrameTypesIdentifier.comment && frameType != AllFrameTypesIdentifier.blank)){
+                return false;
+            }
+
             const stateBeforeChanges = cloneDeep(this.$state);
             
             // we remove the editable slots from the available positions
@@ -2647,7 +2636,7 @@ export const useStore = defineStore("app", {
             this.currentFrame.id = nextPosition.frameId;
         },
 
-        async generateStateJSONStrWithCheckpoint(compress?: boolean) {
+        generateStateJSONStrWithCheckpoint(compress?: boolean) : string {
             /** This function was defined as a getter before, check details as to why it needs to be an action:
              *  the goal of this function is to make a "copy" of the state in a JSON format, with a few extra bits like the checkpoint.
                 However, if defined as a getter, the state object we get in a getter is not exactly "just" the state object as we write it: 
@@ -2680,9 +2669,7 @@ export const useStore = defineStore("app", {
                 stateCopy["frameObjects"][frameId].frameType = stateCopy["frameObjects"][frameId].frameType.type;
             });
 
-            const checksum = await getSHA1HashForObject(stateCopy, false);
-            //add the checksum and other backup flags in the state object to be saved
-            stateCopy["checksum"] = checksum;
+            //add other backup flags in the state object to be saved
             stateCopy["version"] = AppVersion;
             stateCopy["platform"] = AppPlatform;
             
@@ -2777,6 +2764,11 @@ export const useStore = defineStore("app", {
                                     else {
                                         // Check 3) as 2) is validated
                                         isVersionCorrect = (newStateObj["version"] == AppVersion);
+                                        // Specific case we don't care about: version 6 to 7 just dropped saving the checksum so it's fine to load
+                                        // 6 from 7:
+                                        if (newStateObj["version"] === "6" && AppVersion === "7") {
+                                            isVersionCorrect = true;
+                                        }
                                         if(Number.parseInt(newStateObj["version"]) > 1 && newStateObj["platform"] != AppPlatform) {
                                             isStateJSONStrValid = false;
                                             errorDetailMessage = i18n.global.t("errorMessage.stateWrongPlatform");
@@ -2829,7 +2821,7 @@ export const useStore = defineStore("app", {
                 if (this.peaLayoutMode != newPEALayout) {
                     setTimeout(() => {
                         this.peaLayoutMode = newPEALayout;
-                        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                        // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                         vueComponentsAPIHandler.peaComponentAPI?.togglePEALayout(newPEALayout);
                         // #v-endif
                     }, chainedTimeOuts += 200);
@@ -2873,9 +2865,9 @@ export const useStore = defineStore("app", {
         
         doSetStateFromJSONStr(stateJSONStr: string): Promise<void>{
             return new Promise((resolve) => {
-                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                 // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
-                actOnTurtleImport();
+                actOnGraphicsImport();
 
                 // Clear the Python Execution Area as it could have be run before.
                 vueComponentsAPIHandler.peaComponentAPI?.clear(); 
@@ -2989,7 +2981,7 @@ export const useStore = defineStore("app", {
 
         // This method can be used to copy the selected frames to a position.
         // This can be a paste event or a duplicate event.
-        copySelectedFramesToPosition(payload: {newParentId: number; newIndex?: number}, ignoreStateBackup?: boolean) {
+        copySelectedFramesToPosition(payload: {newParentId: number; newIndex?: number, ignoreStateBackup?: boolean, keepSelection?: boolean}) {
             const stateBeforeChanges = cloneDeep(this.$state);
             // -100 is chosen so that TS won't complain for non-initialised variable
             let newIndex = payload.newIndex??-100;
@@ -3043,22 +3035,27 @@ export const useStore = defineStore("app", {
                 );
             });
 
-            //Make the top new frame the current frame
-            this.setCurrentFrame(
-                { 
-                    id: topLevelCopiedFrames[topLevelCopiedFrames.length-1],
-                    caretPosition: CaretPosition.below,
-                }
-            );
+            //Make the top new frame the current frame only when we don't want to keep the selection
+            if(!payload.keepSelection){
+                this.setCurrentFrame(
+                    { 
+                        id: topLevelCopiedFrames[topLevelCopiedFrames.length-1],
+                        caretPosition: CaretPosition.below,
+                    }
+                );
+            }
 
             this.updateNextAvailableId();
 
             //save state changes unless requested not to
-            if(!ignoreStateBackup) {
+            if(!payload.ignoreStateBackup) {
                 this.saveStateChanges(stateBeforeChanges);
             }
         
-            this.unselectAllFrames();
+            // Do not unselect frames if requested not to
+            if(!payload.keepSelection){
+                this.unselectAllFrames();
+            }
         },
 
         pasteFrame(payload: {clickedFrameId: number; caretPosition: CaretPosition, ignoreStateBackup?: boolean}) {
@@ -3156,8 +3153,8 @@ export const useStore = defineStore("app", {
                 {
                     newParentId: pasteToParentId,
                     newIndex: index,
-                },
-                payload.ignoreStateBackup            
+                    ignoreStateBackup: payload.ignoreStateBackup,
+                }                
             );
         },
 
@@ -3194,19 +3191,20 @@ export const useStore = defineStore("app", {
             this.unselectAllFrames();
         },
 
-        changeDisableSelection(isDisabling: boolean) {
+        changeDisableSelection(payload: {isDisabling?: boolean, keepSelection?: boolean}) {
             const stateBeforeChanges = cloneDeep(this.$state);
             
-            this.selectedFrames.forEach( (id) => {
+            // When isDisabling is not set, toggling is requested.
+            this.selectedFrames.forEach((id) => {
                 // Can't change frozen frames or children of frozen frames or comments or blanks:
                 if (this.frameObjects[id].frozenState != FrozenState.FROZEN &&
                     this.frameObjects[this.frameObjects[id].parentId].frozenState != FrozenState.FROZEN &&
                     // And can't disable blanks (can enable, in case of old projects where this was allowed):
-                    (!isDisabling || this.frameObjects[id].frameType.type != AllFrameTypesIdentifier.blank)) {
+                    (!(payload.isDisabling??(!this.frameObjects[id].isDisabled)) || this.frameObjects[id].frameType.type != AllFrameTypesIdentifier.blank)) {
                     this.doChangeDisableFrame(
                         {
                             frameId: id,
-                            isDisabling: isDisabling,
+                            isDisabling: payload.isDisabling??(!this.frameObjects[id].isDisabled),
                         }
                     );
                 }
@@ -3215,7 +3213,10 @@ export const useStore = defineStore("app", {
             //save state changes
             this.saveStateChanges(stateBeforeChanges);
         
-            this.unselectAllFrames();
+            // Do not unselect frames if requested not to
+            if(!payload.keepSelection){
+                this.unselectAllFrames();
+            }
         },
 
         selectMultipleFrames(key: string) {
@@ -3348,7 +3349,7 @@ export const settingsStore = defineStore("settings", {
             // Change the frame command labels / details 
             generateAllFrameCommandsDefs();
 
-            // #v-ifdef MODE == VITE_MICROBIT_MODE
+            // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
             //change the API description content here, as we don't want to construct the textual API description every time we need it
             getAPIItemTextualDescriptions(true);
             // #v-endif

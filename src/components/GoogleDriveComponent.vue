@@ -28,6 +28,11 @@ import { AppSPYFullPrefix, eventBus } from "@/helpers/appContext";
 //////////////////////
 //     Component    //
 //////////////////////
+
+// The Google Identity client variable cannot be reactive as calling requestAccessToken on from it
+// would result in a error otherise.
+let gap_client = null as google.accounts.oauth2.TokenClient | null;
+
 export default defineComponent({
     name: "GoogleDriveComponent",
 
@@ -50,10 +55,10 @@ export default defineComponent({
             previousCloudFileSharingStatus: CloudFileSharingStatus.UNKNOWN,
             // Specific to Google Drive:
             gapiLoadedState: CloudDriveAPIState.UNLOADED,
-            client: null as google.accounts.oauth2.TokenClient | null, // The Google Identity client
             oauthToken : null as string | null,
             devKey: import.meta.env.VITE_GOOGLE_DEVKEY,
             signInCallBack: (cloudTarget: StrypeSyncTarget) => {},
+            GAPI_keepAliveHandle: -1, // The handle for the keep alive GIS session (see onGISLoad())
         };
     },
 
@@ -116,7 +121,7 @@ export default defineComponent({
          * Implements CloudDriveComponent
          **/ 
         signIn(callback: (cloudTarget: StrypeSyncTarget) => void) {
-            this.client?.requestAccessToken();
+            gap_client?.requestAccessToken();
             this.signInCallBack = callback;
         },   
 
@@ -616,7 +621,7 @@ export default defineComponent({
 
         // Load Google Identity services API:
         onGSILoad() {
-            this.client = google.accounts.oauth2.initTokenClient({
+            gap_client = google.accounts.oauth2.initTokenClient({
                 client_id: "802295052786-h65netp8r9961pekqnhnt3oapcb9o8ji.apps.googleusercontent.com",
                 scope: this.googleDriveScope,
                 // Note: this callback is after *sign-in* (happens on button press), NOT on simply loading the client:
@@ -631,6 +636,28 @@ export default defineComponent({
                     if (response && response.error == undefined) {
                         this.oauthToken = response.access_token;
                         vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.updateSignInStatus(StrypeSyncTarget.gd, true);
+                        // We also set a basic Google Drive related activity "keep alive" mechanism to avoid GIS disconnecting after,
+                        // based on observation, about 20 minutes of inactivty. We do so every 15 mins.
+                        // If the OAuth token is null (that is, we're no longer working with Google Drive) we stop the keep alive mechanism.
+                        if(this.GAPI_keepAliveHandle == -1 ){
+                            this.GAPI_keepAliveHandle = window.setInterval(() => {
+                                if(this.oauthToken != null){
+                                    this.testCloudConnection(() => {}, () => {
+                                        // When the connection test failed, that means most likely the access token expired (or some sort of network issue occurred),
+                                        // so we trigger a token refresh.
+                                        // The callback for requestAccessToken() is defined in initToken(), we need to defined our own callback when signin succeeds as well.
+                                        this.signInCallBack = (_) => {
+                                            // Do nothing: in this situation we only wanted to refresh the token, there is no action to follow.                                            
+                                        };
+                                        gap_client?.requestAccessToken({prompt: ""});
+                                    });
+                                }
+                                else{
+                                    window.clearInterval(this.GAPI_keepAliveHandle);
+                                    this.GAPI_keepAliveHandle = -1;
+                                }
+                            }, 15 * 60 * 1000);
+                        }
                     }
 
                     // In any case, continue the action requested by the user (need to do it in a next tick to make sure the oauthToken is updated in all Vue components)

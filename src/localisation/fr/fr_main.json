@@ -23,7 +23,9 @@
       "comment": "commentaire ",
       "projectDescription": "description du projet",
       "funcDescription": "description de la fonction",
-      "classDescription": "description de la classe"
+      "classDescription": "description de la classe",
+      "match": "expression",
+      "case": "valeurs correspondantes"
     },
     "classdef_desc": "définition de classe",
     "funcdef_desc": "définition de fonction",
@@ -44,7 +46,8 @@
     "invalidPythonParseImport": "Code Python importé invalide : {errorMsg}",
     "invalidPythonParsePaste": "Code Python collé invalide : {errorMsg}",
     "wrongPythonStructCopied": "impossible de coller else/elif/except/finally suivi d'autre contenu en une fois",
-    "incompatiblePythonStrypeSection": "le code Python copié ne peut pas être collé dans la section actuelle de Strype"
+    "incompatiblePythonStrypeSection": "le code Python copié ne peut pas être collé dans la section actuelle de Strype",
+    "invalidMatchStmtContent": "ce contenu n'est pas autorisé dans une instruction 'match'"
   },
   "buttonLabel": {
     "undo": "Annuler",
@@ -64,7 +67,6 @@
     "discardChanges": "Ignorer les modifications",
     "copyLink": "Copier le lien",
     "continue": "Continuer",
-    "cancelLoadSharedProject": "Annuler (charger la sauvegarde)",
     "select": "Selectionner",
     "refresh": "rafraîchir",
     "choose": "Sélectionner"
@@ -98,6 +100,7 @@
     "cloudDriveSharePreparationFailed": "La préparation du partage a échoué.<br>(Récupération du statut de partage actuel du fichier sur le Cloud impossible.)",
     "cloudDrivePublicShareFailed": "Le projet n'a pas pu être partagé publiquement.<br>(Erreur : {error})",
     "clouldFileRestoreSharingStatus": "Une erreur est survenue lors de la tentative de restauration du partage de ficher dans {drivename}.<br>Détails : {errordetails}",
+    "matchFrameWithoutCase": "Un cadre match doit au moins contenir un cadre case.",
     "fileIO": {
       "openReadingError": "Strype a rencontré une erreur interne lors de l'ouverture du fichier (problème de lecture du contenu).",
       "notConnectedToCloud": "l'accès aux fichiers lors d'opérations d'entrées/sorties n'est possible qu'à partir d'un projet Strype enregistré dans le Cloud.",
@@ -167,7 +170,6 @@
     "gdriveTab": "Mon Drive",
     "editorErrors": "Erreurs",
     "resyncToCloudDriveAtStartup": "<b>Se reconnecter vers {drivename} ?</b>\n\nLa dernière fois que vous éditiez ce projet, vous l'enregistriez vers {drivename}.\nSouhaitez-vous charger la version en ligne à partir de {drivename}, ou sauvegarder cette version locale vers {drivename} ?",
-    "LSOnShareProjectLoad": "La sauvegarde d'un projet existant a été detectée.<br>Charger un projet partagé effacera cette sauvegarde.",
     "methodSnapshotLink": "Lien instantané",
     "methodSnapshotLinkExplanation": "Le code actuel (via un long lien)",
     "methodCloudLink": "Lien cloud",
@@ -187,7 +189,10 @@
     "pasteBelow": "Coller en dessous",
     "pasteBelowJointRoot": "Coller sous la racine",
     "enable": "Activer",
+    "enableAll": "Tout activer",
     "disable": "Désactiver",
+    "disableAll": "Tout désactiver",
+    "toggleDisability": "Basculer l'activation",
     "undo": "Annuler",
     "redo": "Refaire",
     "delete": "Supprimer",
@@ -224,6 +229,7 @@
     "myVariables": "Mes variables",
     "myClasses": "Mes classes",
     "importedModules": "Modules importés",
+    "builtinFiles": "Fichiers intégrés",
     "invalidState": "Aucune complétion disponible",
     "noDocumentation": "Aucune documentation disponible"
   },
@@ -238,7 +244,7 @@
     "runtimeErrorConsole": "Erreur d'exécution",
     "console": "Console",
     "Graphics": "Graphics",
-    "importTurtle": "Importez le module 'turtle' pour utiliser Turtle Graphics",
+    "importTurtleOrGraphics": "Importez 'strype.graphics' ou 'turtle' pour utiliser Graphics",
     "PEA-layout-tabs-collapsed": "Disposition en onglets reduite",
     "PEA-layout-tabs-expanded": "Disposition en onglets étendue",
     "PEA-layout-split-collapsed": "Disposition fractionnée réduite",

@@ -13,6 +13,7 @@ import {checkFrameXorTextCursor, typeIndividually} from "../support/editor";
 import {readFileSync} from "node:fs";
 import {createBrowserProxy} from "../support/proxy";
 import {load, save} from "../support/loading-saving";
+import { skipPyodideLoading } from "../support/general";
 
 let scssVars: {[varName: string]: string};
 let strypeElIds: {[varName: string]: (...args: any[]) => Promise<string>};
@@ -32,16 +33,19 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     testInfo.setTimeout(240000); // 240 seconds
     
     strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
+    // Make browser's console.log output visible in our logs (useful for debugging):
+    page.on("console", (msg) => {
+        console.log("Browser log:", msg.text());
+    });
+    await skipPyodideLoading(page);
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
+    // Wait for content to load:
+    await expect(page.locator(".frame-div")).toHaveCount(2);
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
     //strypeElIds = await page.evaluate(() => (window as any)["StrypeHTMLELementsIDsGlobals"]);
     await page.evaluate(() => {
         (window as any).Playwright = true;
-    });
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
     });
 });
 
@@ -1154,6 +1158,31 @@ test.describe("Enters, saves and loads specific frames", () => {
         await testSpecific(page, [[], [], [
             {frameType: "varassign", slotContent: ["myDict", "{4.5:[(load_image(“data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIAQMAAAD+wSzIAAAABlBMVEX///+/v7+jQ3Y5AAAADklEQVQI12P4AIX8EAgALgAD/aNpbtEAAAAASUVORK5CYII”),-180,170,“a”),(load_image(“data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIAQMAAAD+wSzIAAAABlBMVEX///+/v7+jQ3Y5AAAADklEQVQI12P4AIX8EAgALgAD/aNpbtEAAAAASUVORK5CYII”),0,0,“foo”,11)],11:[(load_image(“data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIAQMAAAD+wSzIAAAABlBMVEX///+/v7+jQ3Y5AAAADklEQVQI12P4AIX8EAgALgAD/aNpbtEAAAAASUVORK5CYII”),0,0,“bar”)]}"]},
             {frameType: "funccall", slotContent: ["print(myDict)"]},
+        ]]);
+    });
+    
+    test("Slice operators", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "varassign", slotContent: ["a[1:5]", "b[:6]"]},
+            {frameType: "varassign", slotContent: ["c[2:]", "d[:]"]},
+            {frameType: "varassign", slotContent: ["e[::9]", "f[4:10:3]"]},
+            {frameType: "varassign", slotContent: ["g[::-1]", "h[:7:]"]},
+            {frameType: "varassign", slotContent: ["i[::]", "j[8::]"]},
+        ]]);
+    });
+
+    test("Advanced keyword operators", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "varassign", slotContent: ["expr_alpha", "value_alpha if cond_alpha else alt_alpha"]},
+            {frameType: "varassign", slotContent: ["expr_beta", "(x_beta if cond_beta else y_beta) if outer_beta else z_beta"]},
+            {frameType: "varassign", slotContent: ["expr_gamma", "[g_gamma for g_gamma in seq_gamma]"]},
+            {frameType: "varassign", slotContent: ["expr_delta", "[d_delta for d_delta in seq_delta if d_delta>0]"]},
+            {frameType: "varassign", slotContent: ["expr_epsilon", "{e_epsilon for e_epsilon in seq_epsilon if e_epsilon%2==0}"]},
+            {frameType: "varassign", slotContent: ["expr_zeta", "{k_zeta:v_zeta for (k_zeta,v_zeta) in pairs_zeta}"]},
+            {frameType: "varassign", slotContent: ["expr_eta", "tuple(h_eta for h_eta in seq_eta)"]},
+            {frameType: "varassign", slotContent: ["expr_theta", "sum(t_theta for t_theta in seq_theta if t_theta<10)"]},
+            {frameType: "varassign", slotContent: ["expr_iota", "[i_iota async for i_iota in aseq_iota]"]},
+            {frameType: "varassign", slotContent: ["expr_kappa", "await coro_kappa()"]},
         ]]);
     });
 });

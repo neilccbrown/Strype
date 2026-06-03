@@ -6,6 +6,7 @@ import { getDefaultStrypeProjectDocumentationFullLine } from "../support/editor"
 import en from "@/localisation/en/en_main.json";
 import {StrypePEALayoutMode} from "../../cypress/support/frame-types";
 import {dragDividerTo, getSplitterPos} from "../support/dividers";
+import { skipPyodideLoading } from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && process.platform === "win32") {
@@ -15,7 +16,12 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
 
     // These tests can take longer than the default 30 seconds:
     testInfo.setTimeout(120000); // 120 seconds
-    
+
+    // Make browser's console.log output visible in our logs (useful for debugging):
+    page.on("console", (msg) => {
+        console.log("Browser log:", msg.text());
+    });
+    await skipPyodideLoading(page);
     await page.goto("./", {waitUntil: "load"});
     await page.waitForTimeout(20*1000);
     await page.waitForSelector("body");
@@ -23,10 +29,6 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     //strypeElIds = await page.evaluate(() => (window as any)["StrypeHTMLELementsIDsGlobals"]);
     await page.evaluate(() => {
         (window as any).Playwright = true;
-    });
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
     });
 });
 
@@ -146,7 +148,7 @@ test.describe("Saves divider states", () => {
 
 test.describe("Loads divider states", () => {
     test("Loads main divider state", async ({page}) => {
-        loadHeader(page, `
+        await loadHeader(page, `
 #(=> Strype:1:std
 #(=> editorCommandsSplitterPane2Size:{"tabsCollapsed":50}
 #(=> peaLayoutMode:tabsCollapsed
@@ -158,7 +160,7 @@ test.describe("Loads divider states", () => {
         expect(Math.abs((viewport?.width ?? 9999) / 2 - pos.x)).toBeLessThanOrEqual(5);
     });
     test("Loads secondary divider state", async ({page}) => {
-        loadHeader(page, `
+        await loadHeader(page, `
 #(=> Strype:1:std
 #(=> peaCommandsSplitterPane2Size:{"tabsCollapsed":50}
 #(=> peaLayoutMode:tabsCollapsed
@@ -170,7 +172,7 @@ test.describe("Loads divider states", () => {
         expect(Math.abs((viewport?.height ?? 9999) / 2 - pos.y)).toBeLessThanOrEqual(5);
     });
     test("Loads main and secondary divider state", async ({page}) => {
-        loadHeader(page, `
+        await loadHeader(page, `
 #(=> Strype:1:std
 #(=> editorCommandsSplitterPane2Size:{"tabsCollapsed":50}
 #(=> peaCommandsSplitterPane2Size:{"tabsCollapsed":50}
@@ -195,6 +197,7 @@ test.describe("Loads divider states", () => {
         // Move divider:
         const hx = (page.viewportSize()?.width ?? 9999) / 2;
         await dragDividerTo(page, CODE_VS_SIDEBAR, hx, 300);
+        await page.waitForTimeout(2 * 1000);
         // Check it moved:
         const posA = await getSplitterPos(page, CODE_VS_SIDEBAR);
         expect(Math.abs(hx - posA.x)).toBeLessThanOrEqual(5);
@@ -205,7 +208,7 @@ test.describe("Loads divider states", () => {
         await page.hover(`div[title="${en.PEA["PEA-layout-tabs-expanded"]}"]`, {strict: true});
         await page.click(`div[title="${en.PEA["PEA-layout-tabs-expanded"]}"]`, {strict: true});
         // Load without a mode specified:
-        loadHeader(page, "#(=> Strype:1:std");
+        await loadHeader(page, "#(=> Strype:1:std");
         await page.waitForTimeout(10 * 1000);
         // Check mode has reset to default:
         expect(await getSelectedMode(page)).toEqual(StrypePEALayoutMode.tabsCollapsed);

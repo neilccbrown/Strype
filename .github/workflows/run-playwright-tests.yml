@@ -22,6 +22,8 @@ jobs:
     - uses: volta-cli/action@v4
     - name: Install dependencies
       run: npm ci
+    - name: Install Pyodide
+      run: npm run build:download-pyodide-libs      
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
     - name: Run Playwright tests (Unix)

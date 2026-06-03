@@ -31,6 +31,7 @@ import {getDateTimeFormatted} from "@/helpers/common";
 import {saveAs} from "file-saver";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { BButton } from "bootstrap-vue-next";
+import {createOrGetAudioContext} from "@/helpers/audioContext";
 
 // These bits of text are not translated because they are class names:
 const HTMLImageClass = "<a href='https://strype.org/doc/library/#strype.graphics.Image' target='_blank'>Image</a>";
@@ -146,7 +147,7 @@ export default defineComponent({
             const audioBuffer = this.audioBuffer;
             if (audioBuffer) {
                 // We are handling a user-triggered click event, which allows us to play sound:
-                const ctx = new AudioContext();
+                const ctx = createOrGetAudioContext();
                 const src = ctx.createBufferSource();
                 src.buffer = audioBuffer;
                 src.connect(ctx.destination);

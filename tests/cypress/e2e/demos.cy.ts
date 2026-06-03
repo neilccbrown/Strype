@@ -3,7 +3,7 @@
 import "../support/autocomplete-test-support";
 // imports the locale files we need for the locales used by this test
 import en from "@/localisation/en/en_main.json";
-import {strypeElIds} from "../support/autocomplete-test-support";
+import { strypeElIds } from "../support/standard-setup";
 
 describe("Demo dialog", () => {
     // We want to minimise the amount of times we click "Examples" because each time
