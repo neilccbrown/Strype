@@ -24,6 +24,7 @@ export default [
             "temp-scripts/**",
             "scripts/compiled/**",
             "docs-sphinx/**",
+            "tests/playwright/html-report/**",
         ],
     },
     {

@@ -944,6 +944,7 @@ export const MessageTypes = {
     gdriveFileAlreadyExists: "gdriveFileAlreadyExists",
     invalidPythonParseImport: "invalidPythonParseImport",
     invalidPythonParsePaste: "invalidPythonParsePaste",
+    errorAccessingIndexedDB: "errorAccessingIndexedDB",
 };
 
 //empty message
@@ -1065,6 +1066,17 @@ const InvalidPythonParsePaste: MessageDefinition = {
     },
 };
 
+const ErrorAccessingIndexedDB: MessageDefinition = {
+    ...NoMessage,
+    type: MessageTypes.errorAccessingIndexedDB,
+    message: {
+        path: "messageBannerMessage.errorAccessingIndexedDB",
+        args: {
+            [FormattedMessageArgKeyValuePlaceholders.error.key]: FormattedMessageArgKeyValuePlaceholders.error.placeholderName,
+        },
+    },
+};
+
 
 export const MessageDefinitions = {
     NoMessage,
@@ -1081,6 +1093,7 @@ export const MessageDefinitions = {
     GDriveCantCreateStrypeFolder,
     InvalidPythonParseImport,
     InvalidPythonParsePaste,
+    ErrorAccessingIndexedDB,
 };
 
 //WebUSB listener

@@ -4,6 +4,6 @@ import { Disposable, Page } from "@playwright/test";
 // Useful for tests which don't actually execute the code at all.
 export function skipPyodideLoading(page: Page) : Promise<Disposable> {
     return page.addInitScript(() => {
-        (window as any).TestingNoPyodide = true;
+        sessionStorage.setItem("TestingNoPyodide", "true");
     });
 }

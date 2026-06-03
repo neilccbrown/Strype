@@ -158,11 +158,10 @@ async function cleanupOldSessions(db: IDBDatabase) : Promise<void> {
 // moves any old local storage (which can exist from a version before we added indexed DB)
 // into indexed DB, plus any emergency-sync-written state from a page unload into the DB too.
 // That way, all code after this function only has to look at the DB.
-export async function tidyUpDatabaseState(ourTabId : string, db: IDBDatabase) : Promise<void> {
+export async function tidyUpDatabaseState(ourTabId : string, db: IDBDatabase, onError: (err: string) => void) : Promise<void> {
     // We need to find any "emergency" localStorage items which were saved during page unload or refresh,
     // and move them into the database where they belong:
-    const toAddToDatabase: Record<string, string> = {};
-    const keysToDelete: string[] = [];
+    const toAddToDatabase: Record<string, {content: string, keyToDelete: string}> = {};
     let storeKey = AutoSaveKeyNames.pythonEditorState;
     // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
     storeKey = AutoSaveKeyNames.mbEditor;
@@ -172,24 +171,29 @@ export async function tidyUpDatabaseState(ourTabId : string, db: IDBDatabase) : 
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (key && key.startsWith(prefix)) {
-            toAddToDatabase[key.slice(prefix.length)] = localStorage.getItem(key) as string;
-            keysToDelete.push(key);
+            toAddToDatabase[key.slice(prefix.length)] = {content: localStorage.getItem(key) as string, keyToDelete: key};
         }
-    }
-
-    for (const key of keysToDelete) {
-        localStorage.removeItem(key);
     }
     
     for (const tabId of Object.keys(toAddToDatabase)) {
-        await saveSessionState(tabId, toAddToDatabase[tabId], db);
+        const item = toAddToDatabase[tabId];
+        await saveSessionState(tabId, item.content, db)
+            .catch(onError)
+            .then((() => {
+                // Only delete key if save was successful:
+                localStorage.removeItem(item.keyToDelete);
+            }));
     }
     
     // We also claim any old storage item and associate it with the current tab:
     const oldSingleItem = localStorage.getItem(storeKey);
     if (oldSingleItem) {
-        localStorage.removeItem(storeKey);
-        await saveSessionState(ourTabId, oldSingleItem, db);
+        await saveSessionState(ourTabId, oldSingleItem, db)
+            .catch(onError)
+            .then(() => {
+                // Only delete key if save was successful:
+                localStorage.removeItem(storeKey);
+            });
     }
     
     await cleanupOldSessions(db);
