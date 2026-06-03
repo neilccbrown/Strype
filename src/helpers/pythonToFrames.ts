@@ -1551,6 +1551,7 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
         allLines.pop();
     }
     const s = splitLinesToSections(allLines);
+    const curLocation = findCurrentStrypeLocation().strypeLocation;
     
     // Bit awkward but we first attempt to copy each to check for errors because
     // if there are any errors we don't want to paste any:
@@ -1559,7 +1560,12 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
         err = copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.DEFS_SECTION, s.format, s.defsMapping, "dryrun");
     }
     if (typeof err != "string") {
-        err = copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION, s.format, s.mainMapping, "dryrun");
+        // We may be trying to paste something inside a function defintion.
+        // The "content" to paste is seen as if it was to paste in the main section,
+        // however the rules are slightly different: we use the current location to decide
+        // what container we should check the code against.
+        const pastingSectionTarget = (curLocation == STRYPE_LOCATION.IN_FUNCDEF) ? STRYPE_LOCATION.IN_FUNCDEF : STRYPE_LOCATION.MAIN_CODE_SECTION;
+        err = copyFramesFromParsedPython(s.main, pastingSectionTarget, s.format, s.mainMapping, "dryrun");
     }
     if (typeof err != "string") {
         err = copyFramesFromParsedPython(s.projectDoc, STRYPE_LOCATION.PROJECT_DOC_SECTION, s.format, s.mainMapping, "dryrun");
@@ -1580,7 +1586,6 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
         
         // The logic for pasting is: every frame that are allowed at the current cursor's position are added.
         // Frames that are related to another section where the caret is not present are added in that section.
-        const curLocation = findCurrentStrypeLocation().strypeLocation;
         const isCurLocationInImportsSection = curLocation == STRYPE_LOCATION.IMPORTS_SECTION, isCurLocationInDefsSection = curLocation == STRYPE_LOCATION.DEFS_SECTION, 
             isCurLocationInMainCodeSection = curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION, isCurLocationInAFuncDefFrame = curLocation == STRYPE_LOCATION.IN_FUNCDEF;
 
