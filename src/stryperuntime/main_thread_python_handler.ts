@@ -21,7 +21,7 @@ let pythonWorker : Worker | null = makeNewPyodideWorker();
 let pythonClient : PyodideClient<any> | null = pythonWorker == null ? null: makePyodideClient(pythonWorker);
 
 function makeNewPyodideWorker() : Worker | null {
-    if ((window as any)?.TestingNoPyodide) {
+    if (sessionStorage.getItem("TestingNoPyodide")) {
         console.info("Skipping Pyodide as in testing mode");
         return null;
     }
