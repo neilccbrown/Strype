@@ -508,7 +508,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
 // ready to be pasted immediately afterwards.
 // If successful, returns a map with key-value Strype directives.  If unsuccessful, returns a string with some info about
 // where the Python parse failed.
-export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, format: "py" | "spy", linenoMapping?: Record<number, number>, dryrun?: "dryrun" | undefined, ignoreGlobalRuleOut?: boolean) : string | null | Map<string, string> {
+export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, format: "py" | "spy", linenoMapping?: Record<number, number>, dryrun?: "dryrun" | undefined) : string | null | Map<string, string> {
     const mapLineno = (lineno : number) : number => linenoMapping ? linenoMapping[lineno] : lineno;
     const indents = new Map<number, string>();
     
@@ -559,7 +559,7 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
             }
         }});
         // At this stage, we can make a sanity check that we can copy the given Python code in the current position in Strype (for example, no "import" in a function definition section)
-        if(!canPastePythonAtStrypeLocation(currentStrypeLocation, ignoreGlobalRuleOut)){
+        if(!canPastePythonAtStrypeLocation(currentStrypeLocation)){
             useStore().copiedFrames = {};
             useStore().copiedSelectionFrameIds = [];
             return i18n.global.t("messageBannerMessage.incompatiblePythonStrypeSection");
@@ -1345,7 +1345,7 @@ export function findCurrentStrypeLocation(options?: {lookForGivenFramePosition?:
 }
 
 // This function makes a simple sanity check on the copied Python code (as frames then): we make sure that it "fits" the current Strype location
-function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION, ignoreGlobalRuleOut?: boolean): boolean {
+function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION): boolean {
     // In more details, we check the same-leve (top level) frames in the copy:
     // - in the "import" section, only imports can be copied,
     // - in the "function definition" section, only function definitions can be copied
@@ -1360,11 +1360,7 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION,
     // Check if the match between the current Strype location and the copied Python code frames is possible
     switch(currentStrypeLocation){
     case STRYPE_LOCATION.MAIN_CODE_SECTION:
-        const forbiddenFrameTypes =[AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.funcdef];
-        if(!ignoreGlobalRuleOut){
-            forbiddenFrameTypes.push(AllFrameTypesIdentifier.global);
-        }
-        return !copiedPythonToFrames.some((frame) => forbiddenFrameTypes.includes(frame.frameType.type));
+        return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.global].includes(frame.frameType.type));
     case STRYPE_LOCATION.IN_FUNCDEF:
         return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type));
     case STRYPE_LOCATION.DEFS_SECTION:
@@ -1564,9 +1560,12 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
         err = copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.DEFS_SECTION, s.format, s.defsMapping, "dryrun");
     }
     if (typeof err != "string") {
-        // We have a small ambiguous situation to handle: pasting global statements should not raise an error if we are actually inside a function definition
-        const ignoreGlobalRuleOut = curLocation == STRYPE_LOCATION.IN_FUNCDEF;
-        err = copyFramesFromParsedPython(s.main, STRYPE_LOCATION.MAIN_CODE_SECTION, s.format, s.mainMapping, "dryrun", ignoreGlobalRuleOut);
+        // We may be trying to paste something inside a function defintion.
+        // The "content" to paste is seen as if it was to paste in the main section,
+        // however the rules are slightly different: we use the current location to decide
+        // what container we should check the code against.
+        const pastingSectionTarget = (curLocation == STRYPE_LOCATION.IN_FUNCDEF) ? STRYPE_LOCATION.IN_FUNCDEF : STRYPE_LOCATION.MAIN_CODE_SECTION;
+        err = copyFramesFromParsedPython(s.main, pastingSectionTarget, s.format, s.mainMapping, "dryrun");
     }
     if (typeof err != "string") {
         err = copyFramesFromParsedPython(s.projectDoc, STRYPE_LOCATION.PROJECT_DOC_SECTION, s.format, s.mainMapping, "dryrun");
