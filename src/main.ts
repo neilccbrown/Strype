@@ -10,11 +10,10 @@ import {getAppLangSelectId, getEditorID, getEditorMenuUID, getFrameBodyUID, getF
 import "@imengyu/vue3-context-menu/lib/vue3-context-menu.css";
 import ContextMenu from "@imengyu/vue3-context-menu";
 import { openIndexedDBConnection, tidyUpDatabaseState } from "@/store/store-db-storage";
-import { getEditorTabId, useStore } from "@/store/store";
+import { getEditorTabId } from "@/store/store";
+import { showIndexDBError } from "@/helpers/storeMethods";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import {getPEATabContentContainerDivId} from "./helpers/editor";
-import {MessageDefinitions} from "@/types/types";
-import {showIndexDBError} from "@/helpers/storeMethods";
 // #v-endif
 
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
