@@ -2,6 +2,7 @@
 // specifically around storing and restoring the state from browser storage.
 
 import { Page, expect, test } from "@playwright/test";
+import { skipPyodideLoading } from "../support/general";
 
 // Note we don't visit a page in the beforeEach; that is left to individual tests.
 
@@ -44,6 +45,7 @@ async function appendContent(page: Page, paramContent: string) {
 }
 
 async function loadAndWaitForEditor(page: Page) {
+    await skipPyodideLoading(page);
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector(".frame-container");
 }
