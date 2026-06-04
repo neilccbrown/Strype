@@ -15,6 +15,16 @@ self.addEventListener("activate", (event) => {
     event.waitUntil(self.clients.claim());
 });
 
+// Re-claim all clients on demand — needed for Firefox where a new page
+// that opens after the SW is already activated won't be auto-claimed:
+self.addEventListener("message", (event) => {
+    if (event.data === "claim") {
+        self.clients.claim().then(() => {
+            event.source?.postMessage("claimed");
+        });
+    }
+});
+
 const syncMessageFetchListener = serviceWorkerFetchListener();
 
 self.addEventListener("fetch", (e) => {

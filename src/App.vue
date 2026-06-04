@@ -1088,7 +1088,7 @@ export default defineComponent({
             // that event, so the timeout acts as our give-up signal:
             if (!navigator.serviceWorker.controller) {
                 const tookControl = await new Promise((resolve) => {
-                    const timeout = setTimeout(() => resolve(false), 500);
+                    const timeout = setTimeout(() => resolve(false), 1000);
 
                     navigator.serviceWorker.addEventListener(
                         "controllerchange",
@@ -1098,6 +1098,13 @@ export default defineComponent({
                         },
                         { once: true }
                     );
+
+                    // Send a claim request to the SW via the registration,
+                    // since we have no controller yet we must use the active worker directly.
+                    // This seems necessary on Firefox in some cases:
+                    navigator.serviceWorker.ready.then((reg) => {
+                        reg.active?.postMessage("claim");
+                    });
                 });
 
                 if (tookControl) {
