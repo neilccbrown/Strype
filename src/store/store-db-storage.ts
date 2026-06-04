@@ -167,6 +167,47 @@ export async function loadSessionState(tabId: string, db?: IDBDatabase) : Promis
     });
 }
 
+// This function checks if there is a recent state the user might want to load via an auto-displayed banner message.
+// The criteria for this is:
+// - stillAlive == false; we know the tab is closed
+// - modifiedSinceExternalSave == true; it was modified after its last external save
+// - lastAliveAt sooner than 2 minutes ago; the user re-navigated to the website (or used Ctrl-Shift-T) soon after it was closed
+export async function checkForRecentSaveStates(locale: string) : Promise<null | {data: string, when: string}> {
+    const db = await openIndexedDBConnection();
+    return new Promise<null | {data: string, when: string}>((resolve, reject) => {
+        const tx = db.transaction(STORE, "readonly");
+        const store = tx.objectStore(STORE);
+        
+        const request = store.getAll();
+
+        request.onsuccess = () => {
+            if (request.result) {
+                // Makes it into e.g. "5 seconds ago", translated to the given locale.
+                const rtf = new Intl.RelativeTimeFormat(locale, { style: "long" });
+                const now = Date.now();
+                let candidate : null | { lastAlive: number; item: any} = null;
+                for (let item of request.result) {
+                    const lastAlive = Number(item[DatabaseFieldNames.lastAliveAt]);
+                    if (item[DatabaseFieldNames.stillAlive] == "false"
+                        && item[DatabaseFieldNames.modifiedSinceExternalSave] ==  "true"
+                        && lastAlive >= now - 2 * 60 * 1000) {
+                        // Suitable for loading.  There might be multiple though:
+                        if (candidate == null || lastAlive > candidate.lastAlive) {
+                            candidate = {lastAlive, item};
+                        }
+                    }
+                }
+                
+                resolve(candidate != null && DatabaseFieldNames.data in candidate.item ? {data: candidate.item[DatabaseFieldNames.data], when: rtf.format(ceil((candidate.lastAlive - now) / 1000), "second")} : null);
+            }
+            else {
+                resolve(null);
+            }
+        };
+        request.onerror = () => reject(request.error);
+    });
+}
+
 // This cleans up old sessions.  Old here means sessions that were not seen alive recently.
 // We have a timer task running that marks us as alive, but it's important to note that browsers
 // can suspend tabs that have not been used for a while.  So if you have an old Strype tab

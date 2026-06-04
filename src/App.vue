@@ -128,7 +128,7 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore, settingsStore, getEditorTabId } from "@/store/store";
-import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState, LoadRequestReason, StateAppObject } from "@/types/types";
+import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState, LoadRequestReason, StateAppObject, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
 import {getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getActiveContextMenu, actOnGraphicsImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
@@ -1062,8 +1062,20 @@ export default defineComponent({
 
                 this.appStore.nextAvailableId = state.nextAvailableId;
                 this.appStore.frameObjects = cloneDeep(state.initialState);
-                
-                void this.reloadForServiceWorkerIfNeeded();
+                               
+                // Could be because of a hard refresh, in which case we need to soft refresh to get service worker going:
+                await this.reloadForServiceWorkerIfNeeded();
+
+                // Check if there is old state which could be loaded (we don't need to await this):
+                void checkForRecentSaveStates(settingsStore().locale ?? "en").then((saveState) => {
+                    if (saveState != null) {
+                        const msg = cloneDeep(MessageDefinitions.FoundRecentUnsavedState);
+                        const msgObj = msg.message as FormattedMessage;
+                        msgObj.args[FormattedMessageArgKeyValuePlaceholders.when.key] = msgObj.args[FormattedMessageArgKeyValuePlaceholders.when.key].replace(FormattedMessageArgKeyValuePlaceholders.when.placeholderName, saveState.when);
+                        this.appStore.foundRecentState = saveState.data;
+                        this.appStore.showMessage(msg, null);
+                    }
+                });
             });
         },
 

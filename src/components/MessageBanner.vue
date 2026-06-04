@@ -114,6 +114,11 @@ export default defineComponent({
                     this.appStore.applyStateUndoRedoChanges(true);
                     this.appStore.currentMessage = MessageDefinitions.NoMessage;
                     break;
+                case MessageDefinedActions.load:
+                    if (this.appStore.foundRecentState != null) {
+                        this.appStore.setStateFromJSONStr({stateJSONStr: this.appStore.foundRecentState, readCompressed: true});
+                    }
+                    break;
                 default:
                     break;
                 }

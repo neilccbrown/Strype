@@ -47,6 +47,7 @@ async function appendContent(page: Page, paramContent: string) {
 async function loadAndWaitForEditor(page: Page) {
     await skipPyodideLoading(page);
     await page.goto("./", {waitUntil: "load"});
+    await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
     await page.waitForSelector(".frame-container");
 }
 
@@ -91,6 +92,7 @@ test.describe("Test multi-page operation", () => {
     test("Second tab shows empty project", async ({browser}) => {
         const context = await browser.newContext();
         const page1 = await context.newPage();
+        page1.on("console", (msg) => console.log("Browser log page 1:", msg.text()));
         await loadAndWaitForEditor(page1);
         await assertStartingProject(page1);
         const str = "Going to open a second page #1";
@@ -98,6 +100,7 @@ test.describe("Test multi-page operation", () => {
         await assertStartingPlus(page1, str);
         // Now open the second page, which should be the starting project still:
         const page2 = await context.newPage();
+        page2.on("console", (msg) => console.log("Browser log page 2:", msg.text()));
         await loadAndWaitForEditor(page2);
         await assertStartingProject(page2);
     });
@@ -105,6 +108,7 @@ test.describe("Test multi-page operation", () => {
     test("Second tab shows empty project after refreshing first", async ({browser}) => {
         const context = await browser.newContext();
         const page1 = await context.newPage();
+        page1.on("console", (msg) => console.log("Browser log page 1:", msg.text()));
         await loadAndWaitForEditor(page1);
         await assertStartingProject(page1);
         const str = "Going to open a second page #2";
@@ -115,6 +119,7 @@ test.describe("Test multi-page operation", () => {
         await assertStartingPlus(page1, str);
         // Now open the second page, which should be the starting project still:
         const page2 = await context.newPage();
+        page2.on("console", (msg) => console.log("Browser log page 2:", msg.text()));
         await loadAndWaitForEditor(page2);
         await assertStartingProject(page2);
     });
@@ -197,4 +202,49 @@ test.describe("Test IndexedDB failure", () => {
         await expect(page.locator("." + scssVars.messageBannerContainerClassName)).toBeVisible();
         await expect(page.locator("." + scssVars.messageBannerContainerClassName)).toContainText("Simulated failure");
     });
+});
+
+// A banner should show to offer to load unsaved backups if the backups are recent and modified after external save:
+test.describe("Offer to reload unsaved backups", () => {
+    // Two tests here; one clicks load, one clicks cancel:
+    for (let clickButton of ["Load", "Cancel"]) {
+        test(`Offer to load recent never-saved project from another page object and clicks ${clickButton}`, async ({browser}) => {
+            const context = await browser.newContext({recordVideo: {dir: "tests/playwright/test-results/videos/"}});
+            const page1 = await context.newPage();
+            console.log("Page1 video: " + await page1.video()?.path());            
+            page1.on("console", (msg) => console.log("Browser log page 1:", msg.text()));
+            
+            await loadAndWaitForEditor(page1);
+            // Modify it and close it:
+            const str = "Modifying fresh project ahead of closing #1";
+            await appendContent(page1, str);
+            await page1.close({runBeforeUnload: true});
+            // Playwright seems to say it won't actually wait for the saving to be finished, so let's wait an extra couple of seconds:
+            // Can't use page1.waitForTimeout as it's closed...
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            // Load a new page in the same context (so it shares the storage):
+            const page2 = await context.newPage();
+            console.log("Page2 video: " + await page2.video()?.path());
+            page2.on("console", (msg) => console.log("Browser log page 2:", msg.text()));
+            await loadAndWaitForEditor(page2);
+            // At this point, it should have the fresh state, but be showing the banner about loading old state:
+            await assertStartingProject(page2);
+            const scssVars = await page2.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
+            await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).toBeVisible();
+            await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).toContainText("load it?");
+            
+            // Click the button:
+            await page2.locator("button", {hasText: clickButton}).filter({ visible: true }).click();
+            // Banner should be gone either way:
+            await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).not.toBeVisible();
+            // Check state:
+            if (clickButton === "Cancel") {
+                await assertStartingProject(page2);
+            }
+            else {
+                await assertStartingPlus(page2, str);
+            }
+        });
+    }
 });
