@@ -188,9 +188,11 @@ export async function checkForRecentSaveStates(locale: string) : Promise<null | 
                 let candidate : null | { lastAlive: number; item: any} = null;
                 for (let item of request.result) {
                     const lastAlive = Number(item[DatabaseFieldNames.lastAliveAt]);
+                    // For dev mode extend this so that it's easier to load recent states:
+                    const recentAliveMinutes = import.meta.env.DEV ? 24*60 : 2;
                     if (item[DatabaseFieldNames.stillAlive] == "false"
                         && item[DatabaseFieldNames.modifiedSinceExternalSave] ==  "true"
-                        && lastAlive >= now - 2 * 60 * 1000) {
+                        && lastAlive >= now - recentAliveMinutes * 60 * 1000) {
                         // Suitable for loading.  There might be multiple though:
                         if (candidate == null || lastAlive > candidate.lastAlive) {
                             candidate = {lastAlive, item};
