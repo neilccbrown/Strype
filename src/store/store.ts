@@ -141,6 +141,8 @@ export const useStore = defineStore("app", {
             // if it's the same message
             currentMessageId: 0,
 
+            foundRecentState: null as null | string,
+
             preCompileErrors: [] as string[],
 
             errorCount: 0,
@@ -177,7 +179,9 @@ export const useStore = defineStore("app", {
 
             projectName: i18n.global.t("defaultProjName"),
 
-            isEditorContentModified: false,
+            isEditorContentModified: false, // Whether the content is modified since last external (disk/cloud/share) save
+            
+            editorLastModificationAt: -1, // Date.now() when isEditorContentModified was set to true 
 
             syncTarget: StrypeSyncTarget.none, // default value: no target
 
@@ -186,8 +190,6 @@ export const useStore = defineStore("app", {
             strypeProjectLocationAlias: "", // for cloud drives using a folder ID, this saves the name of the location (strypeProjectLocation saves the ID, not the name)
 
             strypeProjectLocationPath: "", // for cloud drives using a folder path (for example OneDrive)
-
-            isProjectUnsaved: true, // flag indicating if we have notified changes that haven't been saved
 
             currentCloudSaveFileId: undefined as undefined|string,
 
@@ -1360,6 +1362,7 @@ export const useStore = defineStore("app", {
             }
             
             this.isEditorContentModified = true;
+            this.editorLastModificationAt = Date.now();
             // Saves the state changes in diffPreviousState.
             // We do not simply save the differences between the state and the previous state, because when undo/redo will be invoked, we cannot know what will be 
             // the navigation status in the editor (i.e. are we editing? what blue caret or text cursor is currenty displayed), and there might not be any difference right now.
@@ -1408,6 +1411,7 @@ export const useStore = defineStore("app", {
 
         applyStateUndoRedoChanges(isUndo: boolean){
             this.isEditorContentModified = true;
+            this.editorLastModificationAt = Date.now();
             // Clear the current blue caret, whichever the new value will be so we do not get 2 carets if the current and new values differ
             const oldCaretId = this.currentFrame.id;
             if(getAvailableNavigationPositions().map((e)=>e.frameId).includes(oldCaretId) && this.frameObjects[oldCaretId]){
@@ -1627,6 +1631,7 @@ export const useStore = defineStore("app", {
                 this.frameObjects[Number(frameId)].collapsedState = collapsed);
             // A change of collapse status triggers a modification notification
             this.isEditorContentModified = true;
+            this.editorLastModificationAt = Date.now();
         },
 
         cycleFrameCollapsedState(frameId: number) {
@@ -1639,6 +1644,7 @@ export const useStore = defineStore("app", {
             this.frameObjects[payload.frameId].frozenState = payload.frozen;
             // A change of freeze status triggers a modification notification
             this.isEditorContentModified = true;
+            this.editorLastModificationAt = Date.now();
         },
         
 

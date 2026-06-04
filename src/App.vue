@@ -154,7 +154,7 @@ import {inflateRaw} from "pako";
 import { Base64 } from "js-base64";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
-import { loadSessionState, saveSessionState } from "@/store/store-db-storage";
+import { loadSessionState, saveSessionState, emergencySaveSessionState, checkForRecentSaveStates } from "@/store/store-db-storage";
 import initialStates from "@/store/initial-states";
 
 let autoSaveTimerId = -1;
@@ -886,12 +886,12 @@ export default defineComponent({
                     const stateJSONStrWithCheckpoint = this.appStore.generateStateJSONStrWithCheckpoint(true);
                     if (reason !== SaveRequestReason.unloadPage && reason !== SaveRequestReason.reloadBrowser) {
                         // We have time, so we save normally (which is async):
-                        saveSessionState(getEditorTabId(), stateJSONStrWithCheckpoint)
+                        saveSessionState(getEditorTabId(), stateJSONStrWithCheckpoint, reason == SaveRequestReason.loadProject ? "false" : "maybe", this.appStore.isEditorContentModified, this.appStore.editorLastModificationAt)
                             .catch(showIndexDBError);
                     }
                     else {
                         // Async might get killed during the closing process so we save to local storage as an alternative:
-                        localStorage.setItem(this.localStorageAutosaveEditorKey + ":" + getEditorTabId(), stateJSONStrWithCheckpoint);
+                        emergencySaveSessionState(getEditorTabId(), stateJSONStrWithCheckpoint, this.appStore.editorLastModificationAt, this.appStore.isEditorContentModified);
                     }
                     
                     // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
@@ -1563,6 +1563,7 @@ export default defineComponent({
                 // we can distinguish between a sitation when the divider is position is loaded and user event by the content of the event
                 if((event?.panes?.length??0) > 1){
                     this.appStore.isEditorContentModified = true;
+                    this.appStore.editorLastModificationAt = Date.now();
                 }
             }
             if(lowerPanelSize >= this.peaOverlayPane2MinSize && lowerPanelSize <= this.peaOverlayPane2MaxSize){
@@ -1612,6 +1613,7 @@ export default defineComponent({
             // we can distinguish between a sitation when the divider is position is loaded and user event by the content of the event
             if(event.length > 1){
                 this.appStore.isEditorContentModified = true;
+                this.appStore.editorLastModificationAt = Date.now();
             }
 
             // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
