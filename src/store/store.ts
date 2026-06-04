@@ -16,20 +16,26 @@ import emptyState from "@/store/initial-states/empty-state";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import $ from "jquery";
-import { fetchUserCountry, type UserCountry } from "@/helpers/analyticsCountry";
-import { Analytics_batch_max_events, Analytics_queue_overflow_cap } from "@/helpers/analyticsConstants";
+import {
+    enqueueAnalyticsEvent,
+    flushAnalyticsQueue,
+    initAnalyticsCountry,
+    initAnalyticsLocale,
+    initAnalyticsPlatform,
+    initAnalyticsSession,
+    initAnalyticsUserId,
+    trackAnalyticsLocaleChange,
+    trackInputCall,
+    trackMenuAction,
+    trackOutputChars,
+    trackStorageLocation,
+    trackUsedDemo,
+    type AnalyticsFlushReason,
+} from "@/store/analytics";
+export type { AnalyticsEvent, AnalyticsFlushReason } from "@/store/analytics";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { actOnGraphicsImport } from "@/helpers/editor";
 // #v-endif
-
-export interface AnalyticsEvent {
-    eventId: string;
-    eventType: string;
-    recordTime: string;
-    payload: Record<string, unknown>;
-}
-
-export type AnalyticsFlushReason = "interval" | "size_cap" | "critical" | "unload";
 
 export function getEditorTabId() : string {
 
@@ -229,30 +235,6 @@ export const useStore = defineStore("app", {
             DAPWrapper: {} as DAPWrapper,
 
             previousDAPWrapper: {} as DAPWrapper,
-
-            analyticsCountryCode: null as string | null,
-
-            analyticsCountryName: null as string | null,
-
-            analyticsUserId: "" as string,
-
-            analyticsSessionStartTime: 0 as number,
-
-            analyticsActiveSessionTime: 0 as number,
-
-            analyticsFrameCount: 0 as number,
-
-            analyticsSessionId: "" as string,
-
-            analyticsPlatform: "editor" as "editor" | "microbit",
-
-            analyticsLocale: "" as string,
-
-            analyticsEventQueue: [] as AnalyticsEvent[],
-
-            analyticsPendingOutputChars: 0 as number,
-
-            analyticsFlushInProgress: false as boolean,
         };
     },
 
@@ -745,28 +727,15 @@ export const useStore = defineStore("app", {
         },
 
         initAnalyticsUserId() {
-            const storageKey = "StrypeAnalyticsUserId";
-            let userId = localStorage.getItem(storageKey);
-            if (!userId) {
-                userId = crypto.randomUUID();
-                localStorage.setItem(storageKey, userId);
-            }
-            this.analyticsUserId = userId;
+            initAnalyticsUserId();
         },
 
         initAnalyticsSession() {
-            this.analyticsSessionId = (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function")
-                ? crypto.randomUUID()
-                : `sess-${Date.now()}`;
+            initAnalyticsSession();
         },
 
         initAnalyticsPlatform() {
-            // #v-ifdef MODE == VITE_MICROBIT_MODE
-            this.analyticsPlatform = "microbit";
-            // #v-else
-            const path = (typeof window !== "undefined") ? window.location.pathname.toLowerCase() : "";
-            this.analyticsPlatform = path.includes("microbit") ? "microbit" : "editor";
-            // #v-endif
+            initAnalyticsPlatform();
         },
 
         computeFrameSnapshot() {
@@ -820,144 +789,43 @@ export const useStore = defineStore("app", {
         },
 
         enqueueAnalyticsEvent(eventType: string, payload: Record<string, unknown> = {}) {
-            this.analyticsEventQueue.push({
-                eventId: crypto.randomUUID(),
-                eventType,
-                recordTime: new Date().toISOString(),
-                payload,
-            });
-            if (this.analyticsEventQueue.length >= Analytics_batch_max_events) {
-                this.flushAnalyticsQueue("size_cap");
-            }
+            enqueueAnalyticsEvent(eventType, payload);
         },
 
         flushAnalyticsQueue(reason: AnalyticsFlushReason) {
-            const ingestUrl = import.meta.env.VITE_ANALYTICS_INGEST_URL?.trim();
-            if (!ingestUrl) {
-                return;
-            }
-            // Skip if another flush is already in flight, unless this is an unload
-            // (sendBeacon is fire-and-forget and ordering doesn't matter on unload).
-            if (this.analyticsFlushInProgress && reason !== "unload") {
-                return;
-            }
-
-            // Coalesce pending output chars into a single event right before sending.
-            if (this.analyticsPendingOutputChars > 0) {
-                this.analyticsEventQueue.push({
-                    eventId: crypto.randomUUID(),
-                    eventType: "output_chunk",
-                    recordTime: new Date().toISOString(),
-                    payload: {chars: this.analyticsPendingOutputChars},
-                });
-                this.analyticsPendingOutputChars = 0;
-            }
-
-            if (this.analyticsEventQueue.length === 0) {
-                return;
-            }
-
-            const batch = this.analyticsEventQueue;
-            this.analyticsEventQueue = [];
-
-            const body = JSON.stringify({
-                userId: this.analyticsUserId,
-                sessionId: this.analyticsSessionId,
-                platform: this.analyticsPlatform,
-                countryCode: this.analyticsCountryCode,
-                countryName: this.analyticsCountryName,
-                flushReason: reason,
-                events: batch,
-            });
-
-            if (reason === "unload" && typeof navigator !== "undefined" && navigator.sendBeacon) {
-                navigator.sendBeacon(ingestUrl, new Blob([body], {type: "text/plain"}));
-                return;
-            }
-
-            this.analyticsFlushInProgress = true;
-            void fetch(ingestUrl, {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body,
-                mode: "cors",
-                keepalive: reason === "unload",
-            }).then((res) => {
-                if (!res.ok) {
-                    throw new Error(`ingest returned ${res.status}`);
-                }
-            }).catch(() => {
-                // Restore the batch at the front of the queue; drop oldest if we exceed the cap.
-                this.analyticsEventQueue = [...batch, ...this.analyticsEventQueue];
-                if (this.analyticsEventQueue.length > Analytics_queue_overflow_cap) {
-                    this.analyticsEventQueue = this.analyticsEventQueue.slice(-Analytics_queue_overflow_cap);
-                }
-            }).finally(() => {
-                this.analyticsFlushInProgress = false;
-            });
-        },
-
-        // ALL ANALYTICS CAPTURING WILL BE IMPLEMENTED FROM HERE ON OUT
-        setAnalyticsCountry(country: UserCountry) {
-            this.analyticsCountryCode = country.countryCode;
-            this.analyticsCountryName = country.countryName;
+            flushAnalyticsQueue(reason);
         },
 
         trackMenuAction(actionId: string) {
-            this.enqueueAnalyticsEvent("menu_action", {actionId});
+            trackMenuAction(actionId);
         },
 
         trackInputCall() {
-            this.enqueueAnalyticsEvent("input_call");
+            trackInputCall();
         },
 
         trackOutputChars(charCount: number) {
-            this.analyticsPendingOutputChars += charCount;
+            trackOutputChars(charCount);
         },
 
         initAnalyticsLocale(locale: string) {
-            this.analyticsLocale = locale;
+            initAnalyticsLocale(locale);
         },
 
         trackAnalyticsLocaleChange(newLocale: string) {
-            const previousLocale = this.analyticsLocale;
-            if (!previousLocale || previousLocale === newLocale) {
-                this.analyticsLocale = newLocale;
-                return;
-            }
-            this.enqueueAnalyticsEvent("locale_change", {from: previousLocale, to: newLocale});
-            this.analyticsLocale = newLocale;
+            trackAnalyticsLocaleChange(newLocale);
         },
 
-        async initAnalyticsCountry() {
-            const country = await fetchUserCountry();
-            this.setAnalyticsCountry(country);
-            console.log("Country analytics:", {
-                countryCode: this.analyticsCountryCode,
-                countryName: this.analyticsCountryName,
-            });
+        initAnalyticsCountry() {
+            return initAnalyticsCountry();
         },
 
-        trackUsedDemo(demoName: string, source: "builtin" | "mediacomp-strype") {
-            const cleanDemoName = demoName.trim();
-            if (cleanDemoName.length === 0) {
-                return;
-            }
-            this.enqueueAnalyticsEvent("demo_used", {demoName: cleanDemoName, source});
+        trackUsedDemo(demoName: string, source: string) {
+            trackUsedDemo(demoName, source);
         },
 
         trackStorageLocation(target: StrypeSyncTarget) {
-            let storageLocation: "local" | "cloud" | null = null;
-            if (target == StrypeSyncTarget.fs) {
-                storageLocation = "local";
-            }
-            else if (target == StrypeSyncTarget.gd || target == StrypeSyncTarget.od) {
-                storageLocation = "cloud";
-            }
-            if (storageLocation == null) {
-                return;
-            }
-            this.enqueueAnalyticsEvent("save", {storageLocation});
+            trackStorageLocation(target);
         },
 
         updateKeyModifiers(e: KeyboardEvent | MouseEvent) {
@@ -2654,15 +2522,6 @@ export const useStore = defineStore("app", {
             stateCopy["previousDAPWrapper"] = {};
             stateCopy["currentMessage"] = MessageDefinitions.NoMessage;
             stateCopy["pythonExecRunningState"] = PythonExecRunningState.NotRunning;
-
-            // Strip analytics fields — these are session-scoped and re-initialised by bootstrapApp on every load.
-            // Persisting them would cause sessionId, active-session timers, throttle timestamps, and per-session
-            // counters to leak across reloads.
-            Object.keys(stateCopy).forEach((key) => {
-                if (key.startsWith("analytics")) {
-                    delete stateCopy[key];
-                }
-            });
 
             //simplify the storage of frame types by their type names only
             Object.keys(stateCopy["frameObjects"] as EditorFrameObjects).forEach((frameId) => {
