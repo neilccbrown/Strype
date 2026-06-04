@@ -1410,9 +1410,7 @@ export const useStore = defineStore("app", {
         updateState(newState: Record<string, unknown>){
             //this method complete changes the state with a new state object
             Object.keys(this.$state).forEach((property) => {
-                if (property in newState) {
-                    (this as any)[property] = newState[property];
-                }
+                (this as any)[property] = newState[property];
             } );
 
             // The frame cursor cannot be left inside a collapsed frame container (section),

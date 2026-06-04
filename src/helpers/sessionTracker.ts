@@ -1,6 +1,9 @@
 import { useStore } from "@/store/store";
-import { analyticsState, enqueueAnalyticsEvent } from "@/store/analytics";
+import { analyticsState, enqueueAnalyticsEvent, flushAnalyticsQueue } from "@/store/analytics";
 import { Analytics_session_idle_threshold_ms, Analytics_session_tick_ms } from "@/helpers/analyticsConstants";
+
+let runFinalSessionTick: (() => void) | null = null;
+let pageUnloadHandled = false;
 
 export function startSessionTracking(): void {
     let lastActivityTime = Date.now();
@@ -27,23 +30,24 @@ export function startSessionTracking(): void {
         lastTickTime = now;
     };
 
+    runFinalSessionTick = tick;
     setInterval(tick, Analytics_session_tick_ms);
+}
 
-    let sessionEnded = false;
-    const emitSessionEnd = () => {
-        if (sessionEnded) {
-            return;
-        }
-        sessionEnded = true;
-        tick();
-        const store = useStore();
-        analyticsState.frameCount = Object.values(store.frameObjects).filter((f) => f.id > 0).length;
-        enqueueAnalyticsEvent("session_end", {
-            activeDurationMs: analyticsState.activeSessionTime,
-            frameCount: analyticsState.frameCount,
-        });
-    };
+/** Runs once per page hide/unload: final tick, session_end event, then flush the queue. */
+export function onAnalyticsPageUnload(): void {
+    if (pageUnloadHandled) {
+        return;
+    }
+    pageUnloadHandled = true;
 
-    window.addEventListener("beforeunload", emitSessionEnd);
-    window.addEventListener("pagehide", emitSessionEnd);
+    runFinalSessionTick?.();
+
+    const store = useStore();
+    analyticsState.frameCount = Object.values(store.frameObjects).filter((f) => f.id > 0).length;
+    enqueueAnalyticsEvent("session_end", {
+        activeDurationMs: analyticsState.activeSessionTime,
+        frameCount: analyticsState.frameCount,
+    });
+    flushAnalyticsQueue("unload");
 }

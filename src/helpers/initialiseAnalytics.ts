@@ -1,5 +1,5 @@
 import { settingsStore } from "@/store/store";
-import { startSessionTracking } from "@/helpers/sessionTracker";
+import { onAnalyticsPageUnload, startSessionTracking } from "@/helpers/sessionTracker";
 import { Analytics_batch_flush_ms } from "@/helpers/analyticsConstants";
 import {
     analyticsState,
@@ -29,12 +29,11 @@ export function initialiseAnalytics(): void {
 
     setInterval(() => flushAnalyticsQueue("interval"), Analytics_batch_flush_ms);
 
-    const unloadFlush = () => flushAnalyticsQueue("unload");
-    window.addEventListener("beforeunload", unloadFlush);
-    window.addEventListener("pagehide", unloadFlush);
+    window.addEventListener("beforeunload", onAnalyticsPageUnload);
+    window.addEventListener("pagehide", onAnalyticsPageUnload);
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "hidden") {
-            unloadFlush();
+            onAnalyticsPageUnload();
         }
     });
 }

@@ -60,12 +60,6 @@ export function setAnalyticsCountry(country: UserCountry): void {
 export async function initAnalyticsCountry(): Promise<void> {
     const country = await fetchUserCountry();
     setAnalyticsCountry(country);
-    if (import.meta.env.DEV) {
-        console.log("Country analytics:", {
-            countryCode: analyticsState.countryCode,
-            countryName: analyticsState.countryName,
-        });
-    }
 }
 
 export function enqueueAnalyticsEvent(eventType: string, payload: Record<string, unknown> = {}): void {
