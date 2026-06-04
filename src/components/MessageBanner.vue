@@ -22,7 +22,7 @@
             v-for="(button,index) in message.buttons"
             :key="'messageButton-'+index"
             v-on:click="onButtonClick(button.action)"
-        > {{ $t(button.label) }}
+        > {{ $t(button.label) }} (F{{index+1}})
         </button>
     </div>
 </template>
@@ -54,6 +54,14 @@ export default defineComponent({
         this.image = (this.message.path.length > 0) ? new URL(`../assets/images/${this.message.path}`, import.meta.url).href : "";
     },
     
+    mounted() {
+        window.addEventListener("keydown",this.onKeyDown);
+    },
+
+    beforeUnmount() {
+        window.removeEventListener("keydown",this.onKeyDown);
+    },
+
     //Updated is needed in case one message pops and before its gone another is shown
     updated() {
         // Vite needs to bundle the image at build time, the following code allows Vite to bundle all the images
@@ -75,6 +83,20 @@ export default defineComponent({
     methods: {
         close(): void {
             this.appStore.currentMessage = MessageDefinitions.NoMessage;
+        },
+
+        onKeyDown(e: KeyboardEvent) : void {
+            // Only look for F1, F2 etc:
+
+            const match = e.code.match(/^F(\d{1,2})$/);
+            if (match) {
+                const buttonIndex = Number(match[1]) - 1;
+                if (buttonIndex < this.message.buttons.length) {
+                    this.onButtonClick(this.message.buttons[buttonIndex].action);
+                }
+                e.preventDefault();
+                e.stopPropagation();
+            }
         },
 
         onButtonClick(payload: VoidFunction | string){
@@ -107,6 +129,9 @@ export default defineComponent({
     width: 100%;
     background-color: #BBBBBB;
     padding:5px;
+    button {
+        margin-left: 3em;
+    }
 }
 
 .#{$strype-classname-message-banner-cross} {
