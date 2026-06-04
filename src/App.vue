@@ -1107,7 +1107,7 @@ export default defineComponent({
                     });
                 });
 
-                if (tookControl) {
+                if (tookControl || navigator.serviceWorker.controller) {
                     // Resolved the race legitimately — no reload needed:
                     sessionStorage.removeItem(RELOAD_KEY);
                     return;
@@ -1131,7 +1131,6 @@ export default defineComponent({
                 else {
                     window.location.reload();
                 }
-                console.error("Reload did not work"); // this should NOT appear if reload worked
                 // Block forever to avoid anything else happening — we're about to reload anyway
                 await new Promise(() => {});
             }
