@@ -1,9 +1,12 @@
+import axios from "axios";
+
 const COUNTRY_LOOKUP_URLS = [
     "https://ipwho.is/",
     "https://ipapi.co/json/",
     "https://api.country.is/",
 ];
 const COUNTRY_CODE_PATTERN = /^[A-Z]{2}$/;
+const COUNTRY_LOOKUP_TIMEOUT_MS = 3000;
 
 export interface UserCountry {
     countryCode: string | null;
@@ -39,14 +42,11 @@ function getCountryFromLocale(): UserCountry {
 export async function fetchUserCountry(): Promise<UserCountry> {
     for (const lookupUrl of COUNTRY_LOOKUP_URLS) {
         try {
-            const response = await fetch(lookupUrl, {
-                method: "GET",
+            const response = await axios.get(lookupUrl, {
                 headers: {"Accept": "application/json"},
+                timeout: COUNTRY_LOOKUP_TIMEOUT_MS,
             });
-            if (!response.ok) {
-                continue;
-            }
-            const geoPayload = await response.json() as {
+            const geoPayload = response.data as {
                 success?: boolean;
                 country?: string;
                 country_code?: string;
