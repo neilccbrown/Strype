@@ -3,6 +3,7 @@
 
 import { Page, expect, test } from "@playwright/test";
 import { skipPyodideLoading } from "../support/general";
+import { save } from "../support/loading-saving";
 
 // Note we don't visit a page in the beforeEach; that is left to individual tests.
 
@@ -245,6 +246,87 @@ test.describe("Offer to reload unsaved backups", () => {
             else {
                 await assertStartingPlus(page2, str);
             }
+        });
+    }
+    // We load four pages in a row:
+    // - State 1: modified, not saved, closed
+    // - State 2: modified, saved or not depending on a flag, closed (should be offered 1 on initial load)
+    // - State 3: modified, still open (should also be offered 1 or 2 on initial load)
+    // - State 4: check for loading; we should be offered state 1 or 2 depending on whether 2 was saved
+    for (let state2Saved of [true, false]) {
+        test(`Load several states, save some (2nd: ${state2Saved}), then load new one`, async ({browser}) => {
+            const context = await browser.newContext({recordVideo: {dir: "tests/playwright/test-results/videos/"}});
+            const page1 = await context.newPage();
+            console.log("Page1 video: " + await page1.video()?.path());
+            page1.on("console", (msg) => console.log("Browser log page 1:", msg.text()));
+
+            await loadAndWaitForEditor(page1);
+            const scssVars = await page1.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
+            // Modify it and close it:
+            const str1 = "Modifying state #1 ahead of closing";
+            await appendContent(page1, str1);
+            await page1.close({runBeforeUnload: true});
+            // Playwright seems to say it won't actually wait for the saving to be finished, so let's wait an extra couple of seconds:
+            // Can't use page1.waitForTimeout as it's closed...
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            // Load a new page in the same context (so it shares the storage):
+            const page2 = await context.newPage();
+            console.log("Page2 video: " + await page2.video()?.path());
+            page2.on("console", (msg) => console.log("Browser log page 2:", msg.text()));
+            await loadAndWaitForEditor(page2);
+            // At this point, it should have the fresh state, but be showing the banner about loading old state:
+            await assertStartingProject(page2);
+            await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).toBeVisible();
+            await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).toContainText("load it?");
+            // Necessary to make sure save doesn't try to show the file dialog:
+            await page2.evaluate(() => {
+                (window as any).Playwright = true;
+            });
+            
+            // Now we modify, optionally save, and close:
+            const str2 = "Modifying state #2 ahead of closing";
+            await appendContent(page2, str2);
+            if (state2Saved) {
+                await save(page2, true);
+            }
+            await page2.close({runBeforeUnload: true});
+            // Playwright seems to say it won't actually wait for the saving to be finished, so let's wait an extra couple of seconds:
+            // Can't use page2.waitForTimeout as it's closed...
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            // Load a new page in the same context (so it shares the storage):
+            const page3 = await context.newPage();
+            console.log("Page3 video: " + await page3.video()?.path());
+            page3.on("console", (msg) => console.log("Browser log page 3:", msg.text()));
+            await loadAndWaitForEditor(page3);
+            // At this point, it should have the fresh state, but be showing the banner about loading old state:
+            await assertStartingProject(page3);
+            await expect(page3.locator("." + scssVars.messageBannerContainerClassName)).toBeVisible();
+            await expect(page3.locator("." + scssVars.messageBannerContainerClassName)).toContainText("load it?");
+
+            // Now we modify, but don't close:
+            const str3 = "Modifying state #3 but will keep open";
+            await appendContent(page3, str3);
+            
+            // Now finally page 4:
+
+            // Load a new page in the same context (so it shares the storage):
+            const page4 = await context.newPage();
+            console.log("Page4 video: " + await page4.video()?.path());
+            page4.on("console", (msg) => console.log("Browser log page 4:", msg.text()));
+            await loadAndWaitForEditor(page4);
+            // At this point, it should have the fresh state, but be showing the banner about loading old state:
+            await assertStartingProject(page4);
+            await expect(page4.locator("." + scssVars.messageBannerContainerClassName)).toBeVisible();
+            await expect(page4.locator("." + scssVars.messageBannerContainerClassName)).toContainText("load it?");
+          
+            // Click the button:
+            await page4.locator("button", {hasText: "Load"}).filter({ visible: true }).click();
+            // Banner should be gone either way:
+            await expect(page4.locator("." + scssVars.messageBannerContainerClassName)).not.toBeVisible();
+            // Check state -- session 2 if we *didn't* save it, otherwise session 1:
+            await assertStartingPlus(page4, !state2Saved ? str2 : str1);
         });
     }
 });
