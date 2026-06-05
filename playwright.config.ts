@@ -39,7 +39,7 @@ export default defineConfig({
         headless: true,
 
         /* Store info only on test failure */
-        trace: "on-first-retry",
+        trace: process.env.CI ? "on-first-retry" : "retain-on-failure",
         screenshot: "only-on-failure",
         video: "retain-on-failure",
     },
