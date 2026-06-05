@@ -745,7 +745,12 @@ export const useStore = defineStore("app", {
         },
 
         flushAnalyticsQueue(reason: AnalyticsFlushReason) {
-            flushAnalyticsQueue(reason);
+            try {
+                flushAnalyticsQueue(reason);
+            }
+            catch(e) {
+                console.error("Analytics error", e);
+            }
         },
 
         trackMenuAction(actionId: string) {
