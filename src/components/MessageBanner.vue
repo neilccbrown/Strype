@@ -30,10 +30,11 @@
 <script lang="ts">
 import { defineComponent } from "vue";
 import { useStore } from "@/store/store";
-import { MessageDefinedActions, MessageDefinitions, MessageDefinition, MessageTypes, VoidFunction} from "@/types/types";
+import { MessageDefinedActions, MessageDefinition, MessageDefinitions, MessageTypes, VoidFunction } from "@/types/types";
 import { mapStores } from "pinia";
 import scssVars from "@/assets/style/_export.module.scss";
 import { BModal } from "bootstrap-vue-next";
+import { markUserDecisionOnReloading } from "@/store/store-db-storage";
 
 export default defineComponent({
     name: "MessageBanner",
@@ -116,7 +117,10 @@ export default defineComponent({
                     break;
                 case MessageDefinedActions.load:
                     if (this.appStore.foundRecentState != null) {
-                        this.appStore.setStateFromJSONStr({stateJSONStr: this.appStore.foundRecentState, readCompressed: true});
+                        // Set both these items going in parallel (first is quick, second is longer and we don't need to wait for it):
+                        void markUserDecisionOnReloading([this.appStore.foundRecentState.tabId]);
+                        void this.appStore.setStateFromJSONStr({stateJSONStr: this.appStore.foundRecentState.data, readCompressed: true});
+                        this.appStore.foundRecentState = null;
                     }
                     break;
                 default:

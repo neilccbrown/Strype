@@ -1072,7 +1072,7 @@ export default defineComponent({
                         const msg = cloneDeep(MessageDefinitions.FoundRecentUnsavedState);
                         const msgObj = msg.message as FormattedMessage;
                         msgObj.args[FormattedMessageArgKeyValuePlaceholders.when.key] = msgObj.args[FormattedMessageArgKeyValuePlaceholders.when.key].replace(FormattedMessageArgKeyValuePlaceholders.when.placeholderName, saveState.when);
-                        this.appStore.foundRecentState = saveState.data;
+                        this.appStore.foundRecentState = {data: saveState.data, tabId: saveState.tabId};
                         this.appStore.showMessage(msg, null);
                     }
                 });

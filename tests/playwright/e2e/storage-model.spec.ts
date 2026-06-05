@@ -6,8 +6,8 @@ import { skipPyodideLoading } from "../support/general";
 import { save } from "../support/loading-saving";
 
 // Note we don't visit a page in the beforeEach; that is left to individual tests.
-
-test.beforeEach(async ({ page, browserName }, testInfo) => {
+// It's also important to not even have it as a parameter; Playwright creates it based on whether it appears as a param.
+test.beforeEach(async ({ browserName }, testInfo) => {
     if (browserName === "webkit" && process.platform === "win32") {
         // On Windows+Webkit it just can't seem to load the page for some reason:
         testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
@@ -15,11 +15,6 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
 
     // These tests can take longer than the default 30 seconds:
     testInfo.setTimeout(120000); // 120 seconds
-
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
-    });
 });
 
 async function assertStartingProject(page: Page)  {
@@ -253,6 +248,7 @@ test.describe("Offer to reload unsaved backups", () => {
     // - State 2: modified, saved or not depending on a flag, closed (should be offered 1 on initial load)
     // - State 3: modified, still open (should also be offered 1 or 2 on initial load)
     // - State 4: check for loading; we should be offered state 1 or 2 depending on whether 2 was saved
+    // - State 5: should not be offered anything
     for (let state2Saved of [true, false]) {
         test(`Load several states, save some (2nd: ${state2Saved}), then load new one`, async ({browser}) => {
             const context = await browser.newContext({recordVideo: {dir: "tests/playwright/test-results/videos/"}});
@@ -289,6 +285,8 @@ test.describe("Offer to reload unsaved backups", () => {
             await appendContent(page2, str2);
             if (state2Saved) {
                 await save(page2, true);
+                // Give it a moment to update the state:
+                await page2.waitForTimeout(1000);
             }
             await page2.close({runBeforeUnload: true});
             // Playwright seems to say it won't actually wait for the saving to be finished, so let's wait an extra couple of seconds:
@@ -327,6 +325,14 @@ test.describe("Offer to reload unsaved backups", () => {
             await expect(page4.locator("." + scssVars.messageBannerContainerClassName)).not.toBeVisible();
             // Check state -- session 2 if we *didn't* save it, otherwise session 1:
             await assertStartingPlus(page4, !state2Saved ? str2 : str1);
+
+            const page5 = await context.newPage();
+            console.log("Page5 video: " + await page5.video()?.path());
+            page5.on("console", (msg) => console.log("Browser log page 5:", msg.text()));
+            await loadAndWaitForEditor(page5);
+            // At this point, it should have the fresh state, and not be showing the banner about loading old state:
+            await assertStartingProject(page5);
+            await expect(page5.locator("." + scssVars.messageBannerContainerClassName)).not.toBeVisible();
         });
     }
 });

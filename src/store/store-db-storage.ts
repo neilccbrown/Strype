@@ -49,8 +49,10 @@ enum DatabaseFieldNames {
     stillAlive = "stillAlive", // This is a string with either "maybe" or "false".  We never know for sure if the tab is still alive,
                                // but we do know if some cases whether it is not.
     
-    modifiedSinceExternalSave = "modifiedSinceExternalSave", // This is a string with "true" or "false"; was this state modified after last
+    modifiedSinceExternalSave = "modifiedSinceExternalSave", // A string with "true" or "false"; was this state modified after last
                                                              // saving externally (e.g. to disk, google drive), 
+    userDecidedOnReloading = "userDecidedOnReloading", // A string with "true" or "false"; has the user previously decided on whether
+                                                       // or not to reload this state based on a banner shown to them?
 }
 
 export function openIndexedDBConnection(): Promise<IDBDatabase> {
@@ -100,6 +102,7 @@ export async function saveSessionState(tabId: string, data: string, stillAlive: 
                     [DatabaseFieldNames.lastAliveAt]: lastAliveAt ?? now,
                     [DatabaseFieldNames.stillAlive]: stillAlive,
                     [DatabaseFieldNames.modifiedSinceExternalSave]: modifiedSinceExternalSave ? "true" : "false",
+                    [DatabaseFieldNames.userDecidedOnReloading]: "false",
                 });
             }
             else {
@@ -172,9 +175,9 @@ export async function loadSessionState(tabId: string, db?: IDBDatabase) : Promis
 // - stillAlive == false; we know the tab is closed
 // - modifiedSinceExternalSave == true; it was modified after its last external save
 // - lastAliveAt sooner than 2 minutes ago; the user re-navigated to the website (or used Ctrl-Shift-T) soon after it was closed
-export async function checkForRecentSaveStates(locale: string) : Promise<null | {data: string, when: string}> {
+export async function checkForRecentSaveStates(locale: string) : Promise<null | {data: string, when: string, tabId: string}> {
     const db = await openIndexedDBConnection();
-    return new Promise<null | {data: string, when: string}>((resolve, reject) => {
+    return new Promise<null | {data: string, when: string, tabId: string}>((resolve, reject) => {
         const tx = db.transaction(STORE, "readonly");
         const store = tx.objectStore(STORE);
         
@@ -185,28 +188,75 @@ export async function checkForRecentSaveStates(locale: string) : Promise<null | 
                 // Makes it into e.g. "5 seconds ago", translated to the given locale.
                 const rtf = new Intl.RelativeTimeFormat(locale, { style: "long" });
                 const now = Date.now();
-                let candidate : null | { lastAlive: number; item: any} = null;
+                let candidate : null | { lastAlive: number; data: string; tabId: string} = null;
+                const otherTabIdsToMark : string[] = [];
                 for (let item of request.result) {
                     const lastAlive = Number(item[DatabaseFieldNames.lastAliveAt]);
                     // For dev mode extend this so that it's easier to load recent states:
                     const recentAliveMinutes = import.meta.env.DEV ? 24*60 : 2;
                     if (item[DatabaseFieldNames.stillAlive] == "false"
-                        && item[DatabaseFieldNames.modifiedSinceExternalSave] ==  "true"
+                        && item[DatabaseFieldNames.modifiedSinceExternalSave] == "true"
+                        && item[DatabaseFieldNames.userDecidedOnReloading] == "false"
                         && lastAlive >= now - recentAliveMinutes * 60 * 1000) {
                         // Suitable for loading.  There might be multiple though:
                         if (candidate == null || lastAlive > candidate.lastAlive) {
-                            candidate = {lastAlive, item};
+                            if (candidate != null) {
+                                // Old one was not the newest, but mark that we saw it:
+                                otherTabIdsToMark.push(candidate.tabId);
+                            }
+                            candidate = {lastAlive, data: item[DatabaseFieldNames.data], tabId: item[DatabaseFieldNames.tabId]};
+                        }
+                        else {
+                            // Not the newest, but mark that we saw it:
+                            otherTabIdsToMark.push(item[DatabaseFieldNames.tabId]);
                         }
                     }
                 }
-                
-                resolve(candidate != null && DatabaseFieldNames.data in candidate.item ? {data: candidate.item[DatabaseFieldNames.data], when: rtf.format(ceil((candidate.lastAlive - now) / 1000), "second")} : null);
+                // Mark others:
+                markUserDecisionOnReloading(otherTabIdsToMark).then(() => {                
+                    resolve(candidate != null ? {data: candidate.data, when: rtf.format(ceil((candidate.lastAlive - now) / 1000), "second"), tabId: candidate.tabId} : null);
+                });
             }
             else {
                 resolve(null);
             }
         };
         request.onerror = () => reject(request.error);
+    });
+}
+
+export async function markUserDecisionOnReloading(tabIds: string[]): Promise<void> {
+    // Short-circuit:
+    if (tabIds.length == 0) {
+        return;
+    }
+    const db = await openIndexedDBConnection();
+
+    return new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORE, "readwrite");
+        const store = tx.objectStore(STORE);
+
+        for (const tabId of tabIds) {
+            const request = store.get(tabId);
+
+            request.onsuccess = () => {
+                const record = request.result;
+                if (!record) {
+                    console.error("Did not find tab: " + tabId + " to mark as decided.");
+                    return;
+                }
+
+                store.put({...record, [DatabaseFieldNames.userDecidedOnReloading]: "true"});
+            };
+
+            request.onerror = () => {
+                console.error(`Failed to load ${tabId}`, request.error);
+            };
+        }
+
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
     });
 }
 

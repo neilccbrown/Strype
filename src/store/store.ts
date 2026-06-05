@@ -141,7 +141,7 @@ export const useStore = defineStore("app", {
             // if it's the same message
             currentMessageId: 0,
 
-            foundRecentState: null as null | string,
+            foundRecentState: null as null | {data: string, tabId: string},
 
             preCompileErrors: [] as string[],
 
