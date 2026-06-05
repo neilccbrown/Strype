@@ -98,7 +98,7 @@ export type CaretContainerComponentAPI = {
 }
 
 export type OpenDemoDlgComponentAPI = {
-  getSelectedDemo: () => ({ name : string, demoFile: Promise<string | undefined> } | undefined),
+  getSelectedDemo: () => ({ name : string, demoFile: Promise<string | undefined>, source: string } | undefined),
   updateAvailableDemos: () => void,
   shown: () => void,
 }

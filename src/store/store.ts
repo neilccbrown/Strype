@@ -16,12 +16,29 @@ import emptyState from "@/store/initial-states/empty-state";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import $ from "jquery";
+import {
+    enqueueAnalyticsEvent,
+    flushAnalyticsQueue,
+    initAnalyticsCountry,
+    initAnalyticsLocale,
+    initAnalyticsPlatform,
+    initAnalyticsSession,
+    initAnalyticsUserId,
+    trackAnalyticsLocaleChange,
+    trackInputCall,
+    trackMenuAction,
+    trackOutputChars,
+    trackStorageLocation,
+    trackUsedDemo,
+    type AnalyticsFlushReason,
+} from "@/store/analytics";
+export type { AnalyticsEvent, AnalyticsFlushReason } from "@/store/analytics";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { actOnGraphicsImport } from "@/helpers/editor";
 // #v-endif
 
 export function getEditorTabId() : string {
-   
+
     let tabId = sessionStorage.getItem(AutoSaveKeyNames.strypeEditorTabId);
 
     if (!tabId) {
@@ -709,6 +726,108 @@ export const useStore = defineStore("app", {
                     }
                 }, timeoutMillis);
             }
+        },
+
+        initAnalyticsUserId() {
+            initAnalyticsUserId();
+        },
+
+        initAnalyticsSession() {
+            initAnalyticsSession();
+        },
+
+        initAnalyticsPlatform() {
+            initAnalyticsPlatform();
+        },
+
+        computeFrameSnapshot() {
+            const frameTypeCounts: Record<string, number> = {};
+            const importFrameCounts = {import: 0, fromimport: 0, library: 0};
+            const sectionFrameCounts = {imports: 0, defs: 0, main: 0};
+            const importsContainerId = this.getImportsFrameContainerId;
+            const defsContainerId = this.getDefsFrameContainerId;
+            const mainContainerId = this.getMainCodeFrameContainerId;
+            Object.values(this.frameObjects)
+                .filter((frame) => frame.id > 0)
+                .forEach((frame) => {
+                    const frameType = frame.frameType.type;
+                    frameTypeCounts[frameType] = (frameTypeCounts[frameType] ?? 0) + 1;
+                    if (frameType === AllFrameTypesIdentifier.import) {
+                        importFrameCounts.import += 1;
+                    }
+                    else if (frameType === AllFrameTypesIdentifier.fromimport) {
+                        importFrameCounts.fromimport += 1;
+                    }
+                    else if (frameType === AllFrameTypesIdentifier.library) {
+                        importFrameCounts.library += 1;
+                    }
+
+                    let cursor: FrameObject | undefined = frame;
+                    while (cursor) {
+                        const parentId = cursor.parentId;
+                        if (parentId === importsContainerId) {
+                            sectionFrameCounts.imports += 1;
+                            break;
+                        }
+                        if (parentId === defsContainerId) {
+                            sectionFrameCounts.defs += 1;
+                            break;
+                        }
+                        if (parentId === mainContainerId) {
+                            sectionFrameCounts.main += 1;
+                            break;
+                        }
+                        cursor = this.frameObjects[parentId];
+                    }
+                });
+            const classdefCount = frameTypeCounts[AllFrameTypesIdentifier.classdef] ?? 0;
+            const funcdefCount = frameTypeCounts[AllFrameTypesIdentifier.funcdef] ?? 0;
+            return {
+                frameTypeCounts,
+                importFrameCounts,
+                sectionFrameCounts,
+                oopHint: classdefCount > 0 && funcdefCount > 0,
+            };
+        },
+
+        enqueueAnalyticsEvent(eventType: string, payload: Record<string, unknown> = {}) {
+            enqueueAnalyticsEvent(eventType, payload);
+        },
+
+        flushAnalyticsQueue(reason: AnalyticsFlushReason) {
+            flushAnalyticsQueue(reason);
+        },
+
+        trackMenuAction(actionId: string) {
+            trackMenuAction(actionId);
+        },
+
+        trackInputCall() {
+            trackInputCall();
+        },
+
+        trackOutputChars(charCount: number) {
+            trackOutputChars(charCount);
+        },
+
+        initAnalyticsLocale(locale: string) {
+            initAnalyticsLocale(locale);
+        },
+
+        trackAnalyticsLocaleChange(newLocale: string) {
+            trackAnalyticsLocaleChange(newLocale);
+        },
+
+        initAnalyticsCountry() {
+            return initAnalyticsCountry();
+        },
+
+        trackUsedDemo(demoName: string, source: string) {
+            trackUsedDemo(demoName, source);
+        },
+
+        trackStorageLocation(target: StrypeSyncTarget) {
+            trackStorageLocation(target);
         },
 
         updateKeyModifiers(e: KeyboardEvent | MouseEvent) {
@@ -2407,7 +2526,7 @@ export const useStore = defineStore("app", {
             stateCopy["previousDAPWrapper"] = {};
             stateCopy["currentMessage"] = MessageDefinitions.NoMessage;
             stateCopy["pythonExecRunningState"] = PythonExecRunningState.NotRunning;
-            
+
             //simplify the storage of frame types by their type names only
             Object.keys(stateCopy["frameObjects"] as EditorFrameObjects).forEach((frameId) => {
                 stateCopy["frameObjects"][frameId].frameType = stateCopy["frameObjects"][frameId].frameType.type;
