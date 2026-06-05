@@ -861,6 +861,7 @@ export default defineComponent({
             // we can distinguish between a sitation when the divider is position is loaded and user event by the content of the event
             if(event.panes.length > 1){
                 this.appStore.isEditorContentModified = true;
+                this.appStore.editorLastModificationAt = Date.now();
             }
         }, 
 

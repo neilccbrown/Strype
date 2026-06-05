@@ -22,7 +22,7 @@
             v-for="(button,index) in message.buttons"
             :key="'messageButton-'+index"
             v-on:click="onButtonClick(button.action)"
-        > {{ $t(button.label) }}
+        > {{ $t(button.label) }} (F{{index+1}})
         </button>
     </div>
 </template>
@@ -30,10 +30,11 @@
 <script lang="ts">
 import { defineComponent } from "vue";
 import { useStore } from "@/store/store";
-import { MessageDefinedActions, MessageDefinitions, MessageDefinition, MessageTypes, VoidFunction} from "@/types/types";
+import { MessageDefinedActions, MessageDefinition, MessageDefinitions, MessageTypes, VoidFunction } from "@/types/types";
 import { mapStores } from "pinia";
 import scssVars from "@/assets/style/_export.module.scss";
 import { BModal } from "bootstrap-vue-next";
+import { markUserDecisionOnReloading } from "@/store/store-db-storage";
 
 export default defineComponent({
     name: "MessageBanner",
@@ -54,6 +55,14 @@ export default defineComponent({
         this.image = (this.message.path.length > 0) ? new URL(`../assets/images/${this.message.path}`, import.meta.url).href : "";
     },
     
+    mounted() {
+        window.addEventListener("keydown",this.onKeyDown);
+    },
+
+    beforeUnmount() {
+        window.removeEventListener("keydown",this.onKeyDown);
+    },
+
     //Updated is needed in case one message pops and before its gone another is shown
     updated() {
         // Vite needs to bundle the image at build time, the following code allows Vite to bundle all the images
@@ -77,6 +86,20 @@ export default defineComponent({
             this.appStore.currentMessage = MessageDefinitions.NoMessage;
         },
 
+        onKeyDown(e: KeyboardEvent) : void {
+            // Only look for F1, F2 etc:
+
+            const match = e.code.match(/^F(\d{1,2})$/);
+            if (match) {
+                const buttonIndex = Number(match[1]) - 1;
+                if (buttonIndex < this.message.buttons.length) {
+                    this.onButtonClick(this.message.buttons[buttonIndex].action);
+                }
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        },
+
         onButtonClick(payload: VoidFunction | string){
             // If the type of the action associated with this button is a function
             // we run this function. If the type is string then we run a predefined action. 
@@ -91,6 +114,14 @@ export default defineComponent({
                 case MessageDefinedActions.undo:
                     this.appStore.applyStateUndoRedoChanges(true);
                     this.appStore.currentMessage = MessageDefinitions.NoMessage;
+                    break;
+                case MessageDefinedActions.load:
+                    if (this.appStore.foundRecentState != null) {
+                        // Set both these items going in parallel (first is quick, second is longer and we don't need to wait for it):
+                        void markUserDecisionOnReloading([this.appStore.foundRecentState.tabId]);
+                        void this.appStore.setStateFromJSONStr({stateJSONStr: this.appStore.foundRecentState.data, readCompressed: true});
+                        this.appStore.foundRecentState = null;
+                    }
                     break;
                 default:
                     break;
@@ -107,6 +138,9 @@ export default defineComponent({
     width: 100%;
     background-color: #BBBBBB;
     padding:5px;
+    button {
+        margin-left: 3em;
+    }
 }
 
 .#{$strype-classname-message-banner-cross} {

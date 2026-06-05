@@ -4,8 +4,28 @@
 // of around 5-10MB, and since we will be storing a state per-tab, it is possible
 // that with some image literals involved and several tabs, the total storage could
 // be larger than that.
+//
+// Here's how the storage model works:
+// - Saving:
+//   - We make a tabId and save it to sessionStorage (this is the only real way to identify tabs)
+//   - We save the browser state (periodically) to IndexedDB, using tabId as an identifier, and
+//     also store times for last modified/last alive.
+//   - When the browser tab is closed, we can't save to IndexedDB because that's async and we have
+//     no time to do that.  So we "emergency save" to localStorage.  In this case, we know the tab was closed.
+// - Loading:
+//   - When the page loads it first calls tidyUpDatabaseState which does two things:
+//     - It moves any emergency saves into IndexedDB proper so everything is in one place (on load, we have time).
+//     - It cleans out any old saves which are >= 8 days old, based on lastAliveAt
+//   - Then when loading up, we first check if we have a tabId.  If we do, we check if we have
+//     an associated saved state.  If so, we automatically load it.  This usually means we've been
+//     reloaded using the refresh button.
+//   - If there is a recent state which was modified after save (this may happen if the user closed the tab then did Ctrl-Shift-T),
+//     we show a banner message suggesting they may want to reload that state.
+
 
 import { AutoSaveKeyNames } from "@/helpers/editor";
+import { z } from "zod";
+import { ceil } from "lodash";
 
 // How long a session is dead before we automatically clean it up; 8 days (weekly class + one day):
 const MAX_SESSION_AGE_MILLIS = 8 * 24 * 60 * 60 * 1000;
@@ -26,6 +46,13 @@ enum DatabaseFieldNames {
     
     lastModifiedAt = "lastModifiedAt", // timestamp; The last time a change was made to the data field
     lastAliveAt = "lastAliveAt", // timestamp; The last time the tab was confirmed as alive.  Used to clear out old tab sessions.
+    stillAlive = "stillAlive", // This is a string with either "maybe" or "false".  We never know for sure if the tab is still alive,
+                               // but we do know if some cases whether it is not.
+    
+    modifiedSinceExternalSave = "modifiedSinceExternalSave", // A string with "true" or "false"; was this state modified after last
+                                                             // saving externally (e.g. to disk, google drive), 
+    userDecidedOnReloading = "userDecidedOnReloading", // A string with "true" or "false"; has the user previously decided on whether
+                                                       // or not to reload this state based on a banner shown to them?
 }
 
 export function openIndexedDBConnection(): Promise<IDBDatabase> {
@@ -49,7 +76,8 @@ export function openIndexedDBConnection(): Promise<IDBDatabase> {
 
 // This saves the session state.  If the state has changed (as decided by string comparison),
 // the lastModifiedAt is updated.  Regardless of that, lastAliveAt is always modified
-export async function saveSessionState(tabId: string, data: string, db?: IDBDatabase) : Promise<void> {
+// If the modified and alive times are omitted from the params, Date.now() is used
+export async function saveSessionState(tabId: string, data: string, stillAlive: "maybe" | "false", modifiedSinceExternalSave: boolean, lastModifiedAt?: number, lastAliveAt?: number, db?: IDBDatabase) : Promise<void> {
     db = db ?? await openIndexedDBConnection();
 
     return new Promise<void>((resolve, reject) => {
@@ -69,18 +97,23 @@ export async function saveSessionState(tabId: string, data: string, db?: IDBData
                 store.put({
                     [DatabaseFieldNames.tabId]: tabId,
                     [DatabaseFieldNames.data]: data,
-                    [DatabaseFieldNames.lastModifiedAt]: now,
+                    [DatabaseFieldNames.lastModifiedAt]: lastModifiedAt ?? now,
                     // May as well update lastAliveAt too, since we're alive if we're saving:
-                    [DatabaseFieldNames.lastAliveAt]: now,
+                    [DatabaseFieldNames.lastAliveAt]: lastAliveAt ?? now,
+                    [DatabaseFieldNames.stillAlive]: stillAlive,
+                    [DatabaseFieldNames.modifiedSinceExternalSave]: modifiedSinceExternalSave ? "true" : "false",
+                    [DatabaseFieldNames.userDecidedOnReloading]: "false",
                 });
             }
             else {
                 const record = cursor.value;
-                record[DatabaseFieldNames.lastAliveAt] = now;
+                record[DatabaseFieldNames.lastAliveAt] = lastAliveAt ?? now;
                 if (data != record[DatabaseFieldNames.data] as string) {
                     record[DatabaseFieldNames.data] = data;
-                    record[DatabaseFieldNames.lastModifiedAt] = now;
+                    record[DatabaseFieldNames.lastModifiedAt] = lastModifiedAt ?? now;
                 }
+                record[DatabaseFieldNames.stillAlive] = stillAlive;
+                record[DatabaseFieldNames.modifiedSinceExternalSave] = modifiedSinceExternalSave ? "true" : "false";
                 cursor.update(record);
             }
         };
@@ -88,6 +121,30 @@ export async function saveSessionState(tabId: string, data: string, db?: IDBData
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
     });
+}
+
+// Don't need the tabId as that's in the key of the item
+// Don't need stillAlive as we know emergency saves are closed
+const EmergencySaveSchema = z.object({ 
+    [DatabaseFieldNames.data]: z.string(),
+    [DatabaseFieldNames.lastModifiedAt]: z.number(),
+    [DatabaseFieldNames.lastAliveAt]: z.number(),
+    [DatabaseFieldNames.modifiedSinceExternalSave]: z.boolean(),
+});
+type EmergencySave = z.infer<typeof EmergencySaveSchema>;
+
+export function emergencySaveSessionState(tabId: string, data: string, lastModifiedAt: number, modifiedSinceExternalSave: boolean) : void {
+    let storageString = AutoSaveKeyNames.pythonEditorState;
+    // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
+    storageString = AutoSaveKeyNames.mbEditor;
+    // #v-endif
+    const value : EmergencySave = {
+        [DatabaseFieldNames.data]: data,
+        [DatabaseFieldNames.lastModifiedAt]: lastModifiedAt,
+        [DatabaseFieldNames.lastAliveAt]: Date.now(),
+        [DatabaseFieldNames.modifiedSinceExternalSave]: modifiedSinceExternalSave,
+    };
+    localStorage.setItem(storageString + ":" + tabId, JSON.stringify(value));
 }
 
 // Load session state, if it exists, or return undefined if not found:
@@ -110,6 +167,96 @@ export async function loadSessionState(tabId: string, db?: IDBDatabase) : Promis
         };
 
         request.onerror = () => reject(request.error);
+    });
+}
+
+// This function checks if there is a recent state the user might want to load via an auto-displayed banner message.
+// The criteria for this is:
+// - stillAlive == false; we know the tab is closed
+// - modifiedSinceExternalSave == true; it was modified after its last external save
+// - lastAliveAt sooner than 2 minutes ago; the user re-navigated to the website (or used Ctrl-Shift-T) soon after it was closed
+export async function checkForRecentSaveStates(locale: string) : Promise<null | {data: string, when: string, tabId: string}> {
+    const db = await openIndexedDBConnection();
+    return new Promise<null | {data: string, when: string, tabId: string}>((resolve, reject) => {
+        const tx = db.transaction(STORE, "readonly");
+        const store = tx.objectStore(STORE);
+        
+        const request = store.getAll();
+
+        request.onsuccess = () => {
+            if (request.result) {
+                // Makes it into e.g. "5 seconds ago", translated to the given locale.
+                const rtf = new Intl.RelativeTimeFormat(locale, { style: "long" });
+                const now = Date.now();
+                let candidate : null | { lastAlive: number; data: string; tabId: string} = null;
+                const otherTabIdsToMark : string[] = [];
+                for (let item of request.result) {
+                    const lastAlive = Number(item[DatabaseFieldNames.lastAliveAt]);
+                    // For dev mode extend this so that it's easier to load recent states:
+                    const recentAliveMinutes = import.meta.env.DEV ? 24*60 : 2;
+                    if (item[DatabaseFieldNames.stillAlive] == "false"
+                        && item[DatabaseFieldNames.modifiedSinceExternalSave] == "true"
+                        && item[DatabaseFieldNames.userDecidedOnReloading] == "false"
+                        && lastAlive >= now - recentAliveMinutes * 60 * 1000) {
+                        // Suitable for loading.  There might be multiple though:
+                        if (candidate == null || lastAlive > candidate.lastAlive) {
+                            if (candidate != null) {
+                                // Old one was not the newest, but mark that we saw it:
+                                otherTabIdsToMark.push(candidate.tabId);
+                            }
+                            candidate = {lastAlive, data: item[DatabaseFieldNames.data], tabId: item[DatabaseFieldNames.tabId]};
+                        }
+                        else {
+                            // Not the newest, but mark that we saw it:
+                            otherTabIdsToMark.push(item[DatabaseFieldNames.tabId]);
+                        }
+                    }
+                }
+                // Mark others:
+                markUserDecisionOnReloading(otherTabIdsToMark).then(() => {                
+                    resolve(candidate != null ? {data: candidate.data, when: rtf.format(ceil((candidate.lastAlive - now) / 1000), "second"), tabId: candidate.tabId} : null);
+                });
+            }
+            else {
+                resolve(null);
+            }
+        };
+        request.onerror = () => reject(request.error);
+    });
+}
+
+export async function markUserDecisionOnReloading(tabIds: string[]): Promise<void> {
+    // Short-circuit:
+    if (tabIds.length == 0) {
+        return;
+    }
+    const db = await openIndexedDBConnection();
+
+    return new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORE, "readwrite");
+        const store = tx.objectStore(STORE);
+
+        for (const tabId of tabIds) {
+            const request = store.get(tabId);
+
+            request.onsuccess = () => {
+                const record = request.result;
+                if (!record) {
+                    console.error("Did not find tab: " + tabId + " to mark as decided.");
+                    return;
+                }
+
+                store.put({...record, [DatabaseFieldNames.userDecidedOnReloading]: "true"});
+            };
+
+            request.onerror = () => {
+                console.error(`Failed to load ${tabId}`, request.error);
+            };
+        }
+
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
     });
 }
 
@@ -146,6 +293,10 @@ async function cleanupOldSessions(db: IDBDatabase) : Promise<void> {
             if (!lastAlive || lastAlive < cutoff) {
                 cursor.delete();
             }
+            if (record[DatabaseFieldNames.stillAlive] == "false" && record[DatabaseFieldNames.modifiedSinceExternalSave] == "false") {
+                // We can clean up states which are closed and which were never modified after save:
+                cursor.delete();
+            }
 
             cursor.continue();
         };
@@ -161,7 +312,7 @@ async function cleanupOldSessions(db: IDBDatabase) : Promise<void> {
 export async function tidyUpDatabaseState(ourTabId : string, db: IDBDatabase, onError: (err: string) => void) : Promise<void> {
     // We need to find any "emergency" localStorage items which were saved during page unload or refresh,
     // and move them into the database where they belong:
-    const toAddToDatabase: Record<string, {content: string, keyToDelete: string}> = {};
+    const toAddToDatabase: Record<string, {content: EmergencySave, keyToDelete: string}> = {};
     let storeKey = AutoSaveKeyNames.pythonEditorState;
     // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
     storeKey = AutoSaveKeyNames.mbEditor;
@@ -171,13 +322,17 @@ export async function tidyUpDatabaseState(ourTabId : string, db: IDBDatabase, on
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (key && key.startsWith(prefix)) {
-            toAddToDatabase[key.slice(prefix.length)] = {content: localStorage.getItem(key) as string, keyToDelete: key};
+            const parsed = EmergencySaveSchema.safeParse(JSON.parse(localStorage.getItem(key) as string));
+            if (parsed.success) {
+                toAddToDatabase[key.slice(prefix.length)] = {content: parsed.data, keyToDelete: key};
+            }
         }
     }
     
     for (const tabId of Object.keys(toAddToDatabase)) {
         const item = toAddToDatabase[tabId];
-        await saveSessionState(tabId, item.content, db)
+        // We know it's not still alive because it's an emergency save:
+        await saveSessionState(tabId, item.content.data, "false", item.content.modifiedSinceExternalSave, item.content.lastModifiedAt, item.content.lastAliveAt, db)
             .catch(onError)
             .then((() => {
                 // Only delete key if save was successful:
@@ -185,10 +340,11 @@ export async function tidyUpDatabaseState(ourTabId : string, db: IDBDatabase, on
             }));
     }
     
-    // We also claim any old storage item and associate it with the current tab:
+    // We also claim any old storage item (from old versions of Strype) and associate it with the current tab:
     const oldSingleItem = localStorage.getItem(storeKey);
     if (oldSingleItem) {
-        await saveSessionState(ourTabId, oldSingleItem, db)
+        // We assume it was changed since last modification:
+        await saveSessionState(ourTabId, oldSingleItem, "false", true, undefined, undefined, db)
             .catch(onError)
             .then(() => {
                 // Only delete key if save was successful:

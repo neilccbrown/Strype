@@ -128,7 +128,7 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore, settingsStore, getEditorTabId } from "@/store/store";
-import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState, LoadRequestReason, StateAppObject } from "@/types/types";
+import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState, LoadRequestReason, StateAppObject, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
 import {getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getActiveContextMenu, actOnGraphicsImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
@@ -154,7 +154,7 @@ import {inflateRaw} from "pako";
 import { Base64 } from "js-base64";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
-import { loadSessionState, saveSessionState } from "@/store/store-db-storage";
+import { loadSessionState, saveSessionState, emergencySaveSessionState, checkForRecentSaveStates } from "@/store/store-db-storage";
 import initialStates from "@/store/initial-states";
 
 let autoSaveTimerId = -1;
@@ -886,12 +886,12 @@ export default defineComponent({
                     const stateJSONStrWithCheckpoint = this.appStore.generateStateJSONStrWithCheckpoint(true);
                     if (reason !== SaveRequestReason.unloadPage && reason !== SaveRequestReason.reloadBrowser) {
                         // We have time, so we save normally (which is async):
-                        saveSessionState(getEditorTabId(), stateJSONStrWithCheckpoint)
+                        saveSessionState(getEditorTabId(), stateJSONStrWithCheckpoint, reason == SaveRequestReason.loadProject ? "false" : "maybe", this.appStore.isEditorContentModified, this.appStore.editorLastModificationAt)
                             .catch(showIndexDBError);
                     }
                     else {
                         // Async might get killed during the closing process so we save to local storage as an alternative:
-                        localStorage.setItem(this.localStorageAutosaveEditorKey + ":" + getEditorTabId(), stateJSONStrWithCheckpoint);
+                        emergencySaveSessionState(getEditorTabId(), stateJSONStrWithCheckpoint, this.appStore.editorLastModificationAt, this.appStore.isEditorContentModified);
                     }
                     
                     // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
@@ -1062,8 +1062,20 @@ export default defineComponent({
 
                 this.appStore.nextAvailableId = state.nextAvailableId;
                 this.appStore.frameObjects = cloneDeep(state.initialState);
-                
-                void this.reloadForServiceWorkerIfNeeded();
+                               
+                // Could be because of a hard refresh, in which case we need to soft refresh to get service worker going:
+                await this.reloadForServiceWorkerIfNeeded();
+
+                // Check if there is old state which could be loaded (we don't need to await this):
+                void checkForRecentSaveStates(settingsStore().locale ?? "en").then((saveState) => {
+                    if (saveState != null) {
+                        const msg = cloneDeep(MessageDefinitions.FoundRecentUnsavedState);
+                        const msgObj = msg.message as FormattedMessage;
+                        msgObj.args[FormattedMessageArgKeyValuePlaceholders.when.key] = msgObj.args[FormattedMessageArgKeyValuePlaceholders.when.key].replace(FormattedMessageArgKeyValuePlaceholders.when.placeholderName, saveState.when);
+                        this.appStore.foundRecentState = {data: saveState.data, tabId: saveState.tabId};
+                        this.appStore.showMessage(msg, null);
+                    }
+                });
             });
         },
 
@@ -1088,7 +1100,7 @@ export default defineComponent({
             // that event, so the timeout acts as our give-up signal:
             if (!navigator.serviceWorker.controller) {
                 const tookControl = await new Promise((resolve) => {
-                    const timeout = setTimeout(() => resolve(false), 500);
+                    const timeout = setTimeout(() => resolve(false), 1000);
 
                     navigator.serviceWorker.addEventListener(
                         "controllerchange",
@@ -1098,9 +1110,16 @@ export default defineComponent({
                         },
                         { once: true }
                     );
+
+                    // Send a claim request to the SW via the registration,
+                    // since we have no controller yet we must use the active worker directly.
+                    // This seems necessary on Firefox in some cases:
+                    navigator.serviceWorker.ready.then((reg) => {
+                        reg.active?.postMessage("claim");
+                    });
                 });
 
-                if (tookControl) {
+                if (tookControl || navigator.serviceWorker.controller) {
                     // Resolved the race legitimately — no reload needed:
                     sessionStorage.removeItem(RELOAD_KEY);
                     return;
@@ -1124,7 +1143,6 @@ export default defineComponent({
                 else {
                     window.location.reload();
                 }
-                console.error("Reload did not work"); // this should NOT appear if reload worked
                 // Block forever to avoid anything else happening — we're about to reload anyway
                 await new Promise(() => {});
             }
@@ -1557,6 +1575,7 @@ export default defineComponent({
                 // we can distinguish between a sitation when the divider is position is loaded and user event by the content of the event
                 if((event?.panes?.length??0) > 1){
                     this.appStore.isEditorContentModified = true;
+                    this.appStore.editorLastModificationAt = Date.now();
                 }
             }
             if(lowerPanelSize >= this.peaOverlayPane2MinSize && lowerPanelSize <= this.peaOverlayPane2MaxSize){
@@ -1606,6 +1625,7 @@ export default defineComponent({
             // we can distinguish between a sitation when the divider is position is loaded and user event by the content of the event
             if(event.length > 1){
                 this.appStore.isEditorContentModified = true;
+                this.appStore.editorLastModificationAt = Date.now();
             }
 
             // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE

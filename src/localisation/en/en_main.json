@@ -48,7 +48,8 @@
     "wrongPythonStructCopied": "cannot paste else/elif/except/finally and further content in one paste",
     "incompatiblePythonStrypeSection": "the Python code cannot be placed in the target Strype section",
     "invalidMatchStmtContent": "this content is not allowed inside a 'match' statement",
-    "errorAccessingIndexedDB": "Error accessing browser storage (possibly due to private browsing).  State cannot be loaded and may be irretrievable on reload or close.  (Error: {errorMsg})"
+    "errorAccessingIndexedDB": "Error accessing browser storage (possibly due to private browsing).  State cannot be loaded and may be irretrievable on reload or close.  (Error: {errorMsg})",
+    "foundRecentUnsavedState": "A recent unsaved project backup (last modified {when}) was found.  Do you want to load it?"
   },
   "buttonLabel": {
     "undo": "Undo",
@@ -57,6 +58,7 @@
     "ok": "OK",
     "cancel": "Cancel",
     "save": "Save",
+    "load": "Load",
     "saveDiffLocation": "Save elsewhere",
     "overwriteProject": "Replace",
     "saveProjectCopy": "Choose new name",

@@ -460,7 +460,8 @@ export default defineComponent({
             }
 
             // A change of divider position triggers a modification notification
-            this.appStore.isEditorContentModified = true;            
+            this.appStore.isEditorContentModified = true;
+            this.appStore.editorLastModificationAt = Date.now();
 
             // Notify a resize of the PEA happened
             document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
@@ -822,6 +823,7 @@ export default defineComponent({
                 // A change of layout triggers a modification notification only when the user actively changed it (flagged by "userTriggeredAction")
                 if(userTriggeredAction){
                     this.appStore.isEditorContentModified = true;
+                    this.appStore.editorLastModificationAt = Date.now();
                 }
             }
         },

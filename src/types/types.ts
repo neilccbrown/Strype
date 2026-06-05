@@ -900,6 +900,7 @@ export const FormattedMessageArgKeyValuePlaceholders: { [id: string]: FormattedM
     error: { key: "errorMsg", placeholderName: "{error_placeholder}" },
     list: { key: "list", placeholderName: "{list_placeholder}" },
     file: { key: "file", placeholderName: "{file_name}" },
+    when: { key: "when", placeholderName: "{when}" },
 };
 
 export interface FormattedMessage {
@@ -915,6 +916,7 @@ export const DefaultFormattedMessage: FormattedMessage = {
 export const MessageDefinedActions = {
     closeBanner: "close",
     undo: "undo",
+    load: "load",
 };
 
 export enum imagePaths {
@@ -945,6 +947,7 @@ export const MessageTypes = {
     invalidPythonParseImport: "invalidPythonParseImport",
     invalidPythonParsePaste: "invalidPythonParsePaste",
     errorAccessingIndexedDB: "errorAccessingIndexedDB",
+    foundRecentUnsavedState: "foundRecentUnsavedState",
 };
 
 //empty message
@@ -1077,6 +1080,20 @@ const ErrorAccessingIndexedDB: MessageDefinition = {
     },
 };
 
+const FoundRecentUnsavedState: MessageDefinition = {
+    type: MessageTypes.foundRecentUnsavedState,
+    message: {
+        path: "messageBannerMessage.foundRecentUnsavedState",
+        args: {
+            [FormattedMessageArgKeyValuePlaceholders.when.key]: FormattedMessageArgKeyValuePlaceholders.when.placeholderName,
+        },
+    },
+    buttons: [
+        { label: "buttonLabel.load", action: MessageDefinedActions.load },
+        { label: "buttonLabel.cancel", action: MessageDefinedActions.closeBanner },
+    ],
+    path: imagePaths.empty,
+};
 
 export const MessageDefinitions = {
     NoMessage,
@@ -1094,6 +1111,7 @@ export const MessageDefinitions = {
     InvalidPythonParseImport,
     InvalidPythonParsePaste,
     ErrorAccessingIndexedDB,
+    FoundRecentUnsavedState,
 };
 
 //WebUSB listener
