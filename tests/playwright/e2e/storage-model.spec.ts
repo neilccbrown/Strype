@@ -200,11 +200,23 @@ test.describe("Test IndexedDB failure", () => {
     });
 });
 
+function closePage(page1: Page, browserName: string) : Promise<any> {
+    if (browserName === "webkit") {
+        // Webkit doesn't seem to obey .close() properly but we get the same behaviour
+        // of unloading the page if we just navigate elsewhere, so do that:
+        // (8089 is our test assets server, so we know it exists and isn't the editor...)
+        return page1.goto("http://localhost:8089/");
+    }
+    else {
+        return page1.close({runBeforeUnload: true});
+    }
+}
+
 // A banner should show to offer to load unsaved backups if the backups are recent and modified after external save:
 test.describe("Offer to reload unsaved backups", () => {
     // Two tests here; one clicks load, one clicks cancel:
     for (let clickButton of ["Load", "Cancel"]) {
-        test(`Offer to load recent never-saved project from another page object and clicks ${clickButton}`, async ({browser}) => {
+        test(`Offer to load recent never-saved project from another page object and clicks ${clickButton}`, async ({browser, browserName}) => {
             const context = await browser.newContext({recordVideo: {dir: "tests/playwright/test-results/videos/"}});
             const page1 = await context.newPage();
             console.log("Page1 video: " + await page1.video()?.path());            
@@ -214,7 +226,7 @@ test.describe("Offer to reload unsaved backups", () => {
             // Modify it and close it:
             const str = "Modifying fresh project ahead of closing #1";
             await appendContent(page1, str);
-            await page1.close({runBeforeUnload: true});
+            await closePage(page1, browserName);
             // Playwright seems to say it won't actually wait for the saving to be finished, so let's wait an extra couple of seconds:
             // Can't use page1.waitForTimeout as it's closed...
             await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -250,7 +262,7 @@ test.describe("Offer to reload unsaved backups", () => {
     // - State 4: check for loading; we should be offered state 1 or 2 depending on whether 2 was saved
     // - State 5: should not be offered anything
     for (let state2Saved of [true, false]) {
-        test(`Load several states, save some (2nd: ${state2Saved}), then load new one`, async ({browser}) => {
+        test(`Load several states, save some (2nd: ${state2Saved}), then load new one`, async ({browser, browserName}) => {
             const context = await browser.newContext({recordVideo: {dir: "tests/playwright/test-results/videos/"}});
             const page1 = await context.newPage();
             console.log("Page1 video: " + await page1.video()?.path());
@@ -261,7 +273,7 @@ test.describe("Offer to reload unsaved backups", () => {
             // Modify it and close it:
             const str1 = "Modifying state #1 ahead of closing";
             await appendContent(page1, str1);
-            await page1.close({runBeforeUnload: true});
+            await closePage(page1, browserName);
             // Playwright seems to say it won't actually wait for the saving to be finished, so let's wait an extra couple of seconds:
             // Can't use page1.waitForTimeout as it's closed...
             await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -288,7 +300,7 @@ test.describe("Offer to reload unsaved backups", () => {
                 // Give it a moment to update the state:
                 await page2.waitForTimeout(1000);
             }
-            await page2.close({runBeforeUnload: true});
+            await closePage(page2, browserName);
             // Playwright seems to say it won't actually wait for the saving to be finished, so let's wait an extra couple of seconds:
             // Can't use page2.waitForTimeout as it's closed...
             await new Promise((resolve) => setTimeout(resolve, 2000));
