@@ -162,6 +162,8 @@ describe("Locale persistence", () => {
             // Accept the change for a new project
             cy.wait(500);
             return cy.contains("button:visible", getLocalisedString("buttonLabel.continue", localeForTest)).click({force: true}).then(() => {
+                // Wait for the page reload to begin:
+                cy.wait(2000);
                 // Wait for the starting project to load fully:
                 cy.get(".frame-div", { timeout: 10000 })
                     .should("have.length.at.least", 2);
