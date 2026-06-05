@@ -109,7 +109,7 @@ import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, CollapsedSt
 import $ from "jquery";
 import { defineComponent } from "vue";
 import { mapStores } from "pinia";
-import { getAvailableNavigationPositions, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
+import {computeFrameSnapshot, getAvailableNavigationPositions, getFrameSectionIdFromFrameId} from "@/helpers/storeMethods";
 import scssVars  from "@/assets/style/_export.module.scss";
 import { isMacOSPlatform } from "@/helpers/common";
 import fsIcon from "@/assets/images/FSicon.png";
@@ -759,7 +759,7 @@ export default defineComponent({
                     getPythonContent()
                         .then((pyContent) => {                            
                             this.appStore.pythonExecRunningState = PythonExecRunningState.Running;
-                            this.appStore.enqueueAnalyticsEvent("run", this.appStore.computeFrameSnapshot());
+                            this.appStore.enqueueAnalyticsEvent("run", computeFrameSnapshot());
                             this.appStore.flushAnalyticsQueue("critical");
                             mbSimulator?.postMessage({
                                 "kind": "flash",
