@@ -204,7 +204,8 @@ test.describe("Loads divider states", () => {
         
         // Set another mode -- hover over something else, then over PEA then controls then click them:
         await page.hover("#showHideMenu");
-        await page.hover("#peaTabContentContainerDiv", {strict: true});
+        const bb = await page.locator("#peaTabContentContainerDiv").boundingBox();
+        await page.hover("#peaTabContentContainerDiv", {strict: true, position: bb ? {x: bb.width - 50, y: bb.height - 50} : undefined});
         await page.hover(`div[title="${en.PEA["PEA-layout-tabs-expanded"]}"]`, {strict: true});
         await page.click(`div[title="${en.PEA["PEA-layout-tabs-expanded"]}"]`, {strict: true});
         // Load without a mode specified:
