@@ -740,62 +740,17 @@ export const useStore = defineStore("app", {
             initAnalyticsPlatform();
         },
 
-        computeFrameSnapshot() {
-            const frameTypeCounts: Record<string, number> = {};
-            const importFrameCounts = {import: 0, fromimport: 0, library: 0};
-            const sectionFrameCounts = {imports: 0, defs: 0, main: 0};
-            const importsContainerId = this.getImportsFrameContainerId;
-            const defsContainerId = this.getDefsFrameContainerId;
-            const mainContainerId = this.getMainCodeFrameContainerId;
-            Object.values(this.frameObjects)
-                .filter((frame) => frame.id > 0)
-                .forEach((frame) => {
-                    const frameType = frame.frameType.type;
-                    frameTypeCounts[frameType] = (frameTypeCounts[frameType] ?? 0) + 1;
-                    if (frameType === AllFrameTypesIdentifier.import) {
-                        importFrameCounts.import += 1;
-                    }
-                    else if (frameType === AllFrameTypesIdentifier.fromimport) {
-                        importFrameCounts.fromimport += 1;
-                    }
-                    else if (frameType === AllFrameTypesIdentifier.library) {
-                        importFrameCounts.library += 1;
-                    }
-
-                    let cursor: FrameObject | undefined = frame;
-                    while (cursor) {
-                        const parentId = cursor.parentId;
-                        if (parentId === importsContainerId) {
-                            sectionFrameCounts.imports += 1;
-                            break;
-                        }
-                        if (parentId === defsContainerId) {
-                            sectionFrameCounts.defs += 1;
-                            break;
-                        }
-                        if (parentId === mainContainerId) {
-                            sectionFrameCounts.main += 1;
-                            break;
-                        }
-                        cursor = this.frameObjects[parentId];
-                    }
-                });
-            const classdefCount = frameTypeCounts[AllFrameTypesIdentifier.classdef] ?? 0;
-            const funcdefCount = frameTypeCounts[AllFrameTypesIdentifier.funcdef] ?? 0;
-            return {
-                frameTypeCounts,
-                importFrameCounts,
-                sectionFrameCounts,
-                oopHint: classdefCount > 0 && funcdefCount > 0,
-            };
-        },
-
         enqueueAnalyticsEvent(eventType: string, payload: Record<string, unknown> = {}) {
             enqueueAnalyticsEvent(eventType, payload);
         },
 
         flushAnalyticsQueue(reason: AnalyticsFlushReason) {
-            flushAnalyticsQueue(reason);
+            try {
+                flushAnalyticsQueue(reason);
+            }
+            catch(e) {
+                console.error("Analytics error", e);
+            }
         },
 
         trackMenuAction(actionId: string) {

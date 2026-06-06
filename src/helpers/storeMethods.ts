@@ -1108,3 +1108,51 @@ export function showIndexDBError(errorMsg:string) : void {
     msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, errorMsg);
     useStore().showMessage(msg, null);
 }
+
+export function computeFrameSnapshot() : {
+    frameTypeCounts: Record<string, number>;
+    importFrameCounts: { import: number; fromimport: number; library: number };
+    sectionFrameCounts: { imports: number; defs: number; main: number };
+    oopHint: boolean
+    } {
+    const frameTypeCounts: Record<string, number> = {};
+    const importFrameCounts = {import: 0, fromimport: 0, library: 0};
+    const sectionFrameCounts = {imports: 0, defs: 0, main: 0};
+    const importsContainerId = useStore().getImportsFrameContainerId;
+    const defsContainerId = useStore().getDefsFrameContainerId;
+    const mainContainerId = useStore().getMainCodeFrameContainerId;
+    Object.values(useStore().frameObjects)
+        .filter((frame) => frame.id > 0)
+        .forEach((frame) => {
+            const frameType = frame.frameType.type;
+            frameTypeCounts[frameType] = (frameTypeCounts[frameType] ?? 0) + 1;
+            if (frameType === AllFrameTypesIdentifier.import) {
+                importFrameCounts.import += 1;
+            }
+            else if (frameType === AllFrameTypesIdentifier.fromimport) {
+                importFrameCounts.fromimport += 1;
+            }
+            else if (frameType === AllFrameTypesIdentifier.library) {
+                importFrameCounts.library += 1;
+            }
+            
+            const containerId = getFrameContainer(frame.id);
+            if (containerId === importsContainerId) {
+                sectionFrameCounts.imports += 1;
+            }
+            else if (containerId === defsContainerId) {
+                sectionFrameCounts.defs += 1;
+            }
+            else if (containerId === mainContainerId) {
+                sectionFrameCounts.main += 1;
+            }
+        });
+    const classdefCount = frameTypeCounts[AllFrameTypesIdentifier.classdef] ?? 0;
+    const funcdefCount = frameTypeCounts[AllFrameTypesIdentifier.funcdef] ?? 0;
+    return {
+        frameTypeCounts,
+        importFrameCounts,
+        sectionFrameCounts,
+        oopHint: classdefCount > 0 && funcdefCount > 0,
+    };
+}

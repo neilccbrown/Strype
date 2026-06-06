@@ -109,6 +109,11 @@ export function flushAnalyticsQueue(reason: AnalyticsFlushReason): void {
         flushReason: reason,
         events: batch,
     });
+    
+    // Skip if not running on strype.org but the ingest server is there:
+    if (ingestUrl.includes("strype.org") && !window.location.hostname.includes("strype.org")) {
+        return;
+    }
 
     if (reason === "unload" && typeof navigator !== "undefined" && navigator.sendBeacon) {
         navigator.sendBeacon(ingestUrl, new Blob([body], {type: "text/plain"}));

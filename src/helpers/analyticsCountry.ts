@@ -40,6 +40,12 @@ function getCountryFromLocale(): UserCountry {
 }
 
 export async function fetchUserCountry(): Promise<UserCountry> {
+    // We only fetch the country via lookup when running live on strype.org
+    // In dev mode and testing we'll look like a DoS attack so don't bother:
+    if (!window.location.hostname.includes("strype.org")) {
+        return getCountryFromLocale();
+    }
+    
     for (const lookupUrl of COUNTRY_LOOKUP_URLS) {
         try {
             const response = await axios.get(lookupUrl, {
