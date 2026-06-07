@@ -170,6 +170,26 @@ export async function loadSessionState(tabId: string, db?: IDBDatabase) : Promis
     });
 }
 
+function formatDuration(rtf: Intl.RelativeTimeFormat, seconds: number) : string {
+    // We need to use abs because "ago" values are negative:
+    if (Math.abs(seconds) <= 60) {
+        // Anything <= 60 seconds is shown in seconds:
+        return rtf.format(seconds, "second");
+    }
+    else if (Math.abs(seconds) <= 60 * 60) {
+        // Anything else less than an hour is shown in minutes:
+        return rtf.format(Math.floor(seconds / 60), "minute");
+    }
+    else if (Math.abs(seconds) <= 2 * 24 * 60 * 60) {
+        // Anything else less than 2 days old is shown in hours:
+        return rtf.format(Math.floor(seconds / (60 * 60)), "hour");
+    }
+    else {
+        // Otherwise we measure in days:
+        return rtf.format(Math.floor(seconds / (24 * 60 * 60)), "day");
+    }
+}
+
 // This function checks if there is a recent state the user might want to load, for one of two reasons:
 // Via an auto-displayed banner message (reason="banner"):
 //   - The criteria for this is:
@@ -209,7 +229,7 @@ export async function checkForRecentSaveStates(locale: string, reason: "banner" 
                             lastAlive,
                             data: item[DatabaseFieldNames.data],
                             tabId: item[DatabaseFieldNames.tabId],
-                            when: rtf.format(ceil((lastAlive - now) / 1000), "second"),
+                            when: formatDuration(rtf, ceil((lastAlive - now) / 1000)),
                         });
                     }
                 }
