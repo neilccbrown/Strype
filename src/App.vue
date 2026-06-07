@@ -1067,12 +1067,12 @@ export default defineComponent({
                 await this.reloadForServiceWorkerIfNeeded();
 
                 // Check if there is old state which could be loaded (we don't need to await this):
-                void checkForRecentSaveStates(settingsStore().locale ?? "en").then((saveState) => {
-                    if (saveState != null) {
+                void checkForRecentSaveStates(settingsStore().locale ?? "en", "banner").then((saveStates) => {
+                    if (saveStates.length > 0) {
                         const msg = cloneDeep(MessageDefinitions.FoundRecentUnsavedState);
                         const msgObj = msg.message as FormattedMessage;
-                        msgObj.args[FormattedMessageArgKeyValuePlaceholders.when.key] = msgObj.args[FormattedMessageArgKeyValuePlaceholders.when.key].replace(FormattedMessageArgKeyValuePlaceholders.when.placeholderName, saveState.when);
-                        this.appStore.foundRecentState = {data: saveState.data, tabId: saveState.tabId};
+                        msgObj.args[FormattedMessageArgKeyValuePlaceholders.when.key] = msgObj.args[FormattedMessageArgKeyValuePlaceholders.when.key].replace(FormattedMessageArgKeyValuePlaceholders.when.placeholderName, saveStates[0].when);
+                        this.appStore.foundRecentState = {data: saveStates[0].data, tabId: saveStates[0].tabId};
                         this.appStore.showMessage(msg, null);
                     }
                 });

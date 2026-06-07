@@ -23,7 +23,7 @@
 //     we show a banner message suggesting they may want to reload that state.
 
 
-import { AutoSaveKeyNames } from "@/helpers/editor";
+import { autoSaveFreqMins, AutoSaveKeyNames } from "@/helpers/editor";
 import { z } from "zod";
 import { ceil } from "lodash";
 
@@ -170,14 +170,21 @@ export async function loadSessionState(tabId: string, db?: IDBDatabase) : Promis
     });
 }
 
-// This function checks if there is a recent state the user might want to load via an auto-displayed banner message.
-// The criteria for this is:
-// - stillAlive == false; we know the tab is closed
-// - modifiedSinceExternalSave == true; it was modified after its last external save
-// - lastAliveAt sooner than 2 minutes ago; the user re-navigated to the website (or used Ctrl-Shift-T) soon after it was closed
-export async function checkForRecentSaveStates(locale: string) : Promise<null | {data: string, when: string, tabId: string}> {
+// This function checks if there is a recent state the user might want to load, for one of two reasons:
+// Via an auto-displayed banner message (reason="banner"):
+//   - The criteria for this is:
+//     - stillAlive == false; we know the tab is closed
+//     - modifiedSinceExternalSave == true; it was modified after its last external save
+//     - lastAliveAt sooner than 2 minutes ago; the user re-navigated to the website (or used Ctrl-Shift-T) soon after it was closed
+//     - userDecidedOnReloading decided on reloading is false (i.e. not shown in a banner previously)
+// Via the load menu:
+//   - The criteria for this is:
+//     - stillAlive == false || lastAliveAt older than (autoSaveFreqMins * 2) in millis; tab is presumed dead or inactive
+//     - modifiedSinceExternalSave == true; it was modified after its last external save
+// Note that for banner, the list returned is always size 0 or 1; for load_menu it can be any size
+export async function checkForRecentSaveStates(locale: string, reason: "banner" | "load_menu") : Promise<{data: string, when: string, tabId: string}[]> {
     const db = await openIndexedDBConnection();
-    return new Promise<null | {data: string, when: string, tabId: string}>((resolve, reject) => {
+    return new Promise<{data: string, when: string, tabId: string}[]>((resolve, reject) => {
         const tx = db.transaction(STORE, "readonly");
         const store = tx.objectStore(STORE);
         
@@ -188,37 +195,41 @@ export async function checkForRecentSaveStates(locale: string) : Promise<null | 
                 // Makes it into e.g. "5 seconds ago", translated to the given locale.
                 const rtf = new Intl.RelativeTimeFormat(locale, { style: "long" });
                 const now = Date.now();
-                let candidate : null | { lastAlive: number; data: string; tabId: string} = null;
-                const otherTabIdsToMark : string[] = [];
+                let candidates : { lastAlive: number; data: string; tabId: string, when: string}[] = [];
                 for (let item of request.result) {
                     const lastAlive = Number(item[DatabaseFieldNames.lastAliveAt]);
                     // For dev mode extend this so that it's easier to load recent states:
                     const recentAliveMinutes = import.meta.env.DEV ? 24*60 : 2;
-                    if (item[DatabaseFieldNames.stillAlive] == "false"
+                    if ((item[DatabaseFieldNames.stillAlive] == "false" || (reason == "load_menu" && (now - lastAlive) > autoSaveFreqMins * 2 * 60 * 1000)) 
                         && item[DatabaseFieldNames.modifiedSinceExternalSave] == "true"
-                        && item[DatabaseFieldNames.userDecidedOnReloading] == "false"
-                        && lastAlive >= now - recentAliveMinutes * 60 * 1000) {
-                        // Suitable for loading.  There might be multiple though:
-                        if (candidate == null || lastAlive > candidate.lastAlive) {
-                            if (candidate != null) {
-                                // Old one was not the newest, but mark that we saw it:
-                                otherTabIdsToMark.push(candidate.tabId);
-                            }
-                            candidate = {lastAlive, data: item[DatabaseFieldNames.data], tabId: item[DatabaseFieldNames.tabId]};
-                        }
-                        else {
-                            // Not the newest, but mark that we saw it:
-                            otherTabIdsToMark.push(item[DatabaseFieldNames.tabId]);
-                        }
+                        && (item[DatabaseFieldNames.userDecidedOnReloading] == "false" || reason == "load_menu")
+                        && (lastAlive >= now - recentAliveMinutes * 60 * 1000 || reason == "load_menu")) {
+                        // Suitable for loading.  Add it to candidates:
+                        candidates.push({
+                            lastAlive,
+                            data: item[DatabaseFieldNames.data],
+                            tabId: item[DatabaseFieldNames.tabId],
+                            when: rtf.format(ceil((lastAlive - now) / 1000), "second"),
+                        });
                     }
                 }
-                // Mark others:
-                markUserDecisionOnReloading(otherTabIdsToMark).then(() => {                
-                    resolve(candidate != null ? {data: candidate.data, when: rtf.format(ceil((candidate.lastAlive - now) / 1000), "second"), tabId: candidate.tabId} : null);
-                });
+                // Most recently alive will be position 0:
+                candidates.sort((a, b) => b.lastAlive - a.lastAlive);
+                
+                if (reason == "banner") {
+                    // Mark others past the first as seen:
+                    const otherTabIdsToMark = candidates.slice(1).map((x) => x.tabId);
+                    markUserDecisionOnReloading(otherTabIdsToMark).then(() => {
+                        // Take only the first:
+                        resolve(candidates.slice(0,1));
+                    });
+                }
+                else {
+                    resolve(candidates);
+                }
             }
             else {
-                resolve(null);
+                resolve([]);
             }
         };
         request.onerror = () => reject(request.error);
