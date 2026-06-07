@@ -1639,8 +1639,6 @@ export default defineComponent({
             return new Promise((resolve) => {
                 const s = pasteMixedPython(completeSource, true);
                 if (s != null) {
-                    this.appStore.projectName = fileName.replace(/\..*$/, "");
-
                     // Now we can clear other non-frame related elements
                     this.appStore.clearNoneFrameRelatedState();
                 
