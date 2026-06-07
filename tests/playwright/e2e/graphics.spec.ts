@@ -384,7 +384,7 @@ async function executeCode(page: Page, waitForFinish = true) {
         // Wait for it to finish:
         await page.waitForTimeout(1000);
         // Assert it has finished, by looking at the run button:
-        await expect(page.locator("#runButton")).toHaveText(/Run/, {timeout: 30000});
+        await expect(page.locator("#runButton")).toHaveText(/Run/, {timeout: 60000});
     }
 }
 
@@ -607,7 +607,7 @@ matplotlib.pyplot.title("Simple Matplotlib Graph")
 matplotlib.pyplot.show()
 `);
 
-        await runToFinish(page);
+        await runToFinish(page, true);
         await checkGraphicsAreaContent(page, "matplotlib-simple");
     });
     

@@ -16,6 +16,8 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     page.on("console", (msg) => {
         console.log("Browser log:", msg.text());
     });
+    // On Github Actions, even loading the local page has been seen to take > 30s!
+    testInfo.setTimeout(120_000);
     await skipPyodideLoading(page);
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");

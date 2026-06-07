@@ -16,12 +16,29 @@ import emptyState from "@/store/initial-states/empty-state";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import $ from "jquery";
+import {
+    enqueueAnalyticsEvent,
+    flushAnalyticsQueue,
+    initAnalyticsCountry,
+    initAnalyticsLocale,
+    initAnalyticsPlatform,
+    initAnalyticsSession,
+    initAnalyticsUserId,
+    trackAnalyticsLocaleChange,
+    trackInputCall,
+    trackMenuAction,
+    trackOutputChars,
+    trackStorageLocation,
+    trackUsedDemo,
+    type AnalyticsFlushReason,
+} from "@/store/analytics";
+export type { AnalyticsEvent, AnalyticsFlushReason } from "@/store/analytics";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { actOnGraphicsImport } from "@/helpers/editor";
 // #v-endif
 
 export function getEditorTabId() : string {
-   
+
     let tabId = sessionStorage.getItem(AutoSaveKeyNames.strypeEditorTabId);
 
     if (!tabId) {
@@ -709,6 +726,63 @@ export const useStore = defineStore("app", {
                     }
                 }, timeoutMillis);
             }
+        },
+
+        initAnalyticsUserId() {
+            initAnalyticsUserId();
+        },
+
+        initAnalyticsSession() {
+            initAnalyticsSession();
+        },
+
+        initAnalyticsPlatform() {
+            initAnalyticsPlatform();
+        },
+
+        enqueueAnalyticsEvent(eventType: string, payload: Record<string, unknown> = {}) {
+            enqueueAnalyticsEvent(eventType, payload);
+        },
+
+        flushAnalyticsQueue(reason: AnalyticsFlushReason) {
+            try {
+                flushAnalyticsQueue(reason);
+            }
+            catch(e) {
+                console.error("Analytics error", e);
+            }
+        },
+
+        trackMenuAction(actionId: string) {
+            trackMenuAction(actionId);
+        },
+
+        trackInputCall() {
+            trackInputCall();
+        },
+
+        trackOutputChars(charCount: number) {
+            trackOutputChars(charCount);
+        },
+
+        initAnalyticsLocale(locale: string) {
+            initAnalyticsLocale(locale);
+        },
+
+        trackAnalyticsLocaleChange(newLocale: string) {
+            trackAnalyticsLocaleChange(newLocale);
+        },
+
+        initAnalyticsCountry() {
+            return initAnalyticsCountry();
+        },
+
+        trackUsedDemo(demoName: string, source: string) {
+            trackUsedDemo(demoName, source);
+        },
+
+        trackStorageLocation(target: StrypeSyncTarget) {
+            trackStorageLocation(target);
         },
 
         updateKeyModifiers(e: KeyboardEvent | MouseEvent) {
@@ -2407,7 +2481,7 @@ export const useStore = defineStore("app", {
             stateCopy["previousDAPWrapper"] = {};
             stateCopy["currentMessage"] = MessageDefinitions.NoMessage;
             stateCopy["pythonExecRunningState"] = PythonExecRunningState.NotRunning;
-            
+
             //simplify the storage of frame types by their type names only
             Object.keys(stateCopy["frameObjects"] as EditorFrameObjects).forEach((frameId) => {
                 stateCopy["frameObjects"][frameId].frameType = stateCopy["frameObjects"][frameId].frameType.type;

@@ -85,7 +85,7 @@ import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_brid
 import {getPythonClient, isPythonWorkerReady, renderer, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
 import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 import {createOrGetAudioContext} from "@/helpers/audioContext";
-import { clearAllRuntimeErrors } from "@/helpers/storeMethods";
+import {clearAllRuntimeErrors, computeFrameSnapshot} from "@/helpers/storeMethods";
 
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
@@ -489,6 +489,13 @@ export default defineComponent({
             switch (useStore().pythonExecRunningState) {
             case PythonExecRunningState.NotRunning:
                 useStore().pythonExecRunningState = PythonExecRunningState.Running;
+                try {
+                    useStore().enqueueAnalyticsEvent("run", computeFrameSnapshot());
+                    useStore().flushAnalyticsQueue("critical");
+                }
+                catch (e) {
+                    console.error("Analytics error", e);
+                }
                 soundManager?.stopAllSounds();
                 // Important to call this when responding to a click, because browser won't allow
                 // sound to start unless we create it in direct response to a user action:
@@ -642,6 +649,7 @@ export default defineComponent({
                     }
                     else {
                         pythonConsole.value = pythonConsole.value + output;
+                        useStore().trackOutputChars(output.length);
                         this.switchToConsoleTab(containsInputPrompt ? "always" : "ifFirstCallDuringExecute");
                     }
                 });
@@ -662,7 +670,7 @@ export default defineComponent({
                     micropipLibraries,
                     userLibraries,
                     typeof(this.appStore.strypeProjectLocation) === "string",
-                    Comlink.proxy((asreq : SyncOrAsyncStrypePyodideWorkerRequest) => serialize(() => { 
+                    Comlink.proxy((asreq : SyncOrAsyncStrypePyodideWorkerRequest) => serialize(() => {
                         if (asreq.kind == "async") {
                             asyncBridge(asreq.request);
                         }
