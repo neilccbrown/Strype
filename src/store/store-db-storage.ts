@@ -97,6 +97,7 @@ export async function saveSessionState(tabId: string, projectName: string, data:
                 // No existing record, so write a new record:
                 store.put({
                     [DatabaseFieldNames.tabId]: tabId,
+                    [DatabaseFieldNames.projectName]: projectName,
                     [DatabaseFieldNames.data]: data,
                     [DatabaseFieldNames.lastModifiedAt]: lastModifiedAt ?? now,
                     // May as well update lastAliveAt too, since we're alive if we're saving:
@@ -108,6 +109,7 @@ export async function saveSessionState(tabId: string, projectName: string, data:
             }
             else {
                 const record = cursor.value;
+                record[DatabaseFieldNames.projectName] = projectName;
                 record[DatabaseFieldNames.lastAliveAt] = lastAliveAt ?? now;
                 if (data != record[DatabaseFieldNames.data] as string) {
                     record[DatabaseFieldNames.data] = data;
