@@ -37,6 +37,15 @@
                             <span>{{ $t("appMessage.targetFS") }}</span>
                         </div>
                     </div>
+                    <div v-if="recentLoadableStates">
+                        <span class="load-save-label">{{ $t("appMessage.loadRecentState") }}</span>
+                        <div class="load-recent-states-list">
+                            <div v-for="recent in recentLoadableStates">
+                                <span class="recent-state-label">{{recent.label}}</span>
+                                <span class="recent-state-sublabel">{{recent.sublabel}}</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </ModalDlg>
             <!-- save project -->
@@ -235,7 +244,7 @@ import { downloadHex, downloadPython } from "@/helpers/download";
 import { canBrowserOpenFilePicker, canBrowserSaveFilePicker, openFile, saveFile } from "@/helpers/filePicker";
 import { generateSPYFileContent } from "@/helpers/load-save";
 import ModalDlg from "@/components/ModalDlg.vue";
-import { cloneDeep } from "lodash";
+import { ceil, cloneDeep } from "lodash";
 import appPackageJson from "@/../package.json";
 import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import scssVars from "@/assets/style/_export.module.scss";
@@ -251,6 +260,7 @@ import { useI18n } from "vue-i18n";
 import { BButton, BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus, getLocaleBuildDate } from "@/helpers/appContext";
+import { checkForRecentSaveStates } from "@/store/store-db-storage";
 
 //////////////////////
 //     Component    //
@@ -355,6 +365,9 @@ export default defineComponent({
             openSharedProjectTarget: StrypeSyncTarget.none,
             showDialogAfterSave: "", // The ID of the dialog to show after save-before-load
             shareContentZippedBase64: "",
+
+            // States that could be loaded from the load menu:
+            recentLoadableStates: [] as {label: string, sublabel: string, data: string}[],
         };
     },
 
@@ -715,8 +728,18 @@ export default defineComponent({
             downloadPython();
         },
 
-        openLoadProjectModal(): void {
+        async openLoadProjectModal(): Promise<void> {
             this.appStore.trackMenuAction("load_project");
+            // We prepare the recent states now, even if the user might need to deal with the save dialog in a moment:
+            this.recentLoadableStates = (await checkForRecentSaveStates(settingsStore().locale ?? "en", "load_menu"))
+                .map((s) => {
+                    return {
+                        label: `Recent state (${ceil(s.data.length / 1024)} KB)`,
+                        sublabel: `Modified ${s.when}`,
+                        data: s.data,
+                    };
+                });
+            
             // For a very strange reason, Bootstrap doesn't link the menu link to the dialog any longer
             // after changing "v-if" to "v-show" on the link (to be able to have the keyboard shortcut working).
             // So we open it manually here...
@@ -1851,6 +1874,14 @@ export default defineComponent({
     color: darkorange;
     font-size: 90%;
     text-align: center;
+}
+.load-recent-states-list {
+    overflow-y:auto;
+}
+.recent-state-label {
+}
+.recent-state-sublabel {
+    color: #aaa;
 }
 
 </style>
