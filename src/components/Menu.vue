@@ -41,7 +41,7 @@
                         <span class="load-save-label">{{ $t("appMessage.loadRecentState") }}</span>
                         <div class="load-recent-states-list">
                             <div v-for="recent in recentLoadableStates" class="project-target-button recent-state-button load-dlg" @click="selectOldState(recent.data)">
-                                <span class="recent-state-label">{{recent.label}}</span>
+                                <span :class="scssVars.projectRecentStateLabel">{{recent.label}}</span>
                                 <span class="recent-state-sublabel">{{recent.sublabel}}</span>
                             </div>
                         </div>
@@ -1904,7 +1904,7 @@ export default defineComponent({
     margin-top: 0.5rem;
     overflow-y:auto;
 }
-.recent-state-label {
+.#{$strype-classname-project-recent-state-label} {
     display: block;
     padding-left: 1rem;
 }
