@@ -43,6 +43,7 @@ STORE = AutoSaveKeyNames.strypeMicrobitDBStore;
 enum DatabaseFieldNames {
     tabId = "tabId", // string; Sessions are saved per-tab based on a unique ID we generate for each 
     data = "data", // string; The actual data (a compressed JSON string of the state)
+    projectName = "projectName", // string; The name of the project (also present in data but we want easy access)
     
     lastModifiedAt = "lastModifiedAt", // timestamp; The last time a change was made to the data field
     lastAliveAt = "lastAliveAt", // timestamp; The last time the tab was confirmed as alive.  Used to clear out old tab sessions.
@@ -77,7 +78,7 @@ export function openIndexedDBConnection(): Promise<IDBDatabase> {
 // This saves the session state.  If the state has changed (as decided by string comparison),
 // the lastModifiedAt is updated.  Regardless of that, lastAliveAt is always modified
 // If the modified and alive times are omitted from the params, Date.now() is used
-export async function saveSessionState(tabId: string, data: string, stillAlive: "maybe" | "false", modifiedSinceExternalSave: boolean, lastModifiedAt?: number, lastAliveAt?: number, db?: IDBDatabase) : Promise<void> {
+export async function saveSessionState(tabId: string, projectName: string, data: string, stillAlive: "maybe" | "false", modifiedSinceExternalSave: boolean, lastModifiedAt?: number, lastAliveAt?: number, db?: IDBDatabase) : Promise<void> {
     db = db ?? await openIndexedDBConnection();
 
     return new Promise<void>((resolve, reject) => {
@@ -125,7 +126,8 @@ export async function saveSessionState(tabId: string, data: string, stillAlive: 
 
 // Don't need the tabId as that's in the key of the item
 // Don't need stillAlive as we know emergency saves are closed
-const EmergencySaveSchema = z.object({ 
+const EmergencySaveSchema = z.object({
+    [DatabaseFieldNames.projectName]: z.string(),
     [DatabaseFieldNames.data]: z.string(),
     [DatabaseFieldNames.lastModifiedAt]: z.number(),
     [DatabaseFieldNames.lastAliveAt]: z.number(),
@@ -133,12 +135,13 @@ const EmergencySaveSchema = z.object({
 });
 type EmergencySave = z.infer<typeof EmergencySaveSchema>;
 
-export function emergencySaveSessionState(tabId: string, data: string, lastModifiedAt: number, modifiedSinceExternalSave: boolean) : void {
+export function emergencySaveSessionState(tabId: string, projectName: string, data: string, lastModifiedAt: number, modifiedSinceExternalSave: boolean) : void {
     let storageString = AutoSaveKeyNames.pythonEditorState;
     // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
     storageString = AutoSaveKeyNames.mbEditor;
     // #v-endif
     const value : EmergencySave = {
+        [DatabaseFieldNames.projectName]: projectName,
         [DatabaseFieldNames.data]: data,
         [DatabaseFieldNames.lastModifiedAt]: lastModifiedAt,
         [DatabaseFieldNames.lastAliveAt]: Date.now(),
@@ -202,9 +205,9 @@ function formatDuration(rtf: Intl.RelativeTimeFormat, seconds: number) : string 
 //     - stillAlive == false || lastAliveAt older than (autoSaveFreqMins * 2) in millis; tab is presumed dead or inactive
 //     - modifiedSinceExternalSave == true; it was modified after its last external save
 // Note that for banner, the list returned is always size 0 or 1; for load_menu it can be any size
-export async function checkForRecentSaveStates(locale: string, reason: "banner" | "load_menu") : Promise<{data: string, when: string, tabId: string}[]> {
+export async function checkForRecentSaveStates(locale: string, reason: "banner" | "load_menu") : Promise<{projectName: string, data: string, when: string, tabId: string}[]> {
     const db = await openIndexedDBConnection();
-    return new Promise<{data: string, when: string, tabId: string}[]>((resolve, reject) => {
+    return new Promise<{projectName: string, data: string, when: string, tabId: string}[]>((resolve, reject) => {
         const tx = db.transaction(STORE, "readonly");
         const store = tx.objectStore(STORE);
         
@@ -215,7 +218,7 @@ export async function checkForRecentSaveStates(locale: string, reason: "banner" 
                 // Makes it into e.g. "5 seconds ago", translated to the given locale.
                 const rtf = new Intl.RelativeTimeFormat(locale, { style: "long" });
                 const now = Date.now();
-                let candidates : { lastAlive: number; data: string; tabId: string, when: string}[] = [];
+                let candidates : { lastAlive: number; projectName: string; data: string; tabId: string, when: string}[] = [];
                 for (let item of request.result) {
                     const lastAlive = Number(item[DatabaseFieldNames.lastAliveAt]);
                     // For dev mode extend this so that it's easier to load recent states:
@@ -227,6 +230,7 @@ export async function checkForRecentSaveStates(locale: string, reason: "banner" 
                         // Suitable for loading.  Add it to candidates:
                         candidates.push({
                             lastAlive,
+                            projectName: item[DatabaseFieldNames.projectName],
                             data: item[DatabaseFieldNames.data],
                             tabId: item[DatabaseFieldNames.tabId],
                             when: formatDuration(rtf, ceil((lastAlive - now) / 1000)),
@@ -363,7 +367,7 @@ export async function tidyUpDatabaseState(ourTabId : string, db: IDBDatabase, on
     for (const tabId of Object.keys(toAddToDatabase)) {
         const item = toAddToDatabase[tabId];
         // We know it's not still alive because it's an emergency save:
-        await saveSessionState(tabId, item.content.data, "false", item.content.modifiedSinceExternalSave, item.content.lastModifiedAt, item.content.lastAliveAt, db)
+        await saveSessionState(tabId, item.content.projectName, item.content.data, "false", item.content.modifiedSinceExternalSave, item.content.lastModifiedAt, item.content.lastAliveAt, db)
             .catch(onError)
             .then((() => {
                 // Only delete key if save was successful:
@@ -375,7 +379,8 @@ export async function tidyUpDatabaseState(ourTabId : string, db: IDBDatabase, on
     const oldSingleItem = localStorage.getItem(storeKey);
     if (oldSingleItem) {
         // We assume it was changed since last modification:
-        await saveSessionState(ourTabId, oldSingleItem, "false", true, undefined, undefined, db)
+        // This <Old project> should only appear once ever just as we update, so not worth localised:
+        await saveSessionState(ourTabId, "<Old project>", oldSingleItem, "false", true, undefined, undefined, db)
             .catch(onError)
             .then(() => {
                 // Only delete key if save was successful:
