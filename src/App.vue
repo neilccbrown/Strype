@@ -886,12 +886,12 @@ export default defineComponent({
                     const stateJSONStrWithCheckpoint = this.appStore.generateStateJSONStrWithCheckpoint(true);
                     if (reason !== SaveRequestReason.unloadPage && reason !== SaveRequestReason.reloadBrowser) {
                         // We have time, so we save normally (which is async):
-                        saveSessionState(getEditorTabId(), stateJSONStrWithCheckpoint, reason == SaveRequestReason.loadProject ? "false" : "maybe", this.appStore.isEditorContentModified, this.appStore.editorLastModificationAt)
+                        saveSessionState(getEditorTabId(), this.appStore.projectName, stateJSONStrWithCheckpoint, reason == SaveRequestReason.loadProject ? "false" : "maybe", this.appStore.isEditorContentModified, this.appStore.editorLastModificationAt)
                             .catch(showIndexDBError);
                     }
                     else {
                         // Async might get killed during the closing process so we save to local storage as an alternative:
-                        emergencySaveSessionState(getEditorTabId(), stateJSONStrWithCheckpoint, this.appStore.editorLastModificationAt, this.appStore.isEditorContentModified);
+                        emergencySaveSessionState(getEditorTabId(), this.appStore.projectName, stateJSONStrWithCheckpoint, this.appStore.editorLastModificationAt, this.appStore.isEditorContentModified);
                     }
                     
                     // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
@@ -1067,12 +1067,12 @@ export default defineComponent({
                 await this.reloadForServiceWorkerIfNeeded();
 
                 // Check if there is old state which could be loaded (we don't need to await this):
-                void checkForRecentSaveStates(settingsStore().locale ?? "en").then((saveState) => {
-                    if (saveState != null) {
+                void checkForRecentSaveStates(settingsStore().locale ?? "en", "banner").then((saveStates) => {
+                    if (saveStates.length > 0) {
                         const msg = cloneDeep(MessageDefinitions.FoundRecentUnsavedState);
                         const msgObj = msg.message as FormattedMessage;
-                        msgObj.args[FormattedMessageArgKeyValuePlaceholders.when.key] = msgObj.args[FormattedMessageArgKeyValuePlaceholders.when.key].replace(FormattedMessageArgKeyValuePlaceholders.when.placeholderName, saveState.when);
-                        this.appStore.foundRecentState = {data: saveState.data, tabId: saveState.tabId};
+                        msgObj.args[FormattedMessageArgKeyValuePlaceholders.when.key] = msgObj.args[FormattedMessageArgKeyValuePlaceholders.when.key].replace(FormattedMessageArgKeyValuePlaceholders.when.placeholderName, saveStates[0].when);
+                        this.appStore.foundRecentState = {data: saveStates[0].data, tabId: saveStates[0].tabId};
                         this.appStore.showMessage(msg, null);
                     }
                 });
@@ -1639,7 +1639,6 @@ export default defineComponent({
             return new Promise((resolve) => {
                 const s = pasteMixedPython(completeSource, true);
                 if (s != null) {
-
                     // Now we can clear other non-frame related elements
                     this.appStore.clearNoneFrameRelatedState();
                 

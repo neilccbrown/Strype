@@ -4,6 +4,7 @@
 import { Page, expect, test } from "@playwright/test";
 import { skipPyodideLoading } from "../support/general";
 import { save } from "../support/loading-saving";
+import {strypeElIds} from "../support/proxy";
 
 // Note we don't visit a page in the beforeEach; that is left to individual tests.
 // It's also important to not even have it as a parameter; Playwright creates it based on whether it appears as a param.
@@ -15,6 +16,17 @@ test.beforeEach(async ({ browserName }, testInfo) => {
 
     // These tests can take longer than the default 30 seconds:
     testInfo.setTimeout(120000); // 120 seconds
+});
+
+test.afterEach(async ({ context }, testInfo) => {
+    const state = await context.storageState({
+        indexedDB: true,
+    });
+
+    await testInfo.attach("storage-state.json", {
+        body: JSON.stringify(state, null, 2),
+        contentType: "application/json",
+    });
 });
 
 async function assertStartingProject(page: Page)  {
@@ -36,6 +48,7 @@ async function appendContent(page: Page, paramContent: string) {
     await page.keyboard.press("End");
     await page.keyboard.type("p\"" + paramContent);
     await page.keyboard.press("Enter");
+    await page.waitForTimeout(500);
     // Sanity check it actually appeared:
     await assertStartingPlus(page, paramContent);
 }
@@ -45,6 +58,10 @@ async function loadAndWaitForEditor(page: Page) {
     await page.goto("./", {waitUntil: "load"});
     await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
     await page.waitForSelector(".frame-container");
+    // Necessary to make sure save doesn't try to show the file dialog:
+    await page.evaluate(() => {
+        (window as any).Playwright = true;
+    });
 }
 
 test.describe("Test basic operation", () => {
@@ -200,16 +217,24 @@ test.describe("Test IndexedDB failure", () => {
     });
 });
 
-function closePage(page1: Page, browserName: string) : Promise<any> {
+function closePage(page: Page, browserName: string) : Promise<any> {
     if (browserName === "webkit") {
         // Webkit doesn't seem to obey .close() properly but we get the same behaviour
         // of unloading the page if we just navigate elsewhere, so do that:
         // (8089 is our test assets server, so we know it exists and isn't the editor...)
-        return page1.goto("http://localhost:8089/");
+        return page.goto("http://localhost:8089/");
     }
     else {
-        return page1.close({runBeforeUnload: true});
+        return page.close({runBeforeUnload: true});
     }
+}
+
+async function assertOpenRecentMenu(page: Page, expectedProjectNames: RegExp[]) : Promise<void> {
+    await page.click("#" + await strypeElIds(page).getEditorMenuUID());
+    await page.click("#" + await strypeElIds(page).getLoadProjectLinkId());
+    const scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
+    console.log("Looking for ." + scssVars.projectRecentStateLabel);
+    await expect(page.locator("." + scssVars.projectRecentStateLabel)).toHaveText(expectedProjectNames);
 }
 
 // A banner should show to offer to load unsaved backups if the backups are recent and modified after external save:
@@ -269,6 +294,8 @@ test.describe("Offer to reload unsaved backups", () => {
             page1.on("console", (msg) => console.log("Browser log page 1:", msg.text()));
 
             await loadAndWaitForEditor(page1);
+            await save(page1, true, "Project 1");
+            await page1.waitForTimeout(1000);
             const scssVars = await page1.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
             // Modify it and close it:
             const str1 = "Modifying state #1 ahead of closing";
@@ -287,16 +314,14 @@ test.describe("Offer to reload unsaved backups", () => {
             await assertStartingProject(page2);
             await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).toBeVisible();
             await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).toContainText("load it?");
-            // Necessary to make sure save doesn't try to show the file dialog:
-            await page2.evaluate(() => {
-                (window as any).Playwright = true;
-            });
+            await save(page2, true, "Project 2");
+            await page2.waitForTimeout(1000);
             
             // Now we modify, optionally save, and close:
             const str2 = "Modifying state #2 ahead of closing";
             await appendContent(page2, str2);
             if (state2Saved) {
-                await save(page2, true);
+                await save(page2, false);
                 // Give it a moment to update the state:
                 await page2.waitForTimeout(1000);
             }
@@ -314,12 +339,13 @@ test.describe("Offer to reload unsaved backups", () => {
             await assertStartingProject(page3);
             await expect(page3.locator("." + scssVars.messageBannerContainerClassName)).toBeVisible();
             await expect(page3.locator("." + scssVars.messageBannerContainerClassName)).toContainText("load it?");
+            await save(page3, true, "Project 3");
 
             // Now we modify, but don't close:
             const str3 = "Modifying state #3 but will keep open";
             await appendContent(page3, str3);
             
-            // Now finally page 4:
+            // Now page 4:
 
             // Load a new page in the same context (so it shares the storage):
             const page4 = await context.newPage();
@@ -345,6 +371,8 @@ test.describe("Offer to reload unsaved backups", () => {
             // At this point, it should have the fresh state, and not be showing the banner about loading old state:
             await assertStartingProject(page5);
             await expect(page5.locator("." + scssVars.messageBannerContainerClassName)).not.toBeVisible();
+            // Check which projects are showing -- should not show 3 as still open, so only 1 and 2 depending on save status:
+            await assertOpenRecentMenu(page5, state2Saved ? [/^Project 1 /] : [/^Project 2 /, /^Project 1 /]);
         });
     }
 });

@@ -40,7 +40,7 @@ export async function loadContent(page: Page, spyToLoad: string) : Promise<void>
 }
 
 // Returns the file path
-export async function save(page: Page, firstSave = true) : Promise<string> {
+export async function save(page: Page, firstSave = true, projectName? : string) : Promise<string> {
     // Wait for page load:
     await page.waitForSelector(".frame-container");
     
@@ -51,6 +51,11 @@ export async function save(page: Page, firstSave = true) : Promise<string> {
     let download;
     if (firstSave) {
         await page.click("#" + await strypeElIds(page).getSaveProjectLinkId());
+        // Wait for the dialog to appear and settle:
+        await page.waitForTimeout(1000);
+        if (projectName) {
+            await page.fill("#saveStrypeFileNameInput", projectName);
+        }
         // For testing, we always want to save to this device:
         await page.locator("span:visible").getByText(en.appMessage.targetFS).click();
         [download] = await Promise.all([

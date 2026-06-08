@@ -37,6 +37,15 @@
                             <span>{{ $t("appMessage.targetFS") }}</span>
                         </div>
                     </div>
+                    <div class="recent-states-pane" v-if="recentLoadableStates">
+                        <span class="load-save-label">{{ $t("appMessage.loadRecentState") }}</span>
+                        <div class="load-recent-states-list">
+                            <div v-for="recent in recentLoadableStates" class="project-target-button recent-state-button load-dlg" @click="selectOldState(recent.data)">
+                                <span :class="scssVars.projectRecentStateLabel">{{recent.label}}</span>
+                                <span class="recent-state-sublabel">{{recent.sublabel}}</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </ModalDlg>
             <!-- save project -->
@@ -235,7 +244,7 @@ import { downloadHex, downloadPython } from "@/helpers/download";
 import { canBrowserOpenFilePicker, canBrowserSaveFilePicker, openFile, saveFile } from "@/helpers/filePicker";
 import { generateSPYFileContent } from "@/helpers/load-save";
 import ModalDlg from "@/components/ModalDlg.vue";
-import { cloneDeep } from "lodash";
+import { ceil, cloneDeep } from "lodash";
 import appPackageJson from "@/../package.json";
 import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import scssVars from "@/assets/style/_export.module.scss";
@@ -251,6 +260,7 @@ import { useI18n } from "vue-i18n";
 import { BButton, BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus, getLocaleBuildDate } from "@/helpers/appContext";
+import { checkForRecentSaveStates } from "@/store/store-db-storage";
 
 //////////////////////
 //     Component    //
@@ -332,6 +342,8 @@ export default defineComponent({
             currentTabindexValue: 0,
             // The temporary sync target that we use to handle the UI of the target selection
             tempSyncTarget: StrypeSyncTarget.none,
+            // Takes priority over tempSyncTarget in load dialog if non-null
+            tempLoadOld: null as string | null,
             // The current selection for the sync target (local to this component, not in the store)            
             localSyncTarget: StrypeSyncTarget.gd,
             showCloudSaveLocation: false,
@@ -355,6 +367,9 @@ export default defineComponent({
             openSharedProjectTarget: StrypeSyncTarget.none,
             showDialogAfterSave: "", // The ID of the dialog to show after save-before-load
             shareContentZippedBase64: "",
+
+            // States that could be loaded from the load menu:
+            recentLoadableStates: [] as {label: string, sublabel: string, data: string}[],
         };
     },
 
@@ -715,8 +730,18 @@ export default defineComponent({
             downloadPython();
         },
 
-        openLoadProjectModal(): void {
+        async openLoadProjectModal(): Promise<void> {
             this.appStore.trackMenuAction("load_project");
+            // We prepare the recent states now, even if the user might need to deal with the save dialog in a moment:
+            this.recentLoadableStates = (await checkForRecentSaveStates(settingsStore().locale ?? "en", "load_menu"))
+                .map((s) => {
+                    return {
+                        label: `${s.projectName} (${ceil(s.data.length / 1024)} KB)`,
+                        sublabel: `Modified ${s.when}`,
+                        data: s.data,
+                    };
+                });
+            
             // For a very strange reason, Bootstrap doesn't link the menu link to the dialog any longer
             // after changing "v-if" to "v-show" on the link (to be able to have the keyboard shortcut working).
             // So we open it manually here...
@@ -802,6 +827,12 @@ export default defineComponent({
                 // (we first close the target selector modal, then validate)
                 eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "ok", componentId: this.loadProjectModalDlgId});                
             }
+        },
+        
+        selectOldState(data: string) {
+            this.tempLoadOld = data;
+            // Immediately counts as a selection:
+            eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "ok", componentId: this.loadProjectModalDlgId});
         },
 
         getTargetSelectVal(): StrypeSyncTarget {
@@ -1196,6 +1227,12 @@ export default defineComponent({
 
         loadProject(){
             // Called once sanity save has been performed
+            if (this.tempLoadOld != null) {
+                // They selected a recent state to load:
+                void this.appStore.setStateFromJSONStr({stateJSONStr: this.tempLoadOld, readCompressed: true});
+                return;
+            }
+            
             // If the user chose to sync on a Cloud Drive, we should open the Drive loader. Otherwise, we open default file system.
             // DO NOT UPDATE THE CURRENT SYNC FLAG IN THE STATE - we only do that IF loading succeed (because it can be still cancelled or impossible to achieve)
             const selectValue = (this.openSharedProjectId.length > 0) ? this.openSharedProjectTarget : this.getTargetSelectVal();
@@ -1851,6 +1888,30 @@ export default defineComponent({
     color: darkorange;
     font-size: 90%;
     text-align: center;
+}
+.recent-states-pane {
+    /* Match bootstrap divider at top and bottom: */
+    border-top: var(--bs-modal-header-border-width) solid var(--bs-modal-header-border-color);
+    margin-top: 1rem;
+    padding-top: 1rem;
+}
+.recent-state-button.#{$strype-classname-project-target-button} {
+    width: 100%;
+    align-items: start;
+    cursor: pointer;
+}
+.load-recent-states-list {
+    margin-top: 0.5rem;
+    overflow-y:auto;
+}
+.#{$strype-classname-project-recent-state-label} {
+    display: block;
+    padding-left: 1rem;
+}
+.recent-state-sublabel {
+    display: block;
+    color: #aaa;
+    padding-left: 3rem;
 }
 
 </style>
