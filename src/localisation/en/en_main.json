@@ -154,8 +154,8 @@
     "publicSharedProjectUserDownloadAttempt":"Strype will try to open an another page for you to download the project.",
     "cloudFileAlreadyExists": "A project with the same name already exists in the {drivename} location.\nWould you like to replace it?",
     "cloudLockedFileAlreadyExists": "This project is locked in the {drivename} location.\nIt cannot be saved with this name.",
-    "savedCloudFile": "Saved",
-    "modifCloudFile": "Modified",
+    "saved": "Saved",
+    "modified": "Modified",
     "emptyCloudDrivePicker": "Your {drivename} is empty...",
     "cloudDriveItemPickerLoadingFolderContent": "Folder loading...",
     "lastSavedOn": "Last saved: {lastSavedDate}",
@@ -182,7 +182,8 @@
     "methodCloudLinkExplanation": "The cloud file (including future changes)", 
     "snapshotLinkTooLarge": "Warning: this link may be too large for some browsers, probably due to images/sounds in the code.", 
     "cloudShareUnavailable": "You need to save to a cloud drive first.",
-    "cloudShareNotSaved": "You currently have unsaved changes."
+    "cloudShareNotSaved": "You currently have unsaved changes.",
+    "kb": "KB"
   },
   "contextMenu": {
     "ctrl": "Ctrl",

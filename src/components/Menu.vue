@@ -736,8 +736,8 @@ export default defineComponent({
             this.recentLoadableStates = (await checkForRecentSaveStates(settingsStore().locale ?? "en", "load_menu"))
                 .map((s) => {
                     return {
-                        label: `${s.projectName} (${ceil(s.data.length / 1024)} KB)`,
-                        sublabel: `Modified ${s.when}`,
+                        label: `${s.projectName} (${ceil(s.data.length / 1024)} ${this.$t("appMessage.kb")})`,
+                        sublabel: `${this.$t("appMessage.modified")} ${s.when}`,
                         data: s.data,
                     };
                 });
