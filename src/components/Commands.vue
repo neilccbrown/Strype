@@ -12,8 +12,8 @@
                             <div @mouseover="getLastProjectSavedDateTooltip" :title="lastProjectSavedDateTooltip">
                                 <img v-if="isProjectFromCloudDrive" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/> 
                                 <img v-else-if="isProjectFromFS" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/> 
-                                <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag">{{ $t("appMessage.savedCloudFile") }}</span>
-                                <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" :class="{'modifed-label-span': isProjectNotSourced}">{{ $t("appMessage.modifCloudFile") }}</span>
+                                <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag">{{ $t("appMessage.saved") }}</span>
+                                <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" :class="{'modifed-label-span': isProjectNotSourced}">{{ $t("appMessage.modified") }}</span>
                             </div>
                         </div>     
                         <div @mousedown.prevent.stop @mouseup.prevent.stop>

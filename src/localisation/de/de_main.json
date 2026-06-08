@@ -88,7 +88,7 @@
     "fileName": "Dateiname:",
     "cloudFileAlreadyExists": "Es existiert schon ein Projekt mit diesem Namen.\nMöchtest Du es ersetzen?",
     "cloudLockedFileAlreadyExists": "Dieses Projekt existiert und ist schreibgeschützt.\nEs kann nicht unter diesem Namen gespeichert werden.",
-    "savedCloudFile": "Gespeichert",
+    "saved": "Gespeichert",
     "selectFolder": "Wähle einen Ordner",
     "selectStrypeFile": "Wähle ein Strype-Projekt",
     "cloudLocation": "Ordner:",
