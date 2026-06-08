@@ -47,7 +47,9 @@
     "invalidPythonParsePaste": "Code Python collé invalide : {errorMsg}",
     "wrongPythonStructCopied": "impossible de coller else/elif/except/finally suivi d'autre contenu en une fois",
     "incompatiblePythonStrypeSection": "le code Python copié ne peut pas être collé dans la section actuelle de Strype",
-    "invalidMatchStmtContent": "ce contenu n'est pas autorisé dans une instruction 'match'"
+    "invalidMatchStmtContent": "ce contenu n'est pas autorisé dans une instruction 'match'",
+    "errorAccessingIndexedDB": "Erreur d'accès au stockage du navigateur (probablement dû à la navigation privée). Votre projet ne sera pas automatiquement sauvegardé. (Erreur : {errorMsg})",
+    "foundRecentUnsavedState": "Un récent projet non enregistré (dernière modification {when}) a été trouvé. Souhaitez-vous le charger ?"
   },
   "buttonLabel": {
     "undo": "Annuler",
@@ -56,6 +58,7 @@
     "ok": "OK",
     "cancel": "Annuler",
     "save": "Enregistrer",
+    "load": "Charger",
     "saveDiffLocation": "Enregister ailleurs",
     "overwriteProject": "Remplacer",
     "saveProjectCopy": "Choisir un autre nom",
@@ -135,6 +138,7 @@
     "noWebUSB": "Ce navigateur ne supporte pas les connexions webUSB. Veuillez utiliser un autre navigateur (par example Google Chrome).",
     "emptyCodeError": "Le code ne peut pas être vide.",
     "loadToTarget": "Ouvrir à partir de :",
+    "loadRecentState": "Projets récents non enregistrés :",
     "saveToTarget": "Enregister vers :",
     "targetFS": "Cet ordinateur",
     "fileName": "Nom de fichier :",
