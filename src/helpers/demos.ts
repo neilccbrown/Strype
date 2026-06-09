@@ -16,9 +16,9 @@ export interface Demo {
 //  on a schema like this one, useful to check that externally-originating data
 //  matches an expected format before dealing with it, to avoid bugs or security issues)
 const DemoSchema = z.object({
-    name: z.string().min(1),
+    name: z.string().min(1).optional(), // If missing, use file name minus .spy
     description: z.string().optional(),
-    image: z.string().min(1).optional(),
+    image: z.string().min(1).optional(), 
     file: z.string().min(1),
 });
 
@@ -47,7 +47,7 @@ export function getThirdPartyLibraryDemos(library: string) : DemoGroup {
                 const demos = [];
                 for (const y of demosYAML) {
                     demos.push({
-                        name: y.name,
+                        name: y.name ?? y.file.replace(/\.[^/.]+$/, ""),
                         description: y.description,
                         image: {dataURL: y.image ? getRawFileFromLibraries([library], "demos/" + y.image).then(async (imgResp) => {
                             // Only allow bitmap images; SVG+XML might have Javascript inside, which we wouldn't want to run:
@@ -77,7 +77,7 @@ export async function getBuiltinDemos(pathInPublic: string): Promise<Demo[]> {
     const demos = [] as Demo[];
     for (const y of demosYAML) {
         demos.push({
-            name: y.name,
+            name: y.name ?? y.file.replace(/\.[^/.]+$/, ""),
             description: y.description,
             image: {imgURL: y.image ? dirSlash + y.image : undefined},
             demoFile: () => fetch(dirSlash + y.file).then((res) => res.text()),
