@@ -218,7 +218,8 @@
     "downloadHex": "Convert to Hex file",
     "downloadPython": "Convert to Python file",
     "loadProject": "Open...",
-    "loadDemoProject": "Examples...",
+    "loadDemoProject": "Examples...", 
+    "book": "Book...",
     "saveProject": "Save",
     "saveAsProject": "Save as...",
     "resetProject": "New project",
@@ -286,6 +287,9 @@
     "cursorTimeMac": "Time (⌘ C to copy):",
     "cursorHeightWin": "Height (Ctrl-Shift-C to copy):",
     "cursorHeightMac": "Height (⇧ ⌘ C to copy):"
+  },
+  "book": {
+    "dialogTitle": "Strype textbook"
   },
   "demos": {
     "dialogTitle": "Example programs",

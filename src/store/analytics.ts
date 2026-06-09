@@ -175,6 +175,14 @@ export function trackUsedDemo(demoName: string, source: string): void {
     enqueueAnalyticsEvent("demo_used", {demoName: cleanDemoName, source});
 }
 
+export function trackUsedBookProject(projectName: string, chapter: string): void {
+    const cleanName = projectName.trim();
+    if (cleanName.length === 0) {
+        return;
+    }
+    enqueueAnalyticsEvent("book_project_used", {projectName: cleanName, chapter});
+}
+
 export function trackStorageLocation(target: StrypeSyncTarget): void {
     let storageLocation: "local" | "cloud" | null = null;
     if (target == StrypeSyncTarget.fs) {

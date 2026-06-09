@@ -1,0 +1,9 @@
+- file: yellow-fish.spy
+  image: yellow-fish.png
+  description: The starter yellow-fish project
+  
+- file: yellow-fish-v2.spy
+  description: The intermediate version of the yellow-fish project
+  
+- file: yellow-fish-v3.spy
+  description: The last version of the yellow-fish project

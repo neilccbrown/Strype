@@ -98,6 +98,8 @@
             <div class="menu-separator-div"></div>           
             <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLoadDemoProjectModal">{{$t('appMenu.loadDemoProject')}}</a>
             <OpenDemoDlg ref="openDemoDlg" :dlg-id="loadDemoProjectModalDlgId"/>
+            <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openBookModal">{{$t('appMenu.book')}}</a>
+            <OpenBookDlg ref="openBookDlg" :dlg-id="loadBookProjectModalDlgId"/>
             <!-- #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE -->
             <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLibraryDoc">{{$t('appMenu.apiDocumentation')}}</a>
             <!-- #v-endif-->
@@ -261,6 +263,8 @@ import { BButton, BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus, getLocaleBuildDate } from "@/helpers/appContext";
 import { checkForRecentSaveStates } from "@/store/store-db-storage";
+import OpenBookDlg from "@/components/OpenBookDlg.vue";
+import {trackUsedBookProject} from "@/store/analytics";
 
 //////////////////////
 //     Component    //
@@ -513,6 +517,10 @@ export default defineComponent({
 
         loadDemoProjectModalDlgId(): string {
             return "load-strype-demo-project-modal-dlg";
+        },
+
+        loadBookProjectModalDlgId(): string {
+            return "load-strype-book-project-modal-dlg";
         },
 
         loadProjectTargetButtonGpId(): string {
@@ -780,6 +788,23 @@ export default defineComponent({
             }
         },
 
+        openBookModal(): void {
+            this.appStore.trackMenuAction("book_dlg_open");
+            // For a very strange reason, Bootstrap doesn't link the menu link to the dialog any longer 
+            // after changing "v-if" to "v-show" on the link (to be able to have the keyboard shortcut working).
+            // So we open it manually here...
+            // We might need to check, first that a project has been modified and needs to be saved.
+            if(this.appStore.isEditorContentModified){
+                // Show a modal dialog to let user save/discard their changes. Saving loop is handled with saving methods.
+                // Note that for the File System project we cannot make Strype save the file: that will require the user explicit action.
+                this.showDialogAfterSave = this.loadBookProjectModalDlgId;
+                eventBus.emit(CustomEventTypes.showStrypeModal, this.saveOnLoadModalDlgId);
+            }
+            else {
+                eventBus.emit(CustomEventTypes.showStrypeModal, this.loadBookProjectModalDlgId);
+            }
+        },
+
         handleSaveMenuClick(event: MouseEvent | undefined, saveReason?: SaveRequestReason): void {
             // event here is only kept to keep TS happy
 
@@ -957,6 +982,9 @@ export default defineComponent({
             }
             else if (dlgId == this.loadDemoProjectModalDlgId) {
                 vueComponentsAPIHandler.openDemoDlgComponentAPI?.shown();
+            }
+            else if (dlgId == this.loadBookProjectModalDlgId) {
+                (this.$refs.openBookDlg  as InstanceType<typeof OpenBookDlg>).shown();
             }
             else {
                 // When the load or save project dialogs are opened, we focus the Google Drive selector by default when we don't have information about the source target
@@ -1211,6 +1239,18 @@ export default defineComponent({
                             if (content) {
                                 this.appStore.trackUsedDemo(selectedDemo.name ?? "Demo", selectedDemo.source);
                                 vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(content, selectedDemo.name ?? "Demo", 0, false, "import")
+                                    .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
+                            }
+                        });
+                    }
+                }
+                else if (dlgId == this.loadBookProjectModalDlgId) {
+                    const selectedProject = (this.$refs.openBookDlg  as InstanceType<typeof OpenBookDlg>).getSelectedProject();
+                    if (selectedProject) {
+                        selectedProject.projectFile.then((content) => {
+                            if (content) {
+                                trackUsedBookProject(selectedProject.name ?? "Book", selectedProject.chapter);
+                                vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(content, selectedProject.name ?? "Demo", 0, false, "import")
                                     .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
                             }
                         });
