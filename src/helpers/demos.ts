@@ -69,8 +69,8 @@ export function getThirdPartyLibraryDemos(library: string) : DemoGroup {
 }
 
 // Gets built-in demos from a given subdirectory
-export async function getBuiltinDemos(subdirectory: string) : Promise<Demo[]> {
-    const dirSlash = `./demos/${subdirectory}/`;
+export async function getBuiltinDemos(pathInPublic: string): Promise<Demo[]> {
+    const dirSlash = "./" + pathInPublic + (pathInPublic.endsWith("/") ? "" : "/");
     const text = await (await fetch(`${dirSlash}index.yaml`)).text();
     const rawData = yaml.load(text);
     const demosYAML = DemosSchema.parse(rawData);
