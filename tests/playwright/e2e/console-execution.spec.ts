@@ -126,7 +126,7 @@ count = content.count("Montmorency")
 
 print(f'Montmorency is mentioned {count} times.')`]);
         await runToFinish(page);
-        await checkConsoleContent(page, "Montmorency is mentioned 48 times.\n");
+        await checkConsoleContent(page, "Montmorency is mentioned 59 times.\n");
     });
 });
 
