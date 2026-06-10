@@ -1551,7 +1551,9 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
         allLines.pop();
     }
     const s = splitLinesToSections(allLines);
-    const curLocation = findCurrentStrypeLocation().strypeLocation;
+    // If we are clearing all, we are effectively pasting into the main section,
+    // no matter where the frame cursor happens to be:
+    const curLocation = clearExisting ? STRYPE_LOCATION.MAIN_CODE_SECTION : findCurrentStrypeLocation().strypeLocation;
     
     // Bit awkward but we first attempt to copy each to check for errors because
     // if there are any errors we don't want to paste any:
