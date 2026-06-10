@@ -6,7 +6,6 @@ import {createBrowserProxy} from "../support/proxy";
 import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "@/helpers/sharedIdCssWithTests";
 import {doPagePaste} from "../support/editor";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 let strypeElIds: {[varName: string]: (...args: any[]) => Promise<string>};
 let scssVars: {[varName: string]: string};
 test.beforeEach(async ({ page, browserName }, testInfo) => {
