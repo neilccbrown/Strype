@@ -14,7 +14,7 @@
         </div>
         <div class="d-flex" style="height: 400px;border-top: #aaa solid 1px; padding-top: 1rem;">
             <!-- Left Pane: List Group -->
-            <BListGroup class="flex-column" style="width: 30% !important;">
+            <BListGroup class="flex-column overflow-auto" style="width: 30% !important;">
                 <BListGroupItem
                     v-for="(item, index) in chapters"
                     :key="index"
@@ -82,6 +82,12 @@ const chapters: Chapter[] = [
     {name: "Chapter 1", content: getBuiltinDemos("book_projects/chapter01")},
     {name: "Chapter 2", content: getBuiltinDemos("book_projects/chapter02")},
     {name: "Chapter 3", content: getBuiltinDemos("book_projects/chapter03")},
+    {name: "Chapter 4", content: getBuiltinDemos("book_projects/chapter04")},
+    {name: "Chapter 5", content: getBuiltinDemos("book_projects/chapter05")},
+    {name: "Chapter 6", content: getBuiltinDemos("book_projects/chapter06")},
+    {name: "Chapter 7", content: getBuiltinDemos("book_projects/chapter07")},
+    {name: "Chapter 8", content: getBuiltinDemos("book_projects/chapter08")},
+    {name: "Chapter 10", content: getBuiltinDemos("book_projects/chapter10")},
 ];
 
 const props = defineProps<{
