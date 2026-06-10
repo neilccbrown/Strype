@@ -123,7 +123,7 @@ function shown() {
 function getSelectedProject(): ({ name: string, chapter: string, projectFile: Promise<string | undefined> } | undefined) {
     if (selectedChapterProjectIndex.value >= 0 && selectedChapterProjectIndex.value < projectsInCurrentChapter.value.length) {
         const d = projectsInCurrentChapter.value[selectedChapterProjectIndex.value];
-        return { name: d.name, projectFile: d.projectFile(), chapter: chapters[selectedChapterProjectIndex.value].name };
+        return { name: d.name, projectFile: d.projectFile(), chapter: chapters[selectedChapterIndex.value].name };
     }
     return undefined;
 }

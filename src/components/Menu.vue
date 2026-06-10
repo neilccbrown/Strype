@@ -1250,7 +1250,7 @@ export default defineComponent({
                         selectedProject.projectFile.then((content) => {
                             if (content) {
                                 trackUsedBookProject(selectedProject.name ?? "Book", selectedProject.chapter);
-                                vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(content, selectedProject.name ?? "Demo", 0, false, "import")
+                                vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(content, selectedProject.name ?? "Book", 0, false, "import")
                                     .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
                             }
                         });

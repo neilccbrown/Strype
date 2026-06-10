@@ -1661,6 +1661,10 @@ export default defineComponent({
                             if(requestFSFileLoadedNotification){
                                 vueComponentsAPIHandler.menuComponentAPI?.onFileLoaded(fileName, lastSaveDate, fileLocation);
                             }
+                            else {
+                                const noExtFileName = (fileName.includes(".")) ? fileName.substring(0, fileName.lastIndexOf(".")) : fileName;
+                                this.appStore.projectName = noExtFileName;
+                            }
                             resolve();
                         },
                         true
