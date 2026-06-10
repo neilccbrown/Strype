@@ -369,7 +369,7 @@ export default defineComponent({
             // Flags for opening a shared project: the ID (main flag) and the target (for the moment it's only Google Drive...)
             openSharedProjectId: "",
             openSharedProjectTarget: StrypeSyncTarget.none,
-            showDialogAfterSave: "", // The ID of the dialog to show after save-before-load
+            afterSaveDialog: null as {dialog: string} | {spy: string; name: string} | null, // What to do after save-before-load; show dialog or load SPY
             shareContentZippedBase64: "",
 
             // States that could be loaded from the load menu:
@@ -757,7 +757,7 @@ export default defineComponent({
             if(this.appStore.isEditorContentModified){
                 // Show a modal dialog to let user save/discard their changes. Saving loop is handled with saving methods.
                 // Note that for the File System project we cannot make Strype save the file: that will require the user explicit action.
-                this.showDialogAfterSave = this.loadProjectModalDlgId;
+                this.afterSaveDialog = {dialog: this.loadProjectModalDlgId};
                 eventBus.emit(CustomEventTypes.showStrypeModal, this.saveOnLoadModalDlgId);
             }
             else if(this.openSharedProjectId.length == 0) {
@@ -776,16 +776,7 @@ export default defineComponent({
             // For a very strange reason, Bootstrap doesn't link the menu link to the dialog any longer 
             // after changing "v-if" to "v-show" on the link (to be able to have the keyboard shortcut working).
             // So we open it manually here...
-            // We might need to check, first that a project has been modified and needs to be saved.
-            if(this.appStore.isEditorContentModified){
-                // Show a modal dialog to let user save/discard their changes. Saving loop is handled with saving methods.
-                // Note that for the File System project we cannot make Strype save the file: that will require the user explicit action.
-                this.showDialogAfterSave = this.loadDemoProjectModalDlgId;
-                eventBus.emit(CustomEventTypes.showStrypeModal, this.saveOnLoadModalDlgId);
-            }
-            else {
-                eventBus.emit(CustomEventTypes.showStrypeModal, this.loadDemoProjectModalDlgId);
-            }
+            eventBus.emit(CustomEventTypes.showStrypeModal, this.loadDemoProjectModalDlgId);
         },
 
         openBookModal(): void {
@@ -793,16 +784,7 @@ export default defineComponent({
             // For a very strange reason, Bootstrap doesn't link the menu link to the dialog any longer 
             // after changing "v-if" to "v-show" on the link (to be able to have the keyboard shortcut working).
             // So we open it manually here...
-            // We might need to check, first that a project has been modified and needs to be saved.
-            if(this.appStore.isEditorContentModified){
-                // Show a modal dialog to let user save/discard their changes. Saving loop is handled with saving methods.
-                // Note that for the File System project we cannot make Strype save the file: that will require the user explicit action.
-                this.showDialogAfterSave = this.loadBookProjectModalDlgId;
-                eventBus.emit(CustomEventTypes.showStrypeModal, this.saveOnLoadModalDlgId);
-            }
-            else {
-                eventBus.emit(CustomEventTypes.showStrypeModal, this.loadBookProjectModalDlgId);
-            }
+            eventBus.emit(CustomEventTypes.showStrypeModal, this.loadBookProjectModalDlgId);
         },
 
         handleSaveMenuClick(event: MouseEvent | undefined, saveReason?: SaveRequestReason): void {
@@ -830,7 +812,13 @@ export default defineComponent({
         openLoadProjectDlgAfterSaved(): void {
             // Reset the flag to request opening the project later (see flag definition)
             this.requestOpenProjectLater = false;
-            eventBus.emit(CustomEventTypes.showStrypeModal, (this.showDialogAfterSave.length > 0) ? this.showDialogAfterSave : this.loadProjectModalDlgId);            
+            if (this.afterSaveDialog && "spy" in this.afterSaveDialog) {
+                vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(this.afterSaveDialog.spy, this.afterSaveDialog.name, 0, false, "import")
+                    .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
+            }
+            else {
+                eventBus.emit(CustomEventTypes.showStrypeModal, (this.afterSaveDialog && "dialog" in this.afterSaveDialog) ? this.afterSaveDialog.dialog : this.loadProjectModalDlgId);
+            }
         },
 
         changeTargetFocusOnMouseOver(event: MouseEvent) {
@@ -1137,7 +1125,13 @@ export default defineComponent({
                 if(dlgId == this.saveOnLoadModalDlgId){
                     // Case of request to save/discard the file currently opened, before loading a new file:
                     // user chose to discard the file saving: we can trigger the file opening.
-                    eventBus.emit(CustomEventTypes.showStrypeModal, this.showDialogAfterSave);
+                    if (this.afterSaveDialog && "spy" in this.afterSaveDialog) {
+                        vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(this.afterSaveDialog.spy, this.afterSaveDialog.name, 0, false, "import")
+                            .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
+                    }
+                    else if (this.afterSaveDialog && "dialog" in this.afterSaveDialog) {
+                        eventBus.emit(CustomEventTypes.showStrypeModal, this.afterSaveDialog.dialog);
+                    }
                     return;
                 }
 
@@ -1238,8 +1232,13 @@ export default defineComponent({
                         selectedDemo.demoFile.then((content) => {
                             if (content) {
                                 this.appStore.trackUsedDemo(selectedDemo.name ?? "Demo", selectedDemo.source);
-                                vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(content, selectedDemo.name ?? "Demo", 0, false, "import")
-                                    .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
+                                this.afterSaveDialog = {spy: content, name: selectedDemo.name ?? "Demo"};
+                                if (this.appStore.isEditorContentModified) {
+                                    eventBus.emit(CustomEventTypes.showStrypeModal, this.saveOnLoadModalDlgId);
+                                }
+                                else {
+                                    this.openLoadProjectDlgAfterSaved();
+                                }
                             }
                         });
                     }
@@ -1250,8 +1249,13 @@ export default defineComponent({
                         selectedProject.projectFile.then((content) => {
                             if (content) {
                                 trackUsedBookProject(selectedProject.name ?? "Book", selectedProject.chapter);
-                                vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(content, selectedProject.name ?? "Book", 0, false, "import")
-                                    .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
+                                this.afterSaveDialog = {spy: content, name: selectedProject.name ?? "Book"};
+                                if (this.appStore.isEditorContentModified) {
+                                    eventBus.emit(CustomEventTypes.showStrypeModal, this.saveOnLoadModalDlgId);
+                                }
+                                else {
+                                    this.openLoadProjectDlgAfterSaved();
+                                }
                             }
                         });
                     }
