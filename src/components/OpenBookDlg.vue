@@ -39,12 +39,25 @@
                         @keydown.space.self="selectedChapterProjectIndex = i"
                     >
                         <!-- 1x1 transparent image if image is missing: -->
-                        <img :src="item.imgURL || 'data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='" alt="Preview" class="open-book-dlg-preview flex-shrink-0"/>
+                        <img :src="item.imgURL || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='" alt="Preview" class="open-book-dlg-preview flex-shrink-0"/>
                         <div class="d-flex flex-column flex-fill">
                             <span class="open-book-dlg-name">{{item.name}}</span>
                             <span class="open-book-dlg-description" v-html="item.description" />
                         </div>
                     </button>
+                </div>
+                <div class="d-flex flex-column" v-if="assetsInCurrentChapter.length > 0">
+                    <div
+                        v-for="(item, i) in assetsInCurrentChapter"
+                        :key="i"
+                        :class="{'d-flex': true, 'open-book-dlg-book-item': true}"
+                        @dblclick="item.assetFileBase64 ? copyItem(item.mimeType, item.assetFileBase64) : null"
+                    >
+                        <!-- 1x1 transparent image if image is missing: -->
+                        <img :src="item.imgURL || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='" alt="Preview" class="open-book-dlg-asset-preview flex-shrink-0"/>
+                        <span class="open-book-dlg-name">{{item.name}}</span>
+                        <span v-if="item.assetFileBase64" class="ms-auto" style="cursor: pointer" @click="copyItem(item.mimeType, item.assetFileBase64)"><i class="far fa-copy"></i></span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -57,16 +70,18 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import { BListGroup, BListGroupItem } from "bootstrap-vue-next";
 import { eventBus } from "@/helpers/appContext";
 import { CustomEventTypes } from "@/helpers/editor";
-import {Demo, getBuiltinDemos} from "@/helpers/demos";
+import {Demo, DemoAsset, getBuiltinDemos} from "@/helpers/demos";
+import {drawSoundOnCanvas} from "@/helpers/media";
 
 interface Chapter {
     name: string;
-    projects: Promise<Demo[]>;
+    content: Promise<{demos: Demo[], assets: DemoAsset[]}>;
 }
 
 const chapters: Chapter[] = [
-    {name: "Chapter 1", projects: getBuiltinDemos("book_projects/chapter01")},
-    {name: "Chapter 2", projects: getBuiltinDemos("book_projects/chapter02")},
+    {name: "Chapter 1", content: getBuiltinDemos("book_projects/chapter01")},
+    {name: "Chapter 2", content: getBuiltinDemos("book_projects/chapter02")},
+    {name: "Chapter 3", content: getBuiltinDemos("book_projects/chapter03")},
 ];
 
 const props = defineProps<{
@@ -76,6 +91,7 @@ const props = defineProps<{
 const selectedChapterIndex = ref(0);
 const selectedChapterProjectIndex = ref(0);
 const projectsInCurrentChapter = ref<{ name: string, description: string | undefined, imgURL: string | undefined, projectFile: () => Promise<string | undefined> }[]>([]);
+const assetsInCurrentChapter = ref<{ name: string, imgURL: string | undefined, mimeType: string, assetFileBase64: string | undefined }[]>([]);
 
 onMounted(() => {
     // It seems that Vue Bootstrap Next do not exposes @click on BListGroupItem therefore we cannot register anything on our items' click event, it will be ignored.
@@ -85,13 +101,43 @@ onMounted(() => {
     }));
 });
 
+function copyItem(mimeType: string, assetFileBase64: string) {
+    if (mimeType.startsWith("audio")) {
+        // Most browsers don't allow copying audio types, so in that case we fallback
+        // to the corresponding Strype code:
+        navigator.clipboard.writeText(`load_sound("data:${mimeType};base64,${assetFileBase64}")`)
+            .catch((err) => {
+                console.error("Clipboard write failed:", err);
+            });
+        return;
+    }
+    // Convert base64 to binary data:
+    const binary = atob(assetFileBase64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: mimeType });
+    const mediaAndTextItem = new ClipboardItem({ [mimeType]: blob });
+    navigator.clipboard.write([mediaAndTextItem])
+        .catch((err) => {
+            console.error("Clipboard write failed:", err);
+        });
+
+    // Cancel the dialog (stops confusing the user about what to do next and also
+    // acts as a kind of confirmation that something has happened)
+    eventBus.emit(CustomEventTypes.hideStrypeModal, { trigger: "cancel", componentId: props.dlgId });
+}
+
 async function changeBookDialogCategory(index: number) {
     selectedChapterIndex.value = index;
     projectsInCurrentChapter.value = [];
-    const r = [];
+    assetsInCurrentChapter.value = [];
+    const foundProjects = [];
+    const foundAssets = [];
     // Note async: will run each in background
-    const projects = await chapters[index].projects;
-    for (const proj of projects) {
+    const content = await chapters[index].content;
+    for (const proj of content.demos) {
         let img: Promise<string | undefined>;
         if ("dataURL" in proj.image) {
             img = proj.image.dataURL;
@@ -108,12 +154,39 @@ async function changeBookDialogCategory(index: number) {
             imgURL: undefined as (string | undefined),
             projectFile: proj.demoFile,
         };
-        r.push(details);
+        foundProjects.push(details);
+        // The image is set later once it's streamed:
         img.then((url) => {
             details.imgURL = url;
         });
     }
-    projectsInCurrentChapter.value = r;
+    for (const [index, asset] of content.assets.entries()) {
+        const details = {
+            name: asset.name,
+            mimeType: asset.mimeType,
+            imgURL: undefined as (string | undefined),
+            assetFileBase64: undefined as (string | undefined),
+        };
+        foundAssets.push(details);
+
+        asset.base64().then(async (base64) => {
+            // Must replace the object via the array to trigger reactivity:
+            const item = assetsInCurrentChapter.value[index];
+            if (!item || item.name != details.name) {
+                return;
+            }
+            if (asset.mimeType.startsWith("image/")) {
+                item.imgURL = "data:" + asset.mimeType + ";base64," + base64;
+            }
+            else if (asset.mimeType.startsWith("audio/")) {
+                let audioBuffer = await new OfflineAudioContext(1, 1, 48000).decodeAudioData(Uint8Array.from(atob(base64), (char) => char.charCodeAt(0)).buffer);
+                item.imgURL = drawSoundOnCanvas(audioBuffer, 200, 50, 1.0, 0.75);
+            }
+            item.assetFileBase64 = base64;
+        });
+    }
+    projectsInCurrentChapter.value = foundProjects;
+    assetsInCurrentChapter.value = foundAssets;
 }
 
 function shown() {
@@ -161,6 +234,14 @@ defineExpose({getSelectedProject, shown});
 img.open-book-dlg-preview {
     width: 120px;
     height: 100px;
+    object-fit: contain;
+    display: block;
+    margin-right: 30px;
+}
+
+img.open-book-dlg-asset-preview {
+    width: 30px;
+    height: 30px;
     object-fit: contain;
     display: block;
     margin-right: 30px;

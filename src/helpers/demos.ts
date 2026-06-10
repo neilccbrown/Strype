@@ -22,6 +22,10 @@ const DemoSchema = z.object({
     file: z.string().min(1),
 });
 
+const AssetSchema = z.object({
+    asset: z.string().min(1),
+});
+
 const DemosSchema = z.array(DemoSchema);
 
 export interface DemoGroup {
@@ -68,21 +72,43 @@ export function getThirdPartyLibraryDemos(library: string) : DemoGroup {
     };
 }
 
+export interface DemoAsset {
+    name: string;
+    mimeType: string;
+    base64: () => Promise<string>;
+}
+
 // Gets built-in demos from a given subdirectory
-export async function getBuiltinDemos(pathInPublic: string): Promise<Demo[]> {
+export async function getBuiltinDemos(pathInPublic: string): Promise<{demos: Demo[], assets: DemoAsset[]}> {
     const dirSlash = "./" + pathInPublic + (pathInPublic.endsWith("/") ? "" : "/");
     const text = await (await fetch(`${dirSlash}index.yaml`)).text();
     const rawData = yaml.load(text);
-    const demosYAML = DemosSchema.parse(rawData);
-    const demos = [] as Demo[];
+    const demosYAML = z.array(z.union([DemoSchema, AssetSchema])).parse(rawData);
+    const demos : Demo[] = [];
+    const assets : DemoAsset[] = [];
     for (const y of demosYAML) {
-        demos.push({
-            name: y.name ?? y.file.replace(/\.[^/.]+$/, ""),
-            description: y.description,
-            image: {imgURL: y.image ? dirSlash + y.image : undefined},
-            demoFile: () => fetch(dirSlash + y.file).then((res) => res.text()),
-        });   
+        if ("asset" in y) {
+            const [stem, extension] = y.asset.split(".");
+            switch (extension) {
+            case "png":
+            case "jpeg":
+                assets.push({mimeType: "image/" + extension, name: stem, base64: () => fetch(dirSlash + y.asset).then((r) => r.arrayBuffer()).then((b) => bufferToBase64(b))});
+                break;
+            case "wav":
+            case "mp3":
+                assets.push({mimeType: "audio/" + (extension == "mp3" ? "mpeg" : extension), name: stem, base64: () => fetch(dirSlash + y.asset).then((r) => r.arrayBuffer()).then((b) => bufferToBase64(b))});
+                break;
+            }
+        }
+        else {
+            demos.push({
+                name: y.name ?? y.file.replace(/\.[^/.]+$/, ""),
+                description: y.description,
+                image: {imgURL: y.image ? dirSlash + y.image : undefined},
+                demoFile: () => fetch(dirSlash + y.file).then((res) => res.text()),
+            });
+        }
     }
-    return demos;
+    return {demos, assets};
 }
 
