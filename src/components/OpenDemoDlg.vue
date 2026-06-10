@@ -96,13 +96,13 @@ export default defineComponent({
             // Our built-in demos are always available:
             this.availableDemos = [
                 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
-                {name: this.$t("demos.builtinGraphics"), demos: getBuiltinDemos("graphics")},
-                {name: this.$t("demos.builtinTurtle"), demos: getBuiltinDemos("turtle")},
-                {name: this.$t("demos.builtinConsole"), demos: getBuiltinDemos("console")},
+                {name: this.$t("demos.builtinGraphics"), demos: getBuiltinDemos("demos/graphics/").then((d) => d.demos)},
+                {name: this.$t("demos.builtinTurtle"), demos: getBuiltinDemos("demos/turtle/").then((d) => d.demos)},
+                {name: this.$t("demos.builtinConsole"), demos: getBuiltinDemos("demos/console/").then((d) => d.demos)},
                 // #v-else
                 // A bit pointless to show "micro:bit" for micro:bit version since there is no other choice,
                 // but let's keep the same presentation across the different versions.
-                {name: this.$t("demos.builtinMicrobit"), demos: getBuiltinDemos("microbit")},
+                {name: this.$t("demos.builtinMicrobit"), demos: getBuiltinDemos("demos/microbit/").then((d) => d.demos)},
                 // #v-endif
 
             ];

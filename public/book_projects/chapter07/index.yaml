@@ -1,0 +1,16 @@
+- file: space-rescue.spy
+  image: spaceship.png
+  description: The starting version of the space rescue project
+
+- file: space-rescue-v2.spy
+  description: The second version of the space rescue project
+
+- file: sounds.spy
+  image: soundwave.png
+  description: The first version of the sound manipulation project
+  
+- file: sounds-v2.spy
+  description: The second version of the sound manipulation project
+
+- file: sounds-v3.spy
+  description: The second version of the sound manipulation project
