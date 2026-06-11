@@ -3,7 +3,7 @@ import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 
 import "../support/paste-test-support"; // Adds the paste command we use
-import { focusEditorAndClear } from "../support/paste-test-support";
+import { focusEditorAndClear } from "../support/test-support";
 
 describe("Check empty slots after paste", () => {
     it("Should not set non-required empty slots to white after paste", () => {
