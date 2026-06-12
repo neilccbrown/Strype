@@ -163,98 +163,98 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
 test.describe("Basic interaction", () => {
     test("KB shortcut, change", async ({page}) => {
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.type("_new_");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Rename
         await page.keyboard.press(renameKBShortcut);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Check results
         expect(readFileSync(await save(page), "utf-8")).toEqual(initialProjectCodeLiteral.replaceAll("myString", "_new_myString").trimStart());
     });
 
     test("KB shortcut, cancel", async ({page}) => {
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.type("_new_");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Escape rename
         await page.keyboard.press("Escape");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Check no popup is still displayed
         await expect(renameButton).toBeHidden();
     });
 
     test("Click, change", async ({page}) => {
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.type("_new_");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Rename
         await renameButton.click();
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Check results
         expect(readFileSync(await save(page), "utf-8")).toEqual(initialProjectCodeLiteral.replaceAll("myString", "_new_myString").trimStart());
     });
 
     test("Disappear when frame added by keyboard", async ({page}) => {
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.type("_new_");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Add a frame
         await page.keyboard.press("i");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Check no popup is still displayed
         await expect(renameButton).toBeHidden();
     });
 
     test("Disappear when frame added by click", async ({page}) => {
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.type("_new_");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Add a frame (which ever one)
         await page.locator(".frame-cmd-btn").first().click();
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Check no popup is still displayed
         await expect(renameButton).toBeHidden();
     });
 
     test("Disappear when clicking away", async ({page}) => {
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.type("_new_");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Click the Strype menu
         await page.locator("#showHideMenu").click();
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Check no popup is still displayed
         await expect(renameButton).toBeHidden();
     });
 
     test("Staying when clicking on popup", async ({page}) => {
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.type("_new_");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Click the popup
         await page.locator(`.${scssVars.renameIdentifierPopoverClassName}:visible`).click();
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Check popup is still displayed
         await expect(renameButton).toBeVisible();
     });
@@ -263,66 +263,66 @@ test.describe("Basic interaction", () => {
 test.describe("Variable changes in main section", () => {
     test("Single variable", async ({page}) => {
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.type("_new_");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Rename uses
         await page.keyboard.press(renameKBShortcut);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Check results
         expect(readFileSync(await save(page), "utf-8")).toEqual(initialProjectCodeLiteral.replaceAll("myString", "_new_myString").trimStart());
     });
 
     test("Multi variables", async ({page}) => {
         await pressN("Delete", 2, true)(page);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Paste intial code
         await doPagePaste(page, mainCodeMultiVarsCodeLiteral);
         // Rename both variables
         await page.keyboard.press("Home");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await pressN("ArrowRight", 2, true)(page);
         await page.keyboard.type("_new_");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press(wordWiseNavigationRight);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.type("_new_");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // And rename all uses
         await page.keyboard.press(renameKBShortcut);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Check results
         expect(readFileSync(await save(page), "utf-8")).toEqual(mainCodeMultiVarsCodeLiteral.replaceAll("myString", "_new_myString").replaceAll("anotherString","_new_anotherString").trimStart());
     });
 
     test("Multi variables and one global one local in function", async ({page}) => {
         await pressN("Delete", 2, true)(page);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Paste intial code
         await doPagePaste(page, mainCodeMultiVarsOneFGlolabOneGLocalCodeLiteral);
         // Rename both variables
         await page.keyboard.press("Home");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await pressN("ArrowRight", 2, true)(page);
         await page.keyboard.type("_new_");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press(wordWiseNavigationRight);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.type("_new_");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // And rename all uses
         await page.keyboard.press(renameKBShortcut);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Check results after preparing the expected code (not all variables will be updated)
         let modifiedCode = mainCodeMultiVarsOneFGlolabOneGLocalCodeLiteral;
         modifiedCode = modifiedCode.replaceAll("myString", "_new_myString");
@@ -337,37 +337,37 @@ test.describe("Variable changes in main section", () => {
 
     test("For frame and one global one local in function", async ({page}) => {
         await pressN("Delete", 2, true)(page);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Paste intial code
         await doPagePaste(page, withFunction1CodeLiteral);
         // Rename variables in for header
         await page.keyboard.press("Home");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.type("_new_");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press(wordWiseNavigationRight);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.type("_new_");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // And rename all uses
         await page.keyboard.press(renameKBShortcut);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(500);
         // Rename variables in for body and rename all uses
         for(let _ = 0; _ < 2; _++){
             await page.keyboard.press("ArrowRight");
-            await page.waitForTimeout(200);
+            await page.waitForTimeout(400);
             await page.keyboard.type("_new_");
-            await page.waitForTimeout(200);
+            await page.waitForTimeout(400);
             await page.keyboard.press("ArrowDown");
-            await page.waitForTimeout(200);        
+            await page.waitForTimeout(400);        
             await page.keyboard.press(renameKBShortcut);
-            await page.waitForTimeout(200);
+            await page.waitForTimeout(500);
         }
         // Check results after preparing the expected code (not all variables will be updated)
         let modifiedCode = withFunction1CodeLiteral;
@@ -392,29 +392,29 @@ test.describe("Variable changes in main section", () => {
 test.describe("Variable changes in functions", () => {
     test("Single local", async ({page}) => {
         await pressN("Delete", 2, true)(page);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Paste intial code
         await doPagePaste(page, singleLocaleInFunctionCodeLiteral);
         // Rename local variable
         await page.keyboard.press("Home");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowUp");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("Home");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press(wordWiseNavigationRight);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.type("_new_");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // And rename all uses
         await page.keyboard.press(renameKBShortcut);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Check results after preparing the expected code (not all variables will be updated)
         let modifiedCode = singleLocaleInFunctionCodeLiteral;
         let matchCounter = -1;
@@ -428,55 +428,55 @@ test.describe("Variable changes in functions", () => {
 
     test("Global", async ({page}) => {
         await pressN("Delete", 2, true)(page);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Paste intial code
         await doPagePaste(page, withFunction1CodeLiteral);
         // Rename variable
         await page.keyboard.press("Home");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowUp");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("Home");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.type("_new_");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // And rename all uses
         await page.keyboard.press(renameKBShortcut);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Check results  
         expect(readFileSync(await save(page), "utf-8")).toEqual(withFunction1CodeLiteral.replaceAll("iter2", "_new_iter2").trimStart());
     });
 
     test("For frame (local)", async({page}) => {
         await pressN("Delete", 2, true)(page);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Paste intial code
         const withFunction2CodeLiteral = getWithFunction2CodeLiteral("");
         await doPagePaste(page, withFunction2CodeLiteral);
         // Rename local variable
         await page.keyboard.press("Home");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowUp");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("Home");
-        await page.waitForTimeout(200);        
+        await page.waitForTimeout(400);        
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.type("_new_");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // And rename all uses
         await page.keyboard.press(renameKBShortcut);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Check results after preparing the expected code (not all variables will be updated)
         let modifiedCode = withFunction2CodeLiteral;
         let matchCounter = -1;
@@ -490,28 +490,28 @@ test.describe("Variable changes in functions", () => {
 
     test("For frame (global)", async({page}) => {
         await pressN("Delete", 2, true)(page);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Paste intial code
         const withFunction2CodeLiteral = getWithFunction2CodeLiteral("\n    global iter ");
         await doPagePaste(page, withFunction2CodeLiteral);
         // Rename global variable 
         await page.keyboard.press("Home");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowUp");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("Home");
-        await page.waitForTimeout(200);        
+        await page.waitForTimeout(400);        
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);        
+        await page.waitForTimeout(400);        
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.type("_new_");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // And rename all uses
         await page.keyboard.press(renameKBShortcut);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Check results
         expect(readFileSync(await save(page), "utf-8")).toEqual(withFunction2CodeLiteral.replaceAll("iter", "_new_iter").trimStart());
     });
@@ -519,23 +519,23 @@ test.describe("Variable changes in functions", () => {
 
 test("Variable change in class", async({page}) => {
     await pressN("Delete", 2, true)(page);
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(400);
     // Paste intial code
     await doPagePaste(page, classCodeLiteral);
     // Rename import name binding
     await page.keyboard.press("PageUp");
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(400);
     await pressN("ArrowDown", 2, true)(page);    
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(400);
     await page.keyboard.press("ArrowRight");
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(400);
     await page.keyboard.type("_new_");
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(400);
     await page.keyboard.press("ArrowDown");
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(400);
     // And rename all uses
     await page.keyboard.press(renameKBShortcut);
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(400);
     // Check results after preparing the expected code (not all variables will be updated)
     let modifiedCode = classCodeLiteral;
     let matchCounter = -1;
@@ -550,43 +550,43 @@ test("Variable change in class", async({page}) => {
 test.describe("Changes in import", () => {
     test("Name binding (after as)", async({page}) => {
         await pressN("Delete", 2, true)(page);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Paste intial code
         await doPagePaste(page, importCodeLiteral);
         // Rename import name binding
         await page.keyboard.press("Control+Home");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowDown");    
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowLeft");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press(wordWiseNavigationLeft);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.type("_new_");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // And rename all uses
         await page.keyboard.press(renameKBShortcut);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Check results
         expect(readFileSync(await save(page), "utf-8")).toEqual(importCodeLiteral.replaceAll("dt", "_new_dt").trimStart());
     });
 
     test("Module name (before as : should NOT change", async({page}) => {
         await pressN("Delete", 2, true)(page);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Paste intial code
         await doPagePaste(page, importCodeLiteral);
         // Rename import name binding
         await page.keyboard.press("Control+Home");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowRight");       
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.type("_new_");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Check that no popup shows
         await expect(renameButton).toBeHidden();     
     });
@@ -597,46 +597,46 @@ test.describe("Changes in import", () => {
 test.describe("Function change", () => {
     test("User defined function", async({page}) => {
         await pressN("Delete", 2, true)(page);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Paste intial code
         await doPagePaste(page, singleLocaleInFunctionCodeLiteral);
         // Rename function
         await page.keyboard.press("PageUp");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.type("_new_");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // And rename all uses
         await page.keyboard.press(renameKBShortcut);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Check results
         expect(readFileSync(await save(page), "utf-8")).toEqual(singleLocaleInFunctionCodeLiteral.replaceAll("testF", "_new_testF").trimStart());
     });
 
     test("Class function", async({page}) => {
         await pressN("Delete", 2, true)(page);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Paste intial code
         await doPagePaste(page, classCodeLiteral);
         // Rename import name binding
         await page.keyboard.press("Home");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await pressN("ArrowUp", 5, true)(page);
-        await page.waitForTimeout(200);        
+        await page.waitForTimeout(400);        
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.type("_new_");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // And rename all uses
         await page.keyboard.press(renameKBShortcut);
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(400);
         // Check results after preparing the expected code (not all variables will be updated)
         let modifiedCode = classCodeLiteral;
         let matchCounter = -1;
@@ -652,23 +652,23 @@ test.describe("Function change", () => {
 
 test("Class change", async({page}) => {
     await pressN("Delete", 2, true)(page);
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(400);
     // Paste intial code
     await doPagePaste(page, classCodeLiteral);
     // Rename local variable
     await page.keyboard.press("PageUp");
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(400);
     await page.keyboard.press("ArrowDown");
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(400);
     await page.keyboard.press("ArrowRight");
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(400);
     await page.keyboard.type("_new_");
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(400);
     await page.keyboard.press("ArrowDown");
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(400);
     // And rename all uses
     await page.keyboard.press(renameKBShortcut);
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(400);
     // Check results
     expect(readFileSync(await save(page), "utf-8")).toEqual(classCodeLiteral.replaceAll("MyClass", "_new_MyClass").trimStart());
 });
