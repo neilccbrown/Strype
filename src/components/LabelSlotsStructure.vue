@@ -184,6 +184,7 @@ export default defineComponent({
         // Just to be safe with events, we clear off any registrations
         eventBus.off(CustomEventTypes.updateParamPrompts, this.updateParamPromptsIfInList);
         eventBus.off(CustomEventTypes.renameIdentifier, this.renameIdentifiers);
+        eventBus.off(CustomEventTypes.closeOtherRenameIdentifierPopup, this.closeRenameIdentifierPopupIfNotActive);
     },
 
     computed:{
