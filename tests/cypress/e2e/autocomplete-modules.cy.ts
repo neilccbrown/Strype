@@ -385,8 +385,9 @@ describe("Nested modules", () => {
                 checkExactlyOneItem(acIDSel, "microbit", "compass");
                 checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
             }, true);
-            // Now let's delete the import and check they both vanish:
-            cy.get("body").type("{leftarrow}{uparrow}{uparrow}{backspace}{downarrow}{downarrow}");
+            // Now let's delete the import and check they both vanish: (we do it in 2 steps as the latest key hits are not always working)
+            cy.get("body").type("{leftarrow}{uparrow}{uparrow}{backspace}");
+            cy.get("body").type("{downarrow}{downarrow}");
             // Enter frame again:
             cy.get("body").type(" ");
             cy.wait(500);
