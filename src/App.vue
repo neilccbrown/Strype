@@ -569,12 +569,12 @@ export default defineComponent({
                 return;
             }
 
-            // The rename identifier action cannot be executed when Python is executed or code is edited.
-            // (These actions should already discard the popup, but just to make sure...)
+            // The rename identifier action cannot be executed when Python is executed.
+            // (This action should already discard the popup, but just to make sure...)
             // We only want to capture the rename identifier action keyboard shortcut if one popup is visible,
             // otherwise we leave the shortcut for the browser.
             const openedPopup = document.querySelector(".popover.show:has(." + scssVars.renameIdentifierPopoverClassName + "");
-            if (openedPopup && !this.isPythonExecuting && !this.appStore.isEditing && (event.ctrlKey || event.metaKey) && event.key ==  "r"){
+            if (openedPopup && !this.isPythonExecuting && (event.ctrlKey || event.metaKey) && event.key ==  "r"){
                 eventBus.emit(CustomEventTypes.renameIdentifier);
                 event.preventDefault();
                 event.stopPropagation();
