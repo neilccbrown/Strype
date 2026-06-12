@@ -98,14 +98,14 @@ function testEntryDisableAndSave(commands: string|string[], disableFrames: strin
     });
 } 
 
-describe.only("Loads and re-saves fixture files", () => {
+describe("Loads and re-saves fixture files", () => {
     it("Loads a basic project", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic.spy");
     });
     it("Loads a basic trisection project", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic-trisection.spy");
     });
-    it.only("Outputs a dummy for solo try", () => {
+    it("Outputs a dummy for solo try", () => {
         // Make an empty try, which should save with a placeholder:
         // (try is followed by a pause, because it can take a bit longer to add its body/join sections)
         testEntryDisableAndSave(["t","pmsg{enter}{downarrow}{backspace}"], [], "tests/cypress/fixtures/project-try-solo.spy");
