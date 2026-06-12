@@ -1194,9 +1194,10 @@ export default defineComponent({
             // 1) we are on a label slots struct that reflects the corresponding frame's label type (FrameLabel) "isIdentifierDefsContainer" property is set to true,
             // 2) we have the same number of elements in both old and new identifiers list
             // 3) we detect that some of the variables' (old) name is used in the code
+            // (The conditional test below fo labelIndex to exist should not happen, but tests suggested we may have a situation when the frame isn't "completed")
             const thisFrame = this.appStore.frameObjects[this.frameId];
             const frameType = thisFrame?.frameType;
-            if(thisFrame && frameType && frameType.labels[this.labelIndex].isIdentifierDefsContainer){
+            if(thisFrame && frameType && this.labelIndex < frameType.labels.length && frameType.labels[this.labelIndex].isIdentifierDefsContainer){
                 // The first condition is met, but for import frames, we need to make a special check: we can only change the part after "as", which is an operator.
                 const newIdentifierNamesFlatArray = (thisFrame.frameType.type == AllFrameTypesIdentifier.import)
                     ? getImportFrameNameBindings(thisFrame.id)
