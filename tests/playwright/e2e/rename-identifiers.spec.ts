@@ -133,7 +133,9 @@ testF()
 `;
 
 let renameButton: Locator;
-let renameKBShortcut = process.platform == "darwin" ? "Meta+r" : "Control+r";
+const renameKBShortcut = process.platform == "darwin" ? "Meta+r" : "Control+r";
+const wordWiseNavigationLeft = process.platform == "darwin" ? "Alt+ArrowLeft" : "Control+ArrowLeft";
+const wordWiseNavigationRight = process.platform == "darwin" ? "Alt+ArrowRight" : "Control+ArrowRight";
 let scssVars: {[varName: string]: string};
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && process.platform === "win32") {
@@ -284,7 +286,7 @@ test.describe("Variable changes in main section", () => {
         await pressN("ArrowRight", 2, true)(page);
         await page.keyboard.type("_new_");
         await page.waitForTimeout(200);
-        await page.keyboard.press("Control+ArrowRight");
+        await page.keyboard.press(wordWiseNavigationRight);
         await page.waitForTimeout(200);
         await page.keyboard.press("ArrowRight");
         await page.waitForTimeout(200);
@@ -310,7 +312,7 @@ test.describe("Variable changes in main section", () => {
         await pressN("ArrowRight", 2, true)(page);
         await page.keyboard.type("_new_");
         await page.waitForTimeout(200);
-        await page.keyboard.press("Control+ArrowRight");
+        await page.keyboard.press(wordWiseNavigationRight);
         await page.waitForTimeout(200);
         await page.keyboard.press("ArrowRight");
         await page.waitForTimeout(200);
@@ -345,7 +347,7 @@ test.describe("Variable changes in main section", () => {
         await page.waitForTimeout(200);
         await page.keyboard.type("_new_");
         await page.waitForTimeout(200);
-        await page.keyboard.press("Control+ArrowRight");
+        await page.keyboard.press(wordWiseNavigationRight);
         await page.waitForTimeout(200);
         await page.keyboard.press("ArrowRight");
         await page.waitForTimeout(200);
@@ -402,7 +404,7 @@ test.describe("Variable changes in functions", () => {
         await page.waitForTimeout(200);
         await page.keyboard.press("ArrowRight");
         await page.waitForTimeout(200);
-        await page.keyboard.press("Control+ArrowRight");
+        await page.keyboard.press(wordWiseNavigationRight);
         await page.waitForTimeout(200);
         await page.keyboard.press("ArrowRight");
         await page.waitForTimeout(200);
@@ -558,7 +560,7 @@ test.describe("Changes in import", () => {
         await page.waitForTimeout(200);
         await page.keyboard.press("ArrowLeft");
         await page.waitForTimeout(200);
-        await page.keyboard.press("Control+ArrowLeft");
+        await page.keyboard.press(wordWiseNavigationLeft);
         await page.waitForTimeout(200);
         await page.keyboard.type("_new_");
         await page.waitForTimeout(200);
