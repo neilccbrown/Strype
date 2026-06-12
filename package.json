@@ -134,6 +134,7 @@
         "cypress-split": "^1.24.18",
         "cypress-terminal-report": "^5.3.9",
         "eslint": "^9.39.2",
+        "eslint-plugin-no-only-tests": "^3.4.0",
         "eslint-plugin-vue": "^10.7.0",
         "husky": "^7.0.4",
         "lint-staged": "^11.2.6",
