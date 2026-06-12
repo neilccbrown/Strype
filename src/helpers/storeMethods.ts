@@ -188,9 +188,9 @@ export const findSlotsWithIndentifierName = async (lookAndRenameInFrameId: numbe
         // Look in the frame, its child and joint frames
         const allFramesToLookIn = [lookAndRenameInFrameId, ...getAllChildrenAndJointFramesIds(lookAndRenameInFrameId)];
         allFramesToLookIn.forEach((frameId) => {
-            // If a frame is disabled or is frozen (or part of a frozen ancestor), we ignore the change.
+            // If a frame is disabled we ignore the change.
             const thisFrame = useStore().frameObjects[frameId];
-            if(thisFrame.isDisabled || useStore().isEffectivelyFrozen(frameId)){
+            if(thisFrame.isDisabled){
                 return;
             }
 
