@@ -2323,3 +2323,14 @@ export const getImportFrameNameBindings = (frameId: number): string[] => {
         .matchAll(/ as ([^,]*)/g)]
         .map((match)=> match[1]); 
 };
+
+export function isFullyInViewport(el: Element, margin = 0) {
+    const rect = el.getBoundingClientRect();
+
+    return (
+        rect.top >= margin &&
+        rect.left >= margin &&
+        rect.bottom <= window.innerHeight - margin &&
+        rect.right <= window.innerWidth - margin
+    );
+}
