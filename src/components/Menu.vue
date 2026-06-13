@@ -37,7 +37,7 @@
                             <span>{{ $t("appMessage.targetFS") }}</span>
                         </div>
                     </div>
-                    <div class="recent-states-pane" v-if="recentLoadableStates">
+                    <div class="recent-states-pane" v-if="recentLoadableStates && recentLoadableStates.length > 0">
                         <div class="d-flex justify-content-between align-items-baseline">
                             <span class="load-save-label">{{ $t("appMessage.loadRecentState") }}</span>
                             <span class="clear-all-label" @click="clearAllRecent">{{ $t("appMessage.clearAllRecent") }}</span>
