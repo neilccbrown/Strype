@@ -808,7 +808,7 @@ export default defineComponent({
         onPEAMounted(){
             // Once the PEA is ready, we need to fix the splitter's position between the frame commands area and the PEA,
             // so that the PEA stays at the bottom of the viewport as intially intented (in its initial 4:3 ratio).
-            const peaElement = (this.$refs[this.peaComponentRefId] as Vue).$el;
+            const peaElement = (this.$refs[this.peaComponentRefId] as { $el: Element }).$el;
             const peaHeight = peaElement.getBoundingClientRect().height;
             const peaMargin = parseInt(scssVars.pythonExecutionAreaMargin.replace("px",""));
             // (The divider isn't exactly the size we give in CSS (I don't know why so we check it like that))
