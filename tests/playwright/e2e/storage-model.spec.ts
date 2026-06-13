@@ -93,6 +93,19 @@ test.describe("Test basic operation", () => {
         await page.waitForSelector(".frame-container");
         await assertStartingPlus(page, str);
     });
+
+    test("Test multiple reload preserves content", async ({page}) => {
+        await loadAndWaitForEditor(page);
+        await assertStartingProject(page);
+        const str = "Going to do a reload #1";
+        await appendContent(page, str);
+        await assertStartingPlus(page, str);
+        for (let i = 0; i < 3; i++) {
+            await page.reload();
+            await page.waitForSelector(".frame-container");
+            await assertStartingPlus(page, str);
+        }
+    });
 });
 
 // Note: it's important in all these tests to use a shared context.  If you call
