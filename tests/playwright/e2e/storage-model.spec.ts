@@ -229,12 +229,15 @@ function closePage(page: Page, browserName: string) : Promise<any> {
     }
 }
 
+async function assertRecentStatesShowing(page: Page, expectedProjectNames: RegExp[]) {
+    const scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
+    await expect(page.locator("." + scssVars.projectRecentStateLabel)).toHaveText(expectedProjectNames);
+}
+
 async function assertOpenRecentMenu(page: Page, expectedProjectNames: RegExp[]) : Promise<void> {
     await page.click("#" + await strypeElIds(page).getEditorMenuUID());
     await page.click("#" + await strypeElIds(page).getLoadProjectLinkId());
-    const scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
-    console.log("Looking for ." + scssVars.projectRecentStateLabel);
-    await expect(page.locator("." + scssVars.projectRecentStateLabel)).toHaveText(expectedProjectNames);
+    await assertRecentStatesShowing(page, expectedProjectNames);
 }
 
 // A banner should show to offer to load unsaved backups if the backups are recent and modified after external save:
@@ -373,6 +376,17 @@ test.describe("Offer to reload unsaved backups", () => {
             await expect(page5.locator("." + scssVars.messageBannerContainerClassName)).not.toBeVisible();
             // Check which projects are showing -- should not show 3 as still open, so only 1 and 2 depending on save status:
             await assertOpenRecentMenu(page5, state2Saved ? [/^Project 1 /] : [/^Project 2 /, /^Project 1 /]);
+            
+            // Clear all the states:
+            await page5.locator("span", {hasText: "Clear all"}).click();
+            await page5.waitForTimeout(1000);
+            // Check this dialog is now empty:
+            await assertRecentStatesShowing(page5, []);
+            
+            // Also check on a new page:
+            const page6 = await context.newPage();
+            await loadAndWaitForEditor(page6);
+            await assertOpenRecentMenu(page6, []);
         });
     }
 });

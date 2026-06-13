@@ -392,3 +392,36 @@ export async function tidyUpDatabaseState(ourTabId : string, db: IDBDatabase, on
     
     await cleanupOldSessions(db);
 }
+
+export async function deleteStates(tabIds: string[]) : Promise<void> {
+    const db = await openIndexedDBConnection();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, "readwrite");
+        const store = tx.objectStore(STORE);
+
+        const idsToDelete = new Set(tabIds);
+
+        const request = store.openCursor();
+
+        request.onerror = () => reject(request.error);
+
+        request.onsuccess = () => {
+            const cursor = request.result;
+
+            if (!cursor) {
+                return;
+            }
+
+            const value = cursor.value as { tabId: string };
+
+            if (idsToDelete.has(value.tabId)) {
+                cursor.delete();
+            }
+
+            cursor.continue();
+        };
+
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}
