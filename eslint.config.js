@@ -1,5 +1,6 @@
 // eslint.config.js
 import vue from "eslint-plugin-vue";
+import noOnlyTests from "eslint-plugin-no-only-tests";
 import ts from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import vueParser from "vue-eslint-parser";
@@ -42,6 +43,7 @@ export default [
         plugins: {
             vue,
             "@typescript-eslint": ts,
+            "no-only-tests": noOnlyTests,
         },
 
         rules: {
@@ -80,6 +82,9 @@ export default [
             "@typescript-eslint/no-this-alias": "error",
             "@typescript-eslint/no-unused-vars": ["error", { args: "none" }],
             "@typescript-eslint/triple-slash-reference": "error",
+
+            // No ".only" is Cypress tests (for CI)
+            "no-only-tests/no-only-tests": "error",
         },
     },
 

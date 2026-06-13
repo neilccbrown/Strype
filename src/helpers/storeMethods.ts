@@ -2,12 +2,13 @@ import { getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
-import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameLabel, FrameObject, FrozenState, getFrameDefType, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, MessageDefinitions, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
+import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameLabel, FrameObject, FrozenState, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, MessageDefinitions, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
 import { nextTick} from "vue";
-import { checkEditorCodeErrors, countEditorCodeErrors, getCaretContainerUID, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID } from "./editor";
+import { checkEditorCodeErrors, countEditorCodeErrors, getCaretContainerUID, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID, slotStructureParserToString } from "./editor";
 import { cloneDeep, isEqual } from "lodash";
 import scssVars from "@/assets/style/_export.module.scss";
 import { $enum } from "ts-enum-util";
+import { getUserDefinedSignature } from "@/autocompletion/acManager";
 
 export const retrieveSlotFromSlotInfos = (slotCoreInfos: SlotCoreInfos): FieldSlot => {
     // Retrieve the slot from its id (used for UI), check generateFlatSlotBases() for IDs explanation    
@@ -155,6 +156,80 @@ export const retrieveSlotByPredicate = (frameLabelSlotStructs: SlotsStructure[],
 
     return resSlot;
 };
+
+export const findSlotsWithIndentifierName = async (lookAndRenameInFrameId: number, variableLookup: "generic" | "class" | null, identifierName: string, functionDefsFramesLocalVarsInfos?: Record<number, {vars: string[], allSubFramesId: number[]}>): Promise<SlotCoreInfos[]> => {
+    // This method recursively looks for slots containing a given identifier (identifierName) within the frame identified by lookAndRenameInFrameId.
+    // variableLookup is used to check some rules about the context of this identifier (generic variables are not expected to follow a dot, for example).
+
+    // First we get the user-defined functions' local variables, as we'll need them to evaluate the rules below.
+    // This is done once in a first call: recursive calls use that value to avoid doing the routine more than required...
+    // Likewise, we retrieve a list of all function defs deep children at one to avoid look them up again and again.
+
+    if(functionDefsFramesLocalVarsInfos == undefined && variableLookup == "generic"){
+        functionDefsFramesLocalVarsInfos = [];
+        const functionDefsFramesLocalVars = await listFunctionDefsLocalVars();
+        for(const funcDefFrameIdStr in functionDefsFramesLocalVars){
+            const funcDefFrameId = parseInt(funcDefFrameIdStr);
+            functionDefsFramesLocalVarsInfos[funcDefFrameId] = {
+                vars: functionDefsFramesLocalVars[funcDefFrameId],
+                allSubFramesId: getAllChildrenAndJointFramesIds(funcDefFrameId),
+            };
+        }
+    }
+
+    if(lookAndRenameInFrameId == 0){
+        // If we look everywhere in the editor, we look in the definitions and main code sections
+        return [...await findSlotsWithIndentifierName(useStore().getDefsFrameContainerId, variableLookup, identifierName, functionDefsFramesLocalVarsInfos),
+            ...await findSlotsWithIndentifierName(useStore().getMainCodeFrameContainerId, variableLookup, identifierName, functionDefsFramesLocalVarsInfos)];
+    }
+    else{
+        const foundSlots: SlotCoreInfos[] = [];
+
+        // Look in the frame, its child and joint frames
+        const allFramesToLookIn = [lookAndRenameInFrameId, ...getAllChildrenAndJointFramesIds(lookAndRenameInFrameId)];
+        allFramesToLookIn.forEach((frameId) => {
+            // If a frame is disabled we ignore the change.
+            const thisFrame = useStore().frameObjects[frameId];
+            if(thisFrame.isDisabled){
+                return;
+            }
+
+            Object.entries(thisFrame.labelSlotsDict).forEach((labelSlotContentEntry, labelSlotsIndex) => {
+                generateFlatSlotBases(thisFrame.frameType.labels[labelSlotsIndex], labelSlotContentEntry[1].slotStructures, undefined, (flatSlot, _, opBefore) => {
+                    const basicEval = (isFieldBaseSlot(flatSlot) && flatSlot.code == identifierName);
+                    // When we look for variable names, we don't look at a basic name comparison,
+                    // we also check that this is the right variable by checking these rules:
+                    // - the matching slot from a generic evaluation isn't preceeded by "." 
+                    // - if the variable name (generic) to find is across the whole code, check the slot isn't part of a function definition that lists that variable as local
+                    // - if the variable name (class) to find is not preceded by ".", we ignore it
+                    if(variableLookup == "generic"){
+                        if(opBefore == "."){
+                            return;
+                        }
+
+                        if(lookAndRenameInFrameId < 0){
+                            if(thisFrame.frameType.type == AllFrameTypesIdentifier.funcdef || Object.entries(functionDefsFramesLocalVarsInfos??[]).find((entry) => entry[1].allSubFramesId.includes(frameId) && entry[1].vars.includes(identifierName))){
+                                return;
+                            }
+                        }
+                    }
+                    else if(variableLookup == "class"){
+                        if(opBefore != "."){
+                            return;
+                        }
+                    }
+                    if(basicEval){
+                        foundSlots.push({frameId:thisFrame.id, labelSlotsIndex, slotId: flatSlot.id, slotType: SlotType.code});
+                    }
+                });
+            });
+        });
+        
+        // Return the result
+        return foundSlots;
+    }
+};
+
 export const getSlotParentIdAndIndexSplit = (slotId: string): {parentId: string, slotIndex: number} => {
     const idMatchArray = slotId.match(/^((\d+,)*)(\d+)$/);
     if(idMatchArray){
@@ -777,6 +852,27 @@ export const isContainedInFrame = function (currFrameId: number, caretPosition: 
     return isAncestorTypeFound;
 };
 
+// This method looks for the ancestor of a given frame indicated by frameId, 
+// and which has a given frame type indicated by ancestorType (we exclude sections).
+// The ancestor ID is returned if found, undefined otherwise.
+export const getAncestorFrameOfTypeId = (frameId: number, ancestorType: string): number | undefined => {
+    let parentFrameId = frameId;
+    do{
+        parentFrameId = getParentOrJointParent(parentFrameId);
+        if(parentFrameId < 0){
+            return undefined;
+        }
+        else if(useStore().frameObjects[parentFrameId].frameType.type == ancestorType){
+            return parentFrameId;
+        }
+    }
+    while(parentFrameId > 0);
+
+    // Just in case...
+    return undefined;
+};
+
+
 // Instead of calculating the available caret positions through the store (where the frameObjects object is hard to use for this)
 // We get the available caret positions through the DOM, where they are all present.
 // If showIsInCollapsedFrameContainer is set to true, we check that the frame container (section) containing the cursor is not collapsed 
@@ -1156,3 +1252,72 @@ export function computeFrameSnapshot() : {
         oopHint: classdefCount > 0 && funcdefCount > 0,
     };
 }
+
+// This helper function gather all the local variables listed in the function definition frames.
+// The rule to decide is like this: 
+//  - a variable assignment or a parameter makes a variable local, unless it's already in global.
+//  - when a variable is declared global, it is removed from the local variable list (if in)
+// We are quite basic in detecting the global variables: global expects only identifiers separated by a comma so we expect this pattern.
+export const listFunctionDefsLocalVars = async (): Promise<Record<number, string[]>> => {
+    // First, we make a list of global variables: initially we include all variables assigned in the definitions and in the main sections. 
+    const allGlobalVarsNameList = new Set<string>();
+    const framesToLookIn = [...useStore().frameObjects[useStore().defsContainerId].childrenIds.map((frameId) => useStore().frameObjects[frameId])];
+    framesToLookIn.push(...getAllChildrenAndJointFramesIds(useStore().getMainCodeFrameContainerId).map((frameId) => useStore().frameObjects[frameId]));
+    framesToLookIn.forEach((frameToLookIn) => {
+        if(frameToLookIn.frameType.type == AllFrameTypesIdentifier.varassign && !frameToLookIn.isDisabled){
+            const variableNameList =  slotStructureParserToString(frameToLookIn.labelSlotsDict[0].slotStructures, {ignoreBracketTokenSlots: true, slotTypeRepacerMap: {[SlotType.string]: "<string>", [SlotType.media]: "<media>"}}).join("").split(",");
+            variableNameList.forEach((variableName) => {
+                if(variableName && variableName != "<string>" && variableName != "<media>"){
+                    allGlobalVarsNameList.add(variableName);
+                }
+            });            
+        }
+    });
+
+    // Prepare the result record and a function helper here
+    const res: Record<number, string[]> = {}; 
+    const otherLocalVarsNameFinder = (searchInFrameIds: number[], localVariableNameSet: Set<String>): void => {
+        searchInFrameIds.forEach((searchInFrameId) => {
+            const searchInFrame = useStore().frameObjects[searchInFrameId];
+            // If a frame is disabled or to be ignored, no point going further for that frame and its children/joint frames
+            if(!searchInFrame.isDisabled){                    
+                if(searchInFrame.frameType.type == AllFrameTypesIdentifier.global){
+                    const singleGlobalVariableNameList = slotStructureParserToString(searchInFrame.labelSlotsDict[0].slotStructures, {ignoreBracketTokenSlots: true, slotTypeRepacerMap: {[SlotType.string]: "<string>", [SlotType.media]: "<media>"}}).join("").split(",");
+                    singleGlobalVariableNameList.forEach((globalVarName) => {
+                        // If a variable is listed as global, then it can't be local
+                        localVariableNameSet.delete(globalVarName.trim());
+                        allGlobalVarsNameList.add(globalVarName.trim());
+                    });
+                }
+                else if(searchInFrame.frameType.type == AllFrameTypesIdentifier.varassign){
+                    // If a variable is assigned in a function, and it's not global, then we consider it's a local variable
+                    const variableNameList =  slotStructureParserToString(searchInFrame.labelSlotsDict[0].slotStructures, {ignoreBracketTokenSlots: true, slotTypeRepacerMap: {[SlotType.string]: "<string>", [SlotType.media]: "<media>"}}).join("").split(",");
+                    variableNameList.forEach((variableName) => {
+                        if(variableName && !allGlobalVarsNameList.has(variableName) && variableName !="<string>" && variableName != "<media>"){
+                            localVariableNameSet.add(variableName);
+                        }
+                    });                    
+                }
+                else{
+                    // The child frame may have child/joint frames that contains a global or varassign...
+                    otherLocalVarsNameFinder([...searchInFrame.childrenIds, ...searchInFrame.jointFrameIds], localVariableNameSet);
+                }
+            }
+        });
+    };
+
+    // Then for each function definition...
+    for (const functionDefFrame of Object.values(useStore().frameObjects).filter((frame: FrameObject) => frame.frameType.type == AllFrameTypesIdentifier.funcdef)){
+        // First check the arguments of the function
+        const functionDefSignature = await getUserDefinedSignature(functionDefFrame);
+        const allArgs = [...functionDefSignature.keywordOnlyArgs.map((kwoarg) => kwoarg.name), ...functionDefSignature.positionalOnlyArgs.map((poarg) => poarg.name),
+            ...functionDefSignature.positionalOrKeywordArgs.map((pkwoarg) => pkwoarg.name), ...functionDefSignature.varArgs?.name??[], ...functionDefSignature.varKwargs?.name??[]];
+        const localVariableNameSet = new Set<string>(allArgs);
+
+        // Then we go through the children of the function to find varassign or global frames, so we can finalise the list of local variables
+        const funcDefChildrenFrameIds = functionDefFrame.childrenIds;            
+        otherLocalVarsNameFinder(funcDefChildrenFrameIds, localVariableNameSet);
+        res[functionDefFrame.id] = [...localVariableNameSet];
+    };
+    return res;
+};

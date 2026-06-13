@@ -102,6 +102,9 @@ export const useStore = defineStore("app", {
             // Are we editing a text slot?
             isEditing: false,
 
+            // Timestamp used to manage when to discard the rename identifier popup 
+            renameIdentifierPopupShownTimestamp: 0,
+
             /* These state properties are for saving the layout of the UI.
              * They are initally set to UNDEFINED so we can work out which layout changes the users have done ("delete" needs optional properties).
              * We always apply the changes after getting back to the default layout (when a file is loaded after first time).
@@ -947,6 +950,10 @@ export const useStore = defineStore("app", {
             this.currentFrame.caretPosition = nextCaret.caretPosition;
 
             this.frameObjects[nextCaret.id].caretVisibility = nextCaret.caretPosition;
+            
+            // In order to keep a coherence between our state's focus information and the internal browser active element,
+            // we explicitly set the focus on the frame cursor that holds it now.
+            document.getElementById(getCaretContainerUID(nextCaret.caretPosition, nextCaret.id))?.focus();
 
             // Scroll caret into view when navigating with keyboard:
             nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));

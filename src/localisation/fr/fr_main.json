@@ -72,7 +72,8 @@
     "continue": "Continuer",
     "select": "Selectionner",
     "refresh": "rafraîchir",
-    "choose": "Sélectionner"
+    "choose": "Sélectionner",
+    "renameAllWithShortcut": "Renommer tout <span class=\"kb-shortcut\">({modifierkey}+R)</span>"
   },
   "errorMessage": {
     "wrongDataFormat": "le format de données ne peut pas être lu",
@@ -181,7 +182,11 @@
     "snapshotLinkTooLarge": "Attention: ce lien peut être trop long pour certains navigateurs, notamment à cause des images/sons dans le code.",
     "cloudShareUnavailable": "Vous devez d'abord sauvegarder le projet dans un service cloud.",
     "cloudShareNotSaved": "Vous avez actuellement des modifications non enregistrées.",
-    "kb": "Ko"
+    "kb": "Ko",
+    "renameIdentifiers": "Renommer toutes les utilisations de {thisIdentifierType} ?",
+    "thisVariable": "cette variable",
+    "thisFunction": "cette fonction",
+    "thisClass": "cette classe"
   },
   "contextMenu": {
     "ctrl": "Ctrl",
@@ -217,6 +222,7 @@
     "downloadPython": "Convertir vers Python",
     "loadProject": "Ouvrir...",
     "loadDemoProject": "Exemples...",
+    "book": "Manuel...",
     "saveProject": "Enregistrer",
     "saveAsProject": "Enregistrer sous...",
     "resetProject": "Nouveau projet",
@@ -284,6 +290,9 @@
     "cursorTimeMac": "Temps (⌘ C pour copier) :",
     "cursorHeightWin": "Hauteur (Ctrl-Maj-C pour copier) :",
     "cursorHeightMac": "Hauteur (⇧ ⌘ C pour copier) :"
+  },
+  "book": {
+    "dialogTitle": "Manuel Strype"
   },
   "demos": {
     "dialogTitle": "Exemples de programmes",
