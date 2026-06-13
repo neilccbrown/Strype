@@ -399,6 +399,7 @@ export default defineComponent({
 
         projectSaveFunctionsState[0] = {syncTarget: StrypeSyncTarget.ws, function: (reason: SaveRequestReason) => this.autoSaveStateToWebLocalStorage(reason)};
         window.addEventListener("visibilitychange", this.visibilityHandler);
+        window.addEventListener("beforeunload", this.beforeUnloadHandler);
 
         // By means of protection against browser crashes or anything that could prevent auto-backup, we do a backup every 2 minutes
         this.setAutoSaveState();
@@ -971,6 +972,13 @@ export default defineComponent({
             sessionStorage.setItem(AutoSaveKeyNames.strypeEditorTabId, tabId);
             if (reloadValue) {
                 sessionStorage.setItem(RELOAD_KEY, reloadValue);
+            }
+        },
+        
+        beforeUnloadHandler(event: BeforeUnloadEvent) {
+            if (this.appStore.isEditorContentModified) {
+                event.preventDefault();
+                event.returnValue = "";
             }
         },
 

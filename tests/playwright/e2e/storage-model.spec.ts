@@ -376,3 +376,40 @@ test.describe("Offer to reload unsaved backups", () => {
         });
     }
 });
+
+async function assertNoDialog(page: Page, browserName: string) {
+    let dialogShown = false;
+
+    page.on("dialog", () => {
+        dialogShown = true;
+    });
+
+    await closePage(page, browserName);
+
+    expect(dialogShown).toBe(false);
+}
+
+async function assertDialog(page: Page, browserName: string) {
+    const dialogPromise = page.waitForEvent("dialog");
+
+    const navPromise = closePage(page, browserName);
+
+    const dialog = await dialogPromise;
+    expect(dialog.type()).toBe("beforeunload");
+
+    await dialog.accept();
+    
+    await navPromise;
+}
+
+test.describe("Check the beforeunload dialog", () => {
+    test("Check dialog doesn't show on fresh project", async ({page, browserName}) => {
+        await loadAndWaitForEditor(page);
+        await assertNoDialog(page, browserName);
+    });
+    test("Check dialog does show on modified project", async ({page, browserName}) => {
+        await loadAndWaitForEditor(page);
+        await appendContent(page, "Checking dialog after modification");
+        await assertDialog(page, browserName);
+    });
+});
