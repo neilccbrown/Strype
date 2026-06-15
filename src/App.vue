@@ -400,6 +400,7 @@ export default defineComponent({
         projectSaveFunctionsState[0] = {syncTarget: StrypeSyncTarget.ws, function: (reason: SaveRequestReason) => this.autoSaveStateToWebLocalStorage(reason)};
         window.addEventListener("visibilitychange", this.visibilityHandler);
         window.addEventListener("beforeunload", this.beforeUnloadHandler);
+        window.addEventListener("pagehide", () => this.autoSaveStateToWebLocalStorage(SaveRequestReason.unloadPage));
 
         // By means of protection against browser crashes or anything that could prevent auto-backup, we do a backup every 2 minutes
         this.setAutoSaveState();
@@ -961,8 +962,8 @@ export default defineComponent({
                 );
             }
 
-            // Save the state before exiting            
-            this.autoSaveStateToWebLocalStorage(SaveRequestReason.unloadPage);            
+            // Save the state when we get hidden (the emergency save is done in pagehide, not visibilitychange):
+            this.autoSaveStateToWebLocalStorage(SaveRequestReason.autosave);            
 
             // We clear the session storage as well. This is notably used to clear MSAL authentication data (when using OneDrive).
             // With the exception of the Tab ID and optional reload key which we explicitly retain:
