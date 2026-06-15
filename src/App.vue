@@ -130,7 +130,7 @@ import {Splitpanes, Pane} from "splitpanes";
 import { useStore, settingsStore, getEditorTabId } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState, LoadRequestReason, StateAppObject, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
-import {getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getActiveContextMenu, actOnGraphicsImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID, closeRenameIdentifierPopups } from "./helpers/editor";
+import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getActiveContextMenu, actOnGraphicsImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID, closeRenameIdentifierPopups, newStrypeProject } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getPEAComponentRefId } from "@/helpers/editor";
@@ -851,7 +851,7 @@ export default defineComponent({
         }
         else{
             // The default opening of Strype (either brand new project or retrieving from local storage -- not opening a shared project)
-            this.loadLocalStorageProjectOnStart();
+            this.loadLocalStorageProjectOnStart(queryParams.get(newStrypeProject) != null);
         }
 
         // Register a listener to handle the context menu hovers (cf onContextMenuHover())
@@ -1054,7 +1054,7 @@ export default defineComponent({
                         sessionStorage.removeItem(AutoSaveKeyNames.strypeEditorTabId);
                     }
                     // ... and reload the page to reload the Strype default project (removing potential query parameters)
-                    window.location.href = window.location.pathname;
+                    window.location.href = window.location.pathname + "?" + newStrypeProject;
                 }
                 else{
                     // If the user declined: restore the autosave timer and the registration to the "beforeunload" event
@@ -1064,14 +1064,14 @@ export default defineComponent({
             }
         },
 
-        loadLocalStorageProjectOnStart() {
+        loadLocalStorageProjectOnStart(forceNewProject: boolean) {
             // Just to make sure when reaching this path from a cancelled shared project load,
             // we remove the query parameters in the URL (it won't change if we came in normal case so no problem)
             window.history.replaceState({}, document.title, window.location.pathname);
             
             // Check the local storage (WebStorage) to see if there is a saved project from the previous time the user entered the system
-            // if browser supports localstorage
-            this.checkLocalStorageHasProject().then((savedState) => {
+            // if browser supports localstorage. However if forcing new project, fail this fetch immediately:
+            (forceNewProject ? Promise.reject(): this.checkLocalStorageHasProject()).then((savedState) => {
                 this.appStore.setStateFromJSONStr( 
                     {
                         stateJSONStr: savedState,
@@ -1124,6 +1124,10 @@ export default defineComponent({
                                
                 // Could be because of a hard refresh, in which case we need to soft refresh to get service worker going:
                 await this.reloadForServiceWorkerIfNeeded();
+                
+                if (forceNewProject) {
+                    return;
+                }
 
                 // Check if there is old state which could be loaded (we don't need to await this):
                 void checkForRecentSaveStates(settingsStore().locale ?? "en", "banner").then((saveStates) => {
