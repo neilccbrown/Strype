@@ -1,5 +1,8 @@
-import {expect, Locator, Page, test} from "@playwright/test";
+import {ElementHandle, expect, JSHandle, Page, test} from "@playwright/test";
 import {checkConsoleContent, runToFinish} from "../support/execution";
+import {checkFrameXorTextCursor, doPagePaste} from "../support/editor";
+import {save} from "../support/loading-saving";
+import {readFileSync} from "node:fs";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && process.platform === "win32") {
@@ -27,8 +30,8 @@ async function scrollToFraction(page : Page, fraction: number) {
 }
 
 // Checks an element is inside visible viewport, and not within margin of the edges
-async function expectWellInsideViewport(locator: Locator, margin = 100) {
-    const result = await locator.evaluate((el, margin) => {
+async function expectWellInsideViewport(item: ElementHandle<Element>, margin = 100) {
+    const result = await item.evaluate((el, margin) => {
         const r = el.getBoundingClientRect();
 
         return (
@@ -40,6 +43,57 @@ async function expectWellInsideViewport(locator: Locator, margin = 100) {
     }, margin);
 
     expect(result).toBe(true);
+}
+
+
+async function toParentElementHandle(nodeHandle: ElementHandle<Node>): Promise<ElementHandle<Element> | null> {
+    let current: ElementHandle<Node> | null = nodeHandle;
+
+    while (current) {
+        const isElement = await current.evaluate((node) => node instanceof Element);
+
+        if (isElement) {
+            return current as ElementHandle<Element>;
+        }
+
+        const parent : JSHandle<ParentNode | null> = await current.evaluateHandle((node) => node.parentNode);
+
+        const parentAsElement = parent.asElement();
+
+        if (!parentAsElement) {
+            return null;
+        }
+
+        current = parentAsElement;
+    }
+
+    return null;
+}
+
+async function typeWithKeys(page: Page, input: string) {
+    const regex = /\{([^}]+)\}/g;
+
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(input)) !== null) {
+        const text = input.slice(lastIndex, match.index);
+        const key = match[1];
+
+        if (text) {
+            await page.keyboard.type(text);
+        }
+
+        await page.keyboard.press(key);
+
+        lastIndex = match.index + match[0].length;
+    }
+
+    // remaining text after last token
+    const remaining = input.slice(lastIndex);
+    if (remaining) {
+        await page.keyboard.type(remaining);
+    }
 }
 
 test.describe("Runtime errors scroll into view", () => {
@@ -61,7 +115,62 @@ test.describe("Runtime errors scroll into view", () => {
             await runToFinish(page);
             await checkConsoleContent(page, "< TypeError: object of type 'NoneType' has no len() >\n  From the highlighted call in your code");
             // Now check its scroll position:
-            await expectWellInsideViewport(page.locator("i.fa-exclamation-triangle"));
+            await expectWellInsideViewport(await page.locator("i.fa-exclamation-triangle").elementHandle() as ElementHandle<Element>);
         });
+    }
+});
+
+test.describe("Undo scrolls location into view", () => {
+    // We setup a long file with 100 print statements: print("Hello #1") to print("Hello #100")
+    // Then we make some edits which are described as:
+    // - going to a frame cursor (0 to 101 in the main body)
+    // - then typing a sequence of keys, which corresponds to one undoable edit
+    // Then we scroll to an given location, undo each, and check the cursor is in view
+    const undoTests : [[number, string][], number][] = [
+        // Enter some blanks:
+        [[[0, "{Enter}"], [50, "{Enter}"]], 1.0],
+        // Edit some content:
+        [[[5, "{ArrowLeft}{ArrowLeft}a"], [30, "{ArrowRight}s"], [80, "{ArrowLeft}{ArrowLeft}b"]], 0.5],
+    ];
+    for (let testIndex = 0; testIndex < undoTests.length; testIndex++) {
+        test(`Undo test #${testIndex}`, async ({page}) => {
+            await page.keyboard.press("Delete");
+            await page.keyboard.press("Delete");
+            await doPagePaste(page, Array.from({ length: 100 }, (_, i) => `print("Hello #${i + 1}")`).join("\n"));
+            const [actions, scrollTo] = undoTests[testIndex];
+            const states = [readFileSync(await save(page, true), "utf-8")];
+            for (const [cursorIndex, toType] of actions) {
+                await page.keyboard.press("Home");
+                for (let i = 0; i < cursorIndex; i++) {
+                    await page.waitForTimeout(10);
+                    await page.keyboard.press("ArrowDown");
+                }
+                await typeWithKeys(page, toType);
+                states.push(readFileSync(await save(page, false), "utf-8"));
+            }
+            await scrollToFraction(page, scrollTo);
+            
+            // Now undo:
+            for (let i = states.length - 1; i >= 0; i--) {
+                // Semi-arbitrary pick of ctrl-z or clicking undo button:
+                if (i + testIndex % 2 == 0) {
+                    await page.keyboard.press("ControlOrMeta+z");
+                }
+                else {
+                    await page.locator("input[title='Undo']").click();
+                }
+                // Check focus is in view:
+                const parent = await toParentElementHandle(await checkFrameXorTextCursor(page));
+                if (parent != null) {
+                    await expectWellInsideViewport(parent, -3);
+                }
+                else {
+                    expect(parent).not.toBeNull();
+                }
+                // Check undo actually works:
+                expect(readFileSync(await save(page, false), "utf-8")).toEqual(states[i]);
+            }
+        });
+        
     }
 });
