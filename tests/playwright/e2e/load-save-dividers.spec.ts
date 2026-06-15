@@ -136,7 +136,7 @@ test.describe("Saves divider states", () => {
         await page.waitForTimeout(20 * 1000);
         
         await saveAndCheck(page, [
-            (browserName == "webkit") ? /editorCommandsSplitterPane2Size:\{"tabsCollapsed":17.02\}/ : /editorCommandsSplitterPane2Size:\{"tabsCollapsed":21.94\}/,
+            /editorCommandsSplitterPane2Size:\{"tabsCollapsed":21.94\}/,
             /peaLayoutMode:tabsExpanded/,
             /peaCommandsSplitterPane2Size:\{"tabsCollapsed":1[56].?[0-9]*\}/,
             /peaExpandedSplitterPane2Size:\{"tabsExpanded":87.01\}/,
