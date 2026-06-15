@@ -28,7 +28,9 @@ import { z } from "zod";
 import { ceil } from "lodash";
 
 // How long a session is dead before we automatically clean it up; 8 days (weekly class + one day):
-const MAX_SESSION_AGE_MILLIS = 8 * 24 * 60 * 60 * 1000;
+const MAX_SESSION_AGE_MILLIS_UNSAVED = 8 * 24 * 60 * 60 * 1000;
+// We don't want to clean saved immediately, as we need it for reloading:
+const MAX_SESSION_AGE_MILLIS_SAVED = 1 * 24 * 60 * 60 * 1000;
 
 const DB_NAME = AutoSaveKeyNames.strypeIndexDatabaseName;
 const DB_VERSION = 1;
@@ -307,7 +309,8 @@ export async function markUserDecisionOnReloading(tabIds: string[]): Promise<voi
 // - Browser or machine die unexpectedly, data is lost even though the tab was open.  But it hadn't been used in
 //   a long time, so that's tough luck.
 async function cleanupOldSessions(db: IDBDatabase) : Promise<void> {
-    const cutoff = Date.now() - MAX_SESSION_AGE_MILLIS;
+    const cutoffUnsaved = Date.now() - MAX_SESSION_AGE_MILLIS_UNSAVED;
+    const cutoffSaved = Date.now() - MAX_SESSION_AGE_MILLIS_SAVED;
 
     return new Promise<void>((resolve, reject) => {
         const tx = db.transaction(STORE, "readwrite");
@@ -327,10 +330,12 @@ async function cleanupOldSessions(db: IDBDatabase) : Promise<void> {
 
             // use lastAliveAt as the liveness signal
             const lastAlive = record[DatabaseFieldNames.lastAliveAt];
-            if (!lastAlive || lastAlive < cutoff) {
+            if (!lastAlive || lastAlive < cutoffUnsaved) {
                 cursor.delete();
             }
-            if (record[DatabaseFieldNames.stillAlive] == "false" && record[DatabaseFieldNames.modifiedSinceExternalSave] == "false") {
+            if (record[DatabaseFieldNames.stillAlive] == "false"
+                && record[DatabaseFieldNames.modifiedSinceExternalSave] == "false"
+                && lastAlive < cutoffSaved) {
                 // We can clean up states which are closed and which were never modified after save:
                 cursor.delete();
             }
@@ -391,4 +396,37 @@ export async function tidyUpDatabaseState(ourTabId : string, db: IDBDatabase, on
     }
     
     await cleanupOldSessions(db);
+}
+
+export async function deleteStates(tabIds: string[]) : Promise<void> {
+    const db = await openIndexedDBConnection();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, "readwrite");
+        const store = tx.objectStore(STORE);
+
+        const idsToDelete = new Set(tabIds);
+
+        const request = store.openCursor();
+
+        request.onerror = () => reject(request.error);
+
+        request.onsuccess = () => {
+            const cursor = request.result;
+
+            if (!cursor) {
+                return;
+            }
+
+            const value = cursor.value as { tabId: string };
+
+            if (idsToDelete.has(value.tabId)) {
+                cursor.delete();
+            }
+
+            cursor.continue();
+        };
+
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
 }

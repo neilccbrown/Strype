@@ -37,9 +37,12 @@
                             <span>{{ $t("appMessage.targetFS") }}</span>
                         </div>
                     </div>
-                    <div class="recent-states-pane" v-if="recentLoadableStates">
-                        <span class="load-save-label">{{ $t("appMessage.loadRecentState") }}</span>
-                        <div class="load-recent-states-list">
+                    <div class="recent-states-pane" v-if="recentLoadableStates && recentLoadableStates.length > 0">
+                        <div class="d-flex justify-content-between align-items-baseline">
+                            <span class="load-save-label">{{ $t("appMessage.loadRecentState") }}</span>
+                            <span class="clear-all-label" @click="clearAllRecent">{{ $t("appMessage.clearAllRecent") }}</span>
+                        </div>
+                        <div class="load-recent-states-list overflow-y-auto" style="max-height: 20rem;">
                             <div v-for="recent in recentLoadableStates" class="project-target-button recent-state-button load-dlg" @click="selectOldState(recent.data)">
                                 <span :class="scssVars.projectRecentStateLabel">{{recent.label}}</span>
                                 <span class="recent-state-sublabel">{{recent.sublabel}}</span>
@@ -262,7 +265,7 @@ import { useI18n } from "vue-i18n";
 import { BButton, BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus, getLocaleBuildDate } from "@/helpers/appContext";
-import { checkForRecentSaveStates } from "@/store/store-db-storage";
+import {checkForRecentSaveStates, deleteStates} from "@/store/store-db-storage";
 import OpenBookDlg from "@/components/OpenBookDlg.vue";
 import {trackUsedBookProject} from "@/store/analytics";
 
@@ -373,7 +376,7 @@ export default defineComponent({
             shareContentZippedBase64: "",
 
             // States that could be loaded from the load menu:
-            recentLoadableStates: [] as {label: string, sublabel: string, data: string}[],
+            recentLoadableStates: [] as {label: string, sublabel: string, data: string, tabId: string}[],
         };
     },
 
@@ -747,6 +750,7 @@ export default defineComponent({
                         label: `${s.projectName} (${ceil(s.data.length / 1024)} ${this.$t("appMessage.kb")})`,
                         sublabel: `${this.$t("appMessage.modified")} ${s.when}`,
                         data: s.data,
+                        tabId: s.tabId,
                     };
                 });
             
@@ -819,6 +823,13 @@ export default defineComponent({
             else {
                 eventBus.emit(CustomEventTypes.showStrypeModal, (this.afterSaveDialog && "dialog" in this.afterSaveDialog) ? this.afterSaveDialog.dialog : this.loadProjectModalDlgId);
             }
+        },
+        
+        clearAllRecent() : void {
+            deleteStates(this.recentLoadableStates.map((s) => s.tabId)).then(() => {
+                // No need to refetch from database; we know it should now be empty:
+                this.recentLoadableStates = [];
+            });
         },
 
         changeTargetFocusOnMouseOver(event: MouseEvent) {
@@ -1697,6 +1708,13 @@ export default defineComponent({
 
 .load-save-label {
     margin-right: 5px;
+}
+
+.clear-all-label {
+    font-size: 80%;
+    text-decoration: underline;
+    color: #33f;
+    cursor: pointer;
 }
 
 .save-project-modal-dlg-container {

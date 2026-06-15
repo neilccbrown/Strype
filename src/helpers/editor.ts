@@ -23,6 +23,7 @@ export const autoSaveFreqMins = 2; // The number of minutes between each autosav
 export const sharedStrypeProjectTargetKey = "shared_proj_targ"; 
 // The URL of the project, with the URL pattern (template) for each possible target
 export const sharedStrypeProjectIdKey = "shared_proj_id";
+export const newStrypeProject = "new_project";
 
 // LocalStorage keys used by Strype 
 export enum AutoSaveKeyNames {

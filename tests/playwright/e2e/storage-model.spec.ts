@@ -15,7 +15,7 @@ test.beforeEach(async ({ browserName }, testInfo) => {
     }
 
     // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(120000); // 120 seconds
+    testInfo.setTimeout(240000); // 240 seconds
 });
 
 test.afterEach(async ({ context }, testInfo) => {
@@ -92,6 +92,19 @@ test.describe("Test basic operation", () => {
         await page.reload();
         await page.waitForSelector(".frame-container");
         await assertStartingPlus(page, str);
+    });
+
+    test("Test multiple reload preserves content", async ({page}) => {
+        await loadAndWaitForEditor(page);
+        await assertStartingProject(page);
+        const str = "Going to do a reload #1";
+        await appendContent(page, str);
+        await assertStartingPlus(page, str);
+        for (let i = 0; i < 3; i++) {
+            await page.reload();
+            await page.waitForSelector(".frame-container");
+            await assertStartingPlus(page, str);
+        }
     });
 });
 
@@ -218,7 +231,7 @@ test.describe("Test IndexedDB failure", () => {
 });
 
 function closePage(page: Page, browserName: string) : Promise<any> {
-    if (browserName === "webkit") {
+    if (browserName === "webkit" || browserName === "firefox") {
         // Webkit doesn't seem to obey .close() properly but we get the same behaviour
         // of unloading the page if we just navigate elsewhere, so do that:
         // (8089 is our test assets server, so we know it exists and isn't the editor...)
@@ -229,12 +242,15 @@ function closePage(page: Page, browserName: string) : Promise<any> {
     }
 }
 
+async function assertRecentStatesShowing(page: Page, expectedProjectNames: RegExp[]) {
+    const scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
+    await expect(page.locator("." + scssVars.projectRecentStateLabel)).toHaveText(expectedProjectNames);
+}
+
 async function assertOpenRecentMenu(page: Page, expectedProjectNames: RegExp[]) : Promise<void> {
     await page.click("#" + await strypeElIds(page).getEditorMenuUID());
     await page.click("#" + await strypeElIds(page).getLoadProjectLinkId());
-    const scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
-    console.log("Looking for ." + scssVars.projectRecentStateLabel);
-    await expect(page.locator("." + scssVars.projectRecentStateLabel)).toHaveText(expectedProjectNames);
+    await assertRecentStatesShowing(page, expectedProjectNames);
 }
 
 // A banner should show to offer to load unsaved backups if the backups are recent and modified after external save:
@@ -373,6 +389,108 @@ test.describe("Offer to reload unsaved backups", () => {
             await expect(page5.locator("." + scssVars.messageBannerContainerClassName)).not.toBeVisible();
             // Check which projects are showing -- should not show 3 as still open, so only 1 and 2 depending on save status:
             await assertOpenRecentMenu(page5, state2Saved ? [/^Project 1 /] : [/^Project 2 /, /^Project 1 /]);
+            
+            // Clear all the states:
+            await page5.locator("span", {hasText: "Clear all"}).click();
+            await page5.waitForTimeout(1000);
+            // Check this dialog is now empty:
+            await assertRecentStatesShowing(page5, []);
+            
+            // Also check on a new page:
+            const page6 = await context.newPage();
+            await loadAndWaitForEditor(page6);
+            await assertOpenRecentMenu(page6, []);
+        });
+        
+        test(`Load two states, optionally save 2nd (${state2Saved}) then use new project, should be no banner`, async ({browser, browserName}) => {
+            const context = await browser.newContext({recordVideo: {dir: "tests/playwright/test-results/videos/"}});
+            const page1 = await context.newPage();
+            console.log("Page1 video: " + await page1.video()?.path());
+            page1.on("console", (msg) => console.log("Browser log page 1:", msg.text()));
+
+            await loadAndWaitForEditor(page1);
+            await save(page1, true, "Project 1");
+            await page1.waitForTimeout(1000);
+            const scssVars = await page1.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
+            // Modify it and close it:
+            const str1 = "Modifying state #1 ahead of closing";
+            await appendContent(page1, str1);
+            await closePage(page1, browserName);
+            // Playwright seems to say it won't actually wait for the saving to be finished, so let's wait an extra couple of seconds:
+            // Can't use page1.waitForTimeout as it's closed...
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            // Load a new page in the same context (so it shares the storage):
+            const page2 = await context.newPage();
+            console.log("Page2 video: " + await page2.video()?.path());
+            page2.on("console", (msg) => console.log("Browser log page 2:", msg.text()));
+            await loadAndWaitForEditor(page2);
+            // At this point, it should have the fresh state, but be showing the banner about loading old state:
+            await assertStartingProject(page2);
+            await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).toBeVisible();
+            await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).toContainText("load it?");
+            await save(page2, true, "Project 2");
+            await page2.waitForTimeout(1000);
+
+            // Now we modify, and optionally save:
+            const str2 = "Modifying state #2 ahead of closing";
+            await appendContent(page2, str2);
+            if (state2Saved) {
+                await save(page2, false);
+                // Give it a moment to update the state:
+                await page2.waitForTimeout(1000);
+            }
+            
+            // We don't close the page, we use the new project from the menu
+            await page2.locator("#" + await strypeElIds(page2).getEditorMenuUID()).click();
+            await page2.locator("#" + await strypeElIds(page2).getNewProjectLinkId()).click();
+            if (!state2Saved) {
+                // Need to click the confirmation dialog to go despite unsaved changes:
+                await page2.locator("*[id='confirmNewProjectModalDlg'] button", {hasText: "Continue"}).click();
+            }
+            
+            // Wait a bit just to be sure it's all loaded:
+            await page2.waitForTimeout(3000);            
+            
+            // Now we check there's no banner:
+            await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).not.toBeVisible();
         });
     }
+});
+
+async function assertNoDialog(page: Page, browserName: string) {
+    let dialogShown = false;
+
+    page.on("dialog", () => {
+        dialogShown = true;
+    });
+
+    await closePage(page, browserName);
+
+    expect(dialogShown).toBe(false);
+}
+
+async function assertDialog(page: Page, browserName: string) {
+    const dialogPromise = page.waitForEvent("dialog");
+
+    const navPromise = closePage(page, browserName);
+
+    const dialog = await dialogPromise;
+    expect(dialog.type()).toBe("beforeunload");
+
+    await dialog.accept();
+    
+    await navPromise;
+}
+
+test.describe("Check the beforeunload dialog", () => {
+    test("Check dialog doesn't show on fresh project", async ({page, browserName}) => {
+        await loadAndWaitForEditor(page);
+        await assertNoDialog(page, browserName);
+    });
+    test("Check dialog does show on modified project", async ({page, browserName}) => {
+        await loadAndWaitForEditor(page);
+        await appendContent(page, "Checking dialog after modification");
+        await assertDialog(page, browserName);
+    });
 });
