@@ -1565,7 +1565,6 @@ export default defineComponent({
                 
                 // If the user had already released the key up, no point waiting, we delete straight away
                 if(this.canBackspaceDeleteFrame){
-                    console.log("ici");
                     this.onLoseCaret(new CustomEvent(CustomEventTypes.editableSlotLostCaret, {detail:{keepIgnoreKeyEventFlagOn: true}}));
                     this.appStore.deleteFrameFromSlot(this.frameId);
                 }
