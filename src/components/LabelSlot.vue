@@ -655,7 +655,7 @@ export default defineComponent({
         // Event callback equivalent to what would happen for a blur event callback 
         // (the spans don't get focus anymore because the containg editable div grab it)
         onLoseCaret(event: CustomEvent<{keepIgnoreKeyEventFlagOn?: boolean, keepEditingModeOn?: boolean}>): void {
-            const {keepIgnoreKeyEventFlagOn, keepEditingModeOn} = event.detail;
+            const {keepIgnoreKeyEventFlagOn, keepEditingModeOn} = event.detail??{};
             this.$nextTick(() => vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex)].updatePrependTextAndCheckErrors());
             // Before anything, we make sure that the current frame still exists,
             // and that our slot still exists.  If we shouldn't exist any more, we should
