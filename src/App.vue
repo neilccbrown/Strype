@@ -1954,7 +1954,8 @@ body.#{$strype-classname-dragging-frame} {
 	-webkit-user-select: none;
 	-moz-user-select: none;
 	-ms-user-select: none;
-	user-select: none
+	user-select: none;
+    pointer-events: none;
 }
 
 .splitpanes__pane {
