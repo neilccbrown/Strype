@@ -231,7 +231,7 @@ test.describe("Test IndexedDB failure", () => {
 });
 
 function closePage(page: Page, browserName: string) : Promise<any> {
-    if (browserName === "webkit") {
+    if (browserName === "webkit" || browserName === "firefox") {
         // Webkit doesn't seem to obey .close() properly but we get the same behaviour
         // of unloading the page if we just navigate elsewhere, so do that:
         // (8089 is our test assets server, so we know it exists and isn't the editor...)
