@@ -130,7 +130,7 @@ import {Splitpanes, Pane} from "splitpanes";
 import { useStore, settingsStore, getEditorTabId } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState, LoadRequestReason, StateAppObject, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
-import {getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getActiveContextMenu, actOnGraphicsImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID, closeRenameIdentifierPopups } from "./helpers/editor";
+import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getActiveContextMenu, actOnGraphicsImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID, closeRenameIdentifierPopups, newStrypeProject } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getPEAComponentRefId } from "@/helpers/editor";
@@ -399,6 +399,8 @@ export default defineComponent({
 
         projectSaveFunctionsState[0] = {syncTarget: StrypeSyncTarget.ws, function: (reason: SaveRequestReason) => this.autoSaveStateToWebLocalStorage(reason)};
         window.addEventListener("visibilitychange", this.visibilityHandler);
+        window.addEventListener("beforeunload", this.beforeUnloadHandler);
+        window.addEventListener("pagehide", () => this.autoSaveStateToWebLocalStorage(SaveRequestReason.unloadPage));
 
         // By means of protection against browser crashes or anything that could prevent auto-backup, we do a backup every 2 minutes
         this.setAutoSaveState();
@@ -850,7 +852,7 @@ export default defineComponent({
         }
         else{
             // The default opening of Strype (either brand new project or retrieving from local storage -- not opening a shared project)
-            this.loadLocalStorageProjectOnStart();
+            this.loadLocalStorageProjectOnStart(queryParams.get(newStrypeProject) != null);
         }
 
         // Register a listener to handle the context menu hovers (cf onContextMenuHover())
@@ -960,8 +962,8 @@ export default defineComponent({
                 );
             }
 
-            // Save the state before exiting            
-            this.autoSaveStateToWebLocalStorage(SaveRequestReason.unloadPage);            
+            // Save the state when we get hidden (the emergency save is done in pagehide, not visibilitychange):
+            this.autoSaveStateToWebLocalStorage(SaveRequestReason.autosave);            
 
             // We clear the session storage as well. This is notably used to clear MSAL authentication data (when using OneDrive).
             // With the exception of the Tab ID and optional reload key which we explicitly retain:
@@ -971,6 +973,13 @@ export default defineComponent({
             sessionStorage.setItem(AutoSaveKeyNames.strypeEditorTabId, tabId);
             if (reloadValue) {
                 sessionStorage.setItem(RELOAD_KEY, reloadValue);
+            }
+        },
+        
+        beforeUnloadHandler(event: BeforeUnloadEvent) {
+            if (this.appStore.isEditorContentModified) {
+                event.preventDefault();
+                event.returnValue = "";
             }
         },
 
@@ -1046,7 +1055,7 @@ export default defineComponent({
                         sessionStorage.removeItem(AutoSaveKeyNames.strypeEditorTabId);
                     }
                     // ... and reload the page to reload the Strype default project (removing potential query parameters)
-                    window.location.href = window.location.pathname;
+                    window.location.href = window.location.pathname + "?" + newStrypeProject;
                 }
                 else{
                     // If the user declined: restore the autosave timer and the registration to the "beforeunload" event
@@ -1056,14 +1065,14 @@ export default defineComponent({
             }
         },
 
-        loadLocalStorageProjectOnStart() {
+        loadLocalStorageProjectOnStart(forceNewProject: boolean) {
             // Just to make sure when reaching this path from a cancelled shared project load,
             // we remove the query parameters in the URL (it won't change if we came in normal case so no problem)
             window.history.replaceState({}, document.title, window.location.pathname);
             
             // Check the local storage (WebStorage) to see if there is a saved project from the previous time the user entered the system
-            // if browser supports localstorage
-            this.checkLocalStorageHasProject().then((savedState) => {
+            // if browser supports localstorage. However if forcing new project, fail this fetch immediately:
+            (forceNewProject ? Promise.reject(): this.checkLocalStorageHasProject()).then((savedState) => {
                 this.appStore.setStateFromJSONStr( 
                     {
                         stateJSONStr: savedState,
@@ -1116,6 +1125,10 @@ export default defineComponent({
                                
                 // Could be because of a hard refresh, in which case we need to soft refresh to get service worker going:
                 await this.reloadForServiceWorkerIfNeeded();
+                
+                if (forceNewProject) {
+                    return;
+                }
 
                 // Check if there is old state which could be loaded (we don't need to await this):
                 void checkForRecentSaveStates(settingsStore().locale ?? "en", "banner").then((saveStates) => {
@@ -1941,7 +1954,8 @@ body.#{$strype-classname-dragging-frame} {
 	-webkit-user-select: none;
 	-moz-user-select: none;
 	-ms-user-select: none;
-	user-select: none
+	user-select: none;
+    pointer-events: none;
 }
 
 .splitpanes__pane {

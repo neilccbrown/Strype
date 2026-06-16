@@ -23,6 +23,7 @@ export const autoSaveFreqMins = 2; // The number of minutes between each autosav
 export const sharedStrypeProjectTargetKey = "shared_proj_targ"; 
 // The URL of the project, with the URL pattern (template) for each possible target
 export const sharedStrypeProjectIdKey = "shared_proj_id";
+export const newStrypeProject = "new_project";
 
 // LocalStorage keys used by Strype 
 export enum AutoSaveKeyNames {
@@ -1151,9 +1152,11 @@ document.addEventListener(CustomEventTypes.dropFramePositionsUpdated, () => {
 });
 
 export function notifyDragStarted(frameId?: number):void {
-    // There is only one case where dragging is stop right from the root: frozen frames.
+    // There are only two cass swhere dragging is stop right from the root: frozen frames and splitter dragging.
     // If a frame (or that frame of a selection) is frozen, or its ancestor is, then we don't allow drag.
-    if((frameId && useStore().isEffectivelyFrozen(frameId)) || (!frameId && useStore().selectedFrames.some((frameId) => useStore().isEffectivelyFrozen(frameId)))){
+    // If we are into a splitter dragging action, the we don't allow drag.
+    if((frameId && useStore().isEffectivelyFrozen(frameId)) || (!frameId && useStore().selectedFrames.some((frameId) => useStore().isEffectivelyFrozen(frameId)))
+        || document.querySelector(".splitpanes--dragging")){
         return;
     }
 

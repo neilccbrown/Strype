@@ -1796,8 +1796,10 @@ export const useStore = defineStore("app", {
             this.saveStateChanges(stateBeforeChanges);
         },
 
-        validateSlot(frameSlotInfos: SlotInfos) {
-            this.isEditing = false;
+        validateSlot(frameSlotInfos: SlotInfos, keepEditingModeOn?: boolean) {
+            if(!keepEditingModeOn){
+                this.isEditing = false;
+            }
 
             if(this.frameObjects[frameSlotInfos.frameId]){
                 this.setEditableFocus(

@@ -654,9 +654,9 @@ export default defineComponent({
 
         // Event callback equivalent to what would happen for a blur event callback 
         // (the spans don't get focus anymore because the containg editable div grab it)
-        onLoseCaret(keepIgnoreKeyEventFlagOn?: boolean): void {
+        onLoseCaret(event: CustomEvent<{keepIgnoreKeyEventFlagOn?: boolean, keepEditingModeOn?: boolean}>): void {
+            const {keepIgnoreKeyEventFlagOn, keepEditingModeOn} = event.detail??{};
             this.$nextTick(() => vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex)].updatePrependTextAndCheckErrors());
-            
             // Before anything, we make sure that the current frame still exists,
             // and that our slot still exists.  If we shouldn't exist any more, we should
             // just do nothing and exit quietly:
@@ -677,7 +677,8 @@ export default defineComponent({
                             code: this.getSlotContent().replace(/\u200B/g, "").trim(),
                             initCode: this.initCode,
                             isFirstChange: this.isFirstChange,
-                        }   
+                        },
+                        keepEditingModeOn
                     );
                 }
                 //reset the flag for first code change
@@ -1226,7 +1227,7 @@ export default defineComponent({
 
                 // Set the new bounds
                 this.$nextTick(() => {
-                    document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos?.slotInfos as SlotCoreInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotLostCaret));
+                    document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos?.slotInfos as SlotCoreInfos))?.dispatchEvent(new CustomEvent(CustomEventTypes.editableSlotLostCaret, {detail: {keepEditingModeOn: true}}));
                     document.getElementById(getLabelSlotUID(newFocusSlotCoreInfo))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
                     setDocumentSelection(newAnchorSlotCursorInfo, {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos});
                     this.appStore.setSlotTextCursors(newAnchorSlotCursorInfo, {slotInfos: newFocusSlotCoreInfo, cursorPos: newFocusCursorPos});
@@ -1564,7 +1565,7 @@ export default defineComponent({
                 
                 // If the user had already released the key up, no point waiting, we delete straight away
                 if(this.canBackspaceDeleteFrame){
-                    this.onLoseCaret(true);
+                    this.onLoseCaret(new CustomEvent(CustomEventTypes.editableSlotLostCaret, {detail:{keepIgnoreKeyEventFlagOn: true}}));
                     this.appStore.deleteFrameFromSlot(this.frameId);
                 }
                 else{ 
@@ -1573,7 +1574,7 @@ export default defineComponent({
                     }       
                     setTimeout(() => {  
                         if(this.requestDelayBackspaceFrameRemoval){
-                            this.onLoseCaret(true);
+                            this.onLoseCaret(new CustomEvent(CustomEventTypes.editableSlotLostCaret, {detail:{keepIgnoreKeyEventFlagOn: true}}));
                             this.appStore.deleteFrameFromSlot(this.frameId);
                         }
                     }, 1000);
