@@ -10,12 +10,19 @@ export async function checkFrameXorTextCursor(page: Page, specificFrameCursor?: 
         const visibleFrameCursorElements = document.querySelectorAll("."+ scssVars.caretClassName + ":not(." + scssVars.invisibleClassName +")");
         return visibleFrameCursorElements;
     });
-    const numFrameCursors = await frameCursors.evaluate((nodes) => nodes.length);
+    const frameCursorIds : string[] = await frameCursors.evaluate((nodes) => {
+        const r = [];
+        for (let i = 0; i < nodes.length; i++) {
+            r.push("#" + (nodes[i].id ?? "<unknown>"));
+        }
+        return r;
+    });
+    const numFrameCursors = frameCursorIds.length;
     const textCursorNode = (await page.evaluateHandle(() => {
         return document?.getSelection()?.focusNode;
     })).asElement();
-    const hasTextCursor = textCursorNode?.asElement() != null;
-    expect(numFrameCursors, message).toEqual(textCursorNode != null ? 0 : 1);
+    const hasTextCursor = textCursorNode != null;
+    expect(numFrameCursors, (message ?? "") + " ids: [" + frameCursorIds.join(", ") + "]").toEqual(hasTextCursor ? 0 : 1);
     if (specificFrameCursor !== undefined) {
         if (specificFrameCursor == true) {
             expect(numFrameCursors, message).toEqual(1);

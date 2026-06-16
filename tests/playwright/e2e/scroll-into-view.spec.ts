@@ -21,7 +21,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     });
 });
 
-async function scrollToFraction(page : Page, fraction: number) {
+async function scrollToFraction(page : Page, fraction: number) : Promise<void> {
     await page.evaluate((frac) => {
         const doc = document.documentElement;
         const maxScroll = doc.scrollHeight - window.innerHeight;
@@ -30,19 +30,22 @@ async function scrollToFraction(page : Page, fraction: number) {
 }
 
 // Checks an element is inside visible viewport, and not within margin of the edges
-async function expectWellInsideViewport(item: ElementHandle<Element>, margin = 100) {
-    const result = await item.evaluate((el, margin) => {
+async function isInsideViewport(item: ElementHandle<Element> | null, verticalMargin = 0, horizontalMargin = 0) : Promise<boolean> {
+    if (item == null) {
+        expect(item).not.toBeNull();
+        // Shouldn't reach this line as above exception will fail:
+        return false;
+    }
+    return await item.evaluate((el, margins: number[]) => {
         const r = el.getBoundingClientRect();
 
         return (
-            r.top >= margin &&
-            r.left >= margin &&
-            r.bottom <= window.innerHeight - margin &&
-            r.right <= window.innerWidth - margin
+            r.top >= margins[1] &&
+            r.left >= margins[0] &&
+            r.bottom <= window.innerHeight - margins[1] &&
+            r.right <= window.innerWidth - margins[0]
         );
-    }, margin);
-
-    expect(result).toBe(true);
+    }, [horizontalMargin, verticalMargin]);
 }
 
 
@@ -111,11 +114,12 @@ test.describe("Runtime errors scroll into view", () => {
                 await page.waitForTimeout(50);
             }
             await scrollToFraction(page, fraction);
+            const visibleBefore = await isInsideViewport(await page.locator("span.label-slot-input", {hasText: /^None$/}).elementHandle());
             // "Finish" here is an exception
             await runToFinish(page);
             await checkConsoleContent(page, "< TypeError: object of type 'NoneType' has no len() >\n  From the highlighted call in your code");
             // Now check its scroll position:
-            await expectWellInsideViewport(await page.locator("i.fa-exclamation-triangle").elementHandle() as ElementHandle<Element>);
+            expect(await isInsideViewport(await page.locator("i.fa-exclamation-triangle").elementHandle(), visibleBefore ? 0 : 200)).toEqual(true);
         });
     }
 });
@@ -130,7 +134,7 @@ test.describe("Undo scrolls location into view", () => {
         // Enter some blanks:
         [[[0, "{Enter}"], [50, "{Enter}"]], 1.0],
         // Edit some content:
-        [[[5, "{ArrowLeft}{ArrowLeft}a"], [30, "{ArrowRight}s"], [80, "{ArrowLeft}{ArrowLeft}b"]], 0.5],
+        [[[5, "{ArrowLeft}{ArrowLeft}{ArrowLeft}a"], [30, "{ArrowRight}s"], [80, "{ArrowLeft}{ArrowLeft}{ArrowLeft}b"]], 0.5],
     ];
     for (let testIndex = 0; testIndex < undoTests.length; testIndex++) {
         test(`Undo test #${testIndex}`, async ({page}) => {
@@ -138,20 +142,27 @@ test.describe("Undo scrolls location into view", () => {
             await page.keyboard.press("Delete");
             await doPagePaste(page, Array.from({ length: 100 }, (_, i) => `print("Hello #${i + 1}")`).join("\n"));
             const [actions, scrollTo] = undoTests[testIndex];
-            const states = [readFileSync(await save(page, true), "utf-8")];
+            const statesToUndoTo = [];
+            // Discard first save:
+            await save(page, true);
             for (const [cursorIndex, toType] of actions) {
+                statesToUndoTo.push(readFileSync(await save(page, false), "utf-8"));                
                 await page.keyboard.press("Home");
                 for (let i = 0; i < cursorIndex; i++) {
                     await page.waitForTimeout(10);
                     await page.keyboard.press("ArrowDown");
                 }
                 await typeWithKeys(page, toType);
-                states.push(readFileSync(await save(page, false), "utf-8"));
             }
             await scrollToFraction(page, scrollTo);
             
-            // Now undo:
-            for (let i = states.length - 1; i >= 0; i--) {
+            for (let i = statesToUndoTo.length - 1; i >= 0; i--) {
+                const printNumBefore = Math.max(1, undoTests[testIndex][0][i][0] - 1);
+                //const printNumAfter = Math.min(100, undoTests[testIndex][0][i][0] + 2);
+                const alreadyBothVisible = 
+                    await isInsideViewport(await page.locator("span.label-slot-input", {hasText: new RegExp(`#${printNumBefore}(?!\\d)`)}).elementHandle())
+                    ;//&& await isInsideViewport(await page.locator("span.label-slot-input", {hasText: new RegExp(`#${printNumAfter}(?!\\d)`)}).elementHandle());
+                
                 // Semi-arbitrary pick of ctrl-z or clicking undo button:
                 if (i + testIndex % 2 == 0) {
                     await page.keyboard.press("ControlOrMeta+z");
@@ -159,16 +170,17 @@ test.describe("Undo scrolls location into view", () => {
                 else {
                     await page.locator("input[title='Undo']").click();
                 }
+                await page.waitForTimeout(1000);
                 // Check focus is in view:
                 const parent = await toParentElementHandle(await checkFrameXorTextCursor(page));
                 if (parent != null) {
-                    await expectWellInsideViewport(parent, -3);
+                    expect(await isInsideViewport(parent, alreadyBothVisible ? -1 : 80), `Already visible: ${alreadyBothVisible}`).toEqual(true);
                 }
                 else {
                     expect(parent).not.toBeNull();
                 }
                 // Check undo actually works:
-                expect(readFileSync(await save(page, false), "utf-8")).toEqual(states[i]);
+                expect(readFileSync(await save(page, false), "utf-8")).toEqual(statesToUndoTo[i]);
             }
         });
         
