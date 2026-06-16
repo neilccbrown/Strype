@@ -1756,7 +1756,7 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
         .replaceAll(/(^\s+|\b|[+\-*/%<>&|^=!,]\s*)((\d+(\.\d*)?|\.\d+)[eE][-+]\d+j?)($|(\s*[ +\-*/%<>&|^=!,:]))/g,
             (...params) => blankReplacer(2, ["+", "-"], ...params))
         // Replacing a preceding sign operator
-        .replaceAll(/(^\s*|[+\-*/%<>&|^=!,]\s*)([+-]((0b[01]+)|(0x[0-9A-Fa-f]+)|((\d+(\.\d*)?|\.\d+)([eE]\d+)?j?)))(?=$|(\s*[ +\-*/%<>&|^=!,:]))/g,
+        .replaceAll(new RegExp(String.raw`(^\s*|[+\-*/%<>&|^=!,]\s*|(?:${keywordOperatorsWithSurroundSpaces.map((kw) => kw.trim()).join("|")})\s*)([+-]((0b[01]+)|(0x[0-9A-Fa-f]+)|((\d+(\.\d*)?|\.\d+)([eE]\d+)?j?)))(?=$|(\s*[ +\-*/%<>&|^=!,:]))`, "g"),
             (...params) => blankReplacer(2, ["+", "-"], ...params))
         // Replacing the decimal separator (note: \b is a word boundary)
         .replaceAll(/(\s+|\b|[+\-*/%<>&|^=!,:]\s*)(((\d+(\.\d*))([eE][0]?\d+)?j?))($|(\s*[ +\-*/%<>&|^=!,:]))/g,

@@ -92,6 +92,12 @@ describe("Stride TestExpressionSlot.testFloating()", () => {
     //testBackspace("1.\b.0", "{1$.0}", false, true); // delete before
     //testBackspace("a..\bc", "{a}.{$c}", true, false); // backspace after
     //testBackspace("a.\b.c", "{a$}.{c}", false, true); // delete before
+    
+
+    //Testing unary operators in combination with keyword operators
+    testInsert("-1.2 if var < -5.6 else -4.3", "{-1.2}if{var}<{-5.6}else{-4.3$}");
+    testInsert("-1.2 if -5.6 > var else -4.3", "{-1.2}if{-5.6}>{var}else{-4.3$}");
+    testInsert("-1.2 and -5.6", "{-1.2}and{-5.6$}");
 });
 
 
