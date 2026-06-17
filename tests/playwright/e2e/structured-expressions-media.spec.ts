@@ -1,5 +1,5 @@
 import {test, expect} from "@playwright/test";
-import { typeIndividually, doPagePaste, doTextHomeEndKeyPress, assertStateOfIfFrame, checkFrameXorTextCursor } from "../support/editor";
+import { typeIndividually, doPagePaste, doTextHomeEndKeyPress, assertStateOfIfFrame, checkFrameXorTextCursor, MEDIA_SLOT_PARSED_PLACEHOLDER } from "../support/editor";
 import fs from "fs";
 import {addFakeClipboard} from "../support/clipboard";
 import { skipPyodideLoading } from "../support/general";
@@ -226,5 +226,49 @@ test.describe("Media literal manipulation", () => {
         // Check that the image is still an image (in bug #661, it turned into the text of the load_sound call):
         await expect(page.getByText("load_sound")).not.toBeVisible();
         await expect(page.locator("img[data-code^='load_sound']")).toBeVisible();
+    });
+});
+
+test.describe("Edition in expressions with media",() => {
+    test("With keyword operators (basic)", async ({page}) => {
+        // Write the expression (inside if): <media> or 5
+        await page.keyboard.press("i"),
+        await page.waitForTimeout(200);
+        const image = fs.readFileSync("src/assetsFilesystem/images/cat-test.jpg").toString("base64");
+        const last10B64ImgChars = image.slice(-10);
+        await doPagePaste(page, image, "image/jpeg");
+        await page.waitForTimeout(200);
+        await page.keyboard.type(" and 5");
+        await assertStateOfIfFrame(page, `{}${MEDIA_SLOT_PARSED_PLACEHOLDER.image}{}and{5$}`, [{mediaType: "img", endOfB64: last10B64ImgChars}]);
+    });
+
+    test("With keyword operators (a bit more complex)", async ({page}) => {
+        // Write the expression (inside if): test(<media>, 5 and 6)
+        await page.keyboard.type("itest("),
+        await page.waitForTimeout(200);
+        const image = fs.readFileSync("src/assetsFilesystem/images/cat-test.jpg").toString("base64");
+        const last10B64ImgChars = image.slice(-10);
+        await doPagePaste(page, image, "image/jpeg");
+        await page.waitForTimeout(200);
+        await page.keyboard.type(",5 and 6");
+        await assertStateOfIfFrame(page, `{test}({}${MEDIA_SLOT_PARSED_PLACEHOLDER.image}{},{5}and{6$}){}`, [{mediaType: "img", endOfB64: last10B64ImgChars}]);
+    });
+
+    test("With keyword operators (and 2 media)", async ({page}) => {
+        // Write the expression (inside if): <media1>+<media2> and "abc")
+        await page.keyboard.press("i"),
+        await page.waitForTimeout(200);
+        const mediaInfo: {mediaType: "img" | "snd", endOfB64: string}[] = [];
+        const image = fs.readFileSync("src/assetsFilesystem/images/cat-test.jpg").toString("base64");
+        mediaInfo.push({mediaType: "img", endOfB64: image.slice(-10)});
+        await doPagePaste(page, image, "image/jpeg");
+        await page.waitForTimeout(200);
+        await page.keyboard.type("+");
+        const sound = fs.readFileSync("src/assetsFilesystem/sounds/cat-test-meow.wav").toString("base64");
+        mediaInfo.push({mediaType: "snd", endOfB64: sound.slice(-10)});
+        await doPagePaste(page, sound, "audio/x-wav");
+        await page.waitForTimeout(200);
+        await page.keyboard.type("and \"abc");
+        await assertStateOfIfFrame(page, `{}${MEDIA_SLOT_PARSED_PLACEHOLDER.image}{}+{}${MEDIA_SLOT_PARSED_PLACEHOLDER.sound}{}and{}“abc$”{}`, mediaInfo);
     });
 });
