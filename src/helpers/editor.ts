@@ -1687,8 +1687,18 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             resStructSlot.operators.push(...structBeforeString.operators, {code: ""}, {code: ""}, ...structAfterString.operators);
         }
         else{
-            // 3 - break the code by operatorSlot
-            const {slots: operatorSplitsStruct, cursorOffset: operatorCursorOffset} = getFirstOperatorPos(codeLiteral, blankedStringCodeLiteral, flags?.frameType??"", flags?.cursorPos);
+            // 3 - break the code by operatorSlot, if we have any media here (that is, strype image placeholders) we need to temporary update the cursor position for that
+            const mediaMatchs = blankedStringCodeLiteral.matchAll(new RegExp(IMAGE_PLACERHOLDER.replaceAll("$", "\\$") + "\\d+\\$", "g"));
+            let mediaCursorPos: null|number = null;
+            if(flags?.cursorPos != undefined && mediaMatchs){
+                mediaCursorPos = flags.cursorPos;
+                mediaMatchs.forEach((match) => {
+                    if((mediaCursorPos as number) > match.index){
+                        (mediaCursorPos as number) += match[0].length;
+                    }
+                });
+            }
+            const {slots: operatorSplitsStruct, cursorOffset: operatorCursorOffset} = getFirstOperatorPos(codeLiteral, blankedStringCodeLiteral, flags?.frameType??"",mediaCursorPos??(flags?.cursorPos));
             cursorOffset += operatorCursorOffset;
             resStructSlot.fields = operatorSplitsStruct.fields;
             resStructSlot.operators = operatorSplitsStruct.operators;
@@ -1756,7 +1766,7 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
         .replaceAll(/(^\s+|\b|[+\-*/%<>&|^=!,]\s*)((\d+(\.\d*)?|\.\d+)[eE][-+]\d+j?)($|(\s*[ +\-*/%<>&|^=!,:]))/g,
             (...params) => blankReplacer(2, ["+", "-"], ...params))
         // Replacing a preceding sign operator
-        .replaceAll(/(^\s*|[+\-*/%<>&|^=!,]\s*)([+-]((0b[01]+)|(0x[0-9A-Fa-f]+)|((\d+(\.\d*)?|\.\d+)([eE]\d+)?j?)))(?=$|(\s*[ +\-*/%<>&|^=!,:]))/g,
+        .replaceAll(new RegExp(String.raw`(^\s*|[+\-*/%<>&|^=!,]\s*|(?:${keywordOperatorsWithSurroundSpaces.map((kw) => kw.trim()).join("|")})\s*)([+-]((0b[01]+)|(0x[0-9A-Fa-f]+)|((\d+(\.\d*)?|\.\d+)([eE]\d+)?j?)))(?=$|(\s*[ +\-*/%<>&|^=!,:]))`, "g"),
             (...params) => blankReplacer(2, ["+", "-"], ...params))
         // Replacing the decimal separator (note: \b is a word boundary)
         .replaceAll(/(\s+|\b|[+\-*/%<>&|^=!,:]\s*)(((\d+(\.\d*))([eE][0]?\d+)?j?))($|(\s*[ +\-*/%<>&|^=!,:]))/g,
