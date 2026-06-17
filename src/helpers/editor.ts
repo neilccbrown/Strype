@@ -1687,8 +1687,18 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             resStructSlot.operators.push(...structBeforeString.operators, {code: ""}, {code: ""}, ...structAfterString.operators);
         }
         else{
-            // 3 - break the code by operatorSlot
-            const {slots: operatorSplitsStruct, cursorOffset: operatorCursorOffset} = getFirstOperatorPos(codeLiteral, blankedStringCodeLiteral, flags?.frameType??"", flags?.cursorPos);
+            // 3 - break the code by operatorSlot, if we have any media here (that is, strype image placeholders) we need to temporary update the cursor position for that
+            const mediaMatchs = blankedStringCodeLiteral.matchAll(new RegExp(IMAGE_PLACERHOLDER.replaceAll("$", "\\$") + "\\d+\\$", "g"));
+            let mediaCursorPos: null|number = null;
+            if(flags?.cursorPos != undefined && mediaMatchs){
+                mediaCursorPos = flags.cursorPos;
+                mediaMatchs.forEach((match) => {
+                    if((mediaCursorPos as number) > match.index){
+                        (mediaCursorPos as number) += match[0].length;
+                    }
+                });
+            }
+            const {slots: operatorSplitsStruct, cursorOffset: operatorCursorOffset} = getFirstOperatorPos(codeLiteral, blankedStringCodeLiteral, flags?.frameType??"",mediaCursorPos??(flags?.cursorPos));
             cursorOffset += operatorCursorOffset;
             resStructSlot.fields = operatorSplitsStruct.fields;
             resStructSlot.operators = operatorSplitsStruct.operators;
