@@ -2337,7 +2337,7 @@ export const getImportFrameNameBindings = (frameId: number): string[] => {
         .map((match)=> match[1]); 
 };
 
-export function isFullyInViewport(el: Element, margin = 0) {
+export function isFullyInViewport(el: Element, margin = 0) : boolean {
     const rect = el.getBoundingClientRect();
 
     return (

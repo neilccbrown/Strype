@@ -6,7 +6,7 @@ import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, cl
 import { AppPlatform, AppVersion, eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getCaretContainerUID, isCaretContainerElement, AutoSaveKeyNames } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getCaretContainerUID, isCaretContainerElement, AutoSaveKeyNames, isFullyInViewport } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -1581,7 +1581,8 @@ export const useStore = defineStore("app", {
                     const newCaretId = this.lastCriticalActionPositioning.lastCriticalCaretPosition.id;
                     if(getAvailableNavigationPositions().map((e)=>e.frameId).includes(newCaretId) && this.frameObjects[newCaretId]){
                         this.frameObjects[newCaretId].caretVisibility = this.lastCriticalActionPositioning.lastCriticalCaretPosition.caretPosition;
-                        nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
+                        // Scrolling into view is taken care of below
+                        
                     }
                     if(this.focusSlotCursorInfos && this.anchorSlotCursorInfos){
                         const focusElement = document.getElementById(getLabelSlotUID(this.focusSlotCursorInfos.slotInfos));
@@ -1600,14 +1601,11 @@ export const useStore = defineStore("app", {
 
                     // Ensure the caret (frame or text caret) is visible in the page viewport after the change.
                     // For some reason, scrollIntoView() "miss" out the caret by a slight distance (maybe because it's a div?) so we don't see it. To adjust that issue, we scroll up a bit more.
-                    const htmlElementToShowId = (this.focusSlotCursorInfos) ? getLabelSlotUID(this.focusSlotCursorInfos.slotInfos) : getCaretContainerUID(this.currentFrame.caretPosition,this.currentFrame.id);
-                    const caretContainerEltRect = document.getElementById(htmlElementToShowId)?.getBoundingClientRect();
-                    document.getElementById(htmlElementToShowId)?.scrollIntoView();
-                    if(isCaretContainerElement(htmlElementToShowId) && caretContainerEltRect){
-                        const scrollStep = (caretContainerEltRect.top + caretContainerEltRect.height > document.documentElement.clientHeight) ? 50 : -50;
-                        const currentScroll = $("#"+getEditorMiddleUID()).scrollTop();
-                        $("#"+getEditorMiddleUID()).scrollTop((currentScroll??0) + scrollStep);
-                    }     
+                    nextTick(() => {
+                        const htmlElementToShowId = (this.focusSlotCursorInfos) ? getLabelSlotUID(this.focusSlotCursorInfos.slotInfos) : getCaretContainerUID(this.currentFrame.caretPosition, this.currentFrame.id);
+                        const el = document.getElementById(htmlElementToShowId);
+                        el?.scrollIntoView({block: (el && isFullyInViewport(el)) ? "nearest" : "center"});
+                    });
                 });
 
                 //Finally, for sanity check, we check errors on the whole code after changes have been applied
