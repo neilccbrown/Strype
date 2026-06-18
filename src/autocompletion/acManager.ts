@@ -484,7 +484,10 @@ export async function getAvailableModulesForImport() : Promise<AcResultsWithCate
         .map((k) => ({acResult: k, documentation: apiModules[k].documentation||"", type: [apiModules[k].type], version: apiModules[k].version}))
         .concat(fromLibraries.map((m) => ({acResult: m, documentation: "", type: ["module"], version: 0})));
     // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
-    updatedAPIModules = updatedAPIModules.concat(OUR_PUBLIC_LIBRARY_MODULES.map((m) => ({acResult: m, documentation: "", type: ["module"], version: 0})));
+    updatedAPIModules = updatedAPIModules.concat(OUR_PUBLIC_LIBRARY_MODULES
+        // Don't show strype.builtins as an importable module:
+        .filter((m) => m != "strype.builtins")
+        .map((m) => ({acResult: m, documentation: "", type: ["module"], version: 0})));
     // #v-endif
     return {[""]: updatedAPIModules};
 }
