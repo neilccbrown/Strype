@@ -1,5 +1,13 @@
 import {Page, expect, ElementHandle} from "@playwright/test";
 
+// This enumeration is used for the media slots placeholder when parsing slots
+// Don't use "_" in the values as they will be scrapped by the parser later.
+export enum MEDIA_SLOT_PARSED_PLACEHOLDER {
+    unknown="<unknown-media>", // Doesn't match anything of Strype's media, but used for the tests sanity checks
+    image="<media-img>",
+    sound="<media-snd>",
+}
+
 // If the last param is given, we check for frame cursor (true) or text (false)
 // If it's not given, no specific check, just check only one or the other is visible
 // Returns the cursor or focused HTML Element
@@ -49,42 +57,83 @@ async function getSelection(page: Page) : Promise<{ id: string, cursorPos : numb
     });
 }
 
-async function assertLabelSlotsContent(page: Page, expectedState: string, isInStatementFrame?: boolean) {
-    const info = await getSelection(page);
+async function assertLabelSlotsContent(page: Page, expectedState: string, options?: {isInStatementFrame?: boolean, mediaInfo?: {mediaType: "img" | "snd", endOfB64: string}[]}) {
+    const info = {...await getSelection(page), mediaClassName: "", media: MEDIA_SLOT_PARSED_PLACEHOLDER};
     const scssVars = await page.evaluate(() => {
         return (window as any)["StrypeSCSSVarsGlobals"];
     });
-    const s = await page.locator("#frameContainer_-3" + " ." + scssVars.frameHeaderClassName).first().locator("." + scssVars.labelSlotInputClassName + ", ." + scssVars.frameColouredLabelClassName).evaluateAll((parts, info: { id: string, cursorPos : number, isInStatementFrame?: boolean }) => {
+
+    // Only parse media if we have indicated any media info (see mediaInfo in options)
+    const s = await page.locator("#frameContainer_-3" + " ." + scssVars.frameHeaderClassName).first().locator(`.${scssVars.labelSlotInputClassName}, .${scssVars.frameColouredLabelClassName}${(options?.mediaInfo) ? (", ." + scssVars.labelSlotMediaClassName) : ""}`).evaluateAll((parts, data) => {
+        const  {info, mediaPlaceHolders, mediaClassName} = data;
         let s = "";
         if (!parts) {
             // Try to debug an occasional seemingly impossible failure:
             console.log("Parts is null which I'm sure shouldn't happen");
         }
         // If we're in a block frame like "if", we ignore the first and last part:
-        const parseOffset = (info.isInStatementFrame) ? 0 : 1;
+        const parseOffset = (info.options?.isInStatementFrame) ? 0 : 1;
+
+        let mediaInfoCounter = 0;
         for (let i = 1; i < parts.length - parseOffset; i++) {
             const p: any = parts[i];
 
             let text = (p.value || p.textContent || "").replace("\u200B", "");
 
+            // Handling of media: we don't make strict comparison for media:
+            // instead, based on mediaInfos, we check the start of the slots based on the media type, 
+            // and the content of the media solely based on a few last characters based on the media info property "endOfB64".
+            // Media appear as <img> in the editor (their representation).
+            let isMediaSlot = false;
+            if(info?.options?.mediaInfo && p.tagName == "IMG" && p.classList.contains(mediaClassName)){
+                isMediaSlot = false;
+                // Fist check the media info array is in line with what we are parsing
+                if(mediaInfoCounter >= info.options.mediaInfo.length){
+                    throw new Error("A media slot has been parsed but it does not match a media info array entry.");
+                }
+                let mediaPlaceHolderText = mediaPlaceHolders.unknown;
+                const {mediaType, endOfB64} = info.options.mediaInfo[mediaInfoCounter];
+                const pDataCode = p.getAttribute("data-code");
+                
+                // Check the media type is in line with the media info
+                const dataCodePreamble = (mediaType == "img") ? "load_image(\"data:image/" : "load_sound(\"data:audio/";
+                if(!pDataCode?.startsWith(dataCodePreamble)){
+                    throw new Error("Did not find the expected media type.");
+                }
+                mediaPlaceHolderText = (mediaType == "img") ? mediaPlaceHolders.image : mediaPlaceHolders.sound;
+                
+                // Check the media content is (loosely) in line with the media info
+                if(!pDataCode.endsWith(endOfB64+"\")")){
+                    throw new Error("Did not find the expected media content ending.");
+                }
+
+                // The checks passed, we can now render the text as expected
+                text += mediaPlaceHolderText;
+                isMediaSlot = true;
+
+                // Increment the counter for the next media we'll parse
+                mediaInfoCounter++;
+            }
+
+
             // If we're the focused slot, put a dollar sign in to indicate the current cursor position:
             if (info.id === p.getAttribute("id") && info.cursorPos >= 0) {
                 text = text.substring(0, info.cursorPos) + "$" + text.substring(info.cursorPos);
             }
-            // Don't put curly brackets around strings, operators or brackets:
-            if (!p.classList.contains((window as any)["StrypeSCSSVarsGlobals"].frameStringSlotClassName) && !p.classList.contains((window as any)["StrypeSCSSVarsGlobals"].frameOperatorSlotClassName) && !/[([)\]$]/.exec(p.textContent)) {
+            // Don't put curly brackets around strings, operators or brackets, or media:
+            if (!p.classList.contains((window as any)["StrypeSCSSVarsGlobals"].frameStringSlotClassName) && !p.classList.contains((window as any)["StrypeSCSSVarsGlobals"].frameOperatorSlotClassName) && !/[([)\]$]/.exec(p.textContent) && !isMediaSlot) {
                 text = "{" + text + "}";
             }
             s += text;
         }
         return s;
-    }, {...info, isInStatementFrame: isInStatementFrame});
+    }, {info: {...info, options: options}, mediaPlaceHolders: MEDIA_SLOT_PARSED_PLACEHOLDER, mediaClassName: scssVars.labelSlotMediaClassName});
     // There is no correspondence for _ (indicating a null operator) in the Strype interface so just ignore that:
     expect(s).toEqual(expectedState.replaceAll("_", ""));
 }
 
-export async function assertStateOfIfFrame(page: Page, expectedState : string) : Promise<void> {
-    await assertLabelSlotsContent(page, expectedState);
+export async function assertStateOfIfFrame(page: Page, expectedState : string, mediaInfo?: {mediaType: "img" | "snd", endOfB64: string}[]) : Promise<void> {
+    await assertLabelSlotsContent(page, expectedState, {mediaInfo});
 }
 
 export async function assertStateOfVarAssignFrame(page: Page, expectedLHSState : string, expectedRHSState: string) : Promise<void> {
@@ -102,7 +151,7 @@ export async function assertStateOfVarAssignFrame(page: Page, expectedLHSState :
     expect(varassignLabelSlotContent).toEqual(" ⇐ ");
     
     // 2 - Check the expected text part:
-    await assertLabelSlotsContent(page, `${expectedLHSState}{ ⇐ }${expectedRHSState}`, true);
+    await assertLabelSlotsContent(page, `${expectedLHSState}{ ⇐ }${expectedRHSState}`, {isInStatementFrame: true});
 }
 
 export async function typeIndividually(page: Page, content: string, timeout = 75) : Promise<void> {
