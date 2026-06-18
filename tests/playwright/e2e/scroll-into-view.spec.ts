@@ -135,6 +135,8 @@ test.describe("Undo scrolls location into view", () => {
         [[[0, "{Enter}"], [50, "{Enter}"]], 1.0],
         // Edit some content:
         [[[5, "{ArrowLeft}{ArrowLeft}{ArrowLeft}a"], [30, "{ArrowRight}s"], [80, "{ArrowLeft}{ArrowLeft}{ArrowLeft}b"]], 0.5],
+        // Delete frames:
+        [[[20, "{Backspace}"], [80, "{Delete}"]], 0],
     ];
     for (let testIndex = 0; testIndex < undoTests.length; testIndex++) {
         test(`Undo test #${testIndex}`, async ({page}) => {
@@ -157,11 +159,15 @@ test.describe("Undo scrolls location into view", () => {
             await scrollToFraction(page, scrollTo);
             
             for (let i = statesToUndoTo.length - 1; i >= 0; i--) {
-                const printNumBefore = Math.max(1, undoTests[testIndex][0][i][0] - 1);
-                //const printNumAfter = Math.min(100, undoTests[testIndex][0][i][0] + 2);
-                const alreadyBothVisible = 
-                    await isInsideViewport(await page.locator("span.label-slot-input", {hasText: new RegExp(`#${printNumBefore}(?!\\d)`)}).elementHandle())
-                    ;//&& await isInsideViewport(await page.locator("span.label-slot-input", {hasText: new RegExp(`#${printNumAfter}(?!\\d)`)}).elementHandle());
+                let printNumEdited = undoTests[testIndex][0][i][0];
+                if (actions[i][1].startsWith("{ArrowRight}") || actions[i][1].startsWith("{Backspace}")) {
+                    printNumEdited += 1;
+                }
+                else {
+                    printNumEdited = Math.max(printNumEdited, 1);
+                }
+                const alreadyVisible = 
+                    await isInsideViewport(await page.locator("span.label-slot-input", {hasText: new RegExp(`#${printNumEdited}(?!\\d)`)}).elementHandle());
                 
                 // Semi-arbitrary pick of ctrl-z or clicking undo button:
                 if (i + testIndex % 2 == 0) {
@@ -174,7 +180,11 @@ test.describe("Undo scrolls location into view", () => {
                 // Check focus is in view:
                 const parent = await toParentElementHandle(await checkFrameXorTextCursor(page));
                 if (parent != null) {
-                    expect(await isInsideViewport(parent, alreadyBothVisible ? -1 : 80), `Already visible: ${alreadyBothVisible}`).toEqual(true);
+                    // Do two checks; first check it's visible at all, then if it was not already visible, check it's visible away from the edges:
+                    expect(await isInsideViewport(parent, -1), `Frame #${printNumEdited} should be visible somewhere`).toEqual(true);
+                    if (!alreadyVisible) {
+                        expect(await isInsideViewport(parent, 20), `Frame #${printNumEdited} should be visible away from edges because we had to scroll`).toEqual(true);
+                    }
                 }
                 else {
                     expect(parent).not.toBeNull();
