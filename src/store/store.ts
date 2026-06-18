@@ -1584,8 +1584,11 @@ export const useStore = defineStore("app", {
                         nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
                     }
                     if(this.focusSlotCursorInfos && this.anchorSlotCursorInfos){
-                        this.setSlotTextCursors(this.focusSlotCursorInfos, this.focusSlotCursorInfos);
-                        setDocumentSelection(this.focusSlotCursorInfos, this.focusSlotCursorInfos);
+                        const focusElement = document.getElementById(getLabelSlotUID(this.focusSlotCursorInfos.slotInfos));
+                        // Clamp the position in case it's no longer valid after the undo::
+                        const clamped = {...this.focusSlotCursorInfos, cursorPos: Math.min(this.focusSlotCursorInfos.cursorPos, focusElement?.textContent?.length ?? 0)};
+                        this.setSlotTextCursors(clamped, clamped);
+                        setDocumentSelection(clamped, clamped);
                         const toFocusSlot = retrieveSlotFromSlotInfos(this.focusSlotCursorInfos.slotInfos) as BaseSlot;
                         toFocusSlot.focused = true;
                         this.isEditing = true;
