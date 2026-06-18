@@ -1,5 +1,5 @@
 import {ElementHandle, expect, JSHandle, Page, test} from "@playwright/test";
-import {checkConsoleContent, runToFinish} from "../support/execution";
+import { checkConsoleContent, runButtonShowsRun, runToFinish, startRunning } from "../support/execution";
 import {checkFrameXorTextCursor, doPagePaste} from "../support/editor";
 import {save} from "../support/loading-saving";
 import {readFileSync} from "node:fs";
@@ -195,4 +195,35 @@ test.describe("Undo scrolls location into view", () => {
         });
         
     }
+});
+
+test.describe("Printing scrolls into view", () => {
+    test("Pressing keys repeatedly scrolls into view", async ({page}) => {
+        await page.keyboard.press("Delete");
+        await page.keyboard.press("Delete");
+        await doPagePaste(page, `
+from strype.graphics import get_key
+while (True):
+    print(get_key())
+`);
+        const runButton = await startRunning(page, true);
+        for (let i = 0; i < 100; i++) {
+            await page.keyboard.type("a");
+            await page.waitForTimeout(100);
+            const textarea = page.locator("#peaConsole");
+
+            // Check it has scrolled to bottom:
+            const isScrolledToBottom = await textarea.evaluate((el) => {
+                const distanceFromBottom =
+                    el.scrollHeight - el.scrollTop - el.clientHeight;
+
+                return distanceFromBottom <= 2; // allow a small rounding tolerance
+            });
+
+            expect(isScrolledToBottom).toBe(true);
+        }
+        // Stop:
+        await runButton.click();
+        await runButtonShowsRun(runButton);
+    });
 });

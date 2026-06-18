@@ -648,7 +648,14 @@ export default defineComponent({
                         pythonConsole.value = "";
                     }
                     else {
-                        pythonConsole.value = pythonConsole.value + output;
+                        // We want to append, then only scroll if they were already near the bottom:
+                        const wasNearBottom = pythonConsole.scrollHeight - pythonConsole.scrollTop - pythonConsole.clientHeight < 10; // px tolerance
+
+                        pythonConsole.value += output;
+
+                        if (wasNearBottom) {
+                            pythonConsole.scrollTop = pythonConsole.scrollHeight;
+                        }
                         useStore().trackOutputChars(output.length);
                         this.switchToConsoleTab(containsInputPrompt ? "always" : "ifFirstCallDuringExecute");
                     }
