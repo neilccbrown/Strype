@@ -85,9 +85,11 @@ async function typeWithKeys(page: Page, input: string) {
 
         if (text) {
             await page.keyboard.type(text);
+            await page.waitForTimeout(100);
         }
-
+        
         await page.keyboard.press(key);
+        await page.waitForTimeout(100);
 
         lastIndex = match.index + match[0].length;
     }
