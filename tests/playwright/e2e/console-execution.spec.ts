@@ -258,3 +258,53 @@ TypeError: object of type 'NoneType' has no len()
 `);
     });
 });
+
+test.describe("Check console prints don't queue up after stopping", () => {
+    for (let runTime of [3, 10, 30]) {
+        test(`Check console stops printing time within seconds of stopping after running for ${runTime} seconds`, async ({page}) => {
+            await enterCode(page, ["from time import time", "", `
+i = 0
+while True:
+    print(time())`]);
+            const runButton = await startRunning(page, true);
+            await page.waitForTimeout(runTime * 1000);
+            // We fetch the console content:
+            let consoleValue = await page.locator("#peaConsole").inputValue();
+            // Ignore the last line because there is a chance it was incomplete; look at the one before:
+            const lastNumberWhileRunning = Number(consoleValue.split("\n")?.at(-2)?.trim());
+            // Now we stop:
+            await runButton.click();
+            await runButtonShowsRun(runButton, true);
+            // Wait for slush to print if there was some (shouldn't be, but that's what we're testing...):
+            await page.waitForTimeout(10_000);
+            // Then check the last actual printed line:
+            consoleValue = await page.locator("#peaConsole").inputValue();
+            const lastNumberAfterStopping = Number(consoleValue.split("\n")?.at(-2)?.trim());
+            // Should have stopped printing within 2 seconds:
+            expect(lastNumberAfterStopping).toBeLessThan(lastNumberWhileRunning + 2);
+        });
+
+        test(`Check console stops printing literal within seconds of stopping after running for ${runTime} seconds`, async ({page}) => {
+            await enterCode(page, ["", "", `
+while True:
+    print("Hi")`]);
+            const runButton = await startRunning(page, true);
+            await page.waitForTimeout(runTime * 1000);
+            // We fetch the console content:
+            let consoleValue = await page.locator("#peaConsole").inputValue();
+            // Divide by 3 ("Hi\n".length) to get lines:
+            const lengthWhileRunning = consoleValue.length / 3;
+            const linesPerSecond = lengthWhileRunning / runTime;
+            // Now we stop:
+            await runButton.click();
+            await runButtonShowsRun(runButton, true);
+            // Wait for slush to print if there was some (shouldn't be, but that's what we're testing...):
+            await page.waitForTimeout(10_000);
+            // Then check the last actual printed line:
+            consoleValue = await page.locator("#peaConsole").inputValue();
+            const lengthAfterStopping = consoleValue.length / 3;
+            // Should have stopped printing soon after (within 2 seconds' worth):
+            expect(lengthAfterStopping).toBeLessThan(lengthWhileRunning + linesPerSecond * 2);
+        });
+    }
+});
