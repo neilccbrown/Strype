@@ -43,6 +43,7 @@ import { Expect, IsSerializable } from "@/stryperuntime/check_serializable";
 export type CloudFileInfo = {fileId: CloudFileId, name: string; isDir: true;} | {fileId: CloudFileId, name: string; isDir: false; fileSize: number};
 
 export type SyncStrypePyodideWorkerRequest =
+    | { request: "dummy" } // No-op request used to make sure we haven't raced too far ahead of main thread
     | { request: "console_input" }    
     | { request: "loadImage"; url: string }
     | { request: "loadLibraryAsset"; libraryShortName: string; fileName: string }
@@ -81,6 +82,7 @@ export type SyncStrypePyodideWorkerRequest =
 // Note that if there is an error, it is sent with an "error" string field; we can't easily specify this in the type without
 // cluttering it up (as the error could be for any request) so we do that part dynamically without telling Typescript.
 export type SyncStrypePyodideWorkerResponse =
+    | { request: "dummy"; response: boolean; }
     | { request: "console_input"; response: string; }
     | { request: "loadImage"; response: RemoteImage;}
     | { request: "loadLibraryAsset"; response: string | undefined; }

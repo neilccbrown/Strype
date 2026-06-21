@@ -34,6 +34,9 @@ export const handleSyncRequests : (
     callbacks : SyncRequestCallbacks,
 ) => SyncPromiseStrypePyodideHandlerFunction = (renderer, soundManager, turtle, callbacks) => (req) => {
     switch (req.request) {
+    case "dummy": {
+        return {request: req.request, response: Promise.resolve(true)};
+    }
     case "console_input": {
         return {request: req.request, response: sInput()};
     }
