@@ -14,7 +14,7 @@ This repository contains the source code for Strype, licensed under the AGPLv3 (
 Building and running
 ---
 
-Strype is a <a href="https://v2.vuejs.org/" target="_blank">Vue 2</a> project (upgrading to Vue 3 is planned for 2025) that uses NPM as its core tool.  To build you will first need to install <a href="https://nodejs.org/en" target="_blank">Node.js</a> (or <a href="https://docs.npmjs.com/downloading-and-installing-node-js-and-npm" target="_blank">another method</a>) to get NPM.
+Strype is a <a href="https://vuejs.org/" target="_blank">Vue</a> project that uses NPM as its core tool.  To build you will first need to install <a href="https://nodejs.org/en" target="_blank">Node.js</a> (or <a href="https://docs.npmjs.com/downloading-and-installing-node-js-and-npm" target="_blank">another method</a>) to get NPM.
 
 Then, to run a local test version you can run the following commands in the top level of the checked out repository:
 
