@@ -137,8 +137,40 @@ const executePython = pyodideExpose(async (
     userLibrariesFileIndexes: { [url: string]: Record<string, string>},
     startInSlashCloud: boolean,
     // Important all requests (sync and async) go through one function to avoid them racing each other:
-    makeRequest: Comlink.Remote<(req: SyncOrAsyncStrypePyodideWorkerRequest) => void>
+    makeRawRequest: Comlink.Remote<(req: SyncOrAsyncStrypePyodideWorkerRequest) => void>
 ) : Promise<PyodideErrorDetails | null> => {
+    // There is a potential issue with async requests that if we have a tight loop
+    // (e.g. while True: print("a")) then we can issue requests faster than the main
+    // thread can service them.  If we send an unlimited number of async requests without ever
+    // waiting for them to complete, they can all queue up, and even if the user clicks Stop,
+    // these requests can keep being serviced for a long time (tens of seconds!) after Stop is clicked.
+    // This is only an issue with consecutive async requests; any sync request where we have to wait
+    // will effectively also synchronise with the main thread because the sync request will only
+    // be answered after the previous async requests have all been processed.
+    //
+    // To avoid problems with many consecutive async requests, we count them, and every 50 requests
+    // we do a dummy sync request just to make sure we haven't gotten too far ahead of the main thread:
+    let numConsecutiveAsyncRequests = 0;
+    const makeRequest = (req: SyncOrAsyncStrypePyodideWorkerRequest) => {
+        if (req.kind === "sync") {
+            numConsecutiveAsyncRequests = 0;
+        }
+        else {
+            numConsecutiveAsyncRequests += 1;
+            if (numConsecutiveAsyncRequests >= 50) {
+                // To avoid racing too far ahead of the main thread, we do a quick catch-up:
+                makeRawRequest({kind: "sync", request: {request: "dummy"}});
+                const reply = extras.readMessage() as (SyncStrypePyodideWorkerResponse | {request: string, error: string});
+                if (reply.request != "dummy") {
+                    throw new Error(`Internal error: Pyodide worker received ${reply.request} but had asked for dummy`);
+                }
+                numConsecutiveAsyncRequests = 0;
+            }
+        }
+        // All requests are ultimately sent on:
+        makeRawRequest(req);
+    };
+    
     return reloader == null ? null : await reloader.withPyodide(async (pyodide : PyodideInterface) => {
         // Load any in-built packages they've used (e.g. numpy, pandas):
         const loaded = await pyodide.loadPackagesFromImports(pythonCode, {messageCallback: console.log, errorCallback: console.error});
