@@ -63,8 +63,8 @@
     "overwriteProject": "Remplacer",
     "saveProjectCopy": "Choisir un autre nom",
     "spaceBar": "espace",
-    "saveToCloudDrive" : "Enregistrer dans {drivename}",
-    "loadFromCloudDrive" : "Charger à partir de {drivename}",
+    "saveToCloudDrive": "Enregistrer dans {drivename}",
+    "loadFromCloudDrive": "Charger à partir de {drivename}",
     "noContinueWithout": "Ne pas se connecter",
     "saveChanges": "Enregister les modifications",
     "discardChanges": "Ignorer les modifications",
@@ -124,8 +124,10 @@
       "readonlyFile": "le fichier \"{filename}\" est en lecture seule.",
       "writingFileFailed": "écriture du fichier \"{filename}\" impossible. (erreur : {error})",
       "fileAlreadyExists": "le fichier \"{filename}\" existe déjà (un fichier ouvert avec le mode 'création exclusive' ne peut exister).",
-      "closeInternalError": "Strype a rencontré une erreur interne lors de la fermeture du fichier (le fichier n'a pas été trouvé)."
-    }
+      "closeInternalError": "Strype a rencontré une erreur interne lors de la fermeture du fichier (le fichier n'a pas été trouvé).",
+      "cannotCreateDirectory": "La création de dossier n'est actuellement pas supportée."
+    },
+    "editableSlotWithHash": "Ce champ ne peut pas contenir '#'"
   },
   "appMessage": {
     "editorFileUpload": "Chargement de votre fichier dans l'éditeur...",
@@ -186,7 +188,8 @@
     "renameIdentifiers": "Renommer toutes les utilisations de {thisIdentifierType} ?",
     "thisVariable": "cette variable",
     "thisFunction": "cette fonction",
-    "thisClass": "cette classe"
+    "thisClass": "cette classe",
+    "clearAllRecent": "Supprimer tout"
   },
   "contextMenu": {
     "ctrl": "Ctrl",
