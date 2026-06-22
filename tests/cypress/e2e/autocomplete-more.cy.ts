@@ -138,3 +138,20 @@ describe("Import of structured items", () => {
         }, true);
     });
 });
+
+describe("Asset files", () => {
+    it("Offers auto-complete in string literal for assets", () => {
+        focusEditorAC();
+        // Make a print and open a string:
+        cy.get("body").type("p\"");
+        cy.wait(500);
+        // Trigger auto-complete:
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel, frameId) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkNoItems(acIDSel, "len");
+            checkExactlyOneItem(acIDSel, null, "/books/three-men-in-a-boat.txt");
+            checkNoItems(acIDSel, "cat-test");
+        }, false);
+    });
+});

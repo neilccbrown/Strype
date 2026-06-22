@@ -1,4 +1,4 @@
-import {Page, expect} from "@playwright/test";
+import {Page, expect, ElementHandle} from "@playwright/test";
 
 // This enumeration is used for the media slots placeholder when parsing slots
 // Don't use "_" in the values as they will be scrapped by the parser later.
@@ -10,17 +10,27 @@ export enum MEDIA_SLOT_PARSED_PLACEHOLDER {
 
 // If the last param is given, we check for frame cursor (true) or text (false)
 // If it's not given, no specific check, just check only one or the other is visible
-export async function checkFrameXorTextCursor(page: Page, specificFrameCursor?: boolean, message?: string) : Promise<void> {
+// Returns the cursor or focused HTML Element
+export async function checkFrameXorTextCursor(page: Page, specificFrameCursor?: boolean, message?: string) : Promise<ElementHandle> {
     // Check exactly one caret visible or focused input field:
-    const numFrameCursors = await page.evaluate(() => {
+    const frameCursors = await page.evaluateHandle(() => {
         const scssVars = (window as any)["StrypeSCSSVarsGlobals"];
         const visibleFrameCursorElements = document.querySelectorAll("."+ scssVars.caretClassName + ":not(." + scssVars.invisibleClassName +")");
-        return visibleFrameCursorElements.length;
+        return visibleFrameCursorElements;
     });
-    const hasTextCursor = await page.evaluate(() => {
-        return document?.getSelection()?.focusNode != null;
+    const frameCursorIds : string[] = await frameCursors.evaluate((nodes) => {
+        const r = [];
+        for (let i = 0; i < nodes.length; i++) {
+            r.push("#" + (nodes[i].id ?? "<unknown>"));
+        }
+        return r;
     });
-    expect(numFrameCursors, message).toEqual(hasTextCursor ? 0 : 1);
+    const numFrameCursors = frameCursorIds.length;
+    const textCursorNode = (await page.evaluateHandle(() => {
+        return document?.getSelection()?.focusNode;
+    })).asElement();
+    const hasTextCursor = textCursorNode != null;
+    expect(numFrameCursors, (message ?? "") + " ids: [" + frameCursorIds.join(", ") + "]").toEqual(hasTextCursor ? 0 : 1);
     if (specificFrameCursor !== undefined) {
         if (specificFrameCursor == true) {
             expect(numFrameCursors, message).toEqual(1);
@@ -29,6 +39,7 @@ export async function checkFrameXorTextCursor(page: Page, specificFrameCursor?: 
             expect(hasTextCursor, message).toEqual(true);
         }
     }
+    return hasTextCursor ? textCursorNode : await frameCursors.evaluateHandle((nodes) => nodes[0]);
 }
 
 export async function checkTextSlotCursorPos(page: Page, expectedPos: number): Promise<void> {

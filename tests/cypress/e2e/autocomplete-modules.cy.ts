@@ -51,6 +51,9 @@ describe("Modules", () => {
                 checkExactlyOneItem(acIDSel, null, "collections");
                 checkExactlyOneItem(acIDSel, null, "random");
                 checkExactlyOneItem(acIDSel, null, "test");
+                checkExactlyOneItem(acIDSel, null, "strype.graphics");
+                // Should not show strype.builtins as you don't usually need to import from it:
+                checkNoItems(acIDSel, "strype.builtins");
                 checkNoItems(acIDSel, "mediacomp");
                 checkNoItems(acIDSel, "microbit");
                 // Once we type "a", should show things beginning with R but not the others:
@@ -110,6 +113,9 @@ describe("Modules", () => {
                 checkExactlyOneItem(acIDSel, null, "collections");
                 checkExactlyOneItem(acIDSel, null, "random");
                 checkExactlyOneItem(acIDSel, null, "test");
+                checkExactlyOneItem(acIDSel, null, "strype.graphics");
+                // Should not show strype.builtins as it's redundant:
+                checkNoItems(acIDSel, "strype.builtins");
                 checkNoItems(acIDSel, "mediacomp");
                 checkNoItems(acIDSel, "microbit");
                 // Once we type "a", should show things beginning with R but not the others:
