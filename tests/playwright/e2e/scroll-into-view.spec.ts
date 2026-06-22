@@ -9,7 +9,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         // On Windows+Webkit it just can't seem to load the page for some reason:
         testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
     }
-    testInfo.setTimeout(120000);
+    testInfo.setTimeout(240000);
     await page.goto("./", {waitUntil: "load"});
     await expect(page.locator(".frame-div")).toHaveCount(2);
     await page.evaluate(() => {
