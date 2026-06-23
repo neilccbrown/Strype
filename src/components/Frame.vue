@@ -486,7 +486,7 @@ export default defineComponent({
             document.dispatchEvent(new CustomEvent(CustomEventTypes.requestAppNotOnTop, {detail: false}));
         },
 
-        handleClick (event: MouseEvent, positionForMenu?: Position) {
+        async handleClick (event: MouseEvent, positionForMenu?: Position) {
             if(this.appStore.isContextMenuKeyboardShortcutUsed){
                 // The logic for handling the context menu opened via a keyboard shortcut is handled by App
                 return;
@@ -524,8 +524,8 @@ export default defineComponent({
                 {label: this.$t("contextMenu.downloadAsImg"), onClick: this.downloadAsImg},
                 {label: this.$t("contextMenu.duplicate"), onClick: () => this.duplicate(false), attrs: {"action-name": FrameContextMenuActionName.duplicate}, shortcut: isMacOSPlatform() ? "⌘D" : this.$t("shortcut.ctrlPlus") + "D"},
                 {divided: "self"},
-                {label: this.$t("contextMenu.pasteAbove"), onClick: this.pasteAbove},
-                {label: this.$t("contextMenu.pasteBelow"), onClick: this.pasteBelow},
+                {label: this.$t("contextMenu.pasteAbove"), onClick: () => this.pasteAbove(clipboardContent)},
+                {label: this.$t("contextMenu.pasteBelow"), onClick: () => this.pasteBelow(clipboardContent)},
                 {divided: "self"},
                 {label: this.$t("contextMenu.disable"), onClick: () => this.enableDisable({})},
                 {divided: "self"},
@@ -644,10 +644,12 @@ export default defineComponent({
             // Similarly to duplication, not all frames can be pasted at a specifc location.
             // We show the paste entries depending on the possiblity to paste the clipboard. 
             let canPasteAboveFrame = false, canPasteBelowFrame = false;
-            if(!this.appStore.isCopiedAvailable || this.isPartOfSelection){
+            const clipboardContent = await navigator.clipboard.readText();
+            const isCopiedAvailable = clipboardContent;
+            if(!isCopiedAvailable || this.isPartOfSelection){
                 // If there are no frame to copy, or the click is part of a selection of frames
                 // we just remove all paste menu entries (and the divider following them)
-                const pasteOptionContextMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.onClick === this.pasteAbove);
+                const pasteOptionContextMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.label === this.$t("contextMenu.pasteAbove"));
                 this.frameContextMenuItems.splice(
                     pasteOptionContextMenuPos,
                     3 //2 paste menu entries + divider
@@ -699,9 +701,9 @@ export default defineComponent({
                 const sliceNumber = (!canPasteAboveFrame && !canPasteBelowFrame)
                     ? 3 // both paste menu entries and divider
                     : 1; // one of the paste menu entries
-                const pasteBelowOptionIndex = this.frameContextMenuItems.findIndex((entry) => entry.onClick === this.pasteBelow);
+                const pasteBelowOptionIndex = this.frameContextMenuItems.findIndex((entry) => entry.label === this.$t("contextMenu.pasteBelow"));
                 const pasteOptionContextMenuPos = (!canPasteAboveFrame)
-                    ? this.frameContextMenuItems.findIndex((entry) => entry.onClick === this.pasteAbove) // position of first paste entry menu 
+                    ? this.frameContextMenuItems.findIndex((entry) => entry.label === this.$t("contextMenu.pasteAbove")) // position of first paste entry menu 
                     : pasteBelowOptionIndex; // position of second paste entry menu
                 if(!canPasteAboveFrame || ! canPasteBelowFrame){
                     this.frameContextMenuItems.splice(
@@ -1300,7 +1302,7 @@ export default defineComponent({
             }
         },
 
-        pasteAbove(): void {
+        pasteAbove(clipboardContent: string): void {
             // Perform a paste above this frame
             // We look for the position above. The reference however depends whether the currently clicked frame is disabled: inside a disabled structure, a frame won't
             // be always be listed in available positions because the disabled structure is like an unit. In that case, we need to find what is the next available frame.
@@ -1339,12 +1341,13 @@ export default defineComponent({
                     {
                         clickedFrameId: caretNavigationPositionAbove.frameId,
                         caretPosition: caretNavigationPositionAbove.caretPosition as CaretPosition,
+                        clipboardContent
                     }
                 );
             }
         },
 
-        pasteBelow(): void {
+        pasteBelow(clipboardContent: string): void {
             // Perform a paste below this frame
             const targetPasteBelow = this.getTargetPasteBelow();
             if(this.appStore.isSelectionCopied){
@@ -1360,6 +1363,7 @@ export default defineComponent({
                     {
                         clickedFrameId: targetPasteBelow.id,
                         caretPosition: targetPasteBelow.caretPosition,
+                        clipboardContent
                     }
                 );
             }

@@ -538,10 +538,6 @@ export const useStore = defineStore("app", {
                 state.frameObjects[state.frameObjects[frameId].parentId].childrenIds.indexOf(frameId);
         },
         
-        isCopiedAvailable: (state) => {
-            return (state.copiedFrameId !== -100) || (state.copiedSelectionFrameIds.length > 0);
-        },
-        
         isPasteAllowedAtFrame() { 
             return (frameId: number, caretPos: CaretPosition) => {
                 if(this.isSelectionCopied){
@@ -2885,7 +2881,7 @@ export const useStore = defineStore("app", {
             }
         },
 
-        pasteFrame(payload: {clickedFrameId: number; caretPosition: CaretPosition, ignoreStateBackup?: boolean}) {
+        pasteFrame(payload: {clickedFrameId: number; caretPosition: CaretPosition, clipboardContent: string, ignoreStateBackup?: boolean}) {
             // If the copiedFrame has a JointParent, we're talking about a JointFrame
             const isCopiedJointFrame = this.copiedFrames[this.copiedFrameId].frameType.isJointFrame;
 

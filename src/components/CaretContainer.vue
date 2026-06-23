@@ -154,10 +154,6 @@ export default defineComponent({
             return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
         },
 
-        pasteAvailable(): boolean {
-            return this.appStore.isCopiedAvailable;
-        },
-
         pasteMenuActionName(): FrameContextMenuActionName {
             return FrameContextMenuActionName.paste;
         },
@@ -292,7 +288,8 @@ export default defineComponent({
                 }
                 // #v-endif
                 const pythonCode = overrideText ?? (event as ClipboardEvent).clipboardData?.getData("text");
-                if (this.pasteAvailable && (pythonCode == undefined || pythonCode.trim().length == 0)) {
+                const pasteAvailable = !!pythonCode;
+                if (pasteAvailable && (pythonCode == undefined || pythonCode.trim().length == 0)) {
                     // We check if pasting frames is possible here, if not, show a message.
                     //we need to update the context menu as if it had been shown
                     const isPasteAllowedAtFrame = this.appStore.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition);
@@ -328,7 +325,7 @@ export default defineComponent({
             document.dispatchEvent(new CustomEvent(CustomEventTypes.requestAppNotOnTop, {detail: false}));
         },
 
-        handleClick (event: MouseEvent, positionForMenu?: Position): void {
+        async handleClick (event: MouseEvent, positionForMenu?: Position): Promise<void> {
             // Do not show any menu if the user's code is being executed
             if(this.isPythonExecuting){
                 return;
@@ -341,7 +338,9 @@ export default defineComponent({
 
             this.appStore.contextMenuShownId = this.UID;
 
-            this.showPasteMenuItem = this.pasteAvailable && this.appStore.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition);
+            const clipboardContent = await navigator.clipboard.readText();
+            const pasteAvailable = !!clipboardContent;
+            this.showPasteMenuItem = pasteAvailable && this.appStore.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition);
             this.prepareInsertFrameSubMenu();
 
             // Overwrite readonly properties clientX and clientY (to position the menu if needed)
@@ -350,7 +349,7 @@ export default defineComponent({
             // Create the menu content here and open it
             this.frameContextMenuItems.splice(0);
             if(this.showPasteMenuItem){
-                this.frameContextMenuItems.push({label: this.$t("contextMenu.paste"), onClick: this.paste}, {divided: "self"});
+                this.frameContextMenuItems.push({label: this.$t("contextMenu.paste"), onClick: () => this.paste(clipboardContent)}, {divided: "self"});
             }
             this.frameContextMenuItems.push({label: this.$t("contextMenu.insert"), children: this.insertFrameMenuItems});                                    
             this.showContextMenuAtCoordPos.x = event.x;
@@ -365,16 +364,16 @@ export default defineComponent({
             );
         },
 
-        paste(): void {
+        paste(clipboardContent: string): void {
             // We check upon the context menu informations because a click could be generated on a hovered caret and we can't distinguish 
             // by any other mean which caret is the one the user clicked on.
             const currentShownContextMenuUID: string = this.appStore.contextMenuShownId;
             if(currentShownContextMenuUID === this.UID){
-                this.doPaste();
+                this.doPaste(clipboardContent);
             }
         },
 
-        doPaste(pasteAt: "start" | "end" | "caret" = "start") : void {
+        doPaste(clipboardContent: string, pasteAt: "start" | "end" | "caret" = "start") : void {
             let pasteDestination: CurrentFrame;
             let restoreCaretTo: CurrentFrame | null = {... useStore().currentFrame};
             const stateBeforeChanges = cloneDeep(this.appStore.$state);
@@ -428,6 +427,7 @@ export default defineComponent({
                         clickedFrameId: pasteDestination.id,
                         caretPosition: pasteDestination.caretPosition,
                         ignoreStateBackup: true,
+                        clipboardContent
                     }                
                 );
             }

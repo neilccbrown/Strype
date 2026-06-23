@@ -1104,7 +1104,8 @@ const bodyMouseUpEventHandlerForFrameDnD = (event: MouseEvent): void => {
             if(event.ctrlKey || event.altKey){
                 if(currentDraggedSingleFrameId){
                     useStore().doCopyFrame(currentDraggedSingleFrameId);
-                    useStore().pasteFrame({clickedFrameId: currentCaretDropPosFrameId, caretPosition: currentCaretDropPosCaretPos});
+                    // TODO
+                    //useStore().pasteFrame({clickedFrameId: currentCaretDropPosFrameId, caretPosition: currentCaretDropPosCaretPos});
                 }
                 else{
                     useStore().doCopySelection();
