@@ -112,7 +112,7 @@ export default defineComponent({
             tag.src = url;
             tag.defer = true;
             tag.async = true;
-            //document.head.appendChild(tag);
+            document.head.appendChild(tag);
         });
     },
 
