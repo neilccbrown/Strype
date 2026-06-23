@@ -2,6 +2,8 @@ import {Page, test, expect} from "@playwright/test";
 import { loadContent, save } from "../support/loading-saving";
 import { readFileSync } from "node:fs";
 import { skipPyodideLoading } from "../support/general";
+import {addFakeClipboard} from "../support/clipboard";
+import {doPagePaste} from "../support/editor";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && (process.platform === "win32" || process.platform === "linux")) {
@@ -18,6 +20,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         console.log("Browser log:", msg.text());
     });
     await skipPyodideLoading(page);
+    await addFakeClipboard(page);
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
     await page.evaluate(() => {
@@ -31,6 +34,7 @@ async function testBeforeAfterPaste(page: Page, before :string, selectionKeys: s
     for (const k of selectionKeys) {
         await page.keyboard.press(process.platform == "darwin" ? k.replaceAll("Control", "Meta") : k);
     }
+    await page.waitForTimeout(500);
     // Now cut/copy:
     if (operation === "cut") {
         await page.keyboard.press(process.platform == "darwin" ? "Meta+x" : "Control+x");
@@ -38,12 +42,20 @@ async function testBeforeAfterPaste(page: Page, before :string, selectionKeys: s
     else {
         await page.keyboard.press(process.platform == "darwin" ? "Meta+c" : "Control+c");
     }
+    await page.waitForTimeout(500);
     // Then move:
     for (const k of moveToDestKeys) {
         await page.keyboard.press(process.platform == "darwin" ? k.replaceAll("Control", "Meta") : k);
     }
+    await page.waitForTimeout(500);
     // Paste and check:
-    await page.keyboard.press(operation == "delete" ? "Backspace" : (process.platform == "darwin" ? "Meta+v" : "Control+v"));
+    if (operation == "delete") {
+        await page.keyboard.press("Backspace");
+    }
+    else {
+        await doPagePaste(page, await page.evaluate(() => window.navigator.clipboard.readText()));
+    }
+    await page.waitForTimeout(500);
     expect(readFileSync(await save(page, false), "utf-8")).toEqual(afterPaste);
 }
 
