@@ -34,6 +34,7 @@ import {
 export type { AnalyticsEvent, AnalyticsFlushReason } from "@/store/analytics";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { actOnGraphicsImport } from "@/helpers/editor";
+import {pasteMixedPython} from "@/helpers/pythonToFrames";
 // #v-endif
 
 export function getEditorTabId() : string {
@@ -2882,6 +2883,11 @@ export const useStore = defineStore("app", {
         },
 
         pasteFrame(payload: {clickedFrameId: number; caretPosition: CaretPosition, clipboardContent: string, ignoreStateBackup?: boolean}) {
+            if (payload.clipboardContent) {
+                pasteMixedPython(payload.clipboardContent, false);
+                return;
+            }
+            
             // If the copiedFrame has a JointParent, we're talking about a JointFrame
             const isCopiedJointFrame = this.copiedFrames[this.copiedFrameId].frameType.isJointFrame;
 
