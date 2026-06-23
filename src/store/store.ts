@@ -2641,22 +2641,24 @@ export const useStore = defineStore("app", {
             // It will be added either as a Child or as a JointChild
             const areSelectedJointFrames = payload.sourceFrames.frames[payload.sourceFrames.frameIds[0]].frameType.isJointFrame;
             let childrenListToBeAdded: number[];
-            let setParent : (f: FrameObject) => void;
             if (areSelectedJointFrames) {
                 const jointParentId = getParentOrJointParent(payload.target.id);
                 childrenListToBeAdded = this.frameObjects[jointParentId].jointFrameIds;
-                setParent = (f) => f.jointParentId = jointParentId;
+                for (const id of payload.sourceFrames.frameIds) {
+                    payload.sourceFrames.frames[id].jointParentId = jointParentId;
+                }
             }
             else {
                 const parentId = payload.target.caretPosition == CaretPosition.body ? payload.target.id : getParentOrJointParent(payload.target.id); 
                 childrenListToBeAdded = this.frameObjects[parentId].childrenIds;
-                setParent = (f) => f.parentId = parentId;
+                for (const id of payload.sourceFrames.frameIds) {
+                    payload.sourceFrames.frames[id].parentId = parentId;
+                }
             }
 
             // Add the copied objects to the FrameObjects
             Object.keys(payload.sourceFrames.frames).map(Number).forEach((id: number)=> {
                 this.frameObjects[id] = payload.sourceFrames.frames[id];
-                setParent(this.frameObjects[id]);
             });
             this.updateNextAvailableId();
 
