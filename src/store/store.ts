@@ -1,40 +1,25 @@
-import { nextTick} from "vue";
-import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia, ModifierKeyCode } from "@/types/types";
-import { getObjectPropertiesDifferences } from "@/helpers/common";
+import {nextTick} from "vue";
+import {AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, CurrentFrame, DefsContainerDefinition, EditableFocusPayload, EditorFrameObjects, EmptyFrameObject, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, FramesDefinitions, FrozenState, generateAllFrameDefinitionTypes, ImportsContainerDefinition, isFieldBaseSlot, LabelSlotsContent, MainFramesContainerDefinition, MediaSlot, MessageDefinition, MessageDefinitions, ModifierKeyCode, NavigationPosition, ObjectPropertyDiff, ProjectLocation, PythonExecRunningState, RootContainerFrameDefinition, SaveRequestReason, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotInfosOptionalMedia, SlotsStructure, SlotType, StateAppObject, StringSlot, StrypeLayoutDividerSettings, StrypePEALayoutMode, StrypeSyncTarget, UserDefinedElement} from "@/types/types";
+import {getObjectPropertiesDifferences} from "@/helpers/common";
 import i18n from "@/i18n";
-import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
-import { AppPlatform, AppVersion, eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
+import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
+import {AppPlatform, AppVersion, eventBus, projectDocumentationFrameId} from "@/helpers/appContext";
 import initialStates from "@/store/initial-states";
-import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getCaretContainerUID, AutoSaveKeyNames, isFullyInViewport } from "@/helpers/editor";
-import { DAPWrapper } from "@/helpers/partial-flashing";
-import LZString from "lz-string";
-import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
-import {cloneDeep, isEqual} from "lodash";
-import { TPyParser } from "tigerpython-parser";
-import emptyState from "@/store/initial-states/empty-state";
-import { BvTriggerableEvent } from "bootstrap-vue-next";
-import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
-import {
-    enqueueAnalyticsEvent,
-    flushAnalyticsQueue,
-    initAnalyticsCountry,
-    initAnalyticsLocale,
-    initAnalyticsPlatform,
-    initAnalyticsSession,
-    initAnalyticsUserId,
-    trackAnalyticsLocaleChange,
-    trackInputCall,
-    trackMenuAction,
-    trackOutputChars,
-    trackStorageLocation,
-    trackUsedDemo,
-    type AnalyticsFlushReason,
-} from "@/store/analytics";
-export type { AnalyticsEvent, AnalyticsFlushReason } from "@/store/analytics";
+import {defineStore} from "pinia";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
-import { actOnGraphicsImport } from "@/helpers/editor";
-import {pasteMixedPython} from "@/helpers/pythonToFrames";
+import {actOnGraphicsImport, AutoSaveKeyNames, checkEditorCodeErrors, copyFramesToClipboard, countEditorCodeErrors, CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getCaretContainerUID, getCaretUID, getFocusedEditableSlotTextSelectionStartEnd, getFrameHeaderUID, getImportDiffVersionModalDlgId, getLabelSlotUID, getSelectionCursorsComparisonValue, isFullyInViewport, isLabelSlotEditable, parseCodeLiteral, setDocumentSelection, undoMaxSteps} from "@/helpers/editor";
+import {DAPWrapper} from "@/helpers/partial-flashing";
+import LZString from "lz-string";
+import {getAPIItemTextualDescriptions} from "@/helpers/microbitAPIDiscovery";
+import {cloneDeep, isEqual} from "lodash";
+import {TPyParser} from "tigerpython-parser";
+import emptyState from "@/store/initial-states/empty-state";
+import {BvTriggerableEvent} from "bootstrap-vue-next";
+import {vueComponentsAPIHandler} from "@/helpers/vueComponentAPI";
+import {type AnalyticsFlushReason, enqueueAnalyticsEvent, flushAnalyticsQueue, initAnalyticsCountry, initAnalyticsLocale, initAnalyticsPlatform, initAnalyticsSession, initAnalyticsUserId, trackAnalyticsLocaleChange, trackInputCall, trackMenuAction, trackOutputChars, trackStorageLocation, trackUsedDemo,} from "@/store/analytics";
+
+export type { AnalyticsEvent, AnalyticsFlushReason } from "@/store/analytics";
+
 // #v-endif
 
 export function getEditorTabId() : string {
@@ -173,14 +158,6 @@ export const useStore = defineStore("app", {
             diffToPreviousStateCounter: 0,
 
             diffToNextStateCounter: 0,
-            
-            // We use -100 to avoid any used id. This variable holds the id of the root copied frame.
-            copiedFrameId: -100 as number,
-
-            // This variable holds the ids of the root copied frames.
-            copiedSelectionFrameIds: []  as number[],
-
-            copiedFrames: {} as EditorFrameObjects,
 
             // Flag array to indicate the frames that could be deleted when hovering the
             // delete context menu entries (simple delete or delete outer)
@@ -539,32 +516,13 @@ export const useStore = defineStore("app", {
                 state.frameObjects[state.frameObjects[frameId].parentId].childrenIds.indexOf(frameId);
         },
         
-        isPasteAllowedAtFrame() { 
-            return (frameId: number, caretPos: CaretPosition) => {
-                if(this.isSelectionCopied){
-                    if(this.isPositionAllowsSelectedFrames(frameId, caretPos, true)) {
-                        return true;
-                    }  
-                }
-                else {
-                    if(this.isPositionAllowsFrame(frameId, caretPos, true)) {
-                        return true;
-                    }
-                }
-    
-                return false;
-            };            
-        },
-        
         // frameToBeMovedId is an optional argument and it is used in cases where we are just checking if a 
         // frame can be moved to a position based on the copied frame type --> we are not really checking about the actual copied Frame
         isPositionAllowsFrame() {
-            return (targetFrameId: number, targetCaretPosition: CaretPosition, lookingForTargetPos: boolean, frameToBeMovedId?: number) => {
+            return (targetFrameId: number, targetCaretPosition: CaretPosition, lookingForTargetPos: boolean, frameToBeMovedId: number) => {
                 // Where do we get the frame from --> from copiedFrames if it is a copied frame
                 // Otherwise the input frame is to be checked (e.g. for moving an else statement or duplicating an else statement -- which doesn't go anywhere).
-                const sourceFrameList: EditorFrameObjects = (frameToBeMovedId === undefined) ? this.copiedFrames : this.frameObjects;    
-
-                frameToBeMovedId = frameToBeMovedId ?? this.copiedFrameId;
+                const sourceFrameList: EditorFrameObjects = this.frameObjects;
 
                 if(frameToBeMovedId===-100){
                     // If there is nothing to copy, we return false
@@ -587,11 +545,11 @@ export const useStore = defineStore("app", {
         },
 
         isPositionAllowsSelectedFrames(){
-            return (targetFrameId: number, targetCaretPosition: CaretPosition, areFramesCopied: boolean) => {   
+            return (targetFrameId: number, targetCaretPosition: CaretPosition) => {   
                 const allowedFrameTypes = this.generateAvailableFrameCommands(targetFrameId, targetCaretPosition, true);
 
-                const selectedFramesIds = (areFramesCopied) ? this.copiedSelectionFrameIds : this.selectedFrames;
-                const sourceList = (areFramesCopied) ? this.copiedFrames : this.frameObjects;
+                const selectedFramesIds = this.selectedFrames;
+                const sourceList = this.frameObjects;
                 
                 // for..of is used instead of foreach here, as foreach does not supports return.........
                 for (const id of selectedFramesIds) {
@@ -635,10 +593,6 @@ export const useStore = defineStore("app", {
         
         isUndoRedoEmpty: (state) => (action: string) => {
             return (action === "undo") ? state.diffToPreviousStateCounter == 0 : state.diffToNextStateCounter == 0;
-        },
-
-        isSelectionCopied: (state) => {
-            return state.copiedSelectionFrameIds.length > 0;
         },
 
         isFrameVisible: (state) => (frameId: number) => {
@@ -1319,54 +1273,9 @@ export const useStore = defineStore("app", {
         },
 
         updateNextAvailableId() {
-            this.nextAvailableId = Math.max.apply({},(Object.keys(this.frameObjects).concat(Object.keys(this.copiedFrames))).map(Number))+1;
+            this.nextAvailableId = Math.max.apply({},(Object.keys(this.frameObjects)).map(Number))+1;
         },
         
-        doCopyFrame(frameId: number) {
-            // The nextAvailableId should be right, but for sanity check, we make sure the id is indeed available to avoid potential issues
-            let nextAvailableId = this.nextAvailableId;
-            while(this.frameObjects[nextAvailableId] != undefined){
-                nextAvailableId+=1;
-            }
-            this.copiedFrameId = nextAvailableId;
-
-            // If it has a JointParent, we're talking about a JointFrame
-            const isJointFrame = this.frameObjects[frameId].frameType.isJointFrame;
-            
-            const parent = (isJointFrame) ? this.frameObjects[frameId].jointParentId : this.frameObjects[frameId].parentId;
-
-            cloneFrameAndChildren(this.frameObjects, frameId, parent, {id: nextAvailableId}, this.copiedFrames);             
-        },
-
-        doCopySelection() {
-            // If it has a JointParent, we're talking about a JointFrame
-            const isJointFrame = this.frameObjects[this.selectedFrames[0]].frameType.isJointFrame;
-            
-            const parent = (isJointFrame) ? this.frameObjects[this.selectedFrames[0]].jointParentId : this.frameObjects[this.selectedFrames[0]].parentId;
-
-            // We generate the list of frames from the selectedFrames ids
-            const sourceFrameList: FrameObject[] = Array(this.selectedFrames.length);
-            this.selectedFrames.forEach((id, index) => sourceFrameList[index] = this.frameObjects[id]);
-            
-            // All the top level cloned frames need to be stored in order to then added to their new parent's list.
-            // The nextAvailableId should be right, but for sanity check, we make sure the id is indeed available to avoid potential issues.
-            const topLevelCopiedFrames: number[] = [];
-            let nextAvailableId = this.nextAvailableId;
-            while(this.frameObjects[nextAvailableId] != undefined){
-                nextAvailableId+=1;
-            }
-
-            sourceFrameList.forEach((frame) => {
-                //For each top level frame (i.e. each one on the selected list) we record its new id
-                topLevelCopiedFrames.push(nextAvailableId);
-                cloneFrameAndChildren(this.frameObjects, frame.id, parent, {id: nextAvailableId}, this.copiedFrames); 
-                // Find the largest id form the copied and increase it by 1
-                nextAvailableId = Math.max.apply({},(Object.keys(this.copiedFrames).concat(Object.keys(this.copiedFrames))).map(Number)) + 1;
-            });
-
-            this.copiedSelectionFrameIds = topLevelCopiedFrames;
-        },
-
         updateState(newState: Record<string, unknown>){
             //this method complete changes the state with a new state object
             Object.keys(this.$state).forEach((property) => {
@@ -1388,11 +1297,6 @@ export const useStore = defineStore("app", {
             diffToNextState.splice(0, diffToNextState.length);
             this.diffToPreviousStateCounter = 0;
             this.diffToNextStateCounter = 0;
-            
-            //copied frames are cleared
-            this.copiedFrameId = -100;
-            this.copiedFrames = {};
-            this.copiedSelectionFrameIds.splice(0);
 
             //context menu indicator is cleared
             this.contextMenuShownId = "";
@@ -1694,14 +1598,6 @@ export const useStore = defineStore("app", {
             if (this.selectedFrames.length > 0) {
                 this.selectedFrames.splice(0,this.selectedFrames.length);
             }
-        },
-
-        flushCopiedFrames(){
-            this.copiedFrames = {};
-
-            this.copiedFrameId = -100;
-            
-            this.copiedSelectionFrameIds = [];
         },
 
         setCollapseStatuses(statuses: Record<number, CollapsedState>) {
@@ -2016,11 +1912,14 @@ export const useStore = defineStore("app", {
 
             if (this.selectedFrames.length > 0 && frame.allowChildren) {
                 this.isWrappingFrame = true;
-                this.copySelection();
+                // TODO copy paste WITHOUT clipboard
+                //copyFramesToClipboard(this.selectedFrames);
                 // For deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
                 this.deleteFrames("Delete", true);
                 // The general rule is to copy the wrapped frame inside the wrapper's body,
                 // one exception: for match frames, we don't wrap the content inside the match frame body but inside it's case child frame body.
+                // TODO paste without clipboard
+                /*
                 this.pasteSelection(
                     {
                         clickedFrameId: (newFrame.frameType.type == AllFrameTypesIdentifier.match) ? newFrame.childrenIds[0] : newFrame.id,
@@ -2028,6 +1927,7 @@ export const useStore = defineStore("app", {
                         ignoreStateBackup: true,
                     }
                 );
+                 */
                 // Find the frame before, if any:
                 const index = this.getIndexInParent(newFrame.id);
                 if (index == 0) {
@@ -2727,101 +2627,9 @@ export const useStore = defineStore("app", {
             });
         },
 
-        // This method can be used to copy a frame to a position.
-        // This can be a paste event or a duplicate event.
-        copyFrameToPosition(payload: {frameId?: number; newParentId: number; newIndex: number}, ignoreStateBackup?: boolean) {
+        insertFramesAtPosition(payload: {target: CurrentFrame, ignoreStateBackup?: boolean, sourceFrames: {frameIds: number[], frames: EditorFrameObjects}}) {
             const stateBeforeChanges = cloneDeep(this.$state);
-            
-            const isPasteOperation: boolean = (payload.frameId === undefined);
-            payload.frameId = payload.frameId ?? this.copiedFrameId;
-
-            // If it is not a paste operation, it is a duplication of the frame.
-            // The nextAvailableId should be right, but for sanity check, we make sure the id is indeed available to avoid potential issues.
-            let nextAvailableId = this.nextAvailableId;
-            while(this.frameObjects[nextAvailableId] != undefined){
-                nextAvailableId+=1;
-            }
-            const sourceFrameList: EditorFrameObjects = (isPasteOperation) ? this.copiedFrames : this.frameObjects;            
-            const copiedFrames: EditorFrameObjects = {};
-            cloneFrameAndChildren(sourceFrameList, payload.frameId, payload.newParentId, {id: nextAvailableId}, copiedFrames); 
-
-
-            // Add the copied objects to the FrameObjects
-            Object.keys(copiedFrames).map(Number).forEach((id: number)=> {
-                this.frameObjects[id] = copiedFrames[id];
-            });
-            
-            const topFrame = copiedFrames[Object.keys(copiedFrames).map(Number)[0]];
-
-            // It will be added either as a Child or as a JointChild
-            const isJointFrame = sourceFrameList[payload.frameId].frameType.isJointFrame;
-            const childrenListToBeAdded = (isJointFrame) ? this.frameObjects[payload.newParentId].jointFrameIds : this.frameObjects[payload.newParentId].childrenIds;
-
-            // Add the top frame to the its new parents children list
-            childrenListToBeAdded.splice(
-                payload.newIndex,
-                0,
-                topFrame.id
-            );
-
-            // Move the cursor at the end of the pasted elements.
-            // If we have pasted/duplicated a joint frame (like "elif"), the caret moves inside that joint frame, at the end of the last child, or in its body if no child exist,
-            //  UNLESS that frame is disabled: then we need to find out which next sibling is enabled.
-            // In other cases, we go past the last top level frame.
-            const newCaretPos = cloneDeep(this.currentFrame); // starting point, just to get TS typing fine.
-            if(copiedFrames[nextAvailableId].frameType.isJointFrame){
-                // We cannot copy more than 1 joint frame, so there is only 1 frame to check
-                const thisJointFrame = copiedFrames[nextAvailableId];
-                if(thisJointFrame.isDisabled){
-                    const thisJointFrameIndex = this.frameObjects[thisJointFrame.jointParentId].jointFrameIds.indexOf(thisJointFrame.id);
-                    const nextJointEnabledSiblingId = (this.frameObjects[thisJointFrame.jointParentId].jointFrameIds.find((jointFrameId, index) => (index > thisJointFrameIndex && !this.frameObjects[jointFrameId].isDisabled)))??-1;
-                    newCaretPos.id = (nextJointEnabledSiblingId > -1) ? nextJointEnabledSiblingId : thisJointFrame.jointParentId;
-                    newCaretPos.caretPosition = (nextJointEnabledSiblingId > -1) ? CaretPosition.body : CaretPosition.below;
-                }
-                else{
-                    const thisJointFrameLastChildId = this.frameObjects[thisJointFrame.id].childrenIds.at(-1)??-1;
-                    newCaretPos.id = (thisJointFrameLastChildId > -1) ? thisJointFrameLastChildId : thisJointFrame.id;
-                    newCaretPos.caretPosition = (thisJointFrameLastChildId > -1) ? CaretPosition.below : CaretPosition.body;
-                }
-            }
-            else{
-                // We need to retrieve the last top level frame that was copied.
-                // We get it by screening all the copied frames: if one has a parent ID equals to the parent location of where we duplicate/paste the frames
-                // it means it's a top level frame. We filter the copied frames and keep the last one of the list.
-                newCaretPos.id = (Object.values(copiedFrames).filter((frameObj: FrameObject) => frameObj.parentId == payload.newParentId).map((frameObj: FrameObject) =>  frameObj.id).at(-1) as number);
-                newCaretPos.caretPosition = CaretPosition.below;
-            }            
-            this.setCurrentFrame(newCaretPos);
-
-            this.updateNextAvailableId();
-
-            //save state changes
-            if(!ignoreStateBackup){
-                this.saveStateChanges(stateBeforeChanges);
-            }
-        
-            this.unselectAllFrames();
-        },
-
-        // This method can be used to copy the selected frames to a position.
-        // This can be a paste event or a duplicate event.
-        copySelectedFramesToPosition(payload: {newParentId: number; newIndex?: number, ignoreStateBackup?: boolean, keepSelection?: boolean}) {
-            const stateBeforeChanges = cloneDeep(this.$state);
-            // -100 is chosen so that TS won't complain for non-initialised variable
-            let newIndex = payload.newIndex??-100;
-            const areWeDuplicating = newIndex === -100;
-
-            // If newIndex does not exist, we are talking about a duplication
-            if(areWeDuplicating){
-                // In that case, the duplicated selection goes below the last selected item
-                newIndex = this.getIndexInParent(this.selectedFrames[this.selectedFrames.length-1])+1;
-            }
-
-            // We generate the list of frames from the selectedFrames ids
-            const sourceFrameList: EditorFrameObjects = (areWeDuplicating) ? this.frameObjects : this.copiedFrames;
-            const sourceFrameIds: number[] = (areWeDuplicating) ? this.selectedFrames : this.copiedSelectionFrameIds;
-
-            const copiedFrames: EditorFrameObjects = {};
+            let newIndex = payload.target.caretPosition == CaretPosition.body ? 0 : this.getIndexInParent(payload.target.id) + 1;
 
             // All the top level cloned frames need to be stored in order to then added to their new parent's list
             // The nextAvailableId should be right, but for sanity check, we make sure the id is indeed available to avoid potential issues.
@@ -2831,24 +2639,15 @@ export const useStore = defineStore("app", {
                 nextAvailableId+=1;
             }
 
-            Object.values(sourceFrameIds).forEach( (frame) => {
-                //For each top level frame (i.e. each one on the selected list) we record its new id
-                topLevelCopiedFrames.push(nextAvailableId);
-                cloneFrameAndChildren(sourceFrameList, frame, payload.newParentId, {id: nextAvailableId}, copiedFrames); 
-                // Find the largest id form the copied and increase it by 1
-                nextAvailableId = Math.max.apply({},(Object.keys(copiedFrames).concat(Object.keys(copiedFrames))).map(Number)) + 1;
-            });
-
-            
             // Add the copied objects to the FrameObjects
-            Object.keys(copiedFrames).map(Number).forEach((id: number)=> {
-                this.frameObjects[id] = copiedFrames[id];
+            Object.keys(payload.sourceFrames.frames).map(Number).forEach((id: number)=> {
+                this.frameObjects[id] = payload.sourceFrames.frames[id];
             });
-            this.updateNextAvailableId();            
+            this.updateNextAvailableId();
 
             // It will be added either as a Child or as a JointChild
-            const areSelectedJointFrames = sourceFrameList[sourceFrameIds[0]].frameType.isJointFrame;
-            const childrenListToBeAdded = (areSelectedJointFrames) ? this.frameObjects[payload.newParentId].jointFrameIds : this.frameObjects[payload.newParentId].childrenIds;
+            const areSelectedJointFrames = payload.sourceFrames.frames[payload.sourceFrames.frameIds[0]].frameType.isJointFrame;
+            const childrenListToBeAdded = (areSelectedJointFrames) ? this.frameObjects[getParentOrJointParent(payload.target.id)].jointFrameIds : this.frameObjects[getParentOrJointParent(payload.target.id)].childrenIds;
 
             // Add each one of the copied frames in their new parent's list
             topLevelCopiedFrames.forEach( (id) => {
@@ -2859,154 +2658,12 @@ export const useStore = defineStore("app", {
                 );
             });
 
-            //Make the top new frame the current frame only when we don't want to keep the selection
-            if(!payload.keepSelection){
-                this.setCurrentFrame(
-                    { 
-                        id: topLevelCopiedFrames[topLevelCopiedFrames.length-1],
-                        caretPosition: CaretPosition.below,
-                    }
-                );
-            }
-
             this.updateNextAvailableId();
 
             //save state changes unless requested not to
             if(!payload.ignoreStateBackup) {
                 this.saveStateChanges(stateBeforeChanges);
             }
-        
-            // Do not unselect frames if requested not to
-            if(!payload.keepSelection){
-                this.unselectAllFrames();
-            }
-        },
-
-        pasteFrame(payload: {clickedFrameId: number; caretPosition: CaretPosition, clipboardContent: string, ignoreStateBackup?: boolean}) {
-            if (payload.clipboardContent) {
-                pasteMixedPython(payload.clipboardContent, false);
-                return;
-            }
-            
-            // If the copiedFrame has a JointParent, we're talking about a JointFrame
-            const isCopiedJointFrame = this.copiedFrames[this.copiedFrameId].frameType.isJointFrame;
-
-            // Are we pasting into a joint frame: that depends what we copied. If we copied a joint frame
-            // then we need to check if we are in a joint frame body (because of previous checks, we know we'd be at the end of that body).
-            // If we copied something else then we just check the location we want to paste to.
-            const isClickedJointFrame = (isCopiedJointFrame && payload.caretPosition === CaretPosition.below) 
-                || this.frameObjects[payload.clickedFrameId].frameType.isJointFrame;
-
-            // When pasting a joint frame, the clicked frame might not be the right one to use: if we are pasting in below a joint frame's child
-            // then we are actually wanting to paste after that child's parent (the joint frame after which we want to paste)
-            const jointFrameAsClickedId = (payload.caretPosition == CaretPosition.below) 
-                ? this.frameObjects[payload.clickedFrameId].parentId
-                : payload.clickedFrameId;
-
-            // Clicked is joint ? parent of clicked(*) is its joint parent ELSE clicked is the real parent
-            // (*) unless we wanted to paste into the root of this joint structure, then the parent is joint we clicked into
-            const clickedParentId = (isClickedJointFrame) 
-                ? ((this.frameObjects[jointFrameAsClickedId].jointParentId > 0) ? this.frameObjects[jointFrameAsClickedId].jointParentId : jointFrameAsClickedId)
-                : this.frameObjects[payload.clickedFrameId].parentId;
-
-            // Flag indicating if we are either in a normal body not in a context of joint frames or in a the root parent in a context of joint frames
-            const inBodyContext = (payload.caretPosition === CaretPosition.body && (!isCopiedJointFrame || (isCopiedJointFrame && !isClickedJointFrame)));
-
-            // Index is 0 if we paste in the body and we are not dealing with a joint frame (i.e. pasting in the empty body of a joint frame)
-            // or we are dealing with a joint frame and the frame we paste in is not a joint frame (i.e. it's the root parent)
-            const index = (inBodyContext || (isClickedJointFrame && !this.frameObjects[jointFrameAsClickedId].frameType.isJointFrame))
-                ? 0 
-                : this.getIndexInParent((isCopiedJointFrame) ? jointFrameAsClickedId : payload.clickedFrameId)+1;
-
-            // If the caret is below and it is not a joint frame, or caret is body and we deal with a joint frame(*), parent is the clicked's parent
-            // (*) only if we are copying in another joint frame: if we are copying in the root then the parent is the root itself
-            const pasteToParentId = inBodyContext
-                ? ((isClickedJointFrame) ? jointFrameAsClickedId : payload.clickedFrameId)
-                : clickedParentId;
-
-            // frameId is omitted from the action call, so that the method knows we talk about the copied frame!
-            this.copyFrameToPosition(
-                {
-                    newParentId: pasteToParentId,
-                    newIndex: index,
-                },
-                payload.ignoreStateBackup
-            );
-        },
-
-        pasteSelection(payload: {clickedFrameId: number; caretPosition: CaretPosition, ignoreStateBackup?: boolean}) {
-            // If the copiedFrame has a JointParent, we're talking about a JointFrame
-            const areCopiedJointFrames = this.copiedFrames[this.copiedSelectionFrameIds[0]].frameType.isJointFrame;
-            
-            let index;
-            let pasteToParentId;
-            if (areCopiedJointFrames) {
-                let targetId;
-                if (payload.caretPosition == CaretPosition.below) {
-                    targetId = this.frameObjects[payload.clickedFrameId].parentId;
-                    index = this.getIndexInParent(payload.clickedFrameId) + 1;
-                }
-                else {
-                    targetId = payload.clickedFrameId;
-                    index = 0;
-                }
-
-                // For joint frames, there's two possible positions that are valid for pasting:
-                // - We are inside the body of the main parent frame (e.g. if, try).  For this, isJointFrame==false but allowJointChildren==true 
-                // - We are inside the body of one of the joined frames (e.g. else, finally).  For this, isJointFrame==true
-                const isClickedJointFrame = this.frameObjects[targetId].frameType.isJointFrame;
-                const isClickedJointParent = this.frameObjects[targetId].frameType.allowJointChildren;
-                
-                // If we are a joint parent, we paste with us as parent.  If we are a joint child, we paste using our parent
-                if (isClickedJointFrame) {
-                    pasteToParentId = this.frameObjects[targetId].jointParentId;
-                }
-                else if (isClickedJointParent) {
-                    pasteToParentId = this.frameObjects[targetId].id;
-                }
-                else {
-                    // Invalid position to paste a joint frame
-                    return;
-                }
-            }
-            else {
-                pasteToParentId = (payload.caretPosition === CaretPosition.body) ?
-                    payload.clickedFrameId :
-                    this.frameObjects[payload.clickedFrameId].parentId;
-                index = (payload.caretPosition === CaretPosition.body) ?
-                    0 :
-                    this.getIndexInParent(payload.clickedFrameId) + 1;
-            }
-            // frameId is omitted from the action call, so that the method knows we talk about the copied frame!
-            this.copySelectedFramesToPosition(
-                {
-                    newParentId: pasteToParentId,
-                    newIndex: index,
-                    ignoreStateBackup: payload.ignoreStateBackup,
-                }                
-            );
-        },
-
-        copyFrame(frameId: number) {
-            // We do not use the system's clipboard for frames, so we clear any potential text to avoid interference
-            navigator.clipboard.writeText("");
-            this.flushCopiedFrames();
-            this.doCopyFrame(frameId);
-            this.updateNextAvailableId();
-        },
-
-        copySelection() {
-            if (this.selectedFrames.length == 0) {
-                return;
-            }
-            // We do not use the system's clipboard for frames, so we clear any potential text to avoid interference
-            navigator.clipboard.writeText("")
-                .catch((err) => {
-                    console.error("Failed to write frame placeholder to clipboard", err);
-                });
-            this.flushCopiedFrames();
-            this.doCopySelection();
-            this.updateNextAvailableId();
         },
 
         changeDisableFrame(payload: {frameId: number; isDisabling: boolean}) {

@@ -92,23 +92,24 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import { defineComponent } from "vue";
+import {defineComponent} from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
-import { useStore } from "@/store/store";
+import {useStore} from "@/store/store";
 import FrameBody from "@/components/FrameBody.vue";
 import JointFrames from "@/components/JointFrames.vue";
-import { DefaultFramesDefinition, CaretPosition, CollapsedState, CurrentFrame, FrozenState, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName, ContainerTypesIdentifiers, StrypeContextMenuItem, CoordPosition } from "@/types/types";
-import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent, frameOrChildHasErrors, calculateNextCollapseState } from "@/helpers/storeMethods";
-import { CustomEventTypes, getFrameBodyUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, notifyDragStarted, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID, getFrameLabelSlotsStructureUID } from "@/helpers/editor";
-import { mapStores } from "pinia";
-import { BPopover, useToggle } from "bootstrap-vue-next";
+import {AllFrameTypesIdentifier, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CoordPosition, CurrentFrame, DefaultFramesDefinition, FrameContextMenuActionName, FrozenState, NavigationPosition, Position, PythonExecRunningState, StrypeContextMenuItem} from "@/types/types";
+import {calculateNextCollapseState, frameOrChildHasErrors, getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent} from "@/helpers/storeMethods";
+import {copyFramesToClipboard, CustomEventTypes, getCaretContainerRef, getFrameBodyRef, getFrameBodyUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getHTML2CanvasFramesSelectionCropOptions, getJointFramesRef, isIdAFrameId, notifyDragStarted, parseFrameUID, setContextMenuEventClientXY} from "@/helpers/editor";
+import {mapStores} from "pinia";
+import {BPopover, useToggle} from "bootstrap-vue-next";
 import html2canvas from "html2canvas";
-import { saveAs } from "file-saver";
+import {saveAs} from "file-saver";
 import scssVars from "@/assets/style/_export.module.scss";
 import {getDateTimeFormatted, isMacOSPlatform, removeIf} from "@/helpers/common";
-import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
-import { eventBus } from "@/helpers/appContext";
+import {vueComponentsAPIHandler} from "@/helpers/vueComponentAPI";
+import {eventBus} from "@/helpers/appContext";
+import {pasteMixedPython} from "@/helpers/pythonToFrames";
 
 //////////////////////
 //     Component    //
@@ -486,7 +487,7 @@ export default defineComponent({
             document.dispatchEvent(new CustomEvent(CustomEventTypes.requestAppNotOnTop, {detail: false}));
         },
 
-        async handleClick (event: MouseEvent, positionForMenu?: Position) {
+        handleClick (event: MouseEvent, positionForMenu?: Position) {
             if(this.appStore.isContextMenuKeyboardShortcutUsed){
                 // The logic for handling the context menu opened via a keyboard shortcut is handled by App
                 return;
@@ -524,8 +525,8 @@ export default defineComponent({
                 {label: this.$t("contextMenu.downloadAsImg"), onClick: this.downloadAsImg},
                 {label: this.$t("contextMenu.duplicate"), onClick: () => this.duplicate(false), attrs: {"action-name": FrameContextMenuActionName.duplicate}, shortcut: isMacOSPlatform() ? "⌘D" : this.$t("shortcut.ctrlPlus") + "D"},
                 {divided: "self"},
-                {label: this.$t("contextMenu.pasteAbove"), onClick: () => this.pasteAbove(clipboardContent)},
-                {label: this.$t("contextMenu.pasteBelow"), onClick: () => this.pasteBelow(clipboardContent)},
+                {label: this.$t("contextMenu.pasteAbove"), onClick: () => this.pasteAbove()},
+                {label: this.$t("contextMenu.pasteBelow"), onClick: () => this.pasteBelow()},
                 {divided: "self"},
                 {label: this.$t("contextMenu.disable"), onClick: () => this.enableDisable({})},
                 {divided: "self"},
@@ -627,7 +628,7 @@ export default defineComponent({
             const targetFrameId = (targetFrameJointFrames.length > 0) ? targetFrameJointFrames[targetFrameJointFrames.length-1].id : this.frameId;
             // Duplication allowance should be examined based on whether we are talking about a single frame or a selection frames
             const canDuplicate = (this.isPartOfSelection) ?
-                this.appStore.isPositionAllowsSelectedFrames(targetFrameId, CaretPosition.below, false) : 
+                this.appStore.isPositionAllowsSelectedFrames(targetFrameId, CaretPosition.below) : 
                 this.appStore.isPositionAllowsFrame(targetFrameId, CaretPosition.below, false, this.frameId);
             // Note: frozen frames themselves can be duplicated, but children of frozen frames cannot:
             if(!canDuplicate || ancestorIsFrozen){
@@ -638,85 +639,6 @@ export default defineComponent({
                         duplicateOptionContextMenuPos,
                         1
                     );
-                }
-            }
-
-            // Similarly to duplication, not all frames can be pasted at a specifc location.
-            // We show the paste entries depending on the possiblity to paste the clipboard. 
-            let canPasteAboveFrame = false, canPasteBelowFrame = false;
-            const clipboardContent = await navigator.clipboard.readText();
-            const isCopiedAvailable = clipboardContent;
-            if(!isCopiedAvailable || this.isPartOfSelection){
-                // If there are no frame to copy, or the click is part of a selection of frames
-                // we just remove all paste menu entries (and the divider following them)
-                const pasteOptionContextMenuPos = this.frameContextMenuItems.findIndex((entry) => entry.label === this.$t("contextMenu.pasteAbove"));
-                this.frameContextMenuItems.splice(
-                    pasteOptionContextMenuPos,
-                    3 //2 paste menu entries + divider
-                );
-                canPasteAboveFrame = false;
-                canPasteBelowFrame = false;
-            }
-            else{
-                // Check each paste menu entry potential
-                // We need to deal with joint frames (*).. the rules are, when we have a joint frames structure:
-                // for the parent root joint frame: allow pasting any allowed frames above and below (joint will be pasted below the root)
-                // for intermediate joint frames: only allow (tentative) joint frames above and below
-                // for the last joint frame: only allow (tentative) joint frame above, and any allowed frames below 
-                // (*) joint frames cannot be copied within a selection, it can only be one joint frame.
-                const isCopyJointFrame = (this.appStore.copiedFrames[this.appStore.copiedFrameId]?.frameType.isJointFrame) ?? false;
-                const isAllowedForJointAbove = (!this.isJointFrame) || (this.isJointFrame && isCopyJointFrame);
-                const isAllowedForJointBelow = !this.isJointFrame
-                        || (this.isJointFrame && isCopyJointFrame && !isLastInParent(this.frameId))
-                        || (this.isJointFrame && isLastInParent(this.frameId));
-                // We look for the position above. The reference however depends whether the currently clicked frame is disabled: inside a disabled structure, a frame won't
-                // be always be listed in available positions because the disabled structure is like an unit. In that case, we need to find what is the next available frame.
-                // We first find the outmost disabled frame of the disabled structure (call it MO). If that frame MO is joint frame, the next available frame is inside the next enabled sibling
-                // (that is, its body) OR the joint root frame when there is no next enabled sibling.
-                // If the frame MO is not a joint frame, the next available frame is MO itself.
-                let frameIdToLookAbove = this.frameId;
-                if(this.isDisabled){
-                    const outmostDisabledFrameId = getOutmostDisabledAncestorFrameId(this.frameId);
-                    if(this.appStore.frameObjects[outmostDisabledFrameId].frameType.isJointFrame){
-                        const rootFrameId = this.appStore.frameObjects[outmostDisabledFrameId].jointParentId;
-                        const jointFrameIndex = this.appStore.frameObjects[rootFrameId].jointFrameIds.indexOf(outmostDisabledFrameId);
-                        const nextEnabledSiblingId = this.appStore.frameObjects[rootFrameId].jointFrameIds.find((aJointFrameId, index) => index > jointFrameIndex && !this.appStore.frameObjects[aJointFrameId].isDisabled)??-1;
-                        if(nextEnabledSiblingId > -1){
-                            frameIdToLookAbove = nextEnabledSiblingId; 
-                        }
-                        else{
-                            frameIdToLookAbove = rootFrameId;                            
-                        }
-                    }
-                    else{
-                        frameIdToLookAbove = outmostDisabledFrameId;
-                    }
-                }
-                const caretNavigationPositionAbove = getAboveFrameCaretPosition(frameIdToLookAbove);
-                const targetPasteBelow = this.getTargetPasteBelow();
-                if(caretNavigationPositionAbove != undefined && targetPasteBelow){
-                    canPasteAboveFrame = isAllowedForJointAbove && (this.appStore.isPasteAllowedAtFrame(caretNavigationPositionAbove.frameId, caretNavigationPositionAbove.caretPosition as CaretPosition));
-                    canPasteBelowFrame = isAllowedForJointBelow && (this.appStore.isPasteAllowedAtFrame(targetPasteBelow.id, targetPasteBelow.caretPosition));
-                }                
-                const sliceNumber = (!canPasteAboveFrame && !canPasteBelowFrame)
-                    ? 3 // both paste menu entries and divider
-                    : 1; // one of the paste menu entries
-                const pasteBelowOptionIndex = this.frameContextMenuItems.findIndex((entry) => entry.label === this.$t("contextMenu.pasteBelow"));
-                const pasteOptionContextMenuPos = (!canPasteAboveFrame)
-                    ? this.frameContextMenuItems.findIndex((entry) => entry.label === this.$t("contextMenu.pasteAbove")) // position of first paste entry menu 
-                    : pasteBelowOptionIndex; // position of second paste entry menu
-                if(!canPasteAboveFrame || ! canPasteBelowFrame){
-                    this.frameContextMenuItems.splice(
-                        pasteOptionContextMenuPos,
-                        sliceNumber
-                    );
-                }
-                // For paste below, one exception can happen: when we want to paste a joint frame below the joint frame root (if it has already joint children)
-                // the selection may be showing the whole structure paste will be below the root: so we change the menu label when this happens
-                // Note: joint frames cannot be part of a selection, so we know there would only be 1 frame
-                if(canPasteBelowFrame && isCopyJointFrame && this.appStore.frameObjects[targetPasteBelow.id].jointFrameIds.length > 0){
-                    // offset the index by 1: a joint frame can never be pasted above a root, we know "paste above" won't be shown...
-                    this.frameContextMenuItems[pasteBelowOptionIndex - 1].label = this.$t("contextMenu.pasteBelowJointRoot");
                 }
             }
 
@@ -1172,6 +1094,8 @@ export default defineComponent({
         },
 
         duplicate(keepSelection?: boolean): void {
+            // TODO copy, paste
+            /*
             if(this.isPartOfSelection){
                 this.appStore.copySelectedFramesToPosition(
                     {
@@ -1191,17 +1115,17 @@ export default defineComponent({
                     }
                 );
             }
+             */
         },
 
         cut(): void {
             // Cut prepares a copy, then we delete the selection / frame copied
+            this.copy();
             if(this.isPartOfSelection){
-                this.appStore.copySelection(); 
                 //for deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
                 this.appStore.deleteFrames("Delete");
             }
             else{
-                this.appStore.copyFrame(this.frameId);
                 // When deleting the specific frame, we usually place the caret below and simulate "backspace".
                 // In the situation of a whole joint frame structure (like an if/elif/else), we need to repeat the deletion
                 // for each joint of the structure (otherwise, it will only delete the last one).
@@ -1239,12 +1163,7 @@ export default defineComponent({
         },
 
         copy(): void {
-            if(this.isPartOfSelection){
-                this.appStore.copySelection();
-            }
-            else{
-                this.appStore.copyFrame(this.frameId);
-            }
+            copyFramesToClipboard(this.isPartOfSelection ? this.appStore.selectedFrames : [this.frameId]);
         },
 
         downloadAsImg(): void {
@@ -1302,7 +1221,7 @@ export default defineComponent({
             }
         },
 
-        pasteAbove(clipboardContent: string): void {
+        pasteAbove(): void {
             // Perform a paste above this frame
             // We look for the position above. The reference however depends whether the currently clicked frame is disabled: inside a disabled structure, a frame won't
             // be always be listed in available positions because the disabled structure is like an unit. In that case, we need to find what is the next available frame.
@@ -1328,45 +1247,13 @@ export default defineComponent({
                 }
             }
             const caretNavigationPositionAbove = getAboveFrameCaretPosition(frameIdToLookAbove);
-            if(this.appStore.isSelectionCopied){
-                this.appStore.pasteSelection(
-                    {
-                        clickedFrameId: caretNavigationPositionAbove.frameId,
-                        caretPosition: caretNavigationPositionAbove.caretPosition as CaretPosition,
-                    }
-                );
-            }
-            else {
-                this.appStore.pasteFrame(
-                    {
-                        clickedFrameId: caretNavigationPositionAbove.frameId,
-                        caretPosition: caretNavigationPositionAbove.caretPosition as CaretPosition,
-                        clipboardContent
-                    }
-                );
-            }
+            navigator.clipboard.readText().then((text) => pasteMixedPython(text, {destination: {id: caretNavigationPositionAbove.frameId, caretPosition: caretNavigationPositionAbove.caretPosition ?? CaretPosition.below}}));
         },
 
-        pasteBelow(clipboardContent: string): void {
+        pasteBelow(): void {
             // Perform a paste below this frame
             const targetPasteBelow = this.getTargetPasteBelow();
-            if(this.appStore.isSelectionCopied){
-                this.appStore.pasteSelection(
-                    {
-                        clickedFrameId: targetPasteBelow.id,
-                        caretPosition: targetPasteBelow.caretPosition,
-                    }
-                );
-            }
-            else {
-                this.appStore.pasteFrame(
-                    {
-                        clickedFrameId: targetPasteBelow.id,
-                        caretPosition: targetPasteBelow.caretPosition,
-                        clipboardContent
-                    }
-                );
-            }
+            navigator.clipboard.readText().then((text) => pasteMixedPython(text, {destination: targetPasteBelow}));
         },
 
         getTargetPasteBelow(): CurrentFrame {
@@ -1374,13 +1261,10 @@ export default defineComponent({
             // if we are pasting a non joint frame below the last joint child, then we need to paste as if it was the joint root parent below,
             // if we are pasting a joint frame below another joint frame, then we need to paste as if it was below the last child of target joint
             //    or in the target joint frame body if there are no children.
-            const isCopyJointFrame = (this.appStore.copiedFrames[this.appStore.copiedFrameId]?.frameType.isJointFrame) ?? false;
-            const targetFrameId = (this.isJointFrame && isLastInParent(this.frameId) && !isCopyJointFrame) 
-                ? this.appStore.frameObjects[this.frameId].jointParentId
-                : (isFramePartOfJointStructure(this.frameId) && isCopyJointFrame) 
-                    ? ([...this.appStore.frameObjects[this.frameId].childrenIds].pop())??this.frameId 
-                    : this.frameId;
-            const caretPosition = (isFramePartOfJointStructure(this.frameId) && isCopyJointFrame 
+            const targetFrameId = (isFramePartOfJointStructure(this.frameId)) 
+                ? ([...this.appStore.frameObjects[this.frameId].childrenIds].pop())??this.frameId 
+                : this.frameId;
+            const caretPosition = (isFramePartOfJointStructure(this.frameId) 
                 && this.appStore.frameObjects[this.frameId].childrenIds.length == 0)
                 ? CaretPosition.body
                 : CaretPosition.below;

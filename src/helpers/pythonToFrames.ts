@@ -1,11 +1,11 @@
-import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, StringSlot, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrozenState } from "@/types/types";
+import {AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, FrozenState, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, MessageDefinitions, SlotsStructure, StringSlot} from "@/types/types";
 import {useStore} from "@/store/store";
-import {getCaretContainerUID, operators, trimmedKeywordOperators} from "@/helpers/editor";
+import {getCaretContainerUID, getLastCaretPosInsideParent, operators, trimmedKeywordOperators} from "@/helpers/editor";
 import i18n from "@/i18n";
 import {cloneDeep, escapeRegExp} from "lodash";
 import {AppName, AppSPYFullPrefix, projectDocumentationFrameId} from "@/helpers/appContext";
-import {toUnicodeEscapes, stringToCollapsed, stringToFrozen} from "@/parser/parser";
-import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import {stringToCollapsed, stringToFrozen, toUnicodeEscapes} from "@/parser/parser";
+import {vueComponentsAPIHandler} from "@/helpers/vueComponentAPI";
 
 const TOP_LEVEL_TEMP_ID = -999;
 
@@ -503,12 +503,58 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
     return { disabledLines, frameStateLines: frameStateLines, transformedLines, strypeDirectives };
 }
 
+// Information about a set of "copied" frames.  This is the result of parsing
+// Python into a set of frame objects.
+interface CopiedFrames {
+    frameIds: number[];
+    frames: EditorFrameObjects;
+    // The project documentation is special because it's a singleton frame, so its content is recorded separately:
+    docSlots: SlotsStructure | undefined;
+}
+
+class CopyFailure extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "CopyFailure";
+    }
+}
+
+// Offsets all IDs by the given amount, ready for insertion into real frames
+// Modifies in-place and returns the modified item
+export function offsetAllIds(frames: CopiedFrames, offset: number) : CopiedFrames {
+    for (let i = 0; i < frames.frameIds.length; i++) {
+        frames.frameIds[i] += offset;
+    }
+    // Can't modify keys while iterating so take a copy, remove them all, put them all back offset:
+    const entries = Object.entries(frames.frames);
+    for (const key in frames.frames) {
+        delete frames.frames[Number(key)];
+    }
+    for (const [id, frame] of entries) {
+        frames.frames[Number(id) + offset] = frame;
+        
+        // We also have to modify all child IDs etc:
+        // Don't add the offset if the parent or joint parent is -1:
+        frame.parentId = frame.parentId < 0 ? frame.parentId : frame.parentId + offset;
+        frame.jointParentId = frame.jointParentId < 0 ? frame.jointParentId : frame.jointParentId + offset;
+        // No such issues with our ID or child IDs:
+        frame.id += offset;
+        for (let i = 0; i < frame.childrenIds.length; i++) {
+            frame.childrenIds[i] += offset;
+        }
+        for (let i = 0; i < frame.jointFrameIds.length; i++) {
+            frame.jointFrameIds[i] += offset;
+        }        
+    }
+    return frames;
+}
+
 // The main entry point to this module.  Given a string of Python code that the user
 // has pasted in, copy it to the store's copiedFrames/copiedSelectionFrameIds fields,
 // ready to be pasted immediately afterwards.
-// If successful, returns a map with key-value Strype directives.  If unsuccessful, returns a string with some info about
-// where the Python parse failed.
-export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, format: "py" | "spy", linenoMapping?: Record<number, number>, dryrun?: "dryrun" | undefined) : string | null | Map<string, string> {
+// If successful, returns the copied frames.
+// If unsuccessful, throws CopyFailure with a string with some info about where the Python parse failed.
+function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, format: "py" | "spy", linenoMapping?: Record<number, number>) : CopiedFrames {
     const mapLineno = (lineno : number) : number => linenoMapping ? linenoMapping[lineno] : lineno;
     const indents = new Map<number, string>();
     
@@ -544,48 +590,37 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
     const transformed = transformCommentsAndBlanks(codeLines, format);
     const parsedBySkulpt = parseWithSkulpt(transformed.transformedLines, mapLineno);
     if (typeof parsedBySkulpt === "string") {
-        return parsedBySkulpt;
+        throw new CopyFailure(parsedBySkulpt);
     }
     const addedFakeJoinParent = parsedBySkulpt.addedFakeJoinParent;
 
-    useStore().copiedFrames = {};
-    useStore().copiedSelectionFrameIds = [];
     try {
+        const result : CopiedFrames = {frameIds: [], frames: {}, docSlots: undefined};
         // Use the next available ID to avoid clashing with any existing IDs:
-        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: useStore().nextAvailableId, addToNonJoint: useStore().copiedSelectionFrameIds, addToJoint: undefined, loadedFrames: useStore().copiedFrames, disabledLines: transformed.disabledLines, frameStateLines: transformed.frameStateLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0, transformTopComment: (c) => {
-            if (!dryrun) {
-                const docFrame = useStore().frameObjects[projectDocumentationFrameId] as FrameObject;
-                docFrame.labelSlotsDict[0].slotStructures = c;
-            }
+        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: 0, addToNonJoint: result.frameIds, addToJoint: undefined, loadedFrames: result.frames, disabledLines: transformed.disabledLines, frameStateLines: transformed.frameStateLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0, transformTopComment: (c) => {
+            result.docSlots = c;
         }});
         // At this stage, we can make a sanity check that we can copy the given Python code in the current position in Strype (for example, no "import" in a function definition section)
-        if(!canPastePythonAtStrypeLocation(currentStrypeLocation)){
-            useStore().copiedFrames = {};
-            useStore().copiedSelectionFrameIds = [];
-            return i18n.global.t("messageBannerMessage.incompatiblePythonStrypeSection");
+        if(!canPastePythonAtStrypeLocation(currentStrypeLocation, result)){
+            throw new CopyFailure(i18n.global.t("messageBannerMessage.incompatiblePythonStrypeSection"));
         }
 
         if (addedFakeJoinParent > 0) {
             // Now have to detach that parent again.  If it was joint frames only, there should be one parent on the list:
-            if (useStore().copiedSelectionFrameIds.length == 1) {
+            if (result.frameIds.length == 1) {
                 // Clone the list to avoid modification issues:
-                useStore().copiedSelectionFrameIds = [...useStore().copiedFrames[useStore().copiedSelectionFrameIds[0]].jointFrameIds.slice(addedFakeJoinParent - 1)];
+                result.frameIds = [...result.frames[result.frameIds[0]].jointFrameIds.slice(addedFakeJoinParent - 1)];
             }
             else {
                 // Uh-oh, they had other things after the else, etc.  We can't handle that, so abandon:
-                useStore().copiedFrames = {};
-                useStore().copiedSelectionFrameIds = [];
-                return i18n.global.t("messageBannerMessage.wrongPythonStructCopied");
+                throw new CopyFailure(i18n.global.t("messageBannerMessage.wrongPythonStructCopied"));
             }
         }
-        return null;
+        return result;
     }
     catch (e) {
         console.warn(e); // + "On:\n" + debugToString(parsedBySkulpt, "  "));
-        // Don't leave partial content:
-        useStore().copiedFrames = {};
-        useStore().copiedSelectionFrameIds = [];
-        return ((e as any).$offset?.v?.[2]?.$mangled ?? (e as any).$msg?.$mangled) + " line: " + mapLineno((e as any).traceback?.[0].lineno);
+        throw new CopyFailure(((e as any).$offset?.v?.[2]?.$mangled ?? (e as any).$msg?.$mangled) + " line: " + mapLineno((e as any).traceback?.[0].lineno));
     }
 }
 
@@ -1345,7 +1380,7 @@ export function findCurrentStrypeLocation(options?: {lookForGivenFramePosition?:
 }
 
 // This function makes a simple sanity check on the copied Python code (as frames then): we make sure that it "fits" the current Strype location
-function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION): boolean {
+function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION, frames: CopiedFrames): boolean {
     // In more details, we check the same-leve (top level) frames in the copy:
     // - in the "import" section, only imports can be copied,
     // - in the "function definition" section, only function definitions can be copied
@@ -1354,7 +1389,7 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION)
     // We remove any blank frames that could exist for an imports or function definitions section top frames: they are not required in the editor.
     // Nevertheless, for this test method to complete, we still need to accept blanks to be inside imports and function definitions for validation.
     
-    const copiedPythonToFrames = Object.values(useStore().copiedFrames);
+    const copiedPythonToFrames = Object.values(frames.frames);
     const topLevelCopiedFrames = copiedPythonToFrames.filter((frame) => frame.parentId == TOP_LEVEL_TEMP_ID);
     const topLevelCopiedFrameIds = topLevelCopiedFrames.flatMap((frame) => frame.id);
     // Check if the match between the current Strype location and the copied Python code frames is possible
@@ -1364,7 +1399,7 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION)
     case STRYPE_LOCATION.IN_FUNCDEF:
         return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type));
     case STRYPE_LOCATION.DEFS_SECTION:
-        removeTopLevelBlankFrames();
+        frames = removeTopLevelBlankFrames(frames);
         // We are checking if we can paste; the not at the beginning means everything inside the ensuing bracket is actually the cases
         // where we *cannot* paste, then we invert this to get all the cases we can paste
         return !(topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.varassign, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type))
@@ -1382,10 +1417,10 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION)
                         || !topLevelCopiedFrames.some((p) => p.id == frame.parentId && p.frameType.type == AllFrameTypesIdentifier.classdef)))
                 )));
     case  STRYPE_LOCATION.IMPORTS_SECTION:
-        removeTopLevelBlankFrames();
+        frames = removeTopLevelBlankFrames(frames);
         return !topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.library, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type));
     case STRYPE_LOCATION.PROJECT_DOC_SECTION:
-        removeTopLevelBlankFrames();
+        frames = removeTopLevelBlankFrames(frames);
         // Given we transform top comment, shouldn't be anything left:
         return topLevelCopiedFrames.length == 0;
     default:
@@ -1394,18 +1429,20 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION)
     }
 }
 
-function removeTopLevelBlankFrames(): void {
+// Note: modifies in-place, but for convenience returns its parameter
+function removeTopLevelBlankFrames(frames: CopiedFrames): CopiedFrames {
     // Remove blank frames in the first level of the copied frames. T
     // This is useful when copying Python code that had line breaks between the function defs or the imports:
     // our editor do not allow adding blank frames, so they shouldn't be kept when pasted.
-    const copiedPythonToFrames = Object.values(useStore().copiedFrames);
+    const copiedPythonToFrames = Object.values(frames.frames);
     const topLevelCopiedFrames = copiedPythonToFrames.filter((frame) => frame.parentId == TOP_LEVEL_TEMP_ID);
     const topLevelBlankFramesIds = topLevelCopiedFrames.filter((frame) => frame.frameType.type === AllFrameTypesIdentifier.blank)
         .map((frame) => frame.id);
     topLevelBlankFramesIds.forEach((frameId) => {
-        delete useStore().copiedFrames[frameId];
-        useStore().copiedSelectionFrameIds.splice(useStore().copiedSelectionFrameIds.indexOf(frameId), 1);
+        delete frames.frames[frameId];
+        frames.frameIds.splice(frames.frameIds.indexOf(frameId), 1);
     });
+    return frames;
 }
 
 interface NumberedLine {
@@ -1543,8 +1580,13 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
     };
 }
 
+export interface PasteDestination {
+    destinationForFirstJoint?: CurrentFrame;
+    destination: CurrentFrame;
+}
+
 // Returns headers if successful, or null if there was an error (which will already have been shown in the UI)
-export function pasteMixedPython(completeSource: string, clearExisting: boolean) : { headers: Record<string, string> } | null {
+export function pasteMixedPython(completeSource: string, at: PasteDestination, clearExisting: boolean = false) : { headers: Record<string, string> } | null {
     const allLines = completeSource.split(/\r?\n/);
     // Split can make an extra blank line at the end which we don't want:
     if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
@@ -1553,72 +1595,66 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
     const s = splitLinesToSections(allLines);
     // If we are clearing all, we are effectively pasting into the main section,
     // no matter where the frame cursor happens to be:
-    const curLocation = clearExisting ? STRYPE_LOCATION.MAIN_CODE_SECTION : findCurrentStrypeLocation().strypeLocation;
+    const curLocation = clearExisting ? STRYPE_LOCATION.MAIN_CODE_SECTION : findCurrentStrypeLocation({lookForGivenFramePosition: at.destination}).strypeLocation;
     
-    // Bit awkward but we first attempt to copy each to check for errors because
-    // if there are any errors we don't want to paste any:
-    let err = copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.format, s.importsMapping, "dryrun");
-    if (typeof err != "string") {
-        err = copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.DEFS_SECTION, s.format, s.defsMapping, "dryrun");
-    }
-    if (typeof err != "string") {
+    let importFrames : CopiedFrames;
+    let defFrames : CopiedFrames;
+    let mainFrames : CopiedFrames;
+    let docFrames : CopiedFrames;
+    try {
+        importFrames = copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.format, s.importsMapping);
+        defFrames = copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.DEFS_SECTION, s.format, s.defsMapping);
         // We may be trying to paste something inside a function defintion.
         // The "content" to paste is seen as if it was to paste in the main section,
         // however the rules are slightly different: we use the current location to decide
         // what container we should check the code against.
         const pastingSectionTarget = (curLocation == STRYPE_LOCATION.IN_FUNCDEF) ? STRYPE_LOCATION.IN_FUNCDEF : STRYPE_LOCATION.MAIN_CODE_SECTION;
-        err = copyFramesFromParsedPython(s.main, pastingSectionTarget, s.format, s.mainMapping, "dryrun");
+        mainFrames = copyFramesFromParsedPython(s.main, pastingSectionTarget, s.format, s.mainMapping);
+        docFrames = copyFramesFromParsedPython(s.projectDoc, STRYPE_LOCATION.PROJECT_DOC_SECTION, s.format, s.mainMapping);
     }
-    if (typeof err != "string") {
-        err = copyFramesFromParsedPython(s.projectDoc, STRYPE_LOCATION.PROJECT_DOC_SECTION, s.format, s.mainMapping, "dryrun");
-    }
-    if (typeof err == "string") {
+    catch (err : any) {
         const msg = cloneDeep(MessageDefinitions.InvalidPythonParseImport);
         const msgObj = msg.message as FormattedMessage;
-        msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, err);
+        msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, err?.message);
 
         useStore().showMessage(msg, 10000);
         return null;
     }
-    else {
-        if (clearExisting) {
-            // Clear the current existing code (i.e. frames) of the editor
-            useStore().clearAllFrames();
-        }
-        
-        // The logic for pasting is: every frame that are allowed at the current cursor's position are added.
-        // Frames that are related to another section where the caret is not present are added in that section.
-        const isCurLocationInImportsSection = curLocation == STRYPE_LOCATION.IMPORTS_SECTION, isCurLocationInDefsSection = curLocation == STRYPE_LOCATION.DEFS_SECTION, 
-            isCurLocationInMainCodeSection = curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION, isCurLocationInAFuncDefFrame = curLocation == STRYPE_LOCATION.IN_FUNCDEF;
-
-        copyFramesFromParsedPython(s.projectDoc, STRYPE_LOCATION.PROJECT_DOC_SECTION, s.format);
-        copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.format);        
-        if (useStore().copiedSelectionFrameIds.length > 0) {
-            const currentCaretContainerPosition = (isCurLocationInImportsSection) 
-                ? {...useStore().currentFrame}
-                : {id: useStore().getImportsFrameContainerId, caretPosition: CaretPosition.body};
-            vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretContainerUID(currentCaretContainerPosition.caretPosition, currentCaretContainerPosition.id)].doPaste(isCurLocationInImportsSection ? "caret" : "end");
-        }
-        copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.DEFS_SECTION, s.format);
-        if (useStore().copiedSelectionFrameIds.length > 0) {
-            const currentCaretContainerPosition = (isCurLocationInDefsSection) 
-                ? {...useStore().currentFrame} 
-                : {id: useStore().getDefsFrameContainerId, caretPosition: CaretPosition.body};
-            vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretContainerUID(currentCaretContainerPosition.caretPosition, currentCaretContainerPosition.id)].doPaste(isCurLocationInDefsSection ? "caret" : "end");
-        }
-        if (s.main.length > 0) {
-            copyFramesFromParsedPython(s.main, (isCurLocationInAFuncDefFrame) ? STRYPE_LOCATION.IN_FUNCDEF : STRYPE_LOCATION.MAIN_CODE_SECTION, s.format);
-            if (useStore().copiedSelectionFrameIds.length > 0) {
-                const currentCaretContainerPosition = (isCurLocationInAFuncDefFrame || isCurLocationInMainCodeSection) 
-                    ? {...useStore().currentFrame} 
-                    : {id: useStore().getMainCodeFrameContainerId, caretPosition: CaretPosition.body};
-                vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretContainerUID(currentCaretContainerPosition.caretPosition, currentCaretContainerPosition.id)].doPaste((isCurLocationInAFuncDefFrame || isCurLocationInMainCodeSection) ? "caret" : "start");
-            }
-        }
-        return s;
+    if (clearExisting) {
+        // Clear the current existing code (i.e. frames) of the editor
+        useStore().clearAllFrames();
     }
-}
+    
+    // The logic for pasting is: every frame that are allowed at the current cursor's position are added.
+    // Frames that are related to another section where the caret is not present are added in that section.
+    const isCurLocationInImportsSection = curLocation == STRYPE_LOCATION.IMPORTS_SECTION, isCurLocationInDefsSection = curLocation == STRYPE_LOCATION.DEFS_SECTION, 
+        isCurLocationInMainCodeSection = curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION, isCurLocationInAFuncDefFrame = curLocation == STRYPE_LOCATION.IN_FUNCDEF;
 
+    if (docFrames.docSlots) {
+        const docFrame = useStore().frameObjects[projectDocumentationFrameId] as FrameObject;
+        docFrame.labelSlotsDict[0].slotStructures = docFrames.docSlots;
+    }
+    
+    if (importFrames.frameIds.length > 0) {
+        const currentCaretContainerPosition = (isCurLocationInImportsSection) 
+            ? {...at.destination}
+            : getLastCaretPosInsideParent(useStore().getImportsFrameContainerId);
+        useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: importFrames});
+    }
+    if (defFrames.frameIds.length > 0) {
+        const currentCaretContainerPosition = (isCurLocationInDefsSection) 
+            ? {...at.destination}
+            : getLastCaretPosInsideParent(useStore().getDefsFrameContainerId);
+        useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: defFrames});
+    }
+    if (mainFrames.frameIds.length > 0) {
+        const currentCaretContainerPosition = (isCurLocationInAFuncDefFrame || isCurLocationInMainCodeSection) 
+            ? {...at.destination} 
+            : getLastCaretPosInsideParent(useStore().getMainCodeFrameContainerId);
+        useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: mainFrames});
+    }
+    return {headers: s.headers};
+}
 
 const transformTripleQuotesStrings = (slots: {[index: number]: LabelSlotsContent}): void => {
     // This helper function replaces all strings content in slots that came up from parsing triple quotes strings literals.

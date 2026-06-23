@@ -1,19 +1,19 @@
 import i18n from "@/i18n";
-import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesAction, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { checkCodeErrors, getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameSectionIdFromFrameId } from "./storeMethods";
-import { splitByRegexMatches, strypeFileExtension } from "./common";
+import {useStore} from "@/store/store";
+import {AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CurrentFrame, FieldSlot, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesAction, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot} from "@/types/types";
+import {checkCodeErrors, getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameSectionIdFromFrameId} from "./storeMethods";
+import {splitByRegexMatches, strypeFileExtension} from "./common";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
-import scssVars  from "@/assets/style/_export.module.scss";
-import html2canvas, { Options } from "html2canvas";
-import { nextTick } from "vue";
+import scssVars from "@/assets/style/_export.module.scss";
+import html2canvas, {Options} from "html2canvas";
+import {nextTick} from "vue";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
-import { debounce } from "lodash";
+import {debounce} from "lodash";
 // #v-endif
-import {toUnicodeEscapes} from "@/parser/parser";
+import Parser, {toUnicodeEscapes} from "@/parser/parser";
 import {fromUnicodeEscapes} from "@/helpers/pythonToFrames";
-import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
-import { eventBus } from "@/helpers/appContext";
+import {vueComponentsAPIHandler} from "@/helpers/vueComponentAPI";
+import {eventBus} from "@/helpers/appContext";
 
 export const undoMaxSteps = 50;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
@@ -1103,13 +1103,14 @@ const bodyMouseUpEventHandlerForFrameDnD = (event: MouseEvent): void => {
             const currentDraggedFirstFrameParentFrameId = useStore().frameObjects[currentDraggedSingleFrameId ?? useStore().selectedFrames[0]].parentId;
             if(event.ctrlKey || event.altKey){
                 if(currentDraggedSingleFrameId){
-                    useStore().doCopyFrame(currentDraggedSingleFrameId);
-                    // TODO
+                    //copyFramesToClipboard([currentDraggedSingleFrameId]);
+                    // TODO copy paste WITHOUT clipboard
                     //useStore().pasteFrame({clickedFrameId: currentCaretDropPosFrameId, caretPosition: currentCaretDropPosCaretPos});
                 }
                 else{
-                    useStore().doCopySelection();
-                    useStore().pasteSelection({clickedFrameId: currentCaretDropPosFrameId, caretPosition: currentCaretDropPosCaretPos});
+                    //copyFramesToClipboard(useStore().selectedFrames);
+                    // TODO copy paste WITHOUT clipboard
+                    //useStore().pasteSelection({clickedFrameId: currentCaretDropPosFrameId, caretPosition: currentCaretDropPosCaretPos});
                 }
             }
             else {
@@ -2347,4 +2348,28 @@ export function isFullyInViewport(el: Element, margin = 0) : boolean {
         rect.bottom <= window.innerHeight - margin &&
         rect.right <= window.innerWidth - margin
     );
+}
+
+// Finds the last caret pos inside the given parent:
+export function getLastCaretPosInsideParent(parentId: number) : CurrentFrame {
+    const childrenIds = useStore().frameObjects[parentId]?.childrenIds;
+    if (childrenIds.length > 0) {
+        return {id: childrenIds[childrenIds.length - 1], caretPosition: CaretPosition.below};
+    }
+    else {
+        return {id: parentId, caretPosition: CaretPosition.body};
+    }
+}
+
+// Must be called in response to click or key handler so that we have access to the clipboard
+// frameIds must be contiguous
+export function copyFramesToClipboard(frameIds: number[]) : void {
+    let code = "";
+    if (frameIds.length > 0) {
+        const p = new Parser(true, "spy");
+        code = p.parse({startAtFrameId: frameIds[0], stopAt: {frameId: frameIds[frameIds.length - 1], includeThisFrame: true}});
+    }
+    navigator.clipboard.writeText(code).catch((err) => {
+        console.error(err);
+    });
 }

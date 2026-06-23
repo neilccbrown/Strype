@@ -326,7 +326,7 @@ export interface EditableFocusPayload extends SlotCoreInfos {
 export interface NavigationPosition {
     frameId: number;
     isSlotNavigationPosition: boolean, // flag to indicate if we are working with a slot position (change from previous version that used composite types)
-    caretPosition?: string;
+    caretPosition?: CaretPosition;
     labelSlotsIndex?: number;
     slotId?: string;
     slotType?: SlotType;

@@ -117,30 +117,29 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import { defineComponent, watch } from "vue";
-import { useI18n } from "vue-i18n";
-import { BApp } from "bootstrap-vue-next";
+import {defineComponent, watch} from "vue";
+import {useI18n} from "vue-i18n";
+import {BApp, BvTriggerableEvent} from "bootstrap-vue-next";
 import MessageBanner from "@/components/MessageBanner.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
-import {Splitpanes, Pane} from "splitpanes";
-import { useStore, settingsStore, getEditorTabId } from "@/store/store";
-import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState, LoadRequestReason, StateAppObject, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
-import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
-import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getActiveContextMenu, actOnGraphicsImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID, closeRenameIdentifierPopups, newStrypeProject } from "./helpers/editor";
-import { AllFrameTypesIdentifier} from "@/types/types";
+import {Pane, Splitpanes} from "splitpanes";
+import {getEditorTabId, settingsStore, useStore} from "@/store/store";
+import {AllFrameTypesIdentifier, AppEvent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, FrozenState, LoadRequestReason, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, ProjectDocumentationDefinition, ProjectSaveFunction, PythonExecRunningState, SaveRequestReason, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StateAppObject, StringSlot, StrypePEALayoutMode, StrypeSyncTarget} from "@/types/types";
+import {CloudDriveAPIState, isSyncTargetCloudDrive} from "@/types/cloud-drive-types";
+import {actOnGraphicsImport, addDuplicateActionOnFramesDnD, autoSaveFreqMins, AutoSaveKeyNames, closeRenameIdentifierPopups, CustomEventTypes, frameContextMenuShortcuts, getActiveContextMenu, getAppSimpleMsgDlgId, getCaretContainerUID, getCommandsRightPaneContainerId, getCompanionDndCanvasId, getEditorID, getEditorMiddleUID, getFrameContainerUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getImportDiffVersionModalDlgId, getLabelSlotUID, getLoadProjectLinkId, getMenuLeftPaneUID, getSameLevelAncestorIndex, getSelectionCursorsComparisonValue, getStrypeCommandComponentRefId, isElementLabelSlotInput, newStrypeProject, parseLabelSlotUID, removeDuplicateActionOnFramesDnD, setDocumentSelection, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey} from "./helpers/editor";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
-import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getPEAComponentRefId } from "@/helpers/editor";
+import {debounceComputeAddFrameCommandContainerSize, getPEAComponentRefId, getPEATabContentContainerDivId} from "@/helpers/editor";
 // #v-else
-import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
-import { DAPWrapper } from "./helpers/partial-flashing";
+import {getAPIItemTextualDescriptions} from "./helpers/microbitAPIDiscovery";
+import {DAPWrapper} from "./helpers/partial-flashing";
 // #v-endif
-import { mapStores } from "pinia";
-import {getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos, getFrameBelowCaretPosition, checkCodeErrors, calculateNextCollapseState, showIndexDBError} from "./helpers/storeMethods";
-import { cloneDeep } from "lodash";
+import {mapStores} from "pinia";
+import {calculateNextCollapseState, checkCodeErrors, getFlatNeighbourFieldSlotInfos, getFrameBelowCaretPosition, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos, showIndexDBError} from "./helpers/storeMethods";
+import {cloneDeep} from "lodash";
 import {pasteMixedPython} from "@/helpers/pythonToFrames";
 import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
 import EditImageDlg from "@/components/EditImageDlg.vue";
@@ -149,12 +148,11 @@ import axios from "axios";
 import scssVars from "@/assets/style/_export.module.scss";
 import {loadDivider} from "@/helpers/load-save";
 import FrameHeader from "@/components/FrameHeader.vue";
-import { eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
+import {eventBus, projectDocumentationFrameId} from "@/helpers/appContext";
 import {inflateRaw} from "pako";
-import { Base64 } from "js-base64";
-import { BvTriggerableEvent } from "bootstrap-vue-next";
-import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
-import { loadSessionState, saveSessionState, emergencySaveSessionState, checkForRecentSaveStates } from "@/store/store-db-storage";
+import {Base64} from "js-base64";
+import {vueComponentsAPIHandler} from "@/helpers/vueComponentAPI";
+import {checkForRecentSaveStates, emergencySaveSessionState, loadSessionState, saveSessionState} from "@/store/store-db-storage";
 import initialStates from "@/store/initial-states";
 
 let autoSaveTimerId = -1;
@@ -1701,7 +1699,7 @@ export default defineComponent({
         
         setStateFromPythonFile(completeSource: string, fileName: string, lastSaveDate: number, requestFSFileLoadedNotification: boolean, fileLocation: FileSystemFileHandle | "local" | "cloud" | "import") : Promise<void> {
             return new Promise((resolve) => {
-                const s = pasteMixedPython(completeSource, true);
+                const s = pasteMixedPython(completeSource, {destination: {id: useStore().getMainCodeFrameContainerId, caretPosition: CaretPosition.body}}, true);
                 if (s != null) {
                     // Now we can clear other non-frame related elements
                     this.appStore.clearNoneFrameRelatedState();
