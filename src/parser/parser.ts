@@ -1,6 +1,6 @@
 import Compiler from "@/compiler/compiler";
 import {hasEditorCodeErrors, trimmedKeywordOperators} from "@/helpers/editor";
-import {generateFlatSlotBases, getNextSibling, retrieveSlotByPredicate} from "@/helpers/storeMethods";
+import {generateFlatSlotBases, getNextSibling, getParentId, retrieveSlotByPredicate} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CollapsedState, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, FrozenState, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
@@ -562,6 +562,8 @@ export default class Parser {
         return this.parse({startAtFrameId: useStore().getImportsFrameContainerId, stopAt: {frameId: useStore().getDefsFrameContainerId, includeThisFrame: false}});
     }
 
+    // You can only pass start if you also pass stop.  (But stop by itself is fine)
+    // If you pass start and stop frames, they must be siblings.
     public parse({startAtFrameId, stopAt, excludeLoopsAndCommentsAndCloseTry, defsLast, ignoreSpecificFrameId}: {startAtFrameId?: number, stopAt?: {frameId: number, includeThisFrame: boolean}, excludeLoopsAndCommentsAndCloseTry?: boolean, defsLast?: boolean; ignoreSpecificFrameId?: number}): string {
         let output = "";
         if(startAtFrameId){
@@ -588,8 +590,15 @@ export default class Parser {
         let parentInsideAClass = false;
         let codeUnits: FrameObject[];
         if (this.startAtFrameId > -100) {
-            codeUnits = [useStore().frameObjects[this.startAtFrameId]];
-            parentInsideAClass = useStore().frameObjects[codeUnits[0].parentId].frameType.type == AllFrameTypesIdentifier.classdef;
+            if (this.stopAtFrameId == -100) {
+                throw new Error("Internal error: if you pass start you should also pass stop");
+            }
+            const startIndex = useStore().getIndexInParent(this.startAtFrameId);
+            const endIndex = useStore().getIndexInParent(this.stopAtFrameId);
+            const parent = useStore().frameObjects[getParentId(useStore().frameObjects[this.startAtFrameId])];
+            const allChildrenOfParent = parent.childrenIds.map((id) => useStore().frameObjects[id]);
+            codeUnits = allChildrenOfParent.slice(startIndex, endIndex + (this.stopAtIncludesLastFrame ? 1 : 0));
+            parentInsideAClass = parent.frameType.type == AllFrameTypesIdentifier.classdef;
         }
         else {            
             codeUnits = useStore().getFramesForParentId(0);

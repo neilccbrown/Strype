@@ -7,7 +7,7 @@ import {AppPlatform, AppVersion, eventBus, projectDocumentationFrameId} from "@/
 import initialStates from "@/store/initial-states";
 import {defineStore} from "pinia";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
-import {actOnGraphicsImport, AutoSaveKeyNames, checkEditorCodeErrors, copyFramesToClipboard, countEditorCodeErrors, CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getCaretContainerUID, getCaretUID, getFocusedEditableSlotTextSelectionStartEnd, getFrameHeaderUID, getImportDiffVersionModalDlgId, getLabelSlotUID, getSelectionCursorsComparisonValue, isFullyInViewport, isLabelSlotEditable, parseCodeLiteral, setDocumentSelection, undoMaxSteps} from "@/helpers/editor";
+import {actOnGraphicsImport, AutoSaveKeyNames, checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getCaretContainerUID, getCaretUID, getFocusedEditableSlotTextSelectionStartEnd, getFrameHeaderUID, getImportDiffVersionModalDlgId, getLabelSlotUID, getSelectionCursorsComparisonValue, isFullyInViewport, isLabelSlotEditable, parseCodeLiteral, setDocumentSelection, undoMaxSteps} from "@/helpers/editor";
 import {DAPWrapper} from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import {getAPIItemTextualDescriptions} from "@/helpers/microbitAPIDiscovery";
@@ -2633,30 +2633,35 @@ export const useStore = defineStore("app", {
 
             // All the top level cloned frames need to be stored in order to then added to their new parent's list
             // The nextAvailableId should be right, but for sanity check, we make sure the id is indeed available to avoid potential issues.
-            const topLevelCopiedFrames: number[] = [];
             let nextAvailableId = this.nextAvailableId;
             while(this.frameObjects[nextAvailableId] != undefined){
                 nextAvailableId+=1;
             }
 
+            // It will be added either as a Child or as a JointChild
+            const areSelectedJointFrames = payload.sourceFrames.frames[payload.sourceFrames.frameIds[0]].frameType.isJointFrame;
+            let childrenListToBeAdded: number[];
+            let setParent : (f: FrameObject) => void;
+            if (areSelectedJointFrames) {
+                const jointParentId = getParentOrJointParent(payload.target.id);
+                childrenListToBeAdded = this.frameObjects[jointParentId].jointFrameIds;
+                setParent = (f) => f.jointParentId = jointParentId;
+            }
+            else {
+                const parentId = payload.target.caretPosition == CaretPosition.body ? payload.target.id : getParentOrJointParent(payload.target.id); 
+                childrenListToBeAdded = this.frameObjects[parentId].childrenIds;
+                setParent = (f) => f.parentId = parentId;
+            }
+
             // Add the copied objects to the FrameObjects
             Object.keys(payload.sourceFrames.frames).map(Number).forEach((id: number)=> {
                 this.frameObjects[id] = payload.sourceFrames.frames[id];
+                setParent(this.frameObjects[id]);
             });
             this.updateNextAvailableId();
 
-            // It will be added either as a Child or as a JointChild
-            const areSelectedJointFrames = payload.sourceFrames.frames[payload.sourceFrames.frameIds[0]].frameType.isJointFrame;
-            const childrenListToBeAdded = (areSelectedJointFrames) ? this.frameObjects[getParentOrJointParent(payload.target.id)].jointFrameIds : this.frameObjects[getParentOrJointParent(payload.target.id)].childrenIds;
-
             // Add each one of the copied frames in their new parent's list
-            topLevelCopiedFrames.forEach( (id) => {
-                childrenListToBeAdded.splice(
-                    newIndex++,
-                    0,
-                    id
-                );
-            });
+            childrenListToBeAdded.splice(newIndex, 0, ...payload.sourceFrames.frameIds);
 
             this.updateNextAvailableId();
 

@@ -535,8 +535,8 @@ export function offsetAllIds(frames: CopiedFrames, offset: number) : CopiedFrame
         
         // We also have to modify all child IDs etc:
         // Don't add the offset if the parent or joint parent is -1:
-        frame.parentId = frame.parentId < 0 ? frame.parentId : frame.parentId + offset;
-        frame.jointParentId = frame.jointParentId < 0 ? frame.jointParentId : frame.jointParentId + offset;
+        frame.parentId = frame.parentId <= 0 ? frame.parentId : frame.parentId + offset;
+        frame.jointParentId = frame.jointParentId <= 0 ? frame.jointParentId : frame.jointParentId + offset;
         // No such issues with our ID or child IDs:
         frame.id += offset;
         for (let i = 0; i < frame.childrenIds.length; i++) {
@@ -596,8 +596,8 @@ function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: 
 
     try {
         const result : CopiedFrames = {frameIds: [], frames: {}, docSlots: undefined};
-        // Use the next available ID to avoid clashing with any existing IDs:
-        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: 0, addToNonJoint: result.frameIds, addToJoint: undefined, loadedFrames: result.frames, disabledLines: transformed.disabledLines, frameStateLines: transformed.frameStateLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0, transformTopComment: (c) => {
+        // We assign new IDs starting from 1, later on they are offset:
+        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: 1, addToNonJoint: result.frameIds, addToJoint: undefined, loadedFrames: result.frames, disabledLines: transformed.disabledLines, frameStateLines: transformed.frameStateLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0, transformTopComment: (c) => {
             result.docSlots = c;
         }});
         // At this stage, we can make a sanity check that we can copy the given Python code in the current position in Strype (for example, no "import" in a function definition section)
@@ -1639,18 +1639,21 @@ export function pasteMixedPython(completeSource: string, at: PasteDestination, c
         const currentCaretContainerPosition = (isCurLocationInImportsSection) 
             ? {...at.destination}
             : getLastCaretPosInsideParent(useStore().getImportsFrameContainerId);
+        offsetAllIds(importFrames, useStore().nextAvailableId);
         useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: importFrames});
     }
     if (defFrames.frameIds.length > 0) {
         const currentCaretContainerPosition = (isCurLocationInDefsSection) 
             ? {...at.destination}
             : getLastCaretPosInsideParent(useStore().getDefsFrameContainerId);
+        offsetAllIds(defFrames, useStore().nextAvailableId);
         useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: defFrames});
     }
     if (mainFrames.frameIds.length > 0) {
         const currentCaretContainerPosition = (isCurLocationInAFuncDefFrame || isCurLocationInMainCodeSection) 
             ? {...at.destination} 
             : getLastCaretPosInsideParent(useStore().getMainCodeFrameContainerId);
+        offsetAllIds(mainFrames, useStore().nextAvailableId);
         useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: mainFrames});
     }
     return {headers: s.headers};
