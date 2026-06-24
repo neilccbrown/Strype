@@ -30,6 +30,7 @@ export default defineComponent({
             required: false,
         },
         pickFolderCancelled: {type: Function as PropType<() => void>, required: true},
+        strypeFolderId: String,
     },
 
     computed:{
@@ -58,8 +59,8 @@ export default defineComponent({
             // We create views for the picker:
             const docsViews: google.picker.DocsView[] = [];
             
-            // View 1: Strype/current folder view (load only)
-            if(!this.isSaveAction && this.startingFromFolderId){
+            // View 1: Current folder view (only for load, and if a current folder different than the Strype folder is referenced)
+            if(!this.isSaveAction && this.startingFromFolderId && this.startingFromFolderId != this.strypeFolderId){
                 const inFolderDocsView = new google.picker.DocsView();
                 inFolderDocsView.setParent(this.startingFromFolderId);
                 inFolderDocsView.setIncludeFolders(true);
@@ -69,7 +70,18 @@ export default defineComponent({
                 docsViews.push(inFolderDocsView);
             }
 
-            // View 2: All Strype files (*.spy) view (load only)
+            // View 2: Strype folder view (only for load)
+            if(!this.isSaveAction && this.strypeFolderId && this.strypeFolderId.length > 0){
+                const inStrypeFolderDocsView = new google.picker.DocsView();
+                inStrypeFolderDocsView.setParent(this.strypeFolderId);
+                inStrypeFolderDocsView.setIncludeFolders(true);
+                inStrypeFolderDocsView.setMode(google.picker.DocsViewMode.LIST);
+                // The setLabel function is (no longer?) officially existing on the type DocsView -- we cast to "any" to bypass errors
+                (inStrypeFolderDocsView as any).setLabel("Strype");
+                docsViews.push(inStrypeFolderDocsView);
+            }
+
+            // View 3: All Strype files (*.spy) view (load only)
             if(!this.isSaveAction) {
                 const allStrypeDocsView = new google.picker.DocsView();
                 // The setLabel and setQuery functions are (no longer?) officially existing on the type DocsView -- we cast to "any" to bypass errors
@@ -80,7 +92,7 @@ export default defineComponent({
                 docsViews.push(allStrypeDocsView);
             }
 
-            // View 3: Python files (load only)
+            // View 4: Python files (load only)
             if(!this.isSaveAction) {
                 const pythonFilesDocsView = new google.picker.DocsView();
                 // The setLabel and setQuery functions are (no longer?) officially existing on the type DocsView -- we cast to "any" to bypass errors
@@ -91,7 +103,7 @@ export default defineComponent({
                 docsViews.push(pythonFilesDocsView);
             }
 
-            // View 4 or 5: Shared with me view (added to the list of view later with position depending on the action)
+            // View 5 or 6: Shared with me view (added to the list of view later with position depending on the action)
             const sharedDocsView = new google.picker.DocsView();
             sharedDocsView.setSelectFolderEnabled(this.isSaveAction);
             if(this.isSaveAction){
@@ -101,7 +113,7 @@ export default defineComponent({
             sharedDocsView.setIncludeFolders(true);
             sharedDocsView.setMode(google.picker.DocsViewMode.LIST);
             
-            // View 5 or 4: My Drive view (added to the list of view later with position depending on the action)
+            // View 6 or 5: My Drive view (added to the list of view later with position depending on the action)
             // This view is required to allow users to nagivate in their Drive: with View 1, we cannot nagivate outside the given parent folder,
             // so we need a way to allow users getting there.
             const rootDocsView = new google.picker.DocsView();
@@ -116,7 +128,7 @@ export default defineComponent({
             // The setLabel function is (no longer?) officially existing on the type DocsView -- we cast to "any" to bypass errors
             (rootDocsView as any).setLabel(this.$t("appMessage.gdriveTab"));
 
-            // Add views at 4th and 5th positions depending on the action
+            // Add views at 5th and 6th positions depending on the action
             docsViews.push((this.isSaveAction) ? rootDocsView : sharedDocsView);
             docsViews.push((this.isSaveAction) ? sharedDocsView : rootDocsView);
 
