@@ -561,7 +561,7 @@ export default defineComponent({
                     customEvent = CustomEventTypes.duplicateFrameSelection;
                     break;
                 case "/":
-                    customEvent = CustomEventTypes.toggleFrameSelectionDisability;
+                    customEvent = CustomEventTypes.toggleFrameSelectionDisable;
                     break;
                 }
                 eventBus.emit(customEvent);

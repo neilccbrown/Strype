@@ -233,7 +233,7 @@ export enum FrameContextMenuActionName {
     deleteOuter,
     enable,
     disable,
-    toggleDisability,
+    toggleDisable,
     collapseToHeader,
     collapseToDocumentation,
     collapseToFull,

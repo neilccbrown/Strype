@@ -205,7 +205,7 @@
     "enableAll": "Enable all",
     "disable": "Disable",
     "disableAll": "Disable all",
-    "toggleDisability": "Toggle disability",
+    "toggleDisable": "Toggle disable",
     "undo": "Undo",
     "redo": "Redo",
     "delete": "Delete",

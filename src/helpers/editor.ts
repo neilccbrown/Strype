@@ -67,7 +67,7 @@ export enum CustomEventTypes {
     cutFrameSelection = "cutFrameSelection",
     copyFrameSelection = "copyFrameSelection",
     duplicateFrameSelection = "duplicateFrameSelection",
-    toggleFrameSelectionDisability = "toggleFrameSelectionDisability",
+    toggleFrameSelectionDisable = "toggleFrameSelectionDisable",
     updateParamPrompts = "updateParamPrompts",
     renameIdentifier = "renameIdentifier",
     closeOtherRenameIdentifierPopup = "closeOtherRenameIdentifierPopup",
@@ -96,7 +96,7 @@ export const frameContextMenuShortcuts: FrameContextMenuShortcut[] = [
     {actionName: FrameContextMenuActionName.delete, mainKey: "delete"},
     {actionName: FrameContextMenuActionName.enable, mainKey: "/"},
     {actionName: FrameContextMenuActionName.disable, mainKey: "/"},
-    {actionName: FrameContextMenuActionName.toggleDisability, mainKey: "/"},
+    {actionName: FrameContextMenuActionName.toggleDisable, mainKey: "/"},
 ];
 
 export function getFrameContainerUID(frameId: number): string {
