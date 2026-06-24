@@ -434,9 +434,9 @@ export default defineComponent({
             // Close the rename identifiers popup on most keys:
             // to simplify the event registration on when we close the popup, we close it on almost all key hits except navigation keys:
             // they will be handled in watch() via the change of frame and we do allow navigation when the popup is showing.
-            // We also ignore escape and ctrl/meta+R (that's handled later), enter and # (OK to add a blank frame and comments)
+            // We also ignore escape and ctrl+R (that's handled later), enter and # (OK to add a blank frame and comments)
             if(this.appStore.renameIdentifierPopupShownTimestamp > 0 && !["Escape", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End", "PageUp", "PageDown", "", "Meta", "Control"].includes(event.key) 
-                && !((event.metaKey || event.ctrlKey) &&  event.key == "r")){
+                && !(event.ctrlKey &&  event.key == "r")){
                 closeRenameIdentifierPopups(); 
             }
 
@@ -576,7 +576,7 @@ export default defineComponent({
             // We only want to capture the rename identifier action keyboard shortcut if one popup is visible,
             // otherwise we leave the shortcut for the browser.
             const openedPopup = document.querySelector(".popover.show:has(." + scssVars.renameIdentifierPopoverClassName + "");
-            if (openedPopup && !this.isPythonExecuting && (event.ctrlKey || event.metaKey) && event.key ==  "r"){
+            if (openedPopup && !this.isPythonExecuting && event.ctrlKey && event.key ==  "r"){
                 eventBus.emit(CustomEventTypes.renameIdentifier);
                 event.preventDefault();
                 event.stopPropagation();
