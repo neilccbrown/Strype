@@ -1,11 +1,12 @@
 import {AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, FrozenState, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, MessageDefinitions, SlotsStructure, StringSlot} from "@/types/types";
 import {useStore} from "@/store/store";
-import {getCaretContainerUID, getLastCaretPosInsideParent, operators, trimmedKeywordOperators} from "@/helpers/editor";
+import {CustomEventTypes, getLastCaretPosInsideParent, operators, trimmedKeywordOperators} from "@/helpers/editor";
 import i18n from "@/i18n";
 import {cloneDeep, escapeRegExp} from "lodash";
-import {AppName, AppSPYFullPrefix, projectDocumentationFrameId} from "@/helpers/appContext";
+import {AppName, AppSPYFullPrefix, eventBus, projectDocumentationFrameId} from "@/helpers/appContext";
 import {stringToCollapsed, stringToFrozen, toUnicodeEscapes} from "@/parser/parser";
-import {vueComponentsAPIHandler} from "@/helpers/vueComponentAPI";
+import {nextTick} from "vue";
+import {checkCodeErrors} from "@/helpers/storeMethods";
 
 const TOP_LEVEL_TEMP_ID = -999;
 
@@ -1656,6 +1657,16 @@ export function pasteMixedPython(completeSource: string, at: PasteDestination, c
         offsetAllIds(mainFrames, useStore().nextAvailableId);
         useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: mainFrames});
     }
+    const framesAdded = [
+        importFrames.frameIds,
+        defFrames.frameIds,
+        mainFrames.frameIds,
+    ].flat();
+    void nextTick(() => {
+        eventBus.emit(CustomEventTypes.updateParamPrompts, framesAdded);
+        framesAdded.forEach((pastedFrameId) => checkCodeErrors(pastedFrameId));
+    });
+    
     return {headers: s.headers};
 }
 
