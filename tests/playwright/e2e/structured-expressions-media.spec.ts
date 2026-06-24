@@ -135,7 +135,7 @@ test.describe("Media literal copying", () => {
         await page.waitForTimeout(100);
         await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, "type(");
-        const sound = fs.readFileSync("src/assetsFilesystem/sounds/cat-test-meow.wav").toString("base64");
+        const sound = fs.readFileSync("src/assetsFilesystem/sounds/meow.wav").toString("base64");
         await doPagePaste(page, sound, "audio/x-wav");
         await typeIndividually(page, ")");
         const startIndex = "type(".length;
@@ -214,7 +214,7 @@ test.describe("Media literal manipulation", () => {
         await page.keyboard.type("i");
         await page.waitForTimeout(100);
         await assertStateOfIfFrame(page, "{$}");
-        const image = fs.readFileSync("src/assetsFilesystem/sounds/cat-test-meow.wav").toString("base64");
+        const image = fs.readFileSync("src/assetsFilesystem/sounds/meow.wav").toString("base64");
         await doPagePaste(page, image, "audio/wav");
         // Check it is appearing as an image:
         await expect(page.getByText("load_sound")).not.toBeVisible();
@@ -264,7 +264,7 @@ test.describe("Edition in expressions with media",() => {
         await doPagePaste(page, image, "image/jpeg");
         await page.waitForTimeout(200);
         await page.keyboard.type("+");
-        const sound = fs.readFileSync("src/assetsFilesystem/sounds/cat-test-meow.wav").toString("base64");
+        const sound = fs.readFileSync("src/assetsFilesystem/sounds/meow.wav").toString("base64");
         mediaInfo.push({mediaType: "snd", endOfB64: sound.slice(-10)});
         await doPagePaste(page, sound, "audio/x-wav");
         await page.waitForTimeout(200);
