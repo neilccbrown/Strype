@@ -1011,6 +1011,17 @@ function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, keywo
 }
 
 // Process the given node in the tree at the current point designed by CopyState
+function removeFirstFuncParam(params: LabelSlotsContent) {
+    if (params && params.slotStructures.fields.length == 1) {
+        // We need to keep a field, but we blank the content:
+        (params.slotStructures.fields[0] as BaseSlot).code = "";
+    } else if (params && params.slotStructures.fields.length > 1) {
+        // We can just delete the first item and first operator, and rest can stay:
+        params.slotStructures.fields.splice(0, 1);
+        params.slotStructures.operators.splice(0, 1);
+    }
+}
+
 // Returns a copy state, including the frame ID of the next insertion point for any following statements
 function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState {
     switch (p.type) {
@@ -1259,15 +1270,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
             // assuming it is the self parameter that we add automatically.
             const params = r.frame.labelSlotsDict[1];
 
-            if (params && params.slotStructures.fields.length == 1) {
-                // We need to keep a field, but we blank the content:
-                (params.slotStructures.fields[0] as BaseSlot).code = "";
-            }
-            else if (params && params.slotStructures.fields.length > 1) {
-                // We can just delete the first item and first operator, and rest can stay:
-                params.slotStructures.fields.splice(0, 1);
-                params.slotStructures.operators.splice(0, 1);
-            }
+            removeFirstFuncParam(params);
         }
         break;
     }
@@ -1458,11 +1461,11 @@ function makeMapping(section: NumberedLine[]) : Record<number, number> {
     }, {} as Record<number, number>);
 }
 
-// Takes a list of lines of Python code and splits them into three sections: imports, function definitions, and main code.
+// Takes a list of lines of Python code and splits them into four sections: imports, function definitions, class definitions, and main code.
 // Each line of the original will end up in exactly one of the three parts of the return.
 // With Python's indentation rules, this operation is actually easier at line level than it is post-parse.
 // The mappings map line numbers in the returned sections to line numbers in the original
-export function splitLinesToSections(allLines : string[]) : {projectDoc: string[], imports: string[]; defs: string[]; main: string[], importsMapping: Record<number, number>, defsMapping: Record<number, number>, mainMapping: Record<number, number>, headers: Record<string, string>, format: "py" | "spy"} {
+function splitLinesToSections(allLines : string[]) : {projectDoc: string[], imports: string[]; funcDefs: string[]; classDefs: string[]; main: string[], importsMapping: Record<number, number>, funcDefsMapping: Record<number, number>, classDefsMapping: Record<number, number>, mainMapping: Record<number, number>, headers: Record<string, string>, format: "py" | "spy"} {
     // There's two possibilities:
     //  - we're loading a .spy with section headings, or
     //  - we're loading a .py where we must infer it.
@@ -1473,10 +1476,12 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
         const r = {
             projectDoc: [] as string[],
             imports: [] as string[],
-            defs: [] as string[],
+            funcDefs: [] as string[],
+            classDefs: [] as string[],
             main: [] as string[],
             importsMapping: {} as Record<number, number>,
-            defsMapping: {} as Record<number, number>,
+            funcDefsMapping: {} as Record<number, number>,
+            classDefsMapping: {} as Record<number, number>,
             mainMapping: {} as Record<number, number>,
             headers: {} as Record<string, string>,
             format: "spy" as "py" | "spy",
@@ -1503,8 +1508,9 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
         line += 1;
         const firstDefsLine = line;
         while (line < allLines.length && !allLines[line].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *Section *:Main"))) {
-            r.defs.push(allLines[line]);
-            r.defsMapping[line - firstDefsLine] = line;
+            // Since it's an SPY we just say it's all class defs so it all ends up at top level:
+            r.classDefs.push(allLines[line]);
+            r.classDefsMapping[line - firstDefsLine] = line;
             line += 1;
         }
         line += 1;
@@ -1520,19 +1526,22 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
     
     // We associate comments with the line immediately following them, so we keep a list of the most recent comments:
     let latestComments: NumberedLine[] = [];
+    let latestAssignments: NumberedLine[] = [];
     const projectDoc: NumberedLine[] = [];
     const imports: NumberedLine[] = [];
-    const defs: NumberedLine[] = [];
+    const funcDefs: NumberedLine[] = [];
+    const classDefs: NumberedLine[] = [];
     const main: NumberedLine[] = [];
     // -1 if we're not in a def
     let outermostDefIndentLevel = -1;
+    let curDefTypeIsClass = false;
     allLines.forEach((line : string, zeroBasedLine : number) => {
         const lineWithNum : NumberedLine = {text: line, lineno: zeroBasedLine + 1};
         const indentLevel = line.length - line.trimStart().length;
         if (line.trim() != "" && indentLevel <= outermostDefIndentLevel) {
             outermostDefIndentLevel = -1;
         }
-        if (line.match(/^\s*["'].*/) && imports.length + defs.length + main.length == 0) {
+        if (line.match(/^\s*["'].*/) && imports.length + funcDefs.length + classDefs.length + main.length == 0) {
             projectDoc.push(lineWithNum);
         }
         else if (line.match(/^\s*(import|from)\s+/)) {
@@ -1542,39 +1551,68 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
             imports.push(lineWithNum);
         }
         // We're only the new outermost if there is no current outermost:
-        else if (line.match(/^\s*(def|class)\s+/) && outermostDefIndentLevel == -1) {
-            defs.push(...latestComments.map((l) => ({...l, text: l.text.trimStart() + " ".repeat(indentLevel)})));
+        else if (line.match(/^\s*class\s+/) && outermostDefIndentLevel == -1) {
+            classDefs.push(...latestComments.map((l) => ({...l, text: l.text.trimStart() + " ".repeat(indentLevel)})));
             latestComments = [];
-            defs.push({...lineWithNum, text: line.trimStart()});
+            classDefs.push(...latestAssignments);
+            latestAssignments = [];
+            classDefs.push({...lineWithNum, text: line.trimStart()});
             outermostDefIndentLevel = indentLevel;
+            curDefTypeIsClass = true;
+        }
+        else if (line.match(/^\s*def\s+/) && outermostDefIndentLevel == -1) {
+            funcDefs.push(...latestComments.map((l) => ({...l, text: l.text.trimStart() + " ".repeat(indentLevel)})));
+            latestComments = [];
+            funcDefs.push(...latestAssignments);
+            latestAssignments = [];
+            funcDefs.push({...lineWithNum, text: line.trimStart()});
+            outermostDefIndentLevel = indentLevel;
+            curDefTypeIsClass = false;
         }
         else if (line.match(/^\s*#/)) {
             latestComments.push(lineWithNum);
         }
         else if (outermostDefIndentLevel >= 0) {
             // Keep adding to defs until we see a non-comment non-blank line with less or equal indent:
-            defs.push(...latestComments);
+            (curDefTypeIsClass ? classDefs : funcDefs).push(...latestComments);
             latestComments = [];
-            defs.push({...lineWithNum, text: line.slice(outermostDefIndentLevel)});
+            (curDefTypeIsClass ? classDefs : funcDefs).push({...lineWithNum, text: line.slice(outermostDefIndentLevel)});
+        }
+        // Does it look like an assignment:
+        else if (line.match(/^\s*[A-Za-z_][A-Za-z0-9_.,\[\]()\s]*?(?<![!<>=:])=(?!=)/)) {
+            if (main.length == 0) {
+                latestAssignments.push(lineWithNum);
+            }
+            else {
+                main.push(lineWithNum);
+            }
         }
         else {
             main.push(...latestComments);
             latestComments = [];
             // We don't push leading blanks to main (i.e. blank lines while main is empty), otherwise all the blanks before/between imports and defs end up there:
             if (line.trim() != "" || main.length > 0) {
+                if (latestAssignments.length > 0) {
+                    main.push(...latestAssignments);
+                    latestAssignments = [];
+                }
                 main.push(lineWithNum);
             }
         }
     });
-    // Add any trailing comments:
+    // Add any trailing comments and assignments:
+    main.push(...latestAssignments);
     main.push(...latestComments);
+    
     return {
         projectDoc: projectDoc.map((l) => l.text), 
         imports: imports.map((l) => l.text),
-        defs: defs.map((l) => l.text),
+        funcDefs: funcDefs.map((l) => l.text),
+        classDefs: classDefs.map((l) => l.text),
         main: main.map((l) => l.text),
         importsMapping : makeMapping(imports),
-        defsMapping : makeMapping(defs),
+        funcDefsMapping : makeMapping(funcDefs),
+        classDefsMapping : makeMapping(classDefs),
         mainMapping : makeMapping(main),
         headers: {} as Record<string, string>,
         format: "py",
@@ -1599,12 +1637,14 @@ export function pasteMixedPython(completeSource: string, at: PasteDestination, c
     const curLocation = clearExisting ? STRYPE_LOCATION.MAIN_CODE_SECTION : findCurrentStrypeLocation({lookForGivenFramePosition: at.destination}).strypeLocation;
     
     let importFrames : CopiedFrames;
-    let defFrames : CopiedFrames;
+    let funcDefFrames : CopiedFrames;
+    let classDefFrames : CopiedFrames;
     let mainFrames : CopiedFrames;
     let docFrames : CopiedFrames;
     try {
         importFrames = copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.format, s.importsMapping);
-        defFrames = copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.DEFS_SECTION, s.format, s.defsMapping);
+        funcDefFrames = copyFramesFromParsedPython(s.funcDefs, STRYPE_LOCATION.DEFS_SECTION, s.format, s.funcDefsMapping);
+        classDefFrames = copyFramesFromParsedPython(s.classDefs, STRYPE_LOCATION.DEFS_SECTION, s.format, s.classDefsMapping);
         // We may be trying to paste something inside a function defintion.
         // The "content" to paste is seen as if it was to paste in the main section,
         // however the rules are slightly different: we use the current location to decide
@@ -1628,30 +1668,49 @@ export function pasteMixedPython(completeSource: string, at: PasteDestination, c
     
     // The logic for pasting is: every frame that are allowed at the current cursor's position are added.
     // Frames that are related to another section where the caret is not present are added in that section.
-    const isCurLocationInImportsSection = curLocation == STRYPE_LOCATION.IMPORTS_SECTION, isCurLocationInDefsSection = curLocation == STRYPE_LOCATION.DEFS_SECTION, 
-        isCurLocationInMainCodeSection = curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION, isCurLocationInAFuncDefFrame = curLocation == STRYPE_LOCATION.IN_FUNCDEF;
-
     if (docFrames.docSlots) {
         const docFrame = useStore().frameObjects[projectDocumentationFrameId] as FrameObject;
         docFrame.labelSlotsDict[0].slotStructures = docFrames.docSlots;
     }
     
     if (importFrames.frameIds.length > 0) {
-        const currentCaretContainerPosition = (isCurLocationInImportsSection) 
+        const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.IMPORTS_SECTION) 
             ? {...at.destination}
             : getLastCaretPosInsideParent(useStore().getImportsFrameContainerId);
         offsetAllIds(importFrames, useStore().nextAvailableId);
         useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: importFrames});
     }
-    if (defFrames.frameIds.length > 0) {
-        const currentCaretContainerPosition = (isCurLocationInDefsSection) 
+    if (classDefFrames.frameIds.length > 0) {
+        const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.DEFS_SECTION) 
             ? {...at.destination}
             : getLastCaretPosInsideParent(useStore().getDefsFrameContainerId);
-        offsetAllIds(defFrames, useStore().nextAvailableId);
-        useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: defFrames});
+        offsetAllIds(classDefFrames, useStore().nextAvailableId);
+        useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: classDefFrames});
+    }
+    if (funcDefFrames.frameIds.length > 0) {
+        const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.DEFS_SECTION || curLocation == STRYPE_LOCATION.IN_CLASSDEF)
+            ? {...at.destination}
+            : getLastCaretPosInsideParent(useStore().getDefsFrameContainerId);
+        offsetAllIds(funcDefFrames, useStore().nextAvailableId);
+        // There is one awkward case.  If we copy a function from a class, it gets copied as "def foo(self)"
+        // because the user might be pasting it externally.  But when we paste back in to Strype, because we add self
+        // automatically, the function becomes "def foo(self, self)".
+        if (curLocation === STRYPE_LOCATION.IN_CLASSDEF) {
+            Object.values(funcDefFrames.frames).forEach((frame: FrameObject) => {
+                if (frame.frameType.type == AllFrameTypesIdentifier.funcdef) {
+                    const params = frame.labelSlotsDict[1];
+                    // We have to spot it by name as it may be a plain functino:
+                    if (isFieldBaseSlot(params.slotStructures.fields[0]) && params.slotStructures.fields[0].code === "self") {
+                        removeFirstFuncParam(params);
+                    }
+                }
+            });
+        }
+        
+        useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: funcDefFrames});
     }
     if (mainFrames.frameIds.length > 0) {
-        const currentCaretContainerPosition = (isCurLocationInAFuncDefFrame || isCurLocationInMainCodeSection) 
+        const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) 
             ? {...at.destination} 
             : getLastCaretPosInsideParent(useStore().getMainCodeFrameContainerId);
         offsetAllIds(mainFrames, useStore().nextAvailableId);
@@ -1659,7 +1718,8 @@ export function pasteMixedPython(completeSource: string, at: PasteDestination, c
     }
     const framesAdded = [
         importFrames.frameIds,
-        defFrames.frameIds,
+        classDefFrames.frameIds,
+        funcDefFrames.frameIds,
         mainFrames.frameIds,
     ].flat();
     void nextTick(() => {
