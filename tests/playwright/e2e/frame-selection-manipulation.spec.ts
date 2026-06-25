@@ -28,7 +28,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     });
 });
 
-async function testBeforeAfterPaste(page: Page, before :string, selectionKeys: string[], operation: "cut" | "copy" | "delete", moveToDestKeys: string[], afterPaste :string) {
+async function testBeforeAfterPaste(page: Page, before :string, selectionKeys: string[], operation: "cut" | "copy" | "delete" | "duplicate" | "duplicate2", moveToDestKeys: string[], afterPaste :string) {
     // Load:
     await loadContent(page, before);
     for (const k of selectionKeys) {
@@ -36,11 +36,18 @@ async function testBeforeAfterPaste(page: Page, before :string, selectionKeys: s
     }
     await page.waitForTimeout(500);
     // Now cut/copy:
-    if (operation === "cut") {
-        await page.keyboard.press(process.platform == "darwin" ? "Meta+x" : "Control+x");
+    if (operation.startsWith("duplicate")) {
+        await page.keyboard.press("ControlOrMeta+d");
+        if (operation === "duplicate2") {
+            // Do it again:
+            await page.keyboard.press("ControlOrMeta+d");
+        }
+    }
+    else if (operation === "cut") {
+        await page.keyboard.press("ControlOrMeta+x");
     }
     else {
-        await page.keyboard.press(process.platform == "darwin" ? "Meta+c" : "Control+c");
+        await page.keyboard.press("ControlOrMeta+c");
     }
     await page.waitForTimeout(500);
     // Then move:
@@ -52,7 +59,7 @@ async function testBeforeAfterPaste(page: Page, before :string, selectionKeys: s
     if (operation == "delete") {
         await page.keyboard.press("Backspace");
     }
-    else {
+    else if (!operation.startsWith("duplicate")) {
         await doPagePaste(page, await page.evaluate(() => window.navigator.clipboard.readText()));
     }
     await page.waitForTimeout(500);
@@ -67,6 +74,46 @@ test.describe(() => {
 #(=> Section:Main
 print('B') 
 print('A') 
+#(=> Section:End
+`);
+    });
+
+    test("Duplicate a simple frame using selection", async ({page}) => {
+        await testBeforeAfterPaste(page, "print('A')\nprint('B')\n", ["End", "Shift+ArrowUp"], "duplicate", [],`#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+print('A') 
+print('B') 
+print('B') 
+#(=> Section:End
+`);
+    });
+    
+    test("Duplicate two simple frames", async ({page}) => {
+        await testBeforeAfterPaste(page, "print('A')\nprint('B')\n", ["End", "Shift+ArrowUp", "Shift+ArrowUp"], "duplicate", [],`#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+print('A') 
+print('B') 
+print('A') 
+print('B') 
+#(=> Section:End
+`);
+    });
+
+    test("Duplicate two simple frames, twice", async ({page}) => {
+        await testBeforeAfterPaste(page, "print('A')\nprint('B')\n", ["End", "Shift+ArrowUp", "Shift+ArrowUp"], "duplicate2", [],`#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+print('A') 
+print('B') 
+print('A') 
+print('B') 
+print('A') 
+print('B') 
 #(=> Section:End
 `);
     });

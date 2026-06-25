@@ -551,9 +551,7 @@ export function offsetAllIds(frames: CopiedFrames, offset: number) : CopiedFrame
 }
 
 // The main entry point to this module.  Given a string of Python code that the user
-// has pasted in, copy it to the store's copiedFrames/copiedSelectionFrameIds fields,
-// ready to be pasted immediately afterwards.
-// If successful, returns the copied frames.
+// has pasted in, return the string after turning it into frames.
 // If unsuccessful, throws CopyFailure with a string with some info about where the Python parse failed.
 function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, format: "py" | "spy", linenoMapping?: Record<number, number>) : CopiedFrames {
     const mapLineno = (lineno : number) : number => linenoMapping ? linenoMapping[lineno] : lineno;
@@ -1358,7 +1356,7 @@ export function findCurrentStrypeLocation(options?: {lookForGivenFramePosition?:
         case ContainerTypesIdentifiers.framesMainContainer:
             return {strypeLocation: STRYPE_LOCATION.MAIN_CODE_SECTION, locationFrameId: navigFrameId};
         case AllFrameTypesIdentifier.classdef:
-            return {strypeLocation: STRYPE_LOCATION.IN_CLASSDEF, locationFrameId: navigFrameId};
+            return {strypeLocation: (navigFrameCaretPos == CaretPosition.body) ? STRYPE_LOCATION.IN_CLASSDEF : STRYPE_LOCATION.DEFS_SECTION, locationFrameId: navigFrameId};
         case AllFrameTypesIdentifier.funcdef:
             // Three possible cases: A) we are not checking for classes -- we are at the body of a function definition or at the bottom:
             // in the first case, we are inside a function definition,
@@ -1629,7 +1627,7 @@ export interface PasteDestination {
 }
 
 // Returns headers if successful, or null if there was an error (which will already have been shown in the UI)
-export function pasteMixedPython(completeSource: string, at: PasteDestination, clearExisting: boolean = false) : { headers: Record<string, string> } | null {
+export function pasteMixedPython(completeSource: string, at: PasteDestination, clearExisting: boolean = false, dontSetCaretAfter = false) : { headers: Record<string, string> } | null {
     const allLines = completeSource.split(/\r?\n/);
     // Split can make an extra blank line at the end which we don't want:
     if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
@@ -1762,7 +1760,9 @@ export function pasteMixedPython(completeSource: string, at: PasteDestination, c
             posAfter = adjusted;
         }
     }
-    useStore().setCurrentFrame(posAfter, true);
+    if (!dontSetCaretAfter) {
+        useStore().setCurrentFrame(posAfter, true);
+    }
     const framesAdded = [
         Object.keys(importFrames.frames),
         Object.keys(classDefFrames.frames),

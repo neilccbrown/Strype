@@ -98,9 +98,9 @@ import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
 import FrameBody from "@/components/FrameBody.vue";
 import JointFrames from "@/components/JointFrames.vue";
-import { DefaultFramesDefinition, CaretPosition, CollapsedState, CurrentFrame, FrozenState, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName, ContainerTypesIdentifiers, StrypeContextMenuItem, CoordPosition } from "@/types/types";
-import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent, frameOrChildHasErrors, calculateNextCollapseState } from "@/helpers/storeMethods";
-import { CustomEventTypes, copyFramesToClipboard, getFrameBodyUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, notifyDragStarted, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID, getFrameLabelSlotsStructureUID } from "@/helpers/editor";
+import { AllFrameTypesIdentifier, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CoordPosition, CurrentFrame, DefaultFramesDefinition, FrameContextMenuActionName, FrozenState, NavigationPosition, Position, PythonExecRunningState, StrypeContextMenuItem } from "@/types/types";
+import { calculateNextCollapseState, frameOrChildHasErrors, getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
+import { copyFramesToClipboard, copyFrameTextReadyForClipboard, CustomEventTypes, getCaretContainerRef, getFrameBodyRef, getFrameBodyUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getHTML2CanvasFramesSelectionCropOptions, getJointFramesRef, isIdAFrameId, notifyDragStarted, parseFrameUID, setContextMenuEventClientXY } from "@/helpers/editor";
 import { pasteMixedPython } from "@/helpers/pythonToFrames";
 import { mapStores } from "pinia";
 import { BPopover, useToggle } from "bootstrap-vue-next";
@@ -1094,28 +1094,11 @@ export default defineComponent({
         },
 
         duplicate(keepSelection?: boolean): void {
-            // TODO copy, paste
-            /*
-            if(this.isPartOfSelection){
-                this.appStore.copySelectedFramesToPosition(
-                    {
-                        newParentId: (this.isJointFrame)
-                            ? getParentId(this.appStore.frameObjects[this.frameId])
-                            : getParentOrJointParent(this.frameId),
-                        keepSelection,
-                    }
-                );
-            }
-            else {
-                this.appStore.copyFrameToPosition(
-                    {
-                        frameId : this.frameId,
-                        newParentId: getParentOrJointParent(this.frameId),
-                        newIndex: this.appStore.getIndexInParent(this.frameId)+1,
-                    }
-                );
-            }
-             */
+            // Essentially: copy, then paste:
+            const text = copyFrameTextReadyForClipboard(this.isPartOfSelection ? this.appStore.selectedFrames : [this.frameId]);
+            // We need to remember the selection in order to restore it:
+            pasteMixedPython(text, {destination: {id: this.isPartOfSelection ? this.appStore.selectedFrames.at(-1) as number : this.frameId, caretPosition: CaretPosition.below}}, false, keepSelection ?? false);
+
         },
 
         cut(): void {

@@ -2362,14 +2362,23 @@ export function getLastCaretPosInsideParent(parentId: number) : CurrentFrame {
     }
 }
 
-// Must be called in response to click or key handler so that we have access to the clipboard
 // frameIds must be contiguous
-export function copyFramesToClipboard(frameIds: number[]) : void {
+export function copyFrameTextReadyForClipboard(frameIds: number[]) {
     let code = "";
     if (frameIds.length > 0) {
         const p = new Parser(true, "spy");
-        code = p.parse({startAtFrameId: frameIds[0], stopAt: {frameId: frameIds[frameIds.length - 1], includeThisFrame: true}});
+        code = p.parse({
+            startAtFrameId: frameIds[0],
+            stopAt: {frameId: frameIds[frameIds.length - 1], includeThisFrame: true}
+        });
     }
+    return code;
+}
+
+// Must be called in response to click or key handler so that we have access to the clipboard
+// frameIds must be contiguous
+export function copyFramesToClipboard(frameIds: number[]) : void {
+    let code = copyFrameTextReadyForClipboard(frameIds);
     navigator.clipboard.writeText(code).catch((err) => {
         console.error(err);
     });
