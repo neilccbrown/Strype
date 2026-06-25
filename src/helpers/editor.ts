@@ -12,7 +12,7 @@ import { nextTick } from "vue";
 import { debounce } from "lodash";
 // #v-endif
 import {toUnicodeEscapes} from "@/parser/parser";
-import {fromUnicodeEscapes} from "@/helpers/pythonToFrames";
+import { fromUnicodeEscapes, pasteMixedPython } from "@/helpers/pythonToFrames";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus } from "@/helpers/appContext";
 
@@ -1103,16 +1103,8 @@ const bodyMouseUpEventHandlerForFrameDnD = (event: MouseEvent): void => {
             // We either reorder the frames (most commont drag and drop case) OR add a copy if the drop is made with the ctrl or option keys held.
             const currentDraggedFirstFrameParentFrameId = useStore().frameObjects[currentDraggedSingleFrameId ?? useStore().selectedFrames[0]].parentId;
             if(event.ctrlKey || event.altKey){
-                if(currentDraggedSingleFrameId){
-                    //copyFramesToClipboard([currentDraggedSingleFrameId]);
-                    // TODO copy paste WITHOUT clipboard
-                    //useStore().pasteFrame({clickedFrameId: currentCaretDropPosFrameId, caretPosition: currentCaretDropPosCaretPos});
-                }
-                else{
-                    //copyFramesToClipboard(useStore().selectedFrames);
-                    // TODO copy paste WITHOUT clipboard
-                    //useStore().pasteSelection({clickedFrameId: currentCaretDropPosFrameId, caretPosition: currentCaretDropPosCaretPos});
-                }
+                const text = copyFrameTextReadyForClipboard(currentDraggedSingleFrameId ? [currentDraggedSingleFrameId] : useStore().selectedFrames);
+                pasteMixedPython(text, {destination: {id: currentCaretDropPosFrameId, caretPosition: currentCaretDropPosCaretPos}});
             }
             else {
                 useStore().updateDroppedFramesOrder(currentCaretDropPosFrameId, currentCaretDropPosCaretPos, currentDraggedSingleFrameId);
@@ -2363,7 +2355,7 @@ export function getLastCaretPosInsideParent(parentId: number) : CurrentFrame {
 }
 
 // frameIds must be contiguous
-export function copyFrameTextReadyForClipboard(frameIds: number[]) {
+export function copyFrameTextReadyForClipboard(frameIds: number[]) : string {
     let code = "";
     if (frameIds.length > 0) {
         const p = new Parser(true, "spy");
