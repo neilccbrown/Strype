@@ -1676,19 +1676,21 @@ export function pasteMixedPython(completeSource: string, at: PasteDestination, c
         docFrame.labelSlotsDict[0].slotStructures = docFrames.docSlots;
     }
     
+    let posAfter = at.destinationForFirstJoint ?? at.destination;
+    
     if (importFrames.frameIds.length > 0) {
         const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.IMPORTS_SECTION) 
             ? {...at.destination}
             : getLastCaretPosInsideParent(useStore().getImportsFrameContainerId);
         offsetAllIds(importFrames, useStore().nextAvailableId);
-        useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: importFrames});
+        posAfter = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: importFrames});
     }
     if (classDefFrames.frameIds.length > 0) {
         const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.DEFS_SECTION) 
             ? {...at.destination}
             : getLastCaretPosInsideParent(useStore().getDefsFrameContainerId);
         offsetAllIds(classDefFrames, useStore().nextAvailableId);
-        useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: classDefFrames});
+        posAfter = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: classDefFrames});
     }
     if (funcDefFrames.frameIds.length > 0) {
         const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.DEFS_SECTION || curLocation == STRYPE_LOCATION.IN_CLASSDEF)
@@ -1709,16 +1711,17 @@ export function pasteMixedPython(completeSource: string, at: PasteDestination, c
                 }
             });
         }
-        
-        useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: funcDefFrames});
+
+        posAfter = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: funcDefFrames});
     }
     if (mainFrames.frameIds.length > 0) {
         const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) 
             ? {...at.destination} 
             : getLastCaretPosInsideParent(useStore().getMainCodeFrameContainerId);
         offsetAllIds(mainFrames, useStore().nextAvailableId);
-        useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: mainFrames});
+        posAfter = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: mainFrames});
     }
+    useStore().setCurrentFrame(posAfter, true);
     const framesAdded = [
         importFrames.frameIds,
         classDefFrames.frameIds,

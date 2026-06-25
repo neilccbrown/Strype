@@ -2627,7 +2627,12 @@ export const useStore = defineStore("app", {
             });
         },
 
-        insertFramesAtPosition(payload: {target: CurrentFrame, ignoreStateBackup?: boolean, sourceFrames: {frameIds: number[], frames: EditorFrameObjects}}) {
+        // Returns the position after those frames
+        insertFramesAtPosition(payload: {target: CurrentFrame, ignoreStateBackup?: boolean, sourceFrames: {frameIds: number[], frames: EditorFrameObjects}}) : CurrentFrame {
+            if (payload.sourceFrames.frameIds.length == 0) {
+                return payload.target;
+            }
+            
             const stateBeforeChanges = cloneDeep(this.$state);
             let newIndex = payload.target.caretPosition == CaretPosition.body ? 0 : this.getIndexInParent(payload.target.id) + 1;
 
@@ -2671,6 +2676,8 @@ export const useStore = defineStore("app", {
             if(!payload.ignoreStateBackup) {
                 this.saveStateChanges(stateBeforeChanges);
             }
+            
+            return {id: childrenListToBeAdded[childrenListToBeAdded.length - 1], caretPosition: CaretPosition.below};
         },
 
         changeDisableFrame(payload: {frameId: number; isDisabling: boolean}) {
