@@ -2691,7 +2691,7 @@ export const useStore = defineStore("app", {
                 this.saveStateChanges(stateBeforeChanges);
             }
             
-            return {id: childrenListToBeAdded[childrenListToBeAdded.length - 1], caretPosition: CaretPosition.below};
+            return {id: payload.sourceFrames.frameIds[payload.sourceFrames.frameIds.length - 1], caretPosition: CaretPosition.below};
         },
 
         changeDisableFrame(payload: {frameId: number; isDisabling: boolean}) {

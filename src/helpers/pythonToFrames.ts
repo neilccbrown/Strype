@@ -1679,24 +1679,56 @@ export function pasteMixedPython(completeSource: string, at: PasteDestination, c
     
     let posAfter = at.destinationForFirstJoint ?? at.destination;
     
+    // The rule for cursor positions for pasting in other sections is the point closest to the frame cursor;
+    // see individual comments below
+    
     if (importFrames.frameIds.length > 0) {
         const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.IMPORTS_SECTION) 
             ? {...at.destination}
+            // If we're not in the imports, we know we're below it:
             : getLastCaretPosInsideParent(useStore().getImportsFrameContainerId);
         offsetAllIds(importFrames, useStore().nextAvailableId);
-        posAfter = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: importFrames});
+        const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: importFrames});
+        if (curLocation == STRYPE_LOCATION.IMPORTS_SECTION) {
+            posAfter = adjusted;
+        }
     }
     if (classDefFrames.frameIds.length > 0) {
-        const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.DEFS_SECTION) 
-            ? {...at.destination}
-            : getLastCaretPosInsideParent(useStore().getDefsFrameContainerId);
+        let currentCaretContainerPosition: { id: number; caretPosition: CaretPosition };
+        if (curLocation == STRYPE_LOCATION.DEFS_SECTION) {
+            currentCaretContainerPosition = {...at.destination};
+        }
+        else if (curLocation == STRYPE_LOCATION.IMPORTS_SECTION || curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.IN_CLASSDEF) {
+            // Closest to imports is top of defs:
+            // And for defs... we could find the closest cursor in the defs but it's quite fiddly so let's just add at the beginning:
+            currentCaretContainerPosition = {id: useStore().getDefsFrameContainerId, caretPosition: CaretPosition.body};
+        }
+        else {
+            // We are in main, use the bottom:
+            currentCaretContainerPosition = getLastCaretPosInsideParent(useStore().getDefsFrameContainerId);
+        }
         offsetAllIds(classDefFrames, useStore().nextAvailableId);
-        posAfter = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: classDefFrames});
+        const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: classDefFrames});
+        if (curLocation == STRYPE_LOCATION.DEFS_SECTION) {
+            posAfter = adjusted;
+        }
+        // Adjust in case we also paste more in the defs:
+        at.destination = adjusted;
     }
     if (funcDefFrames.frameIds.length > 0) {
-        const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.DEFS_SECTION || curLocation == STRYPE_LOCATION.IN_CLASSDEF)
-            ? {...at.destination}
-            : getLastCaretPosInsideParent(useStore().getDefsFrameContainerId);
+        let currentCaretContainerPosition: { id: number; caretPosition: CaretPosition };
+        if (curLocation == STRYPE_LOCATION.DEFS_SECTION || curLocation == STRYPE_LOCATION.IN_CLASSDEF) {
+            currentCaretContainerPosition = {...at.destination};
+        }
+        else if (curLocation == STRYPE_LOCATION.IMPORTS_SECTION || curLocation == STRYPE_LOCATION.IN_FUNCDEF) {
+            // Closest to imports is top of defs:
+            // And for defs... we could find the closest cursor in the defs but it's quite fiddly so let's just add at the beginning:
+            currentCaretContainerPosition = {id: useStore().getDefsFrameContainerId, caretPosition: CaretPosition.body};
+        }
+        else {
+            // We are in main, use the bottom:
+            currentCaretContainerPosition = getLastCaretPosInsideParent(useStore().getDefsFrameContainerId);
+        }
         offsetAllIds(funcDefFrames, useStore().nextAvailableId);
         // There is one awkward case.  If we copy a function from a class, it gets copied as "def foo(self)"
         // because the user might be pasting it externally.  But when we paste back in to Strype, because we add self
@@ -1713,22 +1745,29 @@ export function pasteMixedPython(completeSource: string, at: PasteDestination, c
             });
         }
 
-        posAfter = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: funcDefFrames});
+        const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: funcDefFrames});
+        if (curLocation == STRYPE_LOCATION.DEFS_SECTION || curLocation == STRYPE_LOCATION.IN_CLASSDEF) {
+            posAfter = adjusted;
+        }
     }
     if (mainFrames.frameIds.length > 0) {
+        // If we're not in the main section, closest cursor will be the top:
         const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) 
             ? {...at.destination} 
-            : getLastCaretPosInsideParent(useStore().getMainCodeFrameContainerId);
+            : {id : useStore().getMainCodeFrameContainerId, caretPosition: CaretPosition.body};
         offsetAllIds(mainFrames, useStore().nextAvailableId);
-        posAfter = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: mainFrames});
+        const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: mainFrames});
+        if (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) {
+            posAfter = adjusted;
+        }
     }
     useStore().setCurrentFrame(posAfter, true);
     const framesAdded = [
-        importFrames.frameIds,
-        classDefFrames.frameIds,
-        funcDefFrames.frameIds,
-        mainFrames.frameIds,
-    ].flat();
+        Object.keys(importFrames.frames),
+        Object.keys(classDefFrames.frames),
+        Object.keys(funcDefFrames.frames),
+        Object.keys(mainFrames.frames),
+    ].flat().map(Number);
     void nextTick(() => {
         eventBus.emit(CustomEventTypes.updateParamPrompts, framesAdded);
         framesAdded.forEach((pastedFrameId) => checkCodeErrors(pastedFrameId));
