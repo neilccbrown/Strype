@@ -1,25 +1,39 @@
-import {nextTick} from "vue";
-import {AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, CurrentFrame, DefsContainerDefinition, EditableFocusPayload, EditorFrameObjects, EmptyFrameObject, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, FramesDefinitions, FrozenState, generateAllFrameDefinitionTypes, ImportsContainerDefinition, isFieldBaseSlot, LabelSlotsContent, MainFramesContainerDefinition, MediaSlot, MessageDefinition, MessageDefinitions, ModifierKeyCode, NavigationPosition, ObjectPropertyDiff, ProjectLocation, PythonExecRunningState, RootContainerFrameDefinition, SaveRequestReason, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotInfosOptionalMedia, SlotsStructure, SlotType, StateAppObject, StringSlot, StrypeLayoutDividerSettings, StrypePEALayoutMode, StrypeSyncTarget, UserDefinedElement} from "@/types/types";
-import {getObjectPropertiesDifferences} from "@/helpers/common";
+import { nextTick} from "vue";
+import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia, ModifierKeyCode } from "@/types/types";
+import { getObjectPropertiesDifferences } from "@/helpers/common";
 import i18n from "@/i18n";
 import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
-import {AppPlatform, AppVersion, eventBus, projectDocumentationFrameId} from "@/helpers/appContext";
+import { AppPlatform, AppVersion, eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
 import initialStates from "@/store/initial-states";
-import {defineStore} from "pinia";
-// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
-import {actOnGraphicsImport, AutoSaveKeyNames, checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getCaretContainerUID, getCaretUID, getFocusedEditableSlotTextSelectionStartEnd, getFrameHeaderUID, getImportDiffVersionModalDlgId, getLabelSlotUID, getSelectionCursorsComparisonValue, isFullyInViewport, isLabelSlotEditable, parseCodeLiteral, setDocumentSelection, undoMaxSteps} from "@/helpers/editor";
-import {DAPWrapper} from "@/helpers/partial-flashing";
+import { defineStore } from "pinia";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getCaretContainerUID, AutoSaveKeyNames, isFullyInViewport } from "@/helpers/editor";
+import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
-import {getAPIItemTextualDescriptions} from "@/helpers/microbitAPIDiscovery";
+import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
 import {cloneDeep, isEqual} from "lodash";
-import {TPyParser} from "tigerpython-parser";
+import { TPyParser } from "tigerpython-parser";
 import emptyState from "@/store/initial-states/empty-state";
-import {BvTriggerableEvent} from "bootstrap-vue-next";
-import {vueComponentsAPIHandler} from "@/helpers/vueComponentAPI";
-import {type AnalyticsFlushReason, enqueueAnalyticsEvent, flushAnalyticsQueue, initAnalyticsCountry, initAnalyticsLocale, initAnalyticsPlatform, initAnalyticsSession, initAnalyticsUserId, trackAnalyticsLocaleChange, trackInputCall, trackMenuAction, trackOutputChars, trackStorageLocation, trackUsedDemo,} from "@/store/analytics";
-
+import { BvTriggerableEvent } from "bootstrap-vue-next";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import {
+    enqueueAnalyticsEvent,
+    flushAnalyticsQueue,
+    initAnalyticsCountry,
+    initAnalyticsLocale,
+    initAnalyticsPlatform,
+    initAnalyticsSession,
+    initAnalyticsUserId,
+    trackAnalyticsLocaleChange,
+    trackInputCall,
+    trackMenuAction,
+    trackOutputChars,
+    trackStorageLocation,
+    trackUsedDemo,
+    type AnalyticsFlushReason,
+} from "@/store/analytics";
 export type { AnalyticsEvent, AnalyticsFlushReason } from "@/store/analytics";
-
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
+import { actOnGraphicsImport } from "@/helpers/editor";
 // #v-endif
 
 export function getEditorTabId() : string {

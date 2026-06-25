@@ -1,12 +1,12 @@
-import {AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, FrozenState, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, MessageDefinitions, SlotsStructure, StringSlot} from "@/types/types";
+import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, StringSlot, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrozenState } from "@/types/types";
 import {useStore} from "@/store/store";
+import {checkCodeErrors} from "@/helpers/storeMethods";
 import {CustomEventTypes, getLastCaretPosInsideParent, operators, trimmedKeywordOperators} from "@/helpers/editor";
 import i18n from "@/i18n";
 import {cloneDeep, escapeRegExp} from "lodash";
 import {AppName, AppSPYFullPrefix, eventBus, projectDocumentationFrameId} from "@/helpers/appContext";
-import {stringToCollapsed, stringToFrozen, toUnicodeEscapes} from "@/parser/parser";
+import {toUnicodeEscapes, stringToCollapsed, stringToFrozen} from "@/parser/parser";
 import {nextTick} from "vue";
-import {checkCodeErrors} from "@/helpers/storeMethods";
 
 const TOP_LEVEL_TEMP_ID = -999;
 
@@ -1018,7 +1018,8 @@ function removeFirstFuncParam(params: LabelSlotsContent) {
     if (params && params.slotStructures.fields.length == 1) {
         // We need to keep a field, but we blank the content:
         (params.slotStructures.fields[0] as BaseSlot).code = "";
-    } else if (params && params.slotStructures.fields.length > 1) {
+    }
+    else if (params && params.slotStructures.fields.length > 1) {
         // We can just delete the first item and first operator, and rest can stay:
         params.slotStructures.fields.splice(0, 1);
         params.slotStructures.operators.splice(0, 1);
