@@ -1711,9 +1711,10 @@ export function pasteMixedPython(completeSource: string, at: PasteDestination, c
         const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: classDefFrames});
         if (curLocation == STRYPE_LOCATION.DEFS_SECTION) {
             posAfter = adjusted;
+            // Adjust in case we also paste more in the defs:
+            at.destination = adjusted;
         }
-        // Adjust in case we also paste more in the defs:
-        at.destination = adjusted;
+        
     }
     if (funcDefFrames.frameIds.length > 0) {
         let currentCaretContainerPosition: { id: number; caretPosition: CaretPosition };
