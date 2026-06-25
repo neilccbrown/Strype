@@ -621,6 +621,9 @@ function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: 
     }
     catch (e) {
         console.warn(e); // + "On:\n" + debugToString(parsedBySkulpt, "  "));
+        if (e instanceof CopyFailure) {
+            throw e;
+        }
         throw new CopyFailure(((e as any).$offset?.v?.[2]?.$mangled ?? (e as any).$msg?.$mangled) + " line: " + mapLineno((e as any).traceback?.[0].lineno));
     }
 }
