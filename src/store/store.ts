@@ -6,7 +6,7 @@ import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, ev
 import { AppPlatform, AppVersion, eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getCaretContainerUID, AutoSaveKeyNames, isFullyInViewport } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getCaretContainerUID, AutoSaveKeyNames, isFullyInViewport, copyFrameTextReadyForClipboard } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -15,6 +15,7 @@ import { TPyParser } from "tigerpython-parser";
 import emptyState from "@/store/initial-states/empty-state";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { pasteMixedPython } from "@/helpers/pythonToFrames";
 import {
     enqueueAnalyticsEvent,
     flushAnalyticsQueue,
@@ -1926,22 +1927,15 @@ export const useStore = defineStore("app", {
 
             if (this.selectedFrames.length > 0 && frame.allowChildren) {
                 this.isWrappingFrame = true;
-                // TODO copy paste WITHOUT clipboard
-                //copyFramesToClipboard(this.selectedFrames);
+                const text = copyFrameTextReadyForClipboard(this.selectedFrames);
                 // For deleting a selection, we don't care if we simulate "delete" or "backspace" as they behave the same
                 this.deleteFrames("Delete", true);
                 // The general rule is to copy the wrapped frame inside the wrapper's body,
                 // one exception: for match frames, we don't wrap the content inside the match frame body but inside it's case child frame body.
-                // TODO paste without clipboard
-                /*
-                this.pasteSelection(
-                    {
-                        clickedFrameId: (newFrame.frameType.type == AllFrameTypesIdentifier.match) ? newFrame.childrenIds[0] : newFrame.id,
-                        caretPosition: CaretPosition.body,
-                        ignoreStateBackup: true,
-                    }
-                );
-                 */
+                pasteMixedPython(text, {destination: {
+                    id: (newFrame.frameType.type == AllFrameTypesIdentifier.match) ? newFrame.childrenIds[0] : newFrame.id,
+                    caretPosition: CaretPosition.body,
+                }}, false, true);
                 // Find the frame before, if any:
                 const index = this.getIndexInParent(newFrame.id);
                 if (index == 0) {
