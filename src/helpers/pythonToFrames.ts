@@ -1605,11 +1605,11 @@ function splitLinesToSections(allLines : string[]) : {projectDoc: string[], impo
     main.push(...latestComments);
     
     return {
-        projectDoc: projectDoc.map((l) => l.text), 
-        imports: imports.map((l) => l.text),
-        funcDefs: funcDefs.map((l) => l.text),
-        classDefs: classDefs.map((l) => l.text),
-        main: main.map((l) => l.text),
+        projectDoc: projectDoc.sort((a, b) => a.lineno - b.lineno).map((l) => l.text), 
+        imports: imports.sort((a, b) => a.lineno - b.lineno).map((l) => l.text),
+        funcDefs: funcDefs.sort((a, b) => a.lineno - b.lineno).map((l) => l.text),
+        classDefs: classDefs.sort((a, b) => a.lineno - b.lineno).map((l) => l.text),
+        main: main.sort((a, b) => a.lineno - b.lineno).map((l) => l.text),
         importsMapping : makeMapping(imports),
         funcDefsMapping : makeMapping(funcDefs),
         classDefsMapping : makeMapping(classDefs),
