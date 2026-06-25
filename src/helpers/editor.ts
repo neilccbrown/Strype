@@ -2361,7 +2361,7 @@ export function copyFrameTextReadyForClipboard(frameIds: number[]) : string {
         const p = new Parser(true, "spy");
         code = p.parse({
             startAtFrameId: frameIds[0],
-            stopAt: {frameId: frameIds[frameIds.length - 1], includeThisFrame: true}
+            stopAt: {frameId: frameIds[frameIds.length - 1], includeThisFrame: true},
         });
     }
     return code;
