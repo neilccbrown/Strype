@@ -1054,6 +1054,9 @@ export default defineComponent({
                     if (typeof(Storage) !== "undefined") {
                         sessionStorage.removeItem(AutoSaveKeyNames.strypeEditorTabId);
                     }
+                    // We need to set this flag so that the browser doesn't then show a "Leave page" dialog because
+                    // the project is modified
+                    this.appStore.isEditorContentModified = false;
                     // ... and reload the page to reload the Strype default project (removing potential query parameters)
                     window.location.href = window.location.pathname + "?" + newStrypeProject;
                 }
