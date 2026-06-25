@@ -1,5 +1,5 @@
 import {test} from "@playwright/test";
-import {assertStateOfVarAssignFrame, doPagePaste, doTextHomeEndKeyPress, pressN} from "../support/editor";
+import {assertStateOfFuncCallFrame, assertStateOfVarAssignFrame, doPagePaste, doTextHomeEndKeyPress, pressN} from "../support/editor";
 import { skipPyodideLoading } from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
@@ -19,7 +19,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     });
 });
 
-test.describe("Function definition to variable assigment transformation", () => {
+test.describe("Function call frame to variable assignment frame transformation", () => {
     test("Just have \"=\"", async ({page}) => {
         // Make a function call and "=" right away
         await page.keyboard.type(" =");
@@ -64,4 +64,105 @@ test.describe("Function definition to variable assigment transformation", () => 
         await page.waitForTimeout(1000);
         await assertStateOfVarAssignFrame(page,"{a}", "{$b}=={456}({}){}");
     });    
+});
+
+test.describe("Variable assignment frame to function call frame transformation",() => {
+    test("Empty content and forward deletion", async ({page}) => {
+        // Make a varassign frame
+        await page.keyboard.press("=");
+        await page.waitForTimeout(200);
+        // Transform
+        await page.keyboard.press("Delete");
+        // Check result
+        await page.waitForTimeout(1000);
+        await assertStateOfFuncCallFrame(page,"{$}");
+    });
+
+    test("Empty content and backward deletion", async ({page}) => {
+        // Make a varassign frame
+        await page.keyboard.type("=");       
+        await page.waitForTimeout(200);
+        // Go at the start of RHS      
+        await page.keyboard.press("ArrowRight");
+        await page.waitForTimeout(200);
+        // Transform
+        await page.keyboard.press("Backspace");
+        // Check result
+        await page.waitForTimeout(1000);
+        await assertStateOfFuncCallFrame(page,"{$}");
+    });
+
+    test("With content and forward deletion", async ({page}) => {
+        // Make a varassign frame with content
+        await page.keyboard.type("=a+(b)=");
+        await page.waitForTimeout(200);
+        await page.keyboard.type("(c+d");
+        await page.waitForTimeout(200);
+        // Go at the end of LHS
+        await page.keyboard.press("ArrowUp");
+        await page.waitForTimeout(200);
+        await page.keyboard.press("ArrowRight");
+        await page.waitForTimeout(200);
+        await doTextHomeEndKeyPress(page, true, false);
+        await page.waitForTimeout(200);
+        // Transform
+        await page.keyboard.press("Delete");
+        // Check result
+        await page.waitForTimeout(1000);
+        await assertStateOfFuncCallFrame(page,"{a}+{}({b}){$}({c}+{d}){}");
+    });
+
+    test("With content and backward deletion", async ({page}) => {
+        // Make a varassign frame with content
+        await page.keyboard.type("=[a+b]=");
+        await page.waitForTimeout(200);
+        await page.keyboard.type("c\"def");
+        await page.waitForTimeout(200);
+        // Go at the start of RHS
+        await page.keyboard.press("ArrowDown");
+        await page.waitForTimeout(200);
+        await page.keyboard.press("ArrowLeft");
+        await page.waitForTimeout(200);
+        await doTextHomeEndKeyPress(page, false, false);
+        await page.waitForTimeout(200);
+        // Transform
+        await page.keyboard.press("Backspace");
+        // Check result
+        await page.waitForTimeout(1000);
+        await assertStateOfFuncCallFrame(page,"{}[{a}+{b}]{$c}“def”{}");
+    });
+
+    test("With simple content and backward deletion, staying in frame", async ({page}) => {
+        // Make a varassign frame with content
+        await page.keyboard.type("=simple=");
+        await page.waitForTimeout(200);
+        await page.keyboard.type("content");
+        await page.waitForTimeout(200);
+        // Go at the start of RHS
+        await doTextHomeEndKeyPress(page, false, false);
+        await page.waitForTimeout(200);
+        // Transform
+        await page.keyboard.press("Backspace");
+        // Check result
+        await page.waitForTimeout(1000);
+        await assertStateOfFuncCallFrame(page,"{simple$content}");
+    });
+
+    test("With simple content and forward deletion, staying in frame", async ({page}) => {
+        // Make a varassign frame with content
+        await page.keyboard.type("=foo=");
+        await page.waitForTimeout(200);
+        await page.keyboard.type("bar");
+        await page.waitForTimeout(200);
+        // Go at the start of RHS
+        await doTextHomeEndKeyPress(page, false, false);
+        await page.waitForTimeout(200);
+        await page.keyboard.press("ArrowLeft");
+        await page.waitForTimeout(200);      
+        // Transform
+        await page.keyboard.press("Delete");
+        // Check result
+        await page.waitForTimeout(1000);
+        await assertStateOfFuncCallFrame(page,"{foo$bar}");
+    });
 });

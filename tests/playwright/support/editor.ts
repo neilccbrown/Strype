@@ -136,6 +136,10 @@ export async function assertStateOfIfFrame(page: Page, expectedState : string, m
     await assertLabelSlotsContent(page, expectedState, {mediaInfo});
 }
 
+export async function assertStateOfFuncCallFrame(page: Page, expectedState : string, mediaInfo?: {mediaType: "img" | "snd", endOfB64: string}[]) : Promise<void> {
+    await assertLabelSlotsContent(page, expectedState, {isInStatementFrame: true, mediaInfo});
+}
+
 export async function assertStateOfVarAssignFrame(page: Page, expectedLHSState : string, expectedRHSState: string) : Promise<void> {
     // 1 - Check the equal operator exists:
     const scssVars = await page.evaluate(() => {
