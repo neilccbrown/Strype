@@ -200,7 +200,7 @@ export default defineComponent({
         },
         
         renameAllPopupButtonLabel(): string {
-            return this.$t("buttonLabel.renameAllWithShortcut", {modifierkey: isMacOSPlatform() ? "⌘" : this.$t("contextMenu.ctrl") });
+            return this.$t("buttonLabel.renameAllWithShortcut", {modifierkey: this.$t("contextMenu.ctrl")});
         },
     },
 

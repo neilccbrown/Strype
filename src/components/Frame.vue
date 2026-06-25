@@ -385,7 +385,7 @@ export default defineComponent({
         eventBus.on(CustomEventTypes.cutFrameSelection, this.cutIfFirstInSelection);
         eventBus.on(CustomEventTypes.copyFrameSelection, this.copyIfFirstInSelection);
         eventBus.on(CustomEventTypes.duplicateFrameSelection, this.duplicateIfFirstInSelection);
-        eventBus.on(CustomEventTypes.toggleFrameSelectionDisability, this.toggleDisabilityFirstInSelection);
+        eventBus.on(CustomEventTypes.toggleFrameSelectionDisable, this.toggleDisableFirstInSelection);
 
         // The frame header can listen for events from the editable slots focus to manage header level error messages
         document.getElementById(this.frameHeaderId)?.addEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);
@@ -400,7 +400,7 @@ export default defineComponent({
         eventBus.off(CustomEventTypes.cutFrameSelection, this.cutIfFirstInSelection);
         eventBus.off(CustomEventTypes.copyFrameSelection, this.copyIfFirstInSelection);
         eventBus.off(CustomEventTypes.duplicateFrameSelection, this.duplicateIfFirstInSelection);
-        eventBus.off(CustomEventTypes.toggleFrameSelectionDisability, this.toggleDisabilityFirstInSelection);
+        eventBus.off(CustomEventTypes.toggleFrameSelectionDisable, this.toggleDisableFirstInSelection);
         
         // Remove the component's API instance
         if(vueComponentsAPIHandler.frameComponentAPI?.forInstance[this.frameId]){
@@ -437,12 +437,12 @@ export default defineComponent({
             }
         },
 
-        toggleDisabilityFirstInSelection(){
-            // Toggling the disability status of frames by shortcut is only available for a frame selection*, and if the user's code isn't being executed.
+        toggleDisableFirstInSelection(){
+            // Toggling the disable status of frames by shortcut is only available for a frame selection*, and if the user's code isn't being executed.
             // To prevent the command to be called on all frames, but only once (first of a selection), we check that the current frame is a first of a selection.
             // * "this.isPartOfSelection" is necessary because it is only set at the right value in a subsequent call. 
             if(!this.isPythonExecuting && this.isPartOfSelection && (this.appStore.getFrameSelectionPosition(this.frameId) as string).startsWith("first")) {
-                this.toggleSelectedFrameDisability(true);
+                this.toggleSelectedFrameDisable(true);
             }
         },
 
@@ -761,22 +761,22 @@ export default defineComponent({
             }
 
             // The disable/enable logic depends primarily on the the frame(s) target:
-            // - if the action is performed on a single frame, we toggle the current disability status and show "disable" or "enable" accordingly (if action is allowed); ctrl+/ is associated with this action
-            // - if the action is performed on several frames at once, we can either disable them all, or enable them all, or toggle their disability status (if actions are allowed); ctrl+/ is associated with the toggling action
-            // (see canEnableOrDisableFrame() for details when a disability change for a frame is not allowed)            
+            // - if the action is performed on a single frame, we toggle the current disable status and show "disable" or "enable" accordingly (if action is allowed); ctrl+/ is associated with this action
+            // - if the action is performed on several frames at once, we can either disable them all, or enable them all, or toggle their disable status (if actions are allowed); ctrl+/ is associated with the toggling action
+            // (see canEnableOrDisableFrame() for details when a disable change for a frame is not allowed)            
             const anyCanEnable = this.isPartOfSelection ? this.appStore.selectedFrames.some((frameId) => this.canEnableOrDisableFrame(frameId, true)) : this.canEnableOrDisableFrame(this.frameId, true);
             const anyCanDisable = this.isPartOfSelection ? this.appStore.selectedFrames.some((frameId) => this.canEnableOrDisableFrame(frameId, false)) : this.canEnableOrDisableFrame(this.frameId, false);            
-            let disabilityInitPosIndex = this.frameContextMenuItems.findIndex((entry) => entry.label === this.$t("contextMenu.disable"));
+            let disableInitPosIndex = this.frameContextMenuItems.findIndex((entry) => entry.label === this.$t("contextMenu.disable"));
             // Insert the 2 extra menus for frames selection case
             if(this.isPartOfSelection  && this.appStore.selectedFrames.length > 1){
                 const enableDisableAllOptions = [{label: this.$t("contextMenu.enableAll"), onClick: () => this.enableDisable({isDisabling: false}), disabled: !anyCanEnable},
                     {label: this.$t("contextMenu.disableAll"), onClick: () => this.enableDisable({isDisabling: true}), disabled: !anyCanDisable}];
-                this.frameContextMenuItems.splice(disabilityInitPosIndex, 0, ...enableDisableAllOptions);
-                disabilityInitPosIndex += 2;
+                this.frameContextMenuItems.splice(disableInitPosIndex, 0, ...enableDisableAllOptions);
+                disableInitPosIndex += 2;
             }
-            // Update the last "disability" related menu item based on the context
+            // Update the last "disable" related menu item based on the context
             const disableOrEnableOrToggleOption = (this.isPartOfSelection && this.appStore.selectedFrames.length > 1) 
-                ?  {label: this.$t("contextMenu.toggleDisability"), onClick: () => this.toggleSelectedFrameDisability(), disabled: !anyCanDisable && !anyCanEnable} // toggle
+                ?  {label: this.$t("contextMenu.toggleDisable"), onClick: () => this.toggleSelectedFrameDisable(), disabled: !anyCanDisable && !anyCanEnable} // toggle
                 :  ((this.appStore.frameObjects[this.frameId].isDisabled) // either disable or enable, the menu entry is disabled if no corresponding action is possible
                     ? {label: this.$t("contextMenu.enable"), onClick: () => this.enableDisable({isDisabling: false}), disabled: !anyCanEnable} 
                     : {label: this.$t("contextMenu.disable"), onClick: () => this.enableDisable({isDisabling: true}), disabled: !anyCanDisable});
@@ -788,8 +788,8 @@ export default defineComponent({
                 case this.$t("contextMenu.enable"):
                     actionName = FrameContextMenuActionName.enable;
                     break;
-                case this.$t("contextMenu.toggleDisability"):
-                    actionName = FrameContextMenuActionName.toggleDisability;
+                case this.$t("contextMenu.toggleDisable"):
+                    actionName = FrameContextMenuActionName.toggleDisable;
                     break;
                 default: // disable
                     break;
@@ -1422,7 +1422,7 @@ export default defineComponent({
             }       
         },
 
-        toggleSelectedFrameDisability(keepSelection?: boolean){
+        toggleSelectedFrameDisable(keepSelection?: boolean){
             // Enable/disable each selected frames based on their status.
             this.enableDisable({keepSelection});
         },

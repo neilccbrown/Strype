@@ -205,7 +205,7 @@
     "enableAll": "Tout activer",
     "disable": "Désactiver",
     "disableAll": "Tout désactiver",
-    "toggleDisability": "Basculer l'activation",
+    "toggleDisable": "Basculer l'activation",
     "undo": "Annuler",
     "redo": "Refaire",
     "delete": "Supprimer",

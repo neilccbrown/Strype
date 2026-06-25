@@ -133,7 +133,7 @@ testF()
 `;
 
 let renameButton: Locator;
-const renameKBShortcut = process.platform == "darwin" ? "Meta+r" : "Control+r";
+const renameKBShortcut = "Control+r";
 const wordWiseNavigationLeft = process.platform == "darwin" ? "Alt+ArrowLeft" : "Control+ArrowLeft";
 const wordWiseNavigationRight = process.platform == "darwin" ? "Alt+ArrowRight" : "Control+ArrowRight";
 let scssVars: {[varName: string]: string};
