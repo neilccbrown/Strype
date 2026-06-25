@@ -42,6 +42,7 @@ import { pasteMixedPython } from "@/helpers/pythonToFrames";
 import scssVars  from "@/assets/style/_export.module.scss";
 import {detectBrowser} from "@/helpers/browser";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { getAboveFrameCaretPosition } from "@/helpers/storeMethods";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { getFrameDefType, SlotType, MediaDataAndDim} from "@/types/types";
 import { getFrameLabelSlotsStructureUID, getLabelSlotUID } from "@/helpers/editor";
@@ -238,6 +239,22 @@ export default defineComponent({
             // so we check that 1) we are on the caret position that is currently selected and 2) that paste is allowed here.
             // We should know the action is about pasting frames or text if some text is present in the clipboard (we clear it when copying frames)
             if (this.isFocusedForPaste) {
+                let pasteDestination = {id: this.frameId, caretPosition: this.caretAssignedPosition};
+                // If we currently have a selection of frames, the pasted frame should replace the selection, so we delete that selection.
+                // (it should be fine regarding the grammar check because the caret will be at the same level whether it's before or after the selection)
+                if(this.appStore.selectedFrames.length > 0){
+                    // The key doesn't actually matter here, the method handles it already by doing a backspace deletion.
+                    // However, we need to know where was the caret with regards to the selection:
+                    // if it was below the selection, it means the deletion will change the current caret
+                    // and therefore we need to amend this as a new paste destination (i.e. top of selection).
+                    if(this.frameId == this.appStore.selectedFrames.at(-1) as number){
+                        const topOfSelectionPos = getAboveFrameCaretPosition(this.appStore.selectedFrames[0]);
+                        pasteDestination.id = topOfSelectionPos.frameId;
+                        pasteDestination.caretPosition = topOfSelectionPos.caretPosition as CaretPosition;
+                    }
+                    this.appStore.deleteFrames("backspace", true);
+                }
+
                 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                 const inFrameType = this.appStore.frameObjects[(this.appStore.currentFrame.caretPosition == CaretPosition.body) ? this.frameId : getParentOrJointParent(this.frameId)].frameType;
                 if(!inFrameType.forbiddenChildrenTypes.includes(AllFrameTypesIdentifier.funccall) && Object.values((event as ClipboardEvent).clipboardData?.items??[]).some((dataTransferItem: DataTransferItem) => dataTransferItem.kind == "file" && /^(image)|(audio)\//.test(dataTransferItem.type))){
@@ -287,7 +304,7 @@ export default defineComponent({
                 // Note we don't permanently trim the code because we need to preserve leading indent.
                 // But we trim for the purposes of checking if there's any content at all:
                 if (pythonCode != undefined && pythonCode?.trim()) {
-                    pasteMixedPython(pythonCode.trimEnd(), {destination: {id: this.frameId, caretPosition: this.caretAssignedPosition}});
+                    pasteMixedPython(pythonCode.trimEnd(), {destination: pasteDestination});
                 }
             }
         },
