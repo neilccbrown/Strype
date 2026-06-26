@@ -1,6 +1,6 @@
 import Compiler from "@/compiler/compiler";
 import {hasEditorCodeErrors, trimmedKeywordOperators} from "@/helpers/editor";
-import {generateFlatSlotBases, getNextSibling, getParentId, retrieveSlotByPredicate} from "@/helpers/storeMethods";
+import { generateFlatSlotBases, getNextSibling, getParentId, getParentOrJointParent, retrieveSlotByPredicate } from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CollapsedState, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, FrozenState, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
@@ -593,12 +593,13 @@ export default class Parser {
             if (this.stopAtFrameId == -100) {
                 throw new Error("Internal error: if you pass start you should also pass stop");
             }
+            const startIsJoint = useStore().frameObjects[this.startAtFrameId].frameType.isJointFrame;
             const startIndex = useStore().getIndexInParent(this.startAtFrameId);
             const endIndex = useStore().getIndexInParent(this.stopAtFrameId);
-            const parent = useStore().frameObjects[getParentId(useStore().frameObjects[this.startAtFrameId])];
-            const allChildrenOfParent = parent.childrenIds.map((id) => useStore().frameObjects[id]);
-            codeUnits = allChildrenOfParent.slice(startIndex, endIndex + (this.stopAtIncludesLastFrame ? 1 : 0));
-            parentInsideAClass = parent.frameType.type == AllFrameTypesIdentifier.classdef;
+            const parentOrJointParent = useStore().frameObjects[getParentOrJointParent(this.startAtFrameId)];
+            const allChildrenOfParentOrJointParent = (startIsJoint ? parentOrJointParent.jointFrameIds : parentOrJointParent.childrenIds).map((id) => useStore().frameObjects[id]);
+            codeUnits = allChildrenOfParentOrJointParent.slice(startIndex, endIndex + (this.stopAtIncludesLastFrame ? 1 : 0));
+            parentInsideAClass = parentOrJointParent.frameType.type == AllFrameTypesIdentifier.classdef;
         }
         else {            
             codeUnits = useStore().getFramesForParentId(0);

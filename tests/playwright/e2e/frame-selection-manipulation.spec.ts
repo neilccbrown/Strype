@@ -85,7 +85,7 @@ async function testDuplicateViaMenu(page: Page, before: string, targetText: stri
     expect(readFileSync(await save(page, false), "utf-8")).toEqual(after);
 }
 
-test.describe.only("Test duplicating via menu", () => {
+test.describe("Test duplicating via menu", () => {
     test("Duplicate function call", async ({page}) => {
         await testDuplicateViaMenu(page, "print('A')\nlen(None)\n", "print", `#(=> Strype:1:std
 #(=> Section:Imports
@@ -118,7 +118,47 @@ else :
 #(=> Section:End
 `);
     });
-    // TODO Duplicate elif
+
+    test("Duplicate elif without else", async ({page}) => {
+        await testDuplicateViaMenu(page, `if x > 0:
+    return x
+elif y > 0:
+    return y
+`, "elif", `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+if x>0  :
+    return x 
+elif y>0  :
+    return y 
+elif y>0  :
+    return y 
+#(=> Section:End
+`);
+    });
+    test("Duplicate elif with else", async ({page}) => {
+        await testDuplicateViaMenu(page, `if x > 0:
+    return x
+elif y > 0:
+    return y
+else:
+    return z
+`, "elif", `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+if x>0  :
+    return x 
+elif y>0  :
+    return y 
+elif y>0  :
+    return y 
+else :
+    return z 
+#(=> Section:End
+`);
+    });
     
 });
 

@@ -304,7 +304,7 @@ export default defineComponent({
                 // Note we don't permanently trim the code because we need to preserve leading indent.
                 // But we trim for the purposes of checking if there's any content at all:
                 if (pythonCode != undefined && pythonCode?.trim()) {
-                    pasteMixedPython(pythonCode.trimEnd(), {destination: pasteDestination});
+                    pasteMixedPython(pythonCode.trimEnd(), pasteDestination);
                 }
             }
         },
@@ -358,7 +358,7 @@ export default defineComponent({
             // by any other mean which caret is the one the user clicked on.
             const currentShownContextMenuUID: string = this.appStore.contextMenuShownId;
             if(currentShownContextMenuUID === this.UID){
-                navigator.clipboard.readText().then((text) => pasteMixedPython(text, {destination: {id: this.frameId, caretPosition: this.caretAssignedPosition}}));
+                navigator.clipboard.readText().then((text) => pasteMixedPython(text, {id: this.frameId, caretPosition: this.caretAssignedPosition}));
             }
         },
     

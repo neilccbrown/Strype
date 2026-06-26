@@ -1097,7 +1097,7 @@ export default defineComponent({
             // Essentially: copy, then paste:
             const text = copyFrameTextReadyForClipboard(this.isPartOfSelection ? this.appStore.selectedFrames : [this.frameId]);
             // We need to remember the selection in order to restore it:
-            pasteMixedPython(text, {destination: {id: this.isPartOfSelection ? this.appStore.selectedFrames.at(-1) as number : this.frameId, caretPosition: CaretPosition.below}}, false, keepSelection ?? false);
+            pasteMixedPython(text, {id: this.isPartOfSelection ? this.appStore.selectedFrames.at(-1) as number : this.frameId, caretPosition: CaretPosition.below}, false, keepSelection ?? false);
 
         },
 
@@ -1230,13 +1230,13 @@ export default defineComponent({
                 }
             }
             const caretNavigationPositionAbove = getAboveFrameCaretPosition(frameIdToLookAbove);
-            navigator.clipboard.readText().then((text) => pasteMixedPython(text, {destination: {id: caretNavigationPositionAbove.frameId, caretPosition: caretNavigationPositionAbove.caretPosition ?? CaretPosition.below}}));
+            navigator.clipboard.readText().then((text) => pasteMixedPython(text, {id: caretNavigationPositionAbove.frameId, caretPosition: caretNavigationPositionAbove.caretPosition ?? CaretPosition.below}));
         },
 
         pasteBelow(): void {
             // Perform a paste below this frame
             const targetPasteBelow = this.getTargetPasteBelow();
-            navigator.clipboard.readText().then((text) => pasteMixedPython(text, {destination: targetPasteBelow}));
+            navigator.clipboard.readText().then((text) => pasteMixedPython(text, targetPasteBelow));
         },
 
         getTargetPasteBelow(): CurrentFrame {

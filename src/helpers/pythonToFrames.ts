@@ -1621,13 +1621,8 @@ function splitLinesToSections(allLines : string[]) : {projectDoc: string[], impo
     };
 }
 
-export interface PasteDestination {
-    destinationForFirstJoint?: CurrentFrame;
-    destination: CurrentFrame;
-}
-
 // Returns headers if successful, or null if there was an error (which will already have been shown in the UI)
-export function pasteMixedPython(completeSource: string, at: PasteDestination, clearExisting: boolean = false, dontSetCaretAfter = false) : { headers: Record<string, string> } | null {
+export function pasteMixedPython(completeSource: string, at: CurrentFrame, clearExisting: boolean = false, dontSetCaretAfter = false) : { headers: Record<string, string> } | null {
     const allLines = completeSource.split(/\r?\n/);
     // Split can make an extra blank line at the end which we don't want:
     if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
@@ -1636,8 +1631,8 @@ export function pasteMixedPython(completeSource: string, at: PasteDestination, c
     const s = splitLinesToSections(allLines);
     // If we are clearing all, we are effectively pasting into the main section,
     // no matter where the frame cursor happens to be:
-    const curLocation = clearExisting ? STRYPE_LOCATION.MAIN_CODE_SECTION : findCurrentStrypeLocation({lookForGivenFramePosition: at.destination}).strypeLocation;
-    
+    const curLocation = clearExisting ? STRYPE_LOCATION.MAIN_CODE_SECTION : findCurrentStrypeLocation({lookForGivenFramePosition: at}).strypeLocation;
+
     let importFrames : CopiedFrames;
     let funcDefFrames : CopiedFrames;
     let classDefFrames : CopiedFrames;
@@ -1675,14 +1670,14 @@ export function pasteMixedPython(completeSource: string, at: PasteDestination, c
         docFrame.labelSlotsDict[0].slotStructures = docFrames.docSlots;
     }
     
-    let posAfter = at.destinationForFirstJoint ?? at.destination;
+    let posAfter = at;
     
     // The rule for cursor positions for pasting in other sections is the point closest to the frame cursor;
     // see individual comments below
     
     if (importFrames.frameIds.length > 0) {
         const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.IMPORTS_SECTION) 
-            ? {...at.destination}
+            ? {...at}
             // If we're not in the imports, we know we're below it:
             : getLastCaretPosInsideParent(useStore().getImportsFrameContainerId);
         offsetAllIds(importFrames, useStore().nextAvailableId);
@@ -1694,7 +1689,7 @@ export function pasteMixedPython(completeSource: string, at: PasteDestination, c
     if (classDefFrames.frameIds.length > 0) {
         let currentCaretContainerPosition: { id: number; caretPosition: CaretPosition };
         if (curLocation == STRYPE_LOCATION.DEFS_SECTION) {
-            currentCaretContainerPosition = {...at.destination};
+            currentCaretContainerPosition = {...at};
         }
         else if (curLocation == STRYPE_LOCATION.IMPORTS_SECTION || curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.IN_CLASSDEF) {
             // Closest to imports is top of defs:
@@ -1710,14 +1705,14 @@ export function pasteMixedPython(completeSource: string, at: PasteDestination, c
         if (curLocation == STRYPE_LOCATION.DEFS_SECTION) {
             posAfter = adjusted;
             // Adjust in case we also paste more in the defs:
-            at.destination = adjusted;
+            at = adjusted;
         }
         
     }
     if (funcDefFrames.frameIds.length > 0) {
         let currentCaretContainerPosition: { id: number; caretPosition: CaretPosition };
         if (curLocation == STRYPE_LOCATION.DEFS_SECTION || curLocation == STRYPE_LOCATION.IN_CLASSDEF) {
-            currentCaretContainerPosition = {...at.destination};
+            currentCaretContainerPosition = {...at};
         }
         else if (curLocation == STRYPE_LOCATION.IMPORTS_SECTION || curLocation == STRYPE_LOCATION.IN_FUNCDEF) {
             // Closest to imports is top of defs:
@@ -1752,7 +1747,7 @@ export function pasteMixedPython(completeSource: string, at: PasteDestination, c
     if (mainFrames.frameIds.length > 0) {
         // If we're not in the main section, closest cursor will be the top:
         const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) 
-            ? {...at.destination} 
+            ? {...at} 
             : {id : useStore().getMainCodeFrameContainerId, caretPosition: CaretPosition.body};
         offsetAllIds(mainFrames, useStore().nextAvailableId);
         const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: mainFrames});

@@ -1932,10 +1932,10 @@ export const useStore = defineStore("app", {
                 this.deleteFrames("Delete", true);
                 // The general rule is to copy the wrapped frame inside the wrapper's body,
                 // one exception: for match frames, we don't wrap the content inside the match frame body but inside it's case child frame body.
-                pasteMixedPython(text, {destination: {
+                pasteMixedPython(text, {
                     id: (newFrame.frameType.type == AllFrameTypesIdentifier.match) ? newFrame.childrenIds[0] : newFrame.id,
                     caretPosition: CaretPosition.body,
-                }}, false, true);
+                }, false, true);
                 // Find the frame before, if any:
                 const index = this.getIndexInParent(newFrame.id);
                 if (index == 0) {
@@ -2642,28 +2642,38 @@ export const useStore = defineStore("app", {
             }
             
             const stateBeforeChanges = cloneDeep(this.$state);
-            let newIndex = payload.target.caretPosition == CaretPosition.body ? 0 : this.getIndexInParent(payload.target.id) + 1;
-
-            // All the top level cloned frames need to be stored in order to then added to their new parent's list
-            // The nextAvailableId should be right, but for sanity check, we make sure the id is indeed available to avoid potential issues.
-            let nextAvailableId = this.nextAvailableId;
-            while(this.frameObjects[nextAvailableId] != undefined){
-                nextAvailableId+=1;
-            }
 
             // It will be added either as a Child or as a JointChild
-            const areSelectedJointFrames = payload.sourceFrames.frames[payload.sourceFrames.frameIds[0]].frameType.isJointFrame;
-            let childrenListToBeAdded: number[];
-            if (areSelectedJointFrames) {
-                const jointParentId = getParentOrJointParent(payload.target.id);
-                childrenListToBeAdded = this.frameObjects[jointParentId].jointFrameIds;
+            const areFramesJoint = payload.sourceFrames.frames[payload.sourceFrames.frameIds[0]].frameType.isJointFrame;
+            if (areFramesJoint) {
+                // Joint frames, so we know we're inserting below:
+                const insertingBelowJointParent = this.frameObjects[payload.target.id].frameType.isJointFrame;
+                const newIndex = insertingBelowJointParent ? 0 : this.getIndexInParent(payload.target.id) + 1;
+                
+                const jointParentId = insertingBelowJointParent ? payload.target.id : getParentOrJointParent(payload.target.id);
+                // Add each one of the copied frames in their new parent's list
+                this.frameObjects[jointParentId].jointFrameIds.splice(newIndex, 0, ...payload.sourceFrames.frameIds);
+
                 for (const id of payload.sourceFrames.frameIds) {
                     payload.sourceFrames.frames[id].jointParentId = jointParentId;
                 }
             }
             else {
-                const parentId = payload.target.caretPosition == CaretPosition.body ? payload.target.id : getParentOrJointParent(payload.target.id); 
-                childrenListToBeAdded = this.frameObjects[parentId].childrenIds;
+                // Non-joint frames
+                let newIndex: any;
+                let parentId: number;
+                if (payload.target.caretPosition == CaretPosition.body) {
+                    newIndex = 0;
+                    parentId = payload.target.id;
+                }
+                else {
+                    // We know it's a normal parent but this method still works:
+                    parentId = getParentOrJointParent(payload.target.id);
+                    newIndex = this.getIndexInParent(payload.target.id) + 1;
+                }
+                // Add each one of the copied frames in their new parent's list
+                this.frameObjects[parentId].childrenIds.splice(newIndex, 0, ...payload.sourceFrames.frameIds);
+
                 for (const id of payload.sourceFrames.frameIds) {
                     payload.sourceFrames.frames[id].parentId = parentId;
                 }
@@ -2673,11 +2683,6 @@ export const useStore = defineStore("app", {
             Object.keys(payload.sourceFrames.frames).map(Number).forEach((id: number)=> {
                 this.frameObjects[id] = payload.sourceFrames.frames[id];
             });
-            this.updateNextAvailableId();
-
-            // Add each one of the copied frames in their new parent's list
-            childrenListToBeAdded.splice(newIndex, 0, ...payload.sourceFrames.frameIds);
-
             this.updateNextAvailableId();
 
             //save state changes unless requested not to

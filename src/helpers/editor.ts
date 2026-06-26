@@ -1104,7 +1104,7 @@ const bodyMouseUpEventHandlerForFrameDnD = (event: MouseEvent): void => {
             const currentDraggedFirstFrameParentFrameId = useStore().frameObjects[currentDraggedSingleFrameId ?? useStore().selectedFrames[0]].parentId;
             if(event.ctrlKey || event.altKey){
                 const text = copyFrameTextReadyForClipboard(currentDraggedSingleFrameId ? [currentDraggedSingleFrameId] : useStore().selectedFrames);
-                pasteMixedPython(text, {destination: {id: currentCaretDropPosFrameId, caretPosition: currentCaretDropPosCaretPos}});
+                pasteMixedPython(text, {id: currentCaretDropPosFrameId, caretPosition: currentCaretDropPosCaretPos});
             }
             else {
                 useStore().updateDroppedFramesOrder(currentCaretDropPosFrameId, currentCaretDropPosCaretPos, currentDraggedSingleFrameId);
