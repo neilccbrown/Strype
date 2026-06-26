@@ -5,7 +5,7 @@
  *  is used in CloudDriveHandler)
  */
 <template>
-    <GoogleDriveFilePicker @picked-file="onLoadPickedFile" @picked-folder="savePickedFolder"
+    <GoogleDriveFilePicker :strype-folder-id="strypeFolderId" @picked-file="onLoadPickedFile" @picked-folder="savePickedFolder"
         :pick-folder-cancelled="onPickFolderCancelled" @unsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" :dev-key="devKey" :oauth-token="oauthToken??''"/>
 </template>
 <script lang="ts">
@@ -59,6 +59,7 @@ export default defineComponent({
             devKey: import.meta.env.VITE_GOOGLE_DEVKEY,
             signInCallBack: (cloudTarget: StrypeSyncTarget) => {},
             GAPI_keepAliveHandle: -1, // The handle for the keep alive GIS session (see onGISLoad())
+            strypeFolderId: "", // The Strype folder ID
         };
     },
 
@@ -350,9 +351,11 @@ export default defineComponent({
         },
         
         openFilePicker(startingFromFolderId: string | undefined): Promise<void> {
-            // Launch the file picker for this cloud drive (this would be called after we made sure the connection to OneDrive is (still) valid)
-            vueComponentsAPIHandler.googleDriveFilePickerComponentAPI?.startPicking(false, startingFromFolderId);
-            return Promise.resolve();     
+            // Launch the file picker for this cloud drive (this would be called after we made sure the connection to the drive is (still) valid)
+            // We wait a bit for everything of Vue reactive props to be updated as they may have been and this needs to used properly by the picker
+            return this.$nextTick(() => {
+                vueComponentsAPIHandler.googleDriveFilePickerComponentAPI?.startPicking(false, startingFromFolderId);
+            });
         },
 
         doSaveFile(saveFileId: string|undefined, projetLocation: string, fullFileName: string, fileContent: string, isExplictSave: boolean, onSuccess: (savedFileId: string) => void, onFailure: (errRespStatus: number) => void){                 
@@ -409,6 +412,7 @@ export default defineComponent({
                     if(filesArray.length > 0){
                         // If the Strype root folder exists, then we make it the location reference if none is defined yet.
                         strypeFolderId = filesArray[0].id;
+                        this.strypeFolderId = strypeFolderId;
                         // Continue with callback method after check is done
                         return checkFolderDoneCallBack(strypeFolderId);
                     }
@@ -425,6 +429,7 @@ export default defineComponent({
                             body: body,
                         }).then((resp) => {
                             strypeFolderId = JSON.parse(resp.body).id; 
+                            this.strypeFolderId = strypeFolderId as string;
                             // Continue with callback method after check is done
                             return checkFolderDoneCallBack(strypeFolderId);
                         },
@@ -450,7 +455,9 @@ export default defineComponent({
                     return failedConnectionCallBack();
                 }
                 else{
-                    return Promise.reject(reason);
+                    // If we were looking for the Strype folder, then we also need to reset our internal flag
+                    this.strypeFolderId = "";
+                    return checkFolderDoneCallBack(strypeFolderId);
                 }
             });
         },

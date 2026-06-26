@@ -354,7 +354,7 @@ describe("Paste sound literals", () => {
     }
 
     it("Paste and show preview", () => {
-        cy.readFile("src/assetsFilesystem/sounds/cat-test-meow.wav", null).then((catWAV) => {
+        cy.readFile("src/assetsFilesystem/sounds/meow.wav", null).then((catWAV) => {
             focusEditorAndClear();
             enterImports();
             // No point playing the sound as we can't test that, but at least check the preview shows up:

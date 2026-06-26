@@ -224,7 +224,7 @@ export default defineComponent({
                 this.appStore.syncTarget = StrypeSyncTarget.none; 
                 eventBus.emit(CustomEventTypes.removeFunctionToEditorProjectSave, cloudTarget);
                 // At the very end, emit event for notifying the attempt to open a shared project is finished
-                this.$emit(CustomEventTypes.openSharedFileDone);
+                eventBus.emit(CustomEventTypes.openSharedFileDone);
             }            
         },
 
@@ -628,7 +628,7 @@ export default defineComponent({
                         // Give focus to the current (focusable) frame element so interaction can happen
                         document.getElementById(getFrameUID(this.appStore.currentFrame.id))?.focus();                        
                         // At the very end, emit event for notifying the attempt to open a shared project is finished in case that Python file was shared
-                        this.$emit(CustomEventTypes.openSharedFileDone);   
+                        eventBus.emit(CustomEventTypes.openSharedFileDone);   
                     });
                 }
                 else{
@@ -688,7 +688,7 @@ export default defineComponent({
                         });                    
                         
                         // At the very end, emit event for notifying the attempt to open a shared project is finished
-                        this.$emit(CustomEventTypes.openSharedFileDone);                  
+                        eventBus.emit(CustomEventTypes.openSharedFileDone);                  
                     }, (reason: string) => {
                         // When loading a file didn't work, we only need to handle the situation of opening a shared file 
                         // (because the error message would have been shown before for normal opening from the Drive picker)
@@ -707,7 +707,7 @@ export default defineComponent({
                     eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
                 }
                 // At the very end, emit event for notifying the attempt to open a shared project is finished
-                this.$emit(CustomEventTypes.openSharedFileDone);  
+                eventBus.emit(CustomEventTypes.openSharedFileDone);  
             }, () => {
                 // The finally clause only makes sure the progress indication on the editor is removed.
                 vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: false});

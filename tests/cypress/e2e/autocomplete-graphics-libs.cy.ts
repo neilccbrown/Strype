@@ -117,7 +117,7 @@ describe("Graphics library", () => {
     });
 
     it("Shows completions for audio literal", () => {
-        cy.readFile("src/assetsFilesystem/sounds/cat-test-meow.wav", null).then((catWAV) => {
+        cy.readFile("src/assetsFilesystem/sounds/meow.wav", null).then((catWAV) => {
             focusEditorAC();
             // Add graphics import:
             cy.get("body").type("{uparrow}{uparrow}fstrype.sound{rightarrow}*{rightarrow}{downarrow}{downarrow}");
