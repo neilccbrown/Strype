@@ -531,12 +531,8 @@ export const useStore = defineStore("app", {
                 state.frameObjects[state.frameObjects[frameId].parentId].childrenIds.indexOf(frameId);
         },
         
-        // frameToBeMovedId is an optional argument and it is used in cases where we are just checking if a 
-        // frame can be moved to a position based on the copied frame type --> we are not really checking about the actual copied Frame
         isPositionAllowsFrame() {
             return (targetFrameId: number, targetCaretPosition: CaretPosition, lookingForTargetPos: boolean, frameToBeMovedId: number) => {
-                // Where do we get the frame from --> from copiedFrames if it is a copied frame
-                // Otherwise the input frame is to be checked (e.g. for moving an else statement or duplicating an else statement -- which doesn't go anywhere).
                 const sourceFrameList: EditorFrameObjects = this.frameObjects;
 
                 if(frameToBeMovedId===-100){

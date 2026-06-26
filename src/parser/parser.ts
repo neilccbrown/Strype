@@ -564,6 +564,10 @@ export default class Parser {
 
     // You can only pass start if you also pass stop.  (But stop by itself is fine)
     // If you pass start and stop frames, they must be siblings.
+    // (To explain: we sometimes want to stop at an arbitrary place, e.g. just before
+    // a particular line to do code completion, so we may need just stop.  But we never
+    // need the opposite, to start at an arbitrary place and run to the end -- and this
+    // could cause invalid indentation if you started at an indented item.)
     public parse({startAtFrameId, stopAt, excludeLoopsAndCommentsAndCloseTry, defsLast, ignoreSpecificFrameId}: {startAtFrameId?: number, stopAt?: {frameId: number, includeThisFrame: boolean}, excludeLoopsAndCommentsAndCloseTry?: boolean, defsLast?: boolean; ignoreSpecificFrameId?: number}): string {
         let output = "";
         if(startAtFrameId){

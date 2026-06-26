@@ -2354,7 +2354,7 @@ export function getLastCaretPosInsideParent(parentId: number) : CurrentFrame {
     }
 }
 
-// frameIds must be contiguous
+// frameIds must refer to contiguous frames (i.e. siblings at same level of the AST)
 export function copyFrameTextReadyForClipboard(frameIds: number[]) : string {
     let code = "";
     if (frameIds.length > 0) {
@@ -2368,7 +2368,7 @@ export function copyFrameTextReadyForClipboard(frameIds: number[]) : string {
 }
 
 // Must be called in response to click or key handler so that we have access to the clipboard
-// frameIds must be contiguous
+// frameIds must refer to contiguous frames (i.e. siblings at same level of the AST)
 export function copyFramesToClipboard(frameIds: number[]) : void {
     let code = copyFrameTextReadyForClipboard(frameIds);
     navigator.clipboard.writeText(code).catch((err) => {

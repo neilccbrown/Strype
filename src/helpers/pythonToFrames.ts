@@ -1464,7 +1464,7 @@ function makeMapping(section: NumberedLine[]) : Record<number, number> {
 }
 
 // Takes a list of lines of Python code and splits them into four sections: imports, function definitions, class definitions, and main code.
-// Each line of the original will end up in exactly one of the three parts of the return.
+// Each line of the original will end up in exactly one of the four parts of the return.
 // With Python's indentation rules, this operation is actually easier at line level than it is post-parse.
 // The mappings map line numbers in the returned sections to line numbers in the original
 function splitLinesToSections(allLines : string[]) : {projectDoc: string[], imports: string[]; funcDefs: string[]; classDefs: string[]; main: string[], importsMapping: Record<number, number>, funcDefsMapping: Record<number, number>, classDefsMapping: Record<number, number>, mainMapping: Record<number, number>, headers: Record<string, string>, format: "py" | "spy"} {
@@ -1622,7 +1622,7 @@ function splitLinesToSections(allLines : string[]) : {projectDoc: string[], impo
 }
 
 // Returns headers if successful, or null if there was an error (which will already have been shown in the UI)
-export function pasteMixedPython(completeSource: string, at: CurrentFrame, clearExisting: boolean = false, dontSetCaretAfter = false) : { headers: Record<string, string> } | null {
+export function pasteMixedPython(completeSource: string, at: CurrentFrame, clearExisting: boolean = false, dontSetCaretAfter: boolean = false) : { headers: Record<string, string> } | null {
     const allLines = completeSource.split(/\r?\n/);
     // Split can make an extra blank line at the end which we don't want:
     if (allLines.length > 0 && allLines[allLines.length - 1] === "") {

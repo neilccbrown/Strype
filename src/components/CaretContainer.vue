@@ -235,9 +235,7 @@ export default defineComponent({
         },
 
         pasteIfFocused(event: Event, overrideText?: string) {
-            // A paste via shortcut cannot get the verification that would be done via a click
-            // so we check that 1) we are on the caret position that is currently selected and 2) that paste is allowed here.
-            // We should know the action is about pasting frames or text if some text is present in the clipboard (we clear it when copying frames)
+            // Only respond if we are focused:
             if (this.isFocusedForPaste) {
                 let pasteDestination = {id: this.frameId, caretPosition: this.caretAssignedPosition};
                 // If we currently have a selection of frames, the pasted frame should replace the selection, so we delete that selection.
