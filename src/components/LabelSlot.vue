@@ -79,7 +79,7 @@ import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { closeBracketCharacters, CustomEventTypes, getACLabelSlotUID, getFocusedEditableSlotTextSelectionStartEnd, getFrameHeaderUID, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFrameUID, getLabelSlotUID, getMatchingBracket, getNumPrecedingBackslashes, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, keywordOperatorsWithSurroundSpaces, openBracketCharacters, operators, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, simpleSlotStructureToString, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringDoubleQuoteChar, stringQuoteCharacters, stringSingleQuoteChar, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength } from "@/helpers/editor";
-import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
 import {evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
@@ -91,6 +91,7 @@ import {drawSoundOnCanvas} from "@/helpers/media";
 import { isMacOSPlatform } from "@/helpers/common";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
+import { detectBrowser } from "@/helpers/browser";
 
 // Default time to keep in cache: 5 minutes.
 const soundPreviewImages = new Cache<LoadedMedia>({ defaultTtl: 5 * 60 * 1000 });
@@ -1395,6 +1396,8 @@ export default defineComponent({
             event?.preventDefault();
             event?.stopImmediatePropagation();
 
+            let action = chainedActionFunction;
+
             let stateBeforeChanges: any = cloneDeep(this.appStore.$state);
                
             const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
@@ -1465,8 +1468,9 @@ export default defineComponent({
                 }
                 else{
                     // We are deleting some code, several cases can happen:
-                    // there is a selection of text (case A) or slots (case B) (i.e. within one slot / across slots)
-                    // simply remove a character within a slot (case C)
+                    // - there is a selection of text (case A) or slots (case B) (i.e. within one slot / across slots)
+                    // - simply remove a character within a slot (case C)
+                    // - special case for varassign "attempt" of deleting the ⇐ symbol (case D)
                     // We are deleting text within one slot: we only need to update the slot content and the text cursor position
                     const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
                     const inputSpanFieldContent = inputSpanField.textContent ?? "";
@@ -1507,6 +1511,41 @@ export default defineComponent({
                         // The cursor position changes, so we updated it in the store. 
                         this.appStore.setSlotTextCursors({slotInfos: this.coreSlotInfo, cursorPos: newTextCursorPos}, {slotInfos: this.coreSlotInfo, cursorPos: newTextCursorPos});                                 
                     }
+                    else if(this.frameType == AllFrameTypesIdentifier.varassign && ((isForwardDeletion && nextSlotInfos == null && this.labelSlotsIndex == 0) || (!isForwardDeletion && previousSlotInfos == null && this.labelSlotsIndex == 1))) {
+                        // case D: that is the only case we allow deleting a frame's non optional label. The result is a change of frame, from varassign to function call.
+                        // We can do this inside an action call (chainedActionFunction in this code path should be undefined), because we don't need to have slots refactoring: 
+                        // the slots structure is simply concatenated (what was before ⇐ and what was after).
+                        action = (_: string, stateBeforeChanges: any) => {
+                            // Prepare the concatenation of the slots, we plunk the RHS at the label slots structure of of the LHS, and we'll delete the RHS altogether.
+                            const LHSSlotsStruct = this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures;
+                            const RHSSlotsStruct = this.appStore.frameObjects[this.frameId].labelSlotsDict[1].slotStructures;
+                            const concatenateAtSlotIndex = LHSSlotsStruct.fields.length - 1;
+                            const initialCodeLengthInConcatenateAtSlot = (LHSSlotsStruct.fields[concatenateAtSlotIndex] as BaseSlot).code.length;
+                            (LHSSlotsStruct.fields[concatenateAtSlotIndex] as BaseSlot).code += (RHSSlotsStruct.fields[0] as BaseSlot).code;
+                            LHSSlotsStruct.fields.push(...RHSSlotsStruct.fields.slice(1));
+                            LHSSlotsStruct.operators.push(...RHSSlotsStruct.operators);
+                            delete this.appStore.frameObjects[this.frameId].labelSlotsDict[1];
+                            this.appStore.frameObjects[this.frameId].frameType = cloneDeep(getFrameDefType(AllFrameTypesIdentifier.funccall));
+                            // Chrome triggers a loss of focus when the slots structure changes, therefore we need to avoid it
+                            if(detectBrowser() == "chrome"){
+                                this.appStore.ignoreBlurEditableSlot = true;
+                            }
+
+                            // Restore the focus, and save changes for undo/redo in next tick
+                            this.$nextTick(() => {
+                                const newCursorSlotInfos = this.appStore.focusSlotCursorInfos;
+                                if(newCursorSlotInfos){
+                                    (LHSSlotsStruct.fields[concatenateAtSlotIndex] as BaseSlot).focused = true;
+                                    newCursorSlotInfos.cursorPos = initialCodeLengthInConcatenateAtSlot;
+                                    newCursorSlotInfos.slotInfos.labelSlotsIndex = 0;
+                                    newCursorSlotInfos.slotInfos.slotId = concatenateAtSlotIndex.toString();
+                                    setDocumentSelection(newCursorSlotInfos, newCursorSlotInfos);
+                                    this.appStore.setSlotTextCursors(newCursorSlotInfos, newCursorSlotInfos);
+                                }                                
+                                this.appStore.saveStateChanges(stateBeforeChanges);                                        
+                            });
+                        };
+                    }
                     else{
                         // Do nothing if there is no actual change
                         return;
@@ -1514,12 +1553,12 @@ export default defineComponent({
 
                     // In any case, except if we are in a chain of actions, we check if the slots need to be refactorised (next tick required to account for the changed done when deleting brackets/strings)
                     // As we deleted some slots, we need to call the refactoring on the resulting focused slot:
-                    if(chainedActionFunction == undefined) {
+                    if(action == undefined) {
                         this.$nextTick(() => vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex)].checkSlotRefactoring(resultingSlotUID, stateBeforeChanges));
                     }
                     else{
                         // we continue doing the chained action if a function has been specified
-                        this.$nextTick(() => chainedActionFunction(resultingSlotUID, stateBeforeChanges));
+                        this.$nextTick(() => action?.(resultingSlotUID, stateBeforeChanges));
                     }
                 }
             }            
