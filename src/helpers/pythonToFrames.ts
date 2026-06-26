@@ -1683,7 +1683,7 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
         offsetAllIds(importFrames, useStore().nextAvailableId);
         const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: importFrames});
         if (curLocation == STRYPE_LOCATION.IMPORTS_SECTION) {
-            posAfter = adjusted;
+            posAfter = adjusted ?? posAfter;
         }
     }
     if (classDefFrames.frameIds.length > 0) {
@@ -1703,9 +1703,9 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
         offsetAllIds(classDefFrames, useStore().nextAvailableId);
         const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: classDefFrames});
         if (curLocation == STRYPE_LOCATION.DEFS_SECTION) {
-            posAfter = adjusted;
+            posAfter = adjusted ?? posAfter;
             // Adjust in case we also paste more in the defs:
-            at = adjusted;
+            at = adjusted ?? at;
         }
         
     }
@@ -1741,7 +1741,7 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
 
         const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: funcDefFrames});
         if (curLocation == STRYPE_LOCATION.DEFS_SECTION || curLocation == STRYPE_LOCATION.IN_CLASSDEF) {
-            posAfter = adjusted;
+            posAfter = adjusted ?? posAfter;
         }
     }
     if (mainFrames.frameIds.length > 0) {
@@ -1752,7 +1752,7 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
         offsetAllIds(mainFrames, useStore().nextAvailableId);
         const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: mainFrames});
         if (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) {
-            posAfter = adjusted;
+            posAfter = adjusted ?? posAfter;
         }
     }
     if (!dontSetCaretAfter) {

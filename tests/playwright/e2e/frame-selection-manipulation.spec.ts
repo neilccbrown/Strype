@@ -3,7 +3,7 @@ import { loadContent, save } from "../support/loading-saving";
 import { readFileSync } from "node:fs";
 import { skipPyodideLoading } from "../support/general";
 import {addFakeClipboard} from "../support/clipboard";
-import {doPagePaste} from "../support/editor";
+import { checkFrameXorTextCursor, doPagePaste } from "../support/editor";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && (process.platform === "win32" || process.platform === "linux")) {
@@ -65,6 +65,24 @@ async function testBeforeAfterPaste(page: Page, before :string, selectionKeys: s
     await page.waitForTimeout(500);
     expect(readFileSync(await save(page, false), "utf-8")).toEqual(afterPaste);
 }
+
+async function testPaste(page: Page, before :string, moveToDestKeys: string[], pasteText: string, afterPaste :string) {
+    // Load:
+    await loadContent(page, before);
+    await page.waitForTimeout(500);
+    // Then move:
+    for (const k of moveToDestKeys) {
+        await page.keyboard.press(process.platform == "darwin" ? k.replaceAll("Control", "Meta") : k);
+    }
+    await page.waitForTimeout(500);
+    await doPagePaste(page, pasteText);    
+    await page.waitForTimeout(500);
+    // We had some issues with frame cursor disappearing after paste (esp. invalid paste);
+    await checkFrameXorTextCursor(page, true, "Frame cursor after paste");
+    
+    expect(readFileSync(await save(page, false), "utf-8")).toEqual(afterPaste);
+}
+
 
 async function testDuplicateViaMenu(page: Page, before: string, targetText: string, after: string) {
     // Load:
@@ -166,9 +184,9 @@ else :
     
 });
 
-test.describe(() => {
+test.describe("Simple cut/paste and duplication", () => {
     test("Cut and paste a simple frame", async ({page}) => {
-        await testBeforeAfterPaste(page, "print('A')\nprint('B')\n", ["End", "Shift+ArrowUp"], "cut", ["End", "ArrowUp"],`#(=> Strype:1:std
+        await testBeforeAfterPaste(page, "print('A')\nprint('B')\n", ["End", "Shift+ArrowUp"], "cut", ["End", "ArrowUp"], `#(=> Strype:1:std
 #(=> Section:Imports
 #(=> Section:Definitions
 #(=> Section:Main
@@ -179,7 +197,7 @@ print('A')
     });
 
     test("Duplicate a simple frame using selection", async ({page}) => {
-        await testBeforeAfterPaste(page, "print('A')\nprint('B')\n", ["End", "Shift+ArrowUp"], "duplicate", [],`#(=> Strype:1:std
+        await testBeforeAfterPaste(page, "print('A')\nprint('B')\n", ["End", "Shift+ArrowUp"], "duplicate", [], `#(=> Strype:1:std
 #(=> Section:Imports
 #(=> Section:Definitions
 #(=> Section:Main
@@ -189,9 +207,9 @@ print('B')
 #(=> Section:End
 `);
     });
-    
+
     test("Duplicate two simple frames", async ({page}) => {
-        await testBeforeAfterPaste(page, "print('A')\nprint('B')\n", ["End", "Shift+ArrowUp", "Shift+ArrowUp"], "duplicate", [],`#(=> Strype:1:std
+        await testBeforeAfterPaste(page, "print('A')\nprint('B')\n", ["End", "Shift+ArrowUp", "Shift+ArrowUp"], "duplicate", [], `#(=> Strype:1:std
 #(=> Section:Imports
 #(=> Section:Definitions
 #(=> Section:Main
@@ -204,7 +222,7 @@ print('B')
     });
 
     test("Duplicate two simple frames, twice", async ({page}) => {
-        await testBeforeAfterPaste(page, "print('A')\nprint('B')\n", ["End", "Shift+ArrowUp", "Shift+ArrowUp"], "duplicate2", [],`#(=> Strype:1:std
+        await testBeforeAfterPaste(page, "print('A')\nprint('B')\n", ["End", "Shift+ArrowUp", "Shift+ArrowUp"], "duplicate2", [], `#(=> Strype:1:std
 #(=> Section:Imports
 #(=> Section:Definitions
 #(=> Section:Main
@@ -217,7 +235,10 @@ print('B')
 #(=> Section:End
 `);
     });
+});
 
+test.describe("Ctrl-A behaviour", () => {
+    
     test("Test Ctrl-A in main code", async ({page}) => {
         await testBeforeAfterPaste(page,`def foo():
    pass
@@ -506,6 +527,136 @@ x = 43
 #(=> Section:Definitions
 #(=> Section:Main
 x  = 43 
+#(=> Section:End
+`);
+    });
+});
+
+test.describe.only("Invalid pastes", () => {
+    test("Test pasting joint frame inside a non-joint", async ({page}) => {
+        // Most Python frames allow joint children!  But with doesn't
+        await testPaste(page, "with foo as bar:\n  print('Hi')", ["ArrowUp"], "else:\n print('Bye')", `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+with foo  as bar  :
+    print('Hi') 
+#(=> Section:End
+`);
+    });
+
+    test("Test pasting joint frame at top-level", async ({page}) => {
+        // Most Python frames allow joint children!  But with doesn't
+        await testPaste(page, "with foo as bar:\n  print('Hi')", [], "else:\n print('Bye')", `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+with foo  as bar  :
+    print('Hi') 
+#(=> Section:End
+`);
+    });
+
+    test("Test pasting joint frame inside a joint that doesn't accept it", async ({page}) => {
+        await testPaste(page, "while foo:\n  print('Hi')", ["ArrowUp"], "elif True:\n print('Bye')", `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+while foo  :
+    print('Hi') 
+#(=> Section:End
+`);
+    });
+
+    test("Test pasting joint frame inside a joint that accepts it", async ({page}) => {
+        await testPaste(page, "while foo:\n  print('Hi')", ["ArrowUp"], "else:\n print('Bye')", `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+while foo  :
+    print('Hi') 
+else :
+    print('Bye') 
+#(=> Section:End
+`);
+    });
+
+    test("Test pasting joint frames inside a joint that accepts only some of it", async ({page}) => {
+        await testPaste(page, "while foo:\n  print('Hi')", ["ArrowUp"], "elif True:\n print('Bye')\nelse:\n print('Bye')", `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+while foo  :
+    print('Hi') 
+#(=> Section:End
+`);
+    });
+
+    test("Test pasting joint frames inside a joint that accepts all of it", async ({page}) => {
+        await testPaste(page, "if foo:\n  print('Hi')", ["ArrowUp"], "elif True:\n print('Bye')\nelse:\n print('Bye bye')", `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+if foo  :
+    print('Hi') 
+elif True  :
+    print('Bye') 
+else :
+    print('Bye bye') 
+#(=> Section:End
+`);
+    });
+
+    test("Test pasting else inside if", async ({page}) => {
+        await testPaste(page, "if foo:\n  print('Hi')", ["ArrowUp"], "else:\n print('Bye bye')", `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+if foo  :
+    print('Hi') 
+else :
+    print('Bye bye') 
+#(=> Section:End
+`);
+    });
+
+    test("Test pasting else inside if+elif", async ({page}) => {
+        await testPaste(page, "if foo:\n  print('Hi')\nelif True:\n print('Bye')", ["ArrowUp"], "else:\n print('Bye bye')", `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+if foo  :
+    print('Hi') 
+elif True  :
+    print('Bye') 
+else :
+    print('Bye bye') 
+#(=> Section:End
+`);
+    });
+
+    test("Test pasting elif inside if+else", async ({page}) => {
+        await testPaste(page, "if foo:\n  print('Hi')\nelse:\n print('Bye bye')", ["ArrowUp"], "elif True:\n print('Bye')", `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+if foo  :
+    print('Hi') 
+else :
+    print('Bye bye') 
+#(=> Section:End
+`);
+    });
+
+    test("Test pasting else inside if+else", async ({page}) => {
+        await testPaste(page, "if foo:\n  print('Hi')\nelse:\n print('Bye bye')", ["ArrowUp"], "else:\n print('Z')", `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+if foo  :
+    print('Hi') 
+else :
+    print('Bye bye') 
 #(=> Section:End
 `);
     });

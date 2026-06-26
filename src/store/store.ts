@@ -271,7 +271,7 @@ export const useStore = defineStore("app", {
         },
         
         getAllowedJointChildren: (state) => (frameId: number) => {
-            return state.frameObjects[frameId].frameType.allowJointChildren;
+            return !!state.frameObjects[frameId].frameType.allowJointChildren;
         },
         
         isJointFrameById: (state) => (frameId: number) => {
@@ -361,7 +361,7 @@ export const useStore = defineStore("app", {
             if(focusedFrame!==undefined) {
 
                 // (c) -> I am either in a joint parent, we can't add any child if we're below, there is no next child to check.
-                if(focusedFrame.frameType.allowJointChildren ) {
+                if(!!focusedFrame.frameType.allowJointChildren ) {
                     allowedJointChildren = [...focusedFrame.frameType.jointFrameTypes];
                     nextJointChildID = (caretPosition == CaretPosition.below && focusedFrame.id == frameId) ? -100 : (focusedFrame.jointFrameIds[0]??-100);
                 }
@@ -382,7 +382,7 @@ export const useStore = defineStore("app", {
                     // -100 means there is no next Joint Child => focused is the last joint or end of joint structure (i.e. below root)
                     if(nextJointChildID === -100){
                         // Below the root, no joint frame can be added (unless in the programmatic case of drag and drop, see above)
-                        if(!state.isDraggingFrame && frameId == focusedFrame.id && caretPosition == CaretPosition.below && focusedFrame.frameType.allowJointChildren){
+                        if(!state.isDraggingFrame && frameId == focusedFrame.id && caretPosition == CaretPosition.below && !!focusedFrame.frameType.allowJointChildren){
                             allowedJointChildren.splice(0, allowedJointChildren.length);
                         }
                         else{
@@ -1808,7 +1808,7 @@ export const useStore = defineStore("app", {
             if(addingJointFrame){
                 // if the focusedFrame allows for joint children
                 // Add it in index 0 on the focusedFrame's joint list
-                if(focusedFrame.frameType.allowJointChildren) {
+                if(!!focusedFrame.frameType.allowJointChildren) {
                     parentId = focusedFrame.id;
                     listToUpdate = focusedFrame.jointFrameIds;
                 }
@@ -2099,12 +2099,12 @@ export const useStore = defineStore("app", {
                     // So in this case, we look for the frame to delete ourselves: that is the next joint sibling if any, or nothing.
                     let foundDisabledJointFrameToDelete = false;
                     if(framesIdToDelete.length == 1  
-                        && ((this.currentFrame.caretPosition == CaretPosition.body && (currentFrame.frameType.isJointFrame || currentFrame.frameType.allowJointChildren) && this.frameObjects[currentFrame.id].childrenIds.length == 0) 
-                            || (this.currentFrame.caretPosition == CaretPosition.below && (this.frameObjects[currentFrame.parentId].frameType.isJointFrame || this.frameObjects[currentFrame.parentId].frameType.allowJointChildren)
+                        && ((this.currentFrame.caretPosition == CaretPosition.body && (currentFrame.frameType.isJointFrame || !!currentFrame.frameType.allowJointChildren) && this.frameObjects[currentFrame.id].childrenIds.length == 0) 
+                            || (this.currentFrame.caretPosition == CaretPosition.below && (this.frameObjects[currentFrame.parentId].frameType.isJointFrame || !!this.frameObjects[currentFrame.parentId].frameType.allowJointChildren)
                                 && this.frameObjects[currentFrame.parentId].childrenIds.at(-1) == currentFrame.id))){
                         // Check if visually, after the current caret, there is disabled joint that we would delete.
                         const frameToLookJointIn = (this.currentFrame.caretPosition == CaretPosition.body) ? currentFrame : this.frameObjects[currentFrame.parentId];
-                        if(frameToLookJointIn.frameType.allowJointChildren && frameToLookJointIn.jointFrameIds.length > 0 && this.frameObjects[frameToLookJointIn.jointFrameIds[0]].isDisabled){
+                        if(!!frameToLookJointIn.frameType.allowJointChildren && frameToLookJointIn.jointFrameIds.length > 0 && this.frameObjects[frameToLookJointIn.jointFrameIds[0]].isDisabled){
                             foundDisabledJointFrameToDelete = true;
                             frameToDelete = {frameId: frameToLookJointIn.jointFrameIds[0], isSlotNavigationPosition: false};
                         }
@@ -2126,7 +2126,7 @@ export const useStore = defineStore("app", {
                     // or when the next position is a joint root's below OR a strict* block frame below - both enabled (* = that cannot take joint frame, like a function definition, a class definition or "with")
                     if((framesIdToDelete.length==1 && this.frameObjects[framesIdToDelete[0]]?.frameType.allowChildren && !this.frameObjects[frameToDelete.frameId]?.frameType.isJointFrame 
                             && this.currentFrame.caretPosition == CaretPosition.body && this.frameObjects[framesIdToDelete[0]]?.childrenIds.length == 0)
-                        || (!this.frameObjects[frameToDelete.frameId].isDisabled && (this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren || (this.frameObjects[frameToDelete.frameId]?.frameType.allowChildren && !this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren))
+                        || (!this.frameObjects[frameToDelete.frameId].isDisabled && (!!this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren || (this.frameObjects[frameToDelete.frameId]?.frameType.allowChildren && !this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren))
                             && (frameToDelete.caretPosition??"") === CaretPosition.below)){
                         frameToDelete.frameId = -100;
                     }
@@ -2636,28 +2636,48 @@ export const useStore = defineStore("app", {
         },
 
         // Returns the position after those frames
-        insertFramesAtPosition(payload: {target: CurrentFrame, ignoreStateBackup?: boolean, sourceFrames: {frameIds: number[], frames: EditorFrameObjects}}) : CurrentFrame {
+        insertFramesAtPosition(payload: {target: CurrentFrame, ignoreStateBackup?: boolean, sourceFrames: {frameIds: number[], frames: EditorFrameObjects}}) : CurrentFrame | null {
             if (payload.sourceFrames.frameIds.length == 0) {
                 return payload.target;
             }
             
             const stateBeforeChanges = cloneDeep(this.$state);
 
+            let finishBelow: number;
             // It will be added either as a Child or as a JointChild
             const areFramesJoint = payload.sourceFrames.frames[payload.sourceFrames.frameIds[0]].frameType.isJointFrame;
             if (areFramesJoint) {
-                // Joint frames, so we know we're inserting below.  We need to see if the frame we have is
-                // the joint parent (the "if") or a joint child (e.g. "elif"):
-                const targetIsTheJointParent = !this.frameObjects[payload.target.id].frameType.isJointFrame;
-                const newIndex = targetIsTheJointParent ? 0 : this.getIndexInParent(payload.target.id) + 1;
+                // Joint frames.  We can only paste if we're inside the body of the joint parent
+                // or one of its joint frames, at the last position of the body:
+                const parentId = getParentOrJointParent(payload.target.id);
                 
-                const jointParentId = targetIsTheJointParent ? payload.target.id : getParentOrJointParent(payload.target.id);
+                const insideJointParentBody = !this.frameObjects[parentId].frameType.isJointFrame;
+                const newIndex = insideJointParentBody ? 0 : this.getIndexInParent(parentId) + 1;
+                
+                const jointParentId = insideJointParentBody ? parentId : getParentOrJointParent(parentId);
+                if (!this.frameObjects[jointParentId].frameType.allowJointChildren) {
+                    // This frame doesn't allow joint children; bail out instantly
+                    return null;
+                }
+                const jointChildRegex = new RegExp("^" + this.frameObjects[jointParentId].frameType.allowJointChildren + "$");
+                
+                const proposedJointFramesTotal = 
+                    this.frameObjects[jointParentId].jointFrameIds.map((jointSiblingId) => this.frameObjects[jointSiblingId].frameType.type)
+                        .toSpliced(newIndex, 0, ...payload.sourceFrames.frameIds.map((id) => payload.sourceFrames.frames[id].frameType.type));  
+
+                if (!jointChildRegex.exec(proposedJointFramesTotal.map((t) => "_" + t).join(""))) {
+                    // Pattern doesn't match for whatever reason, so don't paste:
+                    return null;
+                }
+                
                 // Add each one of the copied frames in their new parent's list
                 this.frameObjects[jointParentId].jointFrameIds.splice(newIndex, 0, ...payload.sourceFrames.frameIds);
 
                 for (const id of payload.sourceFrames.frameIds) {
                     payload.sourceFrames.frames[id].jointParentId = jointParentId;
                 }
+                
+                finishBelow = jointParentId;
             }
             else {
                 // Non-joint frames
@@ -2678,6 +2698,8 @@ export const useStore = defineStore("app", {
                 for (const id of payload.sourceFrames.frameIds) {
                     payload.sourceFrames.frames[id].parentId = parentId;
                 }
+                
+                finishBelow = payload.sourceFrames.frameIds[payload.sourceFrames.frameIds.length - 1];
             }
 
             // Add the copied objects to the FrameObjects
@@ -2691,7 +2713,7 @@ export const useStore = defineStore("app", {
                 this.saveStateChanges(stateBeforeChanges);
             }
             
-            return {id: payload.sourceFrames.frameIds[payload.sourceFrames.frameIds.length - 1], caretPosition: CaretPosition.below};
+            return {id: finishBelow, caretPosition: CaretPosition.below};
         },
 
         changeDisableFrame(payload: {frameId: number; isDisabling: boolean}) {
