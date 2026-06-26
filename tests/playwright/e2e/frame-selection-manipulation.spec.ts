@@ -532,7 +532,7 @@ x  = 43
     });
 });
 
-test.describe.only("Invalid pastes", () => {
+test.describe("Invalid pastes", () => {
     test("Test pasting joint frame inside a non-joint", async ({page}) => {
         // Most Python frames allow joint children!  But with doesn't
         await testPaste(page, "with foo as bar:\n  print('Hi')", ["ArrowUp"], "else:\n print('Bye')", `#(=> Strype:1:std
