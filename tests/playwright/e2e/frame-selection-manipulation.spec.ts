@@ -66,6 +66,62 @@ async function testBeforeAfterPaste(page: Page, before :string, selectionKeys: s
     expect(readFileSync(await save(page, false), "utf-8")).toEqual(afterPaste);
 }
 
+async function testDuplicateViaMenu(page: Page, before: string, targetText: string, after: string) {
+    // Load:
+    await loadContent(page, before);
+    await page.waitForTimeout(500);
+    // Find the innermost frame containing that text:
+    const frameDiv = page
+        .getByText(targetText, { exact: true })
+        .locator("xpath=ancestor::*[contains(@class, \"frame-div\")][1]");
+
+    await frameDiv.click({ button: "right" , position: {x: 5, y: 5}});
+    await page.getByText("Duplicate").hover();
+    await page.waitForTimeout(500);
+    await page.getByText("Duplicate").click();
+    
+    await page.waitForTimeout(500);
+    
+    expect(readFileSync(await save(page, false), "utf-8")).toEqual(after);
+}
+
+test.describe.only("Test duplicating via menu", () => {
+    test("Duplicate function call", async ({page}) => {
+        await testDuplicateViaMenu(page, "print('A')\nlen(None)\n", "print", `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+print('A') 
+print('A') 
+len(None) 
+#(=> Section:End
+`);
+    });
+
+    test("Duplicate if with else", async ({page}) => {
+        await testDuplicateViaMenu(page, `if x > 0:
+    return x
+else:
+    return y
+`, "if", `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+if x>0  :
+    return x 
+else :
+    return y 
+if x>0  :
+    return x 
+else :
+    return y 
+#(=> Section:End
+`);
+    });
+    // TODO Duplicate elif
+    
+});
+
 test.describe(() => {
     test("Cut and paste a simple frame", async ({page}) => {
         await testBeforeAfterPaste(page, "print('A')\nprint('B')\n", ["End", "Shift+ArrowUp"], "cut", ["End", "ArrowUp"],`#(=> Strype:1:std
