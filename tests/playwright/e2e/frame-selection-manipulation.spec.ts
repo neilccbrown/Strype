@@ -136,6 +136,8 @@ elif y>0  :
     return y 
 #(=> Section:End
 `);
+        // Had a bug at one point where it was internally duplicating but not showing on screen, so check we see two elif:
+        await expect(page.locator("div.frame-header-label", {hasText: "elif"})).toHaveCount(2);
     });
     test("Duplicate elif with else", async ({page}) => {
         await testDuplicateViaMenu(page, `if x > 0:
@@ -158,6 +160,8 @@ else :
     return z 
 #(=> Section:End
 `);
+        // Had a bug at one point where it was internally duplicating but not showing on screen, so check we see two elif:
+        await expect(page.locator("div.frame-header-label", {hasText: "elif"})).toHaveCount(2);
     });
     
 });

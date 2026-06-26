@@ -2646,11 +2646,12 @@ export const useStore = defineStore("app", {
             // It will be added either as a Child or as a JointChild
             const areFramesJoint = payload.sourceFrames.frames[payload.sourceFrames.frameIds[0]].frameType.isJointFrame;
             if (areFramesJoint) {
-                // Joint frames, so we know we're inserting below:
-                const insertingBelowJointParent = this.frameObjects[payload.target.id].frameType.isJointFrame;
-                const newIndex = insertingBelowJointParent ? 0 : this.getIndexInParent(payload.target.id) + 1;
+                // Joint frames, so we know we're inserting below.  We need to see if the frame we have is
+                // the joint parent (the "if") or a joint child (e.g. "elif"):
+                const targetIsTheJointParent = !this.frameObjects[payload.target.id].frameType.isJointFrame;
+                const newIndex = targetIsTheJointParent ? 0 : this.getIndexInParent(payload.target.id) + 1;
                 
-                const jointParentId = insertingBelowJointParent ? payload.target.id : getParentOrJointParent(payload.target.id);
+                const jointParentId = targetIsTheJointParent ? payload.target.id : getParentOrJointParent(payload.target.id);
                 // Add each one of the copied frames in their new parent's list
                 this.frameObjects[jointParentId].jointFrameIds.splice(newIndex, 0, ...payload.sourceFrames.frameIds);
 
