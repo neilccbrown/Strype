@@ -1467,7 +1467,7 @@ function makeMapping(section: NumberedLine[]) : Record<number, number> {
 // Each line of the original will end up in exactly one of the four parts of the return.
 // With Python's indentation rules, this operation is actually easier at line level than it is post-parse.
 // The mappings map line numbers in the returned sections to line numbers in the original
-function splitLinesToSections(allLines : string[]) : {projectDoc: string[], imports: string[]; funcDefs: string[]; classDefs: string[]; main: string[], importsMapping: Record<number, number>, funcDefsMapping: Record<number, number>, classDefsMapping: Record<number, number>, mainMapping: Record<number, number>, headers: Record<string, string>, format: "py" | "spy"} {
+function splitLinesToSections(allLines : string[], leadingAssignmentsGoInDefs: boolean) : {projectDoc: string[], imports: string[]; funcDefs: string[]; classDefs: string[]; main: string[], importsMapping: Record<number, number>, funcDefsMapping: Record<number, number>, classDefsMapping: Record<number, number>, mainMapping: Record<number, number>, headers: Record<string, string>, format: "py" | "spy"} {
     // There's two possibilities:
     //  - we're loading a .spy with section headings, or
     //  - we're loading a .py where we must infer it.
@@ -1590,12 +1590,18 @@ function splitLinesToSections(allLines : string[]) : {projectDoc: string[], impo
             }
         }
         else {
+            const mainWasEmpty = main.length == 0;
             main.push(...latestComments);
             latestComments = [];
             // We don't push leading blanks to main (i.e. blank lines while main is empty), otherwise all the blanks before/between imports and defs end up there:
-            if (line.trim() != "" || main.length > 0) {
+            if (line.trim() != "" || !mainWasEmpty) {
                 if (latestAssignments.length > 0) {
-                    main.push(...latestAssignments);
+                    if (mainWasEmpty && leadingAssignmentsGoInDefs) {
+                        funcDefs.push(...latestAssignments);
+                    }
+                    else {
+                        main.push(...latestAssignments);
+                    }
                     latestAssignments = [];
                 }
                 main.push(lineWithNum);
@@ -1603,7 +1609,12 @@ function splitLinesToSections(allLines : string[]) : {projectDoc: string[], impo
         }
     });
     // Add any trailing comments and assignments:
-    main.push(...latestAssignments);
+    if (main.length == 0 && leadingAssignmentsGoInDefs) {
+        funcDefs.push(...latestAssignments);
+    }
+    else {
+        main.push(...latestAssignments);
+    }
     main.push(...latestComments);
     
     return {
@@ -1628,10 +1639,11 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
     if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
         allLines.pop();
     }
-    const s = splitLinesToSections(allLines);
     // If we are clearing all, we are effectively pasting into the main section,
     // no matter where the frame cursor happens to be:
     const curLocation = clearExisting ? STRYPE_LOCATION.MAIN_CODE_SECTION : findCurrentStrypeLocation({lookForGivenFramePosition: at}).strypeLocation;
+    const s = splitLinesToSections(allLines, curLocation == STRYPE_LOCATION.DEFS_SECTION || curLocation == STRYPE_LOCATION.IMPORTS_SECTION);
+
 
     let importFrames : CopiedFrames;
     let funcDefFrames : CopiedFrames;

@@ -506,3 +506,43 @@ else :
 `]));
     });
 });
+
+test.describe("Pasting assignments at section boundaries", () => {
+    const destinations: { name: string, keys: string[] }[] = [
+        { name: "main", keys: [] },
+        { name: "definitions", keys: ["ArrowUp"] },
+        { name: "imports", keys: ["ArrowUp", "ArrowUp"] },
+    ];
+
+    const assignmentTexts = ["x  = 0 \n", "x  = 0 \ny  = 0 \n" ];
+
+    for (const assignmentText of assignmentTexts) {
+        test(`Pasting "${assignmentText}" in imports puts it in definitions`, async ({page}) => {
+            await testPaste(page, "", ["ArrowUp", "ArrowUp"], assignmentText, makeStrypeFile(["", assignmentText, ""]));
+        });
+
+        test(`Pasting "${assignmentText}" in definitions remains there`, async ({page}) => {
+            await testPaste(page, "", ["ArrowUp"], assignmentText, makeStrypeFile(["", assignmentText, ""]));
+        });
+
+        test(`Pasting "${assignmentText}" in main puts it there`, async ({page}) => {
+            await testPaste(page, "", [], assignmentText, makeStrypeFile(["", "", assignmentText]));
+        });
+    }
+
+    const assignmentFormatted = "x  = 0 \n";
+    const printFormatted = "print('A') \n";
+
+    for (const { name, keys } of destinations) {
+        test(`Pasting assignment then print in ${name} puts assignment as described above but print in main`, async ({page}) => {
+            const expected = name === "main"
+                ? makeStrypeFile(["", "", assignmentFormatted + printFormatted])
+                : makeStrypeFile(["", assignmentFormatted, printFormatted]);
+            await testPaste(page, "", keys, assignmentFormatted + printFormatted, expected);
+        });
+
+        test(`Pasting print then assignment in ${name} always puts both in main`, async ({page}) => {
+            await testPaste(page, "", keys, printFormatted + assignmentFormatted, makeStrypeFile(["", "", printFormatted + assignmentFormatted]));
+        });
+    }
+});
