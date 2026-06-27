@@ -154,7 +154,7 @@ ${STARTING_MAIN}
 
     it("Pastes full set in imports", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
-        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{home}{uparrow}{home}{uparrow}{home}", `
+        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN2, MAIN1, MAIN0].join("\n"), "{home}{uparrow}{home}{uparrow}{home}", `
 #(=> Strype:1:${MODE}
 ${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${IMPORT0}
@@ -166,9 +166,9 @@ ${DEF0}
 ${DEF1}
 ${STARTING_DEF}
 #(=> Section:Main
-${MAIN0}
-${MAIN1}
 ${MAIN2}
+${MAIN1}
+${MAIN0}
 ${STARTING_MAIN}
 #(=> Section:End
 `.trimStart(), true, "spy");
@@ -176,7 +176,7 @@ ${STARTING_MAIN}
 
     it("Pastes full set in defs", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
-        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{home}{uparrow}{home}", `
+        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN2, MAIN1, MAIN0].join("\n"), "{home}{uparrow}{home}", `
 #(=> Strype:1:${MODE}
 ${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${STARTING_IMPORT}
@@ -188,9 +188,9 @@ ${DEF0}
 ${DEF1}
 ${STARTING_DEF}
 #(=> Section:Main
-${MAIN0}
-${MAIN1}
 ${MAIN2}
+${MAIN1}
+${MAIN0}
 ${STARTING_MAIN}
 #(=> Section:End
 `.trimStart(), true, "spy");
@@ -310,7 +310,7 @@ afterwards()
 
     it("Pastes full set in imports then adds frame", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
-        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{home}{uparrow}{home}{uparrow}{home}", `
+        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN2, MAIN1, MAIN0].join("\n"), "{home}{uparrow}{home}{uparrow}{home}", `
 #(=> Strype:1:${MODE}
 ${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${IMPORT0}
@@ -323,9 +323,9 @@ ${DEF0}
 ${DEF1}
 ${STARTING_DEF}
 #(=> Section:Main
-${MAIN0}
-${MAIN1}
 ${MAIN2}
+${MAIN1}
+${MAIN0}
 ${STARTING_MAIN}
 #(=> Section:End
 `.trimStart(), true, "spy", () => {
