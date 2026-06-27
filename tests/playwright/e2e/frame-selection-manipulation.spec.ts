@@ -84,6 +84,16 @@ async function testPaste(page: Page, before :string, moveToDestKeys: string[], p
 }
 
 
+function makeStrypeFile(sections: string[]): string {
+    const [imports, definitions, main] = sections;
+    return `#(=> Strype:1:std
+#(=> Section:Imports
+${imports}#(=> Section:Definitions
+${definitions}#(=> Section:Main
+${main}#(=> Section:End
+`;
+}
+
 async function testDuplicateViaMenu(page: Page, before: string, targetText: string, after: string) {
     // Load:
     await loadContent(page, before);
@@ -105,15 +115,10 @@ async function testDuplicateViaMenu(page: Page, before: string, targetText: stri
 
 test.describe("Test duplicating via menu", () => {
     test("Duplicate function call", async ({page}) => {
-        await testDuplicateViaMenu(page, "print('A')\nlen(None)\n", "print", `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> Section:Main
-print('A') 
+        await testDuplicateViaMenu(page, "print('A')\nlen(None)\n", "print", makeStrypeFile(["", "", `print('A') 
 print('A') 
 len(None) 
-#(=> Section:End
-`);
+`]));
     });
 
     test("Duplicate if with else", async ({page}) => {
@@ -121,11 +126,7 @@ len(None)
     return x
 else:
     return y
-`, "if", `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> Section:Main
-if x>0  :
+`, "if", makeStrypeFile(["", "", `if x>0  :
     return x 
 else :
     return y 
@@ -133,8 +134,7 @@ if x>0  :
     return x 
 else :
     return y 
-#(=> Section:End
-`);
+`]));
     });
 
     test("Duplicate elif without else", async ({page}) => {
@@ -142,18 +142,13 @@ else :
     return x
 elif y > 0:
     return y
-`, "elif", `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> Section:Main
-if x>0  :
+`, "elif", makeStrypeFile(["", "", `if x>0  :
     return x 
 elif y>0  :
     return y 
 elif y>0  :
     return y 
-#(=> Section:End
-`);
+`]));
         // Had a bug at one point where it was internally duplicating but not showing on screen, so check we see two elif:
         await expect(page.locator("div.frame-header-label", {hasText: "elif"})).toHaveCount(2);
     });
@@ -164,11 +159,7 @@ elif y > 0:
     return y
 else:
     return z
-`, "elif", `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> Section:Main
-if x>0  :
+`, "elif", makeStrypeFile(["", "", `if x>0  :
     return x 
 elif y>0  :
     return y 
@@ -176,8 +167,7 @@ elif y>0  :
     return y 
 else :
     return z 
-#(=> Section:End
-`);
+`]));
         // Had a bug at one point where it was internally duplicating but not showing on screen, so check we see two elif:
         await expect(page.locator("div.frame-header-label", {hasText: "elif"})).toHaveCount(2);
     });
@@ -186,54 +176,34 @@ else :
 
 test.describe("Simple cut/paste and duplication", () => {
     test("Cut and paste a simple frame", async ({page}) => {
-        await testBeforeAfterPaste(page, "print('A')\nprint('B')\n", ["End", "Shift+ArrowUp"], "cut", ["End", "ArrowUp"], `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> Section:Main
-print('B') 
+        await testBeforeAfterPaste(page, "print('A')\nprint('B')\n", ["End", "Shift+ArrowUp"], "cut", ["End", "ArrowUp"], makeStrypeFile(["", "", `print('B') 
 print('A') 
-#(=> Section:End
-`);
+`]));
     });
 
     test("Duplicate a simple frame using selection", async ({page}) => {
-        await testBeforeAfterPaste(page, "print('A')\nprint('B')\n", ["End", "Shift+ArrowUp"], "duplicate", [], `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> Section:Main
-print('A') 
+        await testBeforeAfterPaste(page, "print('A')\nprint('B')\n", ["End", "Shift+ArrowUp"], "duplicate", [], makeStrypeFile(["", "", `print('A') 
 print('B') 
 print('B') 
-#(=> Section:End
-`);
+`]));
     });
 
     test("Duplicate two simple frames", async ({page}) => {
-        await testBeforeAfterPaste(page, "print('A')\nprint('B')\n", ["End", "Shift+ArrowUp", "Shift+ArrowUp"], "duplicate", [], `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> Section:Main
-print('A') 
+        await testBeforeAfterPaste(page, "print('A')\nprint('B')\n", ["End", "Shift+ArrowUp", "Shift+ArrowUp"], "duplicate", [], makeStrypeFile(["", "", `print('A') 
 print('B') 
 print('A') 
 print('B') 
-#(=> Section:End
-`);
+`]));
     });
 
     test("Duplicate two simple frames, twice", async ({page}) => {
-        await testBeforeAfterPaste(page, "print('A')\nprint('B')\n", ["End", "Shift+ArrowUp", "Shift+ArrowUp"], "duplicate2", [], `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> Section:Main
-print('A') 
+        await testBeforeAfterPaste(page, "print('A')\nprint('B')\n", ["End", "Shift+ArrowUp", "Shift+ArrowUp"], "duplicate2", [], makeStrypeFile(["", "", `print('A') 
 print('B') 
 print('A') 
 print('B') 
 print('A') 
 print('B') 
-#(=> Section:End
-`);
+`]));
     });
 });
 
@@ -244,15 +214,10 @@ test.describe("Ctrl-A behaviour", () => {
    pass
 print('A')
 print('B')
-`, ["End", "Control+a"], "cut", ["Home", "ArrowUp", "ArrowUp"],`#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-def foo ( ) :
+`, ["End", "Control+a"], "cut", ["Home", "ArrowUp", "ArrowUp"],makeStrypeFile(["", `def foo ( ) :
     print('A') 
     print('B') 
-#(=> Section:Main
-#(=> Section:End
-`);
+`, ""]));
     });
 
     test("Test Ctrl-A once in a function selects whole function content", async ({page}) => {
@@ -264,19 +229,14 @@ def src():
     if x > 0:
         print('B')
     print('C')
-`, /* We get below print('B'): */ ["End", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "Control+a"], "cut", ["Home", "ArrowDown"],`#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-def dest ( ) :
+`, /* We get below print('B'): */ ["End", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "Control+a"], "cut", ["Home", "ArrowDown"],makeStrypeFile(["", `def dest ( ) :
     print('A') 
     if x>0  :
         print('B') 
     print('C') 
 def src ( ) :
     pass
-#(=> Section:Main
-#(=> Section:End
-`);
+`, ""]));
     });
 
     test("Test Ctrl-A twice in a function selects function including header", async ({page}) => {
@@ -288,19 +248,14 @@ def second():
     if x > 0:
         print('B')
     print('C')
-`, /* We get below print('B'): */ ["End", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "Control+a", "Control+a"], "cut", ["Home"],`#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-def second ( ) :
+`, /* We get below print('B'): */ ["End", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "Control+a", "Control+a"], "cut", ["Home"],makeStrypeFile(["", `def second ( ) :
     print('A') 
     if x>0  :
         print('B') 
     print('C') 
 def first ( ) :
     pass
-#(=> Section:Main
-#(=> Section:End
-`);
+`, ""]));
     });
 
     test("Test Ctrl-A three times in a function selects all functions", async ({page}) => {
@@ -312,19 +267,14 @@ def second():
     if x > 0:
         print('B')
     print('C')
-`, /* We get below print('B'): */ ["End", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "Control+a", "Control+a", "Control+a"], "cut", ["Home"],`#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-def first ( ) :
+`, /* We get below print('B'): */ ["End", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "Control+a", "Control+a", "Control+a"], "cut", ["Home"],makeStrypeFile(["", `def first ( ) :
     print('0') 
 def second ( ) :
     print('A') 
     if x>0  :
         print('B') 
     print('C') 
-#(=> Section:Main
-#(=> Section:End
-`);
+`, ""]));
     });
     
     const rep = <T>(n: number, x: T) => Array(n).fill(x);
@@ -345,10 +295,7 @@ class Src:
 `;
     test("Test Ctrl-A once in a class function selects whole function content", async ({page}) => {
         // Transfers content from src to dest functions: 
-        await testBeforeAfterPaste(page,classTestInput, /* We get below print('B'): */ ["End", ...rep(8, "ArrowUp"), ...rep(1, "Control+a")], "cut", ["Home", "ArrowDown", "ArrowDown", "ArrowDown"],`#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-class Dest  :
+        await testBeforeAfterPaste(page,classTestInput, /* We get below print('B'): */ ["End", ...rep(8, "ArrowUp"), ...rep(1, "Control+a")], "cut", ["Home", "ArrowDown", "ArrowDown", "ArrowDown"],makeStrypeFile(["", `class Dest  :
     dest_member  = 0 
     def dest (self, ) :
         print('A') 
@@ -362,17 +309,12 @@ class Src  :
         pass
     def src2 (self, ) :
         print('D') 
-#(=> Section:Main
-#(=> Section:End
-`);
+`, ""]));
     });
 
     test("Test Ctrl-A twice in a class function selects whole function", async ({page}) => {
         // Transfers src function to Dest class: 
-        await testBeforeAfterPaste(page, classTestInput, /* We get below print('B'): */ ["End", ...rep(8, "ArrowUp"), ...rep(2, "Control+a")], "cut", ["Home", "ArrowDown", "ArrowDown"],`#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-class Dest  :
+        await testBeforeAfterPaste(page, classTestInput, /* We get below print('B'): */ ["End", ...rep(8, "ArrowUp"), ...rep(2, "Control+a")], "cut", ["Home", "ArrowDown", "ArrowDown"],makeStrypeFile(["", `class Dest  :
     dest_member  = 0 
     def src (self, ) :
         print('A') 
@@ -385,17 +327,12 @@ class Src  :
     src_member_1  = 0 
     def src2 (self, ) :
         print('D') 
-#(=> Section:Main
-#(=> Section:End
-`);
+`, ""]));
     });
 
     test("Test Ctrl-A three times in a class function selects whole class content", async ({page}) => {
         // Transfers all class content from Src to Dest: 
-        await testBeforeAfterPaste(page, classTestInput, /* We get below print('B'): */ ["End", ...rep(8, "ArrowUp"), ...rep(3, "Control+a")], "cut", ["Home", "ArrowDown", "ArrowDown"],`#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-class Dest  :
+        await testBeforeAfterPaste(page, classTestInput, /* We get below print('B'): */ ["End", ...rep(8, "ArrowUp"), ...rep(3, "Control+a")], "cut", ["Home", "ArrowDown", "ArrowDown"],makeStrypeFile(["", `class Dest  :
     dest_member  = 0 
     src_member_1  = 0 
     def src (self, ) :
@@ -409,17 +346,12 @@ class Dest  :
         print('0') 
 class Src  :
     pass
-#(=> Section:Main
-#(=> Section:End
-`);
+`, ""]));
     });
 
     test("Test Ctrl-A four times in a class function selects whole class", async ({page}) => {
         // Moves Src class above dest: 
-        await testBeforeAfterPaste(page, classTestInput, /* We get below print('B'): */ ["End", ...rep(8, "ArrowUp"), ...rep(4, "Control+a")], "cut", ["Home"],`#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-class Src  :
+        await testBeforeAfterPaste(page, classTestInput, /* We get below print('B'): */ ["End", ...rep(8, "ArrowUp"), ...rep(4, "Control+a")], "cut", ["Home"],makeStrypeFile(["", `class Src  :
     src_member_1  = 0 
     def src (self, ) :
         print('A') 
@@ -432,17 +364,12 @@ class Dest  :
     dest_member  = 0 
     def dest (self, ) :
         print('0') 
-#(=> Section:Main
-#(=> Section:End
-`);
+`, ""]));
     });
 
     test("Test Ctrl-A five times in a class function selects all definitions", async ({page}) => {
         // Basically does nothing because everything ends where it began: 
-        await testBeforeAfterPaste(page, classTestInput, /* We get below print('B'): */ ["End", ...rep(8, "ArrowUp"), ...rep(5, "Control+a")], "cut", ["Home"],`#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-class Dest  :
+        await testBeforeAfterPaste(page, classTestInput, /* We get below print('B'): */ ["End", ...rep(8, "ArrowUp"), ...rep(5, "Control+a")], "cut", ["Home"],makeStrypeFile(["", `class Dest  :
     dest_member  = 0 
     def dest (self, ) :
         print('0') 
@@ -455,9 +382,7 @@ class Src  :
         print('C') 
     def src2 (self, ) :
         print('D') 
-#(=> Section:Main
-#(=> Section:End
-`);
+`, ""]));
     });
     
     const classTestInput2 = `class OneFunc:
@@ -469,195 +394,115 @@ class OneVar:
 
     test("Test Ctrl-A twice below solitary function in class selects whole class", async ({page}) => {
         // Should move whole class: 
-        await testBeforeAfterPaste(page, classTestInput2, /* We get into the class: */ ["End", ...rep(5, "ArrowUp"), ...rep(2, "Control+a")], "cut", ["End"],`#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-class OneVar  :
+        await testBeforeAfterPaste(page, classTestInput2, /* We get into the class: */ ["End", ...rep(5, "ArrowUp"), ...rep(2, "Control+a")], "cut", ["End"],makeStrypeFile(["", `class OneVar  :
     theOneVar  = 43 
 class OneFunc  :
     def theOneFunc (self, ) :
         return 42 
-#(=> Section:Main
-#(=> Section:End
-`);
+`, ""]));
     });
     test("Test Ctrl-A twice below solitary var in class selects whole class", async ({page}) => {
         // Should move whole class: 
-        await testBeforeAfterPaste(page, classTestInput2, /* We get into the class: */ ["End", ...rep(2, "ArrowUp"), ...rep(2, "Control+a")], "cut", ["Home"],`#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-class OneVar  :
+        await testBeforeAfterPaste(page, classTestInput2, /* We get into the class: */ ["End", ...rep(2, "ArrowUp"), ...rep(2, "Control+a")], "cut", ["Home"],makeStrypeFile(["", `class OneVar  :
     theOneVar  = 43 
 class OneFunc  :
     def theOneFunc (self, ) :
         return 42 
-#(=> Section:Main
-#(=> Section:End
-`);
+`, ""]));
     });
 
     test("Test Ctrl-A below var in definitions selects whole section", async ({page}) => {
         // Should move whole class: 
-        await testBeforeAfterPaste(page, `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-def foo():
+        await testBeforeAfterPaste(page, makeStrypeFile(["", `def foo():
     return 42
 x = 43
-#(=> Section:Main
-#(=> Section:End
-`, /* We get into defs: */ ["End", ...rep(1, "ArrowUp"), ...rep(1, "Control+a")], "delete", [],`#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> Section:Main
-#(=> Section:End
-`);
+`, ""]), /* We get into defs: */ ["End", ...rep(1, "ArrowUp"), ...rep(1, "Control+a")], "delete", [],makeStrypeFile(["", "", ""]));
     });
 
     test("Test Ctrl-A below solitary var in definitions selects whole section", async ({page}) => {
         // Should move whole class: 
-        await testBeforeAfterPaste(page, `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-x = 43
-#(=> Section:Main
-#(=> Section:End
-`, /* We get into defs: */ ["End", ...rep(1, "ArrowUp"), ...rep(1, "Control+a")], "cut", ["ArrowDown"],`#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> Section:Main
-x  = 43 
-#(=> Section:End
-`);
+        await testBeforeAfterPaste(page, makeStrypeFile(["", `x = 43
+`, ""]), /* We get into defs: */ ["End", ...rep(1, "ArrowUp"), ...rep(1, "Control+a")], "cut", ["ArrowDown"],makeStrypeFile(["", "", `x  = 43 
+`]));
     });
 });
 
 test.describe("Invalid pastes", () => {
     test("Test pasting joint frame inside a non-joint", async ({page}) => {
         // Most Python frames allow joint children!  But with doesn't
-        await testPaste(page, "with foo as bar:\n  print('Hi')", ["ArrowUp"], "else:\n print('Bye')", `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> Section:Main
-with foo  as bar  :
+        await testPaste(page, "with foo as bar:\n  print('Hi')", ["ArrowUp"], "else:\n print('Bye')", makeStrypeFile(["", "", `with foo  as bar  :
     print('Hi') 
-#(=> Section:End
-`);
+`]));
     });
 
     test("Test pasting joint frame at top-level", async ({page}) => {
         // Most Python frames allow joint children!  But with doesn't
-        await testPaste(page, "with foo as bar:\n  print('Hi')", [], "else:\n print('Bye')", `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> Section:Main
-with foo  as bar  :
+        await testPaste(page, "with foo as bar:\n  print('Hi')", [], "else:\n print('Bye')", makeStrypeFile(["", "", `with foo  as bar  :
     print('Hi') 
-#(=> Section:End
-`);
+`]));
     });
 
     test("Test pasting joint frame inside a joint that doesn't accept it", async ({page}) => {
-        await testPaste(page, "while foo:\n  print('Hi')", ["ArrowUp"], "elif True:\n print('Bye')", `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> Section:Main
-while foo  :
+        await testPaste(page, "while foo:\n  print('Hi')", ["ArrowUp"], "elif True:\n print('Bye')", makeStrypeFile(["", "", `while foo  :
     print('Hi') 
-#(=> Section:End
-`);
+`]));
     });
 
     test("Test pasting joint frame inside a joint that accepts it", async ({page}) => {
-        await testPaste(page, "while foo:\n  print('Hi')", ["ArrowUp"], "else:\n print('Bye')", `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> Section:Main
-while foo  :
+        await testPaste(page, "while foo:\n  print('Hi')", ["ArrowUp"], "else:\n print('Bye')", makeStrypeFile(["", "", `while foo  :
     print('Hi') 
 else :
     print('Bye') 
-#(=> Section:End
-`);
+`]));
     });
 
     test("Test pasting joint frames inside a joint that accepts only some of it", async ({page}) => {
-        await testPaste(page, "while foo:\n  print('Hi')", ["ArrowUp"], "elif True:\n print('Bye')\nelse:\n print('Bye')", `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> Section:Main
-while foo  :
+        await testPaste(page, "while foo:\n  print('Hi')", ["ArrowUp"], "elif True:\n print('Bye')\nelse:\n print('Bye')", makeStrypeFile(["", "", `while foo  :
     print('Hi') 
-#(=> Section:End
-`);
+`]));
     });
 
     test("Test pasting joint frames inside a joint that accepts all of it", async ({page}) => {
-        await testPaste(page, "if foo:\n  print('Hi')", ["ArrowUp"], "elif True:\n print('Bye')\nelse:\n print('Bye bye')", `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> Section:Main
-if foo  :
+        await testPaste(page, "if foo:\n  print('Hi')", ["ArrowUp"], "elif True:\n print('Bye')\nelse:\n print('Bye bye')", makeStrypeFile(["", "", `if foo  :
     print('Hi') 
 elif True  :
     print('Bye') 
 else :
     print('Bye bye') 
-#(=> Section:End
-`);
+`]));
     });
 
     test("Test pasting else inside if", async ({page}) => {
-        await testPaste(page, "if foo:\n  print('Hi')", ["ArrowUp"], "else:\n print('Bye bye')", `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> Section:Main
-if foo  :
+        await testPaste(page, "if foo:\n  print('Hi')", ["ArrowUp"], "else:\n print('Bye bye')", makeStrypeFile(["", "", `if foo  :
     print('Hi') 
 else :
     print('Bye bye') 
-#(=> Section:End
-`);
+`]));
     });
 
     test("Test pasting else inside if+elif", async ({page}) => {
-        await testPaste(page, "if foo:\n  print('Hi')\nelif True:\n print('Bye')", ["ArrowUp"], "else:\n print('Bye bye')", `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> Section:Main
-if foo  :
+        await testPaste(page, "if foo:\n  print('Hi')\nelif True:\n print('Bye')", ["ArrowUp"], "else:\n print('Bye bye')", makeStrypeFile(["", "", `if foo  :
     print('Hi') 
 elif True  :
     print('Bye') 
 else :
     print('Bye bye') 
-#(=> Section:End
-`);
+`]));
     });
 
     test("Test pasting elif inside if+else", async ({page}) => {
-        await testPaste(page, "if foo:\n  print('Hi')\nelse:\n print('Bye bye')", ["ArrowUp"], "elif True:\n print('Bye')", `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> Section:Main
-if foo  :
+        await testPaste(page, "if foo:\n  print('Hi')\nelse:\n print('Bye bye')", ["ArrowUp"], "elif True:\n print('Bye')", makeStrypeFile(["", "", `if foo  :
     print('Hi') 
 else :
     print('Bye bye') 
-#(=> Section:End
-`);
+`]));
     });
 
     test("Test pasting else inside if+else", async ({page}) => {
-        await testPaste(page, "if foo:\n  print('Hi')\nelse:\n print('Bye bye')", ["ArrowUp"], "else:\n print('Z')", `#(=> Strype:1:std
-#(=> Section:Imports
-#(=> Section:Definitions
-#(=> Section:Main
-if foo  :
+        await testPaste(page, "if foo:\n  print('Hi')\nelse:\n print('Bye bye')", ["ArrowUp"], "else:\n print('Z')", makeStrypeFile(["", "", `if foo  :
     print('Hi') 
 else :
     print('Bye bye') 
-#(=> Section:End
-`);
+`]));
     });
 });
