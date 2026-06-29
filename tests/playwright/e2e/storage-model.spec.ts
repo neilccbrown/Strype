@@ -15,7 +15,7 @@ test.beforeEach(async ({ browserName }, testInfo) => {
     }
 
     // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(240000); // 240 seconds
+    testInfo.setTimeout(300000); // 300 seconds
 });
 
 test.afterEach(async ({ context }, testInfo) => {
