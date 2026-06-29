@@ -239,7 +239,6 @@ export default defineComponent({
             if (this.isFocusedForPaste) {
                 let pasteDestination = {id: this.frameId, caretPosition: this.caretAssignedPosition};
                 // If we currently have a selection of frames, the pasted frame should replace the selection, so we delete that selection.
-                // (it should be fine regarding the grammar check because the caret will be at the same level whether it's before or after the selection)
                 if(this.appStore.selectedFrames.length > 0){
                     // The key doesn't actually matter here, the method handles it already by doing a backspace deletion.
                     // However, we need to know where was the caret with regards to the selection:

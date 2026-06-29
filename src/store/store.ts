@@ -2645,7 +2645,13 @@ export const useStore = defineStore("app", {
             if (areFramesJoint) {
                 // Joint frames.  We can only paste if we're inside the body of the joint parent
                 // or one of its joint frames, at the last position of the body:
-                const parentId = getParentOrJointParent(payload.target.id);
+                let parentId: number;
+                if (payload.target.caretPosition == CaretPosition.body) {
+                    parentId = payload.target.id;
+                }
+                else {
+                    parentId = getParentOrJointParent(payload.target.id);
+                }
                 
                 const insideJointParentBody = !this.frameObjects[parentId].frameType.isJointFrame;
                 const newIndex = insideJointParentBody ? 0 : this.getIndexInParent(parentId) + 1;

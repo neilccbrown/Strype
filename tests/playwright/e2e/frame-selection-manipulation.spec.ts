@@ -480,11 +480,33 @@ else :
 `]));
     });
 
+    test("Test pasting else inside empty if", async ({page}) => {
+        await testPaste(page, "if foo:\n  pass", ["ArrowUp"], "else:\n print('Bye bye')", makeStrypeFile(["", "", `if foo  :
+    pass
+else :
+    print('Bye bye') 
+`]));
+    });
+
+    test("Test (invalidly) pasting else at empty top-level", async ({page}) => {
+        await testPaste(page, "", [], "else:\n print('Bye bye')", makeStrypeFile(["", "", ""]));
+    });
+
     test("Test pasting else inside if+elif", async ({page}) => {
         await testPaste(page, "if foo:\n  print('Hi')\nelif True:\n print('Bye')", ["ArrowUp"], "else:\n print('Bye bye')", makeStrypeFile(["", "", `if foo  :
     print('Hi') 
 elif True  :
     print('Bye') 
+else :
+    print('Bye bye') 
+`]));
+    });
+
+    test("Test pasting else inside if+empty elif", async ({page}) => {
+        await testPaste(page, "if foo:\n  print('Hi')\nelif True:\n pass", ["ArrowUp"], "else:\n print('Bye bye')", makeStrypeFile(["", "", `if foo  :
+    print('Hi') 
+elif True  :
+    pass
 else :
     print('Bye bye') 
 `]));
