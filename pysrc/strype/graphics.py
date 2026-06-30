@@ -503,16 +503,20 @@ class Actor:
         _strype_graphics_internal.setImageRotation(self.__id, 0)
         
     def set_location(self, x, y):
-        # type: (float, float) -> None
+        # type: (float | None, float | None) -> None
         """
         Set the location of the actor.
         
         If the location is outside the bounds of the world, it
         will be adjusted to the nearest point inside the world.
         
-        :param x: The new x coordinate of the actor.
-        :param y: The new y coordinate of the actor.
+        :param x: The new X coordinate of the actor.  If you pass None, the X will not be changed.
+        :param y: The new Y coordinate of the actor.  If you pass None, the Y will not be changed.
         """
+        if x is None:
+            x = self.get_exact_x()
+        if y is None:
+            y = self.get_exact_y()
         _strype_graphics_internal.setImageLocation(self.__id, x, y)
         self._update_say_position()
         
