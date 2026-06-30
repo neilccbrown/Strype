@@ -141,16 +141,16 @@ function checkImageViaDownload(functions: string, main: string, downloadStem: st
     });
 }
 
-function enterAndExecuteCode(functions: string, main: string, timeToWaitMillis = 2000, terminationExpected = true) {
+function enterAndExecuteCode(functions: string, main: string, timeToWaitMillis = 500, terminationExpected = true) {
     cy.get("body").type("{uparrow}{uparrow}");
     (cy.get("body") as any).paste("from strype.graphics import *\nfrom time import sleep\nimport math\n");
-    cy.wait(1000);
+    cy.wait(500);
     cy.get("body").type("{downarrow}");
     (cy.get("body") as any).paste(functions);
-    cy.wait(1000);
+    cy.wait(500);
     cy.get("body").type("{downarrow}");
     (cy.get("body") as any).paste(main);
-    cy.wait(1000);
+    cy.wait(500);
     cy.contains("button.pea-display-tab", "Graphics").click();
     cy.get("#runButton").contains("Run", {timeout: 60000});
     cy.get("#runButton").click();
@@ -354,6 +354,40 @@ describe("Collision detection", () => {
                 sq.get_image().set_fill("red")
                 sq.get_image().fill()
             `, "graphics-colliding-squares-cat-60-saying");
+    });
+    it("Collisions with cat rotated -60, and saying squares -- after removing and re-adding half", () => {
+        // We make a grid of white squares every 50 pixels that are 20x20
+        // Then we find all the colliding ones and colour them red
+        // We make them all do a say, to make sure that doesn't cause issues
+        runCodeAndCheckImage("", `
+            cat = Actor('cat-test.jpg')
+            cat.set_rotation(60)
+            white_square = Image(20, 20)
+            white_square.set_fill("white")
+            white_square.fill()
+            squares = []
+            spacing = 50
+            for y in range(-300//spacing, 300//spacing):
+                for x in range(-400//spacing, 400//spacing):
+                    sq = Actor(white_square.clone(), x*spacing, y*spacing, "square")
+                    sq.say(str(x) + ", " + str(y), 12)
+                    squares.append(sq)
+            cat.say("Look out!", 10)
+            # Now remove half and re-add:
+            to_re_add = []
+            for a in get_actors()[::2]:
+                pos = (a.get_x(), a.get_y())
+                a.remove()
+                to_re_add.append((pos, a))
+            for (x, y), a in to_re_add:
+                a.re_add(x, y)
+            # Rotation is not remembered so redo that, but -60 to show it changed:
+            cat.set_rotation(-60)
+            # Now do collision detection etc (but without re-saying, to make sure it's gone):            
+            for sq in cat.get_all_touching("square"):
+                sq.get_image().set_fill("red")
+                sq.get_image().fill()
+            `, "graphics-colliding-squares-cat-60-saying-after-re-add");
     });
     it("Collisions with cat rotated -75 based on tag", () => {
         // We make a grid of white squares every 50 pixels that are 20x20
@@ -901,4 +935,81 @@ describe("Cloning", () => {
             Actor(load_image("cat-test.jpg").clone(3, 45, "vertical"))
         `, "clone-rotate-minus45-flip-vertical-scale-triple");
     });
+});
+
+describe("Removal and re-add", () => {
+    if (Cypress.env("mode") == "microbit") {
+        // Graphics tests can't run in microbit
+        return;
+    }
+    
+    it("Remove based on tag", () => {
+        // We make a grid of white squares every 50 pixels that are 20x20
+        runCodeAndCheckImage("", `
+            white_square = Image(20, 20)
+            white_square.set_fill("white")
+            white_square.fill()
+            squares = []
+            spacing = 50
+            collide = True
+            for y in range(-300//spacing, 300//spacing):
+                for x in range(-400//spacing, 400//spacing):
+                    if collide:
+                        tag = "removable"
+                    else:
+                        tag = None
+                    collide = not collide
+                    squares.append(Actor(white_square.clone(), x*spacing, y*spacing, tag))
+            remove_actors("removable")
+            `, "graphics-remove-every-other-square");
+    });
+    it("Remove all", () => {
+        // We make a grid of white squares every 50 pixels that are 20x20
+        runCodeAndCheckImage("", `
+            white_square = Image(20, 20)
+            white_square.set_fill("white")
+            white_square.fill()
+            squares = []
+            spacing = 50
+            collide = True
+            for y in range(-300//spacing, 300//spacing):
+                for x in range(-400//spacing, 400//spacing):
+                    if collide:
+                        tag = "removable"
+                    else:
+                        tag = None
+                    collide = not collide
+                    squares.append(Actor(white_square.clone(), x*spacing, y*spacing, tag))
+            remove_actors()
+            `, "graphics-remove-all");
+    });
+    it("Remove based on tag and re-add half", () => {
+        // We make a grid of white squares every 50 pixels that are 20x20
+        runCodeAndCheckImage("", `
+            white_square = Image(20, 20)
+            white_square.set_fill("white")
+            white_square.fill()
+            squares = []
+            spacing = 50
+            collide = True
+            original_positions = {}
+            for y in range(-300//spacing, 300//spacing):
+                for x in range(-400//spacing, 400//spacing):
+                    if collide:
+                        tag = "removable"
+                    else:
+                        tag = None
+                    collide = not collide
+                    sq = Actor(white_square.clone(), x*spacing, y*spacing, tag)
+                    squares.append(sq)
+                    original_positions[sq] = (sq.get_x(), sq.get_y())
+            rs = remove_actors("removable")
+            for r in rs[::2]:
+                pos = original_positions[r]
+                r.re_add(pos[0], pos[1])
+                r.set_rotation(45)
+            `, "graphics-remove-every-other-square-re-add-half");
+    });
+
+
 });

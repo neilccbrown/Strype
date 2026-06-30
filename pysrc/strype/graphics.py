@@ -464,6 +464,7 @@ class Actor:
     
     # Private attributes:
     # __id: the identifier of the Sprite that represents this actor on screen.  Should never be None
+    #       Note: this can change during an Actor's lifetime, if you call re_add
     # __editable_image: the editable image of this actor, if the user has ever called get_image() on us.
     # __tag: the user-supplied tag of the actor.  Useful to leave the type flexible, we just pass it in and out.
     # __say: the identifier of the Sprite with the current speech bubble for this actor.  Is None when there is no current speech.
@@ -486,6 +487,7 @@ class Actor:
         :param y: The y coordinate at which to place the actor.
         :param tag: A optional tag for the actor (usually a string) for use in detecting touching actors.
         """
+        # Beware: this is also called during re_add, after construction
         if isinstance(image, Image):
             self.__id = _strype_graphics_internal.addSprite(image._Image__image, True)
             self.__editable_image = image
@@ -501,16 +503,20 @@ class Actor:
         _strype_graphics_internal.setImageRotation(self.__id, 0)
         
     def set_location(self, x, y):
-        # type: (float, float) -> None
+        # type: (float | None, float | None) -> None
         """
         Set the location of the actor.
         
         If the location is outside the bounds of the world, it
         will be adjusted to the nearest point inside the world.
         
-        :param x: The new x coordinate of the actor.
-        :param y: The new y coordinate of the actor.
+        :param x: The new X coordinate of the actor.  If you pass None, the X will not be changed.
+        :param y: The new Y coordinate of the actor.  If you pass None, the Y will not be changed.
         """
+        if x is None:
+            x = self.get_exact_x()
+        if y is None:
+            y = self.get_exact_y()
         _strype_graphics_internal.setImageLocation(self.__id, x, y)
         self._update_say_position()
         
@@ -546,12 +552,31 @@ class Actor:
     def remove(self):
         # type: () -> None
         """
-        Remove the actor from the world.  Once an actor has been removed, it cannot be re-added to the world.
+        Remove the actor from the world.
+        
+        If you later need to add it back to the world, you can use the `re_add` method.
         """
+        # This call makes sure __editable_image stores the image in case we later need to re-add:
+        self.get_image()
         _strype_graphics_internal.removeImage(self.__id)
         # Also remove any speech bubble:
         self.say("")
         del _actorsInWorld[self.__id]
+
+    def re_add(self, x = 0, y = 0):
+        # type (int, int) -> None
+        """
+        Re-adds this actor to the world, if it was previously removed.
+        
+        If the actor was already in the world, just sets the location.
+        
+        :param x: The X position to set the actor to
+        :param y: The Y position to set the actor to
+        """
+        if self.__id in _actorsInWorld:
+            self.set_location(x, y)
+        else:
+            self.__init__(self.__editable_image, x, y, self.__tag)
 
     def get_x(self):
         # type: () -> int
@@ -647,8 +672,8 @@ class Actor:
             return False
         return x <= (-399 + distance) or x >= (400 - distance) or y <= (-299 + distance) or y >= (300 - distance)
    
-    def is_touching(self, actor_or_tag):
-        # type: (Actor | Any) -> bool
+    def is_touching(self, actor_or_tag = None):
+        # type: (Actor | Any | None) -> bool
         """
         Check if this actor is touching the another actor.
         
@@ -658,7 +683,7 @@ class Actor:
         The parameter can be either a specific actor (of type :class:`Actor`) or a tag.  If a tag is used,
         this function will return True if any actor with this tag is touched.
         
-        :param actor_or_tag: The actor (or tag of an actor) to check for overlap.
+        :param actor_or_tag: The actor (or tag of an actor) to check for overlap.  If you pass None it checks against all actors.
         :return: True if this actor overlaps that actor (or an actor with the given tag), False if it does not.
         """
         if isinstance(actor_or_tag, Actor):
@@ -682,7 +707,14 @@ class Actor:
         :param tag: The tag of the actor to check for touching, or None to check all actors.
         :return: The :class:`Actor` we are touching, if any, or None if we are not touching any actor. 
         """
-        return next(reversed(self.get_all_touching(tag)), None)
+        # Undocumented behaviour: you can pass an actor and it returns it if it is touching
+        if isinstance(tag, Actor):
+            if self.is_touching(tag):
+                return tag
+            else:
+                return None
+        else:
+            return next(reversed(self.get_all_touching(tag)), None)
 
     def get_all_touching(self, tag = None):
         # type: (Any | None) -> list[Actor]
@@ -696,20 +728,25 @@ class Actor:
         """
         return [_actorsInWorld.get(a) for a in _strype_input_internal.getAllTouchingAssociated(self.__id) if _actorsInWorld.get(a) is not None and (tag is None or tag == _actorsInWorld.get(a).get_tag())]
     
-    def remove_touching(self, tag = None):
-        # type: (Any | None) -> None
+    def remove_touching(self, actor_or_tag = None):
+        # type: (Actor | Any | None) -> None
         """
         Remove a touching actor. 
 
-        If this actor is not currently touching another actor, do nothing.  If this actor currently touches more than one
-        actor, one random actor currently toouching is removed.  If a tag is specified, only actors with the given tag will
-        be removed.
+        If this actor is not currently touching another actor, do nothing.  If you pass an actor as the parameter, that actor is removed if it touches this actor.
         
-        :param tag:  The tag to use to filter the actors (or None to consider all actors)
+        If you pass a tag and this actor currently touches more than one
+        actor with the given tag, one random actor with that tag currently touching this actor is removed.
+        
+        :param actor_or_tag: The actor (or tag of an actor) to check for overlap.
         """
-        a = self.get_touching(tag)
-        if a is not None:
-            a.remove()
+        if isinstance(actor_or_tag, Actor):
+            if self.is_touching(actor_or_tag):
+                actor_or_tag.remove()
+        else:
+            a = self.get_touching(actor_or_tag)
+            if a is not None:
+                a.remove()
 
     def get_in_range(self, distance, tag = None):
         # type: (float, Any | None) -> list[Actor]
@@ -1093,7 +1130,22 @@ def get_actor_at(x, y, tag = None):
     else:
         with_tag = [a for a in all if a.get_tag() == tag]
     return next(reversed(with_tag), None)
-    
+
+def remove_actors(tag = None):
+    # type: (Any | None) -> None
+    """
+        Removes actors with the given tag.
+        
+        If the tag is not specified, all actors will be removed.
+        
+        :param tag: The tag to look for when choosing which actors to remove, or None to remove all actors
+        :return: A list of all the actors which were removed. 
+    """
+    to_remove = get_actors(tag)
+    for a in to_remove:
+        a.remove()
+    return to_remove
+
 def stop():
     # type: () -> None
     """
