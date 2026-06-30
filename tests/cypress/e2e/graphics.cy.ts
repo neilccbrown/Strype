@@ -141,16 +141,16 @@ function checkImageViaDownload(functions: string, main: string, downloadStem: st
     });
 }
 
-function enterAndExecuteCode(functions: string, main: string, timeToWaitMillis = 2000, terminationExpected = true) {
+function enterAndExecuteCode(functions: string, main: string, timeToWaitMillis = 500, terminationExpected = true) {
     cy.get("body").type("{uparrow}{uparrow}");
     (cy.get("body") as any).paste("from strype.graphics import *\nfrom time import sleep\nimport math\n");
-    cy.wait(1000);
+    cy.wait(500);
     cy.get("body").type("{downarrow}");
     (cy.get("body") as any).paste(functions);
-    cy.wait(1000);
+    cy.wait(500);
     cy.get("body").type("{downarrow}");
     (cy.get("body") as any).paste(main);
-    cy.wait(1000);
+    cy.wait(500);
     cy.contains("button.pea-display-tab", "Graphics").click();
     cy.get("#runButton").contains("Run", {timeout: 60000});
     cy.get("#runButton").click();
@@ -903,11 +903,9 @@ describe("Cloning", () => {
     });
 });
 
-describe("Removal", () => {
+describe("Removal and re-add", () => {
     it("Remove based on tag", () => {
         // We make a grid of white squares every 50 pixels that are 20x20
-        // We turn off collisions on everything, turn it back on but only on every other square
-        // Then we find all the colliding ones and colour them red
         runCodeAndCheckImage("", `
             white_square = Image(20, 20)
             white_square.set_fill("white")
@@ -928,8 +926,6 @@ describe("Removal", () => {
     });
     it("Remove all", () => {
         // We make a grid of white squares every 50 pixels that are 20x20
-        // We turn off collisions on everything, turn it back on but only on every other square
-        // Then we find all the colliding ones and colour them red
         runCodeAndCheckImage("", `
             white_square = Image(20, 20)
             white_square.set_fill("white")
@@ -948,4 +944,33 @@ describe("Removal", () => {
             remove_actors()
             `, "graphics-remove-all");
     });
+    it("Remove based on tag and re-add half", () => {
+        // We make a grid of white squares every 50 pixels that are 20x20
+        runCodeAndCheckImage("", `
+            white_square = Image(20, 20)
+            white_square.set_fill("white")
+            white_square.fill()
+            squares = []
+            spacing = 50
+            collide = True
+            original_positions = {}
+            for y in range(-300//spacing, 300//spacing):
+                for x in range(-400//spacing, 400//spacing):
+                    if collide:
+                        tag = "removable"
+                    else:
+                        tag = None
+                    collide = not collide
+                    sq = Actor(white_square.clone(), x*spacing, y*spacing, tag)
+                    squares.append(sq)
+                    original_positions[sq] = (sq.get_x(), sq.get_y())
+            rs = remove_actors("removable")
+            for r in rs[::2]:
+                pos = original_positions[r]
+                r.re_add(pos[0], pos[1])
+                r.set_rotation(45)
+            `, "graphics-remove-every-other-square-re-add-half");
+    });
+
+
 });

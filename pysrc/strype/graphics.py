@@ -464,6 +464,7 @@ class Actor:
     
     # Private attributes:
     # __id: the identifier of the Sprite that represents this actor on screen.  Should never be None
+    #       Note: this can change during an Actor's lifetime, if you call re_add
     # __editable_image: the editable image of this actor, if the user has ever called get_image() on us.
     # __tag: the user-supplied tag of the actor.  Useful to leave the type flexible, we just pass it in and out.
     # __say: the identifier of the Sprite with the current speech bubble for this actor.  Is None when there is no current speech.
@@ -486,6 +487,7 @@ class Actor:
         :param y: The y coordinate at which to place the actor.
         :param tag: A optional tag for the actor (usually a string) for use in detecting touching actors.
         """
+        # Beware: this is also called during re_add, after construction
         if isinstance(image, Image):
             self.__id = _strype_graphics_internal.addSprite(image._Image__image, True)
             self.__editable_image = image
@@ -546,12 +548,31 @@ class Actor:
     def remove(self):
         # type: () -> None
         """
-        Remove the actor from the world.  Once an actor has been removed, it cannot be re-added to the world.
+        Remove the actor from the world.
+        
+        If you later need to add it back to the world, you can use the `re_add` method.
         """
+        # This call makes sure __editable_image stores the image in case we later need to re-add:
+        self.get_image()
         _strype_graphics_internal.removeImage(self.__id)
         # Also remove any speech bubble:
         self.say("")
         del _actorsInWorld[self.__id]
+
+    def re_add(self, x = 0, y = 0):
+        # type (int, int) -> None
+        """
+        Re-adds this actor to the world, if it was previously removed.
+        
+        If the actor was already in the world, just sets the location.
+        
+        :param x: The X position to set the actor to
+        :param y: The Y position to set the actor to
+        """
+        if self.__id in _actorsInWorld:
+            self.set_location(x, y)
+        else:
+            self.__init__(self.__editable_image, x, y, self.__tag)
 
     def get_x(self):
         # type: () -> int
