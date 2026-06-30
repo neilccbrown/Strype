@@ -355,6 +355,40 @@ describe("Collision detection", () => {
                 sq.get_image().fill()
             `, "graphics-colliding-squares-cat-60-saying");
     });
+    it("Collisions with cat rotated -60, and saying squares -- after removing and re-adding half", () => {
+        // We make a grid of white squares every 50 pixels that are 20x20
+        // Then we find all the colliding ones and colour them red
+        // We make them all do a say, to make sure that doesn't cause issues
+        runCodeAndCheckImage("", `
+            cat = Actor('cat-test.jpg')
+            cat.set_rotation(60)
+            white_square = Image(20, 20)
+            white_square.set_fill("white")
+            white_square.fill()
+            squares = []
+            spacing = 50
+            for y in range(-300//spacing, 300//spacing):
+                for x in range(-400//spacing, 400//spacing):
+                    sq = Actor(white_square.clone(), x*spacing, y*spacing, "square")
+                    sq.say(str(x) + ", " + str(y), 12)
+                    squares.append(sq)
+            cat.say("Look out!", 10)
+            # Now remove half and re-add:
+            to_re_add = []
+            for a in get_actors()[::2]:
+                pos = (a.get_x(), a.get_y())
+                a.remove()
+                to_re_add.append((pos, a))
+            for (x, y), a in to_re_add:
+                a.re_add(x, y)
+            # Rotation is not remembered so redo that, but -60 to show it changed:
+            cat.set_rotation(-60)
+            # Now do collision detection etc (but without re-saying, to make sure it's gone):            
+            for sq in cat.get_all_touching("square"):
+                sq.get_image().set_fill("red")
+                sq.get_image().fill()
+            `, "graphics-colliding-squares-cat-60-saying-after-re-add");
+    });
     it("Collisions with cat rotated -75 based on tag", () => {
         // We make a grid of white squares every 50 pixels that are 20x20
         // We turn off collisions on everything, turn it back on but only on every other square
