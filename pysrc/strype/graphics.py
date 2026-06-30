@@ -1093,7 +1093,22 @@ def get_actor_at(x, y, tag = None):
     else:
         with_tag = [a for a in all if a.get_tag() == tag]
     return next(reversed(with_tag), None)
-    
+
+def remove_actors(tag = None):
+    # type: (Any | None) -> None
+    """
+        Removes actors with the given tag.
+        
+        If the tag is not specified, all actors will be removed.
+        
+        :param tag: The tag to look for when choosing which actors to remove, or None to remove all actors
+        :return: A list of all the actors which were removed. 
+    """
+    to_remove = get_actors(tag)
+    for a in to_remove:
+        a.remove()
+    return to_remove
+
 def stop():
     # type: () -> None
     """

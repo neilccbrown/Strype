@@ -902,3 +902,50 @@ describe("Cloning", () => {
         `, "clone-rotate-minus45-flip-vertical-scale-triple");
     });
 });
+
+describe("Removal", () => {
+    it("Remove based on tag", () => {
+        // We make a grid of white squares every 50 pixels that are 20x20
+        // We turn off collisions on everything, turn it back on but only on every other square
+        // Then we find all the colliding ones and colour them red
+        runCodeAndCheckImage("", `
+            white_square = Image(20, 20)
+            white_square.set_fill("white")
+            white_square.fill()
+            squares = []
+            spacing = 50
+            collide = True
+            for y in range(-300//spacing, 300//spacing):
+                for x in range(-400//spacing, 400//spacing):
+                    if collide:
+                        tag = "removable"
+                    else:
+                        tag = None
+                    collide = not collide
+                    squares.append(Actor(white_square.clone(), x*spacing, y*spacing, tag))
+            remove_actors("removable")
+            `, "graphics-remove-every-other-square");
+    });
+    it("Remove all", () => {
+        // We make a grid of white squares every 50 pixels that are 20x20
+        // We turn off collisions on everything, turn it back on but only on every other square
+        // Then we find all the colliding ones and colour them red
+        runCodeAndCheckImage("", `
+            white_square = Image(20, 20)
+            white_square.set_fill("white")
+            white_square.fill()
+            squares = []
+            spacing = 50
+            collide = True
+            for y in range(-300//spacing, 300//spacing):
+                for x in range(-400//spacing, 400//spacing):
+                    if collide:
+                        tag = "removable"
+                    else:
+                        tag = None
+                    collide = not collide
+                    squares.append(Actor(white_square.clone(), x*spacing, y*spacing, tag))
+            remove_actors()
+            `, "graphics-remove-all");
+    });
+});
