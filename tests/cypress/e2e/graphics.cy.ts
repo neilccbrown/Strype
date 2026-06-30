@@ -938,6 +938,11 @@ describe("Cloning", () => {
 });
 
 describe("Removal and re-add", () => {
+    if (Cypress.env("mode") == "microbit") {
+        // Graphics tests can't run in microbit
+        return;
+    }
+    
     it("Remove based on tag", () => {
         // We make a grid of white squares every 50 pixels that are 20x20
         runCodeAndCheckImage("", `
