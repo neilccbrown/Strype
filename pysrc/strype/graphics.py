@@ -672,8 +672,8 @@ class Actor:
             return False
         return x <= (-399 + distance) or x >= (400 - distance) or y <= (-299 + distance) or y >= (300 - distance)
    
-    def is_touching(self, actor_or_tag):
-        # type: (Actor | Any) -> bool
+    def is_touching(self, actor_or_tag = None):
+        # type: (Actor | Any | None) -> bool
         """
         Check if this actor is touching the another actor.
         
@@ -683,7 +683,7 @@ class Actor:
         The parameter can be either a specific actor (of type :class:`Actor`) or a tag.  If a tag is used,
         this function will return True if any actor with this tag is touched.
         
-        :param actor_or_tag: The actor (or tag of an actor) to check for overlap.
+        :param actor_or_tag: The actor (or tag of an actor) to check for overlap.  If you pass None it checks against all actors.
         :return: True if this actor overlaps that actor (or an actor with the given tag), False if it does not.
         """
         if isinstance(actor_or_tag, Actor):
@@ -707,7 +707,14 @@ class Actor:
         :param tag: The tag of the actor to check for touching, or None to check all actors.
         :return: The :class:`Actor` we are touching, if any, or None if we are not touching any actor. 
         """
-        return next(reversed(self.get_all_touching(tag)), None)
+        # Undocumented behaviour: you can pass an actor and it returns it if it is touching
+        if isinstance(tag, Actor):
+            if self.is_touching(tag):
+                return tag
+            else:
+                return None
+        else:
+            return next(reversed(self.get_all_touching(tag)), None)
 
     def get_all_touching(self, tag = None):
         # type: (Any | None) -> list[Actor]
@@ -721,20 +728,25 @@ class Actor:
         """
         return [_actorsInWorld.get(a) for a in _strype_input_internal.getAllTouchingAssociated(self.__id) if _actorsInWorld.get(a) is not None and (tag is None or tag == _actorsInWorld.get(a).get_tag())]
     
-    def remove_touching(self, tag = None):
-        # type: (Any | None) -> None
+    def remove_touching(self, actor_or_tag = None):
+        # type: (Actor | Any | None) -> None
         """
         Remove a touching actor. 
 
-        If this actor is not currently touching another actor, do nothing.  If this actor currently touches more than one
-        actor, one random actor currently toouching is removed.  If a tag is specified, only actors with the given tag will
-        be removed.
+        If this actor is not currently touching another actor, do nothing.  If you pass an actor as the parameter, that actor is removed if it touches this actor.
         
-        :param tag:  The tag to use to filter the actors (or None to consider all actors)
+        If you pass a tag and this actor currently touches more than one
+        actor with the given tag, one random actor with that tag currently touching this actor is removed.
+        
+        :param actor_or_tag: The actor (or tag of an actor) to check for overlap.
         """
-        a = self.get_touching(tag)
-        if a is not None:
-            a.remove()
+        if isinstance(actor_or_tag, Actor):
+            if self.is_touching(actor_or_tag):
+                actor_or_tag.remove()
+        else:
+            a = self.get_touching(actor_or_tag)
+            if a is not None:
+                a.remove()
 
     def get_in_range(self, distance, tag = None):
         # type: (float, Any | None) -> list[Actor]
