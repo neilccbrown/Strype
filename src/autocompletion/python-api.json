@@ -15661,6 +15661,28 @@
             "version": 0
         },
         {
+            "acResult": "remove_actors",
+            "documentation": "Removes actors with the given tag.\n\nIf the tag is not specified, all actors will be removed.\n\n:param tag: The tag to look for when choosing which actors to remove, or None to remove all actors\n:return: A list of all the actors which were removed.",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "tag",
+                        "defaultValue": "None",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
             "acResult": "set_background",
             "documentation": "Set the current background image.\n\nThe parameter can be an :class:`Image`, a :class:`Color`, or a color name or hex string.\n\nIf scale_to_fit is True, the image will be scaled (up or down) so that it fills the world area (800x600 pixels).  \nOtherwise the image will be drawn in the center of the world in its original size, and tiled outwards\nif it is smaller than the world.\n\nThe background image is always copied when it is created, so later changes to the original image will not be \nshown in the world.  You can call `get_background()` to receive the actual background image object to change it.\n\n:param image_or_color: An :class:`Image`, a :class:`Color` object, or a color name or hex string.\n:param scale_to_fit: If True, scale the image to the world size. If False, tile the image on the world.",
             "type": [
