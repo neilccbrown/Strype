@@ -1070,7 +1070,10 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
                     s = addFrame(makeFrame(AllFrameTypesIdentifier.library, {0: {slotStructures: {fields: [{code: library}], operators: []}}}, s.isSPY), p.lineno, s);
                 }
                 else if (slots.fields.length == 1 && (slots.fields[0] as BaseSlot)?.code && (slots.fields[0] as BaseSlot).code === STRYPE_WHOLE_LINE_BLANK) {
-                    s = addFrame(makeFrame(AllFrameTypesIdentifier.blank, {}, s.isSPY), p.lineno, s);
+                    // Blanks are not allowed directly inside class defs:
+                    if (s.parent?.frameType.type != AllFrameTypesIdentifier.classdef) {
+                        s = addFrame(makeFrame(AllFrameTypesIdentifier.blank, {}, s.isSPY), p.lineno, s);
+                    }
                 }
                 else {
                     // Everything else goes in method call:
