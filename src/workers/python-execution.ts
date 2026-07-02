@@ -283,13 +283,20 @@ if ${usingMatplotlib ? "True" : "False"}:
                 from matplotlib.backend_bases import MouseEvent, KeyEvent
                 while True:
                     fig = self.canvas.figure
+                    render_w, render_h = fig.canvas.get_width_height()
+                    scale_x = render_w / 800
+                    scale_y = render_h / 600
                     x2, y2, _, _, _ = g.get_mouse()
                     if x != x2 or y != y2:
                         x, y = x2, y2
-                        render_w, render_h = fig.canvas.get_width_height()
-                        scale_x = render_w / 800
-                        scale_y = render_h / 600
                         self.canvas.callbacks.process("motion_notify_event", MouseEvent("motion_notify_event", self.canvas, (x + 400) * scale_x, (y + 300) * scale_y))
+                    # Strype's API doesn't give us press and release, but it does give clicks so we turn that into press with immediate release:
+                    c = g.get_mouse_click()
+                    if c is not None:
+                        xc, yc, button, clicks = c
+                        # Picking is done automatically when handling these events:
+                        self.canvas.callbacks.process("button_press_event", MouseEvent("button_press_event", self.canvas, (x + 400) * scale_x, (y + 300) * scale_y, button=button + 1, dblclick=clicks==2))
+                        self.canvas.callbacks.process("button_release_event", MouseEvent("button_release_event", self.canvas, (x + 400) * scale_x, (y + 300) * scale_y, button=button + 1))
                     g.pace()
     
         # Tell the canvas which manager class to use. This has to be set
