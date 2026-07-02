@@ -35,6 +35,9 @@ describe("Python round-trip", () => {
         "f(*a)\n",
         "x = [*a]\n",
         "first,*rest = x\n",
+        // Single element tuples (made using a trailing comma in a bracket):
+        "(x,) = a\n",
+        "print((100,))\n",        
     ];
     for (const basic of basics) {
         // Since basics paste code from the default state, we need to include the default project documentation to the code

@@ -930,12 +930,9 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
             throw new Error("Cannot find operator " + ps.nextIndex + " in:\n" + debugToString(p, ""), {cause: err});
         }
         if (op != null && (operators.includes(op) || trimmedKeywordOperators.includes(op))) {
-            if (op == ":" && ps.nextIndex == ps.seq.length) {
-                // Can be blank on RHS of colon
+            if ((op == ":" || op == ",") && ps.nextIndex == ps.seq.length) {
+                // Can be blank on RHS of colon or comma
                 latest = concatSlots(latest, op, {fields: [{code: ""}], operators: []});
-            }
-            else if (op == "," && ps.nextIndex == ps.seq.length) {
-                // Can have a trailing comma with nothing following; ignore
             }
             else {
                 latest = concatSlots(latest, op, parseNextTerm(ps));
