@@ -32,15 +32,17 @@ export interface StrypeTestSetupOptions {
     // slower on a loaded CI runner -- 20s matches the existing convention elsewhere in this
     // codebase for "wait for the app to finish mounting" (see loading-saving.ts/load-save-share.spec.ts).
     readyTimeoutMs?: number;
-    // Whether to skip on Windows+WebKit (most suites can't load the app there at all).
-    // Defaults to true; set false for suites that already handle this themselves differently.
+    // Whether to skip on Windows+WebKit. The app itself loads fine there; this is only for suites
+    // that need a browser feature Playwright's Windows WebKit build doesn't support (e.g. OffscreenCanvas
+    // for graphics/turtle, AudioContext for sound) -- see graphics.spec.ts and the "Test sounds" describe
+    // block in console-execution.spec.ts for examples. Defaults to false.
     skipWindowsWebkit?: boolean;
     // Override the skip reason shown for the Windows+WebKit skip above.
     skipWindowsWebkitReason?: string;
 }
 
-// Shared beforeEach logic for the Playwright e2e suites: skip on Windows+WebKit (most suites can't
-// load the app there), apply the requested timeout, forward browser console output to the test
+// Shared beforeEach logic for the Playwright e2e suites: optionally skip on Windows+WebKit (see
+// skipWindowsWebkit above), apply the requested timeout, forward browser console output to the test
 // log, optionally skip Pyodide loading / install the fake clipboard, navigate to the app, and wait
 // for the default project's frames to actually render (rather than just waiting for <body> to
 // exist, which doesn't guarantee the app has mounted any content yet). Extra per-suite skip
@@ -54,8 +56,8 @@ export async function setupStrypeTest(page: Page, browserName: string, testInfo:
         gotoWaitUntil = "load",
         minFrameCount = DEFAULT_STARTING_FRAME_COUNT,
         readyTimeoutMs = 20000,
-        skipWindowsWebkit = true,
-        skipWindowsWebkitReason = "Skipping on Windows + WebKit due to unknown problems",
+        skipWindowsWebkit = false,
+        skipWindowsWebkitReason = "Skipping on Windows + WebKit",
     } = options;
 
     if (skipWindowsWebkit && browserName === "webkit" && process.platform === "win32") {

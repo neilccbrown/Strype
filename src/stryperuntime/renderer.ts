@@ -19,19 +19,27 @@ export class Renderer  {
         // The notify parameter is to send updates to the main thread, but we are the main thread!
         // So no need to do anything when this sprite manager changes:
         this.sprites = new SpriteManager(() => {});
-        
-        // We have one special image to begin with for the default background; a black 800x600 image:
-        const width = 800;
-        const height = 600;
 
-        const canvas = new OffscreenCanvas(width, height);
-        const ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D;
-        ctx.fillStyle = "black";
-        ctx.fillRect(0, 0, width, height);
+        // We have one special image to begin with for the default background; a black 800x600 image.
+        // Guarded because OffscreenCanvas isn't available on every WebKit build (e.g. Playwright's
+        // Windows WebKit) -- and this constructor runs eagerly as a module-level singleton, so an
+        // unguarded throw here would prevent the whole app from loading, not just graphics features:
+        try {
+            const width = 800;
+            const height = 600;
 
-        const bitmap = canvas.transferToImageBitmap();
+            const canvas = new OffscreenCanvas(width, height);
+            const ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D;
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, width, height);
 
-        this.loadedImages.push(bitmap);
+            const bitmap = canvas.transferToImageBitmap();
+
+            this.loadedImages.push(bitmap);
+        }
+        catch (err) {
+            console.error("OffscreenCanvas unavailable, graphics features will not work", err);
+        }
     }
     
     // Sets the receiver for the MessagePort to update this renderer.  Will only

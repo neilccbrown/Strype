@@ -46,7 +46,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from "vue";
+import { defineComponent, PropType } from "vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { Cropper } from "vue-advanced-cropper";
 import "vue-advanced-cropper/dist/style.css";
@@ -76,7 +76,10 @@ export default defineComponent({
     props:{
         dlgId: String,
         dlgTitle: String,
-        soundToEdit: {type: [AudioBuffer, null], default: null},
+        // Not typed as [AudioBuffer, null]: referencing the AudioBuffer constructor here would run at
+        // module-load time, and some WebKit builds (e.g. Playwright's Windows WebKit) don't define a
+        // global AudioBuffer at all, which would throw and prevent the whole app from loading.
+        soundToEdit: {type: Object as PropType<AudioBuffer | null>, default: null},
     },
     
     data: function() {

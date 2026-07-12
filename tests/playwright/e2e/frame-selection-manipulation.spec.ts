@@ -5,12 +5,11 @@ import { setupStrypeTest } from "../support/general";
 import { checkFrameXorTextCursor, doPagePaste } from "../support/editor";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    if (browserName === "webkit" && (process.platform === "win32" || process.platform === "linux")) {
-        // On Windows+Webkit it just can't seem to load the page for some reason,
-        // and on Ubuntu+Webkit the paste doesn't seem to work (while it's fine on MacOS):
-        testInfo.skip(true, "Skipping on Windows/Ubuntu + WebKit due to various problems");
+    if (browserName === "webkit" && process.platform === "linux") {
+        // On Ubuntu+Webkit the paste doesn't seem to work (while it's fine on MacOS and Windows):
+        testInfo.skip(true, "Skipping on Ubuntu + WebKit due to clipboard paste problems");
     }
-    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 90000, skipPyodide: true, fakeClipboard: true, skipWindowsWebkit: false});
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 90000, skipPyodide: true, fakeClipboard: true});
 });
 
 async function testBeforeAfterPaste(page: Page, before :string, selectionKeys: string[], operation: "cut" | "copy" | "delete" | "duplicate" | "duplicate2", moveToDestKeys: string[], afterPaste :string) {

@@ -108,9 +108,13 @@ let switchedToGraphicsTabAlreadyThisExecute = false;
 let switchedToConsoleTabAlreadyThisExecute = false;
 
 let soundManager : SoundManager | null = null; // Can't initialise this here as we need permissions for audio context
-const turtleCanvas = new OffscreenCanvas(800, 600);
+// Constructing the OffscreenCanvas (and PixiJS handler) can throw on browsers/engines that don't
+// support it (e.g. Playwright's Windows WebKit build), so both are guarded here -- turtle graphics
+// just become unavailable rather than crashing the whole app's startup:
+let turtleCanvas : OffscreenCanvas | null = null;
 function makePixiHandler() : TurtlePixiHandler | null {
     try {
+        turtleCanvas = new OffscreenCanvas(800, 600);
         return new TurtlePixiHandler(turtleCanvas);
     }
     catch (err) {
@@ -327,8 +331,16 @@ export default defineComponent({
             // But we make the off-screen canvas the right aspect ratio:
             const maxHeight = Math.min(realHeight, (3 / 4) * realWidth);
             const maxWidth = (4 / 3) * maxHeight;
-            targetCanvas = new OffscreenCanvas(maxWidth, maxHeight);
-            targetContext = targetCanvas?.getContext("2d", {alpha: true}) as OffscreenCanvasRenderingContext2D;
+            // Guarded because OffscreenCanvas isn't available on every WebKit build (e.g. Playwright's
+            // Windows WebKit), and this runs from a ResizeObserver callback that isn't wrapped by Vue's
+            // own error handling, so an unguarded throw here becomes an uncaught page error:
+            try {
+                targetCanvas = new OffscreenCanvas(maxWidth, maxHeight);
+                targetContext = targetCanvas?.getContext("2d", {alpha: true}) as OffscreenCanvasRenderingContext2D;
+            }
+            catch (err) {
+                console.error("OffscreenCanvas unavailable, graphics features will not work", err);
+            }
             this.$nextTick(() => {
                 this.redrawCanvas();
                 this.redrawImportMessage();
@@ -1013,7 +1025,7 @@ export default defineComponent({
                 domContext.drawImage(c, (domCanvas.width - (targetCanvas?.width ?? 0)) / 2, (domCanvas.height - (targetCanvas?.height ?? 0)) / 2);
 
             }
-            if (domContext && turtlePixiHandler && turtleDirty && this.graphicsOverride == null) {
+            if (domContext && turtlePixiHandler && turtleCanvas && turtleDirty && this.graphicsOverride == null) {
                 // Draw turtle on, too:
                 turtlePixiHandler.update();
                 turtlePixiHandler.animate();

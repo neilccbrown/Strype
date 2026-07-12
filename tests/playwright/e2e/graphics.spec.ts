@@ -14,6 +14,11 @@ import {setupStrypeTest} from "../support/general";
 let browser = "";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
+    if (browserName === "webkit" && process.platform === "win32") {
+        // Playwright's Windows WebKit build doesn't support OffscreenCanvas, which Strype graphics
+        // and turtle graphics both depend on:
+        testInfo.skip(true, "Skipping on Windows + WebKit: OffscreenCanvas is not supported");
+    }
     browser = browserName;
     await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 240000});
 });

@@ -14,7 +14,6 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         skipPyodide: true,
         fakeClipboard: true,
         gotoWaitUntil: "domcontentloaded",
-        skipWindowsWebkitReason: "Skipping on WebKit + Windows due to clipboard permission issues.",
     });
 });
 

@@ -160,6 +160,14 @@ print(f'Montmorency is mentioned {count} times.')`]);
 
 // Not really a console test, but relies on console output so it can be here:
 test.describe("Test sounds", () => {
+    test.beforeEach(({ browserName }, testInfo) => {
+        if (browserName === "webkit" && process.platform === "win32") {
+            // Playwright's Windows WebKit build doesn't support the Web Audio API (AudioBuffer,
+            // AudioContext, etc.), which strype.sound depends on:
+            testInfo.skip(true, "Skipping on Windows + WebKit: Web Audio API is not supported");
+        }
+    });
+
     test("Check loading and setting sounds", async ({page}) => {
         await enterCode(page, ["from strype.sound import *", "", `
 s = Sound([-1,0,1])
@@ -347,7 +355,11 @@ while True:
             expect(lengthAfterStopping).toBeLessThan(lengthWhileRunning + linesPerSecond * 4);
         });
 
-        test(`Check graphics actor stops moving within seconds of stopping after running for ${runTime} seconds`, async ({page}) => {
+        test(`Check graphics actor stops moving within seconds of stopping after running for ${runTime} seconds`, async ({page, browserName}, testInfo) => {
+            if (browserName === "webkit" && process.platform === "win32") {
+                // Playwright's Windows WebKit build doesn't support OffscreenCanvas, which strype.graphics depends on:
+                testInfo.skip(true, "Skipping on Windows + WebKit: OffscreenCanvas is not supported");
+            }
             // This is the same underlying bug as the console print tests above (async requests/updates
             // queueing up faster than the main thread can service them, so that Stop doesn't take effect
             // for a long time), but for sprite/graphics updates: those are sent on their own dedicated
