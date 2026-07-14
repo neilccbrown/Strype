@@ -65,7 +65,7 @@ export type SyncStrypePyodideWorkerRequest =
     | { request: "playSoundAndWait"; sound: RemoteSound }
     | { request: "getMonoSoundSampleValues"; sound: RemoteSound }
     | { request: "cloneSound"; sound: RemoteSound; toMono: boolean } // If toMono is false, clone with same number of channels
-    | { request: "renderMidiSound"; instrument: string; notes: MidiNoteEvent[] }
+    | { request: "renderMidiSound"; notes: MidiNoteEvent[] }
     | { request: "file_createNode"; parent: CloudFileId, name: string, isDir: boolean, filePath: string }
     | { request: "file_open"; id: CloudFileId; flags: number }
     | { request: "file_close"; id: CloudFileId }
@@ -238,13 +238,16 @@ export type RemoteSound = {
     numberOfChannels: number;
 };
 
-// A single note to be rendered by renderMidiSound: note is a MIDI note number (0-127),
-// time/duration are in seconds, velocity is 0-127.
+// A single note to be rendered by renderMidiSound: note is either a MIDI note number (0-127)
+// for pitched instruments, or a drum sample name (e.g. "kick") for the drums instrument.
+// time/duration are in seconds, velocity is 0-127, instrument is the name of the instrument
+// (e.g. "piano") to play this particular note with.
 export type MidiNoteEvent = {
-    note: number;
+    note: string | number;
     time: number;
     duration: number;
     velocity: number;
+    instrument: string;
 };
 
 export type ResponseFor<R extends SyncStrypePyodideWorkerRequest> =

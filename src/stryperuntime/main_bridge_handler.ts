@@ -92,7 +92,7 @@ export const handleSyncRequests : (
         })};
     }
     case "renderMidiSound": {
-        return {request: req.request, response: soundManager.renderMidi(req.notes, req.instrument)};
+        return {request: req.request, response: soundManager.renderMidi(req.notes)};
     }
     case "loadFont": {
         return {

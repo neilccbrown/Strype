@@ -2,7 +2,7 @@ import {makeSoundHandle, MidiNoteEvent, RemoteSound} from "@/stryperuntime/worke
 import audioBufferToWav from "audiobuffer-to-wav";
 import {saveAs} from "file-saver";
 import {getDateTimeFormatted} from "@/helpers/common";
-import {renderOffline, Scheduler, SplendidGrandPiano} from "smplr";
+import {renderOffline, Scheduler, SplendidGrandPiano, Soundfont, DrumMachine} from "smplr";
 
 // The base URL where we serve our own vendored instrument samples from (see public/midi-samples),
 // rather than relying on smplr's default third-party CDN at runtime.
@@ -20,15 +20,50 @@ const MIDI_RENDER_TAIL_SECONDS = 3;
 // music we'll render, so every note is dispatched synchronously as soon as it's scheduled.
 const MIDI_SCHEDULER_LOOKAHEAD_MS = 24 * 60 * 60 * 1000;
 
-// The instruments we currently support in make_music(); the key is the name passed from Python.
-const MIDI_INSTRUMENTS : Record<string, (ctx: OfflineAudioContext) => Promise<{start: (event: {note: number, time: number, duration: number, velocity: number}) => void}>> = {
-    piano: (ctx) => new SplendidGrandPiano(ctx, {
+// The one-shot drum sounds we vendor (see public/midi-samples/drums); each is its own alias, e.g.
+// note "kick" plays the kick sample. Based on the Casio RZ-1 drum machine kit.
+const DRUMS_SAMPLE_NAMES = ["clap", "clave", "cowbell", "crash", "hihat-closed", "hihat-open", "kick", "ride", "snare", "tom-1", "tom-2", "tom-3"];
+
+type MidiInstrumentPlayer = {start: (event: {note: string | number, time: number, duration: number, velocity: number}) => void};
+
+// Matches smplr's (unexported) DrumMachineInstrument shape, so we can build our own descriptor
+// pointing at our vendored samples instead of fetching one of smplr's own hosted kits.
+type DrumMachineInstrumentDescriptor = {
+    baseUrl: string;
+    name: string;
+    samples: string[];
+    groupNames: string[];
+    nameToSampleName: Record<string, string | undefined>;
+    sampleGroupVariations: Record<string, string[]>;
+};
+
+// The instruments we currently support in make_music()/make_advanced_music(); the key is the
+// instrument name passed from Python. Every factory is given a shared Scheduler (see above).
+const MIDI_INSTRUMENTS : Record<string, (ctx: OfflineAudioContext, scheduler: Scheduler) => Promise<MidiInstrumentPlayer>> = {
+    piano: (ctx, scheduler) => new SplendidGrandPiano(ctx, {
         baseUrl: `${MIDI_SAMPLES_BASE_URL}/piano`,
         // Only the MF (mezzo-forte) velocity layer is vendored, so restrict loading to that;
         // smplr pitch-shifts these samples to cover the notes/velocities that aren't directly sampled.
         notesToLoad: {notes: Array.from({length: 128}, (_, i) => i), velocityRange: [85, 100]},
-        scheduler: Scheduler(ctx, {lookaheadMs: MIDI_SCHEDULER_LOOKAHEAD_MS}),
+        scheduler,
     }).load,
+    guitar: (ctx, scheduler) => new Soundfont(ctx, {
+        // A single self-contained soundfont file (all notes bundled together as base64 audio),
+        // in the classic MIDI.js format; see public/midi-samples/guitar/README.md.
+        instrumentUrl: `${MIDI_SAMPLES_BASE_URL}/guitar/acoustic_guitar_nylon-ogg.js`,
+        scheduler,
+    }).load,
+    drums: (ctx, scheduler) => {
+        const drumsInstrument : DrumMachineInstrumentDescriptor = {
+            baseUrl: `${MIDI_SAMPLES_BASE_URL}/drums`,
+            name: "drums",
+            samples: DRUMS_SAMPLE_NAMES,
+            groupNames: DRUMS_SAMPLE_NAMES,
+            nameToSampleName: Object.fromEntries(DRUMS_SAMPLE_NAMES.map((n) => [n, n])),
+            sampleGroupVariations: Object.fromEntries(DRUMS_SAMPLE_NAMES.map((n) => [n, [n]])),
+        };
+        return new DrumMachine(ctx, {instrument: drumsInstrument, scheduler}).load;
+    },
 };
 
 // A main thread class for handling all the sounds which Python code has asked us to load or play or stop
@@ -171,15 +206,25 @@ export class SoundManager {
         }
     }
 
-    async renderMidi(notes: MidiNoteEvent[], instrument: string) : Promise<RemoteSound> {
-        const makeInstrument = MIDI_INSTRUMENTS[instrument];
-        if (!makeInstrument) {
-            throw new Error(`Unknown MIDI instrument "${instrument}".  Available instruments: ${Object.keys(MIDI_INSTRUMENTS).join(", ")}`);
-        }
+    async renderMidi(notes: MidiNoteEvent[]) : Promise<RemoteSound> {
         const lastNoteEnd = notes.reduce((max, n) => Math.max(max, n.time + n.duration), 0);
         const result = await renderOffline(async (ctx) => {
-            const player = await makeInstrument(ctx);
+            // Shared across all instruments in this render (see MIDI_SCHEDULER_LOOKAHEAD_MS above):
+            const scheduler = Scheduler(ctx, {lookaheadMs: MIDI_SCHEDULER_LOOKAHEAD_MS});
+            // Notes can use different instruments, so we lazily build one player per distinct
+            // instrument name used, and route each note to the right one; all players share the
+            // same OfflineAudioContext, so they mix together into a single rendered buffer.
+            const players = new Map<string, MidiInstrumentPlayer>();
             for (const n of notes) {
+                let player = players.get(n.instrument);
+                if (!player) {
+                    const makeInstrument = MIDI_INSTRUMENTS[n.instrument];
+                    if (!makeInstrument) {
+                        throw new Error(`Unknown MIDI instrument "${n.instrument}".  Available instruments: ${Object.keys(MIDI_INSTRUMENTS).join(", ")}`);
+                    }
+                    player = await makeInstrument(ctx, scheduler);
+                    players.set(n.instrument, player);
+                }
                 player.start(n);
             }
         }, {duration: lastNoteEnd + MIDI_RENDER_TAIL_SECONDS});

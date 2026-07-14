@@ -30,16 +30,11 @@ from strype.sound import *
 
 BEAT = 0.35  # seconds per beat
 
-melody =    ["E4","E4","F4","G4", "G4","F4","E4","D4", "C4","C4","D4","E4", "E4","D4","D4",
-             "E4","E4","F4","G4", "G4","F4","E4","D4", "C4","C4","D4","E4", "D4","C4","C4"]
-beat_lengths = [1,1,1,1, 1,1,1,1, 1,1,1,1, 1.5,0.5,2,
-                1,1,1,1, 1,1,1,1, 1,1,1,1, 1.5,0.5,2]
+# Note names have no octave number, so they all use the default octave:
+melody =    ["E","E","F","G", "G","F","E","D", "C","C","D","E", "E","D","D"]
+beat_lengths = [1,1,1,1, 1,1,1,1, 1,1,1,1, 1.5,0.5,2]
 
-notes = []
-t = 0
-for note, beats in zip(melody, beat_lengths):
-    notes.append((note, t, beats * BEAT * 0.95))
-    t = t + beats * BEAT
+notes = [(note, beats * BEAT) for note, beats in zip(melody, beat_lengths)]
 
 tune = make_music(notes)
 
@@ -64,6 +59,6 @@ print("non-silent windows: " + str(nonsilent_windows) + " / " + str(total_window
         await enterCode(page, ["", "", odeToJoy]);
         await runToFinish(page, true);
         await checkFrameErrorCount(page, 0);
-        await checkConsoleContent(page, "non-silent windows: 12 / 15\n");
+        await checkConsoleContent(page, "non-silent windows: 6 / 9\n");
     });
 });

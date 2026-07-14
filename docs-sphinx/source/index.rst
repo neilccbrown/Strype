@@ -40,7 +40,7 @@ Module strype.sound
 
   .. container:: module-content
 
-    The strype.sound module contains the `Sound` class which allows manipulation and playing of sounds.  It also contains `make_music()`, which renders a list of musical notes (with timing) into a `Sound`, using a choice of instrument.
+    The strype.sound module contains the `Sound` class which allows manipulation and playing of sounds.  It also contains `make_music()` and `make_advanced_music()`, which render musical notes into a `Sound`, using a choice of instrument.
 
     .. automodule:: strype.sound
        :members:

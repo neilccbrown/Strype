@@ -6,8 +6,8 @@ _NOTE_LETTER_SEMITONE = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11
 def _note_name_to_midi(name):
     # type: (str) -> int
     name = name.strip()
-    if len(name) < 2 or name[0].upper() not in _NOTE_LETTER_SEMITONE:
-        raise ValueError("Invalid note name (expected e.g. \"C4\", \"F#3\", \"Bb2\"): " + repr(name))
+    if len(name) < 1 or name[0].upper() not in _NOTE_LETTER_SEMITONE:
+        raise ValueError("Invalid note name (expected e.g. \"C\", \"C4\", \"F#3\", \"Bb2\"): " + repr(name))
     semitone = _NOTE_LETTER_SEMITONE[name[0].upper()]
     rest = name[1:]
     if rest.startswith("#"):
@@ -16,10 +16,14 @@ def _note_name_to_midi(name):
     elif rest.startswith("b"):
         semitone -= 1
         rest = rest[1:]
-    try:
-        octave = int(rest)
-    except ValueError:
-        raise ValueError("Invalid note name (expected e.g. \"C4\", \"F#3\", \"Bb2\"): " + repr(name))
+    if rest == "":
+        # No octave given (e.g. "C", "F#"): default to the octave containing Middle C.
+        octave = 4
+    else:
+        try:
+            octave = int(rest)
+        except ValueError:
+            raise ValueError("Invalid note name (expected e.g. \"C\", \"C4\", \"F#3\", \"Bb2\"): " + repr(name))
     # Middle C (C4) is MIDI note 60, following the usual scientific pitch notation convention:
     return (octave + 1) * 12 + semitone
 
@@ -217,58 +221,115 @@ def load_sound(source):
 
     return Sound(buffer, -4242)
 
+_DRUM_INSTRUMENT_NAME = "drums"
+
 def get_instrument_names():
     # type: () -> list[str]
     """
-    Gets the list of instrument names that can be passed as the instrument parameter to make_music().
+    Gets the list of instrument names that can be passed to make_music() or make_advanced_music().
 
     :return: A list of available instrument names.
     """
-    return ["piano"]
+    return ["piano", "guitar", _DRUM_INSTRUMENT_NAME]
+
+def _note_to_bridge_value(note, instrument):
+    if instrument == _DRUM_INSTRUMENT_NAME:
+        # Drum "notes" are the name of the drum sound to hit (e.g. "kick", "snare"), not a pitch,
+        # so we pass them through unchanged rather than treating them as a note name/number.
+        return note
+    return _note_to_midi(note)
 
 def make_music(notes, instrument="piano"):
     # type: (list, str) -> Sound
     """
-    Renders a list of musical notes into a Sound, using the given instrument.
+    Renders a simple tune into a Sound, using the given instrument.  The notes are played one
+    after another, each one starting as soon as the previous one finishes.
 
-    Each item in notes should be a tuple or list of the form (note, start_time, duration)
-    or (note, start_time, duration, velocity):
+    Each item in notes should be a (note, duration) pair:
 
-    - note: either a note name such as "C4", "F#3" or "Bb2", or a note number
-      (an integer from 0 to 127, where Middle C is 60).
-    - start_time: the time (in seconds, measured from the start of the sound) at which the note should begin.
-    - duration: how long the note should last, in seconds.
-    - velocity: optional; how hard the note is struck, from 0 to 127 (default 100).  This mainly affects the volume of the note.
+    - note: a note name such as "C", "F#" or "Bb" (no octave number needed; a default
+      octave is used), or a note number (an integer from 0 to 127, where Middle C is 60).
+      Use "" or None for a rest: nothing is played, but the next note will still start
+      only after this duration has passed.
+    - duration: how long the note (or rest) should last, in seconds.
 
-    For example, to play Middle C for half a second, immediately followed by the D above it for half a second::
+    For example, to play Middle C for half a second, then wait half a second in silence,
+    then play the D above Middle C for half a second::
 
-        make_music([("C4", 0, 0.5), ("D4", 0.5, 0.5)])
+        make_music([("C", 0.5), ("", 0.5), ("D", 0.5)])
+
+    If you need more control (notes that overlap, start at a specific time, use a different
+    instrument per note, or vary the velocity), use make_advanced_music() instead; note that
+    make_advanced_music() does not support rests in this way.
 
     :param notes: A list of notes to play; see above for the format of each item.
     :param instrument: The name of the instrument to play the notes with.  See get_instrument_names() for the available options.
     :return: A Sound with the given notes rendered using the given instrument.
     """
-    if instrument not in get_instrument_names():
-        raise ValueError("Unknown instrument " + repr(instrument) + ".  Available instruments: " + str(get_instrument_names()))
+    advanced_notes = []
+    start_time = 0
+    for note, duration in notes:
+        if note != "" and note is not None:
+            advanced_notes.append((note, start_time, duration))
+        start_time = start_time + duration
+    return make_advanced_music(advanced_notes, instrument)
 
-    # We pass four parallel lists of plain numbers across the bridge (rather than e.g. a list of
+def make_advanced_music(notes, main_instrument="piano"):
+    # type: (list, str) -> Sound
+    """
+    Renders a list of notes into a Sound, with full control over timing, instrument and velocity
+    for each individual note.  If you just want a simple tune played on one instrument, one note
+    after another, use make_music() instead.
+
+    Each item in notes should be a tuple or list of the form (note, start_time, duration),
+    (note, start_time, duration, instrument) or (note, start_time, duration, instrument, velocity):
+
+    - note: a note name such as "C4", "F#3" or "Bb2", or a note number (an integer from 0 to 127,
+      where Middle C is 60).  For the "drums" instrument, this should instead be the name of the
+      drum sound to hit, e.g. "kick" or "snare" (see get_instrument_names() for how to find these).
+    - start_time: the time (in seconds, measured from the start of the sound) at which the note should begin.
+      Notes can overlap (e.g. to play a chord, or to have different instruments playing at once).
+    - duration: how long the note should last, in seconds.
+    - instrument: optional; which instrument plays this note.  Defaults to main_instrument if not given.
+    - velocity: optional; how hard the note is struck, from 0 to 127 (default 100).  This mainly affects the volume of the note.
+
+    For example, to play Middle C on the piano at the same time as a low guitar note::
+
+        make_advanced_music([("C4", 0, 1, "piano"), ("E2", 0, 1, "guitar")])
+
+    :param notes: A list of notes to play; see above for the format of each item.
+    :param main_instrument: The instrument to use for any note that doesn't specify its own instrument.  See get_instrument_names() for the available options.
+    :return: A Sound with the given notes rendered using the given instrument(s).
+    """
+    if main_instrument not in get_instrument_names():
+        raise ValueError("Unknown instrument " + repr(main_instrument) + ".  Available instruments: " + str(get_instrument_names()))
+
+    # We pass five parallel lists of plain values across the bridge (rather than e.g. a list of
     # dictionaries), because Pyodide's Python-to-JS marshalling of nested containers is unreliable:
-    note_numbers = []
+    note_values = []
     times = []
     durations = []
     velocities = []
+    instruments = []
     for item in notes:
         if len(item) == 3:
             note, start_time, duration = item
+            instrument = main_instrument
             velocity = 100
         elif len(item) == 4:
-            note, start_time, duration, velocity = item
+            note, start_time, duration, instrument = item
+            velocity = 100
+        elif len(item) == 5:
+            note, start_time, duration, instrument, velocity = item
         else:
-            raise ValueError("Each note should be a (note, start_time, duration) or (note, start_time, duration, velocity) tuple/list, but was: " + str(item))
-        note_numbers.append(_note_to_midi(note))
+            raise ValueError("Each note should be a (note, start_time, duration), (note, start_time, duration, instrument) or (note, start_time, duration, instrument, velocity) tuple/list, but was: " + str(item))
+        if instrument not in get_instrument_names():
+            raise ValueError("Unknown instrument " + repr(instrument) + ".  Available instruments: " + str(get_instrument_names()))
+        note_values.append(_note_to_bridge_value(note, instrument))
         times.append(float(start_time))
         durations.append(float(duration))
         velocities.append(int(velocity))
+        instruments.append(instrument)
 
-    buffer = _strype_sound_internal.renderMidiToAudioBuffer(note_numbers, times, durations, velocities, instrument)
+    buffer = _strype_sound_internal.renderMidiToAudioBuffer(note_values, times, durations, velocities, instruments)
     return Sound(buffer, -4242)
