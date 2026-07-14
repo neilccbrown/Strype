@@ -1,7 +1,35 @@
-import {makeSoundHandle, RemoteSound} from "@/stryperuntime/worker_bridge_type";
+import {makeSoundHandle, MidiNoteEvent, RemoteSound} from "@/stryperuntime/worker_bridge_type";
 import audioBufferToWav from "audiobuffer-to-wav";
 import {saveAs} from "file-saver";
 import {getDateTimeFormatted} from "@/helpers/common";
+import {renderOffline, Scheduler, SplendidGrandPiano} from "smplr";
+
+// The base URL where we serve our own vendored instrument samples from (see public/midi-samples),
+// rather than relying on smplr's default third-party CDN at runtime.
+const MIDI_SAMPLES_BASE_URL = `${import.meta.env.BASE_URL}midi-samples`;
+
+// Extra silence (in seconds) added after the last note ends, to let its release/decay ring out
+// before the offline render is cut off.
+const MIDI_RENDER_TAIL_SECONDS = 3;
+
+// smplr's default scheduler dispatches notes using a real-time setInterval poll with a small
+// (200ms) lookahead: notes further ahead than that are queued and only dispatched once real
+// wall-clock time catches up. That works for live playback, but inside an OfflineAudioContext,
+// currentTime doesn't advance in real time, so the poll never fires and those notes are silently
+// dropped. We work around this by giving the scheduler a lookahead far longer than any piece of
+// music we'll render, so every note is dispatched synchronously as soon as it's scheduled.
+const MIDI_SCHEDULER_LOOKAHEAD_MS = 24 * 60 * 60 * 1000;
+
+// The instruments we currently support in make_music(); the key is the name passed from Python.
+const MIDI_INSTRUMENTS : Record<string, (ctx: OfflineAudioContext) => Promise<{start: (event: {note: number, time: number, duration: number, velocity: number}) => void}>> = {
+    piano: (ctx) => new SplendidGrandPiano(ctx, {
+        baseUrl: `${MIDI_SAMPLES_BASE_URL}/piano`,
+        // Only the MF (mezzo-forte) velocity layer is vendored, so restrict loading to that;
+        // smplr pitch-shifts these samples to cover the notes/velocities that aren't directly sampled.
+        notesToLoad: {notes: Array.from({length: 128}, (_, i) => i), velocityRange: [85, 100]},
+        scheduler: Scheduler(ctx, {lookaheadMs: MIDI_SCHEDULER_LOOKAHEAD_MS}),
+    }).load,
+};
 
 // A main thread class for handling all the sounds which Python code has asked us to load or play or stop
 export class SoundManager {
@@ -141,6 +169,29 @@ export class SoundManager {
             this.loadedSounds[index] = this.makeAudioBufferFromSamples(values, buffer.sampleRate);
             
         }
+    }
+
+    async renderMidi(notes: MidiNoteEvent[], instrument: string) : Promise<RemoteSound> {
+        const makeInstrument = MIDI_INSTRUMENTS[instrument];
+        if (!makeInstrument) {
+            throw new Error(`Unknown MIDI instrument "${instrument}".  Available instruments: ${Object.keys(MIDI_INSTRUMENTS).join(", ")}`);
+        }
+        const lastNoteEnd = notes.reduce((max, n) => Math.max(max, n.time + n.duration), 0);
+        const result = await renderOffline(async (ctx) => {
+            const player = await makeInstrument(ctx);
+            for (const n of notes) {
+                player.start(n);
+            }
+        }, {duration: lastNoteEnd + MIDI_RENDER_TAIL_SECONDS});
+
+        const soundIndex = this.loadedSounds.length;
+        this.loadedSounds.push(result.audioBuffer);
+        return {
+            handle: makeSoundHandle(soundIndex),
+            numberOfChannels: result.audioBuffer.numberOfChannels,
+            numSamples: result.audioBuffer.length,
+            sampleRate: result.audioBuffer.sampleRate,
+        };
     }
 
     getAsWAV(index: number) : ArrayBuffer {

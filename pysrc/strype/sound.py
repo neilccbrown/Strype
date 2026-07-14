@@ -1,5 +1,35 @@
-from strype_bridge import strype_sound_internal as _strype_sound_internal 
+from strype_bridge import strype_sound_internal as _strype_sound_internal
 import time as _time
+
+_NOTE_LETTER_SEMITONE = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
+
+def _note_name_to_midi(name):
+    # type: (str) -> int
+    name = name.strip()
+    if len(name) < 2 or name[0].upper() not in _NOTE_LETTER_SEMITONE:
+        raise ValueError("Invalid note name (expected e.g. \"C4\", \"F#3\", \"Bb2\"): " + repr(name))
+    semitone = _NOTE_LETTER_SEMITONE[name[0].upper()]
+    rest = name[1:]
+    if rest.startswith("#"):
+        semitone += 1
+        rest = rest[1:]
+    elif rest.startswith("b"):
+        semitone -= 1
+        rest = rest[1:]
+    try:
+        octave = int(rest)
+    except ValueError:
+        raise ValueError("Invalid note name (expected e.g. \"C4\", \"F#3\", \"Bb2\"): " + repr(name))
+    # Middle C (C4) is MIDI note 60, following the usual scientific pitch notation convention:
+    return (octave + 1) * 12 + semitone
+
+def _note_to_midi(note):
+    if isinstance(note, str):
+        return _note_name_to_midi(note)
+    elif isinstance(note, (int, float)):
+        return int(note)
+    else:
+        raise TypeError("Note should be a string (e.g. \"C4\") or a MIDI note number (0-127), but was: " + str(type(note)))
 
 class Sound:
     # Tracks the rate limiting for downloads:
@@ -185,4 +215,60 @@ def load_sound(source):
         mime_type, _ = mimetypes.guess_type(source)
         buffer = _strype_sound_internal.loadAndWaitForAudioBuffer(f"data:{mime_type};base64,{encoded}")
 
+    return Sound(buffer, -4242)
+
+def get_instrument_names():
+    # type: () -> list[str]
+    """
+    Gets the list of instrument names that can be passed as the instrument parameter to make_music().
+
+    :return: A list of available instrument names.
+    """
+    return ["piano"]
+
+def make_music(notes, instrument="piano"):
+    # type: (list, str) -> Sound
+    """
+    Renders a list of musical notes into a Sound, using the given instrument.
+
+    Each item in notes should be a tuple or list of the form (note, start_time, duration)
+    or (note, start_time, duration, velocity):
+
+    - note: either a note name such as "C4", "F#3" or "Bb2", or a note number
+      (an integer from 0 to 127, where Middle C is 60).
+    - start_time: the time (in seconds, measured from the start of the sound) at which the note should begin.
+    - duration: how long the note should last, in seconds.
+    - velocity: optional; how hard the note is struck, from 0 to 127 (default 100).  This mainly affects the volume of the note.
+
+    For example, to play Middle C for half a second, immediately followed by the D above it for half a second::
+
+        make_music([("C4", 0, 0.5), ("D4", 0.5, 0.5)])
+
+    :param notes: A list of notes to play; see above for the format of each item.
+    :param instrument: The name of the instrument to play the notes with.  See get_instrument_names() for the available options.
+    :return: A Sound with the given notes rendered using the given instrument.
+    """
+    if instrument not in get_instrument_names():
+        raise ValueError("Unknown instrument " + repr(instrument) + ".  Available instruments: " + str(get_instrument_names()))
+
+    # We pass four parallel lists of plain numbers across the bridge (rather than e.g. a list of
+    # dictionaries), because Pyodide's Python-to-JS marshalling of nested containers is unreliable:
+    note_numbers = []
+    times = []
+    durations = []
+    velocities = []
+    for item in notes:
+        if len(item) == 3:
+            note, start_time, duration = item
+            velocity = 100
+        elif len(item) == 4:
+            note, start_time, duration, velocity = item
+        else:
+            raise ValueError("Each note should be a (note, start_time, duration) or (note, start_time, duration, velocity) tuple/list, but was: " + str(item))
+        note_numbers.append(_note_to_midi(note))
+        times.append(float(start_time))
+        durations.append(float(duration))
+        velocities.append(int(velocity))
+
+    buffer = _strype_sound_internal.renderMidiToAudioBuffer(note_numbers, times, durations, velocities, instrument)
     return Sound(buffer, -4242)

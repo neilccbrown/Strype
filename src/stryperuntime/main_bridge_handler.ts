@@ -91,6 +91,9 @@ export const handleSyncRequests : (
             return {handle: makeSoundHandle(cloneIndex), numberOfChannels: req.toMono ? 1 : req.sound.numberOfChannels, numSamples: req.sound.numSamples, sampleRate : req.sound.sampleRate};
         })};
     }
+    case "renderMidiSound": {
+        return {request: req.request, response: soundManager.renderMidi(req.notes, req.instrument)};
+    }
     case "loadFont": {
         return {
             request: req.request, response: new Promise<boolean>((resolve, reject) => {

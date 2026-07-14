@@ -2,7 +2,7 @@
 // These functions are not directly exposed to users, but are used by sound.py to
 // form the actual public API.
 
-import {encodeUint8ToString, RemoteSound} from "@/stryperuntime/worker_bridge_type";
+import {encodeUint8ToString, MidiNoteEvent, RemoteSound} from "@/stryperuntime/worker_bridge_type";
 import { asyncBridge, syncBridge } from "@/workers/python_execution_type";
 
 export function startAudioBuffer(sound : RemoteSound) : void {
@@ -68,4 +68,12 @@ export function copy(sound : RemoteSound) : RemoteSound {
 }
 export function copyToMono(sound: RemoteSound) : RemoteSound {
     return syncBridge({request: "cloneSound", sound, toMono: true});
+}
+
+// We take four parallel lists of plain numbers (one per NoteEvent field) rather than e.g. a list of
+// per-note dictionaries, matching the flat-primitive-array pattern used elsewhere in the bridge
+// (e.g. sound sample buffers) for passing data from Python to JS.
+export function renderMidiToAudioBuffer(midiNotes: number[], times: number[], durations: number[], velocities: number[], instrument: string) : RemoteSound {
+    const notes : MidiNoteEvent[] = midiNotes.map((note, i) => ({note, time: times[i], duration: durations[i], velocity: velocities[i]}));
+    return syncBridge({request: "renderMidiSound", notes, instrument});
 }
