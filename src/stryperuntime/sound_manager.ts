@@ -2,7 +2,7 @@ import {makeSoundHandle, MidiNoteEvent, RemoteSound} from "@/stryperuntime/worke
 import audioBufferToWav from "audiobuffer-to-wav";
 import {saveAs} from "file-saver";
 import {getDateTimeFormatted} from "@/helpers/common";
-import {renderOffline, Scheduler, SplendidGrandPiano, Soundfont, DrumMachine} from "smplr";
+import {renderOffline, Scheduler, SplendidGrandPiano, Soundfont, Sampler, drumMachineToPreset} from "smplr";
 
 // The base URL where we serve our own vendored instrument samples from (see public/midi-samples),
 // rather than relying on smplr's default third-party CDN at runtime.
@@ -45,12 +45,16 @@ const MIDI_INSTRUMENTS : Record<string, (ctx: OfflineAudioContext, scheduler: Sc
         // Only the MF (mezzo-forte) velocity layer is vendored, so restrict loading to that;
         // smplr pitch-shifts these samples to cover the notes/velocities that aren't directly sampled.
         notesToLoad: {notes: Array.from({length: 128}, (_, i) => i), velocityRange: [85, 100]},
+        // We only vendor m4a (AAC), which every mainstream browser can decode, so there's no need
+        // for smplr's default ogg/m4a-by-browser fallback (and no ogg files to fall back to).
+        formats: ["m4a"],
         scheduler,
     }).load,
     guitar: (ctx, scheduler) => new Soundfont(ctx, {
         // A single self-contained soundfont file (all notes bundled together as base64 audio),
-        // in the classic MIDI.js format; see public/midi-samples/guitar/README.md.
-        instrumentUrl: `${MIDI_SAMPLES_BASE_URL}/guitar/acoustic_guitar_nylon-ogg.js`,
+        // in the classic MIDI.js format; see public/midi-samples/guitar/README.md. We only vendor
+        // the mp3 version, since mp3 decodes fine in every mainstream browser.
+        instrumentUrl: `${MIDI_SAMPLES_BASE_URL}/guitar/acoustic_guitar_nylon-mp3.js`,
         scheduler,
     }).load,
     drums: (ctx, scheduler) => {
@@ -62,7 +66,13 @@ const MIDI_INSTRUMENTS : Record<string, (ctx: OfflineAudioContext, scheduler: Sc
             nameToSampleName: Object.fromEntries(DRUMS_SAMPLE_NAMES.map((n) => [n, n])),
             sampleGroupVariations: Object.fromEntries(DRUMS_SAMPLE_NAMES.map((n) => [n, [n]])),
         };
-        return new DrumMachine(ctx, {instrument: drumsInstrument, scheduler}).load;
+        // Not using smplr's DrumMachine instrument directly: it hardcodes formats to ["ogg", "m4a"]
+        // with no way to override, so we build the same preset via its own exported
+        // drumMachineToPreset() helper and load it through the generic Sampler instead, overriding
+        // the format list to just m4a (see the piano comment above for why).
+        const preset = drumMachineToPreset(drumsInstrument);
+        preset.samples.formats = ["m4a"];
+        return new Sampler(ctx, {preset, scheduler}).load;
     },
 };
 
