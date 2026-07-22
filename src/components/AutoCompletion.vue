@@ -80,8 +80,8 @@ import {IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWit
 import _ from "lodash";
 import { mapStores } from "pinia";
 import {getAllEnabledUserDefinedClasses, getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
-import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, tpyDefineLibraries, getUserDefinedSignature} from "@/autocompletion/acManager";
-import Parser, { AC_PROBE_MARKER } from "@/parser/parser"; 
+import {buildProbeCodeAndOffset, getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, tpyDefineLibraries, getUserDefinedSignature} from "@/autocompletion/acManager";
+import Parser from "@/parser/parser";
 import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
 import {Completion, Signature, SignatureArg, TPyParser} from "tigerpython-parser";
 import scssVars from "@/assets/style/_export.module.scss";
@@ -348,22 +348,15 @@ export default defineComponent({
                 // always present, so TigerPython resolves "self" the same way a normal call after the
                 // dot elsewhere would be resolved.
                 const preamble = "from builtins import *\n";
-                const probe = context + ".";
                 // getCodeWithoutErrors() leaves AC_PROBE_MARKER in userCode exactly where the frame we're
-                // editing sits, so the probe above always ends up correctly nested there -- whereas simply
-                // appending it at the very end would land it outside the right scope whenever any other
-                // code (e.g. a "My code" assignment used for global-variable inference) follows that frame.
+                // editing sits, so the probe spliced in by buildProbeCodeAndOffset() always ends up
+                // correctly nested there -- whereas simply appending it at the very end would land it
+                // outside the right scope whenever any other code (e.g. a "My code" assignment used for
+                // global-variable inference) follows that frame. See buildProbeCodeAndOffset() for why the
+                // probe itself is wrapped in a dummy call rather than spliced in as bare "context.".
                 const buildTotalCodeAndOffset = (baseUserCode: string): {code: string; offset: number} => {
-                    const markerIndex = baseUserCode.indexOf(AC_PROBE_MARKER);
-                    if (markerIndex === -1) {
-                        // Can happen if an ancestor block (e.g. an enclosing function's params) currently
-                        // has an unrelated slot error, which drops the whole subtree containing our marker
-                        // -- fall back to appending at the end.
-                        const code = preamble + baseUserCode + "\n" + probe;
-                        return {code, offset: code.length};
-                    }
-                    const code = preamble + baseUserCode.slice(0, markerIndex) + probe + baseUserCode.slice(markerIndex + AC_PROBE_MARKER.length);
-                    return {code, offset: preamble.length + markerIndex + probe.length};
+                    const {code, offset} = buildProbeCodeAndOffset(baseUserCode, context);
+                    return {code: preamble + code, offset: preamble.length + offset};
                 };
                 let {code: totalCode, offset: completionOffset} = buildTotalCodeAndOffset(userCode);
                 let tppCompletions = TPyParser.autoCompleteExt(totalCode, completionOffset);

@@ -717,6 +717,40 @@ async function getFormalParamsSlotStructureOrSignatureForUserDefinedClass(userCl
     }
 }
 
+// Dummy names used only to build a syntactically-safe probe for TigerPython -- see buildProbeCodeAndOffset().
+// Long and dunder-ish so they don't collide with any real name the user's own code might define.
+const PROBE_WRAPPER_NAME = "___strype_ac_probe_wrap___";
+const PROBE_DUMMY_IDENT = "___strype_ac_probe_ident___";
+
+// Splices a "context.<something>" probe into baseCode at AC_PROBE_MARKER (or appends it at the end if the
+// marker isn't found), and returns the resulting code plus the offset to ask TigerPython to complete at
+// (i.e. the position immediately after the dot).
+//
+// The probe is wrapped in a dummy call, e.g. "___wrap___(<context>.___ident___)", rather than spliced in
+// bare as "<context>.". This matters because "context" is not always a single clean expression: when
+// completing inside a nested call like "max(0, someList[0].", context is "0,someList[0]" (the sibling "0,"
+// argument from the enclosing call leaks in, because context is computed as "everything in the current
+// bracket before the dot", not "the innermost operand before the dot"). Splicing that bare would produce
+// "0,someList[0]." as the entire statement, which is invalid syntax (a bare trailing dot after a plain
+// comma, with nothing after it) and makes TigerPython fail to resolve anything at all. Wrapping in a call
+// absorbs the leaked leading comma as a separate (and irrelevant) argument: "___wrap___(0,someList[0].___ident___)"
+// parses fine as a 2-argument call, and the trailing attribute access still binds only to the last
+// argument, "someList[0]", same as if the leaked comma weren't there.
+export function buildProbeCodeAndOffset(baseCode: string, context: string): {code: string; offset: number} {
+    const probePrefix = `${PROBE_WRAPPER_NAME}(${transformFieldPlaceholders(context)}.`;
+    const probe = `${probePrefix}${PROBE_DUMMY_IDENT})`;
+    const markerIndex = baseCode.indexOf(AC_PROBE_MARKER);
+    if (markerIndex === -1) {
+        // Can happen if an ancestor block (e.g. an enclosing function's params) currently has an
+        // unrelated slot error, which drops the whole subtree containing our marker -- fall back to
+        // appending at the end.
+        const code = baseCode + "\n" + probe;
+        return {code, offset: baseCode.length + 1 + probePrefix.length};
+    }
+    const code = baseCode.slice(0, markerIndex) + probe + baseCode.slice(markerIndex + AC_PROBE_MARKER.length);
+    return {code, offset: markerIndex + probePrefix.length};
+}
+
 // Gets the parameter name prompt for the given autocomplete details (context+token)
 // for the given parameter. Note that for the UI to display spans properly, empty placeholders are returned as \u200b (0-width space)
 export async function calculateParamPrompt(frameId: number, {context, token, paramIndex, lastParam, prevKeywordNames} : {context: string, token: string, paramIndex: number, lastParam: boolean, prevKeywordNames: string[]}, isFocused: boolean) : Promise<string> {
@@ -788,21 +822,7 @@ export async function calculateParamPrompt(frameId: number, {context, token, par
         // right scope. This also covers "self." inside a method: since userCode is the whole program,
         // the enclosing class -- and any class it inherits from -- is always present, so TigerPython
         // resolves "self" the same way any other call after the dot would be.
-        let totalCode: string;
-        let completionOffset: number;
-        const probe = transformFieldPlaceholders(context) + ".";
-        const markerIndex = userCode.indexOf(AC_PROBE_MARKER);
-        if (markerIndex === -1) {
-            // Can happen if an ancestor block (e.g. an enclosing function's params) currently has an
-            // unrelated slot error, which drops the whole subtree containing our marker -- fall back to
-            // appending at the end.
-            totalCode = userCode + "\n" + probe;
-            completionOffset = totalCode.length;
-        }
-        else {
-            totalCode = userCode.slice(0, markerIndex) + probe + userCode.slice(markerIndex + AC_PROBE_MARKER.length);
-            completionOffset = markerIndex + probe.length;
-        }
+        const {code: totalCode, offset: completionOffset} = buildProbeCodeAndOffset(userCode, context);
         const tppCompletions = TPyParser.autoCompleteExt(totalCode, completionOffset);
         const match = tppCompletions?.filter((c) => c.acResult === token);
         if (match && match.length > 0 && match[0].signature) {
