@@ -178,6 +178,50 @@ describe("Graphics library", () => {
         }, false);
     });
 
+    // The next two tests are currently expected to fail against TigerPython and are skipped for that
+    // reason: TigerPython does not currently propagate our library's ".pyi" return types through to
+    // member completion when the return type is a single-parameter generic collection (list[T], set[T],
+    // tuple[T, ...] all lose ALL completions, not just element-type completions -- unlike dict[K, V]
+    // which works) or a union (X | None, X | Y, Optional[X] all lose ALL completions for every member of
+    // the union, even though a plain non-union class return works fine). This was raised upstream; see
+    // the "TigerPython" project for tracking. Once fixed, remove ".skip" from these two tests.
+    it.skip("Shows completions for an element of a get_actors() list (blocked on TigerPython list[T] support)", () => {
+        focusEditorAC();
+        // Add graphics import:
+        clearDefaultImports();
+        cy.get("body").type("fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        // Make an actor, then fetch the list of all actors:
+        cy.get("body").type("=a=Actor('cat-test.jpg'){rightarrow}");
+        cy.get("body").type("=all_actors=get_actors(){rightarrow}");
+        // Add a function frame and trigger auto-complete after indexing into the list:
+        cy.get("body").type(" ");
+        cy.wait(500);
+        cy.get("body").type("all_actors[0].{ctrl} ");
+        withAC((acIDSel, frameId) => {
+            cy.get(acIDSel).should("be.visible");
+            checkExactlyOneItem(acIDSel, null, "is_at_edge(distance)");
+            checkExactlyOneItem(acIDSel, null, "move(distance)");
+        }, false);
+    });
+
+    it.skip("Shows completions for the result of get_actor_at() (blocked on TigerPython Optional/union return type support)", () => {
+        focusEditorAC();
+        // Add graphics import:
+        clearDefaultImports();
+        cy.get("body").type("fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        // Make an actor so that there is something for get_actor_at to find:
+        cy.get("body").type("=a=Actor('cat-test.jpg'){rightarrow}");
+        // Add a function frame and trigger auto-complete on the (Actor | None) result:
+        cy.get("body").type(" ");
+        cy.wait(500);
+        cy.get("body").type("get_actor_at(0,0).{ctrl} ");
+        withAC((acIDSel, frameId) => {
+            cy.get(acIDSel).should("be.visible");
+            checkExactlyOneItem(acIDSel, null, "is_at_edge(distance)");
+            checkExactlyOneItem(acIDSel, null, "move(distance)");
+        }, false);
+    });
+
     it("Shows completions for Image methods", () => {
         focusEditorAC();
         // Add graphics import:
