@@ -8,7 +8,7 @@ class Sound:
     # There is a __buffer member which is of type RemoteSound
     
     def __init__(self, samples, samples_per_second = 44100):
-        # type: (float, float) -> None
+        # type: (list[float], float) -> None
         """
         Creates a new sound object.  The first parameter is a list of samples from -1 to +1,
         and the optional second parameter indicates the sample rate (samples per second).
