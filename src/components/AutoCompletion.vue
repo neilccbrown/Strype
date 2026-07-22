@@ -79,9 +79,9 @@ import PopUpItem from "@/components/PopUpItem.vue";
 import {IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWithCategory, BaseSlot, AllFrameTypesIdentifier, AcMicrobitResultType} from "@/types/types";
 import _ from "lodash";
 import { mapStores } from "pinia";
-import {getAllEnabledUserDefinedClasses, getAllEnabledUserDefinedFunctions, getFrameContainer} from "@/helpers/storeMethods";
+import {getAllEnabledUserDefinedClasses, getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
 import {getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, tpyDefineLibraries, getUserDefinedSignature} from "@/autocompletion/acManager";
-import Parser from "@/parser/parser"; 
+import Parser, { AC_PROBE_MARKER } from "@/parser/parser"; 
 import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
 import {Completion, Signature, SignatureArg, TPyParser} from "tigerpython-parser";
 import scssVars from "@/assets/style/_export.module.scss";
@@ -300,10 +300,7 @@ export default defineComponent({
         async updateAC(frameId: number, token : string | null, context: string, kind: "code" | "string"): Promise<void> {
             const tokenStartsWithUnderscore = (token ?? "").startsWith("_");
             const parser = new Parser(false, "py", true);
-            const inFuncDef = getFrameContainer(frameId) == useStore().getDefsFrameContainerId;
-            const currentStrypeLocationForClassInfos = findCurrentStrypeLocation({checkForClassDeep: true});
-            const isGettingWholeClassContext = (context == "self" && currentStrypeLocationForClassInfos.strypeLocation == STRYPE_LOCATION.IN_CLASSDEF && findCurrentStrypeLocation().strypeLocation == STRYPE_LOCATION.IN_FUNCDEF);
-            const userCode = (isGettingWholeClassContext) ? parser.getWholeClassCodeWithoutError(currentStrypeLocationForClassInfos.locationFrameId, frameId) : parser.getCodeWithoutErrors(frameId, inFuncDef);
+            const userCode = parser.getCodeWithoutErrors(frameId);
             
             await tpyDefineLibraries(parser);
             
@@ -344,23 +341,37 @@ export default defineComponent({
                 // position we're completing at once the slots are turned into plain Python).
                 //
                 // To give TigerPython's autocomplete a place to examine to do the autocompletion
-                // we actually generate (for generic cases) a dummy extra line of code with the
-                // context that we want plus a dot, then ask TigerPython to complete at the very
-                // end (and for microbit, we add a dummy "from builtins import *" to allow builtins a/c): 
-                // For the specific case of a call after "self." within a function defintion of 
-                // a user defined class, we pass the full class code (see above) to TigerPython
-                // and add an extra line after that class that call as "<class name>()." to replace self.   
-                let preamble = "from builtins import *\n";
-                const extraLineContent = (isGettingWholeClassContext) 
-                    ? `${(this.appStore.frameObjects[currentStrypeLocationForClassInfos.locationFrameId].labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code}().` 
-                    : parser.getStoppedIndentation() + context + ".";
-                let totalCode = preamble + userCode + "\n" + extraLineContent;                
-                let tppCompletions = TPyParser.autoCompleteExt(totalCode, totalCode.length);
+                // we generate a dummy extra bit of code with the context that we want plus a dot
+                // (and for microbit, we add a dummy "from builtins import *" to allow builtins a/c).
+                // This also covers "self." inside a method: since userCode is the whole program (see
+                // getCodeWithoutErrors()), the enclosing class -- and any class it inherits from -- is
+                // always present, so TigerPython resolves "self" the same way a normal call after the
+                // dot elsewhere would be resolved.
+                const preamble = "from builtins import *\n";
+                const probe = context + ".";
+                // getCodeWithoutErrors() leaves AC_PROBE_MARKER in userCode exactly where the frame we're
+                // editing sits, so the probe above always ends up correctly nested there -- whereas simply
+                // appending it at the very end would land it outside the right scope whenever any other
+                // code (e.g. a "My code" assignment used for global-variable inference) follows that frame.
+                const buildTotalCodeAndOffset = (baseUserCode: string): {code: string; offset: number} => {
+                    const markerIndex = baseUserCode.indexOf(AC_PROBE_MARKER);
+                    if (markerIndex === -1) {
+                        // Can happen if an ancestor block (e.g. an enclosing function's params) currently
+                        // has an unrelated slot error, which drops the whole subtree containing our marker
+                        // -- fall back to appending at the end.
+                        const code = preamble + baseUserCode + "\n" + probe;
+                        return {code, offset: code.length};
+                    }
+                    const code = preamble + baseUserCode.slice(0, markerIndex) + probe + baseUserCode.slice(markerIndex + AC_PROBE_MARKER.length);
+                    return {code, offset: preamble.length + markerIndex + probe.length};
+                };
+                let {code: totalCode, offset: completionOffset} = buildTotalCodeAndOffset(userCode);
+                let tppCompletions = TPyParser.autoCompleteExt(totalCode, completionOffset);
                 if (tppCompletions == null) {
-                    tppCompletions = [];                    
+                    tppCompletions = [];
                 }
                 // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
-                // TODO 
+                // TODO
                 // TPP, at least now, doesn't interpret module annotated-only variable in PYI properly,
                 // like for "button_a: Button" for the microbit init file :
                 // it will bring up the class instead of the variable for a/c suggestions.
@@ -368,7 +379,7 @@ export default defineComponent({
                 // So we use autoComplete() and compare the results to find mismatched.
                 // NOTE that TPP complete for the (wrong) code "button_a()." (with parenthesis).
                 try{
-                    const tppCompletions2 = TPyParser.autoComplete(totalCode, totalCode.length, false);
+                    const tppCompletions2 = TPyParser.autoComplete(totalCode, completionOffset, false);
                     if(tppCompletions.filter((s) => !s.acResult.startsWith("_")).length != tppCompletions2.length){
                         console.warn("There is a mismatch between autoCompleteEx and autoComplete");
                         throw new Error();
@@ -385,35 +396,36 @@ export default defineComponent({
                 catch{
                     // We couldn't get the completions with autoComplete(), just give up...
                 }
-                
+
 
                 if(tppCompletions.length == 0){
-                    // TODO 
+                    // TODO
                     // TPP, at least now, doesn't interpret module annotated-only variable in PYI properly,
                     // like for "button_a: Button" for the microbit init file :
                     // If the context text is a variable, we don't get its type content in a/c.
                     // So we use very rudimentary way to get it the type content (if any) by looking up
                     // the variable name, replacing it in a fake code and use TPP again.
-                    // Note: we can't know for sure the context will be the variable name as we want it: 
+                    // Note: we can't know for sure the context will be the variable name as we want it:
                     // for example if the code contains "a = button_a" and next line "a.", the variable
                     // name at the context is "a", not "button_a". So we (again very rudimentary) look up
                     // every variables...
+                    let mutatedUserCode = userCode;
                     this.allMicrobitAnnotatedVariables.forEach((varAcEntry) => {
                         // Replace the variable name by an instance of its type in the user code
-                        totalCode = totalCode.replaceAll(new RegExp(`^.*?[^\\w](${varAcEntry.acResult})\\b`,"gm"), (matchInLine) => {
+                        mutatedUserCode = mutatedUserCode.replaceAll(new RegExp(`^.*?[^\\w](${varAcEntry.acResult})\\b`,"gm"), (matchInLine) => {
                             const constructorCallerStr = (matchInLine.startsWith ("from ")) ? "" : "()";
                             return matchInLine.replace(varAcEntry.acResult, varAcEntry.mbVarType + constructorCallerStr);
                         });
                     });
-                    
-                    // And run TPP again.
-                    tppCompletions = TPyParser.autoCompleteExt(totalCode, totalCode.length);
+                    // Rebuild (marker position may have shifted if a replacement above changed length), then run TPP again.
+                    ({code: totalCode, offset: completionOffset} = buildTotalCodeAndOffset(mutatedUserCode));
+                    tppCompletions = TPyParser.autoCompleteExt(totalCode, completionOffset);
                     if (tppCompletions == null) {
                         tppCompletions = [];
-                    }                       
-                }                
+                    }
+                }
                 // #v-endif
-                
+
 
                 let version0 = 0;
                 let mbVersionExtra = 0;

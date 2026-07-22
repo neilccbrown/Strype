@@ -1,6 +1,6 @@
 import Compiler from "@/compiler/compiler";
 import {hasEditorCodeErrors, trimmedKeywordOperators} from "@/helpers/editor";
-import { generateFlatSlotBases, getNextSibling, getParentOrJointParent, retrieveSlotByPredicate } from "@/helpers/storeMethods";
+import { generateFlatSlotBases, getParentOrJointParent, retrieveSlotByPredicate } from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CollapsedState, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, FrozenState, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
@@ -12,7 +12,13 @@ import { actOnGraphicsImport } from "@/helpers/editor";
 import {STRYPE_DUMMY_FIELD, STRYPE_EXPRESSION_BLANK, STRYPE_INVALID_OP, STRYPE_INVALID_OPS_WRAPPER, STRYPE_INVALID_SLOT} from "@/helpers/pythonToFrames";
 
 const INDENT = "    ";
-const DISABLEDFRAMES_FLAG =  "\"\"\""; 
+const DISABLEDFRAMES_FLAG =  "\"\"\"";
+
+// A placeholder statement used by getCodeWithoutErrors() to mark, in-place, where the frame currently
+// being edited sits within the generated code -- see that function for why. Shaped as a call (rather
+// than a bare name) so TigerPython doesn't flag it as a "useless statement" and have it stripped out
+// before the caller gets a chance to substitute in the real completion probe.
+export const AC_PROBE_MARKER = "___strype_ac_probe___()";
 
 // Parse the code contained in the editor, and generate a compiler for this code if no error are found.
 // The method returns an object containing the output code and the compiler.
@@ -240,9 +246,9 @@ export default class Parser {
     private disabledBlockIndent = "";
     private excludeLoopsAndCommentsAndCloseTry = false;
     private ignoreSpecificFrameId = -100;
+    private ignoreSpecificFrameIdReplacement = "pass"; // What to emit in place of ignoreSpecificFrameId's frame.
     private ignoreCheckErrors = false;
     private saveAsSPY = false;
-    private stoppedIndentation = ""; // The indentation level when we encountered the stop frame.
     private libraries : string[] = [];
     private omitMediaLiterals = false;
     
@@ -252,14 +258,6 @@ export default class Parser {
         this.omitMediaLiterals = omitMediaLiterals;
     }
 
-    public getIndent(): string {
-        return INDENT;
-    }
-    
-    public getStoppedIndentation() : string {
-        return this.stoppedIndentation;
-    }
-    
     public getLibraries() : string[] {
         return [...this.libraries];
     }
@@ -472,9 +470,6 @@ export default class Parser {
                 break;
             }
             if(frame.id === this.stopAtFrameId || this.exitFlag){
-                if (frame.id === this.stopAtFrameId) {
-                    this.stoppedIndentation = indentation;
-                }
                 if (frame.id == this.stopAtFrameId && this.stopAtIncludesLastFrame) {
                     exitNextFrame = true;
                 }
@@ -485,8 +480,10 @@ export default class Parser {
             }
 
             if(frame.id == this.ignoreSpecificFrameId){
-                // We still need to put something here, in case we are in an empty block, we add a f() dummy function to have something.
-                output += `${indentation}f()\n`;
+                // We still need to put something here, in case we are in an empty block. Defaults to
+                // "pass"; getCodeWithoutErrors() instead substitutes AC_PROBE_MARKER here, so it can find
+                // this exact spot afterwards and splice in the caller's real completion probe in-place.
+                output += `${indentation}${this.ignoreSpecificFrameIdReplacement}\n`;
                 this.line += 1;
                 continue;
             }
@@ -571,7 +568,7 @@ export default class Parser {
     // a particular line to do code completion, so we may need just stop.  But we never
     // need the opposite, to start at an arbitrary place and run to the end -- and this
     // could cause invalid indentation if you started at an indented item.)
-    public parse({startAtFrameId, stopAt, excludeLoopsAndCommentsAndCloseTry, defsLast, ignoreSpecificFrameId}: {startAtFrameId?: number, stopAt?: {frameId: number, includeThisFrame: boolean}, excludeLoopsAndCommentsAndCloseTry?: boolean, defsLast?: boolean; ignoreSpecificFrameId?: number}): string {
+    public parse({startAtFrameId, stopAt, excludeLoopsAndCommentsAndCloseTry, ignoreSpecificFrameId, ignoreSpecificFrameIdReplacement}: {startAtFrameId?: number, stopAt?: {frameId: number, includeThisFrame: boolean}, excludeLoopsAndCommentsAndCloseTry?: boolean; ignoreSpecificFrameId?: number; ignoreSpecificFrameIdReplacement?: string}): string {
         let output = "";
         if(startAtFrameId){
             this.startAtFrameId = startAtFrameId;
@@ -587,6 +584,7 @@ export default class Parser {
 
         if(ignoreSpecificFrameId){
             this.ignoreSpecificFrameId = ignoreSpecificFrameId;
+            this.ignoreSpecificFrameIdReplacement = ignoreSpecificFrameIdReplacement ?? "pass";
         }
 
         // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
@@ -608,13 +606,8 @@ export default class Parser {
             codeUnits = allChildrenOfParentOrJointParent.slice(startIndex, endIndex + (this.stopAtIncludesLastFrame ? 1 : 0));
             parentInsideAClass = parentOrJointParent.frameType.type == AllFrameTypesIdentifier.classdef;
         }
-        else {            
+        else {
             codeUnits = useStore().getFramesForParentId(0);
-            if (defsLast) {
-                codeUnits = codeUnits
-                    .filter((item) => item.frameType.type !== ContainerTypesIdentifiers.defsContainer)
-                    .concat(codeUnits.filter((item) => item.frameType.type === ContainerTypesIdentifiers.defsContainer));
-            }
         }
         output += this.parseFrames(codeUnits, parentInsideAClass, "");
         // We could have disabled frame(s) just at the end of the code. 
@@ -783,19 +776,23 @@ export default class Parser {
         return this.removeErrorsFromParsedCode(`${importCode}\n${classesCode}`);
     }
 
-    public getWholeClassCodeWithoutError(classFrameId: number, currentFrameId: number): string{
-        // This is called to parse the whole code of a user defined class bar the current frame we're in,
-        // (similar to getCodeWithoutError but with only parsing a specifc frame).
-        const classFrameSiblingId = getNextSibling(classFrameId);
-        const frameIdAfterClass = (classFrameSiblingId > 0) ? classFrameSiblingId : useStore().getMainCodeFrameContainerId; // If that class is last in definitions, next frame is in "my code";
-        const code = this.parse({startAtFrameId: classFrameId, stopAt:{frameId: frameIdAfterClass, includeThisFrame: false}, excludeLoopsAndCommentsAndCloseTry: true, ignoreSpecificFrameId: currentFrameId});
-        return this.removeErrorsFromParsedCode(code);
-    }
-
-    public getCodeWithoutErrors(endFrameId: number, defsLast: boolean): string {
-        // defsLast is set to true when we are inside the def section: the variables in "my code"
-        // may be required from within and therefore we need to place them before to interpreted properly.
-        const code = this.parse({stopAt: {frameId: endFrameId, includeThisFrame: false}, excludeLoopsAndCommentsAndCloseTry: true, defsLast});
+    public getCodeWithoutErrors(endFrameId: number): string {
+        // Parse the whole program (imports, definitions and main code, in the same order they appear in
+        // the editor), so a function referring to a variable assigned in "My code" -- whether declared
+        // "global" or not -- can be resolved regardless of whether that assignment is textually before or
+        // after the frame we're editing (endFrameId). (One case this doesn't cover: a "My code" variable
+        // passed as a call argument to a function/method defined in "Definitions" only provides usable
+        // evidence for that callee's parameter type if it's assigned before the definition -- TigerPython
+        // doesn't forward-reference an argument's type through a call site the way it forward-references a
+        // plain variable. That's a TigerPython limitation, not something reordering the generated code can
+        // fix without also breaking the property that this code matches what the user actually sees.) The
+        // frame we're editing is replaced in-place by AC_PROBE_MARKER rather than truncated or duplicated:
+        // truncating would lose evidence that comes after it, and duplicating it confuses TigerPython's
+        // evidence-gathering whenever the duplicated frame is itself a "def" (it can no longer connect a
+        // call site to a function defined twice). The caller finds the marker and splices in its own probe
+        // text in its place, so the probe always ends up correctly nested exactly where the user is
+        // editing, however much unrelated code precedes or follows it.
+        const code = this.parse({excludeLoopsAndCommentsAndCloseTry: true, ignoreSpecificFrameId: endFrameId, ignoreSpecificFrameIdReplacement: AC_PROBE_MARKER});
         return this.removeErrorsFromParsedCode(code);
     }
 

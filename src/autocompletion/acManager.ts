@@ -1,4 +1,4 @@
-import {AcResultsWithCategory, AcResultType, AllFrameTypesIdentifier, BaseSlot, CaretPosition, FieldSlot, FrameObject, isFieldBaseSlot, SlotsStructure, StringSlot} from "@/types/types";
+import {AcResultsWithCategory, AcResultType, AllFrameTypesIdentifier, BaseSlot, FieldSlot, FrameObject, isFieldBaseSlot, SlotsStructure, StringSlot} from "@/types/types";
 
 import {useStore} from "@/store/store";
 import {extractFormalParamsFromSlot, getMatchingBracket, transformFieldPlaceholders} from "@/helpers/editor";
@@ -6,9 +6,8 @@ import {getAllEnabledUserDefinedClasses, getAllEnabledUserDefinedFunctions} from
 import i18n from "@/i18n";
 import {Signature, TPyParser} from "tigerpython-parser";
 import {getAvailablePyPyiFromLibrary, getPossibleImports, getTextFileFromLibraries} from "@/helpers/libraryManager";
-import Parser from "@/parser/parser";
+import Parser, { AC_PROBE_MARKER } from "@/parser/parser";
 import {extractPYI} from "@/helpers/python-pyi";
-import {findCurrentStrypeLocation, STRYPE_LOCATION} from "@/helpers/pythonToFrames";
 import {AcResultsWithCategorySchema} from "@/types/ac-types-zod";
 import builtinsMod from "@/../pysrc/pyi/builtins.pyi?raw";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
@@ -779,25 +778,32 @@ export async function calculateParamPrompt(frameId: number, {context, token, par
     }
 
     if (context) {
-        // See if TigerPython can infer the type of the content before the .
-        // A special case is handled for using "self" inside a class: we need the full class to be parsed.
-        // If we are inside the "my code" section, we don't need to put the section "definitions"'s content
-        // at the end of the user code.
-        const currentStrypeLocationForClassInfos = findCurrentStrypeLocation({lookForGivenFramePosition: {id: frameId, caretPosition: CaretPosition.below}, checkForClassDeep: true});
-        const isGettingWholeClassContext = (context == "self" && currentStrypeLocationForClassInfos.strypeLocation == STRYPE_LOCATION.IN_CLASSDEF) && findCurrentStrypeLocation().strypeLocation == STRYPE_LOCATION.IN_FUNCDEF;
+        // See if TigerPython can infer the type of the content before the dot (".")
         const parser = new Parser(false, "py", true);
-        const userCode = (isGettingWholeClassContext) ? parser.getWholeClassCodeWithoutError(currentStrypeLocationForClassInfos.locationFrameId, frameId) : parser.getCodeWithoutErrors(frameId, findCurrentStrypeLocation().strypeLocation != STRYPE_LOCATION.MAIN_CODE_SECTION);
+        const userCode = parser.getCodeWithoutErrors(frameId);
         await tpyDefineLibraries(parser);
-        // If we are in the generic case: so we get context code out which is a partial expression and may not be valid at top-level.  Thus we wrap it in:
-        // f(<code>.x)
-        // If we are in the specific case of a whole class parsing (see above) then we do a similar approach but only add this (we are inside a function so we know there is one at least):
-        //         f(self.x) //--> WITH this indentation (double indent).
-        // To make it a valid statement, then autocomplete after the dot (two characters before the end)
-        const totalCode = userCode + ((isGettingWholeClassContext)
-            ? (parser.getIndent() + parser.getIndent() + "f(self.x)")
-            : ("\n" + parser.getStoppedIndentation() + "f(" + transformFieldPlaceholders(context) + "." + "x)")
-        );
-        const tppCompletions = TPyParser.autoCompleteExt(totalCode, totalCode.length - 2);
+        // getCodeWithoutErrors() leaves AC_PROBE_MARKER exactly where the frame we're editing sits, so
+        // the probe below ends up correctly nested there, however much other code (e.g. evidence for a
+        // "My code" global) surrounds it -- appending at the very end would often land it outside the
+        // right scope. This also covers "self." inside a method: since userCode is the whole program,
+        // the enclosing class -- and any class it inherits from -- is always present, so TigerPython
+        // resolves "self" the same way any other call after the dot would be.
+        let totalCode: string;
+        let completionOffset: number;
+        const probe = transformFieldPlaceholders(context) + ".";
+        const markerIndex = userCode.indexOf(AC_PROBE_MARKER);
+        if (markerIndex === -1) {
+            // Can happen if an ancestor block (e.g. an enclosing function's params) currently has an
+            // unrelated slot error, which drops the whole subtree containing our marker -- fall back to
+            // appending at the end.
+            totalCode = userCode + "\n" + probe;
+            completionOffset = totalCode.length;
+        }
+        else {
+            totalCode = userCode.slice(0, markerIndex) + probe + userCode.slice(markerIndex + AC_PROBE_MARKER.length);
+            completionOffset = markerIndex + probe.length;
+        }
+        const tppCompletions = TPyParser.autoCompleteExt(totalCode, completionOffset);
         const match = tppCompletions?.filter((c) => c.acResult === token);
         if (match && match.length > 0 && match[0].signature) {
             return getParamPrompt(match[0].signature, paramIndex, prevKeywordNames, lastParam, isFocused);
