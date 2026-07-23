@@ -178,14 +178,7 @@ describe("Graphics library", () => {
         }, false);
     });
 
-    // The next two tests are currently expected to fail against TigerPython and are skipped for that
-    // reason: TigerPython does not currently propagate our library's ".pyi" return types through to
-    // member completion when the return type is a single-parameter generic collection (list[T], set[T],
-    // tuple[T, ...] all lose ALL completions, not just element-type completions -- unlike dict[K, V]
-    // which works) or a union (X | None, X | Y, Optional[X] all lose ALL completions for every member of
-    // the union, even though a plain non-union class return works fine). This was raised upstream; see
-    // the "TigerPython" project for tracking. Once fixed, remove ".skip" from these two tests.
-    it.skip("Shows completions for an element of a get_actors() list (blocked on TigerPython list[T] support)", () => {
+    it("Shows completions for an element of a get_actors() list (blocked on TigerPython list[T] support)", () => {
         focusEditorAC();
         // Add graphics import:
         clearDefaultImports();
@@ -204,7 +197,7 @@ describe("Graphics library", () => {
         }, false);
     });
 
-    it.skip("Shows completions for the result of get_actor_at() (blocked on TigerPython Optional/union return type support)", () => {
+    it("Shows completions for the result of get_actor_at() (blocked on TigerPython Optional/union return type support)", () => {
         focusEditorAC();
         // Add graphics import:
         clearDefaultImports();
