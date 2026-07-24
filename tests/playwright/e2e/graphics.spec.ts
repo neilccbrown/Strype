@@ -180,6 +180,59 @@ test.describe("Test mouse hover coordinate display", () => {
         await hoverProportionalPos(page, 5 / 800, 0.5);
         await expect(coords).toHaveText("(-394, 0)");
     });
+
+    // A second bug (distinct from the off-by-one fixed above) meant the two extreme values on each
+    // axis (-399 and 400 for x, -299 and 300 for y) were reachable in theory but only from a sliver
+    // of mouse positions half as wide as every other value got: the bounds check that gates whether
+    // a reading is shown at all compared the raw, pre-rounding coordinate against the world edges,
+    // rather than the rounded coordinate that actually gets displayed. That mismatch meant the last
+    // half of the rounding range for an extreme value was rejected before rounding ever happened, so
+    // with real (pixel-quantized) mouse input the extremes could become entirely unreachable by hand,
+    // even though the sweep above (which only checks values stay in-bounds) would not catch this.
+    //
+    // At the small (default, un-expanded) canvas size used elsewhere in this file, the 800x600 logical
+    // world is downscaled enough that most individual logical units -- not just the two extremes --
+    // aren't reachable at all by a mouse that only moves in whole real pixels: e.g. at roughly 0.29x
+    // scale, moving by one real pixel skips over three or four logical units at a time, and which
+    // handful survive is essentially arbitrary. That's a separate, expected resolution limitation, not
+    // a bug, and it isn't what this test is about, so we expand the graphics pane first to get close
+    // enough to 1:1 scale that every logical unit -- including the extremes -- has its own reachable
+    // pixel, the same way a user maximising their graphics pane would experience it:
+    test("Check the extreme world coordinates are reachable by hovering near the canvas edges", async ({page}) => {
+        await page.click("#graphicsPEATab");
+        await page.locator("#peaGraphicsContainerDiv").hover();
+        await page.click(".pea-toggle-layout-buttons-container > div:nth-child(2)");
+        await dragDividerTo(page, ".expanded-PEA-splitter-overlay.strype-split-theme > .splitpanes.splitpanes--horizontal > .splitpanes__splitter", 500, 200);
+        const coords = page.locator(".pea-hover-coords");
+
+        // Sweeps a few positions close to one edge, reading off the x or y component (whichever
+        // varies) each time, and returns the set of distinct values seen:
+        async function seenNear(component: "x" | "y", positions: [number, number][]) : Promise<Set<number>> {
+            const seen = new Set<number>();
+            for (const [x, y] of positions) {
+                await hoverProportionalPos(page, x, y);
+                if (await coords.count() > 0) {
+                    const text = await coords.textContent();
+                    const m = text?.match(/^\((-?\d+), (-?\d+)\)$/);
+                    if (m) {
+                        seen.add(Number(m[component === "x" ? 1 : 2]));
+                    }
+                }
+            }
+            return seen;
+        }
+
+        const nearEdge = [0, 0.5 / 800, 1 / 800, 1.5 / 800, 2 / 800, 3 / 800];
+
+        const leftX = await seenNear("x", nearEdge.map((f) : [number, number] => [f, 0.5]));
+        expect(leftX, "x values seen hovering near the left edge").toContain(-399);
+        const rightX = await seenNear("x", nearEdge.map((f) : [number, number] => [1 - f, 0.5]));
+        expect(rightX, "x values seen hovering near the right edge").toContain(400);
+        const topY = await seenNear("y", nearEdge.map((f) : [number, number] => [0.5, f]));
+        expect(topY, "y values seen hovering near the top edge").toContain(300);
+        const bottomY = await seenNear("y", nearEdge.map((f) : [number, number] => [0.5, 1 - f]));
+        expect(bottomY, "y values seen hovering near the bottom edge").toContain(-299);
+    });
 });
 
 test.describe("Check turtle works when shared with graphics", () => {

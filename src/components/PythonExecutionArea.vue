@@ -1053,16 +1053,24 @@ export default defineComponent({
         },
         graphicsCanvasMouseDown(event: MouseEvent) {
             const {adjustedX, adjustedY} = this.getLogicalMouseCoords(event);
+            // We check against the rounded coordinate (i.e. the integer world position it will actually
+            // be treated as) rather than the raw continuous one. Checking the raw value against the world
+            // bounds directly would give the two extreme values (-399 and 400) only half as wide a range of
+            // real mouse positions to land on as every other value gets (since the bound itself cuts off the
+            // other half of their rounding range), which in practice made them nearly impossible to reach
+            // with an actual mouse -- see the mouse hover coordinate display test in graphics.spec.ts.
+            const roundedX = Math.round(adjustedX);
+            const roundedY = Math.round(adjustedY);
 
-            if (adjustedX >= -(graphicsCanvasLogicalWidth / 2 - 1) && adjustedX <= graphicsCanvasLogicalWidth / 2 &&
-                adjustedY >= -(graphicsCanvasLogicalHeight / 2 - 1) && adjustedY <= graphicsCanvasLogicalHeight / 2) {
+            if (roundedX >= -(graphicsCanvasLogicalWidth / 2 - 1) && roundedX <= graphicsCanvasLogicalWidth / 2 &&
+                roundedY >= -(graphicsCanvasLogicalHeight / 2 - 1) && roundedY <= graphicsCanvasLogicalHeight / 2) {
                 mostRecentClickedItems = renderer.calculateAllOverlappingAtPos(adjustedX, adjustedY);
                 mostRecentClickDetails = {x: adjustedX, y: adjustedY, button: event.button, clickCount: event.detail};
                 if (event.button < mostRecentMouseDetails.buttonsPressed.length) {
                     mostRecentMouseDetails.buttonsPressed[event.button] = true;
                 }
             }
-            
+
             // If we're running, don't propagate it into a right-click menu, for example:
             if (this.isPythonExecuting) {
                 event.preventDefault();
@@ -1072,11 +1080,15 @@ export default defineComponent({
         },
         graphicsCanvasMouseMove(event: MouseEvent) {
             const {adjustedX, adjustedY} = this.getLogicalMouseCoords(event);
-            if (adjustedX >= -(graphicsCanvasLogicalWidth / 2 - 1) && adjustedX <= graphicsCanvasLogicalWidth / 2 &&
-                adjustedY >= -(graphicsCanvasLogicalHeight / 2 - 1) && adjustedY <= graphicsCanvasLogicalHeight / 2) {
+            // See the comment in graphicsCanvasMouseDown() about why we check the rounded coordinate:
+            const roundedX = Math.round(adjustedX);
+            const roundedY = Math.round(adjustedY);
+
+            if (roundedX >= -(graphicsCanvasLogicalWidth / 2 - 1) && roundedX <= graphicsCanvasLogicalWidth / 2 &&
+                roundedY >= -(graphicsCanvasLogicalHeight / 2 - 1) && roundedY <= graphicsCanvasLogicalHeight / 2) {
                 mostRecentMouseDetails.x = adjustedX;
                 mostRecentMouseDetails.y = adjustedY;
-                this.mouseCoordsToShow = "(" + Math.round(mostRecentMouseDetails.x) + ", " + Math.round(mostRecentMouseDetails.y) + ")";
+                this.mouseCoordsToShow = "(" + roundedX + ", " + roundedY + ")";
             }
             else {
                 this.mouseCoordsToShow = undefined;
