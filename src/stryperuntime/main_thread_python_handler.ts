@@ -3,6 +3,14 @@
 //
 // It also managers the graphics Renderer as that is tied up
 // with the communication with Pyodide.
+//
+// On capable devices we also keep a second, pre-warmed "spare" Pyodide worker around.
+// Restarting Pyodide after a run (see terminateAndRestartPyodide()) always throws away
+// the worker that just ran code, for a clean state -- but re-initialising Pyodide from
+// scratch is slow enough to cause a visible delay before the next run can start. If a
+// spare is ready, we swap to it immediately and warm up a new spare in the background,
+// so that delay is hidden behind however long the user spends editing before running
+// again. See shouldKeepSpareWorker() below for the device criteria that gate this.
 
 import {Renderer} from "@/stryperuntime/renderer";
 import {PyodideClient} from "pyodide-worker-runner";
@@ -15,39 +23,84 @@ const serviceWorkerChannel = makeServiceWorkerChannel({scope: import.meta.env.BA
 
 export const renderer = new Renderer();
 export const isPythonWorkerReady = ref(false);
-// These two will get recreated when we restart Pyodide:
-// They will only be null if a special testing flag is used:
-let pythonWorker : Worker | null = makeNewPyodideWorker();
-let pythonClient : PyodideClient<any> | null = pythonWorker == null ? null: makePyodideClient(pythonWorker);
 
-function makeNewPyodideWorker() : Worker | null {
+// A slot bundles a Pyodide worker with its client and the message port it uses to send
+// Sprite/graphics updates to the Renderer. Creating a slot does not affect the Renderer or
+// isPythonWorkerReady -- that only happens once a slot is made the *active* one (see
+// activateSlot below), which is what lets us prepare a spare slot in the background without
+// disturbing whichever slot is currently running code. A slot is null instead of existing
+// with null fields when Pyodide is skipped entirely (the "TestingNoPyodide" testing flag).
+interface PyodideSlot {
+    worker: Worker;
+    client: PyodideClient<any>;
+    updatePort: MessagePort;
+    ready: boolean;
+}
+
+function createPyodideSlot() : PyodideSlot | null {
     if (sessionStorage.getItem("TestingNoPyodide")) {
         console.info("Skipping Pyodide as in testing mode");
         return null;
     }
-    
+
     // The channel used to send Sprite updates asynchronously, outside of the main requests:
-    // (channels cannot be re-used/re-transferred so we need a new one for each Pyodide worker
-    // and thus we have to tell the renderer about the new channel too:
+    // (channels cannot be re-used/re-transferred so we need a new one for each Pyodide worker).
+    // We deliberately don't wire this into the Renderer here -- only activateSlot() does that,
+    // once this slot actually becomes the one running code:
     const updateChannel = new MessageChannel();
-    renderer.setMessageChannel(updateChannel.port2);
     // We initialise this out here to make it load earlier:
-    const pythonWorker = new Worker(new URL("@/workers/python-execution.ts", import.meta.url), {type: "module"});
+    const worker = new Worker(new URL("@/workers/python-execution.ts", import.meta.url), {type: "module"});
     // Must post it the update channel before wrapping in Pyodide:
-    pythonWorker.postMessage({updatePort: updateChannel.port1}, [updateChannel.port1]);
-    return pythonWorker;
-}
-function makePyodideClient(pythonWorker: Worker) : PyodideClient {
-    isPythonWorkerReady.value = false;
-    const pythonClient = new PyodideClient(() => pythonWorker, serviceWorkerChannel);
-    pythonClient.call(
-        pythonClient.workerProxy.onReady,
+    worker.postMessage({updatePort: updateChannel.port1}, [updateChannel.port1]);
+
+    const client = new PyodideClient(() => worker, serviceWorkerChannel);
+    const slot: PyodideSlot = {worker, client, updatePort: updateChannel.port2, ready: false};
+    client.call(
+        client.workerProxy.onReady,
         Comlink.proxy(() => {
-            isPythonWorkerReady.value = true;
+            slot.ready = true;
+            // Only surface readiness if this slot is still the active one by the time it
+            // finishes loading (it may instead be sitting in the background as the spare):
+            if (slot === activeSlot) {
+                isPythonWorkerReady.value = true;
+            }
         })
     );
-    return pythonClient;
+    return slot;
 }
+
+function activateSlot(slot: PyodideSlot | null) : void {
+    activeSlot = slot;
+    if (slot != null) {
+        renderer.setMessageChannel(slot.updatePort);
+    }
+    isPythonWorkerReady.value = slot?.ready ?? false;
+}
+
+// Whether this device looks capable of comfortably running two Pyodide workers at once (the
+// active one plus a pre-warmed spare). We deliberately require both a decent core count *and*
+// a decent amount of RAM, and treat either signal being unavailable as "no": navigator.deviceMemory
+// in particular is only implemented in Chromium-based browsers (undefined on Firefox and
+// Safari/iPadOS, which covers a lot of the tablets used in schools). Wrongly keeping a spare
+// worker on a low-end or shared classroom device is worse than missing out on a smoother restart
+// on a device we can't measure, so an unknown value counts against keeping a spare, not for it.
+function shouldKeepSpareWorker() : boolean {
+    const cores = navigator.hardwareConcurrency;
+    const memoryGiB = (navigator as Navigator & {deviceMemory?: number}).deviceMemory;
+    return typeof cores === "number" && cores >= 3 && typeof memoryGiB === "number" && memoryGiB >= 8;
+}
+
+function maybeCreateSpareSlot() : void {
+    if (spareSlot == null && shouldKeepSpareWorker()) {
+        spareSlot = createPyodideSlot();
+    }
+}
+
+// These get replaced (activeSlot) or filled in/consumed (spareSlot) as we restart Pyodide:
+let activeSlot : PyodideSlot | null = null;
+let spareSlot : PyodideSlot | null = null;
+activateSlot(createPyodideSlot());
+maybeCreateSpareSlot();
 
 // Pyodide does have built-in support for "interrupting" an execution,
 // but to do that from another thread it requires SharedArrayBuffer, which needs
@@ -73,10 +126,11 @@ export async function terminateAndRestartPyodide() : Promise<void> {
     // point, regardless of what kind of request it was waiting on -- so the worker actually stops
     // instead of continuing. We cap how long we wait for that (it should be near-instant) so a
     // slow/stuck write can never stop us from terminating below:
-    if (pythonClient?.state === "awaitingMessage" || pythonClient?.state === "sleeping") {
+    const client = activeSlot?.client;
+    if (client?.state === "awaitingMessage" || client?.state === "sleeping") {
         try {
             await Promise.race([
-                pythonClient.interrupt(),
+                client.interrupt(),
                 new Promise((resolve) => setTimeout(resolve, 500)),
             ]);
         }
@@ -87,14 +141,25 @@ export async function terminateAndRestartPyodide() : Promise<void> {
     }
     // This is apparently instant on most browsers, so we can immediately assume Pyodide has
     // stopped; the interrupt above is what makes that assumption hold on WebKit too:
-    pythonWorker?.terminate();
-    // Then we must make a new Pyodide worker ready for a potential future run:
-    isPythonWorkerReady.value = false;
-    pythonWorker = makeNewPyodideWorker();
-    pythonClient = pythonWorker == null ? null : makePyodideClient(pythonWorker);
+    activeSlot?.worker.terminate();
+
+    // If we already have a pre-warmed spare (ready or not -- even a still-loading spare is
+    // further along than a brand new worker would be), swap straight to it so the next run
+    // doesn't have to wait for a full Pyodide initialisation. Otherwise fall back to creating
+    // a fresh slot synchronously, exactly as before:
+    if (spareSlot != null) {
+        const promoted = spareSlot;
+        spareSlot = null;
+        activateSlot(promoted);
+    }
+    else {
+        activateSlot(createPyodideSlot());
+    }
+    // Line up the next spare in the background (a no-op if the device isn't deemed capable of one):
+    maybeCreateSpareSlot();
 }
 
 // Note that the value of this function will change after you call terminateAndRestartPyodide()
 export function getPythonClient() : PyodideClient | null {
-    return pythonClient;
+    return activeSlot?.client ?? null;
 }
