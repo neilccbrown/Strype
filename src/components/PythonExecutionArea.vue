@@ -1038,15 +1038,24 @@ export default defineComponent({
             // We have to invert the Y axis because positive is up there, hence * -1 on the end:
             const offsetY = (event.offsetY - b.height / 2) * -1;
 
-            const adjustedX = (offsetX / scaledWidth) * graphicsCanvasLogicalWidth;
+            // The logical world has no single centre pixel on either axis (both width and height are
+            // even), so world x runs from -(graphicsCanvasLogicalWidth / 2 - 1) to +graphicsCanvasLogicalWidth / 2
+            // (e.g. -399 to 400 for the default 800-wide world) -- and the same shape of asymmetry applies to y
+            // (see mapX/mapY in redrawCanvas()). But mapY is the mirror image of mapX (canvas rows increase
+            // downward while world y increases upward), and that flip is exactly what the offsetY calculation
+            // above already inverts. As a result, the plain centre-offset calculation below happens to come out
+            // equal to mapY's inverse with no further adjustment, whereas for X (not flipped) it doesn't: the
+            // "+ 1" below corrects that. Without it, mouse positions were reported one logical unit further left
+            // than the world actually extends (e.g. -400 instead of -399).
+            const adjustedX = (offsetX / scaledWidth) * graphicsCanvasLogicalWidth + 1;
             const adjustedY = (offsetY / scaledHeight) * graphicsCanvasLogicalHeight;
             return {adjustedX, adjustedY};
         },
         graphicsCanvasMouseDown(event: MouseEvent) {
             const {adjustedX, adjustedY} = this.getLogicalMouseCoords(event);
 
-            if (adjustedX >= -graphicsCanvasLogicalWidth / 2 && adjustedX <= graphicsCanvasLogicalWidth / 2 - 1 &&
-                adjustedY >= -graphicsCanvasLogicalHeight / 2 && adjustedY <= graphicsCanvasLogicalHeight / 2 - 1) {
+            if (adjustedX >= -(graphicsCanvasLogicalWidth / 2 - 1) && adjustedX <= graphicsCanvasLogicalWidth / 2 &&
+                adjustedY >= -(graphicsCanvasLogicalHeight / 2 - 1) && adjustedY <= graphicsCanvasLogicalHeight / 2) {
                 mostRecentClickedItems = renderer.calculateAllOverlappingAtPos(adjustedX, adjustedY);
                 mostRecentClickDetails = {x: adjustedX, y: adjustedY, button: event.button, clickCount: event.detail};
                 if (event.button < mostRecentMouseDetails.buttonsPressed.length) {
@@ -1063,8 +1072,8 @@ export default defineComponent({
         },
         graphicsCanvasMouseMove(event: MouseEvent) {
             const {adjustedX, adjustedY} = this.getLogicalMouseCoords(event);
-            if (adjustedX >= -graphicsCanvasLogicalWidth / 2 && adjustedX <= graphicsCanvasLogicalWidth / 2 - 1 &&
-                adjustedY >= -graphicsCanvasLogicalHeight / 2 && adjustedY <= graphicsCanvasLogicalHeight / 2 - 1) {
+            if (adjustedX >= -(graphicsCanvasLogicalWidth / 2 - 1) && adjustedX <= graphicsCanvasLogicalWidth / 2 &&
+                adjustedY >= -(graphicsCanvasLogicalHeight / 2 - 1) && adjustedY <= graphicsCanvasLogicalHeight / 2) {
                 mostRecentMouseDetails.x = adjustedX;
                 mostRecentMouseDetails.y = adjustedY;
                 this.mouseCoordsToShow = "(" + Math.round(mostRecentMouseDetails.x) + ", " + Math.round(mostRecentMouseDetails.y) + ")";

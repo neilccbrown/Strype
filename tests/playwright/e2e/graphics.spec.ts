@@ -103,6 +103,85 @@ async function clickProportionalPos(page: Page, x: number, y: number, button: "l
     }
 }
 
+// x and y are from 0 to 1, same convention as clickProportionalPos:
+async function hoverProportionalPos(page: Page, x: number, y: number) : Promise<void> {
+    const canvas = page.locator("#pythonGraphicsCanvas");
+    const box = await canvas.boundingBox();
+    const scale = Number.parseFloat(await canvas.getAttribute("data-scale") ?? "0");
+
+    if (box && scale > 0) {
+        const scaled_width = 800 * scale;
+        const scaled_height = 600 * scale;
+
+        const centerX = box.x + box.width / 2;
+        const centerY = box.y + box.height / 2;
+
+        // Round ourselves rather than leaving it to the browser: Firefox and WebKit only support
+        // whole-pixel mouse coordinates (unlike Chromium, which is sub-pixel precise), so without
+        // this the same computed target can land a fraction of a pixel differently -- and thus on
+        // a different side of a world-bounds check -- depending on which browser is running the test.
+        await page.mouse.move(Math.round(centerX + (x - 0.5) * scaled_width), Math.round(centerY + (y - 0.5) * scaled_height));
+    }
+    else {
+        throw new Error("Could not find graphics container to hover on");
+    }
+}
+
+test.describe("Test mouse hover coordinate display", () => {
+    // This display (the little "(x, y)" label next to the Run button) only shows while Python
+    // is not executing, so there is no need to run any code for this test -- we just need the
+    // graphics tab (and its canvas) to be showing.
+    test("Check hovering near the world edges never shows out-of-range coordinates", async ({page}) => {
+        await page.click("#graphicsPEATab");
+        const coords = page.locator(".pea-hover-coords");
+
+        async function readCoords() : Promise<[number, number] | null> {
+            // The label is removed from the DOM (v-if) whenever the mouse is judged to be outside
+            // the world bounds, so an absent label is a valid (if uninformative) outcome here:
+            if (await coords.count() === 0) {
+                return null;
+            }
+            const text = await coords.textContent();
+            const m = text?.match(/^\((-?\d+), (-?\d+)\)$/);
+            return m ? [Number(m[1]), Number(m[2])] : null;
+        }
+
+        // The world's logical coordinates run from -399 to 400 (x) and -299 to 300 (y) -- see the
+        // comment above mapX/mapY in redrawCanvas() in PythonExecutionArea.vue. A previous bug in
+        // getLogicalMouseCoords() meant hovering along the left edge of the canvas reported x as
+        // -400 (one unit beyond the valid minimum), and hovering along the bottom edge reported y
+        // as -300, so the pair could come out as exactly (-400, -300) -- entirely outside the world.
+        // Sweep along both edges (not just the corners) since the old bug was present all along
+        // each edge, not just at the extreme corners. We can't rely on landing exactly on the
+        // mathematical edge (real mouse coordinates have enough sub-pixel jitter that the reading
+        // can legitimately be absent right at the boundary), so count how many readings we actually
+        // got as well, to make sure this isn't vacuously passing by never seeing a coordinate at all:
+        let readingsSeen = 0;
+        for (const frac of [0, 0.25, 0.5, 0.75, 1]) {
+            for (const [x, y] of [[0, frac], [1, frac], [frac, 0], [frac, 1]] as [number, number][]) {
+                await hoverProportionalPos(page, x, y);
+                const c = await readCoords();
+                if (c) {
+                    readingsSeen++;
+                    const [cx, cy] = c;
+                    expect(cx, `x when hovering at proportional (${x}, ${y})`).toBeGreaterThanOrEqual(-399);
+                    expect(cx, `x when hovering at proportional (${x}, ${y})`).toBeLessThanOrEqual(400);
+                    expect(cy, `y when hovering at proportional (${x}, ${y})`).toBeGreaterThanOrEqual(-299);
+                    expect(cy, `y when hovering at proportional (${x}, ${y})`).toBeLessThanOrEqual(300);
+                }
+            }
+        }
+        expect(readingsSeen).toBeGreaterThan(0);
+
+        // Pin down an exact value a few logical pixels in from the left edge (not right at the
+        // edge itself, which -- as above -- isn't a reliable place to land): this directly confirms
+        // the off-by-one fix on the X axis, which previously read one unit too low everywhere, not
+        // just at the boundary (e.g. this exact spot used to read -395, not -394):
+        await hoverProportionalPos(page, 5 / 800, 0.5);
+        await expect(coords).toHaveText("(-394, 0)");
+    });
+});
+
 test.describe("Check turtle works when shared with graphics", () => {
     // Skip in CI outside Chromium as WebGL is not always available for turtle in Github Actions runners:
     test.skip(({ browserName }) => browserName === "firefox" || browserName === "webkit",
