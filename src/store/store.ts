@@ -11,7 +11,7 @@ import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
 import {cloneDeep, isEqual} from "lodash";
-import { TPyParser } from "tigerpython-parser";
+import { TPyParser } from "@tigerpython/tpparser";
 import emptyState from "@/store/initial-states/empty-state";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";

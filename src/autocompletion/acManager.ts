@@ -4,7 +4,7 @@ import {useStore} from "@/store/store";
 import {extractFormalParamsFromSlot, getMatchingBracket, transformFieldPlaceholders} from "@/helpers/editor";
 import {getAllEnabledUserDefinedClasses, getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
-import {Signature, TPyParser} from "tigerpython-parser";
+import {Signature, TPyParser} from "@tigerpython/tpparser";
 import {getAvailablePyPyiFromLibrary, getPossibleImports, getTextFileFromLibraries} from "@/helpers/libraryManager";
 import Parser, { AC_PROBE_MARKER } from "@/parser/parser";
 import {extractPYI} from "@/helpers/python-pyi";

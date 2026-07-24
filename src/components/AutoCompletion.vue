@@ -83,7 +83,7 @@ import {getAllEnabledUserDefinedClasses, getAllEnabledUserDefinedFunctions} from
 import {buildProbeCodeAndOffset, getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, tpyDefineLibraries, getUserDefinedSignature} from "@/autocompletion/acManager";
 import Parser from "@/parser/parser";
 import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
-import {Completion, Signature, SignatureArg, TPyParser} from "tigerpython-parser";
+import {Completion, Signature, SignatureArg, TPyParser} from "@tigerpython/tpparser";
 import scssVars from "@/assets/style/_export.module.scss";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
