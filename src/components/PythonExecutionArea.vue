@@ -1051,6 +1051,18 @@ export default defineComponent({
             const adjustedY = (offsetY / scaledHeight) * graphicsCanvasLogicalHeight;
             return {adjustedX, adjustedY};
         },
+        // The raw continuous coordinates from getLogicalMouseCoords() can slightly overshoot the
+        // world edge (e.g. -399.2 or 400.2) because the rounding tolerance used to decide whether the
+        // mouse is within the world at all (see the comment in graphicsCanvasMouseDown()) is half a
+        // logical unit wider than the world itself. Once a position has passed that admission check,
+        // clamp it to the world's exact bounds before reporting it to Python code.
+        clampToWorldBounds(x: number, y: number) {
+            const minX = -(graphicsCanvasLogicalWidth / 2 - 1);
+            const maxX = graphicsCanvasLogicalWidth / 2;
+            const minY = -(graphicsCanvasLogicalHeight / 2 - 1);
+            const maxY = graphicsCanvasLogicalHeight / 2;
+            return {x: Math.min(maxX, Math.max(minX, x)), y: Math.min(maxY, Math.max(minY, y))};
+        },
         graphicsCanvasMouseDown(event: MouseEvent) {
             const {adjustedX, adjustedY} = this.getLogicalMouseCoords(event);
             // We check against the rounded coordinate (i.e. the integer world position it will actually
@@ -1065,7 +1077,8 @@ export default defineComponent({
             if (roundedX >= -(graphicsCanvasLogicalWidth / 2 - 1) && roundedX <= graphicsCanvasLogicalWidth / 2 &&
                 roundedY >= -(graphicsCanvasLogicalHeight / 2 - 1) && roundedY <= graphicsCanvasLogicalHeight / 2) {
                 mostRecentClickedItems = renderer.calculateAllOverlappingAtPos(adjustedX, adjustedY);
-                mostRecentClickDetails = {x: adjustedX, y: adjustedY, button: event.button, clickCount: event.detail};
+                const {x: clampedX, y: clampedY} = this.clampToWorldBounds(adjustedX, adjustedY);
+                mostRecentClickDetails = {x: clampedX, y: clampedY, button: event.button, clickCount: event.detail};
                 if (event.button < mostRecentMouseDetails.buttonsPressed.length) {
                     mostRecentMouseDetails.buttonsPressed[event.button] = true;
                 }
@@ -1086,8 +1099,9 @@ export default defineComponent({
 
             if (roundedX >= -(graphicsCanvasLogicalWidth / 2 - 1) && roundedX <= graphicsCanvasLogicalWidth / 2 &&
                 roundedY >= -(graphicsCanvasLogicalHeight / 2 - 1) && roundedY <= graphicsCanvasLogicalHeight / 2) {
-                mostRecentMouseDetails.x = adjustedX;
-                mostRecentMouseDetails.y = adjustedY;
+                const {x: clampedX, y: clampedY} = this.clampToWorldBounds(adjustedX, adjustedY);
+                mostRecentMouseDetails.x = clampedX;
+                mostRecentMouseDetails.y = clampedY;
                 this.mouseCoordsToShow = "(" + roundedX + ", " + roundedY + ")";
             }
             else {
