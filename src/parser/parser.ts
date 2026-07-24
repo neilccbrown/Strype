@@ -3,7 +3,7 @@ import {hasEditorCodeErrors, trimmedKeywordOperators} from "@/helpers/editor";
 import { generateFlatSlotBases, getParentOrJointParent, retrieveSlotByPredicate } from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CollapsedState, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, FrozenState, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
+import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CollapsedState, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, FrozenState, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
 import { ErrorInfo, TPyParser } from "@tigerpython/tpparser";
 import {AppSPYFullPrefix} from "@/helpers/appContext";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
@@ -270,10 +270,6 @@ export default class Parser {
             return "";
         }
 
-        const passBlock = this.excludeLoopsAndCommentsAndCloseTry && getLoopFramesTypeIdentifiers().includes(block.frameType.type);
-        // on `excludeLoops` the loop frames must not be added to the code and nor should their contents be indented
-        const conditionalIndent = (passBlock) ? "" : INDENT;
-
         // We only add states if there is a non-default value to save:
         const frameStates : string[] = [];
         if (block.collapsedState != undefined && block.collapsedState != CollapsedState.FULLY_VISIBLE) {
@@ -285,32 +281,32 @@ export default class Parser {
         
         output +=
             (frameStates.length > 0 && this.saveAsSPY ? indentation + AppSPYFullPrefix + " FrameState:" + frameStates.sort().join(";") + "\n" : "") +
-            ((!passBlock)? this.parseStatement(block, insideAClass, indentation) : "") +
+            this.parseStatement(block, insideAClass, indentation) +
             ((this.saveAsSPY && children.length > 0 &&
                 ((!block.isDisabled && children.filter((c) => !c.isDisabled && c.frameType.type != AllFrameTypesIdentifier.blank && c.frameType.type != AllFrameTypesIdentifier.comment).length == 0)
                     || (block.isDisabled && children.filter((c) => c.frameType.type != AllFrameTypesIdentifier.blank && c.frameType.type != AllFrameTypesIdentifier.comment).length == 0)))
-                ? indentation + conditionalIndent +"pass" + "\n" : "") +
+                ? indentation + INDENT +"pass" + "\n" : "") +
             // We replace an empty block frame content by "pass". We also replace the frame's content if
-            // the children are ALL blank or simple comment frames, because Python will see it as a problem. 
-            // Any disabled frame (and multi lines comments which are actually transformed to multiple line comments) 
+            // the children are ALL blank or simple comment frames, because Python will see it as a problem.
+            // Any disabled frame (and multi lines comments which are actually transformed to multiple line comments)
             // won't make an issue when executed, so we parse them normally.
-            ((block.frameType.allowChildren && children.length > 0 && 
-                children.some((childFrame) => childFrame.isDisabled 
-                    || (!(childFrame.frameType.type == AllFrameTypesIdentifier.funccall && childFrame.labelSlotsDict[0].slotStructures.fields.length == 1 && (childFrame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.length == 0) 
-                        && childFrame.frameType.type != AllFrameTypesIdentifier.blank && (childFrame.frameType.type != AllFrameTypesIdentifier.comment 
+            ((block.frameType.allowChildren && children.length > 0 &&
+                children.some((childFrame) => childFrame.isDisabled
+                    || (!(childFrame.frameType.type == AllFrameTypesIdentifier.funccall && childFrame.labelSlotsDict[0].slotStructures.fields.length == 1 && (childFrame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.length == 0)
+                        && childFrame.frameType.type != AllFrameTypesIdentifier.blank && (childFrame.frameType.type != AllFrameTypesIdentifier.comment
                         || (childFrame.frameType.type == AllFrameTypesIdentifier.comment && (childFrame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.includes("\n"))))))
                 ?
                 this.parseFrames(
                     children,
                     insideAClass,
-                    indentation + conditionalIndent
+                    indentation + INDENT
                 ) :
                 // When we replace empty body frames by "pass", if that's because we have only blank or comments, we need to
                 // replace EACH of these frames by "pass", so we keep the match between the frames and Python code lines coherent...
                 ((children.length > 0) ?
-                    this.parsePseudoEmptyBlockContent(children, indentation, conditionalIndent)
-                    : indentation + conditionalIndent +"pass" + "\n")
-            ) 
+                    this.parsePseudoEmptyBlockContent(children, indentation)
+                    : indentation + INDENT +"pass" + "\n")
+            )
             +
             ((block.frameType.type == AllFrameTypesIdentifier.try && (useStore().getJointFramesForFrameId(block.id)?.filter((f) => !f.isDisabled).length ?? 0) == 0)
                 ? indentation + "except " + STRYPE_DUMMY_FIELD + ":\n" + indentation + "    pass\n" : "") +
@@ -323,12 +319,12 @@ export default class Parser {
         return output;
     }
 
-    private parsePseudoEmptyBlockContent(children: FrameObject[], indentation: string, conditionalIndent: string): string {
+    private parsePseudoEmptyBlockContent(children: FrameObject[], indentation: string): string {
         // This method is called when parsing the content of a block frame that only contains simple comments or blank frames,
-        // effectively making the block content empty. However, we need to 1) allow "passing" the content for Python to 
+        // effectively making the block content empty. However, we need to 1) allow "passing" the content for Python to
         // compile properly, and 2) make sure we keep the slots/lines mapping for proper errors handling.
-        const emptyContent = this.parseFrames(children, false, indentation + conditionalIndent);
-        const passLine = indentation + conditionalIndent + "pass" + "\n";
+        const emptyContent = this.parseFrames(children, false, indentation + INDENT);
+        const passLine = indentation + INDENT + "pass" + "\n";
         return this.saveAsSPY ? emptyContent : passLine.repeat(children.length);
     }
     

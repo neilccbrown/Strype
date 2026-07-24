@@ -251,6 +251,55 @@ describe("Function params: types inferred from callers (Actor, multiple params)"
         }, false, true);
     });
 
+    // This is the exact shape of the bug found in the "particles.spy" example (public/demos/graphics):
+    // a for-loop variable drawn from get_actors() is passed as a call argument, meant to give the
+    // callee's own parameter its Actor type. This is NOT a TigerPython limitation: getCodeWithoutErrors()
+    // in parser.ts generates code for autocomplete with `excludeLoopsAndCommentsAndCloseTry: true`, which
+    // (see parseBlock()'s `passBlock` handling) omits a for/while loop's own header line entirely from the
+    // generated code while still including its body content (unindented, as if it were never in a loop).
+    // So whenever the frame being completed is itself inside a loop, or evidence for the completion (e.g.
+    // a call site) sits inside a loop, that loop's header -- the only place informing TigerPython what the
+    // loop variable actually is -- is missing from what TigerPython gets to see. Confirmed directly: adding
+    // a temporary console.log of the exact `totalCode` string sent to TPyParser.autoCompleteExt() (see
+    // AutoCompletion.vue's buildTotalCodeAndOffset call) showed "for p in get_actors():" is simply absent,
+    // leaving the probe as `___strype_ac_probe_wrap___(p.___strype_ac_probe_ident___)` with `p` an
+    // undefined bare name. Swapping the for-loop for a plain variable assignment + indexing (see
+    // "Shows completions for an element of a get_actors() list" above) avoids the loop entirely and works
+    // fine, confirming the loop-exclusion (not list[T] support, and not TigerPython at all) is the cause.
+    // This needs a Strype-side fix in parser.ts, not an upstream TigerPython report.
+    it("Shows Actor members for a top-level function param, inferred from a get_actors() for-loop variable (blocked by Strype's loop-exclusion in getCodeWithoutErrors(), not TigerPython)", () => {
+        focusEditorAC();
+        clearDefaultImports();
+        cy.get("body").type("fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        cy.get("body").type("=a=Actor(\"cat-test.jpg\",0,0,\"t\"){enter}");
+        cy.get("body").type("fp{rightarrow}get_actors(){rightarrow} foo(p){enter}");
+        cy.get("body").type("{uparrow}{uparrow}{uparrow}{uparrow}ffoo{rightarrow}x{rightarrow}{downarrow}");
+        cy.get("body").type(" x.");
+        cy.wait(500);
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkExactlyOneItem(acIDSel, null, "is_at_edge(distance)");
+            checkExactlyOneItem(acIDSel, null, "move(distance)");
+        }, false, true);
+    });
+
+    // Simpler, more direct isolation of the same root cause as above -- no extra function-call
+    // indirection, just completing directly on the for-loop variable itself:
+    it("Shows Actor members for a get_actors() for-loop variable directly (blocked by Strype's loop-exclusion in getCodeWithoutErrors(), not TigerPython)", () => {
+        focusEditorAC();
+        clearDefaultImports();
+        cy.get("body").type("fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        cy.get("body").type("fp{rightarrow}get_actors(){rightarrow} p.");
+        cy.wait(500);
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkExactlyOneItem(acIDSel, null, "is_at_edge(distance)");
+            checkExactlyOneItem(acIDSel, null, "move(distance)");
+        }, false, true);
+    });
+
     it("Shows no completions for a class method param whose sibling-caller evidence is a 'My code' variable", () => {
         // myActor is assigned in "My code", which -- matching the editor's actual section order -- is
         // generated after "Definitions". TigerPython can forward-reference a plain variable's own type
