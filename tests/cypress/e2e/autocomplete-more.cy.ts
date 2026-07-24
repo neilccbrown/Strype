@@ -256,7 +256,7 @@ describe("Function params: types inferred from callers (Actor, multiple params)"
     // This is the exact shape of the bug found in the "particles.spy" example (public/demos/graphics):
     // a for-loop variable drawn from get_actors() is passed as a call argument, meant to give the
     // callee's own parameter its Actor type. This is NOT a TigerPython limitation: getCodeWithoutErrors()
-    // in parser.ts generates code for autocomplete with `excludeLoopsAndCommentsAndCloseTry: true`, which
+    // in parser.ts generates code for autocomplete with `excludeComments: true`, which
     // (see parseBlock()'s `passBlock` handling) omits a for/while loop's own header line entirely from the
     // generated code while still including its body content (unindented, as if it were never in a loop).
     // So whenever the frame being completed is itself inside a loop, or evidence for the completion (e.g.

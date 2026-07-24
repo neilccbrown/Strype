@@ -244,7 +244,7 @@ export default class Parser {
     private line = 0;
     private isDisabledFramesTriggered = false; //this flag is used to notify when we enter and leave the disabled frames.
     private disabledBlockIndent = "";
-    private excludeLoopsAndCommentsAndCloseTry = false;
+    private excludeComments = false;
     private ignoreSpecificFrameId = -100;
     private ignoreSpecificFrameIdReplacement = "pass"; // What to emit in place of ignoreSpecificFrameId's frame.
     private ignoreCheckErrors = false;
@@ -355,7 +355,7 @@ export default class Parser {
             
             // Before returning, we update the line counter used for the frame mapping in the parser:
             // +1 except if we are in a multiline comment (and not excluding them) when we then return the number of lines
-            this.line += ((this.excludeLoopsAndCommentsAndCloseTry) ? 1 : ((commentContent.includes("\n")) ? commentContent.split("\n").length : 1));
+            this.line += ((this.excludeComments) ? 1 : ((commentContent.includes("\n")) ? commentContent.split("\n").length : 1));
 
             const passLine = indentation + "pass" + "\n";
             
@@ -371,7 +371,7 @@ export default class Parser {
                 }
             }
 
-            if (this.excludeLoopsAndCommentsAndCloseTry) {
+            if (this.excludeComments) {
                 return passLine;
             }
             else {
@@ -564,7 +564,7 @@ export default class Parser {
     // a particular line to do code completion, so we may need just stop.  But we never
     // need the opposite, to start at an arbitrary place and run to the end -- and this
     // could cause invalid indentation if you started at an indented item.)
-    public parse({startAtFrameId, stopAt, excludeLoopsAndCommentsAndCloseTry, ignoreSpecificFrameId, ignoreSpecificFrameIdReplacement}: {startAtFrameId?: number, stopAt?: {frameId: number, includeThisFrame: boolean}, excludeLoopsAndCommentsAndCloseTry?: boolean; ignoreSpecificFrameId?: number; ignoreSpecificFrameIdReplacement?: string}): string {
+    public parse({startAtFrameId, stopAt, excludeComments, ignoreSpecificFrameId, ignoreSpecificFrameIdReplacement}: {startAtFrameId?: number, stopAt?: {frameId: number, includeThisFrame: boolean}, excludeComments?: boolean; ignoreSpecificFrameId?: number; ignoreSpecificFrameIdReplacement?: string}): string {
         let output = "";
         if(startAtFrameId){
             this.startAtFrameId = startAtFrameId;
@@ -574,8 +574,8 @@ export default class Parser {
             this.stopAtIncludesLastFrame = stopAt.includeThisFrame;
         }
 
-        if(excludeLoopsAndCommentsAndCloseTry){
-            this.excludeLoopsAndCommentsAndCloseTry = excludeLoopsAndCommentsAndCloseTry;
+        if(excludeComments){
+            this.excludeComments = excludeComments;
         }
 
         if(ignoreSpecificFrameId){
@@ -767,8 +767,8 @@ export default class Parser {
     public getAllImportsAndClassesCodeWithoutError(): string {
         // This is called to parse the imports and user defined classes of the project.
         // Note that to make it easier, we just get the whole "definitions" section rather than really just keeping the classes.
-        const importCode = this.parse({startAtFrameId: useStore().getImportsFrameContainerId, stopAt:{frameId: useStore().getDefsFrameContainerId, includeThisFrame: false}, excludeLoopsAndCommentsAndCloseTry: true});        
-        const classesCode = this.parse({startAtFrameId: useStore().getDefsFrameContainerId, stopAt:{frameId: useStore().getMainCodeFrameContainerId, includeThisFrame: false}, excludeLoopsAndCommentsAndCloseTry: true});
+        const importCode = this.parse({startAtFrameId: useStore().getImportsFrameContainerId, stopAt:{frameId: useStore().getDefsFrameContainerId, includeThisFrame: false}, excludeComments: true});        
+        const classesCode = this.parse({startAtFrameId: useStore().getDefsFrameContainerId, stopAt:{frameId: useStore().getMainCodeFrameContainerId, includeThisFrame: false}, excludeComments: true});
         return this.removeErrorsFromParsedCode(`${importCode}\n${classesCode}`);
     }
 
@@ -788,12 +788,12 @@ export default class Parser {
         // call site to a function defined twice). The caller finds the marker and splices in its own probe
         // text in its place, so the probe always ends up correctly nested exactly where the user is
         // editing, however much unrelated code precedes or follows it.
-        const code = this.parse({excludeLoopsAndCommentsAndCloseTry: true, ignoreSpecificFrameId: endFrameId, ignoreSpecificFrameIdReplacement: AC_PROBE_MARKER});
+        const code = this.parse({excludeComments: true, ignoreSpecificFrameId: endFrameId, ignoreSpecificFrameIdReplacement: AC_PROBE_MARKER});
         return this.removeErrorsFromParsedCode(code);
     }
 
     public getFullCode(): string {
-        return this.parse({excludeLoopsAndCommentsAndCloseTry: false});
+        return this.parse({excludeComments: false});
     }
 
     private checkIfFrameHasError(frame: FrameObject): boolean {
