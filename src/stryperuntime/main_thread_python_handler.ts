@@ -78,16 +78,16 @@ function activateSlot(slot: PyodideSlot | null) : void {
 }
 
 // Whether this device looks capable of comfortably running two Pyodide workers at once (the
-// active one plus a pre-warmed spare). We deliberately require both a decent core count *and*
-// a decent amount of RAM, and treat either signal being unavailable as "no": navigator.deviceMemory
-// in particular is only implemented in Chromium-based browsers (undefined on Firefox and
-// Safari/iPadOS, which covers a lot of the tablets used in schools). Wrongly keeping a spare
-// worker on a low-end or shared classroom device is worse than missing out on a smoother restart
-// on a device we can't measure, so an unknown value counts against keeping a spare, not for it.
+// active one plus a pre-warmed spare). We always require a decent core count. navigator.deviceMemory
+// is only implemented in Chromium-based browsers -- it's undefined on Firefox and Safari/iPadOS
+// (which covers a lot of the tablets used in schools) regardless of how much RAM the device
+// actually has, so when it's unavailable we fall back to judging capability on core count alone
+// rather than always saying no, which would silently disable the spare on every non-Chromium
+// browser. When deviceMemory *is* available, we still require it to indicate plenty of RAM.
 function shouldKeepSpareWorker() : boolean {
     const cores = navigator.hardwareConcurrency;
     const memoryGiB = (navigator as Navigator & {deviceMemory?: number}).deviceMemory;
-    return typeof cores === "number" && cores >= 3 && typeof memoryGiB === "number" && memoryGiB >= 8;
+    return typeof cores === "number" && cores >= 3 && (memoryGiB === undefined || memoryGiB >= 8);
 }
 
 function maybeCreateSpareSlot() : void {
