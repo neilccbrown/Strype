@@ -134,22 +134,26 @@ describe("Function params: types inferred from callers", () => {
         }, false, true);
     });
 
-    // For class methods, TigerPython currently only picks up call-site evidence from calls made
-    // elsewhere within the same class (e.g. a sibling method calling this one) -- not from an
-    // external caller in "My code". So these tests use a sibling method as the caller instead of a
-    // caller in "My code". (This may be related to the separate, more precisely diagnosed limitation
+    // TigerPython only picks up call-site evidence for a parameter's type when the call is textually
+    // *after* the callee's own definition -- confirmed directly against the installed
+    // @tigerpython/tpparser package: the same class, with only the two methods' order swapped, goes
+    // from 0 completions to resolving correctly. For top-level functions this is never an issue,
+    // since Strype always generates "Definitions" before "My code", so a call in My code is always
+    // after its definition; but *within* a class body, methods are emitted in whatever order the user
+    // added them, so a sibling method that calls another one has to be defined after it for that call
+    // to count as evidence. These tests define the callee (myF) before the sibling caller (helper)
+    // for that reason. (This may be related to the separate, more precisely diagnosed limitation
     // covered below, in "Function params: types inferred from callers (Actor, multiple params)":
     // TigerPython can't resolve the type of a call argument that is itself a "My code" variable
     // assigned after the point where "Definitions" -- which is generated in the same order it appears
     // in the editor -- uses it, even though it can forward-reference a plain variable's own type.)
     it("Shows string members for a class method param, inferred from a sibling method caller", () => {
         focusEditorAC();
-        // Make a class frame "foo" (default __init__(self, bar)), a "helper" method calling
-        // myF with a string, then myF(self, s) itself:
-        cy.get("body").type("{uparrow}cfoo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar{rightarrow}{rightarrow}{downarrow}fhelper{rightarrow}{rightarrow}{downarrow}");
+        // Make a class frame "foo" (default __init__(self, bar)), myF(self, s) itself, then a
+        // "helper" method (defined after myF) calling myF with a string:
+        cy.get("body").type("{uparrow}cfoo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar{rightarrow}{rightarrow}{downarrow}fmyF{rightarrow}s{rightarrow}{rightarrow}{downarrow}fhelper{rightarrow}{rightarrow}{downarrow}");
         cy.get("body").type(" self.myF(\"hi\"){enter}");
-        cy.get("body").type("{downarrow}fmyF{rightarrow}s{rightarrow}{rightarrow}");
-        cy.get("body").type(" s.");
+        cy.get("body").type("{uparrow}{uparrow}{uparrow} s.");
         cy.wait(500);
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
@@ -161,10 +165,9 @@ describe("Function params: types inferred from callers", () => {
 
     it("Shows int members (not string members) for a class method param, inferred from a sibling method caller", () => {
         focusEditorAC();
-        cy.get("body").type("{uparrow}cfoo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar{rightarrow}{rightarrow}{downarrow}fhelper{rightarrow}{rightarrow}{downarrow}");
+        cy.get("body").type("{uparrow}cfoo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar{rightarrow}{rightarrow}{downarrow}fmyF{rightarrow}n{rightarrow}{rightarrow}{downarrow}fhelper{rightarrow}{rightarrow}{downarrow}");
         cy.get("body").type(" self.myF(5){enter}");
-        cy.get("body").type("{downarrow}fmyF{rightarrow}n{rightarrow}{rightarrow}");
-        cy.get("body").type(" n.");
+        cy.get("body").type("{uparrow}{uparrow}{uparrow} n.");
         cy.wait(500);
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
@@ -176,11 +179,10 @@ describe("Function params: types inferred from callers", () => {
 
     it("Shows no completions for a class method param called with mixed types", () => {
         focusEditorAC();
-        cy.get("body").type("{uparrow}cfoo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar{rightarrow}{rightarrow}{downarrow}fhelper{rightarrow}{rightarrow}{downarrow}");
+        cy.get("body").type("{uparrow}cfoo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar{rightarrow}{rightarrow}{downarrow}fmyF{rightarrow}s{rightarrow}{rightarrow}{downarrow}fhelper{rightarrow}{rightarrow}{downarrow}");
         cy.get("body").type(" self.myF(\"hi\"){enter}");
         cy.get("body").type(" self.myF(5){enter}");
-        cy.get("body").type("{downarrow}fmyF{rightarrow}s{rightarrow}{rightarrow}");
-        cy.get("body").type(" s.");
+        cy.get("body").type("{uparrow}{uparrow}{uparrow}{uparrow} s.");
         cy.wait(500);
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
@@ -305,15 +307,17 @@ describe("Function params: types inferred from callers (Actor, multiple params)"
         // generated after "Definitions". TigerPython can forward-reference a plain variable's own type
         // (see "Global variable type inference inside functions" below), but not the type of a variable
         // passed as a call argument when inferring the callee's parameter type from that call site: the
-        // argument's assignment has to come first. See getCodeWithoutErrors() in parser.ts.
+        // argument's assignment has to come first. See getCodeWithoutErrors() in parser.ts. (myF is
+        // defined before helper -- see the comment above "Function params: types inferred from
+        // callers" -- so that this test isolates the "My code" variable limitation on its own, rather
+        // than also tripping the separate call-must-be-after-definition ordering requirement.)
         focusEditorAC();
         clearDefaultImports();
         cy.get("body").type("fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         cy.get("body").type("=myActor=Actor(\"cat-test.jpg\",0,0,\"t\"){enter}");
-        cy.get("body").type("{uparrow}{uparrow}cfoo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar{rightarrow}{rightarrow}{downarrow}fhelper{rightarrow}{rightarrow}{downarrow}");
+        cy.get("body").type("{uparrow}{uparrow}cfoo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar{rightarrow}{rightarrow}{downarrow}fmyF{rightarrow}a{rightarrow}{rightarrow}{downarrow}fhelper{rightarrow}{rightarrow}{downarrow}");
         cy.get("body").type(" self.myF(myActor){enter}");
-        cy.get("body").type("{downarrow}fmyF{rightarrow}a{rightarrow}{rightarrow}");
-        cy.get("body").type(" a.");
+        cy.get("body").type("{uparrow}{uparrow}{uparrow} a.");
         cy.wait(500);
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
@@ -327,10 +331,9 @@ describe("Function params: types inferred from callers (Actor, multiple params)"
         clearDefaultImports();
         cy.get("body").type("fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         cy.get("body").type("=myActor=Actor(\"cat-test.jpg\",0,0,\"t\"){enter}");
-        cy.get("body").type("{uparrow}{uparrow}cfoo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar{rightarrow}{rightarrow}{downarrow}fhelper{rightarrow}{rightarrow}{downarrow}");
+        cy.get("body").type("{uparrow}{uparrow}cfoo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar{rightarrow}{rightarrow}{downarrow}fmyF{rightarrow}s,n,a{rightarrow}{rightarrow}{downarrow}fhelper{rightarrow}{rightarrow}{downarrow}");
         cy.get("body").type(" self.myF(\"hi\",5,myActor){enter}");
-        cy.get("body").type("{downarrow}fmyF{rightarrow}s,n,a{rightarrow}{rightarrow}");
-        cy.get("body").type(" s.");
+        cy.get("body").type("{uparrow}{uparrow}{uparrow} s.");
         cy.wait(500);
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
