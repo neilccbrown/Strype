@@ -1,38 +1,12 @@
 import { test, Page } from "@playwright/test";
-import { doPagePaste } from "../support/editor";
+import { clearDefaultProject, doPagePaste, pressN } from "../support/editor";
 import { checkConsoleContent, runToFinish } from "../support/execution";
+import { setupStrypeTest } from "../support/general";
 
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    if (browserName === "webkit" && process.platform === "win32") {
-        // On Windows+Webkit it just can't seem to load the page for some reason:
-        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
-    }
-
-    // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(240000); // 240 seconds
-
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
-    });
-    await page.goto("./", {waitUntil: "load"});
-    await page.waitForSelector("body");
-
-    await page.evaluate(() => {
-        (window as any).Playwright = true;
-    });
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 240000});
 });
-
-function deleteDefaultProject(): ((page: Page) => Promise<void>) {
-    return async (page) => {
-        await page.waitForTimeout(200);
-        await page.keyboard.press(process.platform == "darwin" ? "Meta+a" : "Control+a");
-        await page.waitForTimeout(200);
-        await page.keyboard.press("Backspace");
-        await page.waitForTimeout(200);
-    };
-}
 
 function copyAssetInTemp(assetPath: string, copyFileName: string): ((page: Page) => Promise<void>) {
     const createAssetCopyCode = `text  = "" 
@@ -42,14 +16,21 @@ with open("/tmp/${copyFileName}","wb")  as f2  :
     f2.write(content) 
 `;
     return async (page) => {
-        await deleteDefaultProject()(page);
-        await doPagePaste(page, createAssetCopyCode);        
+        await clearDefaultProject(page);
+        // clearDefaultProject leaves the caret at the top of Imports; move to Main so this paste
+        // (and the test's own paste that immediately follows, with no navigation in between) both
+        // land in Main in the right order -- the test's code reads the file this writes, so it
+        // must run second:
+        await pressN("ArrowDown", 2)(page);
+        await doPagePaste(page, createAssetCopyCode);
     };
 }
 
 test.describe("Internal FileIO checkups", () => {
     test("Read N lines of an existing file (text)", async ({page}) => {
-        await deleteDefaultProject()(page);
+        // Ctrl/Cmd+A only selects the current section (Main), not Imports too, so it can't be used to
+        // blank the whole starting project on its own -- use the shared helper instead:
+        await clearDefaultProject(page);
         const readExistingFileCode = `with open("/books/fairy-tales.txt",encoding="utf-8")  as f  :
     for line_index  in range(0,5)  :
         print(f"#{line_index+1} -> {f.readline()}") 
@@ -72,7 +53,7 @@ test.describe("Internal FileIO checkups", () => {
     });
 
     test("Read N bytes of an existing file (binary)", async ({page}) => {
-        await deleteDefaultProject()(page);
+        await clearDefaultProject(page);
         const readExistingFileCode = `with open("/images/cat-test.jpg","rb")  as f  :
     print(f.read(20)) 
 `;
@@ -84,7 +65,7 @@ test.describe("Internal FileIO checkups", () => {
     });
 
     test("Write bytes in a new file", async ({page}) => {
-        await deleteDefaultProject()(page);
+        await clearDefaultProject(page);
         const writeThenReadCode = `with open("/tmp/tests.txt","wb")  as f  :
     bytes_txt  = bytearray([83,116,114,121,112,101]) 
     f.write(bytes_txt) 

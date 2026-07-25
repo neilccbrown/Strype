@@ -32,6 +32,7 @@
                 :isEditableSlot="isEditableSlot(slotItem.type)"
                 :isFrozen="isFrozen"
                 :isEmphasised="isSlotEmphasised(slotItem)"
+                :operatorPrecedenceTier="slotItem.operatorPrecedenceTier"
                 @requestSlotsRefactoring="checkSlotRefactoring"
             />
     </div>
@@ -58,7 +59,7 @@ import { computed, defineComponent } from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
-import { CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID, getFlatCodeSlotsInLabelStruct, getCaretContainerUID, closeRenameIdentifierPopups, getImportFrameNameBindings } from "@/helpers/editor";
+import { CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID, getFlatCodeSlotsInLabelStruct, getCaretContainerUID, closeRenameIdentifierPopups, getImportFrameNameBindings, waitForElementId } from "@/helpers/editor";
 import { checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId, areSlotStructuresIsomorphic, getAncestorFrameOfTypeId, findSlotsWithIndentifierName } from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import { calculateParamPrompt } from "@/autocompletion/acManager";
@@ -545,7 +546,11 @@ export default defineComponent({
                                                 slotInfos: {...cursorInfos.slotInfos, labelSlotsIndex: 1, slotId: "0"},
                                                 cursorPos: cursorInfos.cursorPos,
                                             };                                        
-                                            this.$nextTick(() => this.$nextTick(() => {
+                                            // The slot we're restoring the cursor into is in the frame we just converted to
+                                            // varassign above, so it may take more than one render pass to appear -- wait for
+                                            // it rather than assuming a fixed number of ticks is enough (see waitForElementId's
+                                            // doc comment).
+                                            waitForElementId(getLabelSlotUID(newCursorSlotInfos.slotInfos)).then(() => {
                                                 if (!options?.skipCursorSetAndStateSave) {
                                                     setDocumentSelection(newCursorSlotInfos, newCursorSlotInfos);
                                                     this.appStore.setSlotTextCursors(newCursorSlotInfos, newCursorSlotInfos);
@@ -553,7 +558,7 @@ export default defineComponent({
                                                     // Save changes only when arrived here (for undo/redo)
                                                     this.appStore.saveStateChanges(stateBeforeChanges);
                                                 }
-                                            }));
+                                            });
                                         }, 300);                                         
                                     }
                                     else{
@@ -580,7 +585,7 @@ export default defineComponent({
         },
 
         forwardKeyEvent(event: KeyboardEvent) {
-            // The container div of this LabelSlotsStructure is editable. Editable divs capture the key events. 
+            // The container div of this LabelSlotsStructure is editable. Editable divs capture the key events.
             // We need to forward the event to the currently "focused" (editable) slot.
             // ** LEFT/RIGHT AND UP/DOWN ARROWS (without the meta key pressed for macOS) ARE TREATED SEPARATELY
             // BY THIS COMPONENT, we don't forward related events **

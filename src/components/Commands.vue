@@ -49,6 +49,41 @@
                                                         "
                                                     />
                                                 </p>
+                                                <p v-if="codeCompletionCommand">
+                                                    <div class="frame-cmd-container text-editing-command">
+                                                        <span class="text-editing-command-keys">
+                                                            <button class="frame-cmd-btn frame-cmd-btn-large">{{ codeCompletionCommand.ctrlSymbol }}</button>
+                                                            <span class="text-editing-command-keys-plus">+</span>
+                                                            <button class="frame-cmd-btn frame-cmd-btn-large">{{ codeCompletionCommand.spaceSymbol }}</button>
+                                                        </span>
+                                                        <span>{{ codeCompletionCommand.description }}</span>
+                                                    </div>
+                                                </p>
+                                                <p v-if="wrapSelectionCommands.length">
+                                                    <div
+                                                        v-for="wrapSelectionCommand in wrapSelectionCommands"
+                                                        :key="wrapSelectionCommand.symbol"
+                                                        class="frame-cmd-container text-editing-command"
+                                                    >
+                                                        <button class="frame-cmd-btn">{{ wrapSelectionCommand.symbol }}</button>
+                                                        <span>{{ wrapSelectionCommand.description }}</span>
+                                                    </div>
+                                                </p>
+                                                <p v-if="mediaRecordingCommands.length">
+                                                    <div
+                                                        v-for="mediaRecordingCommand in mediaRecordingCommands"
+                                                        :key="mediaRecordingCommand.description"
+                                                        class="frame-cmd-container text-editing-command"
+                                                    >
+                                                        <span class="text-editing-command-keys">
+                                                            <template v-for="(key, keyIndex) in mediaRecordingCommand.keys" :key="key">
+                                                                <span v-if="keyIndex > 0" class="text-editing-command-keys-plus">+</span>
+                                                                <button class="frame-cmd-btn frame-cmd-btn-large">{{ key }}</button>
+                                                            </template>
+                                                        </span>
+                                                        <span>{{ mediaRecordingCommand.description }}</span>
+                                                    </div>
+                                                </p>
                                             <!-- this conditional rendering is only used for our code editor to see the closing <div> right -->
                                             <!-- #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE -->
                                             </div>
@@ -103,9 +138,9 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getMenuLeftPaneUID, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
+import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getMenuLeftPaneUID, hiddenShorthandFrames, notifyDragEnded, waitForPanesSettled } from "@/helpers/editor";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, CollapsedState, defaultEmptyStrypeLayoutDividerSettings, FrameObject, PythonExecRunningState, SelectAllFramesAction, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
+import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, CaretPosition, CollapsedState, defaultEmptyStrypeLayoutDividerSettings, FrameObject, isSlotStringLiteralType, PythonExecRunningState, SelectAllFramesAction, SlotType, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
 import { defineComponent } from "vue";
 import { mapStores } from "pinia";
@@ -281,6 +316,72 @@ export default defineComponent({
             }
 
             return this.appStore.generateAvailableFrameCommands(this.appStore.currentFrame.id, this.appStore.currentFrame.caretPosition);
+        },
+
+        // When a text cursor is focused inside a code or string slot (but not a comment/documentation slot),
+        // we show the code completion shortcut instead of the (then empty) list of add frame commands.
+        // Note this shortcut is Ctrl+Space on every platform, including macOS (not Cmd+Space).
+        codeCompletionCommand(): {ctrlSymbol: string; spaceSymbol: string; description: string} | null {
+            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+            if(!this.appStore.isEditing || !focusSlotCursorInfos || focusSlotCursorInfos.slotInfos.slotType == SlotType.comment){
+                return null;
+            }
+
+            const description = (isSlotStringLiteralType(focusSlotCursorInfos.slotInfos.slotType))
+                ? this.$t("autoCompletion.codeCompletionFilePaths")
+                : this.$t("autoCompletion.codeCompletion");
+
+            return {ctrlSymbol: this.$t("contextMenu.ctrl"), spaceSymbol: this.$t("autoCompletion.spaceKey"), description};
+        },
+
+        // When the user has a text selection inside a code slot (not a comment/documentation slot, and not
+        // a string literal slot -- wrapping a selection in quotes there wouldn't make sense), typing one of
+        // these bracket/quote characters wraps the selection with it. We show those shortcuts here as a hint.
+        wrapSelectionCommands(): {symbol: string; description: string}[] {
+            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+            const anchorSlotCursorInfos = this.appStore.anchorSlotCursorInfos;
+            if(!this.appStore.isEditing || !focusSlotCursorInfos || !anchorSlotCursorInfos){
+                return [];
+            }
+
+            const hasSelection = !areSlotCoreInfosEqual(focusSlotCursorInfos.slotInfos, anchorSlotCursorInfos.slotInfos) || focusSlotCursorInfos.cursorPos != anchorSlotCursorInfos.cursorPos;
+            const slotType = focusSlotCursorInfos.slotInfos.slotType;
+            if(!hasSelection || slotType == SlotType.comment || isSlotStringLiteralType(slotType)){
+                return [];
+            }
+
+            return [
+                {symbol: "(", description: this.$t("autoCompletion.wrapRoundBrackets")},
+                {symbol: "[", description: this.$t("autoCompletion.wrapSquareBrackets")},
+                {symbol: "{", description: this.$t("autoCompletion.wrapCurlyBrackets")},
+                {symbol: "\"", description: this.$t("autoCompletion.wrapDoubleQuotes")},
+                {symbol: "'", description: this.$t("autoCompletion.wrapSingleQuotes")},
+            ];
+        },
+
+        // When a text cursor is focused inside a code slot (not a comment/documentation slot, and
+        // not a string literal slot -- recording media there wouldn't make sense either),
+        // Ctrl-Shift-I/U opens a dialog to record a new image/sound literal from the webcam/
+        // microphone. We show those shortcuts here as a hint, mirroring the same gating
+        // LabelSlot.vue's onKeyDown uses for the shortcut itself.
+        mediaRecordingCommands(): {keys: string[]; description: string}[] {
+            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+            if(!this.appStore.isEditing || !focusSlotCursorInfos){
+                return [];
+            }
+
+            const slotInfos = focusSlotCursorInfos.slotInfos;
+            const frameType = this.appStore.frameObjects[slotInfos.frameId]?.frameType.type;
+            if(slotInfos.slotType == SlotType.comment || isSlotStringLiteralType(slotInfos.slotType) || frameType == AllFrameTypesIdentifier.comment){
+                return [];
+            }
+
+            const ctrl = this.$t("contextMenu.ctrl");
+            const shift = this.$t("autoCompletion.shiftKey");
+            return [
+                {keys: [ctrl, shift, "I"], description: this.$t("autoCompletion.recordImageShortcut")},
+                {keys: [ctrl, shift, "U"], description: this.$t("autoCompletion.recordSoundShortcut")},
+            ];
         },
 
         progressPercentWidthStyle(): string {
@@ -620,9 +721,16 @@ export default defineComponent({
                         else if(event.key == " " && this.appStore.selectedFrames.length == 0){
                             const currentStrypeLocation = findCurrentStrypeLocation().strypeLocation;
                             if(currentStrypeLocation == STRYPE_LOCATION.MAIN_CODE_SECTION || currentStrypeLocation == STRYPE_LOCATION.IN_FUNCDEF){
-                                // If ctrl/meta + space is activated on caret (in a function/class definition or in the main section), we add a new functional call frame and trigger the a/c
-                                this.appStore.addFrameWithCommand(this.addFrameCommands[eventKeyLowCase][0].type);
-                                this.$nextTick(() => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true})));
+                                // If ctrl/meta + space is activated on caret (in a function/class definition or in the main section), we add a new functional call frame and trigger the a/c.
+                                // We must wait for addFrameWithCommand() to fully finish -- including its internal
+                                // cursor placement into the new frame's first slot -- before re-dispatching ctrl-space:
+                                // a single $nextTick() isn't always enough (that placement can itself need more than
+                                // one tick, e.g. for a frame added deep inside a freshly-created class/method), and a
+                                // too-early redispatch finds no focused slot to forward to and is silently dropped,
+                                // leaving auto-complete never triggered.
+                                this.appStore.addFrameWithCommand(this.addFrameCommands[eventKeyLowCase][0].type).then(() => {
+                                    document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true}));
+                                });
                             }
                         }
                     }
@@ -831,16 +939,13 @@ export default defineComponent({
             // We need to make sure to be "as if" we were starting from a default project layout
             // before doing anything (otherwise we have issues with some layout related stuff that
             // are not saved, or some styling that gets messy).
-            return new Promise((resolve) => {
-                this.hasPEAExpanded = false;
-                this.isCommandsSplitterChanged = false;               
-                vueComponentsAPIHandler.peaComponentAPI?.togglePEALayout(StrypePEALayoutMode.tabsCollapsed);
-                // Once we have the flags set, we set a timer to wait for the splitter to update before returning from the promise
-                setTimeout(() => {
-                    resolve();
-                }, 800);   
-            });            
-        },        
+            this.hasPEAExpanded = false;
+            this.isCommandsSplitterChanged = false;
+            vueComponentsAPIHandler.peaComponentAPI?.togglePEALayout(StrypePEALayoutMode.tabsCollapsed);
+            // Wait for the splitter panes to actually finish resizing rather than guessing how long
+            // that takes -- see waitForPanesSettled().
+            return waitForPanesSettled();
+        },
 
         onCommandsSplitterResize(event: any) {
             // When the splitter is resized, we need to resize the frame commands container (wrap/unwrap)

@@ -1,7 +1,8 @@
 // To avoid passing arguments in all the functions defined in this file, we fetch the shared IDs
 // and CSS class names of Strype (we only do it if they are not already saved in this file)
+// We also set the set the 'paste' command via standard-setup
 import { isMacOSPlatform } from "@/helpers/common";
-import {cleanFromHTML} from "../support/test-support";
+import {cleanFromHTML, waitForEditorSettled} from "../support/test-support";
 import { scssVars, strypeElIds } from "./standard-setup";
 
 export function assertState(expectedState : string, assertMessage?: string) : void {
@@ -43,35 +44,13 @@ export function assertState(expectedState : string, assertMessage?: string) : vo
 }
 
 function withSelection(inner : (arg0: { id: string, cursorPos : number }) => void) : void {
-    // We need a delay to make sure last DOM update has occurred:
-    cy.wait(200);
+    // We need to make sure last DOM update has occurred:
+    waitForEditorSettled();
     cy.get("#" + strypeElIds.getEditorID()).then((eds) => {
         const ed = eds.get()[0];
         inner({id : ed.getAttribute("data-slot-focus-id") || "", cursorPos : parseInt(ed.getAttribute("data-slot-cursor") || "-2")});
     });
 }
-
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-Cypress.Commands.add("paste",
-    {prevSubject : true},
-    ($element, data) => {
-        const clipboardData = new DataTransfer();
-        clipboardData.setData("text", data);
-        const pasteEvent = new ClipboardEvent("paste", {
-            bubbles: true,
-            cancelable: true,
-            clipboardData,
-        });
-
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        cy.get($element).then(() => {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            $element[0].dispatchEvent(pasteEvent);
-        });
-    });
 
 export function testInsert(insertion : string, result : string, canBeTestedWithPaste?: boolean) : void {
     it("Tests " + insertion, () => {
@@ -335,10 +314,10 @@ export function testPushBracket(original: string, expectedResults: string[], pus
         if(withMediaSlots){
             // With media slots, "writing" direct code in the frame isn't working to generate the media slots: paste works so we use this approach
             (cy.get("body") as any).paste(original);
-            cy.wait(2000);
+            waitForEditorSettled();
             // Bring the caret to the end of the slots
             cy.get("body").type("{leftArrow}");
-            cy.wait(200);
+            waitForEditorSettled();
             // And do the tests: 
             doTestPushBracket(original, expectedResults, pushSequence);
         }

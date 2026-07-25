@@ -189,7 +189,8 @@
     "thisVariable": "cette variable",
     "thisFunction": "cette fonction",
     "thisClass": "cette classe",
-    "clearAllRecent": "Supprimer tout"
+    "clearAllRecent": "Supprimer tout",
+    "downloadPEAConsole":"Préparation de la capture du terminal (cela peut prendre du temps)..."
   },
   "contextMenu": {
     "ctrl": "Ctrl",
@@ -211,14 +212,15 @@
     "delete": "Supprimer",
     "deleteOuter": "Supprimer externe(s)",
     "insert": "Insérer",
-    "screenshotGraphics": "Télécharger une capture d'écran",
+    "screenshotPEA": "Télécharger une capture d'écran",
     "collapseHeader": "Vue Réduite",
     "collapseDocumentation": "Vue Interface",
     "collapseFull": "Vue Dévelopée",
     "cannotCollapseErrors": "Réduction impossible avec des erreurs",
     "freeze": "Verrouiller",
     "unfreeze": "Déverrouiller",
-    "cannotFreezeErrors": "Verrouillage impossible avec des erreurs"
+    "cannotFreezeErrors": "Verrouillage impossible avec des erreurs",
+    "download": "Télécharger"
   },
   "appMenu": {
     "downloadHex": "Convertir vers Hex",
@@ -245,7 +247,18 @@
     "importedModules": "Modules importés",
     "builtinFiles": "Fichiers intégrés",
     "invalidState": "Aucune complétion disponible",
-    "noDocumentation": "Aucune documentation disponible"
+    "noDocumentation": "Aucune documentation disponible",
+    "codeCompletion": "Complétion de code",
+    "codeCompletionFilePaths": "Complétion de code (chemins d'accès de fichiers)",
+    "spaceKey": "espace",
+    "wrapRoundBrackets": "Entourer de ()",
+    "wrapSquareBrackets": "Entourer de []",
+    "wrapCurlyBrackets": "Entourer de {'{}'}",
+    "wrapDoubleQuotes": "Entourer de \"",
+    "wrapSingleQuotes": "Entourer de '",
+    "shiftKey": "Shift",
+    "recordImageShortcut": "Enregistrer une image",
+    "recordSoundShortcut": "Enregistrer un son"
   },
   "commandTabs": {
     "0": "Ajoute un cadre"
@@ -256,7 +269,7 @@
     "stopping": "Arrêt...",
     "loading": "Initialisation...",
     "runtimeErrorConsole": "Erreur d'exécution",
-    "console": "Console",
+    "console": "Terminal",
     "Graphics": "Graphics",
     "importTurtleOrGraphics": "Importez 'strype.graphics' ou 'turtle' pour utiliser Graphics",
     "PEA-layout-tabs-collapsed": "Disposition en onglets reduite",
@@ -292,7 +305,17 @@
     "cursorTimeWin": "Temps (Ctrl-C pour copier) :",
     "cursorTimeMac": "Temps (⌘ C pour copier) :",
     "cursorHeightWin": "Hauteur (Ctrl-Maj-C pour copier) :",
-    "cursorHeightMac": "Hauteur (⇧ ⌘ C pour copier) :"
+    "cursorHeightMac": "Hauteur (⇧ ⌘ C pour copier) :",
+    "recordImageTitle": "Enregistrer une image",
+    "recordSoundTitle": "Enregistrer un son",
+    "record": "Enregistrer",
+    "recordCountdown": "Enregistrer (compte à rebours de 3 secondes)",
+    "stop": "Arrêt",
+    "reRecord": "Recommencer l'enregistrement",
+    "cameraPermissionDenied": "L'accès à la caméra a été refusé. Veuillez autoriser l'accès à la caméra pour enregistrer une image.",
+    "micPermissionDenied": "L'accès au microphone a été refusé. Veuillez autoriser l'accès au microphone pour enregistrer un son.",
+    "noCameraFound": "Aucune caméra n'a été trouvée sur cet appareil.",
+    "noMicFound": "Aucun microphone n'a été trouvé sur cet appareil."
   },
   "book": {
     "dialogTitle": "Manuel Strype"
@@ -303,7 +326,7 @@
     "libraryAddrPlaceholder": "Adresse de la bibliothèque",
     "add": "Ajouter",
     "builtinGraphics": "Graphics",
-    "builtinConsole": "Console",
+    "builtinConsole": "Terminal",
     "builtinTurtle": "Turtle",
     "builtinMicrobit": "micro:bit"
   },

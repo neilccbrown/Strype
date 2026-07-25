@@ -1,34 +1,23 @@
 import {test, expect} from "@playwright/test";
 import {save} from "../support/loading-saving";
 import {readFileSync} from "node:fs";
-import {skipPyodideLoading} from "../support/general";
+import {setupStrypeTest} from "../support/general";
 import {createBrowserProxy} from "../support/proxy";
 import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "@/helpers/sharedIdCssWithTests";
-import {doPagePaste} from "../support/editor";
+import {clearDefaultProject, doPagePaste, pressN} from "../support/editor";
 
 let strypeElIds: {[varName: string]: (...args: any[]) => Promise<string>};
 let scssVars: {[varName: string]: string};
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    if (browserName === "webkit" && process.platform === "win32") {
-        // On Windows+Webkit it just can't seem to load the page for some reason:
-        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
-    }
-    testInfo.setTimeout(240_000);
-
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
-    });
-    await skipPyodideLoading(page);
-    await page.goto("./", {waitUntil: "load"});
-    await page.waitForSelector("body");
-    // Wait for content to load:
-    await expect(page.locator(".frame-div")).toHaveCount(2);
+    // CI run 29398704984 (macos-latest+chromium) showed "moving up 0 times" timing out at 240s
+    // waiting on the book-picker dialog to populate ("fireworks" entry never became clickable);
+    // siblings "moving up 1/2 times" hit the same wait but recovered on retry. Bumped for margin.
+    // CI run 29564701756 (same job) still timed out at 360s on "moving up 2 times" (same symptom --
+    // the "fireworks" entry resolved, then went "detached from the DOM, retrying" until timeout,
+    // through all 4 attempts), so bumping again:
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 480_000, skipPyodide: true});
     strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
-    await page.evaluate(() => {
-        (window as any).Playwright = true;
-    });
 });
 
 test.describe("Load/save book projects", () => {
@@ -43,13 +32,15 @@ test.describe("Load/save book projects", () => {
                 await page.keyboard.press("ArrowUp");
             }
             await page.click("#" + await strypeElIds.getEditorMenuUID());
-            await page.waitForTimeout(1000);
             await page.locator("." + scssVars.strypeMenuItemClassName, {hasText: "Book..."}).click();
-            await page.waitForTimeout(1000);
             await page.locator(".open-book-dlg-book-group-item", {hasText: "Chapter 2"}).click();
-            await page.waitForTimeout(500);
             await page.locator(".open-book-dlg-name", {hasText: "fireworks"}).click({clickCount: 2});
-            await page.waitForTimeout(3000);
+            // Selecting a book example loads it asynchronously (Menu.vue awaits
+            // selectedProject.projectFile before applying the new state); the visible
+            // ".project-name" label only updates once that's truly in place, mirroring the same
+            // signal loading-saving.ts's load() uses for regular file loads -- wait for that
+            // rather than guessing how long the load takes:
+            await expect(page.locator(".project-name")).toHaveText("fireworks", {timeout: 30000});
             const output = readFileSync(await save(page, true), "utf8").replace(/\r\n/g, "\n");
             expect(output).toEqual(original);
         });
@@ -57,15 +48,50 @@ test.describe("Load/save book projects", () => {
         test(`Paste fireworks after moving up ${i} times`, async ({page}) => {
             // Check same as above but with pasting:
             const original = readFileSync("public/book_projects/chapter02/fireworks.spy", "utf8").replace(/\r\n/g, "\n");
-            await page.keyboard.press("Delete");
-            await page.keyboard.press("Delete");
+            await clearDefaultProject(page);
+            // clearDefaultProject leaves the caret at the top of (now empty) Imports; return to
+            // Main so the "move up i times" logic below still exercises pasting with the caret in
+            // Main/Defs/Imports respectively, now that Imports itself has also been cleared of its
+            // default content:
+            await pressN("ArrowDown", 2)(page);
             for (let j = 0; j < i; j++) {
                 await page.keyboard.press("ArrowUp");
             }
+            // doPagePaste already waits for the editor to settle after the paste, including
+            // through the frame count changing while a large multi-frame paste is rendered:
             await doPagePaste(page, original);
-            await page.waitForTimeout(3000);
             const output = readFileSync(await save(page, true), "utf8").replace(/\r\n/g, "\n");
             expect(output).toEqual(original);
         });
     }
+});
+
+test.describe("Book dialog chapter selection survives dialog opening", () => {
+    // Regression test for the intermittent "fireworks entry never became clickable" CI failures
+    // above: the book dialog used to reset its chapter selection back to Chapter 1 from its
+    // modal's "shown" handler (fired once the dialog is already interactable), so a chapter
+    // picked in the brief window before "shown" actually fired got silently wiped out -- e.g.
+    // Chapter 2 was selected, "fireworks" appeared, then the dialog reverted to Chapter 1's
+    // projects underneath it. That's a genuine timing race (confirmed via CI's resource-monitor
+    // log showing normal, non-spiking load during the hangs -- this isn't runner overload). The
+    // fix moved the reset to the dialog's "show" event (fired before it's interactable), closing
+    // that window.
+    //
+    // This drives the dialog the normal way and checks the selection is still showing Chapter 2's
+    // projects after giving any pending reset every chance to run. It's exercising the same race
+    // as the "Load and save fireworks" tests above, just without the full load-and-save round
+    // trip, so -- like those -- it may not always land inside the window that used to trigger the
+    // bug; it's here as a faster, more targeted check of the same thing.
+    test("Selecting Chapter 2 in the Book dialog keeps showing its projects", async ({page}) => {
+        await page.click("#" + await strypeElIds.getEditorMenuUID());
+        await page.locator("." + scssVars.strypeMenuItemClassName, {hasText: "Book..."}).click();
+        await page.locator(".open-book-dlg-book-group-item", {hasText: "Chapter 2"}).click();
+        const fireworksEntry = page.locator(".open-book-dlg-name", {hasText: "fireworks"});
+        await expect(fireworksEntry).toBeVisible();
+
+        // Give the dialog's "shown" event (and anything it might still trigger) every chance to
+        // fire before checking the selection is still showing Chapter 2's projects:
+        await page.waitForTimeout(2000);
+        await expect(fireworksEntry).toBeVisible();
+    });
 });

@@ -2,7 +2,7 @@
 // specifically around storing and restoring the state from browser storage.
 
 import { Page, expect, test } from "@playwright/test";
-import { skipPyodideLoading } from "../support/general";
+import { DEFAULT_STARTING_FRAME_COUNT, skipPyodideLoading } from "../support/general";
 import { save } from "../support/loading-saving";
 import {strypeElIds} from "../support/proxy";
 
@@ -14,8 +14,17 @@ test.beforeEach(async ({ browserName }, testInfo) => {
         testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
     }
 
-    // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(300000); // 300 seconds
+    // These tests can take longer than the default 30 seconds. 180s turned out not to be enough
+    // headroom: CI run 29351662646 showed the heaviest (six-page-load) case consistently landing
+    // at 182-186s on Firefox under contention, failing all 4 attempts. 240s matched the margin
+    // scroll-into-view.spec.ts uses for its own heaviest multi-step tests, but CI run 29398924054
+    // showed "(2nd: false)" still hitting the 240s wall on all 4 attempts, even on the macOS+WebKit
+    // job that runs this file single-worker/isolated specifically to rule out CPU contention --
+    // the resource-monitor log for that job showed load average around 3-5 on a 3-vCPU runner
+    // during the failures (not the 15-30 seen during job setup), so this isn't primarily
+    // contention. Bumped to 360s pending further investigation into why the "false" (autosave-
+    // recovery) branch is consistently slower than "true" (explicit save) -- see PROGRESS notes.
+    testInfo.setTimeout(360000); // 360 seconds
 });
 
 test.afterEach(async ({ context }, testInfo) => {
@@ -31,13 +40,16 @@ test.afterEach(async ({ context }, testInfo) => {
 
 async function assertStartingProject(page: Page)  {
     // Checks the starting project is showing:
-    await expect(page.locator(".frame-div")).toHaveCount(2);
+    await expect(page.locator(".frame-div")).toHaveCount(DEFAULT_STARTING_FRAME_COUNT);
     await expect(page.locator("span", {hasText: "Hello from Strype"})).toHaveCount(1);
     await expect(page.locator("span", {hasText: "This is the default Strype starter project"})).toHaveCount(1);
 }
 
-async function assertStartingPlus(page: Page, paramContent: string) {
-    await expect(page.locator(".frame-div")).toHaveCount(3);
+// expectedFrameCount defaults to the current default project's frame count plus one, but tests
+// that load an old, frozen localStorage snapshot (captured before the default project's shape
+// last changed) need to pass the frame count that snapshot actually contains, not today's count:
+async function assertStartingPlus(page: Page, paramContent: string, expectedFrameCount = DEFAULT_STARTING_FRAME_COUNT + 1) {
+    await expect(page.locator(".frame-div")).toHaveCount(expectedFrameCount);
     await expect(page.locator("span", {hasText: "Hello from Strype"})).toHaveCount(1);
     await expect(page.locator("span", {hasText: "This is the default Strype starter project"})).toHaveCount(1);
     await expect(page.locator("span", {hasText: paramContent})).toHaveCount(1);
@@ -48,8 +60,7 @@ async function appendContent(page: Page, paramContent: string) {
     await page.keyboard.press("End");
     await page.keyboard.type("p\"" + paramContent);
     await page.keyboard.press("Enter");
-    await page.waitForTimeout(500);
-    // Sanity check it actually appeared:
+    // Sanity check it actually appeared (assertStartingPlus's own assertions already retry):
     await assertStartingPlus(page, paramContent);
 }
 
@@ -170,7 +181,9 @@ test.describe("Test migration from old system", () => {
         const page = await context.newPage();
         await loadAndWaitForEditor(page);
         // This is the content I used to make the above Unicode escaped version:
-        await assertStartingPlus(page, "Saved state from previous storage model");
+        // The snapshot predates the current default project's imports, so it has one fewer frame
+        // than DEFAULT_STARTING_FRAME_COUNT + 1 would now assume:
+        await assertStartingPlus(page, "Saved state from previous storage model", 3);
         // Check the key has gone:
         const keys = await page.evaluate(() => {
             const keys = [];
@@ -200,7 +213,9 @@ test.describe("Test migration from old system", () => {
         const page1 = await context.newPage();
         await loadAndWaitForEditor(page1);
         // This is the content I used to make the above Unicode escaped version:
-        await assertStartingPlus(page1, "Saved state from previous storage model");
+        // The snapshot predates the current default project's imports, so it has one fewer frame
+        // than DEFAULT_STARTING_FRAME_COUNT + 1 would now assume:
+        await assertStartingPlus(page1, "Saved state from previous storage model", 3);
 
         const page2 = await context.newPage();
         await loadAndWaitForEditor(page2);
@@ -311,7 +326,6 @@ test.describe("Offer to reload unsaved backups", () => {
 
             await loadAndWaitForEditor(page1);
             await save(page1, true, "Project 1");
-            await page1.waitForTimeout(1000);
             const scssVars = await page1.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
             // Modify it and close it:
             const str1 = "Modifying state #1 ahead of closing";
@@ -331,14 +345,16 @@ test.describe("Offer to reload unsaved backups", () => {
             await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).toBeVisible();
             await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).toContainText("load it?");
             await save(page2, true, "Project 2");
-            await page2.waitForTimeout(1000);
-            
+
             // Now we modify, optionally save, and close:
             const str2 = "Modifying state #2 ahead of closing";
             await appendContent(page2, str2);
             if (state2Saved) {
                 await save(page2, false);
-                // Give it a moment to update the state:
+                // save() only waits for the download event; the autosave write to
+                // IndexedDB/localStorage that this test actually cares about here is a separate
+                // async operation with no exposed completion signal, so this is a deliberate
+                // real-time wait to give it a moment to land before we close the page:
                 await page2.waitForTimeout(1000);
             }
             await closePage(page2, browserName);
@@ -392,8 +408,7 @@ test.describe("Offer to reload unsaved backups", () => {
             
             // Clear all the states:
             await page5.locator("span", {hasText: "Clear all"}).click();
-            await page5.waitForTimeout(1000);
-            // Check this dialog is now empty:
+            // Check this dialog is now empty (assertRecentStatesShowing's own assertion retries):
             await assertRecentStatesShowing(page5, []);
             
             // Also check on a new page:
@@ -410,7 +425,6 @@ test.describe("Offer to reload unsaved backups", () => {
 
             await loadAndWaitForEditor(page1);
             await save(page1, true, "Project 1");
-            await page1.waitForTimeout(1000);
             const scssVars = await page1.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
             // Modify it and close it:
             const str1 = "Modifying state #1 ahead of closing";
@@ -430,17 +444,19 @@ test.describe("Offer to reload unsaved backups", () => {
             await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).toBeVisible();
             await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).toContainText("load it?");
             await save(page2, true, "Project 2");
-            await page2.waitForTimeout(1000);
 
             // Now we modify, and optionally save:
             const str2 = "Modifying state #2 ahead of closing";
             await appendContent(page2, str2);
             if (state2Saved) {
                 await save(page2, false);
-                // Give it a moment to update the state:
+                // save() only waits for the download event; the autosave write to
+                // IndexedDB/localStorage that this test actually cares about here is a separate
+                // async operation with no exposed completion signal, so this is a deliberate
+                // real-time wait to give it a moment to land before we open the menu below:
                 await page2.waitForTimeout(1000);
             }
-            
+
             // We don't close the page, we use the new project from the menu
             await page2.locator("#" + await strypeElIds(page2).getEditorMenuUID()).click();
             await page2.locator("#" + await strypeElIds(page2).getNewProjectLinkId()).click();
@@ -448,10 +464,13 @@ test.describe("Offer to reload unsaved backups", () => {
                 // Need to click the confirmation dialog to go despite unsaved changes:
                 await page2.locator("*[id='confirmNewProjectModalDlg'] button", {hasText: "Continue"}).click();
             }
-            
-            // Wait a bit just to be sure it's all loaded:
-            await page2.waitForTimeout(3000);            
-            
+
+            // Deliberately a real-time wait, not a settle-based one: the check below is a negative
+            // assertion (banner should NOT be visible), so relying on its own retry wouldn't
+            // actually prove anything -- it would pass trivially before the banner had a chance to
+            // (wrongly) appear. Give it a moment to load first:
+            await page2.waitForTimeout(3000);
+
             // Now we check there's no banner:
             await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).not.toBeVisible();
         });

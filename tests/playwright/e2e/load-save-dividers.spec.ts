@@ -2,34 +2,14 @@ import {expect, Page, test} from "@playwright/test";
 import {load, save} from "../support/loading-saving";
 import fs from "fs";
 import { randomUUID } from "node:crypto";
-import { getDefaultStrypeProjectDocumentationFullLine } from "../support/editor";
+import { getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportsFullLine } from "../support/editor";
 import en from "@/localisation/en/en_main.json";
 import {StrypePEALayoutMode} from "../../cypress/support/frame-types";
 import {dragDividerTo, getSplitterPos} from "../support/dividers";
-import { skipPyodideLoading } from "../support/general";
+import { setupStrypeTest } from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    if (browserName === "webkit" && process.platform === "win32") {
-        // On Windows+Webkit it just can't seem to load the page for some reason:
-        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
-    }
-
-    // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(120000); // 120 seconds
-
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
-    });
-    await skipPyodideLoading(page);
-    await page.goto("./", {waitUntil: "load"});
-    await page.waitForTimeout(20*1000);
-    await page.waitForSelector("body");
-    //scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
-    //strypeElIds = await page.evaluate(() => (window as any)["StrypeHTMLELementsIDsGlobals"]);
-    await page.evaluate(() => {
-        (window as any).Playwright = true;
-    });
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 120000, skipPyodide: true});
 });
 
 
@@ -57,7 +37,7 @@ async function saveAndCheck(page: Page, dividerStates: RegExp[]) {
     // Since the default code contains a project doc, we need to include it to the code
     expect(savedLines.slice(1 + dividerStates.length)).toEqual(`
 ${getDefaultStrypeProjectDocumentationFullLine()}#(=> Section:Imports
-#(=> Section:Definitions
+${getDefaultStrypeProjectImportsFullLine()}#(=> Section:Definitions
 #(=> Section:Main
 myString  = "Hello from Strype" 
 print(myString) 
@@ -135,8 +115,9 @@ test.describe("Saves divider states", () => {
         await dragDividerTo(page, CODE_VS_SIDEBAR, 10, 300);
         await page.waitForTimeout(20 * 1000);
         
+        // Note: the "code vs sidebar" divider is now persistent after a subsequent layout changes
         await saveAndCheck(page, [
-            /editorCommandsSplitterPane2Size:\{"tabsCollapsed":21.94\}/,
+            /editorCommandsSplitterPane2Size:\{"tabsCollapsed":21.94,"tabsExpanded":21.94\}/,
             /peaLayoutMode:tabsExpanded/,
             /peaCommandsSplitterPane2Size:\{"tabsCollapsed":1[56].?[0-9]*\}/,
             /peaExpandedSplitterPane2Size:\{"tabsExpanded":87.01\}/,

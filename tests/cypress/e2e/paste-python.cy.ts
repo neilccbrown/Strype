@@ -31,6 +31,20 @@ describe("Python round-trip", () => {
         "raise (1+2-3)==(4*5/6)\n",
         // ** binds tighter than unary -, hence the space before:
         "raise foo**-6.7**False**True**'bye'\n",
+        // Unary ~ (bitwise not) directly followed by a binary operator, with no
+        // parentheses to separate them -- regression test for a paste-import bug
+        // where parseNextTerm() didn't recognise "~" as a unary prefix, so it
+        // consumed "~" as a whole term on its own and then choked on the operand
+        // that follows, expecting an operator there instead:
+        "raise ~a&b\n",
+        "raise ~a\n",
+        // "lambda" has no semantic support (no parameter-list awareness) -- it's a
+        // pass-through prefix keyword operator, like "not". Regression coverage for
+        // a paste-import crash ("Unknown operator ... varargslist") since lambdef
+        // wasn't handled by parseNextTerm() at all:
+        "raise lambda n:-n\n",
+        "raise lambda :x\n",
+        "raise sorted(x,key= lambda n:-n,reverse=True)\n",
         "try:\n    x = 0\nexcept:\n    x = 1\n",
         // Expand operator:
         "f(*a)\n",
@@ -52,7 +66,11 @@ describe("Python round-trip", () => {
         cy.fixture("python-bubble.py").then((py) => testRoundTripPasteAndDownload(py, "{uparrow}", defaultProjectDocFullLine + py));
     });
     it("Allows pasting fixture file with main code", () => {
-        cy.fixture("python-code.py").then((py) => testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + py));
+        // This is the largest of the paste fixtures (92 lines/frames), so settling after the paste
+        // can take longer than the default budget on a loaded CI runner -- give it more headroom
+        // than waitForEditorSettled's default 10s (seen timing out at ~10s with the state genuinely
+        // still converging, not stuck).
+        cy.fixture("python-code.py").then((py) => testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + py, undefined, undefined, undefined, 20000));
     });
     it("Allows importing fixture file with functions", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/python-functions.py");
@@ -101,6 +119,7 @@ describe("Python round-trip", () => {
 
     it("Shows an error for invalid code with wrong code", () => {
         // Since the default code contains a project doc, we need to include it to the code
+        // The fixture's invalidity comes from a "@" (matrix mult) operator, which Strype doesn't support
         testRoundTripImportAndDownload("tests/cypress/fixtures/python-invalid-hints-extract.py", defaultProjectDocFullLine);
         assertVisibleError(/invalid.*import.*operator.*line: 24/si);
     });
@@ -165,28 +184,30 @@ from a.b.c import *
 `);
     });
     
-    it("Supports basic binary operator combinations", () => {
-        for (const op of sampleSize(binary_operators, 3)) {
-            for (const lhs of sampleSize(terminals, 2)) {
-                for (const rhs of sampleSize(terminals, 3)) {
-                    // Keep a space between operands only for keyword operators (they all contains "i")
-                    const operatorSpacing = (op.includes("i")) ? " " : ""; 
-                    // Since the default code contains a project doc, we need to include it to the code
-                    const code = "raise " + lhs + operatorSpacing + op + operatorSpacing + rhs + "\n";
-                    testRoundTripPasteAndDownload(code, undefined, defaultProjectDocFullLine + code);
-                }
+    // One it() per combination, rather than looping through all of them inside a single it() as
+    // this used to do: CI (ubuntu-latest) hit a Cypress/Electron "V8 process OOM" crash partway
+    // through the ~18 round-trip paste+download+compare cycles previously accumulating within one
+    // test. Splitting them like this matches the `basics` loop above, and each new it() gets its
+    // own beforeEach page reload (registered by the paste-test-support.ts import), which resets
+    // memory in between:
+    for (const op of sampleSize(binary_operators, 3)) {
+        for (const lhs of sampleSize(terminals, 2)) {
+            for (const rhs of sampleSize(terminals, 3)) {
+                // Keep a space between operands only for keyword operators (they all contains "i")
+                const operatorSpacing = (op.includes("i")) ? " " : "";
+                // Since the default code contains a project doc, we need to include it to the code
+                const code = "raise " + lhs + operatorSpacing + op + operatorSpacing + rhs + "\n";
+                it("Supports basic binary operator combination: " + code.trim(), () => testRoundTripPasteAndDownload(code, undefined, defaultProjectDocFullLine + code));
             }
         }
-    });
-    it("Supports basic n-ary operator combinations", () => {
-        for (const op of sampleSize(nary_operators, 5)) {
-            // Keep a space between operands only for keyword operators (they all contains "i")
-            const operatorSpacing = (["and", "or"].includes(op)) ? " " : "";
-            // Since the default code contains a project doc, we need to include it to the code
-            const code = "raise " + sampleSize(terminals, 5).join(operatorSpacing + op + operatorSpacing) + "\n";
-            testRoundTripPasteAndDownload(code, undefined, defaultProjectDocFullLine + code);
-        }
-    });
+    }
+    for (const op of sampleSize(nary_operators, 5)) {
+        // Keep a space between operands only for keyword operators (they all contains "i")
+        const operatorSpacing = (["and", "or"].includes(op)) ? " " : "";
+        // Since the default code contains a project doc, we need to include it to the code
+        const code = "raise " + sampleSize(terminals, 5).join(operatorSpacing + op + operatorSpacing) + "\n";
+        it("Supports basic n-ary operator combination: " + code.trim(), () => testRoundTripPasteAndDownload(code, undefined, defaultProjectDocFullLine + code));
+    }
     
     // Check that if you paste something that already has indent on every line, we manage to preserve
     // the relation among the lines correctly:

@@ -1,24 +1,18 @@
 import {ElementHandle, expect, JSHandle, Page, test} from "@playwright/test";
 import { checkConsoleContent, runButtonShowsRun, runToFinish, startRunning } from "../support/execution";
-import {checkFrameXorTextCursor, doPagePaste} from "../support/editor";
+import {checkFrameXorTextCursor, clearDefaultProject, doPagePaste, pressN, waitForEditorSettled} from "../support/editor";
 import {save} from "../support/loading-saving";
 import {readFileSync} from "node:fs";
+import {setupStrypeTest} from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    if (browserName === "webkit" && process.platform === "win32") {
-        // On Windows+Webkit it just can't seem to load the page for some reason:
-        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
-    }
-    testInfo.setTimeout(240000);
-    await page.goto("./", {waitUntil: "load"});
-    await expect(page.locator(".frame-div")).toHaveCount(2);
-    await page.evaluate(() => {
-        (window as any).Playwright = true;
-    });
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
-    });
+    // "Undo test #1" (the heaviest of the "Undo scrolls location into view" block's three
+    // parameterisations) has been observed on contended Firefox CI stalling for 100+s inside a
+    // single page.evaluate() call (CI run 29351662646), consistent with the main-thread-starvation
+    // pattern already diagnosed for WebKit elsewhere in this suite -- not a hang, but under heavy
+    // full-suite parallelism even the previous 240s budget was cutting it close (one retry finished
+    // in 254.5s, just past it). Bumped for headroom; see docs/claude-improve-testing/PROGRESS.md.
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 360000});
 });
 
 async function scrollToFraction(page : Page, fraction: number) : Promise<void> {
@@ -85,11 +79,11 @@ async function typeWithKeys(page: Page, input: string) {
 
         if (text) {
             await page.keyboard.type(text);
-            await page.waitForTimeout(100);
+            await waitForEditorSettled(page);
         }
-        
+
         await page.keyboard.press(key);
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
 
         lastIndex = match.index + match[0].length;
     }
@@ -107,13 +101,13 @@ test.describe("Runtime errors scroll into view", () => {
             // Enter 40 blanks then print(len(None)) then 40 blanks:
             for (let b = 0; b < 40; b++) {
                 await page.keyboard.press("Enter");
-                await page.waitForTimeout(50);
+                await waitForEditorSettled(page);
             }
             await page.keyboard.type("plen(None)");
             await page.keyboard.press("Enter");
             for (let b = 0; b < 40; b++) {
                 await page.keyboard.press("Enter");
-                await page.waitForTimeout(50);
+                await waitForEditorSettled(page);
             }
             await scrollToFraction(page, fraction);
             const visibleBefore = await isInsideViewport(await page.locator("span.label-slot-input", {hasText: /^None$/}).elementHandle());
@@ -142,8 +136,10 @@ test.describe("Undo scrolls location into view", () => {
     ];
     for (let testIndex = 0; testIndex < undoTests.length; testIndex++) {
         test(`Undo test #${testIndex}`, async ({page}) => {
-            await page.keyboard.press("Delete");
-            await page.keyboard.press("Delete");
+            await clearDefaultProject(page);
+            // clearDefaultProject leaves the caret at the top of Imports; return to Main, which
+            // is where this test's content belongs:
+            await pressN("ArrowDown", 2)(page);
             await doPagePaste(page, Array.from({ length: 100 }, (_, i) => `print("Hello #${i + 1}")`).join("\n"));
             const [actions, scrollTo] = undoTests[testIndex];
             const statesToUndoTo = [];
@@ -152,10 +148,14 @@ test.describe("Undo scrolls location into view", () => {
             for (const [cursorIndex, toType] of actions) {
                 statesToUndoTo.push(readFileSync(await save(page, false), "utf-8"));                
                 await page.keyboard.press("Home");
-                for (let i = 0; i < cursorIndex; i++) {
-                    await page.waitForTimeout(10);
-                    await page.keyboard.press("ArrowDown");
-                }
+                // Settling after every individual ArrowDown (enforceWaitBetween) is far too costly
+                // over up to 80 repeats -- each settle-poll is its own page.evaluate() round trip,
+                // and under concurrent-worker CPU contention that overhead alone can exceed the
+                // whole test's budget. Plain cursor navigation doesn't trigger the kind of
+                // restructuring debounce waitForEditorSettled exists for, so fire the presses fast
+                // and settle once at the end, before reading/typing anything:
+                await pressN("ArrowDown", cursorIndex, false)(page);
+                await waitForEditorSettled(page);
                 await typeWithKeys(page, toType);
             }
             await scrollToFraction(page, scrollTo);
@@ -178,7 +178,9 @@ test.describe("Undo scrolls location into view", () => {
                 else {
                     await page.locator("input[title='Undo']").click();
                 }
-                await page.waitForTimeout(1000);
+                // Undo's own scroll-into-view (store.ts) runs inside a nextTick off the same state
+                // update that changes focus/cursor, so waiting for editor-settle also covers it:
+                await waitForEditorSettled(page);
                 // Check focus is in view:
                 const parent = await toParentElementHandle(await checkFrameXorTextCursor(page));
                 if (parent != null) {
@@ -201,8 +203,10 @@ test.describe("Undo scrolls location into view", () => {
 
 test.describe("Printing scrolls into view", () => {
     test("Pressing keys repeatedly scrolls into view", async ({page}) => {
-        await page.keyboard.press("Delete");
-        await page.keyboard.press("Delete");
+        await clearDefaultProject(page);
+        // clearDefaultProject leaves the caret at the top of Imports; return to Main, which is
+        // where this test's content belongs:
+        await pressN("ArrowDown", 2)(page);
         await doPagePaste(page, `
 from strype.graphics import get_key
 while (True):

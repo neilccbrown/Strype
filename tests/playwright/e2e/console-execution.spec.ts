@@ -1,26 +1,10 @@
 import { test, expect } from "@playwright/test";
 import { enterCode } from "../support/editor";
-import { checkConsoleContent, checkFrameErrorCount, runButtonShowsRun, runToFinish, startRunning } from "../support/execution";
+import { checkConsoleContent, checkFrameErrorCount, runButtonShowsRun, runToFinish, setupGraphicsRedrawObserver, startRunning, waitForConsoleSettled } from "../support/execution";
+import { setupStrypeTest } from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    if (browserName === "webkit" && process.platform === "win32") {
-        // On Windows+Webkit it just can't seem to load the page for some reason:
-        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
-    }
-
-    // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(90000); // 90 seconds
-
-    await page.goto("./", {waitUntil: "load"});
-    // Wait for content to load:
-    await expect(page.locator(".frame-div")).toHaveCount(2);
-    await page.evaluate(() => {
-        (window as any).Playwright = true;
-    });
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
-    });
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 120000});
 });
 
 test.describe("Check console after execution", () => {
@@ -83,6 +67,69 @@ test.describe("Test stdin works", () => {
     });
 });
 
+test.describe("Test stopping during a pending input doesn't break the next run (issue #927)", () => {
+    // sInput()'s cleanup of a stopped-but-still-pending input() call (removing its console
+    // keydown/composition listeners, see execPythonCode.ts) is driven by a 1-second polling
+    // interval rather than any DOM-observable event, so we wait a little over a second after
+    // stopping to give that cleanup a chance to run before starting the next execution -- that's
+    // exactly the race these tests are meant to cover (without the fix, the stale listeners are
+    // never removed no matter how long we wait).
+    const STALE_INPUT_CLEANUP_WAIT_MS = 1500;
+
+    test("Check console still accepts input after stopping with a second input still pending", async ({page}) => {
+        const code = "name = input('What is your name?\\n')\nprint('Hello ' + name)\nspecies = input('What is your species?\\n')\nprint('Hello ' + name + ' the ' + species)\n";
+        await enterCode(page, ["", "", code]);
+        let button = await startRunning(page);
+        await expect(page.locator("#peaConsole")).toBeEnabled();
+        await expect(page.locator("#peaConsole")).toBeFocused();
+        // Validate the first input, leaving the second one pending:
+        await page.locator("#peaConsole").pressSequentially("George\n", {delay: 75});
+        await checkConsoleContent(page, "What is your name?\nGeorge\nHello George\nWhat is your species?\n");
+        await expect(button).toContainText("Stop");
+        // Stop while the second input is still pending:
+        await button.click();
+        await runButtonShowsRun(button);
+        await page.waitForTimeout(STALE_INPUT_CLEANUP_WAIT_MS);
+
+        // Run again, and check that typing into the console actually works this time:
+        button = await startRunning(page);
+        await expect(page.locator("#peaConsole")).toBeEnabled();
+        await expect(page.locator("#peaConsole")).toBeFocused();
+        await page.locator("#peaConsole").pressSequentially("Amy\n", {delay: 75});
+        await checkConsoleContent(page, "What is your name?\nAmy\nHello Amy\nWhat is your species?\n");
+        await expect(button).toContainText("Stop");
+        await page.locator("#peaConsole").pressSequentially("dog\n", {delay: 75});
+        await checkConsoleContent(page, "What is your name?\nAmy\nHello Amy\nWhat is your species?\ndog\nHello Amy the dog\n");
+        await runButtonShowsRun(button);
+        await checkFrameErrorCount(page, 0);
+    });
+
+    test("Check Enter still validates input after stopping with an unvalidated input pending", async ({page}) => {
+        const code = "name = input('What is your name?\\n')\nprint('Hello ' + name)\n";
+        await enterCode(page, ["", "", code]);
+        let button = await startRunning(page);
+        await expect(page.locator("#peaConsole")).toBeEnabled();
+        await expect(page.locator("#peaConsole")).toBeFocused();
+        // Type something but don't validate it with Enter:
+        await page.locator("#peaConsole").pressSequentially("Geo", {delay: 75});
+        await checkConsoleContent(page, "What is your name?\nGeo");
+        await expect(button).toContainText("Stop");
+        // Stop while the input is still pending and unvalidated:
+        await button.click();
+        await runButtonShowsRun(button);
+        await page.waitForTimeout(STALE_INPUT_CLEANUP_WAIT_MS);
+
+        // Run again, type something, and check Enter actually validates it this time:
+        button = await startRunning(page);
+        await expect(page.locator("#peaConsole")).toBeEnabled();
+        await expect(page.locator("#peaConsole")).toBeFocused();
+        await page.locator("#peaConsole").pressSequentially("Amy\n", {delay: 75});
+        await checkConsoleContent(page, "What is your name?\nAmy\nHello Amy\n");
+        await runButtonShowsRun(button);
+        await checkFrameErrorCount(page, 0);
+    });
+});
+
 test.describe("Test assets filesystem", () => {
     test("Check reading and processing book", async ({page}) => {
         await enterCode(page, ["", "", `
@@ -127,12 +174,12 @@ print(type(s.get_samples()))`]);
         await checkFrameErrorCount(page, 0);
     });
 
-    test("Create zero length Sound", async ({page}) => {
-        if (process.platform === "linux") {
-            // Something about playing the sound headless on Linux in Firefox doesn't seem to work (it does on Windows)
+    test("Create zero length Sound", async ({page, browserName}) => {
+        if (browserName === "firefox") {
+            // Something about playing sound headless in Firefox doesn't seem to work (it does in Chromium)
             return;
         }
-        
+
         await enterCode(page, ["from strype.sound import *", "", `
 s = Sound([])
 # Playing sound should not hang things:
@@ -254,8 +301,9 @@ while True:
             // Now we stop:
             await runButton.click();
             await runButtonShowsRun(runButton, true);
-            // Wait for slush to print if there was some (shouldn't be, but that's what we're testing...):
-            await page.waitForTimeout(10_000);
+            // Wait for slush to print if there was some (shouldn't be, but that's what we're testing...) --
+            // wait until the console actually stops changing, rather than guessing how long that takes:
+            await waitForConsoleSettled(page);
             // Then check the last actual printed line:
             consoleValue = await page.locator("#peaConsole").inputValue();
             const lastNumberAfterStopping = Number(consoleValue.split("\n")?.at(-2)?.trim());
@@ -284,6 +332,33 @@ while True:
             const lengthAfterStopping = consoleValue.length / 3;
             // Should have stopped printing soon after (within 4 seconds' worth)  (should be less, but CI can be slow...):
             expect(lengthAfterStopping).toBeLessThan(lengthWhileRunning + linesPerSecond * 4);
+        });
+
+        test(`Check graphics actor stops moving within seconds of stopping after running for ${runTime} seconds`, async ({page}) => {
+            // This is the same underlying bug as the console print tests above (async requests/updates
+            // queueing up faster than the main thread can service them, so that Stop doesn't take effect
+            // for a long time), but for sprite/graphics updates: those are sent on their own dedicated
+            // MessagePort (see self.updatePort in python-execution.ts) rather than through the throttled
+            // makeRequest/makeRawRequest path, so a tight movement loop is a more direct way to provoke it.
+            await enterCode(page, ["from strype.graphics import *", "", `
+cat = Actor('cat-test.jpg')
+while True:
+    cat.move(5)`]);
+            await setupGraphicsRedrawObserver(page);
+            const runButton = await startRunning(page, true);
+            await page.waitForTimeout(runTime * 1000);
+            // We use the number of actual canvas redraws (see setupGraphicsRedrawObserver) as a proxy for
+            // "the actor visibly moved", since there's no printed output to inspect here:
+            const redrawsWhileRunning = await page.evaluate(() => (window as any).__strypeGraphicsRedrawCount ?? 0);
+            const redrawsPerSecond = redrawsWhileRunning / runTime;
+            // Now we stop:
+            await runButton.click();
+            await runButtonShowsRun(runButton, true);
+            // Wait to see if it keeps moving after we've stopped (it shouldn't):
+            await page.waitForTimeout(10_000);
+            const redrawsAfterStopping = await page.evaluate(() => (window as any).__strypeGraphicsRedrawCount ?? 0);
+            // Should have stopped moving within seconds of stopping (should be less, but CI can be slow...):
+            expect(redrawsAfterStopping).toBeLessThan(redrawsWhileRunning + redrawsPerSecond * 4);
         });
     }
 });

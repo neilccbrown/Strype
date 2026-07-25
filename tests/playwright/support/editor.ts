@@ -1,4 +1,59 @@
 import {Page, expect, ElementHandle} from "@playwright/test";
+import {WINDOW_STRYPE_NEXTTICK_PROPNAME} from "@/helpers/sharedIdCssWithTests";
+
+async function readEditorState(page: Page) : Promise<{focusId: string, cursor: string, frameCount: number}> {
+    return page.evaluate(() => {
+        const editor = document.querySelector("#editor");
+        return {
+            focusId: editor?.getAttribute("data-slot-focus-id") ?? "",
+            cursor: editor?.getAttribute("data-slot-cursor") ?? "",
+            frameCount: document.querySelectorAll(".frame-div").length,
+        };
+    });
+}
+
+// Waits for the editor to settle after an action, rather than guessing how long it will take.
+// Most keystrokes only need Vue's reactivity to flush (a couple of nextTicks, plus one macrotask
+// turn for logic deferred via a zero-delay setTimeout) -- this resolves in a few ms. But some
+// editor actions (e.g. converting a function-call frame to a variable assignment when typing "=",
+// see LabelSlotsStructure.vue) go through a genuine debounce timer (300ms there; similar 200ms/
+// 1000ms timers exist elsewhere in the editor) that nextTick cannot wait through. So after
+// flushing reactivity, we additionally poll the focused slot and frame count until they stop
+// changing, bounded by timeoutMs (comfortably above the largest known timer).
+export async function waitForEditorSettled(page: Page, timeoutMs = 4000) : Promise<void> {
+    await page.evaluate(async (prop) => {
+        await (window as any)[prop]();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        await (window as any)[prop]();
+    }, WINDOW_STRYPE_NEXTTICK_PROPNAME);
+
+    const start = Date.now();
+    let last = await readEditorState(page);
+    let stableCount = 0;
+    while (Date.now() - start < timeoutMs) {
+        await page.waitForTimeout(30);
+        const cur = await readEditorState(page);
+        if (cur.focusId === last.focusId && cur.cursor === last.cursor && cur.frameCount === last.frameCount) {
+            stableCount++;
+            // A blank focus id (no slot focused) is also used by the app as a transient marker
+            // while some restructuring is in flight -- e.g. converting a function-call frame to a
+            // variable assignment on typing "=" holds focus blank for a genuine ~300ms debounce
+            // (see LabelSlotsStructure.vue), and that blank reading is itself stable across many
+            // consecutive polls during the whole debounce window, which would otherwise fool this
+            // into returning mid-restructure. Frame-level pastes can legitimately end up blank too
+            // (a frame caret, not a slot), so we can't just refuse blank outright -- instead
+            // require more consecutive stable reads (~450ms) before trusting a blank state than a
+            // real one (~30ms), comfortably past the known debounce:
+            if (stableCount >= (cur.focusId === "" ? 15 : 1)) {
+                return;
+            }
+        }
+        else {
+            stableCount = 0;
+        }
+        last = cur;
+    }
+}
 
 // This enumeration is used for the media slots placeholder when parsing slots
 // Don't use "_" in the values as they will be scrapped by the parser later.
@@ -43,10 +98,12 @@ export async function checkFrameXorTextCursor(page: Page, specificFrameCursor?: 
 }
 
 export async function checkTextSlotCursorPos(page: Page, expectedPos: number): Promise<void> {
-    const docSelectionFocusOffset = await page.evaluate(() =>{
-        return document?.getSelection()?.focusOffset;
-    });
-    expect(docSelectionFocusOffset).toEqual(expectedPos);
+    // A one-shot check here used to race against setDocumentSelection(): plain same-slot cursor
+    // moves (e.g. arrow-right within a string literal, see LabelSlotsStructure.vue's onLRKeyDown)
+    // only update the real DOM selection directly and don't touch the "data-slot-cursor" attribute
+    // that waitForEditorSettled() watches, so that wait gives no protection for this specific case.
+    // Poll the real selection instead of trusting a single snapshot.
+    await expect.poll(() => page.evaluate(() => document?.getSelection()?.focusOffset)).toEqual(expectedPos);
 }
 
 async function getSelection(page: Page) : Promise<{ id: string, cursorPos : number }> {
@@ -158,7 +215,7 @@ export async function assertStateOfVarAssignFrame(page: Page, expectedLHSState :
     await assertLabelSlotsContent(page, `${expectedLHSState}{ ⇐ }${expectedRHSState}`, {isInStatementFrame: true});
 }
 
-export async function typeIndividually(page: Page, content: string, timeout = 75) : Promise<void> {
+export async function typeIndividually(page: Page, content: string, settleTimeoutMs = 4000) : Promise<void> {
     for (let i = 0; i < content.length; i++) {
         if (content[i] == "\n") {
             await page.keyboard.press("Shift+Enter");
@@ -166,7 +223,7 @@ export async function typeIndividually(page: Page, content: string, timeout = 75
         else {
             await page.keyboard.type(content[i]);
         }
-        await page.waitForTimeout(timeout);
+        await waitForEditorSettled(page, settleTimeoutMs);
     }
 }
 
@@ -195,7 +252,7 @@ export async function doPagePaste(page: Page, clipboardContent: string, clipboar
         // Dispatch the paste event to the whole document
         document.activeElement?.dispatchEvent(pasteEvent);
     }, {clipboardContent, clipboardContentType});
-    await page.waitForTimeout(300);
+    await waitForEditorSettled(page);
 }
 
 export async function doTextHomeEndKeyPress(page: Page, isGoingForward: boolean, isShiftEnabled: boolean) : Promise<void> {
@@ -208,8 +265,8 @@ export async function doTextHomeEndKeyPress(page: Page, isGoingForward: boolean,
     else{
         await page.keyboard.press(`${isShiftEnabled ? "Shift+" : ""}${isGoingForward ? "End" : "Home"}`);
     }
-    await page.waitForTimeout(200);
-} 
+    await waitForEditorSettled(page);
+}
 
 export function pressN(key: string, n : number, enforceWaitBetween?: boolean) : ((page: Page) => Promise<void>) {
     return async (page) => {
@@ -219,9 +276,9 @@ export function pressN(key: string, n : number, enforceWaitBetween?: boolean) : 
                 await doTextHomeEndKeyPress(page, (key == "End"), false);
                 return;
             }            
-            await page.keyboard.press(key); 
+            await page.keyboard.press(key);
             if(enforceWaitBetween){
-                await page.waitForTimeout(100);
+                await waitForEditorSettled(page);
             }
         }
     };
@@ -231,18 +288,83 @@ export function getDefaultStrypeProjectDocumentationFullLine(): string {
     return "'''This is the default Strype starter project'''\n";
 }
 
+export function getDefaultStrypeProjectImportsFullLine(): string {
+    return "from strype.graphics import * \nfrom strype.sound import * \n";
+}
+
+// Deletes forward (Delete key) from the top of a container until it's empty. `maxPresses` isn't a
+// count of frames to remove -- the recursion always runs to an empty container, however many
+// presses that takes, since deleting a top-level block frame removes its whole subtree (nested
+// descendants included) in one press. It's purely a safety cap against an infinite recursion if a
+// press ever failed to remove a frame (an app bug, a stuck focus, a debounce race): each call
+// passes `maxPresses - 1` down, so a genuinely stuck deletion still terminates -- with a failed
+// assertion below in the caller -- instead of hanging. Callers should not need to pass it; the
+// default is generous enough for any realistic number of frames. Uses Delete rather than
+// Backspace: the app deliberately blocks Backspace from removing a function/class definition
+// frame when the caret is inside its body (to avoid merging the body into the wrong container),
+// which forward-Delete from above the frame doesn't hit, so Delete is the only one of the two that
+// reliably clears block frames with children.
+async function deleteFramesUpTo(page: Page, containerSelector: string, maxPresses = 100) : Promise<void> {
+    if (maxPresses <= 0 || await page.locator(containerSelector + " .frame-div").count() === 0) {
+        return;
+    }
+    await page.keyboard.press("Delete");
+    // Deletion can go through a delayed-removal debounce (LabelSlot.vue), so settle after
+    // every single keypress rather than firing them all at once -- otherwise a later press can
+    // race ahead of a still-in-flight removal and land on/delete the wrong frame (or, worse,
+    // crash the app by deleting more times than there are frames left):
+    await waitForEditorSettled(page);
+    await deleteFramesUpTo(page, containerSelector, maxPresses - 1);
+}
+
+// Deletes every frame currently in Main, Definitions and Imports -- not just the default
+// project's frames (2 default imports plus the myString assignment and print call in Main), since
+// this is also used to clear out whatever a previous operation left behind, which can include
+// Definitions content that the default project never has -- leaving a genuinely blank editor
+// (0 frames) with the caret positioned at the top of Imports, ready for fresh content. Reads the
+// frame counts from the DOM rather than hard-coding them so this doesn't go stale if a section's
+// content changes shape.
+export async function clearDefaultProject(page: Page) : Promise<void> {
+    const totalCount = await page.locator(".frame-div").count();
+    // Reach the very top of the whole document regardless of the current caret position or how
+    // deeply nested any block frame's content is. ArrowUp is a no-op once already at the top, so
+    // pressing it more times than could possibly be needed is harmless -- but a block frame's body
+    // is itself an extra caret stop beyond the one .frame-div element it counts as, so totalCount
+    // alone can undershoot for nested content; multiplying it gives enough headroom for that
+    // without needing to know the exact nesting depth:
+    for (let i = 0; i < totalCount * 3 + 10; i++) {
+        await page.keyboard.press("ArrowUp");
+    }
+    // Settling once here (rather than after every press, as the delete loop below does) is
+    // intentional: that loop needs a per-press settle because deletion is async and debounced and
+    // can race with the next press, but pure caret navigation isn't, so there's nothing to race --
+    // one settle after the whole burst is both correct and far cheaper than settling ~totalCount*3
+    // times:
+    await waitForEditorSettled(page);
+    // Clear top-down, container by container. ArrowDown from an empty/just-cleared container
+    // reliably lands at the top of the next one (mirrored by the equivalent "return to Main"
+    // navigation used elsewhere once everything's been cleared):
+    await deleteFramesUpTo(page, "#frameContainer_-1");
+    await page.keyboard.press("ArrowDown");
+    await waitForEditorSettled(page);
+    await deleteFramesUpTo(page, "#frameContainer_-2");
+    await page.keyboard.press("ArrowDown");
+    await waitForEditorSettled(page);
+    await deleteFramesUpTo(page, "#frameContainer_-3");
+    // Belt-and-braces check that we truly ended up at 0, on top of the settling above:
+    await expect(page.locator(".frame-div")).toHaveCount(0, {timeout: 4000});
+    // Return to the top of Imports, where callers of this function expect to end up:
+    await page.keyboard.press("ArrowUp");
+    await waitForEditorSettled(page);
+    await page.keyboard.press("ArrowUp");
+    await waitForEditorSettled(page);
+}
+
 export async function enterCode(page: Page, codeSections : string[]) : Promise<void> {
-    await expect(page.locator(".frame-div")).toHaveCount(2);
-    await page.keyboard.press("ArrowDown");
-    await page.keyboard.press("ArrowDown");
-    await page.keyboard.press("Backspace");
-    await page.keyboard.press("Backspace");
-    await page.waitForTimeout(500);
-    await page.keyboard.press("ArrowUp");
-    await page.keyboard.press("ArrowUp");
+    await clearDefaultProject(page);
     for (const codeSection of codeSections) {
+        // doPagePaste already waits for the editor (including frame count) to settle:
         await doPagePaste(page, codeSection);
-        await page.waitForTimeout(1000);
         await page.keyboard.press("ArrowDown");
     }
 }

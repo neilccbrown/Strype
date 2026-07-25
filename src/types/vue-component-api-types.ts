@@ -162,6 +162,7 @@ export type PEAComponentAPI = {
   downloadWAV: (src: AudioBuffer, filenameStem: string) => void,
   redrawCanvas: () => void,
   overrideGraphics: (background: OffscreenCanvas | HTMLImageElement | null, imageToShowCentered: OffscreenCanvas | HTMLImageElement | null) => void,
+  copyConsoleText: (event?: Event) =>void,
 };
 
 export type MediaPreviewPopupComponentAPI = {
@@ -175,5 +176,13 @@ export type EditImageDlgComponentAPI = {
 
 export type EditSoundDlgComponentAPI = {
   getUpdatedMedia: () => Promise<{code: string; mediaType: string;}>,
+}
+
+export type RecordImageDlgComponentAPI = {
+  getCapturedImageDataURL: () => string | null,
+}
+
+export type RecordSoundDlgComponentAPI = {
+  getCapturedAudioBuffer: () => AudioBuffer | null,
 }
 // #v-end-if
