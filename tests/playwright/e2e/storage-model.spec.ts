@@ -412,6 +412,31 @@ test.describe("Offer to reload unsaved backups", () => {
         });
     }
 
+    // Reported from memory as possibly broken: modify a never-saved project, close the tab
+    // without saving, open a new tab, and go straight to Open Recent (ignoring the auto-shown
+    // banner entirely) -- does the closed project show up? There's no code-level time limit on
+    // Open Recent that would exclude a just-closed session (unlike the banner, which does have a
+    // 2-minute-in-production freshness window -- see checkForRecentSaveStates()'s recentAliveMinutes),
+    // so this should pass; this test exists to catch it if that's wrong, or if it's actually a
+    // migration-timing race (the closed tab's state only gets copied from its emergency
+    // localStorage save into IndexedDB -- which is what Open Recent reads -- during the *next*
+    // tab's own startup):
+    test("A closed, modified-but-unsaved project appears in Open Recent from the very next new tab", async ({browser, browserName}) => {
+        const context = await browser.newContext();
+        const page1 = await context.newPage();
+        await loadAndWaitForEditor(page1);
+        const str = "Modifying a project ahead of closing without saving, no explicit save at all";
+        await appendContent(page1, str);
+        const page1TabId = await getTabId(page1);
+        await closePage(page1, browserName);
+        await waitForTabStateSaved(context, page1TabId);
+
+        const page2 = await context.newPage();
+        await loadAndWaitForEditor(page2);
+        // Deliberately don't touch the auto-shown banner -- go straight to Open Recent:
+        await assertOpenRecentMenu(page2, [/^My project \(/]);
+    });
+
     // Regression test for the bug where declining the banner (via Cancel or the cross icon)
     // never marked the state as "decided", so a further new tab opened shortly after would be
     // offered the exact same state again (see markUserDecisionOnReloading() in MessageBanner.vue):
