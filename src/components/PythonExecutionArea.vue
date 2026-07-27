@@ -1195,7 +1195,7 @@ export default defineComponent({
             // Create the menu content here and open it (for Graphis: "download screenshot", for the console: "Copy" and "Download")
             this.frameContextMenuItems = (isContextMenuForGraphics) 
                 ? [{label: this.$t("contextMenu.screenshotPEA"), onClick: this.screenshotGraphicsArea}]
-                : [{label: this.$t("contextMenu.copy"), onClick: this.copyConsoleText, shortcut: `${(isMacOSPlatform()) ? "⌘" : this.$t("contextMenu.ctrl")}+⇧+C`},
+                : [{label: this.$t("contextMenu.copy"), onClick: this.copyConsoleText, shortcut: `${(isMacOSPlatform()) ? "⌘" : (this.$t("contextMenu.ctrl")+"+")}⇧${isMacOSPlatform() ? "" : "+"}C`},
                     {label: this.$t("contextMenu.screenshotPEA") + "...", onClick: this.screenshotConsole}];
             this.showContextMenuAtCoordPos.x = event.x;
             this.showContextMenuAtCoordPos.y = event.y;
