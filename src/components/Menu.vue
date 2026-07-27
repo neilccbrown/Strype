@@ -531,7 +531,8 @@ export default defineComponent({
         },
 
         loadProjectKBShortcut(): string {
-            return `${(isMacOSPlatform()) ? "⌘" : (this.$t("contextMenu.ctrl")+"+")}O`;
+            const {isSafari} = useBrowserDetect();
+            return `${(isMacOSPlatform() ? "⌘" : this.$t("contextMenu.ctrl"))+"+"+(isSafari ? "⇧+ " : "")}O`;
         },
         
         loadProjectModalDlgId(): string {
