@@ -935,8 +935,8 @@ export default defineComponent({
         // other than keeping our own internal recovery copy. Reason loadProject marks the backup
         // stillAlive="false", i.e. immediately recoverable via the banner/Open Recent menu, same
         // as if the tab had been closed:
-        eventBus.on(CustomEventTypes.backupEditorProjectBeforeDiscard, () => {
-            this.autoSaveStateToWebLocalStorage(SaveRequestReason.loadProject, true);
+        eventBus.on(CustomEventTypes.backupEditorProjectBeforeDiscard, (payload?: {projectNameOverride?: string}) => {
+            this.autoSaveStateToWebLocalStorage(SaveRequestReason.loadProject, true, payload?.projectNameOverride);
         });
 
         // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
@@ -959,7 +959,7 @@ export default defineComponent({
             }, autoSaveFreqMins * 60000);
         },
         
-        autoSaveStateToWebLocalStorage(reason: SaveRequestReason, suppressLoadDoneEvent = false) : void {
+        autoSaveStateToWebLocalStorage(reason: SaveRequestReason, suppressLoadDoneEvent = false, projectNameOverride?: string) : void {
             // save the project to the localStorage (WebStorage)
             if (!this.appStore.debugging && typeof(Storage) !== "undefined") {
                 if(reason == SaveRequestReason.saveSettings){
@@ -968,14 +968,18 @@ export default defineComponent({
                 }
                 else{
                     const stateJSONStrWithCheckpoint = this.appStore.generateStateJSONStrWithCheckpoint(true);
+                    // projectNameOverride lets a discard-backup be labelled distinctly from the project's
+                    // real name (e.g. "My project (local edits)"), so it doesn't get confused in the
+                    // recent-states banner/Open Recent menu with the official copy of the same project:
+                    const projectNameForSave = projectNameOverride ?? this.appStore.projectName;
                     if (reason !== SaveRequestReason.unloadPage && reason !== SaveRequestReason.reloadBrowser) {
                         // We have time, so we save normally (which is async):
-                        saveSessionState(getEditorTabId(), this.appStore.projectName, stateJSONStrWithCheckpoint, reason == SaveRequestReason.loadProject ? "false" : "maybe", this.appStore.isEditorContentModified, this.appStore.editorLastModificationAt)
+                        saveSessionState(getEditorTabId(), projectNameForSave, stateJSONStrWithCheckpoint, reason == SaveRequestReason.loadProject ? "false" : "maybe", this.appStore.isEditorContentModified, this.appStore.editorLastModificationAt)
                             .catch(showIndexDBError);
                     }
                     else {
                         // Async might get killed during the closing process so we save to local storage as an alternative:
-                        emergencySaveSessionState(getEditorTabId(), this.appStore.projectName, stateJSONStrWithCheckpoint, this.appStore.editorLastModificationAt, this.appStore.isEditorContentModified);
+                        emergencySaveSessionState(getEditorTabId(), projectNameForSave, stateJSONStrWithCheckpoint, this.appStore.editorLastModificationAt, this.appStore.isEditorContentModified);
                     }
                     
                     // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
