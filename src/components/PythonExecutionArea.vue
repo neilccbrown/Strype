@@ -1065,22 +1065,52 @@ export default defineComponent({
             // We have to invert the Y axis because positive is up there, hence * -1 on the end:
             const offsetY = (event.offsetY - b.height / 2) * -1;
 
-            const adjustedX = (offsetX / scaledWidth) * graphicsCanvasLogicalWidth;
+            // The logical world has no single centre pixel on either axis (both width and height are
+            // even), so world x runs from -(graphicsCanvasLogicalWidth / 2 - 1) to +graphicsCanvasLogicalWidth / 2
+            // (e.g. -399 to 400 for the default 800-wide world) -- and the same shape of asymmetry applies to y
+            // (see mapX/mapY in redrawCanvas()). But mapY is the mirror image of mapX (canvas rows increase
+            // downward while world y increases upward), and that flip is exactly what the offsetY calculation
+            // above already inverts. As a result, the plain centre-offset calculation below happens to come out
+            // equal to mapY's inverse with no further adjustment, whereas for X (not flipped) it doesn't: the
+            // "+ 1" below corrects that. Without it, mouse positions were reported one logical unit further left
+            // than the world actually extends (e.g. -400 instead of -399).
+            const adjustedX = (offsetX / scaledWidth) * graphicsCanvasLogicalWidth + 1;
             const adjustedY = (offsetY / scaledHeight) * graphicsCanvasLogicalHeight;
             return {adjustedX, adjustedY};
         },
+        // The raw continuous coordinates from getLogicalMouseCoords() can slightly overshoot the
+        // world edge (e.g. -399.2 or 400.2) because the rounding tolerance used to decide whether the
+        // mouse is within the world at all (see the comment in graphicsCanvasMouseDown()) is half a
+        // logical unit wider than the world itself. Once a position has passed that admission check,
+        // clamp it to the world's exact bounds before reporting it to Python code.
+        clampToWorldBounds(x: number, y: number) {
+            const minX = -(graphicsCanvasLogicalWidth / 2 - 1);
+            const maxX = graphicsCanvasLogicalWidth / 2;
+            const minY = -(graphicsCanvasLogicalHeight / 2 - 1);
+            const maxY = graphicsCanvasLogicalHeight / 2;
+            return {x: Math.min(maxX, Math.max(minX, x)), y: Math.min(maxY, Math.max(minY, y))};
+        },
         graphicsCanvasMouseDown(event: MouseEvent) {
             const {adjustedX, adjustedY} = this.getLogicalMouseCoords(event);
+            // We check against the rounded coordinate (i.e. the integer world position it will actually
+            // be treated as) rather than the raw continuous one. Checking the raw value against the world
+            // bounds directly would give the two extreme values (-399 and 400) only half as wide a range of
+            // real mouse positions to land on as every other value gets (since the bound itself cuts off the
+            // other half of their rounding range), which in practice made them nearly impossible to reach
+            // with an actual mouse -- see the mouse hover coordinate display test in graphics.spec.ts.
+            const roundedX = Math.round(adjustedX);
+            const roundedY = Math.round(adjustedY);
 
-            if (adjustedX >= -graphicsCanvasLogicalWidth / 2 && adjustedX <= graphicsCanvasLogicalWidth / 2 - 1 &&
-                adjustedY >= -graphicsCanvasLogicalHeight / 2 && adjustedY <= graphicsCanvasLogicalHeight / 2 - 1) {
+            if (roundedX >= -(graphicsCanvasLogicalWidth / 2 - 1) && roundedX <= graphicsCanvasLogicalWidth / 2 &&
+                roundedY >= -(graphicsCanvasLogicalHeight / 2 - 1) && roundedY <= graphicsCanvasLogicalHeight / 2) {
                 mostRecentClickedItems = renderer.calculateAllOverlappingAtPos(adjustedX, adjustedY);
-                mostRecentClickDetails = {x: adjustedX, y: adjustedY, button: event.button, clickCount: event.detail};
+                const {x: clampedX, y: clampedY} = this.clampToWorldBounds(adjustedX, adjustedY);
+                mostRecentClickDetails = {x: clampedX, y: clampedY, button: event.button, clickCount: event.detail};
                 if (event.button < mostRecentMouseDetails.buttonsPressed.length) {
                     mostRecentMouseDetails.buttonsPressed[event.button] = true;
                 }
             }
-            
+
             // If we're running, don't propagate it into a right-click menu, for example:
             if (this.isPythonExecuting) {
                 event.preventDefault();
@@ -1090,11 +1120,16 @@ export default defineComponent({
         },
         graphicsCanvasMouseMove(event: MouseEvent) {
             const {adjustedX, adjustedY} = this.getLogicalMouseCoords(event);
-            if (adjustedX >= -graphicsCanvasLogicalWidth / 2 && adjustedX <= graphicsCanvasLogicalWidth / 2 - 1 &&
-                adjustedY >= -graphicsCanvasLogicalHeight / 2 && adjustedY <= graphicsCanvasLogicalHeight / 2 - 1) {
-                mostRecentMouseDetails.x = adjustedX;
-                mostRecentMouseDetails.y = adjustedY;
-                this.mouseCoordsToShow = "(" + Math.round(mostRecentMouseDetails.x) + ", " + Math.round(mostRecentMouseDetails.y) + ")";
+            // See the comment in graphicsCanvasMouseDown() about why we check the rounded coordinate:
+            const roundedX = Math.round(adjustedX);
+            const roundedY = Math.round(adjustedY);
+
+            if (roundedX >= -(graphicsCanvasLogicalWidth / 2 - 1) && roundedX <= graphicsCanvasLogicalWidth / 2 &&
+                roundedY >= -(graphicsCanvasLogicalHeight / 2 - 1) && roundedY <= graphicsCanvasLogicalHeight / 2) {
+                const {x: clampedX, y: clampedY} = this.clampToWorldBounds(adjustedX, adjustedY);
+                mostRecentMouseDetails.x = clampedX;
+                mostRecentMouseDetails.y = clampedY;
+                this.mouseCoordsToShow = "(" + roundedX + ", " + roundedY + ")";
             }
             else {
                 this.mouseCoordsToShow = undefined;

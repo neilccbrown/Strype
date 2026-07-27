@@ -103,6 +103,138 @@ async function clickProportionalPos(page: Page, x: number, y: number, button: "l
     }
 }
 
+// x and y are from 0 to 1, same convention as clickProportionalPos:
+async function hoverProportionalPos(page: Page, x: number, y: number) : Promise<void> {
+    const canvas = page.locator("#pythonGraphicsCanvas");
+    const box = await canvas.boundingBox();
+    const scale = Number.parseFloat(await canvas.getAttribute("data-scale") ?? "0");
+
+    if (box && scale > 0) {
+        const scaled_width = 800 * scale;
+        const scaled_height = 600 * scale;
+
+        const centerX = box.x + box.width / 2;
+        const centerY = box.y + box.height / 2;
+
+        // Round ourselves rather than leaving it to the browser: Firefox and WebKit only support
+        // whole-pixel mouse coordinates (unlike Chromium, which is sub-pixel precise), so without
+        // this the same computed target can land a fraction of a pixel differently -- and thus on
+        // a different side of a world-bounds check -- depending on which browser is running the test.
+        await page.mouse.move(Math.round(centerX + (x - 0.5) * scaled_width), Math.round(centerY + (y - 0.5) * scaled_height));
+    }
+    else {
+        throw new Error("Could not find graphics container to hover on");
+    }
+}
+
+test.describe("Test mouse hover coordinate display", () => {
+    // This display (the little "(x, y)" label next to the Run button) only shows while Python
+    // is not executing, so there is no need to run any code for this test -- we just need the
+    // graphics tab (and its canvas) to be showing.
+    test("Check hovering near the world edges never shows out-of-range coordinates", async ({page}) => {
+        await page.click("#graphicsPEATab");
+        const coords = page.locator(".pea-hover-coords");
+
+        async function readCoords() : Promise<[number, number] | null> {
+            // The label is removed from the DOM (v-if) whenever the mouse is judged to be outside
+            // the world bounds, so an absent label is a valid (if uninformative) outcome here:
+            if (await coords.count() === 0) {
+                return null;
+            }
+            const text = await coords.textContent();
+            const m = text?.match(/^\((-?\d+), (-?\d+)\)$/);
+            return m ? [Number(m[1]), Number(m[2])] : null;
+        }
+
+        // The world's logical coordinates run from -399 to 400 (x) and -299 to 300 (y) -- see the
+        // comment above mapX/mapY in redrawCanvas() in PythonExecutionArea.vue. A previous bug in
+        // getLogicalMouseCoords() meant hovering along the left edge of the canvas reported x as
+        // -400 (one unit beyond the valid minimum), and hovering along the bottom edge reported y
+        // as -300, so the pair could come out as exactly (-400, -300) -- entirely outside the world.
+        // Sweep along both edges (not just the corners) since the old bug was present all along
+        // each edge, not just at the extreme corners. We can't rely on landing exactly on the
+        // mathematical edge (real mouse coordinates have enough sub-pixel jitter that the reading
+        // can legitimately be absent right at the boundary), so count how many readings we actually
+        // got as well, to make sure this isn't vacuously passing by never seeing a coordinate at all:
+        let readingsSeen = 0;
+        for (const frac of [0, 0.25, 0.5, 0.75, 1]) {
+            for (const [x, y] of [[0, frac], [1, frac], [frac, 0], [frac, 1]] as [number, number][]) {
+                await hoverProportionalPos(page, x, y);
+                const c = await readCoords();
+                if (c) {
+                    readingsSeen++;
+                    const [cx, cy] = c;
+                    expect(cx, `x when hovering at proportional (${x}, ${y})`).toBeGreaterThanOrEqual(-399);
+                    expect(cx, `x when hovering at proportional (${x}, ${y})`).toBeLessThanOrEqual(400);
+                    expect(cy, `y when hovering at proportional (${x}, ${y})`).toBeGreaterThanOrEqual(-299);
+                    expect(cy, `y when hovering at proportional (${x}, ${y})`).toBeLessThanOrEqual(300);
+                }
+            }
+        }
+        expect(readingsSeen).toBeGreaterThan(0);
+
+        // Pin down an exact value a few logical pixels in from the left edge (not right at the
+        // edge itself, which -- as above -- isn't a reliable place to land): this directly confirms
+        // the off-by-one fix on the X axis, which previously read one unit too low everywhere, not
+        // just at the boundary (e.g. this exact spot used to read -395, not -394):
+        await hoverProportionalPos(page, 5 / 800, 0.5);
+        await expect(coords).toHaveText("(-394, 0)");
+    });
+
+    // A second bug (distinct from the off-by-one fixed above) meant the two extreme values on each
+    // axis (-399 and 400 for x, -299 and 300 for y) were reachable in theory but only from a sliver
+    // of mouse positions half as wide as every other value got: the bounds check that gates whether
+    // a reading is shown at all compared the raw, pre-rounding coordinate against the world edges,
+    // rather than the rounded coordinate that actually gets displayed. That mismatch meant the last
+    // half of the rounding range for an extreme value was rejected before rounding ever happened, so
+    // with real (pixel-quantized) mouse input the extremes could become entirely unreachable by hand,
+    // even though the sweep above (which only checks values stay in-bounds) would not catch this.
+    //
+    // At the small (default, un-expanded) canvas size used elsewhere in this file, the 800x600 logical
+    // world is downscaled enough that most individual logical units -- not just the two extremes --
+    // aren't reachable at all by a mouse that only moves in whole real pixels: e.g. at roughly 0.29x
+    // scale, moving by one real pixel skips over three or four logical units at a time, and which
+    // handful survive is essentially arbitrary. That's a separate, expected resolution limitation, not
+    // a bug, and it isn't what this test is about, so we expand the graphics pane first to get close
+    // enough to 1:1 scale that every logical unit -- including the extremes -- has its own reachable
+    // pixel, the same way a user maximising their graphics pane would experience it:
+    test("Check the extreme world coordinates are reachable by hovering near the canvas edges", async ({page}) => {
+        await page.click("#graphicsPEATab");
+        await page.locator("#peaGraphicsContainerDiv").hover();
+        await page.click(".pea-toggle-layout-buttons-container > div:nth-child(2)");
+        await dragDividerTo(page, ".expanded-PEA-splitter-overlay.strype-split-theme > .splitpanes.splitpanes--horizontal > .splitpanes__splitter", 500, 200);
+        const coords = page.locator(".pea-hover-coords");
+
+        // Sweeps a few positions close to one edge, reading off the x or y component (whichever
+        // varies) each time, and returns the set of distinct values seen:
+        async function seenNear(component: "x" | "y", positions: [number, number][]) : Promise<Set<number>> {
+            const seen = new Set<number>();
+            for (const [x, y] of positions) {
+                await hoverProportionalPos(page, x, y);
+                if (await coords.count() > 0) {
+                    const text = await coords.textContent();
+                    const m = text?.match(/^\((-?\d+), (-?\d+)\)$/);
+                    if (m) {
+                        seen.add(Number(m[component === "x" ? 1 : 2]));
+                    }
+                }
+            }
+            return seen;
+        }
+
+        const nearEdge = [0, 0.5 / 800, 1 / 800, 1.5 / 800, 2 / 800, 3 / 800];
+
+        const leftX = await seenNear("x", nearEdge.map((f) : [number, number] => [f, 0.5]));
+        expect(leftX, "x values seen hovering near the left edge").toContain(-399);
+        const rightX = await seenNear("x", nearEdge.map((f) : [number, number] => [1 - f, 0.5]));
+        expect(rightX, "x values seen hovering near the right edge").toContain(400);
+        const topY = await seenNear("y", nearEdge.map((f) : [number, number] => [0.5, f]));
+        expect(topY, "y values seen hovering near the top edge").toContain(300);
+        const bottomY = await seenNear("y", nearEdge.map((f) : [number, number] => [0.5, 1 - f]));
+        expect(bottomY, "y values seen hovering near the bottom edge").toContain(-299);
+    });
+});
+
 test.describe("Check turtle works when shared with graphics", () => {
     // Skip in CI outside Chromium as WebGL is not always available for turtle in Github Actions runners:
     test.skip(({ browserName }) => browserName === "firefox" || browserName === "webkit",
