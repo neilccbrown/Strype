@@ -926,6 +926,19 @@ export default defineComponent({
             }
         });
 
+        // Listen for a request to back up the current project to the webstorage/IndexedDB backup
+        // ONLY (never the real FS/cloud target), before it's about to be discarded in favour of a
+        // different project (e.g. "Discard changes" on the load/demo/book dialogs). Deliberately
+        // does not go via requestEditorProjectSaveNow: that event either shows an interactive save
+        // dialog (if unsynced) or silently re-saves to the real external target (if synced) --
+        // both wrong here, since discarding is supposed to skip any save prompt or side effect
+        // other than keeping our own internal recovery copy. Reason loadProject marks the backup
+        // stillAlive="false", i.e. immediately recoverable via the banner/Open Recent menu, same
+        // as if the tab had been closed:
+        eventBus.on(CustomEventTypes.backupEditorProjectBeforeDiscard, () => {
+            this.autoSaveStateToWebLocalStorage(SaveRequestReason.loadProject, true);
+        });
+
         // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
         // This case may not happen, but if we had a Strype version that contains a default initial state working with Turtle,
         // the UI should reflect it (showing the Turtle tab) so we look for Turtle in any case.
@@ -946,7 +959,7 @@ export default defineComponent({
             }, autoSaveFreqMins * 60000);
         },
         
-        autoSaveStateToWebLocalStorage(reason: SaveRequestReason) : void {
+        autoSaveStateToWebLocalStorage(reason: SaveRequestReason, suppressLoadDoneEvent = false) : void {
             // save the project to the localStorage (WebStorage)
             if (!this.appStore.debugging && typeof(Storage) !== "undefined") {
                 if(reason == SaveRequestReason.saveSettings){
@@ -966,7 +979,9 @@ export default defineComponent({
                     }
                     
                     // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
-                    if(reason==SaveRequestReason.loadProject && projectSaveFunctionsState.length == 1){
+                    // (suppressLoadDoneEvent is used when we're only taking an internal backup before a discard, not actually
+                    // proceeding to load anything as a result of this particular save -- the caller handles that itself):
+                    if(reason==SaveRequestReason.loadProject && projectSaveFunctionsState.length == 1 && !suppressLoadDoneEvent){
                         eventBus.emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                     }
                 }
@@ -1083,9 +1098,14 @@ export default defineComponent({
                     if (typeof(Storage) !== "undefined") {
                         sessionStorage.removeItem(AutoSaveKeyNames.strypeEditorTabId);
                     }
-                    // We need to set this flag so that the browser doesn't then show a "Leave page" dialog because
-                    // the project is modified
-                    this.appStore.isEditorContentModified = false;
+                    // We need to stop the browser from showing a "Leave page" dialog for this
+                    // deliberate reload. We do that by removing the beforeunload listener directly,
+                    // rather than clearing isEditorContentModified -- that flag also feeds
+                    // modifiedSinceExternalSave in the close-time save a moment from now, so forcing
+                    // it false here would wrongly mark the discarded project as already saved
+                    // externally, hiding it from the recent-states banner/Open Recent menu even
+                    // though (per the comment above) it's meant to still be retrievable.
+                    window.removeEventListener("beforeunload", this.beforeUnloadHandler);
                     // ... and reload the page to reload the Strype default project (removing potential query parameters)
                     window.location.href = window.location.pathname + "?" + newStrypeProject;
                 }

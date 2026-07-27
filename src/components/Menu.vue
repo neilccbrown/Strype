@@ -1173,6 +1173,11 @@ export default defineComponent({
                 if(dlgId == this.saveOnLoadModalDlgId){
                     // Case of request to save/discard the file currently opened, before loading a new file:
                     // user chose to discard the file saving: we can trigger the file opening.
+                    // Before we throw the current content away, back it up to the internal webstorage
+                    // recovery copy (never the real FS/cloud target -- discarding must never silently
+                    // write to the user's actual file) so it's still recoverable via the recent-states
+                    // banner/Open Recent menu, exactly as if the tab had been closed instead of reused:
+                    eventBus.emit(CustomEventTypes.backupEditorProjectBeforeDiscard);
                     if (this.afterSaveDialog && "spy" in this.afterSaveDialog) {
                         vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(this.afterSaveDialog.spy, this.afterSaveDialog.name, 0, false, "import")
                             .then(() => this.saveTargetChoice(StrypeSyncTarget.none));

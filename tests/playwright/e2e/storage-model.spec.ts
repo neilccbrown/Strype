@@ -437,6 +437,54 @@ test.describe("Offer to reload unsaved backups", () => {
         await assertOpenRecentMenu(page2, [/^My project \(/]);
     });
 
+    // Regression test: "New Project" used to force isEditorContentModified false purely to
+    // suppress the native "Leave page?" dialog, but that same flag also fed
+    // modifiedSinceExternalSave in the close-time save, wrongly marking the abandoned project as
+    // "already saved externally" and permanently hiding it from Open Recent (see App.vue's
+    // onHideModalDlg -- the comment right above that line already said "the old state is actually
+    // retained if they want to get back to it", which this bug quietly defeated):
+    test("Starting a New Project (discarding changes) keeps the abandoned project recoverable in Open Recent", async ({page}) => {
+        await loadAndWaitForEditor(page);
+        const str = "Modifying before starting a new project";
+        await appendContent(page, str);
+
+        await page.click("#" + await strypeElIds(page).getEditorMenuUID());
+        await page.click("#" + await strypeElIds(page).getNewProjectLinkId());
+        // Confirm discarding unsaved changes:
+        await page.locator("*[id='confirmNewProjectModalDlg'] button", {hasText: "Continue"}).click();
+
+        // Should now be back to the fresh default project:
+        await assertStartingProject(page);
+
+        // The abandoned, unsaved project should still be recoverable:
+        await assertOpenRecentMenu(page, [/^My project \(/]);
+    });
+
+    // Regression test: discarding changes via the "save changes before loading?" dialog (shown
+    // when opening a different project, a demo, or a book chapter while the current one is
+    // modified) used to never back up the outgoing project at all -- unlike the "Save changes"
+    // path, the "Discard changes" path went straight to loading the new content with no call to
+    // persist so much as the internal webstorage recovery copy, so unless a periodic autosave had
+    // happened to land beforehand by chance, the discarded project was simply gone with no way
+    // back (see backupEditorProjectBeforeDiscard in App.vue/Menu.vue):
+    test("Discarding changes via the Open dialog keeps the previous project recoverable in Open Recent", async ({page}) => {
+        await loadAndWaitForEditor(page);
+        const str = "Modifying before discarding via the Open dialog";
+        await appendContent(page, str);
+
+        // Open "Load Project" while content is modified -- triggers the save-or-discard dialog:
+        await page.click("#" + await strypeElIds(page).getEditorMenuUID());
+        await page.click("#" + await strypeElIds(page).getLoadProjectLinkId());
+        await page.locator("button", {hasText: "Discard changes"}).filter({visible: true}).click();
+
+        // This re-shows the actual "choose where to load from" dialog; we've already confirmed the
+        // discard itself, so back out of it without picking anything:
+        await page.keyboard.press("Escape");
+
+        // The discarded project should still be recoverable:
+        await assertOpenRecentMenu(page, [/^My project \(/]);
+    });
+
     // Regression test for the bug where declining the banner (via Cancel or the cross icon)
     // never marked the state as "decided", so a further new tab opened shortly after would be
     // offered the exact same state again (see markUserDecisionOnReloading() in MessageBanner.vue):
