@@ -872,10 +872,6 @@ export function getFrameDefType(key: string): FramesDefinitions {
     return Object.values(Definitions).find((frameDefinition) => ((frameDefinition as FramesDefinitions).type === key)) as FramesDefinitions;
 }
 
-export function getLoopFramesTypeIdentifiers(): string[] {
-    return [StandardFrameTypesIdentifiers.for, StandardFrameTypesIdentifiers.while];
-}
-
 export const EmptyFrameObject: FrameObject = {
     frameType: DefaultFramesDefinition,
     id: -101, //default non-meaningful value - this will be overriden when frames are created

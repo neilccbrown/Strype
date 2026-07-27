@@ -1427,11 +1427,9 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
 
 // Function to check the current position in Strype.
 // If a specific frame is given, we look for the position of this frame instead of the current frame.
-export function findCurrentStrypeLocation(options?: {lookForGivenFramePosition?: {id: number, caretPosition: CaretPosition}, checkForClassDeep?: boolean}): {strypeLocation: STRYPE_LOCATION, locationFrameId: number} {
+export function findCurrentStrypeLocation(options?: {lookForGivenFramePosition?: {id: number, caretPosition: CaretPosition}}): {strypeLocation: STRYPE_LOCATION, locationFrameId: number} {
     // We detect the location by nativagating to the parents of the current Strype location (blue cursor) until we reach a significant parent type (see enum STRYPE_LOCATION)
     // If are below a frame, we look for its parent right away, otheriwse we can use that frame.
-    // Note that for classes we have a small conflict to resolve, hence the optional argument "checkForClassDeep": since classes can contain functions, we need to know whether
-    // we want to check if we are inside a class "at large" (which therefore includes being inside a class's function) or not.
     let {id: navigFrameId, caretPosition: navigFrameCaretPos} = (options?.lookForGivenFramePosition)??useStore().currentFrame;
     do{
         const frameType = useStore().frameObjects[navigFrameId].frameType;
@@ -1441,14 +1439,8 @@ export function findCurrentStrypeLocation(options?: {lookForGivenFramePosition?:
         case AllFrameTypesIdentifier.classdef:
             return {strypeLocation: (navigFrameCaretPos == CaretPosition.body) ? STRYPE_LOCATION.IN_CLASSDEF : STRYPE_LOCATION.DEFS_SECTION, locationFrameId: navigFrameId};
         case AllFrameTypesIdentifier.funcdef:
-            // Three possible cases: A) we are not checking for classes -- we are at the body of a function definition or at the bottom:
-            // in the first case, we are inside a function definition,
-            // in the second case, we are inside the definitions section.
-            // B) we are checkign for classes: then we ignore the case, we care about the class
-            if(options?.checkForClassDeep){
-                navigFrameId = useStore().frameObjects[navigFrameId].parentId;
-                break;
-            }
+            // We are at the body of a function definition, or at the bottom: in the first case, we are
+            // inside a function definition; in the second, we are inside the definitions section.
             return {strypeLocation: (navigFrameCaretPos == CaretPosition.body) ? STRYPE_LOCATION.IN_FUNCDEF : STRYPE_LOCATION.DEFS_SECTION, locationFrameId: navigFrameId};
         case ContainerTypesIdentifiers.defsContainer:
             return {strypeLocation: STRYPE_LOCATION.DEFS_SECTION, locationFrameId: navigFrameId};
