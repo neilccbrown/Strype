@@ -37,6 +37,7 @@
                             <span>{{ $t("appMessage.targetFS") }}</span>
                         </div>
                     </div>
+                    <div><a class="open-menu-embedded-proj-link" @click="onOpenMenuLinkClick('examples')">{{$t("appMenu.loadDemoProject")}}</a><a class="open-menu-embedded-proj-link" @click="onOpenMenuLinkClick('book')">{{$t("appMenu.book")}}</a></div>
                     <div class="recent-states-pane" v-if="recentLoadableStates && recentLoadableStates.length > 0">
                         <div class="d-flex justify-content-between align-items-baseline">
                             <span class="load-save-label">{{ $t("appMessage.loadRecentState") }}</span>
@@ -876,6 +877,18 @@ export default defineComponent({
             // The new UI (changing combobox to buttons) means we can't directly check the HTML component to get the selection (unless using CSS).
             // Instead, we use the temp flag we've added in this Menu component, or the value for Google Drive (default) is no changed has been made.
             return (this.tempSyncTarget != StrypeSyncTarget.none) ? this.tempSyncTarget : StrypeSyncTarget.gd;
+        },
+
+        onOpenMenuLinkClick(target: "examples" | "book"): void {
+            // When a link from the menu is clicked, we need to close the "Open" dialog (as cancelled), 
+            // and open the selected link target's dialog.
+            eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "cancel", componentId: this.loadProjectModalDlgId});
+            if(target === "examples"){
+                this.openLoadDemoProjectModal();
+            }
+            else{
+                this.openBookModal();
+            };
         },
 
         onSaveTargetChanged(){
@@ -1758,6 +1771,16 @@ export default defineComponent({
     cursor: pointer;
 }
 
+.open-menu-embedded-proj-link{
+    font-size: smaller;
+    cursor: pointer;
+}
+
+div:has(> a.open-menu-embedded-proj-link) {
+    display: flex;
+    gap: 8px;
+}
+
 .save-project-modal-dlg-container {
     display: table;
     border-spacing: 10px 10px;
@@ -2016,5 +2039,4 @@ export default defineComponent({
     color: #aaa;
     padding-left: 3rem;
 }
-
 </style>
