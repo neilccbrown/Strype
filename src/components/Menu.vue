@@ -532,7 +532,7 @@ export default defineComponent({
 
         loadProjectKBShortcut(): string {
             const {isSafari} = useBrowserDetect();
-            return `${(isMacOSPlatform() ? "⌘" : this.$t("contextMenu.ctrl"))+"+"+(isSafari ? "⇧+ " : "")}O`;
+            return `${(isMacOSPlatform() ? "⌘" : this.$t("contextMenu.ctrl")+"+")+(isSafari ? "⇧" : "")}O`;
         },
         
         loadProjectModalDlgId(): string {
@@ -592,7 +592,8 @@ export default defineComponent({
         },
 
         shareProjectKBShortcut(): string {
-            return `${(isMacOSPlatform()) ? "⌘" : (this.$t("contextMenu.ctrl")+"+")}⇧+L`;
+            const isMacos = isMacOSPlatform();
+            return `${(isMacos) ? "⌘" : (this.$t("contextMenu.ctrl")+"+")}⇧${isMacos ? "" : "+"}L`;
         },
 
         shareProjectModalDlgId(): string {
