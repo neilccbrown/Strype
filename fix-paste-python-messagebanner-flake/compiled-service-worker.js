@@ -207,7 +207,7 @@ var import_dist = (/* @__PURE__ */ __commonJSMin(((exports, module) => {
 			} : function() {
 				return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, ((e) => {
 					const t = Number(e);
-					return (t ^ crypto.getRandomValues(/* @__PURE__ */ new Uint8Array(1))[0] & 15 >> t / 4).toString(16);
+					return (t ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> t / 4).toString(16);
 				}));
 			}, t;
 		})();
