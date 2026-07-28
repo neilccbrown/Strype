@@ -275,6 +275,9 @@ import { useBrowserDetect } from "vue3-detect-browser";
 //     Component    //
 //////////////////////
 const defaultSharingProjectMode = ShareProjectMode.public;
+// The browser doesn't change during a session, so we detect it once here rather than calling
+// useBrowserDetect() (which allocates a new reactive object) on every keydown event.
+const { isSafari } = useBrowserDetect();
 export default defineComponent({
     name: "Menu",
     
@@ -397,7 +400,6 @@ export default defineComponent({
                 // Therefore for Safari, we use ⌘+⇧+O to open a project (while still supportting ctrl+O), ⌘+S to save a project (but silently supports
                 // ⌘+⇧+S too for muscle memory).
                 // For other browsers: we are restricting to ctrl+O and ctrl+S as expected (explicitly discarding ⇧ to keep not override existing browser shortcuts).
-                const {isSafari} = useBrowserDetect();
                 const lowCaseEventKey = event.key.toLowerCase();
                 const isOpeningOrSavingShortcut = (lowCaseEventKey === "s" || lowCaseEventKey === "o") 
                     && ((isSafari)
@@ -531,7 +533,6 @@ export default defineComponent({
         },
 
         loadProjectKBShortcut(): string {
-            const {isSafari} = useBrowserDetect();
             return `${(isMacOSPlatform() ? "⌘" : this.$t("contextMenu.ctrl")+"+")+(isSafari ? "⇧" : "")}O`;
         },
         
