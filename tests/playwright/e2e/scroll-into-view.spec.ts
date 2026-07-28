@@ -98,17 +98,20 @@ async function typeWithKeys(page: Page, input: string) {
 test.describe("Runtime errors scroll into view", () => {
     for (let fraction = 0; fraction <= 1; fraction += 0.125) {
         test(`Runtime errors scroll into view, starting at ${fraction}`, async ({page}) => {
-            // Enter 40 blanks then print(len(None)) then 40 blanks:
-            for (let b = 0; b < 40; b++) {
-                await page.keyboard.press("Enter");
-                await waitForEditorSettled(page);
-            }
+            // Enter 40 blanks then print(len(None)) then 40 blanks. Settling after every individual
+            // Enter (as opposed to once at the end) is far too costly over 80 repeats -- each
+            // settle-poll is its own page.evaluate() round trip, and under concurrent-worker CPU
+            // contention that overhead alone can exceed the whole test's budget (see the same
+            // rationale in the "Undo scrolls location into view" tests below). Blank frame creation
+            // doesn't trigger the kind of restructuring debounce waitForEditorSettled exists for
+            // (unlike e.g. converting a frame to a different kind), so fire the presses fast and
+            // settle once at the end:
+            await pressN("Enter", 40, false)(page);
+            await waitForEditorSettled(page);
             await page.keyboard.type("plen(None)");
             await page.keyboard.press("Enter");
-            for (let b = 0; b < 40; b++) {
-                await page.keyboard.press("Enter");
-                await waitForEditorSettled(page);
-            }
+            await pressN("Enter", 40, false)(page);
+            await waitForEditorSettled(page);
             await scrollToFraction(page, fraction);
             const visibleBefore = await isInsideViewport(await page.locator("span.label-slot-input", {hasText: /^None$/}).elementHandle());
             // "Finish" here is an exception
