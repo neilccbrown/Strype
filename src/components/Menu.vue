@@ -37,6 +37,7 @@
                             <span>{{ $t("appMessage.targetFS") }}</span>
                         </div>
                     </div>
+                    <div><a class="open-menu-embedded-proj-link" @click="onOpenMenuLinkClick('examples')">{{$t("appMenu.loadDemoProject")}}</a><a class="open-menu-embedded-proj-link" @click="onOpenMenuLinkClick('book')">{{$t("appMenu.book")}}</a></div>
                     <div class="recent-states-pane" v-if="recentLoadableStates && recentLoadableStates.length > 0">
                         <div class="d-flex justify-content-between align-items-baseline">
                             <span class="load-save-label">{{ $t("appMessage.loadRecentState") }}</span>
@@ -268,11 +269,15 @@ import { eventBus, getLocaleBuildDate } from "@/helpers/appContext";
 import {checkForRecentSaveStates, deleteStates} from "@/store/store-db-storage";
 import OpenBookDlg from "@/components/OpenBookDlg.vue";
 import {trackUsedBookProject} from "@/store/analytics";
+import { useBrowserDetect } from "vue3-detect-browser";
 
 //////////////////////
 //     Component    //
 //////////////////////
 const defaultSharingProjectMode = ShareProjectMode.public;
+// The browser doesn't change during a session, so we detect it once here rather than calling
+// useBrowserDetect() (which allocates a new reactive object) on every keydown event.
+const { isSafari } = useBrowserDetect();
 export default defineComponent({
     name: "Menu",
     
@@ -389,8 +394,19 @@ export default defineComponent({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
-                // Loading/saving project shortcuts
-                if((event.key.toLowerCase() === "s" || event.key.toLowerCase() === "o") && (event.metaKey || event.ctrlKey) && (!event.shiftKey)){
+                // Loading/saving project shortcuts.
+                // The control for the shortcuts is a bit awkward to preserve a tight check on the browsers: for Safari, ⌘+O is interecepted
+                // by the browser so we cannot rely on this shortcut to open a Strype project. However, ctrl+O works, but is not trivial for macOS.
+                // Therefore for Safari, we use ⌘+⇧+O to open a project (while still supportting ctrl+O), ⌘+S to save a project (but silently supports
+                // ⌘+⇧+S too for muscle memory).
+                // For other browsers: we are restricting to ctrl+O and ctrl+S as expected (explicitly discarding ⇧ to keep not override existing browser shortcuts).
+                const lowCaseEventKey = event.key.toLowerCase();
+                const isOpeningOrSavingShortcut = (lowCaseEventKey === "s" || lowCaseEventKey === "o") 
+                    && ((isSafari)
+                        ? event.metaKey && (lowCaseEventKey === "s" || (lowCaseEventKey === "o" && event.shiftKey))
+                        : (event.metaKey || event.ctrlKey) && !event.shiftKey
+                    );
+                if(isOpeningOrSavingShortcut){
                     event.stopImmediatePropagation();
                     event.preventDefault();
                     if(this.isPythonRunning){
@@ -517,7 +533,7 @@ export default defineComponent({
         },
 
         loadProjectKBShortcut(): string {
-            return `${(isMacOSPlatform()) ? "⌘" : (this.$t("contextMenu.ctrl")+"+")}O`;
+            return `${(isMacOSPlatform() ? "⌘" : this.$t("contextMenu.ctrl")+"+")+(isSafari ? "⇧" : "")}O`;
         },
         
         loadProjectModalDlgId(): string {
@@ -577,7 +593,8 @@ export default defineComponent({
         },
 
         shareProjectKBShortcut(): string {
-            return `${(isMacOSPlatform()) ? "⌘" : (this.$t("contextMenu.ctrl")+"+")}⇧+L`;
+            const isMacos = isMacOSPlatform();
+            return `${(isMacos) ? "⌘" : (this.$t("contextMenu.ctrl")+"+")}⇧${isMacos ? "" : "+"}L`;
         },
 
         shareProjectModalDlgId(): string {
@@ -876,6 +893,18 @@ export default defineComponent({
             // The new UI (changing combobox to buttons) means we can't directly check the HTML component to get the selection (unless using CSS).
             // Instead, we use the temp flag we've added in this Menu component, or the value for Google Drive (default) is no changed has been made.
             return (this.tempSyncTarget != StrypeSyncTarget.none) ? this.tempSyncTarget : StrypeSyncTarget.gd;
+        },
+
+        onOpenMenuLinkClick(target: "examples" | "book"): void {
+            // When a link from the menu is clicked, we need to close the "Open" dialog (as cancelled), 
+            // and open the selected link target's dialog.
+            eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "cancel", componentId: this.loadProjectModalDlgId});
+            if(target === "examples"){
+                this.openLoadDemoProjectModal();
+            }
+            else{
+                this.openBookModal();
+            };
         },
 
         onSaveTargetChanged(){
@@ -1763,6 +1792,16 @@ export default defineComponent({
     cursor: pointer;
 }
 
+.open-menu-embedded-proj-link{
+    font-size: smaller;
+    cursor: pointer;
+}
+
+div:has(> a.open-menu-embedded-proj-link) {
+    display: flex;
+    gap: 8px;
+}
+
 .save-project-modal-dlg-container {
     display: table;
     border-spacing: 10px 10px;
@@ -2021,5 +2060,4 @@ export default defineComponent({
     color: #aaa;
     padding-left: 3rem;
 }
-
 </style>
