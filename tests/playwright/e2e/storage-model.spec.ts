@@ -479,6 +479,7 @@ test.describe("Offer to reload unsaved backups", () => {
 
         // This re-shows the actual "choose where to load from" dialog; we've already confirmed the
         // discard itself, so back out of it without picking anything:
+        await expect(page.locator("#load-strype-project-modal-dlg")).toBeVisible();
         await page.keyboard.press("Escape");
 
         // The discarded project should still be recoverable:
