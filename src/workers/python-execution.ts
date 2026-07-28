@@ -209,7 +209,7 @@ sys.path.append("${libDir}")
         const usingMatplotlib = loaded.some((pd) => pd.name == "matplotlib");
         if (usingMatplotlib) {
             // Matplotlib takes ages (7 seconds on my fast Windows+Firefox machine!) so let's print a message:
-            makeRequest({kind: "async", request: {request:"console_print", text: "Loading Matplotlib (this may take some time)", containsInputPrompt: false}});
+            makeRequest({kind: "async", request: {request:"console_print", text: "Loading Matplotlib (this may take some time)\n", containsInputPrompt: false}});
         }
         
         
