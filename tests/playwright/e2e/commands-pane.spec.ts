@@ -91,6 +91,51 @@ test.describe("Commands pane -- record media shortcuts", () => {
     });
 });
 
+test.describe("Commands pane -- stale add-frame-commands height doesn't hide the editing hints", () => {
+    // Regression test for a bug where the code-completion/record-media hints were rendered but
+    // effectively invisible: computeAddFrameCommandContainerSize() (helpers/editor.ts) pins an
+    // explicit inline height on the add-frame-commands <p> (the one holding the "space"/"="/"if"/
+    // etc. buttons) so they can wrap into columns when a row doesn't fit -- but nothing ever reset
+    // that height when isEditing toggled, even though addFrameCommands is deliberately emptied
+    // while editing a slot (see Commands.vue). A big enough leftover height pushed the following
+    // hints down far enough to land behind the PEA pane below (worse the more indented the caret,
+    // since less available width means more column-wrapping and so a taller pinned height to start
+    // with) -- even though the hints were still in the DOM the whole time (so a plain toContainText
+    // check, like the other tests in this file, never caught it) and their keyboard shortcuts kept
+    // working.
+    //
+    // Rather than depend on exact column-wrap arithmetic (font metrics and viewport size vary
+    // across browsers and would make a "natural" repro flaky), we pin an exaggerated height here
+    // directly -- that's exactly the precondition the real bug left behind, just produced
+    // deterministically.
+    test("code completion hint stays visible above the PEA pane after a large height was pinned", async ({page}) => {
+        const addFrameCommandsParagraph = page.locator("#addFramePanel p").first();
+        await addFrameCommandsParagraph.evaluate((el: HTMLElement) => {
+            el.style.height = "2000px";
+        });
+
+        const panel = page.locator("#addFramePanel");
+        const completionHint = panel.getByText("Code completion", {exact: false});
+        const peaPane = page.locator("#peaTabContentContainerDiv");
+
+        await getPlainCodeSlot(page).click();
+        await waitForEditorSettled(page);
+
+        await expect(panel).toContainText("Code completion");
+
+        // The stale height must actually be cleared, not just happen to leave enough room:
+        const heightAfter = await addFrameCommandsParagraph.evaluate((el) => parseFloat(getComputedStyle(el).height));
+        expect(heightAfter).toBeLessThan(100);
+
+        // And, crucially, the hint must sit above the PEA pane -- not merely exist in the DOM:
+        const hintBox = await completionHint.boundingBox();
+        const peaBox = await peaPane.boundingBox();
+        expect(hintBox).not.toBeNull();
+        expect(peaBox).not.toBeNull();
+        expect((hintBox?.y ?? 0) + (hintBox?.height ?? 0)).toBeLessThanOrEqual(peaBox?.y ?? 0);
+    });
+});
+
 test.describe("Commands pane -- wrap-selection shortcuts", () => {
     test("shown for a selection inside a plain code slot", async ({page}) => {
         const panel = page.locator("#addFramePanel");

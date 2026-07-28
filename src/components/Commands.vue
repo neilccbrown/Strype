@@ -389,6 +389,32 @@ export default defineComponent({
         },
     },
 
+    watch: {
+        // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
+        isEditing(nowEditing: boolean){
+            // computeAddFrameCommandContainerSize() (see helpers/editor.ts) pins an explicit inline height on the
+            // add-frame-commands <p> so its buttons can wrap into columns when a row doesn't fit. That height is only
+            // ever recomputed on PEA expand/collapse and splitter-resize events -- never when isEditing toggles, even
+            // though addFrameCommands is deliberately emptied while editing a slot (replaced by the codeCompletionCommand/
+            // wrapSelectionCommands/mediaRecordingCommands hints below it). Left pinned, a stale height leaves a gap
+            // above those hints, pushing them down the pane -- enough indentation (more column-wrapping, hence a taller
+            // pinned height to start with) can push them far enough to be hidden behind the PEA pane below, even though
+            // they're still rendered and their shortcuts still work.
+            this.$nextTick(() => {
+                if(nowEditing){
+                    const addFrameCommandsP = document.querySelector("." + scssVars.addFrameCommandsContainerClassName + " p") as HTMLParagraphElement | null;
+                    if(addFrameCommandsP){
+                        addFrameCommandsP.style.height = "";
+                    }
+                }
+                else{
+                    computeAddFrameCommandContainerSize(this.isExpandedPEA);
+                }
+            });
+        },
+        // #v-endif
+    },
+
     created() {
         // Expose this component that other components might need.
         // Vue 3 has deprecated direct access to components.
