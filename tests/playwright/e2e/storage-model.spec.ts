@@ -478,12 +478,27 @@ test.describe("Offer to reload unsaved backups", () => {
         await page.locator("button", {hasText: "Discard changes"}).filter({visible: true}).click();
 
         // This re-shows the actual "choose where to load from" dialog; we've already confirmed the
-        // discard itself, so back out of it without picking anything:
-        await expect(page.locator("#load-strype-project-modal-dlg")).toBeVisible();
-        await page.keyboard.press("Escape");
+        // discard itself, so back out of it without picking anything. We use the dialog's own
+        // close button rather than Escape: Escape only works once bootstrap-vue-next's document-level
+        // keydown listener for this dialog instance has attached, which isn't guaranteed to have
+        // happened yet at this point (the dialog was just re-shown synchronously off the back of the
+        // previous one's "hidden" event) -- this was intermittently leaving the dialog stuck open and
+        // blocking every subsequent click, hanging the test on CI. A real click on the close button
+        // has no such race: Playwright's click already waits for the button to be actionable.
+        await page.locator("#load-strype-project-modal-dlg .btn-close").click();
+
+        // We backed out without loading anything, so our own project is still exactly as modified
+        // as it was before -- openLoadProjectModal() checks isEditorContentModified on every call,
+        // so clicking "Load Project" again shows the save-or-discard dialog once more, not the
+        // target-picker dialog directly (unlike assertOpenRecentMenu's usual case of a fresh,
+        // unmodified page). Discarding again is harmless: it just re-backs-up the same content
+        // under the same tabId:
+        await page.click("#" + await strypeElIds(page).getEditorMenuUID());
+        await page.click("#" + await strypeElIds(page).getLoadProjectLinkId());
+        await page.locator("button", {hasText: "Discard changes"}).filter({visible: true}).click();
 
         // The discarded project should still be recoverable:
-        await assertOpenRecentMenu(page, [/^My project \(/]);
+        await assertRecentStatesShowing(page, [/^My project \(/]);
     });
 
     // Regression test for the bug where declining the banner (via Cancel or the cross icon)
