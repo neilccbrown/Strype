@@ -174,6 +174,22 @@ async function loadAndWaitForEditor(page: Page) {
     });
 }
 
+// "New Project" (see resetProject()/onHideModalDlg() in App.vue) performs a real browser
+// navigation -- window.location.href = "...?new_project" -- not an SPA transition, so the whole
+// app (Vue, the service worker, etc.) has to boot up again from scratch, same as a fresh
+// page.goto(). Callers used to just call assertStartingProject() straight after clicking through
+// the confirmation dialog, relying on its own expect() calls' default 5000ms timeout to also cover
+// this reload+reboot -- CI logs (e.g. run 30398078084) showed that isn't always enough on a
+// contended Firefox runner ("frame-div" still resolving to 0 elements after 5s), even though the
+// overall per-test timeout (360s, see beforeEach above) has plenty of headroom. Wait for the same
+// real conditions loadAndWaitForEditor() waits for on first load, so the eventual
+// assertStartingProject() call only has to wait for reactive rendering, not the reload itself:
+async function waitForNewProjectReload(page: Page): Promise<void> {
+    await page.waitForURL(/[?&]new_project(&|$)/);
+    await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+    await page.waitForSelector(".frame-container");
+}
+
 test.describe("Test basic operation", () => {
     test("Test initial fresh load", async ({page}) => {
         await loadAndWaitForEditor(page);
@@ -454,6 +470,7 @@ test.describe("Offer to reload unsaved backups", () => {
         await page.locator("*[id='confirmNewProjectModalDlg'] button", {hasText: "Continue"}).click();
 
         // Should now be back to the fresh default project:
+        await waitForNewProjectReload(page);
         await assertStartingProject(page);
 
         // The abandoned, unsaved project should still be recoverable:
@@ -686,6 +703,7 @@ test.describe("Offer to reload unsaved backups", () => {
             // App.vue) -- so once the fresh default project has actually finished loading, the
             // absence of a banner is structurally guaranteed, not just "probably settled by now".
             // Waiting for the default project confirms the reload/restart has completed.
+            await waitForNewProjectReload(page2);
             await assertStartingProject(page2);
 
             // Now we check there's no banner:
