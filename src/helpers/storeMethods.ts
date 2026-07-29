@@ -1053,6 +1053,25 @@ export function checkPrecompiledErrorsForFrame(frameId: number): void {
         useStore().addPreCompileErrors(getPrecompiledErrorFrameId(frameObject.parentId));
     }
 
+    // Check that this frame's type is actually allowed by its real parent (or joint parent) --
+    // insertion-time UI gating (generateAvailableFrameCommands, store.ts) normally prevents this, but
+    // frames can still end up somewhere invalid via other paths (e.g. an older saved project, or a
+    // frame-type conversion triggered by typing a keyword -- see the keywordFrameConversions table in
+    // LabelSlotsStructure.vue). Joint frames (elif/else/except/finally) are deliberately excluded:
+    // their validity is governed by a separate mechanism (allowJointChildren/jointFrameTypes), not
+    // forbiddenChildrenTypes -- the parent if/try's forbiddenChildrenTypes list is about its *body*,
+    // and says nothing about which joint types may attach to it, so checking it here would
+    // false-positive on essentially every existing if/elif/else and try/except/finally.
+    if(!frameObject.frameType.isJointFrame){
+        // Note: container frames (Imports/Defs/Main) use negative IDs, not just positive ones -- 0 is
+        // the actual "no parent" sentinel used elsewhere in the codebase (e.g. isContainedInFrame's
+        // traversal, storeMethods.ts ~934), so we must not treat a negative parentId as absent.
+        const actualParentId = frameObject.jointParentId !== 0 ? frameObject.jointParentId : frameObject.parentId;
+        if(actualParentId !== 0 && useStore().frameObjects[actualParentId].frameType.forbiddenChildrenTypes.includes(frameObject.frameType.type)){
+            useStore().setFrameErroneous(frameId, i18n.global.t("errorMessage.frameNotAllowedInParent"));
+            useStore().addPreCompileErrors(getPrecompiledErrorFrameId(frameId));
+        }
+    }
 }
 
 export function checkCodeErrors(frameIdForPrecompiled?: number): void {
