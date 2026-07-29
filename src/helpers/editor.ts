@@ -945,7 +945,13 @@ export function findAddCommandFrameType(shortcut: string, index?: number): Frame
     return null;
 }
 
-// This shorthand frames are enhanced frames because they contain some default code value. 
+// These are the only frame-insertion shortcuts that still work directly at the frame caret without
+// first pressing the Tab/Space prefix key (see Commands.vue's keydown handler): blank frame, comment,
+// and assignment. Every other shortcut requires opening the frame commands pane first. Exported so the
+// same list can drive both the keydown handling and the pane's shortcut-hint display.
+export const alwaysDirectFrameShortcutKeys = ["enter", "#", "="];
+
+// This shorthand frames are enhanced frames because they contain some default code value.
 // Therefore they are treated separately in the code and in the UI. They do not show in the frame command panel.
 // IMPORTANT : make sure that the shortcut assigned to a frame IS NOT assigned to a normal frame (see generateAllFrameCommandsDefs()) 
 // unless conflicts are clearly impossible. Shortcut is not shown, so we don't need to define it elsewhere than in the indexes.

@@ -214,6 +214,10 @@ export const useStore = defineStore("app", {
 
             isAppMenuOpened: false,
 
+            // Whether the frame command pane is currently focused for keyboard-driven frame insertion
+            // (entered via Tab/Space at the frame caret, see Commands.vue's keydown handler)
+            isFrameCommandsPaneActive: false,
+
             isModalDlgShown: false,
 
             currentModalDlgId: "",
@@ -1336,6 +1340,7 @@ export const useStore = defineStore("app", {
             this.simpleModalDlgMsg = "";
             this.currentModalDlgId = "";
             this.isAppMenuOpened = false;
+            this.isFrameCommandsPaneActive = false;
             this.bypassEditableSlotBlurErrorCheck = false;
 
             // Should show editing mode
@@ -1805,6 +1810,11 @@ export const useStore = defineStore("app", {
 
         // Returns the id of the newly added frame
         async addFrameWithCommand(frame: FramesDefinitions, hiddenShorthandFrameDetails?: AddShorthandFrameCommandDef, skipFuncCallBracketsAndCaretSet?: boolean) : Promise<number> {
+            // Any insertion path (direct shortcut, frame commands pane shortcut/Enter-confirm, or a mouse
+            // click on an AddFrameCommand) converges here, so this is the one place needed to guarantee
+            // the frame commands pane mode flag never outlives an insertion.
+            this.isFrameCommandsPaneActive = false;
+
             const stateBeforeChanges = cloneDeep(this.$state);
             const currentFrame = this.frameObjects[this.currentFrame.id];
             const addingJointFrame = frame.isJointFrame;

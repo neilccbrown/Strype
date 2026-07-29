@@ -1,5 +1,9 @@
 <template>
     <div :class="{'frame-cmd-container': true, disabled: isPythonExecuting || appStore.isDraggingFrame}" @click="onClick">
+        <span v-if="showPrefixHint" class="frame-cmd-prefix-hint">
+            <button class="frame-cmd-prefix-btn frame-cmd-btn-large" tabindex="-1">{{ prefixKeyLabel }}</button>
+            <span class="frame-cmd-prefix-hint-sep">,</span>
+        </span>
         <button :class="{'frame-cmd-btn': true, 'frame-cmd-btn-large': isLargerShorcutSymbol}" :disabled="isPythonExecuting || appStore.isDraggingFrame">{{ (!isSVGIconSymbol) ? symbol : '' }}
             <SVGIcon v-if="isSVGIconSymbol" :name="symbol" :customClass="{'add-frame-command-symbol-svg-icon': true, disabled: isPythonExecuting || appStore.isDraggingFrame}" />
         </button>
@@ -35,6 +39,8 @@ export default defineComponent({
         isSVGIconSymbol: Boolean, // if true, the symbol property is the name of a SVGIcon
         description: String, //the description of the frame
         index: Number, //when more than 1 frame is assigned to a shortcut, the index tells which frame definition should be used
+        showPrefixHint: Boolean, //whether to show the generic prefix key box (e.g. "Space") before the shortcut, when the frame commands pane isn't focused yet
+        prefixKeyLabel: String, //the label shown in the prefix key box
     },
 
     computed: {
@@ -97,6 +103,24 @@ export default defineComponent({
     background-color: #fefefe;
     border-radius: 4px;
     border: 1px solid #d0d0d0;
+}
+
+// Same look as .frame-cmd-btn, but deliberately a different class: this is the non-interactive
+// "press this first" hint box shown before the frame commands pane is focused (see AddFrameCommand's
+// showPrefixHint prop), and it must never be picked up by the pane's own keyboard-navigation queries
+// (Commands.vue's handleFrameCommandsPaneKeyDown looks up ".frame-cmd-btn" elements to cycle between).
+.frame-cmd-prefix-btn {
+    @extend .frame-cmd-btn;
+    cursor: default;
+}
+
+.frame-cmd-prefix-hint {
+    display: inline-flex;
+    align-items: center;
+}
+
+.frame-cmd-prefix-hint-sep {
+    margin-right: 5px;
 }
 
 .frame-cmd-btn-large {
