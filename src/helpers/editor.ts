@@ -55,6 +55,7 @@ export enum CustomEventTypes {
     removeFunctionToEditorProjectSave = "rmToProjectSaveFunction",
     requestEditorProjectSaveNow = "requestProjectSaveNow",
     saveStrypeProjectDoneForLoad = "saveProjDoneForLoad",
+    backupEditorProjectBeforeDiscard = "backupProjectBeforeDiscard",
     unsupportedByStrypeFilePicked = "unsupportedByStrypeFilePicked",
     acItemHovered = "acItemHovered",
     acItemClicked = "acItemClicked",
