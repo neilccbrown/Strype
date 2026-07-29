@@ -808,8 +808,10 @@ export const useStore = defineStore("app", {
                     removeFrameInFrameList(payload.frameToDeleteId);
                 }
                 else{
-                    //we "replace" the frame to delete by its content in its parent's location
-                    //note: the content is its children and the children of its potential joint frames
+                    // We "replace" the frame to delete by its content in its parent's location
+                    // Note: the content is its children and the children of its potential joint frames
+                    // For the special case of match frames, we bring up the content of all cases 
+                    // to the level of the match frame (match and case frames will be deleted)
                     const frameToDelete = this.frameObjects[payload.frameToDeleteId];
                     const isFrameToDeleteJointFrame = (frameToDelete.jointParentId > 0);
                     const isFrameToDeleteRootJointFrame = (frameToDelete.jointParentId === 0 && frameToDelete.frameType.jointFrameTypes.length > 0);
@@ -822,7 +824,18 @@ export const useStore = defineStore("app", {
                             this.frameObjects[payload.frameToDeleteId].jointParentId;     
                     }
 
-                    const listOfChildrenToMove = this.frameObjects[payload.frameToDeleteId].childrenIds;
+                    const listOfChildrenToMove = (frameToDelete.frameType.type != AllFrameTypesIdentifier.match) 
+                        ? this.frameObjects[payload.frameToDeleteId].childrenIds
+                        : this.frameObjects[payload.frameToDeleteId].childrenIds.flatMap((matchChildId) => {
+                            // When we delete from the body of a match or of a case, we bring back all the bodies' content 
+                            // to the current level (which is above match).
+                            if(this.frameObjects[matchChildId].frameType.type == AllFrameTypesIdentifier.case){
+                                return this.frameObjects[matchChildId].childrenIds;
+                            }
+                            else{
+                                return  matchChildId;
+                            }
+                        });
                     //if the frame to remove is the root of a joint frames structure, we include all the joint frames' children in the list of children to remove
                     if(isFrameToDeleteRootJointFrame){
                         this.frameObjects[payload.frameToDeleteId]
@@ -850,7 +863,14 @@ export const useStore = defineStore("app", {
                             1
                         );
                     }
-                    //and finally, delete the frame
+                    //and finally, delete the frame, and in the case of a match frame we delete the case frames left dangling too
+                    if(frameToDelete.frameType.type == AllFrameTypesIdentifier.match){
+                        this.frameObjects[payload.frameToDeleteId].childrenIds.forEach((matchChildId) => {
+                            if(this.frameObjects[matchChildId].frameType.type == AllFrameTypesIdentifier.case) {
+                                delete this.frameObjects[matchChildId];
+                            }
+                        });
+                    }
                     delete this.frameObjects[payload.frameToDeleteId];
                 }
             }
@@ -2021,10 +2041,10 @@ export const useStore = defineStore("app", {
         // Note: this will not always do the delete, for example if frozen frames are involved
         // Returns true if the deletion ocurred or false if it did not.
         deleteFrames(key: string, ignoreBackState?: boolean) : boolean {
-            // If we are trying to delete a match or case frame from its body, the action is cancelled if this body isn't empty-like (i.e. if not empty, or only containing comments/blanks): 
+            // If we are trying to delete a case frame from its body, the action is cancelled if this body isn't empty-like (i.e. if not empty, or only containing comments/blanks): 
             // catch statements cannot live outside a match statement and match statements cannot contain anything but cases or comments/blanks
             if(this.selectedFrames.length == 0 && key == "Backspace" && this.currentFrame.caretPosition == CaretPosition.body 
-                && (this.frameObjects[this.currentFrame.id].frameType.type == AllFrameTypesIdentifier.match || this.frameObjects[this.currentFrame.id].frameType.type == AllFrameTypesIdentifier.case) 
+                && this.frameObjects[this.currentFrame.id].frameType.type == AllFrameTypesIdentifier.case
                 && this.frameObjects[this.currentFrame.id].childrenIds.length > 0 
                     && this.frameObjects[this.currentFrame.id].childrenIds.map((childFrameId) => this.frameObjects[childFrameId].frameType.type).some((frameType) => frameType != AllFrameTypesIdentifier.comment && frameType != AllFrameTypesIdentifier.blank)){
                 return false;
@@ -2081,7 +2101,7 @@ export const useStore = defineStore("app", {
                 // we need to delete the next joint frame that is visually below us.
                 //if backspace is pressed
                 //  case current frame is Container --> do nothing, a container cannot be deleted
-                //  case cursor is body: cursor needs to move one level up, and the current frame's children + all siblings replace its parent (except for function definitions frames)
+                //  case cursor is body: cursor needs to move one level up, and the current frame's children + all siblings replace its parent (except for function definitions frames) - match frames are a bit specific (see below)
                 //  case cursor is below: cursor needs to move to bottom of previous sibling (or body of parent if first child) and the current frame (*) is deleted
                 //(*) with all sub levels children
 
