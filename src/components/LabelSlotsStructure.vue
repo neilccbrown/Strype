@@ -62,6 +62,7 @@ import LabelSlot from "@/components/LabelSlot.vue";
 import { CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID, getFlatCodeSlotsInLabelStruct, getCaretContainerUID, closeRenameIdentifierPopups, getImportFrameNameBindings, waitForElementId } from "@/helpers/editor";
 import { checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId, areSlotStructuresIsomorphic, getAncestorFrameOfTypeId, findSlotsWithIndentifierName } from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
+import Parser from "@/parser/parser";
 import { calculateParamPrompt } from "@/autocompletion/acManager";
 import scssVars from "@/assets/style/_export.module.scss";
 import { isMacOSPlatform, splitByRegexMatches } from "@/helpers/common";
@@ -498,12 +499,99 @@ export default defineComponent({
                                     const pos = (setInsideNextSlot) ? 0 : focusCursorAbsPos - newUICodeLiteralLength;
                                     const cursorInfos = {slotInfos: parseLabelSlotUID(spanElement.id), cursorPos: pos};
 
+                                    // We also check here if the changes trigger the conversion of a function call frame into an if/while
+                                    // frame, i.e. a funccall frame whose content starts with "if "/"while " (a keyword immediately followed
+                                    // by whitespace, so "iffy " for example doesn't false-positive). As with the varassign conversion below,
+                                    // this only applies at the top level (label 0, not inside a nested bracket/quote) of a funccall frame.
+                                    // Checked ahead of the varassign conversion so a keyword prefix always wins over a bare "=" that might
+                                    // also be present in the remainder (e.g. "if x = 5" -- however invalid that condition actually is, the
+                                    // user typed a keyword, so converting to an if frame is clearly the intended outcome).
+                                    const isFunccallTopLevelSlot = this.labelIndex == 0 && !((currentFocusSlotCursorInfos?.slotInfos.slotId??",").includes(","))
+                                        && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall;
+                                    const keywordFrameConversionMatch = isFunccallTopLevelSlot ? uiLiteralCode.match(/^(if|while)\s/) : null;
+
                                     // We also check here if the changes trigger the conversion of a function call frame to a varassign frame (i.e. a funccall frame contains a variable assignment).
                                     // If the parsed code slot structure results in having a first operator (except empty, dot and comma) equals to "=" then we convert, being in a label slot structure of index 0.
                                     // We do not allow a conversion if the focus isn't inside a slot of level 1.
                                     const isVarAssignSlotStructure = (parsedCodeRes.slots.operators.length > 0 && parsedCodeRes.slots.operators
                                         .find((opSlot, index) => (opSlot.code == "=" && parsedCodeRes.slots.operators.slice(0,index).every((opSlot) => ["", ".", ","].includes(opSlot.code)))));
-                                    if(isVarAssignSlotStructure && this.labelIndex == 0 && !((currentFocusSlotCursorInfos?.slotInfos.slotId??",").includes(",")) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && uiLiteralCode.match(/(?<!=)=(?!=)/) != null){
+                                    if(keywordFrameConversionMatch){
+                                        const keyword = keywordFrameConversionMatch[1] as "if" | "while";
+                                        const newFrameTypeIdentifier = (keyword == "if") ? AllFrameTypesIdentifier.if : AllFrameTypesIdentifier.while;
+                                        // Strip the keyword and its single trailing space. A funccall frame's structure is always
+                                        // "name(args)", so uiLiteralCode always has its own call-brackets appended as literal text
+                                        // after the name; when the args are still their pristine empty state (the overwhelmingly
+                                        // common case, since this conversion fires the moment "if "/"while " is completed, normally
+                                        // well before the args would ever be touched), that leaves an inert, vestigial trailing "()"
+                                        // which we strip so it isn't carried over into the new frame's condition. This is a plain
+                                        // string check (an exact trailing "()", i.e. truly empty) rather than inspecting the
+                                        // reparsed slot structure: "if" is itself a recognised (ternary) keyword operator, so once
+                                        // reparsed under funccall's rules the field/operator layout no longer lines up with the
+                                        // "name, args-bracket, trailing" shape the pristine template started from, making that
+                                        // structure unreliable to key off here. If the args genuinely contain something (a much
+                                        // rarer sequence -- e.g. "if is_ready()" typed as one continuous condition), the trailing
+                                        // "()" belongs to that content instead and is deliberately left alone, consistent with
+                                        // "preserve the rest of the content".
+                                        let remainderCode = uiLiteralCode.slice(keyword.length + 1);
+                                        if(remainderCode == "()"){
+                                            remainderCode = "";
+                                        }
+                                        if (!options?.skipCursorSetAndStateSave) {
+                                            this.appStore.setSlotTextCursors(undefined, undefined);
+                                        }
+
+                                        setTimeout(() => {
+                                            // Remove the focus
+                                            const focusedSlot = retrieveSlotByPredicate([this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures], (slot: FieldSlot) => ((slot as BaseSlot).focused??false));
+                                            if(focusedSlot){
+                                                focusedSlot.focused = false;
+                                            }
+
+                                            // Change the type of frame to if/while and re-parse the remainder (the text after the keyword
+                                            // and its trailing space) as this frame's own single condition label. This is a fresh parse
+                                            // rather than a slice of parsedCodeRes (unlike varassign's "=" split) because "while" isn't
+                                            // recognised as an operator by the expression parser at all (only "if" is, as the ternary
+                                            // keyword) so there's no reliable shared boundary to slice at for both keywords.
+                                            // (When we change the state in this next line, we need to COPY the FrameType object otherwise
+                                            // undo/redo makes weird changes in the commands.)
+                                            this.appStore.frameObjects[this.frameId].frameType = cloneDeep(getFrameDefType(newFrameTypeIdentifier));
+                                            const remainderParsedRes = parseCodeLiteral(remainderCode, {frameType: newFrameTypeIdentifier});
+                                            (remainderParsedRes.slots.fields.at(-1) as BaseSlot).focused = true;
+                                            this.appStore.frameObjects[this.frameId].labelSlotsDict = {0: {slotStructures: remainderParsedRes.slots}};
+
+                                            // Land the cursor at the end of the condition -- the natural place, since this conversion always
+                                            // fires right as the user finishes typing the keyword and its trailing space, so the remainder
+                                            // (whatever's been typed of the condition so far) has its own cursor already at its end. We use
+                                            // the parser's own flat slot-position mapping (rather than guessing at which field is "last") so
+                                            // this also works correctly if the condition itself contains brackets or a string literal.
+                                            const slotPositions = new Parser().getSlotStartsLengthsAndCodeForFrameLabel(remainderParsedRes.slots, 0, OptionalSlotType.REQUIRED, AllowedSlotContent.TERMINAL_EXPRESSION, {frameType: newFrameTypeIdentifier, slotIndex: 0});
+                                            let targetSlotIdx = -1;
+                                            for(let i = slotPositions.slotIds.length - 1; i >= 0; i--){
+                                                if(slotPositions.slotTypes[i] !== SlotType.operator){
+                                                    targetSlotIdx = i;
+                                                    break;
+                                                }
+                                            }
+                                            const newCursorSlotInfos: SlotCursorInfos = {
+                                                slotInfos: {frameId: this.frameId, labelSlotsIndex: 0, slotId: (targetSlotIdx == -1) ? "0" : slotPositions.slotIds[targetSlotIdx], slotType: (targetSlotIdx == -1) ? SlotType.code : slotPositions.slotTypes[targetSlotIdx]},
+                                                cursorPos: (targetSlotIdx == -1) ? 0 : slotPositions.slotLengths[targetSlotIdx],
+                                            };
+
+                                            // The slot we're restoring the cursor into is in the frame we just converted to if/while above,
+                                            // so it may take more than one render pass to appear -- wait for it rather than assuming a fixed
+                                            // number of ticks is enough (see waitForElementId's doc comment).
+                                            waitForElementId(getLabelSlotUID(newCursorSlotInfos.slotInfos)).then(() => {
+                                                if (!options?.skipCursorSetAndStateSave) {
+                                                    setDocumentSelection(newCursorSlotInfos, newCursorSlotInfos);
+                                                    this.appStore.setSlotTextCursors(newCursorSlotInfos, newCursorSlotInfos);
+                                                    options?.doAfterCursorSet?.();
+                                                    // Save changes only when arrived here (for undo/redo)
+                                                    this.appStore.saveStateChanges(stateBeforeChanges);
+                                                }
+                                            });
+                                        }, 300);
+                                    }
+                                    else if(isVarAssignSlotStructure && this.labelIndex == 0 && !((currentFocusSlotCursorInfos?.slotInfos.slotId??",").includes(",")) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && uiLiteralCode.match(/(?<!=)=(?!=)/) != null){
                                         // We need to break at the slot preceding the first "=" operator.
                                         const breakAtSlotIndex = parsedCodeRes.slots.operators.findIndex((opSlot) => opSlot.code == "=");
                                         if (!options?.skipCursorSetAndStateSave) {
