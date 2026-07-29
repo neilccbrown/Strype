@@ -799,6 +799,22 @@ export default defineComponent({
             // we use this reactive flag to trigger the recomputation of the computed property addFrameCommands
             this.frameCommandsReactiveFlag = !this.frameCommandsReactiveFlag;
         });
+
+        // Companion to the frame commands pane's Enter handling in handleFrameCommandsPaneKeyDown() above
+        // (see the comment there): the actual activation of the focused command happens on keyup, not
+        // keydown, so that moving focus into the newly-inserted frame only happens once this key press's
+        // keydown/keyup pair is otherwise finished.
+        window.addEventListener(
+            "keyup",
+            (event: KeyboardEvent) => {
+                if(this.appStore.isFrameCommandsPaneActive && event.key === "Enter" && document.activeElement?.closest("#addFramePanel")){
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    event.stopPropagation();
+                    (document.activeElement as HTMLElement).click();
+                }
+            }
+        );
     },
 
     mounted() {
@@ -923,8 +939,16 @@ export default defineComponent({
             }
 
             if(event.key === "Enter"){
+                // Don't click the button here on keydown: focused <button> elements natively
+                // self-activate (synthesise a click) on Enter keydown, and if we let that happen --
+                // or trigger our own click here -- focus moves to the newly-inserted frame's slot
+                // *before* this same physical key press's keyup fires. That keyup then lands on the
+                // slot instead of the button, and the slot's own Enter handling immediately reacts to
+                // it (e.g. leaving the slot again). So we only preventDefault() here (blocking the
+                // native keydown auto-click) and do the actual activation in the "keyup" listener
+                // below instead, once this key's lifecycle is otherwise finished. Same fix Menu.vue
+                // already uses for its own Enter-confirms-selection handling.
                 event.preventDefault();
-                (document.activeElement as HTMLElement)?.click();
                 return;
             }
 
