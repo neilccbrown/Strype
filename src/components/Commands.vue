@@ -140,7 +140,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { alwaysDirectFrameShortcutKeys, computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getMenuLeftPaneUID, hiddenShorthandFrames, notifyDragEnded, waitForPanesSettled } from "@/helpers/editor";
+import { alwaysDirectFrameShortcutKeys, computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getLabelSlotUID, getMenuLeftPaneUID, hiddenShorthandFrames, notifyDragEnded, waitForPanesSettled } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, CaretPosition, CollapsedState, defaultEmptyStrypeLayoutDividerSettings, FrameObject, isSlotStringLiteralType, PythonExecRunningState, SelectAllFramesAction, SlotType, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -763,6 +763,23 @@ export default defineComponent({
                                     this.appStore.ignoreKeyEvent = false;
                                 }
                             }
+                            // Typing any other single printable character (not Alt-held -- Ctrl/Meta are already
+                            // excluded above -- and not a key like F1/Escape/ArrowLeft, which all have a
+                            // multi-character event.key) starts a func-call frame with that character as the
+                            // beginning of its name, provided one can actually be added here and there's no frame
+                            // selection to interfere with:
+                            else if(!event.altKey && event.key.length === 1 && event.key !== " " && event.key !== "#" && event.key !== "="
+                                && this.appStore.selectedFrames.length === 0 && this.addFrameCommands[" "] !== undefined){
+                                if(!ignoreKeyEvent){
+                                    event.stopImmediatePropagation();
+                                    event.stopPropagation();
+                                    event.preventDefault();
+                                    this.createFuncCallFrameFromTypedChar(event.key);
+                                }
+                                else{
+                                    this.appStore.ignoreKeyEvent = false;
+                                }
+                            }
                         }
                         else if(event.key == " " && this.appStore.selectedFrames.length == 0){
                             const currentStrypeLocation = findCurrentStrypeLocation().strypeLocation;
@@ -887,6 +904,28 @@ export default defineComponent({
                 );
             }
             return true;
+        },
+
+        // Typing any other printable character at the bare frame caret creates an (empty) func-call
+        // frame, then feeds the typed character into its name slot through the same "paste into a slot"
+        // pipeline LabelSlot.vue already uses for real pastes (onCodePasteImpl, invoked here via the
+        // contentPastedInSlot custom event on the newly-focused slot) -- rather than setting the slot's
+        // code directly -- so bracket/quote pairing and any other slot-splitting logic that already
+        // applies when typing a character into a slot keeps working here too (e.g. typing "(" or '"'
+        // still auto-pairs, since it's genuinely going through the same code path as typing it into a
+        // slot, just retargeted at a freshly created one). Mirrors the existing ctrl-space-redispatch
+        // pattern below (waiting for addFrameWithCommand()'s own promise, which only resolves once the
+        // new frame's first slot is genuinely focused, before dispatching to document.activeElement).
+        createFuncCallFrameFromTypedChar(typedChar: string): void {
+            const funcCallType = this.addFrameCommands[" "][0].type;
+            this.appStore.addFrameWithCommand(funcCallType).then((newFrameId: number) => {
+                // Target the new frame's name slot explicitly (rather than document.activeElement):
+                // its own name slot isn't necessarily what ends up focused by the time this promise
+                // resolves (e.g. autocomplete-related focus shifts can already be underway), so we
+                // address it directly by the frame ID addFrameWithCommand() just gave us.
+                const nameSlotUID = getLabelSlotUID({frameId: newFrameId, labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code});
+                document.getElementById(nameSlotUID)?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: "text", content: typedChar}}));
+            });
         },
 
         // Opens the frame commands pane: moves real DOM focus onto the first available command button.
