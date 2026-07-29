@@ -83,6 +83,12 @@ export default defineComponent({
 
     methods: {
         close(): void {
+            // Dismissing the banner (via the cross icon) counts as a decision, same as clicking Cancel below --
+            // otherwise a new tab opened shortly after would be nagged again with the same recent-state offer.
+            if (this.appStore.foundRecentState != null) {
+                void markUserDecisionOnReloading([this.appStore.foundRecentState.tabId]);
+                this.appStore.foundRecentState = null;
+            }
             this.appStore.currentMessage = MessageDefinitions.NoMessage;
         },
 
@@ -109,6 +115,11 @@ export default defineComponent({
             else{
                 switch(payload){
                 case MessageDefinedActions.closeBanner:
+                    // Declining (Cancel) counts as a decision too -- see close() above for why.
+                    if (this.appStore.foundRecentState != null) {
+                        void markUserDecisionOnReloading([this.appStore.foundRecentState.tabId]);
+                        this.appStore.foundRecentState = null;
+                    }
                     this.appStore.currentMessage = MessageDefinitions.NoMessage;
                     break;
                 case MessageDefinedActions.undo:
