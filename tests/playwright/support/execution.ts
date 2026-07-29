@@ -17,7 +17,7 @@ export async function runButtonShowsRun(button: Locator, extraTimeout?: boolean)
 
 
 export async function runToFinish(page: Page, extraTimeout?: boolean) : Promise<void> {
-    const button = await startRunning(page);
+    const button = await startRunning(page, extraTimeout);
     // Then it should not be running again, because it has finished:
     await runButtonShowsRun(button, extraTimeout);
 }

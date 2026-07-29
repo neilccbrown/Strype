@@ -80,7 +80,10 @@ except Exception:
     });
 
     test("Check error shows correctly when a funcdef with documentation follows a multiline comment", async ({page}) => {
-        test.setTimeout(120000);
+        // astroids.spy is ~400KB, by far the largest fixture used in any Playwright test (most are a
+        // few KB) -- parsing/rendering that much state is genuinely slower, not just contended, so this
+        // needs more headroom than the standard load+run budget on a loaded Firefox CI runner:
+        test.setTimeout(240000);
         // This fixture has a method with a documentation string directly under its header ("def ...:" then
         // a docstring on the next line), coming straight after a multiline comment. Locating the frame position
         // for such a funcdef/classdef used to be computed *after* accounting for the docstring's own line count,
@@ -90,7 +93,7 @@ except Exception:
         // which left the Run button stuck showing "Stop" forever. This is a regression test for that:
         const pageErrors: string[] = [];
         page.on("pageerror", (err) => pageErrors.push(err.message));
-        await load(page, "tests/cypress/fixtures/astroids.spy");
+        await load(page, "tests/cypress/fixtures/astroids.spy", 120000);
         await runToFinish(page, true);
         // No uncaught JS exception should occur while tracing the error back to its frame:
         expect(pageErrors).toEqual([]);
