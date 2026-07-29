@@ -115,6 +115,8 @@ export const StandardFrameTypesIdentifiers = {
     return: "return",
     varassign: "varassign",
     global: "global",
+    match: "match",
+    case: "case",
     ...JointFrameIdentifiers,
 };
 
@@ -442,6 +444,27 @@ export function generateAllFrameDefinitionTypes(): void{
         colour: "#ede8f2",
     };
 
+    const CaseDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.case,
+        labels: [
+            { label: "case ", defaultText: en.frame.defaultText.case},
+            { label: " :", showSlots: false, defaultText: ""},
+        ],
+        colour: "#E0DFE4",
+    };
+
+    const MatchDefinition: FramesDefinitions = {
+        ...BlockDefinition,
+        type: StandardFrameTypesIdentifiers.match,
+        labels: [
+            { label: "match ", defaultText: en.frame.defaultText.match},
+            { label: " :", showSlots: false, defaultText: ""},
+        ],
+        colour: "#E0DFE4",
+        forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier).filter((type) => type != StandardFrameTypesIdentifiers.case && type != StandardFrameTypesIdentifiers.blank && type != CommentFrameTypesIdentifier.comment),
+    };
+
     /*2) update the Defintions variable holding all the definitions */
     Definitions = {
         IfDefinition,
@@ -458,6 +481,8 @@ export function generateAllFrameDefinitionTypes(): void{
         FuncDefDefinition,
         ClassDefinition,
         WithDefinition,
+        MatchDefinition,
+        CaseDefinition,
         FuncCallDefinition,
         BlankDefinition,
         ReturnDefinition,
@@ -550,10 +575,24 @@ export const allFrameCommandsDefs = {
             index:2,
         },
     ],
-    "c": [{
-        type: getFrameDefType(AllFrameTypesIdentifier.classdef),
-        description: en.frame.classdef_desc,
-        shortcuts: ["c"],
+    "c": [
+        {
+            type: getFrameDefType(AllFrameTypesIdentifier.classdef),
+            description: en.frame.classdef_desc,
+            shortcuts: ["c"],
+            index: 0,
+        },
+        {
+            type: getFrameDefType(AllFrameTypesIdentifier.case),
+            description: "case",
+            shortcuts: ["c"],
+            index: 1,
+        },
+    ],
+    "m": [{
+        type: getFrameDefType(AllFrameTypesIdentifier.match),
+        description: "match",
+        shortcuts: ["m"],
     }],
     "w": [{
         type: getFrameDefType(AllFrameTypesIdentifier.while),
