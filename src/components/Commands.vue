@@ -76,9 +76,9 @@
                                                         class="frame-cmd-container text-editing-command"
                                                     >
                                                         <span class="text-editing-command-keys">
-                                                            <template v-for="(key, keyIndex) in mediaRecordingCommand.keys" :key="key">
+                                                            <template v-for="(key, keyIndex) in mediaRecordingCommand.keys" :key="key.label">
                                                                 <span v-if="keyIndex > 0" class="text-editing-command-keys-plus">+</span>
-                                                                <button class="frame-cmd-btn frame-cmd-btn-large">{{ key }}</button>
+                                                                <button class="frame-cmd-btn frame-cmd-btn-large" :title="key.title">{{ key.label }}</button>
                                                             </template>
                                                         </span>
                                                         <span>{{ mediaRecordingCommand.description }}</span>
@@ -364,7 +364,7 @@ export default defineComponent({
         // Ctrl-Shift-I/U opens a dialog to record a new image/sound literal from the webcam/
         // microphone. We show those shortcuts here as a hint, mirroring the same gating
         // LabelSlot.vue's onKeyDown uses for the shortcut itself.
-        mediaRecordingCommands(): {keys: string[]; description: string}[] {
+        mediaRecordingCommands(): {keys: ({label: string, title?: string})[]; description: string}[] {
             const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
             if(!this.appStore.isEditing || !focusSlotCursorInfos){
                 return [];
@@ -376,11 +376,11 @@ export default defineComponent({
                 return [];
             }
 
-            const ctrl = this.$t("contextMenu.ctrl");
-            const shift = this.$t("autoCompletion.shiftKey");
+            const ctrl = {label: this.$t("contextMenu.ctrl")};
+            const shift = {label: "⇧", title: this.$t("autoCompletion.shiftKey")};
             return [
-                {keys: [ctrl, shift, "I"], description: this.$t("autoCompletion.recordImageShortcut")},
-                {keys: [ctrl, shift, "U"], description: this.$t("autoCompletion.recordSoundShortcut")},
+                {keys: [ctrl, shift, {label: "I"}], description: this.$t("autoCompletion.recordImageShortcut")},
+                {keys: [ctrl, shift, {label: "U"}], description: this.$t("autoCompletion.recordSoundShortcut")},
             ];
         },
 

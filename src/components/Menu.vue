@@ -1328,10 +1328,15 @@ export default defineComponent({
                 else if (dlgId == this.loadBookProjectModalDlgId) {
                     const selectedProject = (this.$refs.openBookDlg  as InstanceType<typeof OpenBookDlg>).getSelectedProject();
                     if (selectedProject) {
+                        // We always show the book menu entry and dialog. However, the projects do not run on the micro:bit version.
+                        // Therefore, if we are on the micro:bit version, instead of loading the selected project inside the current editor,
+                        // we open a new tab pointing at the standard version with the project as if we shared it.
+                        const projectName = selectedProject.name ?? "Book";
+                        trackUsedBookProject(projectName, selectedProject.chapter);
+                        // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                         selectedProject.projectFile.then((content) => {
                             if (content) {
-                                trackUsedBookProject(selectedProject.name ?? "Book", selectedProject.chapter);
-                                this.afterSaveDialog = {spy: content, name: selectedProject.name ?? "Book"};
+                                this.afterSaveDialog = {spy: content, name: projectName};
                                 if (this.appStore.isEditorContentModified) {
                                     eventBus.emit(CustomEventTypes.showStrypeModal, this.saveOnLoadModalDlgId);
                                 }
@@ -1340,6 +1345,12 @@ export default defineComponent({
                                 }
                             }
                         });
+                        // #v-else
+                        // For micro:bit, we can simply open a shared the project as an exteral resource since it exists in our public repository.
+                        // Of course, this rely on how we expose the projects, and that we have the correct project name set.
+                        const normalisedChapterNumber = selectedProject.chapter.replace(/chapter\s+(\d+)/i, (_, n) => n.padStart(2, "0"));
+                        window.open(`https://strype.org/editor/?${sharedStrypeProjectIdKey}=${encodeURI(`https://strype.org/editor/book_projects/chapter${normalisedChapterNumber}/${projectName}.spy`)}`, "_blank");
+                        // #v-endif
                     }
                 }
             }

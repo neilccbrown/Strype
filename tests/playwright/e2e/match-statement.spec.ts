@@ -2,7 +2,7 @@ import {test, expect} from "@playwright/test";
 import {readFileSync} from "node:fs";
 import {save, testPlaywrightRoundTripImportAndDownload} from "../support/loading-saving";
 import {setupStrypeTest} from "../support/general";
-import {getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportsFullLine, pressN, waitForEditorSettled} from "../support/editor";
+import {doPagePaste, getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportsFullLine, pressN, waitForEditorSettled} from "../support/editor";
 import {checkConsoleContent, runToFinish} from "../support/execution";
 
 const defaultStandardStrypeProjectDocLiteral = getDefaultStrypeProjectDocumentationFullLine();
@@ -30,6 +30,29 @@ myString  = "Hello from Strype"
 print(myString) 
 #(=> Section:End
 `;
+
+const complexMatchCodeLiteral = `
+match a  :
+    #match comment
+    case _  :
+        a1() 
+    case f  :
+        a2() 
+        print("2") 
+    case "f"  :
+        a3() 
+        while True  :
+            print("3") 
+`;
+
+const scrappedMatchWithDefaultCode = defaultProjectCodeLiteral.replace("#(=> Section:Main",`#(=> Section:Main
+#match comment
+a1() 
+a2() 
+print("2") 
+a3() 
+while True  :
+    print("3") `);
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 240000, skipPyodide: false});
@@ -338,14 +361,23 @@ test.describe("Delete Match statement", () => {
         await waitForEditorSettled(page);
         await page.keyboard.press("Backspace");
         await waitForEditorSettled(page);
-        // This backspace should not delete anything
-        expect(readFileSync(await save(page), "utf-8")).toEqual(basicMatchLiteral.trimStart());
-        // Now delete the case, and see that backspace delete the match frame
-        await page.keyboard.press("Delete");
+        // This backspace should delete the match and its content
+        expect(readFileSync(await save(page), "utf-8")).toEqual(defaultProjectCodeLiteral.trimStart());    
+    });
+    
+    test("Backspace inside complex Match", async ({page}) => {
+        // Paste some small complex match case code
+        await doPagePaste(page, complexMatchCodeLiteral);
+        await waitForEditorSettled(page);
+        // Go back to the top of the main section, then inside main
+        await page.keyboard.press("Home");
+        await waitForEditorSettled(page);
+        await page.keyboard.press("ArrowDown");
         await waitForEditorSettled(page);
         await page.keyboard.press("Backspace");
         await waitForEditorSettled(page);
-        expect(readFileSync(await save(page, false), "utf-8")).toEqual(defaultProjectCodeLiteral.trimStart());
+        // This backspace should delete the match and the cases, bringing up the body contents.
+        expect(readFileSync(await save(page), "utf-8")).toEqual(scrappedMatchWithDefaultCode.trimStart());    
     });
     
     test("Backspace inside Case", async ({page}) => {
