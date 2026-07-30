@@ -47,7 +47,10 @@ describe("Stride TestExpressionSlot.testBrackets()", () => {
 
     // With list comprehensions + preceding slots that are parsed by us (string, media literal)
     testInsert("\"a\"(for ", "{}_“a”_{}_({}for{$})_{}", false);
-    testInsertMediaThenExp("src/assetsFilesystem/images/cat-test.jpg", "image/jpeg", "(for ", "{}_§_{}_({}for{$})_{}");
+    if (Cypress.env("mode") != "microbit") {
+        // Can't paste media in the microbit version
+        testInsertMediaThenExp("src/assetsFilesystem/images/cat-test.jpg", "image/jpeg", "(for ", "{}_§_{}_({}for{$})_{}");
+    }
     
     // Without close:
     testInsert("(a+b", "{}_({a}+{b$})_{}", false);
