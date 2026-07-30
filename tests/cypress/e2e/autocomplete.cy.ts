@@ -2,6 +2,7 @@ require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
 import "../support/autocomplete-test-support";
 import {BUILTIN, checkAutocompleteSorted, checkExactlyOneItem, checkNoItems, checkNoneAvailable, focusEditorAC, withAC, assertState} from "../support/autocomplete-test-support";
+import {pressFrameShortcut} from "../support/test-support";
 
 // Needed for the "be.sorted" assertion:
 chai.use(require("chai-sorted"));
@@ -13,7 +14,7 @@ describe("Built-ins", () => {
     it("Has built-ins, that narrow down when you type", () => {
         focusEditorAC();
         // Add a function frame and trigger auto-complete:
-        cy.get("body").type(" ");
+        cy.get("body").type("  ");
         cy.wait(500);
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel, frameId) => {
@@ -96,7 +97,7 @@ describe("Behaviour with operators, brackets and complex expressions", () => {
         it("Shows built-ins, if you autocomplete after " + prefix, () => {
             focusEditorAC();
             // Add a function frame and trigger auto-complete:
-            cy.get("body").type(" ");
+            cy.get("body").type("  ");
             cy.wait(500);
             cy.get("body").type(prefix);
             cy.wait(500);
@@ -136,7 +137,7 @@ describe("Behaviour with operators, brackets and complex expressions", () => {
         it("Shows string members, if you autocomplete after " + prefix, () => {
             focusEditorAC();
             // Add a function frame (after the default line assigning to myString) and trigger auto-complete:
-            cy.get("body").type("{downarrow} ");
+            cy.get("body").type("{downarrow}  ");
             cy.wait(500);
             cy.get("body").type(prefix);
             cy.wait(500);
@@ -163,7 +164,7 @@ describe("Behaviour with operators, brackets and complex expressions", () => {
         it("Shows no completions, if you autocomplete after " + prefix, () => {
             focusEditorAC();
             // Add a function frame and trigger auto-complete:
-            cy.get("body").type(" ");
+            cy.get("body").type("  ");
             cy.wait(500);
             cy.get("body").type(prefix);
             cy.wait(500);
@@ -189,9 +190,10 @@ describe("Control flow", () => {
         // Go down then add a try then a print then a method call on myString:
         //(try is followed by pause, because it can take a bit longer to add its body/joint sections)
  
-        cy.get("body").type("{downarrow}{downarrow}t");
+        cy.get("body").type("{downarrow}{downarrow}");
+        pressFrameShortcut("t");
         cy.wait(100);
-        cy.get("body").type("pmyString{downarrow} myString.{ctrl} ");
+        cy.get("body").type("pmyString{downarrow}myString.{ctrl} ");
         withAC((acIDSel, frameId) => {
             cy.get(acIDSel).should("be.visible");
             checkExactlyOneItem(acIDSel, null, "capitalize()");

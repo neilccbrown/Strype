@@ -134,7 +134,7 @@ describe("Paste image literals", () => {
         cy.readFile("src/assetsFilesystem/images/cat-test.jpg", null).then((catJPEG) => {
             focusEditorAndClear();
             enterImports();
-            cy.get("body").type(" Actor(");
+            cy.get("body").type("Actor(");
             cy.wait(1000);
             (cy.focused() as any).paste(catJPEG, "image/jpeg");
             cy.wait(1000);
@@ -147,7 +147,7 @@ describe("Paste image literals", () => {
         cy.readFile("tests/cypress/test-http-assets/kcl-logo.svg", null).then((svg) => {
             focusEditorAndClear();
             enterImports();
-            cy.get("body").type(" Actor(");
+            cy.get("body").type("Actor(");
             cy.wait(1000);
             (cy.focused() as any).paste(svg, "image/svg+xml");
             cy.wait(1000);
@@ -161,7 +161,7 @@ describe("Paste image literals", () => {
         cy.readFile("tests/cypress/test-http-assets/kcl-logo.svg", "utf8").then((svg) => {
             focusEditorAndClear();
             enterImports();
-            cy.get("body").type(" Actor(");
+            cy.get("body").type("Actor(");
             cy.wait(1000);
             // Browsers take the SVG element and put it as text/html:
             (cy.focused() as any).paste(svg, "text/html");
@@ -175,7 +175,7 @@ describe("Paste image literals", () => {
     it("Paste and show IMG with SVG source as if from inside browser", () => {
         focusEditorAndClear();
         enterImports();
-        cy.get("body").type(" Actor(");
+        cy.get("body").type("Actor(");
         cy.wait(1000);
         // Give HTML with an img with the appopriate source
         (cy.focused() as any).paste("<img width='300px' src='http://localhost:8089/kcl-logo.svg'>", "text/html");
@@ -189,7 +189,7 @@ describe("Paste image literals", () => {
         cy.readFile("src/assetsFilesystem/images/cat-test.jpg", null).then((catJPEG) => {
             focusEditorAndClear();
             enterImports();
-            cy.get("body").type(" set_background(");
+            cy.get("body").type("set_background(");
             cy.wait(1000);
             (cy.focused() as any).paste(catJPEG, "image/jpeg");
             cy.wait(1000);
@@ -204,7 +204,7 @@ describe("Paste image literals", () => {
         cy.readFile("src/assetsFilesystem/images/cat-test.jpg", null).then((catJPEG) => {
             focusEditorAndClear();
             enterImports();
-            cy.get("body").type(" set_background(");
+            cy.get("body").type("set_background(");
             cy.wait(1000);
             (cy.focused() as any).paste(catJPEG, "image/jpeg");
             cy.wait(1000);
@@ -219,7 +219,7 @@ describe("Paste image literals", () => {
         cy.readFile("src/assetsFilesystem/images/cat-test.jpg", null).then((catJPEG) => {
             focusEditorAndClear();
             enterImports();
-            cy.get("body").type(" set_background(");
+            cy.get("body").type("set_background(");
             cy.wait(1000);
             (cy.focused() as any).paste(catJPEG, "image/jpeg");
             cy.wait(1000);
@@ -234,7 +234,7 @@ describe("Paste image literals", () => {
         cy.readFile("src/assetsFilesystem/images/cat-test.jpg", null).then((catJPEG) => {
             focusEditorAndClear();
             enterImports();
-            cy.get("body").type(" set_background(");
+            cy.get("body").type("set_background(");
             cy.wait(1000);
             (cy.focused() as any).paste(catJPEG, "image/jpeg");
             cy.wait(1000);
@@ -256,7 +256,7 @@ describe("Paste image literals", () => {
         cy.readFile("src/assetsFilesystem/images/cat-test.jpg", null).then((catJPEG) => {
             focusEditorAndClear();
             enterImports();
-            cy.get("body").type(" set_background(dontget_pixel(270,150");
+            cy.get("body").type("set_background(dontget_pixel(270,150");
             cy.wait(1000);
             // Then we go back to between "dont" and "get":
             for (let i = 0; i < "get_pixel(270,150".length; i++) {
@@ -280,7 +280,7 @@ describe("Paste image literals", () => {
         cy.readFile("src/assetsFilesystem/images/cat-test.jpg", null).then((catJPEG) => {
             focusEditorAndClear();
             enterImports();
-            cy.get("body").type(" set_background(");
+            cy.get("body").type("set_background(");
             cy.wait(1000);
             (cy.focused() as any).paste(catJPEG, "image/jpeg");
             cy.wait(1000);
@@ -301,7 +301,7 @@ describe("Paste image literals", () => {
         cy.readFile("src/assetsFilesystem/images/cat-test.jpg", null).then((catJPEG) => {
             focusEditorAndClear();
             enterImports();
-            cy.get("body").type(" a(");
+            cy.get("body").type("a(");
             cy.wait(1000);
             (cy.focused() as any).paste(catJPEG, "image/jpeg");
             cy.wait(1000);

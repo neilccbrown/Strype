@@ -111,7 +111,7 @@ describe("Loads and re-saves fixture files", () => {
     it("Outputs a dummy for solo try", () => {
         // Make an empty try, which should save with a placeholder:
         // (try is followed by a pause, because it can take a bit longer to add its body/join sections)
-        testEntryDisableAndSave(["t","pmsg{enter}{downarrow}{backspace}"], [], "tests/cypress/fixtures/project-try-solo.spy");
+        testEntryDisableAndSave([" t"," pmsg{enter}{downarrow}{backspace}"], [], "tests/cypress/fixtures/project-try-solo.spy");
     });
     it("Loads and saves a solo try", () => {
         // Make an empty try, which should save with a placeholder:
@@ -135,7 +135,7 @@ describe("Tests disabling frames", () => {
     it("Outputs a dummy for try with disabled except", () => {
         // Make an empty try, which should save with a placeholder:
         // (try is followed by a pause, because it can take a bit longer to add its body/join sections):
-        testEntryDisableAndSave(["t","pmsg{enter}{rightarrow}extype{rightarrow}pword"], ["extype"], "tests/cypress/fixtures/project-try-disabled-except.spy");
+        testEntryDisableAndSave([" t"," pmsg{enter}{rightarrow}extype{rightarrow} pword"], ["extype"], "tests/cypress/fixtures/project-try-disabled-except.spy");
     });
     it("Loads and saves a try with disabled except", () => {
         // Make an empty try, which should save with a placeholder:
@@ -143,7 +143,7 @@ describe("Tests disabling frames", () => {
     });
     
     it("Save a basic disable project", () => {
-        testEntryDisableAndSave("=msg=\"Hello\"{enter} print(msg)", ["print"], "tests/cypress/fixtures/project-basic-disable.spy");
+        testEntryDisableAndSave("=msg=\"Hello\"{enter}print(msg)", ["print"], "tests/cypress/fixtures/project-basic-disable.spy");
     });
     it("Loads and saves a basic disable project", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic-disable.spy");
@@ -184,16 +184,20 @@ describe("Tests blanks", () => {
 
         //(function and if are followed by a pause, because it can take a bit longer to add their body/joint section)
         testEntryDisableAndSave(["{uparrow}{uparrow}" +
-            "ix {rightarrow}f{downarrow}{downarrow}" +
-            "f","{downarrow}{downarrow}i","{rightarrow} {downarrow}{downarrow}r{rightarrow}{downarrow}{downarrow}" +
+            " ix {rightarrow}" +
+            " f{downarrow}{downarrow}" +
+            " f","{downarrow}{downarrow}" +
+            " i","{rightarrow}" +
+            "  {downarrow}{downarrow}" +
+            " r{rightarrow}{downarrow}{downarrow}" +
             "a{rightarrow}={rightarrow}1+*/()-{downarrow}" +
-            " test.{downarrow}" +
-            " test.a+{downarrow}" +
-            " test.{del}{downarrow}" +
-            " test..{downarrow}" +
-            " test.()+1{downarrow}" +
-            " test+()+1{downarrow}" +
-            " ."], [], "tests/cypress/fixtures/project-blanks.spy");
+            "test.{downarrow}" +
+            "test.a+{downarrow}" +
+            "test.{del}{downarrow}" +
+            "test..{downarrow}" +
+            "test.()+1{downarrow}" +
+            "test+()+1{downarrow}" +
+            "."], [], "tests/cypress/fixtures/project-blanks.spy");
     });
     it("Loads and saves with lots of blanks", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-blanks.spy");
@@ -204,9 +208,9 @@ describe("Tests blanks", () => {
 describe("Tests invalid characters", () => {
     it("Outputs a file with invalid chars", () => {
         testEntryDisableAndSave("{uparrow}{uparrow}" +
-            "i100{rightarrow}ffoo{rightarrow}£1000{downarrow}i50{downarrow}ifoo（）{downarrow}{downarrow}" +
-            "f#include{rightarrow}100,abc,#35{downarrow}{downarrow}r$50{downarrow}{downarrow}{downarrow}" +
-            " 100($50, 24.24a)", [], "tests/cypress/fixtures/project-invalid-chars.spy");
+            " i100{rightarrow} ffoo{rightarrow}£1000{downarrow} i50{downarrow} ifoo（）{downarrow}{downarrow}" +
+            " f#include{rightarrow}100,abc,#35{downarrow}{downarrow} r$50{downarrow}{downarrow}{downarrow}" +
+            "100($50, 24.24a)", [], "tests/cypress/fixtures/project-invalid-chars.spy");
     });
     it("Loads and saves a file with invalid chars", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-invalid-chars.spy");
@@ -247,11 +251,11 @@ describe("Tests saving layout metadata", () => {
 describe("Tests loading/saving library frames", () => {
     it("Saves libraries", () => {
         // Doesn't really disable, but easy comparison to next item:
-        testEntryDisableAndSave("{uparrow}{uparrow}lfoo{rightarrow}ibar{rightarrow}lhttps://www.google.com/{rightarrow}", [], "tests/cypress/fixtures/project-libraries.spy");
+        testEntryDisableAndSave("{uparrow}{uparrow} lfoo{rightarrow} ibar{rightarrow} lhttps://www.google.com/{rightarrow}", [], "tests/cypress/fixtures/project-libraries.spy");
     });
     it("Saves disabled libraries", () => {
         // Disable the foo library:
-        testEntryDisableAndSave("{uparrow}{uparrow}lfoo{rightarrow}ibar{rightarrow}lhttps://www.google.com/{rightarrow}", ["foo"], "tests/cypress/fixtures/project-libraries-disable.spy");
+        testEntryDisableAndSave("{uparrow}{uparrow} lfoo{rightarrow} ibar{rightarrow} lhttps://www.google.com/{rightarrow}", ["foo"], "tests/cypress/fixtures/project-libraries-disable.spy");
     });
     it ("Saves and loads libraries", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-libraries.spy");

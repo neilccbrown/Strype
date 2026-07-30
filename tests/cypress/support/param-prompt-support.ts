@@ -120,10 +120,10 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | {class?: str
             if ((rawFunc[0] as any)?.udf) {
                 const isTestingFunctionInClass = ((rawFunc[0] as any)?.class);
                 const classTypePreamble = (isTestingFunctionInClass)
-                    ? `c${(rawFunc[0] as any)?.class}{rightarrow}{rightarrow}`
-                    : "";            
+                    ? ` c${(rawFunc[0] as any)?.class}{rightarrow}{rightarrow}`
+                    : "";
                 funcs.push({
-                    keyboardTypingToImport: "{uparrow}" + classTypePreamble + "f" + (rawFunc[0] as any)?.udf + "{downarrow}{downarrow}",
+                    keyboardTypingToImport: "{uparrow}" + classTypePreamble + " f" + (rawFunc[0] as any)?.udf + "{downarrow}{downarrow}",
                     funcName: rawFunc[1],
                     params: params,
                     acSection: (isTestingFunctionInClass) ? "self" : "My functions",
@@ -148,7 +148,7 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | {class?: str
             // The "import module" frame:
             if (!skipFullyQualifiedVersion) {
                 funcs.push({
-                    keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + "i" + module + "{rightarrow}{downarrow}{downarrow}",
+                    keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + " i" + module + "{rightarrow}{downarrow}{downarrow}",
                     funcName: module + "." + rawFunc[1],
                     params: params,
                     acSection: module,
@@ -158,7 +158,7 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | {class?: str
             }
             // The "from module import *" frame:
             funcs.push({
-                keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + "f" + module + "{rightarrow}*{rightarrow}{downarrow}{downarrow}",
+                keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + " f" + module + "{rightarrow}*{rightarrow}{downarrow}{downarrow}",
                 funcName: rawFunc[1],
                 params: params,
                 acSection: module,
@@ -168,7 +168,7 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | {class?: str
             // The "from module import funcName" frame:
             // Note that if funcName has a dot, we need to only use the part before the dot or opening bracket:
             funcs.push({
-                keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + "f" + module + "{rightarrow}" + (rawFunc[1].match(/^[A-Za-z0-9_]+/)?.[0] ?? rawFunc[1]) + "{rightarrow}{downarrow}{downarrow}",
+                keyboardTypingToImport: "{uparrow}{uparrow}" + libraryTyping + " f" + module + "{rightarrow}" + (rawFunc[1].match(/^[A-Za-z0-9_]+/)?.[0] ?? rawFunc[1]) + "{rightarrow}{downarrow}{downarrow}",
                 funcName: rawFunc[1],
                 params: params,
                 acName: rawFunc[1],
@@ -241,7 +241,7 @@ function testFuncs(funcs: {
         it("Shows prompts after manually writing function name and brackets for " + func.displayName, () => {
             focusEditorAC();
             insertKeyboardTypingToImport(func.keyboardTypingToImport);
-            cy.get("body").type(" " + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
+            cy.get("body").type(func.funcName.replaceAll(/[‘’]/g, "'") + "(");
             withFrameId((frameId) => {
                 assertState(frameId, func.funcName + "($)", func.funcName + "(" + emptyDisplay(func.params, false) + ")");
             });
@@ -253,7 +253,7 @@ function testFuncs(funcs: {
         it("Shows prompts after manually writing function name and brackets AND commas for " + func.displayName, () => {
             focusEditorAC();
             insertKeyboardTypingToImport(func.keyboardTypingToImport);
-            cy.get("body").type(" " + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
+            cy.get("body").type(func.funcName.replaceAll(/[‘’]/g, "'") + "(");
             const extra = [
                 ...func.params.varArgs ? [func.params.varArgs.name] : "",
                 ...func.params.varKwargs ? [func.params.varKwargs.name] : [],
@@ -274,7 +274,7 @@ function testFuncs(funcs: {
         it("Shows prompts in nested function " + func.displayName, () => {
             focusEditorAC();
             insertKeyboardTypingToImport(func.keyboardTypingToImport);
-            cy.get("body").type(" max(0," + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
+            cy.get("body").type("max(0," + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
             withFrameId((frameId) => {
                 assertState(frameId, "max(0," + func.funcName + "($))", "max(0," + func.funcName + "(" + emptyDisplay(func.params, false) + "))");
             });
@@ -291,7 +291,7 @@ function testFuncs(funcs: {
                 // We pick an arbitrary param to pass from the middle:
                 const midParam = Math.floor(func.params.positionalOrKeywordArgs.length / 2);
                 // We enter first one, then named middle one:
-                cy.get("body").type(" " + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
+                cy.get("body").type(func.funcName.replaceAll(/[‘’]/g, "'") + "(");
                 const midName = func.params.positionalOrKeywordArgs[midParam].name;
                 cy.get("body").type("0, " + midName + "=0,");
                 // Now it should hide the first param, and the middle one, and show the others as keyword possibilities
