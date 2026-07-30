@@ -155,16 +155,22 @@ const executePython = pyodideExpose(async (
     // we share this same counter and catch-up logic with sprite updates, to bound how many messages of
     // *either* kind can be outstanding at once:
     let numConsecutiveAsyncRequests = 0;
+    // Does the actual sync dummy round-trip that guarantees all previously-sent async requests
+    // (e.g. console_print for stdout/stderr) have been fully processed by the main thread, per the
+    // ordering guarantee described above.
+    const syncCatchUpWithMainThread = () => {
+        makeRawRequest({kind: "sync", request: {request: "dummy"}});
+        const reply = extras.readMessage() as (SyncStrypePyodideWorkerResponse | {request: string, error: string});
+        if (reply.request != "dummy") {
+            throw new Error(`Internal error: Pyodide worker received ${reply.request} but had asked for dummy`);
+        }
+        numConsecutiveAsyncRequests = 0;
+    };
     const catchUpWithMainThreadIfNeeded = () => {
         numConsecutiveAsyncRequests += 1;
         if (numConsecutiveAsyncRequests >= 50) {
             // To avoid racing too far ahead of the main thread, we do a quick catch-up:
-            makeRawRequest({kind: "sync", request: {request: "dummy"}});
-            const reply = extras.readMessage() as (SyncStrypePyodideWorkerResponse | {request: string, error: string});
-            if (reply.request != "dummy") {
-                throw new Error(`Internal error: Pyodide worker received ${reply.request} but had asked for dummy`);
-            }
-            numConsecutiveAsyncRequests = 0;
+            syncCatchUpWithMainThread();
         }
     };
     const makeRequest = (req: SyncOrAsyncStrypePyodideWorkerRequest) => {
@@ -209,7 +215,7 @@ sys.path.append("${libDir}")
         const usingMatplotlib = loaded.some((pd) => pd.name == "matplotlib");
         if (usingMatplotlib) {
             // Matplotlib takes ages (7 seconds on my fast Windows+Firefox machine!) so let's print a message:
-            makeRequest({kind: "async", request: {request:"console_print", text: "Loading Matplotlib (this may take some time)", containsInputPrompt: false}});
+            makeRequest({kind: "async", request: {request:"console_print", text: "Loading Matplotlib (this may take some time)\n", containsInputPrompt: false}});
         }
         
         
@@ -499,6 +505,13 @@ runner`);
         };
         runner.set_callback(callback);
         await runner.run_async(pythonCode, {});
+        // The counter-based catch-up above only fires every 50 async requests, so a run that ends
+        // with a handful of prints immediately followed by an error (too few to trip that threshold)
+        // can otherwise have its error reported to the main thread before all of that trailing output
+        // has actually been processed there -- see the "documented newlines" flakiness this fixed.
+        // Do one final unconditional catch-up so the error is only returned once the main thread has
+        // caught up with everything printed during the run.
+        syncCatchUpWithMainThread();
         return error;
     });
 });

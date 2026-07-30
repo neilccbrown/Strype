@@ -7,7 +7,7 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 
 
-export async function load(page: Page, filepath: string) : Promise<void> {
+export async function load(page: Page, filepath: string, timeoutMs = 60000) : Promise<void> {
     // Wait for page load:
     await page.waitForSelector(".frame-container");
     
@@ -35,9 +35,11 @@ export async function load(page: Page, filepath: string) : Promise<void> {
     // mirrors -- wait for that instead, since it only updates once the new state is truly in place.
     // Bumped from 30s to 60s: seen to genuinely exceed 30s on a contended CI runner (real CI
     // failure, "data-graph" load, ubuntu-latest) -- it's a poll, not a flat sleep, so the extra
-    // headroom costs nothing in the common case:
+    // headroom costs nothing in the common case. Callers loading an exceptionally large fixture
+    // (e.g. astroids.spy, ~400KB, vs a few KB for most fixtures) can pass a longer timeoutMs --
+    // parsing/rendering that much state is genuinely slower, not just contended:
     const expectedProjectName = path.basename(filepath, path.extname(filepath));
-    await expect(page.locator(".project-name")).toHaveText(expectedProjectName, {timeout: 60000});
+    await expect(page.locator(".project-name")).toHaveText(expectedProjectName, {timeout: timeoutMs});
 }
 
 export async function loadContent(page: Page, spyToLoad: string) : Promise<void> {
