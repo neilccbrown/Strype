@@ -4,7 +4,7 @@ import {expect} from "chai";
 import en from "@/localisation/en/en_main.json";
 
 import failOnConsoleError from "cypress-fail-on-console-error";
-import {cleanFromHTML, getDefaultStrypeProjectDocumentationFullLine} from "../support/test-support";
+import {cleanFromHTML, getDefaultStrypeProjectDocumentationFullLine, pressFrameShortcut} from "../support/test-support";
 import { scssVars, standardBeforeEach, strypeElIds } from "../support/standard-setup";
 failOnConsoleError();
 require("cypress-terminal-report/src/installLogsCollector")();
@@ -271,10 +271,10 @@ describe("Adding frames", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode)).then(() => {
             // i adds an if; add an if True with an if False inside:
             // (if is followed by a pause, because it can take a bit longer to add its body/joint section)
-            cy.get("body").type("i");
+            pressFrameShortcut("i");
             cy.wait(100);
             cy.get("body").type("True{rightArrow}");
-            cy.get("body").type("i");
+            pressFrameShortcut("i");
             cy.wait(100);
             cy.get("body").type("False{rightArrow}");            
             // Put a foo() in the inner body:

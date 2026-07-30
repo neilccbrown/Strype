@@ -1,6 +1,26 @@
 import {Page, expect, ElementHandle} from "@playwright/test";
 import {WINDOW_STRYPE_NEXTTICK_PROPNAME} from "@/helpers/sharedIdCssWithTests";
 
+// Keys that insert their frame type directly, without a Tab/Space prefix first (see
+// alwaysDirectFrameShortcutKeys in src/helpers/editor.ts) -- every other key (any letter) needs
+// the prefix to open the frame-commands pane first; typing the bare letter alone instead starts
+// a func-call frame with that letter as its content (see "Typing a character at the bare frame
+// caret starts a func-call frame"). Mirrored here (not imported) for the same reason
+// tests/cypress/support/frame-types.ts is a manual copy of src/types/types.ts: pulling from src/
+// into a Playwright spec's Node-based test loader breaks it (Vue/i18n side effects).
+const ALWAYS_DIRECT_FRAME_SHORTCUT_KEYS = ["enter", "#", "="];
+
+// Presses the keyboard shortcut that inserts a frame at the current blank "insert a new frame"
+// caret -- e.g. pressFrameShortcut(page, "i") for an if frame. Centralised so that if the app's
+// own prefix requirement (or the prefix itself) ever changes again, only this needs updating,
+// not every call site that inserts a frame this way.
+export async function pressFrameShortcut(page: Page, key: string): Promise<void> {
+    if (!ALWAYS_DIRECT_FRAME_SHORTCUT_KEYS.includes(key.toLowerCase())) {
+        await page.keyboard.press(" ");
+    }
+    await page.keyboard.press(key);
+}
+
 async function readEditorState(page: Page) : Promise<{focusId: string, cursor: string, frameCount: number}> {
     return page.evaluate(() => {
         const editor = document.querySelector("#editor");

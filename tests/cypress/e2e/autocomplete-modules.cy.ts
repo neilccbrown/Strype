@@ -1,5 +1,5 @@
 import { scssVars } from "../support/standard-setup";
-import { clearDefaultImports } from "../support/test-support";
+import { clearDefaultImports, pressFrameShortcut } from "../support/test-support";
 
 require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
@@ -17,7 +17,7 @@ describe("Modules", () => {
         focusEditorAC();
         // Go up to imports, add one, then trigger auto-complete:
         clearDefaultImports();
-        cy.get("body").type("i");
+        pressFrameShortcut("i");
         cy.wait(500);
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
@@ -82,7 +82,7 @@ describe("Modules", () => {
         focusEditorAC();
         // Go up to imports, add one, then trigger auto-complete:
         clearDefaultImports();
-        cy.get("body").type("f");
+        pressFrameShortcut("f");
         cy.wait(500);
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
@@ -150,7 +150,7 @@ describe("Modules", () => {
 
         // Go up to imports, add one, then trigger auto-complete:
         clearDefaultImports();
-        cy.get("body").type("f");
+        pressFrameShortcut("f");
         cy.wait(500);
         // Fill in time in the LHS then go across to the RHS:
         cy.get("body").type("time{rightarrow}");
@@ -225,7 +225,7 @@ describe("Modules", () => {
         focusEditorAC();
         // Go up to imports and add an import frame:
         clearDefaultImports();
-        cy.get("body").type("i");
+        pressFrameShortcut("i");
         cy.wait(500);
         // Trigger autocomplete, type "tim" then press enter to complete and right arrow to leave frame:
         cy.get("body").type("{ctrl} ");
@@ -262,7 +262,7 @@ describe("Modules", () => {
         focusEditorAC();
         // Go up to the imports and add a "from..import.." frame
         clearDefaultImports();
-        cy.get("body").type("f");
+        pressFrameShortcut("f");
         cy.wait(500);
         // Trigger autocomplete (in first section), type "tim" and hit enter to auto-complete, then right arrow to go across to the second part of the frame:
         cy.get("body").type("{ctrl} ");
@@ -329,7 +329,7 @@ describe("Nested modules", () => {
         focusEditorAC();
         // Go up to imports and add an import frame:
         clearDefaultImports();
-        cy.get("body").type("i");
+        pressFrameShortcut("i");
         cy.wait(500);
         // Type whole module as one item:
         cy.get("body").type(targetModule);
@@ -350,7 +350,7 @@ describe("Nested modules", () => {
         focusEditorAC();
         // Go up to imports and add a from import frame:
         clearDefaultImports();
-        cy.get("body").type("f");
+        pressFrameShortcut("f");
         cy.wait(500);
         // Type whole module as one item:
         cy.get("body").type(targetModule);
@@ -369,7 +369,7 @@ describe("Nested modules", () => {
         focusEditorAC();
         // Go up to imports and add a from import frame:
         clearDefaultImports();
-        cy.get("body").type("f");
+        pressFrameShortcut("f");
         cy.wait(500);
         // Type whole module as one item:
         cy.get("body").type(targetModule);
@@ -436,7 +436,7 @@ describe("Imported items", () => {
         focusEditorAC();
         // Go up to imports and add an import frame:
         clearDefaultImports();
-        cy.get("body").type("i");
+        pressFrameShortcut("i");
         cy.wait(500);
         // Type whole module as one item:
         cy.get("body").type(targetModule);
@@ -456,7 +456,7 @@ describe("Imported items", () => {
         focusEditorAC();
         // Go up to imports and add an import frame:
         clearDefaultImports();
-        cy.get("body").type("i");
+        pressFrameShortcut("i");
         cy.wait(500);
         // Space bar alone should give us the "as", so this imports as "t":
         cy.get("body").type(targetModule + " t{rightarrow}");
@@ -514,7 +514,8 @@ describe("Underscore handling", () => {
         it("Does not offer underscore items on modules at all", () => {
             // Go up to imports and add a from time import *
             clearDefaultImports();
-            cy.get("body").type("fstrype.graphics{rightarrow}*{rightarrow}");
+            pressFrameShortcut("f");
+            cy.get("body").type("strype.graphics{rightarrow}*{rightarrow}");
             cy.get("body").type("{downarrow}{downarrow}");
 
             focusEditorAC();
