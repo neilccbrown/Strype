@@ -138,8 +138,9 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | {class?: str
                 module = rawFunc[0];
             }
             else if (Array.isArray(rawFunc[0])) {
-                // Enter the library:
-                libraryTyping = "l" + rawFunc[0][0] + "{rightarrow}";
+                // Enter the library (bare "l" now starts a func-call frame instead of the library
+                // shortcut -- needs the Space prefix like the "i"/"f" shortcuts just below):
+                libraryTyping = " l" + rawFunc[0][0] + "{rightarrow}";
                 module = rawFunc[0][1];
             }
 

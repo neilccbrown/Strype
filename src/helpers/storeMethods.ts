@@ -1067,7 +1067,16 @@ export function checkPrecompiledErrorsForFrame(frameId: number): void {
         // the actual "no parent" sentinel used elsewhere in the codebase (e.g. isContainedInFrame's
         // traversal, storeMethods.ts ~934), so we must not treat a negative parentId as absent.
         const actualParentId = frameObject.jointParentId !== 0 ? frameObject.jointParentId : frameObject.parentId;
-        if(actualParentId !== 0 && useStore().frameObjects[actualParentId].frameType.forbiddenChildrenTypes.includes(frameObject.frameType.type)){
+        // actualParentId won't always resolve to a real entry in frameObjects: pasting a lone
+        // elif/else/except/finally parses it by gluing on a throwaway if/try wrapper to get valid
+        // Python syntax first, then discards the wrapper from the pasted frame tree -- but the
+        // wrapper's own frame object still ends up in frameObjects (unreachable from any real
+        // parent, so harmless on its own), still carrying pythonToFrames.ts's TOP_LEVEL_TEMP_ID
+        // (-999) placeholder parentId it was never given a chance to have fixed up. That wrapper
+        // frame gets its own precompiled-error check like any other, so its parentId lookup here
+        // needs to tolerate not finding a real frame at all, not just the frameless "0" sentinel:
+        const actualParent = useStore().frameObjects[actualParentId];
+        if(actualParentId !== 0 && actualParent && actualParent.frameType.forbiddenChildrenTypes.includes(frameObject.frameType.type)){
             useStore().setFrameErroneous(frameId, i18n.global.t("errorMessage.frameNotAllowedInParent"));
             useStore().addPreCompileErrors(getPrecompiledErrorFrameId(frameId));
         }
