@@ -190,14 +190,14 @@ describe("Tests blanks", () => {
             " i","{rightarrow}" +
             "  {downarrow}{downarrow}" +
             " r{rightarrow}{downarrow}{downarrow}" +
-            "a{rightarrow}={rightarrow}1+*/()-{downarrow}" +
+            " a{rightarrow} ={rightarrow}1+*/()-{downarrow}" +
             "test.{downarrow}" +
             "test.a+{downarrow}" +
             "test.{del}{downarrow}" +
             "test..{downarrow}" +
             "test.()+1{downarrow}" +
-            "test+()+1{downarrow}" +
-            "."], [], "tests/cypress/fixtures/project-blanks.spy");
+            "test+()+1{downarrow}",
+        "  ."], [], "tests/cypress/fixtures/project-blanks.spy");
     });
     it("Loads and saves with lots of blanks", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-blanks.spy");
