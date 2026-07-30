@@ -5,6 +5,7 @@ import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 
 import {testInsert, testMultiInsert, testBackspace, testPushBracket, PushBracketArrow, focusEditor} from "../support/expression-test-support";
+import {pressFrameShortcut} from "../support/test-support";
 import { assertState } from "../support/autocomplete-test-support";
 
 // We need this to prevent test failures.  I don't actually know what the error is for sure
@@ -25,7 +26,7 @@ describe("Test brackets", () => {
 
     it("Test brackets in a for frame LHS", () => {
         focusEditor();
-        cy.get("body").type("f");
+        pressFrameShortcut("f");
         cy.get("body").type("a,(b,c)");
         // Frame IDs 1-4 are already taken by the starting project's 2 default imports + 2 Main
         // frames (see nextAvailableId in initial-states.ts), so the for frame created here gets 5:
