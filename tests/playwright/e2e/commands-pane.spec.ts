@@ -1,6 +1,6 @@
 import {expect, test} from "@playwright/test";
 import {setupStrypeTest} from "../support/general";
-import {waitForEditorSettled} from "../support/editor";
+import {pressFrameShortcut, waitForEditorSettled} from "../support/editor";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     await setupStrypeTest(page, browserName, testInfo, {skipPyodide: true});
@@ -25,7 +25,7 @@ test.describe("Frame commands pane -- frame cursor", () => {
     });
 
     test("shows elif/else once positioned after an if frame", async ({page}) => {
-        await page.keyboard.press("i");
+        await pressFrameShortcut(page, "i");
         await waitForEditorSettled(page);
         // Leave the condition slot -- the frame cursor lands right after the if frame, where
         // joint (elif/else) frames become valid additions:

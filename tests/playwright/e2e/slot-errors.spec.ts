@@ -1,6 +1,6 @@
 import {expect, Page, test} from "@playwright/test";
 import fs from "fs";
-import {doPagePaste, waitForEditorSettled} from "../support/editor";
+import {doPagePaste, pressFrameShortcut, waitForEditorSettled} from "../support/editor";
 import {setupStrypeTest} from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
@@ -94,7 +94,8 @@ test.describe("Check slots have errors", () => {
         // Class with method, where the method has header content "a, *"
         await page.keyboard.press("ArrowUp");
         await waitForEditorSettled(page);
-        await page.keyboard.type("cFoo");
+        await pressFrameShortcut(page, "c");
+        await page.keyboard.type("Foo");
         await page.keyboard.press("ArrowRight");
         await waitForEditorSettled(page);
         await page.keyboard.press("ArrowRight");

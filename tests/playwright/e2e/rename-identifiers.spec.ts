@@ -2,7 +2,7 @@ import {test, expect, Locator, Page} from "@playwright/test";
 import {readFileSync} from "node:fs";
 import {save} from "../support/loading-saving";
 import {setupStrypeTest} from "../support/general";
-import {doPagePaste, getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportsFullLine, pressN, waitForEditorSettled} from "../support/editor";
+import {doPagePaste, getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportsFullLine, pressFrameShortcut, pressN, waitForEditorSettled} from "../support/editor";
 
 const defaultStandardStrypeProjectDocLiteral = getDefaultStrypeProjectDocumentationFullLine();
 const defaultStrypeProjectImportsLiteral = getDefaultStrypeProjectImportsFullLine();
@@ -241,7 +241,7 @@ test.describe("Basic interaction", () => {
         await page.keyboard.press("ArrowDown");
         await expect(renameButton).toBeVisible();
         // Add a frame
-        await page.keyboard.press("i");
+        await pressFrameShortcut(page, "i");
         // Check no popup is still displayed
         await expect(renameButton).toBeHidden();
     });

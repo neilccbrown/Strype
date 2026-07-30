@@ -1,5 +1,5 @@
 import {Page, test} from "@playwright/test";
-import {typeIndividually, doTextHomeEndKeyPress, pressN, assertStateOfIfFrame, waitForEditorSettled} from "../support/editor";
+import {typeIndividually, doTextHomeEndKeyPress, pressFrameShortcut, pressN, assertStateOfIfFrame, waitForEditorSettled} from "../support/editor";
 import { setupStrypeTest } from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
@@ -15,7 +15,7 @@ function testSelection(code : string, startIndex: number, endIndex: number, seco
     test("Tests selecting in " + code + " from " + startIndex + " to " + endIndex + " then " + secondEntry + " " + extraTitle, async ({page}) => {
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
-        await page.keyboard.type("i");
+        await pressFrameShortcut(page, "i");
         await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, code);
@@ -49,7 +49,7 @@ function testSelectionThenDelete(code : string, doSelectKeys: (page: Page) => Pr
     test("Tests selecting and deleting in " + code, async ({page}) => {
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
-        await page.keyboard.type("i");
+        await pressFrameShortcut(page, "i");
         await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, code);
@@ -76,7 +76,7 @@ function testNavigation(code: string, navigate: (page: Page) => Promise<void>, e
     test(code, async ({page}) => {
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
-        await page.keyboard.type("i");
+        await pressFrameShortcut(page, "i");
         await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, code);

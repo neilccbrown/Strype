@@ -1,6 +1,6 @@
 import {Page, test, expect} from "@playwright/test";
 import path from "path";
-import {assertStateOfIfFrame, checkFrameXorTextCursor, checkTextSlotCursorPos, doPagePaste, getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportsFullLine, pressN, waitForEditorSettled} from "../support/editor";
+import {assertStateOfIfFrame, checkFrameXorTextCursor, checkTextSlotCursorPos, doPagePaste, getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportsFullLine, pressFrameShortcut, pressN, waitForEditorSettled} from "../support/editor";
 import fs from "fs";
 import {readFileSync} from "node:fs";
 import {save} from "../support/loading-saving";
@@ -143,7 +143,6 @@ test.describe("Check clicking near image literal", () => {
     test("Click near image literal", async ({page}) => {
         await page.keyboard.press("Delete");
         await page.keyboard.press("Delete");
-        await page.keyboard.type(" ");
         await page.keyboard.type("Actor(");
         const image = fs.readFileSync("src/assetsFilesystem/images/cat-test.jpg").toString("base64");
         await doPagePaste(page, image, "image/jpeg");
@@ -221,7 +220,7 @@ test.describe("Check navigation around grapheme clusters in strings", () => {
         // Delete existing frames, adds an if frame and adds an empty string literal (no sense for condition but it's only a test)
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
-        await page.keyboard.type("i");
+        await pressFrameShortcut(page, "i");
         await waitForEditorSettled(page);
         await page.keyboard.type(" \"");
         await waitForEditorSettled(page);
@@ -247,7 +246,7 @@ test.describe("Check navigation around grapheme clusters in strings", () => {
         // Delete existing frames, adds an if frame and adds an empty string literal (no sense for condition but it's only a test)
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
-        await page.keyboard.type("i");
+        await pressFrameShortcut(page, "i");
         await waitForEditorSettled(page);
         await page.keyboard.type(" \"");
         await waitForEditorSettled(page);

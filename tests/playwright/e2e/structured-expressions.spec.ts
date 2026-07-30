@@ -16,7 +16,7 @@ test.describe("Function call frame to variable assignment frame transformation",
 
     test("Have \"a=\"", async ({page}) => {
         // Make a function call and "a=" right away
-        await page.keyboard.type(" a=");
+        await page.keyboard.type("a=");
         await waitForEditorSettled(page);
         await assertStateOfVarAssignFrame(page,"{a}", "{$}({}){}");
     });
@@ -24,7 +24,7 @@ test.describe("Function call frame to variable assignment frame transformation",
 
     test("Have \"abc123\" to \"abc=123\"", async ({page}) => {
         // Make a function call and "abc123" 
-        await page.keyboard.type(" abc123");
+        await page.keyboard.type("abc123");
         await waitForEditorSettled(page);
         // Get before "123" and transform to varassign
         await pressN("ArrowLeft", 3, true)(page);
@@ -36,7 +36,7 @@ test.describe("Function call frame to variable assignment frame transformation",
 
     test("Have \"ab==456\" to \"a=b=456\"", async ({page}) => {
         // Make a function call and "ab456" 
-        await page.keyboard.type(" ab456");
+        await page.keyboard.type("ab456");
         await waitForEditorSettled(page);
         // Get before "456" and copy double equals
         await pressN("ArrowLeft", 3, true)(page);
