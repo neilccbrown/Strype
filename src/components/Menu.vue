@@ -398,13 +398,13 @@ export default defineComponent({
                 // The control for the shortcuts is a bit awkward to preserve a tight check on the browsers: for Safari, ⌘+O is interecepted
                 // by the browser so we cannot rely on this shortcut to open a Strype project. However, ctrl+O works, but is not trivial for macOS.
                 // Therefore for Safari, we use ⌘+⇧+O to open a project (while still supportting ctrl+O), ⌘+S to save a project (but silently supports
-                // ⌘+⇧+S too for muscle memory).
+                // ⌘+⇧+S too for muscle memory, and ctrl+s which was already supported implictly before).
                 // For other browsers: we are restricting to ctrl+O and ctrl+S as expected (explicitly discarding ⇧ to keep not override existing browser shortcuts).
                 const lowCaseEventKey = event.key.toLowerCase();
-                const isOpeningOrSavingShortcut = (lowCaseEventKey === "s" || lowCaseEventKey === "o") 
+                const isOpeningOrSavingShortcut = ((event.metaKey || event.ctrlKey) && (lowCaseEventKey === "s" || lowCaseEventKey === "o")) 
                     && ((isSafari)
                         ? event.metaKey && (lowCaseEventKey === "s" || (lowCaseEventKey === "o" && event.shiftKey))
-                        : (event.metaKey || event.ctrlKey) && !event.shiftKey
+                        : !event.shiftKey
                     );
                 if(isOpeningOrSavingShortcut){
                     event.stopImmediatePropagation();
