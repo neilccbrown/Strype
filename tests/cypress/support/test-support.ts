@@ -22,6 +22,15 @@ const ALWAYS_DIRECT_FRAME_SHORTCUT_KEYS = ["enter", "#", "="];
 // prefix requirement (or the prefix itself) ever changes again, only this needs updating, not
 // every call site that inserts a frame this way.
 export function pressFrameShortcut(key: string): void {
+    // Settle first: a caller that just confirmed a slot (e.g. typing a condition then
+    // {rightarrow} out of it) hands off to the store's leftRightKey(), which updates the store
+    // synchronously but only moves real DOM focus onto the new bare-caret element once Vue's
+    // reactive re-render catches up. If the Space below is sent before that happens, it lands on
+    // the about-to-be-abandoned slot as literal text instead of opening the frame-commands pane
+    // -- and the following letter, now arriving at a bare caret it was never meant for, starts an
+    // unwanted func-call frame instead of the intended shortcut (observed as e.g. a nested "if"
+    // shortcut producing a stray "iFalse(...)" func-call frame instead of a nested if):
+    waitForEditorSettled();
     if (!ALWAYS_DIRECT_FRAME_SHORTCUT_KEYS.includes(key.toLowerCase())) {
         cy.get("body").type(" ");
     }
