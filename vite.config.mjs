@@ -142,8 +142,8 @@ export default defineConfig(({mode}) => {
         base: (process.env.VITE_GITHUB_PAGE)
             ? (process.env.VITE_GITHUB_PAGE_BRANCH ? `/Strype/${process.env.VITE_GITHUB_PAGE_BRANCH}/` : "/Strype/")
             : ((isStandardPython)
-                ? "/test/editor/"
-                : "/test/microbit/"),
+                ? "/editor/"
+                : "/microbit/"),
 
         // Global Vite define variables used in the application
         define: {
