@@ -4,7 +4,7 @@ require("cypress-terminal-report/src/installLogsCollector")();
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 
-import {testInsert, testMultiInsert, testBackspace, testPushBracket, PushBracketArrow, focusEditor} from "../support/expression-test-support";
+import {testInsert, testMultiInsert, testBackspace, testPushBracket, PushBracketArrow, focusEditor, testInsertMediaThenExp} from "../support/expression-test-support";
 import {pressFrameShortcut} from "../support/test-support";
 import { assertState } from "../support/autocomplete-test-support";
 
@@ -46,6 +46,13 @@ describe("Stride TestExpressionSlot.testBrackets()", () => {
     testInsert("a+(b-c)", "{a}+{}_({b}-{c})_{$}");
     testInsert("a+(b-(c*d))", "{a}+{}_({b}-{}_({c}*{d})_{})_{$}");
 
+    // With list comprehensions + preceding slots that are parsed by us (string, media literal)
+    testInsert("\"a\"(for ", "{}_“a”_{}_({}for{$})_{}", false);
+    if (Cypress.env("mode") != "microbit") {
+        // Can't paste media in the microbit version
+        testInsertMediaThenExp("src/assetsFilesystem/images/cat-test.jpg", "image/jpeg", "(for ", "{}_§_{}_({}for{$})_{}");
+    }
+    
     // Without close:
     testInsert("(a+b", "{}_({a}+{b$})_{}", false);
 

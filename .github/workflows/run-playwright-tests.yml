@@ -34,11 +34,24 @@ jobs:
         # runs at normal parallelism in a second job. Splitting lets the two phases run
         # concurrently instead of serially, at the cost of paying setup (npm ci, browser
         # install, Pyodide) twice.
+        #
+        # ubuntu-latest + firefox is likewise split into two jobs (firefoxPart:
+        # isolated/rest), but for a different reason than webkit's split: there's no known
+        # starvation/flakiness bug for Firefox, console-execution.spec.ts and
+        # storage-model.spec.ts are just the two slowest spec files (by measured CI
+        # duration, ~50 min combined out of the full suite's ~66 min wall-clock at 4
+        # workers) and pulling them into their own concurrent job cuts the main job's
+        # wall-clock by roughly that much. Both jobs keep the normal 4-worker parallelism
+        # (unlike webkit's single-worker isolation) since nothing here needs serialising.
         include:
           - os: ubuntu-latest
             browser: chromium
           - os: ubuntu-latest
             browser: firefox
+            firefoxPart: isolated
+          - os: ubuntu-latest
+            browser: firefox
+            firefoxPart: rest
           - os: macos-latest
             browser: chromium
           - os: macos-latest
@@ -70,7 +83,15 @@ jobs:
       if: ${{ matrix.os == 'ubuntu-latest' }}
       shell: bash
       run: |
-        jq ".scripts[\"playwright:run\"] = \"npx playwright test --project=${{ matrix.browser }}\"" package.json > temp.json && mv temp.json package.json
+        ISOLATED_SPECS="tests/playwright/e2e/console-execution.spec.ts,tests/playwright/e2e/storage-model.spec.ts"
+        if [ "${{ matrix.browser }}" = "firefox" ] && [ "${{ matrix.firefoxPart }}" = "isolated" ]; then
+          RUN_CMD="SPEC=$ISOLATED_SPECS npx playwright test --project=firefox"
+        elif [ "${{ matrix.browser }}" = "firefox" ] && [ "${{ matrix.firefoxPart }}" = "rest" ]; then
+          RUN_CMD="EXCLUDE_SPEC=$ISOLATED_SPECS npx playwright test --project=firefox"
+        else
+          RUN_CMD="npx playwright test --project=${{ matrix.browser }}"
+        fi
+        jq --arg cmd "$RUN_CMD" '.scripts["playwright:run"] = $cmd' package.json > temp.json && mv temp.json package.json
         timeout 7200s npm run test:playwright || { echo "Test command exited or timed out"; exit 1; }
     - name: Start resource monitor (MacOS)
       # Snapshots memory/swap/load/process-count every 15s for the duration of the job, so
@@ -148,7 +169,7 @@ jobs:
       if: always()
       uses: actions/upload-artifact@v7
       with:
-        name: playwright-report-${{ matrix.os }}-${{ matrix.browser }}${{ matrix.webkitPart && format('-{0}', matrix.webkitPart) || '' }}
+        name: playwright-report-${{ matrix.os }}-${{ matrix.browser }}${{ matrix.webkitPart && format('-{0}', matrix.webkitPart) || '' }}${{ matrix.firefoxPart && format('-{0}', matrix.firefoxPart) || '' }}
         path: tests/playwright/html-report/
         retention-days: 30
     - name: Upload resource monitor log (MacOS)

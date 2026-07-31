@@ -75,6 +75,19 @@ export function testInsert(insertion : string, result : string, canBeTestedWithP
     }
 }
 
+export function testInsertMediaThenExp(mediaPath: string, mediaMIME: string, exp: string, result: string): void {
+    it("Tests Media followed by " + exp, () => {
+        focusEditor();
+        cy.get("body").type("i");
+        assertState("{$}");
+        cy.readFile(mediaPath, null).then((mediaContent) => {
+            (cy.focused() as any).paste(mediaContent, mediaMIME);
+            cy.wait(1000);
+            cy.get("body").type(" " + exp);
+            assertState(result);
+        });        
+    });
+}
 // Moves until the position within the slot is the given cursor pos, then executes the given function
 function moveToPositionThen(cursorPos: number, runAfterPositionReached: () => void) {
     // This is awkward, but cypress doesn't let us set or query the cursor position directly so we have to

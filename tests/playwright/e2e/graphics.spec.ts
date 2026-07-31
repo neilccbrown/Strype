@@ -318,8 +318,18 @@ test.describe("Check graphics works when shared with turtle", () => {
         `]);
         await page.click("#graphicsPEATab");
         await setupGraphicsRedrawObserver(page);
-        await page.click("#runButton");
-        // Give it time to run -- wait for the canvas to actually stop redrawing:
+        // This is a one-shot script (no `while True` loop) that finishes on its own after
+        // pause(1), so wait for it to actually finish rather than relying only on
+        // waitForGraphicsSettled(): set_background()/Actor() load their images asynchronously,
+        // and the canvas's initial redraw of the plain default background can go quiet for
+        // waitForGraphicsSettled()'s "3 stable reads" window before those images have arrived
+        // and actually been drawn -- the same race already diagnosed for "Test get_clicked_actor
+        // returns the right item" above. Seen for real in CI (run 30397034629): the screenshot
+        // comparison failed identically (~87% pixel diff) on every retry because it kept
+        // capturing the canvas before the background/actor had rendered.
+        await runToFinish(page);
+        // Now wait for the resulting redraw to actually be painted (redrawCanvas() is throttled
+        // to once per requestAnimationFrame, so it can lag slightly behind execution finishing):
         await waitForGraphicsSettled(page);
         await checkGraphicsAreaContent(page, "shared-graphics-background-1");
     });
