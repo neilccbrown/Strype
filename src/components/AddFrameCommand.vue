@@ -1,6 +1,6 @@
 <template>
-    <div :class="{'frame-cmd-container': true, disabled: isPythonExecuting || appStore.isDraggingFrame, 'frame-cmd-greyed': greyedOut}" @click="onClick">
-        <button :class="{'frame-cmd-btn': true, 'frame-cmd-btn-large': isLargerShorcutSymbol}" :disabled="isPythonExecuting || appStore.isDraggingFrame">{{ (!isSVGIconSymbol) ? symbol : '' }}
+    <div :class="{'frame-cmd-container': true, disabled: isPythonExecuting || appStore.isDraggingFrame}" @click="onClick">
+        <button :class="{'frame-cmd-btn': true, 'frame-cmd-btn-large': isLargerShorcutSymbol, 'frame-cmd-greyed': greyedOut}" :disabled="isPythonExecuting || appStore.isDraggingFrame">{{ (!isSVGIconSymbol) ? symbol : '' }}
             <SVGIcon v-if="isSVGIconSymbol" :name="symbol" :customClass="{'add-frame-command-symbol-svg-icon': true, disabled: isPythonExecuting || appStore.isDraggingFrame}" />
         </button>
         <span>{{ description }}</span>
@@ -75,7 +75,7 @@ export default defineComponent({
     color: rgb(180, 180, 180);
 }
 
-.frame-cmd-container.frame-cmd-greyed {
+.frame-cmd-btn.frame-cmd-greyed {
     opacity: 0.35;
 }
 
@@ -108,9 +108,12 @@ export default defineComponent({
 // "Space" key box shown in Commands.vue's frame-commands-pane-intro sentence, and it must never
 // be picked up by the pane's own keyboard-navigation queries (Commands.vue's
 // handleFrameCommandsPaneKeyDown looks up ".frame-cmd-btn" elements to cycle between).
+// It's a <span> rather than a <button>, so it needs its own horizontal padding to match the
+// browser-default padding that gives the real shortcut buttons below some breathing room.
 .frame-cmd-prefix-btn {
     @extend .frame-cmd-btn;
     cursor: default;
+    padding: 1px 6px;
 }
 
 .frame-cmd-btn-large {

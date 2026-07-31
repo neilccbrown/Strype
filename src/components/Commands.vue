@@ -32,17 +32,16 @@
                                             <!-- #v-else-->
                                             <div :class="scssVars.addFrameCommandsContainerClassName">
                                             <!-- #v-endif-->
-                                                <div class="frame-commands-pane-intro" v-if="!isEditing">
-                                                    <template v-if="!isFrameCommandsPaneActive">
-                                                        <span>{{ $t('commandsPane.pressSpaceThenPrefix') }}</span>
-                                                        <span class="frame-cmd-prefix-btn frame-cmd-btn-large">{{ $t('autoCompletion.spaceKey') }}</span>
-                                                        <span>{{ $t('commandsPane.orConnector') }}</span>
-                                                        <span class="frame-cmd-prefix-btn frame-cmd-btn-large">{{ $t('commandsPane.tabKey') }}</span>
-                                                        <span>{{ $t('commandsPane.pressSpaceThenSuffix') }}</span>
-                                                    </template>
-                                                    <template v-else>
-                                                        <span>{{ $t('commandsPane.nowPressAKey') }}</span>
-                                                    </template>
+                                                <div
+                                                    class="frame-commands-pane-intro"
+                                                    :class="{'frame-commands-pane-intro-hidden': isFrameCommandsPaneActive}"
+                                                    v-if="!isEditing"
+                                                >
+                                                    <span>{{ $t('commandsPane.pressSpaceThenPrefix') }}</span>
+                                                    <span class="frame-cmd-prefix-btn frame-cmd-btn-large">{{ $t('autoCompletion.spaceKey') }}</span>
+                                                    <span>{{ $t('commandsPane.orConnector') }}</span>
+                                                    <span class="frame-cmd-prefix-btn frame-cmd-btn-large">{{ $t('commandsPane.tabKey') }}</span>
+                                                    <span>{{ $t('commandsPane.pressSpaceThenSuffix') }}</span>
                                                 </div>
                                                 <p>
                                                     <AddFrameCommand
@@ -1387,15 +1386,19 @@ export default defineComponent({
     flex-wrap: wrap;
 }
 
-// Its text swaps (rather than being hidden) once the pane becomes active, so the frame
-// commands underneath never jump up and re-layout.
 .frame-commands-pane-intro {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 4px;
-    margin: 2px 5px 8px;
-    font-weight: bold;
+    margin: 2px 5px 8px 0;
+}
+
+// Hidden via visibility (rather than the content being swapped or removed) once the pane becomes
+// active, so this row keeps occupying exactly the same space and the frame commands underneath
+// never shift.
+.frame-commands-pane-intro-hidden {
+    visibility: hidden;
 }
 
 .frame-commands-pane-intro .frame-cmd-prefix-btn {
@@ -1405,8 +1408,11 @@ export default defineComponent({
 // Like .text-editing-command .frame-cmd-btn-large above: this sentence's "Space"/"Tab" boxes
 // aren't crammed into a row with many others, so there's no need to condense the font
 // horizontally to save space (unlike the "space" symbol in the frame commands table below).
+// Font-family is reset back to the app's usual AHN-Strype too, rather than the Inconsolata used
+// to condense the frame commands table's symbols, to match the look of the other shortcut keys.
 .frame-commands-pane-intro .frame-cmd-btn-large {
     font-stretch: normal !important;
+    font-family: 'AHN-Strype', sans-serif !important;
 }
 
 .#{$strype-classname-add-frame-commands-container}.with-expanded-PEA p {
@@ -1417,17 +1423,18 @@ export default defineComponent({
 
 // Shown around #addFramePanel while the frame commands pane is focused for keyboard-driven
 // insertion (entered via Tab/Space at the frame caret), to make the mode change obvious.
+// Same blue as the frame caret (Caret.vue's .caret background-color: #3467FE).
 @keyframes frame-commands-pane-pulse {
     0%, 100% {
-        outline-color: rgba(220, 30, 30, 0.35);
+        outline-color: rgba(52, 103, 254, 0.35);
     }
     50% {
-        outline-color: rgba(220, 30, 30, 0.9);
+        outline-color: rgba(52, 103, 254, 0.9);
     }
 }
 
 #addFramePanel.frame-commands-pane-active {
-    outline: 3px solid rgba(220, 30, 30, 0.9);
+    outline: 3px solid rgba(52, 103, 254, 0.9);
     outline-offset: 2px;
     animation: frame-commands-pane-pulse 1.2s ease-in-out infinite;
 }
