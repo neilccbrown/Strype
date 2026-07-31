@@ -35,7 +35,7 @@
                                                 <div
                                                     class="frame-commands-pane-intro"
                                                     :class="{'frame-commands-pane-intro-hidden': isFrameCommandsPaneActive}"
-                                                    v-if="!isEditing"
+                                                    v-if="!isEditing && !isPythonExecuting"
                                                 >
                                                     <span>{{ $t('commandsPane.pressSpaceThenPrefix') }}</span>
                                                     <span class="frame-cmd-prefix-btn frame-cmd-btn-large">{{ $t('autoCompletion.spaceKey') }}</span>
@@ -318,6 +318,10 @@ export default defineComponent({
 
         isEditing(): boolean {
             return this.appStore.isEditing;
+        },
+
+        isPythonExecuting(): boolean {
+            return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
         },
 
         isFrameCommandsPaneActive(): boolean {
