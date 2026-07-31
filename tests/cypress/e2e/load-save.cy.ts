@@ -191,10 +191,10 @@ describe("Tests blanks", () => {
             " c{downarrow}{downarrow}" +
             " r{rightarrow}{downarrow}{downarrow}" +
             " a{rightarrow} ={rightarrow}1+*/()-{downarrow}" +
-            "test.{downarrow}" +
-            "test.a+{downarrow}" +
+            "test.({downarrow}" +
+            "test.a+({downarrow}" +
             "test.{del}{downarrow}" +
-            "test..{downarrow}" +
+            "test..({downarrow}" +
             "test.()+1{downarrow}" +
             "test+()+1{downarrow}",
         " c."], [], "tests/cypress/fixtures/project-blanks.spy");
