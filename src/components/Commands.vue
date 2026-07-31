@@ -146,7 +146,7 @@
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import { alwaysDirectFrameShortcutKeys, computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getLabelSlotUID, getMenuLeftPaneUID, hiddenShorthandFrames, notifyDragEnded, waitForPanesSettled } from "@/helpers/editor";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, CaretPosition, CollapsedState, defaultEmptyStrypeLayoutDividerSettings, FrameObject, isSlotStringLiteralType, PythonExecRunningState, SelectAllFramesAction, SlotType, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
+import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, CaretPosition, CollapsedState, defaultEmptyStrypeLayoutDividerSettings, FrameObject, getFrameDefType, isSlotStringLiteralType, PythonExecRunningState, SelectAllFramesAction, SlotType, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
 import { defineComponent } from "vue";
 import { mapStores } from "pinia";
@@ -770,10 +770,17 @@ export default defineComponent({
                             // Typing any other single printable character (not Alt-held -- Ctrl/Meta are already
                             // excluded above -- and not a key like F1/Escape/ArrowLeft, which all have a
                             // multi-character event.key) starts a func-call frame with that character as the
-                            // beginning of its name, provided one can actually be added here and there's no frame
-                            // selection to interfere with:
+                            // beginning of its name, and there's no frame selection to interfere with. Not
+                            // gated on this.addFrameCommands[" "] (whether func-call is currently offered as a
+                            // pane command) -- func-call is deliberately never offered there in containers
+                            // that forbid it (Imports/Definitions), same as it's never shown as a pane button
+                            // in Main/bodies either (FuncCallDefinition's showLabel: false), but bare typing
+                            // must still work as the generic "type anything, get an error later if it's wrong
+                            // here" fallback everywhere, same as it already does in Main/bodies -- see the
+                            // "frame not allowed here" check (setFrameErroneous/atParsingError in store.ts)
+                            // that flags it afterwards instead of pre-emptively blocking the keystroke.
                             else if(!event.altKey && event.key.length === 1 && event.key !== " " && event.key !== "#" && event.key !== "="
-                                && this.appStore.selectedFrames.length === 0 && this.addFrameCommands[" "] !== undefined){
+                                && this.appStore.selectedFrames.length === 0){
                                 if(!ignoreKeyEvent){
                                     event.stopImmediatePropagation();
                                     event.stopPropagation();
@@ -921,8 +928,10 @@ export default defineComponent({
         // pattern below (waiting for addFrameWithCommand()'s own promise, which only resolves once the
         // new frame's first slot is genuinely focused, before dispatching to document.activeElement).
         createFuncCallFrameFromTypedChar(typedChar: string): void {
-            const funcCallType = this.addFrameCommands[" "][0].type;
-            this.appStore.addFrameWithCommand(funcCallType).then((newFrameId: number) => {
+            // Looked up directly rather than via this.addFrameCommands[" "] -- that's filtered down to
+            // whatever's valid to offer as a pane command at the current position, and func-call is
+            // deliberately never in it (see the caller's comment), but it must still be creatable here.
+            this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall)).then((newFrameId: number) => {
                 // Target the new frame's name slot explicitly (rather than document.activeElement):
                 // its own name slot isn't necessarily what ends up focused by the time this promise
                 // resolves (e.g. autocomplete-related focus shifts can already be underway), so we

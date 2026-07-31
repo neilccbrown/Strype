@@ -73,10 +73,26 @@ async function createForLoopAndEnterBody(page: Page): Promise<void> {
 // placement no real typing can reach directly -- see the callers below), then clears its
 // content so it's a blank slate ready for typeKeywordConversionTrigger. Returns its frame ID.
 async function createFuncCallFrameIn(page: Page, containerId: number): Promise<number> {
+    // Caret starts in Main (see beforeEach) -- step up into the target container's own blank-line
+    // caret first: 1x ArrowUp for Definitions, 2x for Imports.
+    const arrowUpPresses = containerId === IMPORTS_CONTAINER_ID ? 2 : 1;
+    for (let i = 0; i < arrowUpPresses; i++) {
+        await page.keyboard.press("ArrowUp");
+        await waitForEditorSettled(page);
+    }
+    // Neither container offers func-call as a pane command (only their own fixed shortcuts), but
+    // bare typing still creates one there as the generic "type anything, error later if it's
+    // wrong here" fallback -- see Commands.vue's bare-typed-char handler.
     await page.keyboard.type("x");
     await waitForEditorSettled(page);
     const frameId = await getFocusedFrameId(page);
-    await relocateFrameToContainer(page, frameId, containerId);
+    // createFuncCallFrameFromTypedChar (Commands.vue) creates and focuses the frame's slot, then
+    // separately dispatches the typed character into it as a further async "paste into slot" step
+    // -- waitForEditorSettled can see focus/cursor/frameCount as already stable before that second
+    // step lands, so clearFrameContent's backspace can race ahead of it (observed: the "x" arriving
+    // late, after the clear, ending up stuck in front of whatever's typed next). Wait for it to
+    // actually be there first.
+    await expect(page.locator(`#frameHeader_${frameId} .label-slot-input`).first()).toHaveText("x");
     await clearFrameContent(page, frameId, "x".length);
     return frameId;
 }
@@ -189,9 +205,7 @@ test.describe("Keyword-triggered frame conversion -- location gating", () => {
         await assertConversionDidNotHappen(page, frameId);
     });
 
-    // SKIPPED -- see the "def" shape test's skip comment above (same relocateFrameToContainer
-    // mount-lifecycle limitation); verified by hand instead.
-    test.skip("class converts when the func-call frame is in Definitions", async ({page}) => {
+    test("class converts when the func-call frame is in Definitions", async ({page}) => {
         const frameId = await createFuncCallFrameIn(page, DEFS_CONTAINER_ID);
         await typeKeywordConversionTrigger(page, "class");
         await assertFrameType(page, frameId, AllFrameTypesIdentifier.classdef);
@@ -202,12 +216,7 @@ test.describe("Keyword-triggered frame conversion -- location gating", () => {
         await assertConversionDidNotHappen(page, frameId);
     });
 
-    // SKIPPED -- see the "def" shape test's skip comment above (same relocateFrameToContainer
-    // mount-lifecycle limitation); verified by hand instead. Imports is the only container that
-    // allows library/import/from-import, but -- like Definitions -- its blank-line caret offers
-    // only its fixed shortcut menu, never a plain func-call fallback, so this can only be
-    // constructed via direct placement in the first place.
-    test.skip("library converts when the func-call frame is in Imports", async ({page}) => {
+    test("library converts when the func-call frame is in Imports", async ({page}) => {
         const frameId = await createFuncCallFrameIn(page, IMPORTS_CONTAINER_ID);
         await typeKeywordConversionTrigger(page, "library");
         await assertFrameType(page, frameId, AllFrameTypesIdentifier.library);
