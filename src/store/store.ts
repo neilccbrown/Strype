@@ -6,7 +6,7 @@ import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, ev
 import { AppPlatform, AppVersion, eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getCaretContainerUID, AutoSaveKeyNames, isFullyInViewport, copyFrameTextReadyForClipboard, waitForElementId } from "@/helpers/editor";
+import { bumpCaretRequestSeq, CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getCaretContainerUID, AutoSaveKeyNames, isFullyInViewport, copyFrameTextReadyForClipboard, waitForElementId } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -1739,10 +1739,13 @@ export const useStore = defineStore("app", {
                     }
                 );
                 
-                // When we leave an editable slot, we explicitely select the add frames tab in the Commands panel
-                this.commandsTabIndex = 0; //0 is the index of the add frame tab
+                // When we leave an editable slot, we explicitely select the add frames tab in the Commands panel.
+                // Deferred to nextTick(): see the matching comment in leftRightKey().
+                nextTick(() => {
+                    this.commandsTabIndex = 0; //0 is the index of the add frame tab
+                });
 
-                this.setCurrentInitCodeValue(frameSlotInfos);       
+                this.setCurrentInitCodeValue(frameSlotInfos);
             }
         },
 
@@ -1800,8 +1803,14 @@ export const useStore = defineStore("app", {
         },
 
         changeCaretPosition(key: string, isLevelScopeChange?: boolean) {
-            // When the caret is being moved, we explicitely select the add frames tab in the Commands panel
-            this.commandsTabIndex = 0; //0 is the index of the add frame tab
+            // When the caret is being moved, we explicitely select the add frames tab in the Commands panel.
+            // Deferred to nextTick(): see the matching comment in leftRightKey() -- this fires in the same
+            // tick as the caller's `isEditing = false` (LabelSlotsStructure.vue/Commands.vue), and the "Add
+            // Frame" tab is :disabled="isEditing", so BTabs' internal index watcher can still see it as
+            // disabled and revert the switch if this isn't deferred a tick.
+            nextTick(() => {
+                this.commandsTabIndex = 0; //0 is the index of the add frame tab
+            });
 
             this.changeCaretWithKeyboard(key, isLevelScopeChange);
             
@@ -2269,6 +2278,11 @@ export const useStore = defineStore("app", {
         },
 
         async leftRightKey(payload: {key: string, isShiftKeyHold?: boolean, availablePositions?: NavigationPosition[]}) {
+            // Moving via the keyboard supersedes any earlier, still-pending LabelSlot.vue
+            // onGetCaret() request (see bumpCaretRequestSeq() doc) -- otherwise a slot's deferred
+            // "got caret" callback from before this move can fire after we've already navigated
+            // away and blindly re-focus the slot we just left.
+            bumpCaretRequestSeq();
             //  used for moving index up (+1) or down (-1)
             const directionDown = payload.key === "ArrowRight" || payload.key === "Enter" || (payload.key === "Tab" && !payload.isShiftKeyHold);
             const directionDelta = (directionDown)?+1:-1;
@@ -2278,8 +2292,9 @@ export const useStore = defineStore("app", {
             // Set below when moving into a slot; awaited at the end so this function's own promise
             // only resolves once the cursor is genuinely restored (see the comment at its assignment).
             let cursorRestorePromise: Promise<void> | undefined;
+            const wasEditing = this.isEditing;
 
-            if (this.isEditing){ 
+            if (this.isEditing){
                 // Retrieve the slot that currently has focus in the current frame by looking up in the DOM
                 const foundSlotCoreInfos = this.focusSlotCursorInfos?.slotInfos as SlotCoreInfos;
                 currentFramePosition = availablePositions.findIndex((e) => e.isSlotNavigationPosition && e.frameId === this.currentFrame.id 
@@ -2304,8 +2319,8 @@ export const useStore = defineStore("app", {
             // The next position depends whether we are selection text:
             // if not, we just get to the following/previous available position
             // if so, the next position is either the following/previous available position within *a same* structure.
-            let nextPosition = (availablePositions[currentFramePosition+directionDelta]??availablePositions[currentFramePosition]);    
-            let multiSlotSelNotChanging = false;   
+            let nextPosition = (availablePositions[currentFramePosition+directionDelta]??availablePositions[currentFramePosition]);
+            let multiSlotSelNotChanging = false;
             if(payload.isShiftKeyHold && payload.key != "Tab"){
                 const currentSlotInfos = this.focusSlotCursorInfos?.slotInfos as SlotCoreInfos;
                 const currentSlotInfosLevel = currentSlotInfos.slotId.split(",").length;
@@ -2392,6 +2407,32 @@ export const useStore = defineStore("app", {
                 // else we set editFlag to false as we are moving to a caret position
                 this.isEditing = false;
                 this.frameObjects[nextPosition.frameId].caretVisibility = nextPosition.caretPosition as CaretPosition;
+
+                // Moving to a frame caret should always show the "add frame" commands tab (matching
+                // changeCaretPosition()'s behaviour for arrow up/down at a caret), needed right away if
+                // this caret is then used to open the frame commands pane (Tab/Space): its buttons live
+                // in that tab, so they can't be focused if the "API discovery" tab (set by
+                // setFocusEditableSlot() while editing) is still the one showing.
+                // Deferred to nextTick(): BTabs' "Add Frame" tab is :disabled="isEditing", and
+                // BootstrapVueNext's internal index watcher (default flush:"pre") skips disabled tabs
+                // and reverts -- if isEditing's flip to false hasn't yet propagated to that prop when
+                // this runs (both change in the same tick), the watcher still sees it disabled and
+                // permanently reverts back to the previous tab. Waiting a tick lets isEditing's render
+                // pass land first.
+                nextTick(() => {
+                    this.commandsTabIndex = 0;
+                });
+
+                // If we were editing a slot, the contenteditable label-slots-structure still holds the
+                // real DOM focus at this point (nothing above moves it). Explicitly focusing the
+                // destination caret container here -- before clearing the selection below -- mirrors what
+                // onEscKeyUp() already does (LabelSlot.vue) and avoids leaving that contenteditable region
+                // focused with no selection: otherwise the browser can auto-generate a fresh selection
+                // inside it, which handleDocumentSelectionChange() (App.vue) then reads as the user having
+                // moved the caret back into the slot we just left, immediately undoing this navigation.
+                if(wasEditing){
+                    document.getElementById(getCaretContainerUID(nextPosition.caretPosition as CaretPosition, nextPosition.frameId))?.focus();
+                }
 
                 // Scroll it into view:
                 nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));

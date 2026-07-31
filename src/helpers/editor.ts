@@ -19,6 +19,20 @@ import { eventBus } from "@/helpers/appContext";
 export const undoMaxSteps = 50;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
 
+// A monotonically increasing counter used to detect stale, superseded "got caret" requests.
+// LabelSlot.vue's onGetCaret() defers its work by a tick (or 200ms for a real click) via
+// setTimeout(); if the user has since navigated elsewhere (e.g. arrowing out of the slot into a
+// frame caret) before that timeout fires, it must not blindly re-focus the slot it was originally
+// scheduled for. Each call to bumpCaretRequestSeq() marks "a new/different focus request has
+// started", invalidating any earlier-scheduled callback that captured an older sequence number.
+let caretRequestSeq = 0;
+export function bumpCaretRequestSeq(): number {
+    return ++caretRequestSeq;
+}
+export function getCaretRequestSeq(): number {
+    return caretRequestSeq;
+}
+
 // Constants used for query parameters parsing
 // The target to fetch the project (for now, we only support Google Drive. We use the enum StrypeSyncTarget for values)
 export const sharedStrypeProjectTargetKey = "shared_proj_targ"; 

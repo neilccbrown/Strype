@@ -18,7 +18,11 @@
                         </div>     
                         <div @mousedown.prevent.stop @mouseup.prevent.stop>
                             <!-- #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE -->
-                            <BTabs id="commandsTabs" content-class="mt-2" v-model:index="tabIndex">
+                            <!-- no-fade: opening the frame commands pane (Tab/Space at a frame caret) switches
+                                 to this tab and immediately needs to focus one of its buttons -- a fade transition
+                                 leaves the tab's content display:none (unfocusable) for its whole duration, which
+                                 loses the race against a shortcut letter typed right after (see openFrameCommandsPane()). -->
+                            <BTabs id="commandsTabs" content-class="mt-2" v-model:index="tabIndex" no-fade>
                                 <BTab :title="$t('commandTabs.0')" active :title-link-class="getTabClasses(0)" :disabled="isEditing">
                             <!-- #v-endif-->
                                     <div :id="commandsContainerUID" class="command-tab-content" >
@@ -933,7 +937,18 @@ export default defineComponent({
         // actually inserted, so the only explicit close path needed here is Escape (closeFrameCommandsPane).
         openFrameCommandsPane(): void {
             this.appStore.isFrameCommandsPaneActive = true;
-            (document.querySelector("#addFramePanel .frame-cmd-btn") as HTMLButtonElement | null)?.focus();
+            // The first ".frame-cmd-btn" in DOM order isn't necessarily the one currently shown
+            // (some commands, e.g. func-call's own "space" shortcut, aren't always applicable at
+            // the current caret position) -- focusing a hidden button is a silent no-op, which
+            // leaves focus outside #addFramePanel entirely and makes the very next keydown handler
+            // think the pane was never actually entered (see the isFrameCommandsPaneActive check
+            // above), so it falls through and treats a following shortcut letter as a literal typed
+            // character instead. (This also relies on the Commands tab switch above -- see
+            // validateSlot() in store.ts -- being instant: BTabs is set `no-fade` for exactly this
+            // reason, otherwise its buttons would stay display:none for the fade's duration.)
+            const firstAvailableButton = (Array.from(document.querySelectorAll("#addFramePanel .frame-cmd-btn")) as HTMLButtonElement[])
+                .find((button) => !button.disabled && button.offsetParent !== null);
+            firstAvailableButton?.focus();
         },
 
         closeFrameCommandsPane(returnFocusToCaret: boolean): void {
