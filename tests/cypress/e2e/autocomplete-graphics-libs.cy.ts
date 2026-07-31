@@ -197,6 +197,31 @@ describe("Graphics library", () => {
         }, false);
     });
 
+    it("Shows completions for the result of pop() on a list of actors (regression test for #1003)", () => {
+        focusEditorAC();
+        // Add graphics import:
+        clearDefaultImports();
+        cy.get("body").type("fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        // Make an actor, then fetch the list of all actors:
+        cy.get("body").type("=a=Actor('cat-test.jpg'){rightarrow}");
+        cy.get("body").type("=all_actors=get_actors(){rightarrow}");
+        // Add a function frame and trigger auto-complete after popping an item off the list:
+        cy.get("body").type(" ");
+        cy.wait(500);
+        cy.get("body").type("all_actors.pop().{ctrl} ");
+        withAC((acIDSel, frameId) => {
+            cy.get(acIDSel).should("be.visible");
+            checkExactlyOneItem(acIDSel, null, "is_at_edge(distance)");
+            checkExactlyOneItem(acIDSel, null, "move(distance)");
+            // pop() should be inferred as returning an Actor (the list's item type), not a
+            // list -- Actor.remove() takes no arguments, but list.remove(x) requires one, so
+            // seeing "remove()" here (and not "remove(x)") confirms pop() wasn't confused
+            // with list.pop():
+            checkExactlyOneItem(acIDSel, null, "remove()");
+            checkNoItems(acIDSel, "remove(x)", true);
+        }, false);
+    });
+
     it("Shows completions for the result of get_actor_at() (blocked on TigerPython Optional/union return type support)", () => {
         focusEditorAC();
         // Add graphics import:
