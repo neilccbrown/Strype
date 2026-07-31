@@ -191,7 +191,16 @@ export function waitForEditorSettled(timeoutMs = 10000): void {
                 const focusId = editorEl?.getAttribute("data-slot-focus-id") ?? "";
                 const cursor = editorEl?.getAttribute("data-slot-cursor") ?? "";
                 const frameCount = win.document.querySelectorAll(".frame-div").length;
-                const state = `${focusId}:${cursor}:${frameCount}`;
+                // While a conversion is pending (see App.vue's data-pending-slot-conversion), the
+                // app deliberately keeps focus/cursor unchanged for the whole debounce so in-flight
+                // typing doesn't land at the wrong spot -- e.g. converting a function-call frame to
+                // a variable assignment on typing "=" -- meaning focus/cursor/frameCount look
+                // "stable" from the very first check even though the frame hasn't actually finished
+                // converting yet. Fold it into the tracked state so any change in pending-ness (in
+                // either direction) resets the stability clock, and so we never resolve while it's
+                // still true:
+                const pendingConversion = editorEl?.getAttribute("data-pending-slot-conversion") === "true";
+                const state = `${focusId}:${cursor}:${frameCount}:${pendingConversion}`;
                 const now = Date.now();
                 if (state !== lastState) {
                     stableSince = now;
@@ -199,17 +208,13 @@ export function waitForEditorSettled(timeoutMs = 10000): void {
                 lastState = state;
                 lastFocusId = focusId;
                 // A blank focus id (no slot focused) is also used by the app as a transient marker
-                // while some restructuring is in flight -- e.g. converting a function-call frame to
-                // a variable assignment on typing "=" holds focus blank for a genuine ~300ms
-                // debounce (see LabelSlotsStructure.vue) -- and that blank reading is itself stable
-                // across many consecutive checks during the whole debounce window, which would
-                // otherwise fool this into passing mid-restructure. Frame-level pastes can
-                // legitimately end up blank too (a frame caret, not a slot), so we can't just
-                // refuse blank outright -- instead require the state to have been unchanged for
-                // longer (~450ms of wall-clock time) before trusting a blank state than a real one
-                // (no minimum wait), comfortably past the known debounce:
+                // while some restructuring is in flight -- frame-level pastes can legitimately end
+                // up blank (a frame caret, not a slot) -- so we can't just refuse blank outright --
+                // instead require the state to have been unchanged for longer (~450ms of wall-clock
+                // time) before trusting a blank state than a real one (no minimum wait), comfortably
+                // past any such transient:
                 const requiredStableMs = lastFocusId === "" ? 450 : 0;
-                if (now - stableSince >= requiredStableMs) {
+                if (!pendingConversion && now - stableSince >= requiredStableMs) {
                     resolve();
                     return;
                 }

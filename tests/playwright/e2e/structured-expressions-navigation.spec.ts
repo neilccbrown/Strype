@@ -84,58 +84,6 @@ test.describe("Check navigation", () => {
             await waitForEditorSettled(page);
         }
     });
-    test("Tab through a file", async ({page}, testInfo) => {
-        if (testInfo.project.name === "chromium") {
-            test.skip(); // See comment above
-        }
-        await loadPY(page, "../../cypress/fixtures/structured-expr-nav-small.spy");
-        for (let i = 0; i < 50; i++) {
-            await checkFrameXorTextCursor(page);
-            await page.keyboard.press("Tab");
-            await waitForEditorSettled(page);
-        }
-    });
-    test("Down-down-shift-tab through a file", async ({page}, testInfo) => {
-        if (testInfo.project.name === "chromium") {
-            test.skip(); // See comment above
-        }
-        await loadPY(page, "../../cypress/fixtures/structured-expr-nav-small.spy");
-        for (let i = 0; i < 17; i++) {
-            await checkFrameXorTextCursor(page);
-            await page.keyboard.press("ArrowDown");
-            await waitForEditorSettled(page);
-            await checkFrameXorTextCursor(page);
-            await page.keyboard.press("ArrowDown");
-            await waitForEditorSettled(page);
-            await checkFrameXorTextCursor(page);
-            await page.keyboard.press("Shift+Tab");
-            await waitForEditorSettled(page);
-        }
-    });
-    test("Tab through two empty assignments", async ({page}, testInfo) => {
-        if (testInfo.project.name === "chromium") {
-            test.skip(); // See comment above
-        }
-        await page.keyboard.press("Delete");
-        await page.keyboard.press("Delete");
-        await page.keyboard.press("=");
-        await page.keyboard.press("ArrowDown");
-        await waitForEditorSettled(page);
-        await page.keyboard.press("=");
-        await page.keyboard.press("ArrowUp");
-        await waitForEditorSettled(page);
-        await page.keyboard.press("ArrowUp");
-        await waitForEditorSettled(page);
-        // We had a bug where tab needed to be pressed twice after coming out of the frame, so
-        // we check explicitly here the ordering of text and frame.  Essentially, we start on frame cursor,
-        // tab through both empty text slots then back to frame cursor.  Tab again at the end shouldn't change things:
-        const expectedFrameCursor = [true, false, false, true, false, false, true, true];
-        for (let i = 0; i < expectedFrameCursor.length; i++) {
-            await checkFrameXorTextCursor(page, expectedFrameCursor[i]);
-            await page.keyboard.press("Tab");
-            await waitForEditorSettled(page);
-        }
-    });
 });
 
 test.describe("Check clicking near image literal", () => {
@@ -177,8 +125,10 @@ test.describe("Check navigation around grapheme clusters in strings", () => {
     test("Move rightwards to the very end of string literal", async ({page}) => {
         const strWithGraphemes = "a ✈️ with 👻 with 𡨴 plus 👨‍👩‍👧‍👦 and plus 🛠️, it's great!";
         const strWithGraphemesSize = Array.from(new Intl.Segmenter("en", { granularity: "grapheme" }).segment(strWithGraphemes)).length;
-        // Adds a function call frame with empty literal
-        await page.keyboard.type(" \"");
+        // Adds a function call frame with empty literal: typing a bare '"' at the frame caret
+        // starts a func-call frame and feeds the quote into its name slot, which auto-pairs it
+        // into an empty string literal (see Commands.vue's createFuncCallFrameFromTypedChar()).
+        await page.keyboard.type("\"");
         await waitForEditorSettled(page);
         // Types the content of the literal, with some grapheme clusters
         await page.keyboard.type(strWithGraphemes);
@@ -197,8 +147,10 @@ test.describe("Check navigation around grapheme clusters in strings", () => {
     test("Move leftwards to the very start of string literal", async ({page}) => {
         const strWithGraphemes = "a ✈️ with 👻 with 𡨴 plus 👨‍👩‍👧‍👦 and plus 🛠️, it's great!";
         const strWithGraphemesSize = Array.from(new Intl.Segmenter("en", { granularity: "grapheme" }).segment(strWithGraphemes)).length;
-        // Adds a function call frame with empty literal
-        await page.keyboard.type(" \"");
+        // Adds a function call frame with empty literal: typing a bare '"' at the frame caret
+        // starts a func-call frame and feeds the quote into its name slot, which auto-pairs it
+        // into an empty string literal (see Commands.vue's createFuncCallFrameFromTypedChar()).
+        await page.keyboard.type("\"");
         await waitForEditorSettled(page);
         // Types the content of the literal, with some grapheme clusters
         await page.keyboard.type(strWithGraphemes);

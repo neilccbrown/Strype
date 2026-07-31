@@ -103,6 +103,12 @@ export const useStore = defineStore("app", {
             // Are we editing a text slot?
             isEditing: false,
 
+            // How many LabelSlotsStructure.vue instances currently have a debounced funccall->keyword-
+            // frame/varassign conversion pending (see checkSlotRefactoring() there). Exposed via a data
+            // attribute in App.vue so tests can tell such a conversion is still in flight even though the
+            // focus/cursor deliberately don't change during its delay (see cancelPendingConversion()).
+            pendingSlotConversionCount: 0,
+
             // Timestamp used to manage when to discard the rename identifier popup 
             renameIdentifierPopupShownTimestamp: 0,
 

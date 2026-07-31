@@ -36,7 +36,7 @@
                     <Splitpanes @resize=onStrypeCommandsSplitPaneResize>
                         <Pane key="1" :size="100 - editorCommandsSplitterPane2Size" min-size="33" max-size="90">
                             <!-- These data items are to enable testing: -->
-                            <div :id="editorId" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos" class="print-full-height">
+                            <div :id="editorId" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos" :data-pending-slot-conversion="pendingSlotConversion" class="print-full-height">
                                 <div class="top no-print">
                                     <MessageBanner 
                                         v-if="showMessage"
@@ -261,6 +261,12 @@ export default defineComponent({
         
         slotCursorPos() : number {
             return useStore().focusSlotCursorInfos?.cursorPos ?? -1;
+        },
+
+        // Exposed for tests: whether a debounced funccall->keyword-frame/varassign conversion is
+        // currently pending (see LabelSlotsStructure.vue's cancelPendingConversion()).
+        pendingSlotConversion() : boolean {
+            return this.appStore.pendingSlotConversionCount > 0;
         },
 
         showMessage(): boolean {
