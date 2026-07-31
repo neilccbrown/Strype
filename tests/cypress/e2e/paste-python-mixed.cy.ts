@@ -284,7 +284,7 @@ ${STARTING_DEF}
 ${STARTING_MAIN}
 #(=> Section:End
 `.trimStart(), true, "spy", () => {
-            cy.get("body").type("afterwards");
+            cy.get("body").type("afterwards(");
         });
     });
 
@@ -304,7 +304,7 @@ ${STARTING_MAIN}
 afterwards()
 #(=> Section:End
 `.trimStart(), true, "spy", () => {
-            cy.get("body").type("afterwards");
+            cy.get("body").type("afterwards(");
         });
     });
 
@@ -369,7 +369,7 @@ ${STARTING_DEF}
 afterwards()
 #(=> Section:End
 `.trimStart(), true, "spy", () => {
-            cy.get("body").type("afterwards");
+            cy.get("body").type("afterwards(");
         });
     });
 });
