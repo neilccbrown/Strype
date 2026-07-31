@@ -652,8 +652,14 @@ export default defineComponent({
                 // func-call frame directly). If there's nothing insertable here, we fall through so Tab/Space
                 // keep their old behaviour (matching what happens today when the panel is empty). Ctrl/Meta
                 // must be excluded here so Ctrl+Space keeps doing its own thing below (insert + autocomplete).
+                // Also works with a frame selection active (this.addFrameCommands is already filtered down
+                // to wrap-capable types in that case -- see generateAvailableFrameCommands in store.ts), so
+                // this deliberately isn't gated on selectedFrames.length === 0: that used to block it
+                // entirely, leaving Space's other job -- opening the frame context menu when frames are
+                // selected, see App.vue -- as the only thing Space did with a selection, and no keyboard way
+                // left to wrap one. See the matching change there.
                 if(!isEditing && !isDraggingFrames && !isPythonExecuting && !this.appStore.isAppMenuOpened
-                    && !event.ctrlKey && !event.metaKey && this.appStore.selectedFrames.length === 0
+                    && !event.ctrlKey && !event.metaKey
                     && (event.key === "Tab" || event.key === " ") && Object.keys(this.addFrameCommands).length > 0){
                     event.preventDefault();
                     event.stopImmediatePropagation();

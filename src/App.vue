@@ -555,8 +555,12 @@ export default defineComponent({
             
             // We need to register if the keyboard shortcut has been used to get the context menu
             // so we set the flag here. It will be reset when the context menu actions are consumed.
-            // Case for allowing macOS to have a context menu shortcut:
-            if(this.appStore.selectedFrames.length > 0 &&  (event.key == " " || event.key.toLowerCase() == "enter")){
+            // Case for allowing macOS to have a context menu shortcut. Space is deliberately not
+            // included here any more: with a frame selection active, Space is now the frame-commands
+            // prefix key (for wrapping the selection, e.g. Space then "i" for if) -- see the matching
+            // removal of the selectedFrames.length === 0 restriction in Commands.vue's Tab/Space
+            // pane-opening branch. Enter still opens the context menu as before.
+            if(this.appStore.selectedFrames.length > 0 && event.key.toLowerCase() == "enter"){
                 // Wait a bit to process keys before showing the context menu
                 setTimeout(() => {
                     this.appStore.isContextMenuKeyboardShortcutUsed = true;

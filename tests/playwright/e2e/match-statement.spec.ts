@@ -314,14 +314,7 @@ print(myString)
 `.trimStart());
     });
 
-    // Skipped: since ebb6cd7c (Tab/Space frame-insertion prefix), wrapping a frame selection via
-    // keyboard shortcut doesn't work for any key other than the always-direct ones (enter/#/=) --
-    // pressing Space with a selection active opens the frame context menu (Cut/Copy/Duplicate/
-    // Delete...) instead of the frame commands pane, and a bare letter does nothing. Confirmed via
-    // the equivalent Cypress test (tests/cypress/e2e/basics.cy.ts, "Lets you wrap a frame with an
-    // if") that this isn't just a test issue: the mouse-click equivalent still works fine. Flagged
-    // rather than worked around, since it looks like an unintended side effect of that refactor.
-    test.skip("Wrap with match", async ({page}) => {
+    test("Wrap with match", async ({page}) => {
         // Select the 2 frames of the default project code (in the main code section)
         await page.keyboard.press((process.platform == "darwin" ? "Meta" : "Control") + "+a");
         // Then wrap with a match statement
