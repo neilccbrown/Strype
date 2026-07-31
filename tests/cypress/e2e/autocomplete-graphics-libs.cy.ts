@@ -23,8 +23,8 @@ describe("Graphics library", () => {
         clearDefaultImports();
         pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Add a function frame and trigger auto-complete:
-        cy.get("body").type("  ");
-        cy.wait(500);
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel, frameId) => {
             cy.get(acIDSel).should("be.visible");
@@ -44,8 +44,8 @@ describe("Graphics library", () => {
         clearDefaultImports();
         pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Add a function frame and trigger auto-complete:
-        cy.get("body").type("  ");
-        cy.wait(500);
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel, frameId) => {
             cy.get(acIDSel).should("be.visible");
@@ -59,7 +59,7 @@ describe("Graphics library", () => {
         clearDefaultImports();
         pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Add a function call frame and trigger auto-complete:
-        cy.get("body").type("  ");
+        cy.get("body").type(" c");
         cy.wait(500);
         cy.get("body").type("load_image('a').{ctrl} ");
         withAC((acIDSel, frameId) => {
@@ -74,7 +74,7 @@ describe("Graphics library", () => {
         clearDefaultImports();
         pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Add a function call frame and trigger auto-complete:
-        cy.get("body").type("  ");
+        cy.get("body").type(" c");
         cy.wait(500);
         cy.get("body").type("get_background().{ctrl} ");
         withAC((acIDSel, frameId) => {
@@ -89,7 +89,7 @@ describe("Graphics library", () => {
         clearDefaultImports();
         pressFrameShortcutThenType("f", "strype.sound{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Add a function call frame and trigger auto-complete:
-        cy.get("body").type("  ");
+        cy.get("body").type(" c");
         cy.wait(500);
         cy.get("body").type("load_sound('a').{ctrl} ");
         withAC((acIDSel, frameId) => {
@@ -105,7 +105,7 @@ describe("Graphics library", () => {
             clearDefaultImports();
             pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
             // Add a function call frame and trigger auto-complete:
-            cy.get("body").type("  ");
+            cy.get("body").type(" c");
             cy.wait(500);
             (cy.focused() as any).paste(catJPEG, "image/jpeg");
             cy.wait(500);
@@ -130,7 +130,7 @@ describe("Graphics library", () => {
             clearDefaultImports();
             pressFrameShortcutThenType("f", "strype.sound{rightarrow}*{rightarrow}{downarrow}{downarrow}");
             // Add a function call frame and trigger auto-complete:
-            cy.get("body").type("  ");
+            cy.get("body").type(" c");
             cy.wait(500);
             (cy.focused() as any).paste(catWAV, "audio/wav");
             cy.wait(500);
@@ -153,7 +153,7 @@ describe("Graphics library", () => {
         // Make an actor:
         cy.get("body").type("=a=Actor('cat-test.jpg'){rightarrow}");
         // Add a function frame and trigger auto-complete:
-        cy.get("body").type("  ");
+        cy.get("body").type(" c");
         cy.wait(500);
         cy.get("body").type("a.{ctrl} ");
         withAC((acIDSel, frameId) => {
@@ -187,7 +187,7 @@ describe("Graphics library", () => {
         cy.get("body").type("=a=Actor('cat-test.jpg'){rightarrow}");
         cy.get("body").type("=all_actors=get_actors(){rightarrow}");
         // Add a function frame and trigger auto-complete after indexing into the list:
-        cy.get("body").type("  ");
+        cy.get("body").type(" c");
         cy.wait(500);
         cy.get("body").type("all_actors[0].{ctrl} ");
         withAC((acIDSel, frameId) => {
@@ -205,7 +205,7 @@ describe("Graphics library", () => {
         // Make an actor so that there is something for get_actor_at to find:
         cy.get("body").type("=a=Actor('cat-test.jpg'){rightarrow}");
         // Add a function frame and trigger auto-complete on the (Actor | None) result:
-        cy.get("body").type("  ");
+        cy.get("body").type(" c");
         cy.wait(500);
         cy.get("body").type("get_actor_at(0,0).{ctrl} ");
         withAC((acIDSel, frameId) => {
@@ -223,7 +223,7 @@ describe("Graphics library", () => {
         // Make an image:
         cy.get("body").type("=e=Image(100, 100){rightarrow}");
         // Add a function frame and trigger auto-complete:
-        cy.get("body").type("  ");
+        cy.get("body").type(" c");
         cy.wait(500);
         cy.get("body").type("e.{ctrl} ");
         withAC((acIDSel, frameId) => {
@@ -244,7 +244,7 @@ describe("Graphics library", () => {
         // Make an image:
         cy.get("body").type("=e=Image(100, 100){rightarrow}");
         // Add a function frame and trigger auto-complete:
-        cy.get("body").type("  ");
+        cy.get("body").type(" c");
         cy.wait(500);
         cy.get("body").type("e.clone().{ctrl} ");
         withAC((acIDSel, frameId) => {
@@ -265,7 +265,7 @@ describe("Graphics library", () => {
         // Make an image:
         cy.get("body").type("=a=Actor('blah'){rightarrow}");
         // Add a function frame and trigger auto-complete:
-        cy.get("body").type("  ");
+        cy.get("body").type(" c");
         cy.wait(500);
         cy.get("body").type("a.get_image().{ctrl} ");
         withAC((acIDSel, frameId) => {
@@ -319,8 +319,8 @@ describe("Graphics library", () => {
         }, false);
         // Now check in the body for docs on the autocomplete (we should be in a function call frame):
         cy.get("body").type("{rightarrow}{downarrow}{downarrow}");
-        cy.get("body").type("  ");
-        cy.wait(500);
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
@@ -397,8 +397,8 @@ describe("Modules from libraries", () => {
         }, false);
         // Now check in the body for docs on the autocomplete (we should be in a function call frame):
         cy.get("body").type("{rightarrow}{downarrow}{downarrow}");
-        cy.get("body").type("  ");
-        cy.wait(500);
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
@@ -444,7 +444,7 @@ describe("Modules from libraries", () => {
         pressFrameShortcutThenType("l", "http://localhost:8089/test-library{rightarrow}");
         pressFrameShortcutThenType("f", "mediacomp{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Add a function call frame and trigger auto-complete:
-        cy.get("body").type("  ");
+        cy.get("body").type(" c");
         cy.wait(500);
         cy.get("body").type("makeSound('a').{ctrl} ");
         withAC((acIDSel, frameId) => {

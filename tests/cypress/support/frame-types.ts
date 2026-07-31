@@ -509,12 +509,6 @@ export function getFrameDefType(key: string): FramesDefinitions{
 
 // Copied from src/helpers/editor.ts
 export const allFrameCommandsDefs = {
-    " ": [{
-        type: getFrameDefType(AllFrameTypesIdentifier.funccall),
-        description: en.frame.funccall_desc,
-        shortcuts: [" "],
-        symbol: en.buttonLabel.spaceBar,
-    }],
     "=": [{
         type: getFrameDefType(AllFrameTypesIdentifier.varassign),
         description: en.frame.varassign_desc,
@@ -587,6 +581,12 @@ export const allFrameCommandsDefs = {
             description: "case",
             shortcuts: ["c"],
             index: 1,
+        },
+        {
+            type: getFrameDefType(AllFrameTypesIdentifier.funccall),
+            description: en.frame.funccall_desc,
+            shortcuts: ["c"],
+            index: 2,
         },
     ],
     "m": [{

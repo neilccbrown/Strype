@@ -777,14 +777,13 @@ export default defineComponent({
                             // excluded above -- and not a key like F1/Escape/ArrowLeft, which all have a
                             // multi-character event.key) starts a func-call frame with that character as the
                             // beginning of its name, and there's no frame selection to interfere with. Not
-                            // gated on this.addFrameCommands[" "] (whether func-call is currently offered as a
-                            // pane command) -- func-call is deliberately never offered there in containers
-                            // that forbid it (Imports/Definitions), same as it's never shown as a pane button
-                            // in Main/bodies either (FuncCallDefinition's showLabel: false), but bare typing
-                            // must still work as the generic "type anything, get an error later if it's wrong
-                            // here" fallback everywhere, same as it already does in Main/bodies -- see the
-                            // "frame not allowed here" check (setFrameErroneous/atParsingError in store.ts)
-                            // that flags it afterwards instead of pre-emptively blocking the keystroke.
+                            // gated on this.addFrameCommands["c"] (whether func-call is currently offered as a
+                            // pane command) -- containers that forbid it (Imports/Definitions) correctly don't
+                            // offer it there as a pane command, but bare typing must still work as the generic
+                            // "type anything, get an error later if it's wrong here" fallback everywhere,
+                            // same as it already does in Main/bodies -- see the "frame not allowed here" check
+                            // (setFrameErroneous/atParsingError in store.ts) that flags it afterwards instead
+                            // of pre-emptively blocking the keystroke.
                             else if(!event.altKey && event.key.length === 1 && event.key !== " " && event.key !== "#" && event.key !== "="
                                 && this.appStore.selectedFrames.length === 0){
                                 if(!ignoreKeyEvent){
@@ -802,13 +801,16 @@ export default defineComponent({
                             const currentStrypeLocation = findCurrentStrypeLocation().strypeLocation;
                             if(currentStrypeLocation == STRYPE_LOCATION.MAIN_CODE_SECTION || currentStrypeLocation == STRYPE_LOCATION.IN_FUNCDEF){
                                 // If ctrl/meta + space is activated on caret (in a function/class definition or in the main section), we add a new functional call frame and trigger the a/c.
+                                // Looked up directly (not via this.addFrameCommands[" "]) since func-call's own
+                                // shortcut is "c" now, not Space -- see FuncCallDefinition's entry in
+                                // allFrameCommandsDefs (editor.ts).
                                 // We must wait for addFrameWithCommand() to fully finish -- including its internal
                                 // cursor placement into the new frame's first slot -- before re-dispatching ctrl-space:
                                 // a single $nextTick() isn't always enough (that placement can itself need more than
                                 // one tick, e.g. for a frame added deep inside a freshly-created class/method), and a
                                 // too-early redispatch finds no focused slot to forward to and is silently dropped,
                                 // leaving auto-complete never triggered.
-                                this.appStore.addFrameWithCommand(this.addFrameCommands[eventKeyLowCase][0].type).then(() => {
+                                this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall)).then(() => {
                                     document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true}));
                                 });
                             }
@@ -934,9 +936,9 @@ export default defineComponent({
         // pattern below (waiting for addFrameWithCommand()'s own promise, which only resolves once the
         // new frame's first slot is genuinely focused, before dispatching to document.activeElement).
         createFuncCallFrameFromTypedChar(typedChar: string): void {
-            // Looked up directly rather than via this.addFrameCommands[" "] -- that's filtered down to
-            // whatever's valid to offer as a pane command at the current position, and func-call is
-            // deliberately never in it (see the caller's comment), but it must still be creatable here.
+            // Looked up directly rather than via this.addFrameCommands["c"] -- that's filtered down to
+            // whatever's valid to offer as a pane command at the current position (see the caller's
+            // comment for containers that exclude it), but it must still be creatable here.
             this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall)).then((newFrameId: number) => {
                 // Target the new frame's name slot explicitly (rather than document.activeElement):
                 // its own name slot isn't necessarily what ends up focused by the time this promise
@@ -973,16 +975,20 @@ export default defineComponent({
             }
         },
 
-        // Handles all keydown events while the frame commands pane is focused: arrow keys/Tab cycle
-        // between command buttons, Enter activates whichever one is currently focused (same as a mouse
-        // click), Escape cancels, and any other shortcut key inserts that frame directly -- including
-        // Space itself, whose dictionary key is " " (func-call), so pressing Space twice in a row (once
-        // to open the pane, once as the shortcut) reproduces the old plain-Space-inserts-funccall behaviour.
+        // Handles all keydown events while the frame commands pane is focused: arrow keys cycle between
+        // command buttons (Shift+Tab also cycles backwards, matching ArrowUp/ArrowLeft), Enter activates
+        // whichever one is currently focused (same as a mouse click), and any other shortcut key inserts
+        // that frame directly. Plain Tab and Space both close the pane and return to the frame caret,
+        // same as Escape: they're what opened the pane in the first place (at the bare frame caret), so
+        // a second press toggles it shut again, the same way you'd expect of any open/close key -- arrow
+        // keys are the dedicated way to navigate between buttons once the pane is open, so Tab isn't
+        // needed for that too, and Space no longer doubles as a func-call shortcut (that's "c" now, see
+        // allFrameCommandsDefs in editor.ts), so it's free for this instead.
         handleFrameCommandsPaneKeyDown(event: KeyboardEvent): void {
             event.stopImmediatePropagation();
             event.stopPropagation();
 
-            if(event.key === "Escape"){
+            if(event.key === "Escape" || event.key === " " || (event.key === "Tab" && !event.shiftKey)){
                 event.preventDefault();
                 this.closeFrameCommandsPane(true);
                 return;
@@ -991,7 +997,7 @@ export default defineComponent({
             const buttons = Array.from(document.querySelectorAll("#addFramePanel .frame-cmd-btn")) as HTMLButtonElement[];
             const currentIndex = buttons.indexOf(document.activeElement as HTMLButtonElement);
 
-            if(event.key === "ArrowDown" || event.key === "ArrowRight" || (event.key === "Tab" && !event.shiftKey)){
+            if(event.key === "ArrowDown" || event.key === "ArrowRight"){
                 event.preventDefault();
                 if(buttons.length > 0){
                     buttons[(currentIndex + 1) % buttons.length].focus();

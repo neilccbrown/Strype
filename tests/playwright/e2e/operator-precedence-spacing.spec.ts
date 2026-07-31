@@ -75,29 +75,20 @@ ${line}
 }
 
 async function startVarAssign(page: Page, rhs: string): Promise<void> {
-    // "  " (two spaces) opens the frame-commands pane then selects "function call" -- its own
-    // shortcut being Space too, same as the established idiom elsewhere (e.g.
-    // autocomplete-graphics-libs.cy.ts's cy.get("body").type("  ")) -- giving a blank func-call
-    // frame with a real text cursor to then type "r=" into. A single leading space only opens the
-    // pane and stops there: "r" would match the (here invalid, so silently swallowed) "return"
-    // shortcut, then "=" -- a direct shortcut -- inserts an empty var-assign frame outright,
-    // leaving `rhs` typed into the wrong (LHS) slot entirely. Bare "r=" with no prefix at all
-    // avoids that (a bare letter starts a func-call frame directly), but leaves the frame's first
-    // RHS field in a subtly different state that fails unary +/- sign detection later -- typing
-    // "r" into an explicitly-opened blank func-call frame like this doesn't have that problem.
-    await typeIndividually(page, "  r=");
-    // The func-call -> varassign conversion triggered by "=" goes through a genuine 300ms
-    // debounce (LabelSlotsStructure.vue's checkSlotRefactoring), and -- unlike the sibling
-    // keyword-frame-conversion debounce -- re-fires using the *stale* content it captured when
-    // "=" was first typed rather than re-reading fresh, so typing `rhs` immediately after (i.e.
-    // before that 300ms elapses) has it silently dropped once the delayed conversion applies its
-    // stale, RHS-less split. waitForEditorSettled() can't detect this pending conversion to wait
-    // it out: unlike other debounces, this one deliberately keeps the cursor/focus on the
-    // still-func-call slot throughout (a separate, earlier fix -- see checkSlotRefactoring's own
-    // comments -- for a different bug where clearing it caused mistyped characters), so focus
-    // never goes blank and never otherwise changes for waitForEditorSettled to notice. A plain
-    // wait past the debounce is the only way to actually let it land before continuing:
-    await page.waitForTimeout(350);
+    // " c" opens the frame-commands pane then selects "function call" (its own shortcut being
+    // "c") -- giving a blank func-call frame with a real text cursor to then type "r=" into. A
+    // single leading space only opens the pane and stops there: "r" would match the (here
+    // invalid, so silently swallowed) "return" shortcut, then "=" -- a direct shortcut -- inserts
+    // an empty var-assign frame outright, leaving `rhs` typed into the wrong (LHS) slot entirely.
+    // Bare "r=" with no prefix at all avoids that (a bare letter starts a func-call frame
+    // directly), but leaves the frame's first RHS field in a subtly different state that fails
+    // unary +/- sign detection later -- typing "r" into an explicitly-opened blank func-call frame
+    // like this doesn't have that problem.
+    await typeIndividually(page, " cr=");
+    // The func-call -> varassign conversion triggered by "=" converts immediately, but the target
+    // RHS slot still takes an async render pass to appear -- waitForEditorSettled() (called as
+    // part of typeIndividually's own per-keystroke loop, above) already waits for that via
+    // appStore.pendingSlotConversionCount, so `rhs` can just be typed straight after:
     await typeIndividually(page, rhs);
 }
 

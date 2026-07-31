@@ -773,12 +773,6 @@ export function getNearestErrorIndex(): number {
 // unless conflicts are clearly impossible.
 export function generateAllFrameCommandsDefs():void {
     allFrameCommandsDefs = {
-        " ": [{
-            type: getFrameDefType(AllFrameTypesIdentifier.funccall),
-            description: i18n.global.t("frame.funccall_desc"),
-            shortcuts: [" "],
-            symbol: i18n.global.t("buttonLabel.spaceBar"),
-        }],
         "=": [{
             type: getFrameDefType(AllFrameTypesIdentifier.varassign),
             description: i18n.global.t("frame.varassign_desc"),
@@ -854,6 +848,12 @@ export function generateAllFrameCommandsDefs():void {
                 description: "case",
                 shortcuts: ["c"],
                 index: 1,
+            },
+            {
+                type: getFrameDefType(AllFrameTypesIdentifier.funccall),
+                description: i18n.global.t("frame.funccall_desc"),
+                shortcuts: ["c"],
+                index: 2,
             },
         ],
         "w": [{

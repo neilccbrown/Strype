@@ -8,10 +8,10 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
 
 test.describe("Function call frame to variable assignment frame transformation", () => {
     test("Just have \"=\"", async ({page}) => {
-        // Make a function call ("  " opens the frame-commands pane then selects "function call",
-        // its own shortcut being Space too -- a single Space no longer inserts one directly, see
+        // Make a function call (" c" opens the frame-commands pane then selects "function call",
+        // its own shortcut being "c" -- a single Space no longer inserts one directly, see
         // pressFrameShortcut()) and "=" right away:
-        await page.keyboard.type("  =");
+        await page.keyboard.type(" c=");
         await waitForEditorSettled(page);
         await assertStateOfVarAssignFrame(page,"{}", "{$}({}){}");
     });

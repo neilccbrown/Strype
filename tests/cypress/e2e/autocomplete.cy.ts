@@ -13,9 +13,8 @@ failOnConsoleError();
 describe("Built-ins", () => {
     it("Has built-ins, that narrow down when you type", () => {
         focusEditorAC();
-        // Add a function frame and trigger auto-complete:
-        cy.get("body").type("  ");
-        cy.wait(500);
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel, frameId) => {
             cy.get(acIDSel).should("be.visible");
@@ -101,7 +100,7 @@ describe("Behaviour with operators, brackets and complex expressions", () => {
         it("Shows built-ins, if you autocomplete after " + prefix, () => {
             focusEditorAC();
             // Add a function frame and trigger auto-complete:
-            cy.get("body").type("  ");
+            cy.get("body").type(" c");
             cy.wait(500);
             cy.get("body").type(prefix);
             cy.wait(500);
@@ -168,7 +167,7 @@ describe("Behaviour with operators, brackets and complex expressions", () => {
         it("Shows no completions, if you autocomplete after " + prefix, () => {
             focusEditorAC();
             // Add a function frame and trigger auto-complete:
-            cy.get("body").type("  ");
+            cy.get("body").type(" c");
             cy.wait(500);
             cy.get("body").type(prefix);
             cy.wait(500);
