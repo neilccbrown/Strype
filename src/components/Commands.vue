@@ -949,7 +949,11 @@ export default defineComponent({
             // Looked up directly rather than via this.addFrameCommands["c"] -- that's filtered down to
             // whatever's valid to offer as a pane command at the current position (see the caller's
             // comment for containers that exclude it), but it must still be creatable here.
-            this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall)).then((newFrameId: number) => {
+            // Unlike the explicit "c" pane command, we don't pre-fill the default "()" brackets here:
+            // the user is just typing (e.g. the start of "if"/"while"/"return"), and the frame may well
+            // get converted away from func-call entirely once LabelSlotsStructure.vue's funccall->
+            // keyword-frame/varassign conversion kicks in -- see skipFuncCallBrackets's own comment.
+            this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall), undefined, false, true).then((newFrameId: number) => {
                 // Target the new frame's name slot explicitly (rather than document.activeElement):
                 // its own name slot isn't necessarily what ends up focused by the time this promise
                 // resolves (e.g. autocomplete-related focus shifts can already be underway), so we

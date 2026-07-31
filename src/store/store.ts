@@ -1824,7 +1824,14 @@ export const useStore = defineStore("app", {
         },
 
         // Returns the id of the newly added frame
-        async addFrameWithCommand(frame: FramesDefinitions, hiddenShorthandFrameDetails?: AddShorthandFrameCommandDef, skipFuncCallBracketsAndCaretSet?: boolean) : Promise<number> {
+        // skipFuncCallBracketsAndCaretSet skips both the default "()" content of a new func-call frame
+        // and the usual post-insertion caret placement (used when the caller sets both up itself
+        // afterwards, e.g. media paste). skipFuncCallBrackets alone skips just the "()" content, leaving
+        // the normal caret placement untouched -- used when bare typing at the frame caret creates a
+        // func-call frame from the typed character: unlike the explicit "c" pane command, that's not
+        // necessarily going to end up as a function call once the user finishes typing (see
+        // createFuncCallFrameFromTypedChar() in Commands.vue), so it shouldn't presuppose a call's brackets.
+        async addFrameWithCommand(frame: FramesDefinitions, hiddenShorthandFrameDetails?: AddShorthandFrameCommandDef, skipFuncCallBracketsAndCaretSet?: boolean, skipFuncCallBrackets?: boolean) : Promise<number> {
             // Any insertion path (direct shortcut, frame commands pane shortcut/Enter-confirm, or a mouse
             // click on an AddFrameCommand) converges here, so this is the one place needed to guarantee
             // the frame commands pane mode flag never outlives an insertion.
@@ -1894,7 +1901,7 @@ export const useStore = defineStore("app", {
                             }
                             const labelContent: LabelSlotsContent = {
                                 shown: (!cur.hidableLabelSlots),
-                                slotStructures: (frame.type == AllFrameTypesIdentifier.funccall && !skipFuncCallBracketsAndCaretSet) 
+                                slotStructures: (frame.type == AllFrameTypesIdentifier.funccall && !skipFuncCallBracketsAndCaretSet && !skipFuncCallBrackets)
                                     ? {fields: [{code: ""},{openingBracketValue:"(", fields: [{code: ""}], operators: []},{code: ""}], operators: [{code: ""}, {code: ""}]}
                                     : {fields: [{code: ""}], operators: []},
                             };
