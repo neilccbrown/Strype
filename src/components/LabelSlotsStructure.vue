@@ -878,6 +878,16 @@ export default defineComponent({
                 newCursorSlotInfos = this.computeKeywordConversionCursorInfos(0, parsed.slots, def.targetType);
             }
 
+            // Any other labels of the target frame type -- e.g. funcdef's own description label, which
+            // neither the splitAtBrackets nor splitWord branch above ever touches -- still need a blank
+            // slot structure of their own, the same as the normal frame-insertion path (addFrameWithCommand,
+            // store.ts) already gives every label; otherwise there's nothing there to navigate/focus into.
+            getFrameDefType(def.targetType).labels.forEach((label, index) => {
+                if((label.showSlots ?? true) && newLabelSlotsDict[index] === undefined){
+                    newLabelSlotsDict[index] = {slotStructures: {fields: [{code: ""}], operators: []}};
+                }
+            });
+
             this.appStore.frameObjects[this.frameId].labelSlotsDict = newLabelSlotsDict;
 
             // The slot we're restoring the cursor into is in the frame we just converted into above, so

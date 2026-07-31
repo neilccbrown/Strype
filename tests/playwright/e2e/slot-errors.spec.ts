@@ -100,7 +100,7 @@ test.describe("Check slots have errors", () => {
         await waitForEditorSettled(page);
         await page.keyboard.press("ArrowRight");
         await waitForEditorSettled(page);
-        await page.keyboard.type("dfoo(a,*");
+        await page.keyboard.type("def foo(a,*");
         const paramId = await getFocusedId(page);
         // Move into the function description slot
         await page.keyboard.press("ArrowRight");
