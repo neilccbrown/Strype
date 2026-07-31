@@ -78,7 +78,7 @@ export function testInsert(insertion : string, result : string, canBeTestedWithP
 export function testInsertMediaThenExp(mediaPath: string, mediaMIME: string, exp: string, result: string): void {
     it("Tests Media followed by " + exp, () => {
         focusEditor();
-        cy.get("body").type("i");
+        pressFrameShortcut("i");
         assertState("{$}");
         cy.readFile(mediaPath, null).then((mediaContent) => {
             (cy.focused() as any).paste(mediaContent, mediaMIME);
