@@ -264,6 +264,13 @@
   "commandTabs": {
     "0": "Ajoute un cadre"
   },
+  "commandsPane": {
+    "pressSpaceThenPrefix": "Pour insérer un cadre, appuyez sur",
+    "orConnector": "ou",
+    "tabKey": "Tab",
+    "pressSpaceThenSuffix": ", puis :",
+    "nowPressAKey": "Appuyez maintenant sur une touche pour choisir le cadre à insérer :"
+  },
   "PEA": {
     "run": "Exécuter",
     "stop": "Arrêter",

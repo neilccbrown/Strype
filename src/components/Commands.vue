@@ -28,9 +28,21 @@
                                             <!-- #v-else-->
                                             <div :class="scssVars.addFrameCommandsContainerClassName">
                                             <!-- #v-endif-->
+                                                <div class="frame-commands-pane-intro" v-if="!isEditing">
+                                                    <template v-if="!isFrameCommandsPaneActive">
+                                                        <span>{{ $t('commandsPane.pressSpaceThenPrefix') }}</span>
+                                                        <span class="frame-cmd-prefix-btn frame-cmd-btn-large">{{ $t('autoCompletion.spaceKey') }}</span>
+                                                        <span>{{ $t('commandsPane.orConnector') }}</span>
+                                                        <span class="frame-cmd-prefix-btn frame-cmd-btn-large">{{ $t('commandsPane.tabKey') }}</span>
+                                                        <span>{{ $t('commandsPane.pressSpaceThenSuffix') }}</span>
+                                                    </template>
+                                                    <template v-else>
+                                                        <span>{{ $t('commandsPane.nowPressAKey') }}</span>
+                                                    </template>
+                                                </div>
                                                 <p>
                                                     <AddFrameCommand
-                                                        v-for="(addFrameCommand, shortcutKey) in addFrameCommands"
+                                                        v-for="addFrameCommand in addFrameCommands"
                                                         :id="addFrameCommandUID(addFrameCommand[0].type.type)"
                                                         :key="addFrameCommand[0].type.type"
                                                         :type="addFrameCommand[0].type.type"
@@ -47,8 +59,7 @@
                                                             ? addFrameCommand[0].index
                                                             : 0
                                                         "
-                                                        :showPrefixHint="!isFrameCommandsPaneActive && !isAlwaysDirectShortcutKey(shortcutKey)"
-                                                        :prefixKeyLabel="$t('autoCompletion.spaceKey')"
+                                                        :greyedOut="!isFrameCommandsPaneActive"
                                                     />
                                                 </p>
                                                 <p v-if="codeCompletionCommand">
@@ -870,10 +881,6 @@ export default defineComponent({
             return getAddFrameCmdElementUID(commandType);
         },
 
-        isAlwaysDirectShortcutKey(shortcutKey: string): boolean {
-            return alwaysDirectFrameShortcutKeys.includes(shortcutKey);
-        },
-
         // Inserts the frame matching this (lowercased) shortcut key -- by its original shortcut, its
         // secondary shortcut (shortcuts[1]), or a hidden shorthand -- exactly as the direct top-level
         // dispatch always has. Returns whether a match was found and dispatched, so callers can leave
@@ -1342,6 +1349,28 @@ export default defineComponent({
     display: flex;
     flex-direction: column;
     flex-wrap: wrap;
+}
+
+// Its text swaps (rather than being hidden) once the pane becomes active, so the frame
+// commands underneath never jump up and re-layout.
+.frame-commands-pane-intro {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 2px 5px 8px;
+    font-weight: bold;
+}
+
+.frame-commands-pane-intro .frame-cmd-prefix-btn {
+    margin-right: 0;
+}
+
+// Like .text-editing-command .frame-cmd-btn-large above: this sentence's "Space"/"Tab" boxes
+// aren't crammed into a row with many others, so there's no need to condense the font
+// horizontally to save space (unlike the "space" symbol in the frame commands table below).
+.frame-commands-pane-intro .frame-cmd-btn-large {
+    font-stretch: normal !important;
 }
 
 .#{$strype-classname-add-frame-commands-container}.with-expanded-PEA p {

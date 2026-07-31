@@ -263,6 +263,13 @@
   "commandTabs": {
     "0": "Add Frame"
   },
+  "commandsPane": {
+    "pressSpaceThenPrefix": "To insert a frame, press",
+    "orConnector": "or",
+    "tabKey": "Tab",
+    "pressSpaceThenSuffix": ", then:",
+    "nowPressAKey": "Now press a key to pick the frame to insert:"
+  },
   "PEA": {
     "run": "Run",
     "stop": "Stop",
