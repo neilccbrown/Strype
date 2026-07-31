@@ -40,9 +40,11 @@ export function checkDownloadedCodeEquals(fullCode: string, format: "py" | "spy"
         cy.contains("button:visible", en.buttonLabel.save).click();
     }
 
-    // cy.readFile already polls until the file exists (up to its own timeout), so no wait is
-    // needed here beforehand:
-    cy.readFile(path.join(downloadsFolder, "main." + format)).then((p : string) => {
+    // cy.readFile already polls until the file exists, so no wait is needed here beforehand.
+    // Bump its timeout past the 4s default: on a loaded CI runner the browser's download can
+    // take a little longer than that to actually land on disk (seen intermittently in CI even
+    // with the built-in retry):
+    cy.readFile(path.join(downloadsFolder, "main." + format), {timeout: 10000}).then((p : string) => {
         // Before comparing, we fix up a few oddities of our generated code. These normalisations
         // apply equally to expected literals that happen to be assembled from raw internal-format
         // fragments (e.g. getDefaultStrypeProjectImportFullLine's trailing spaces) -- both sides go

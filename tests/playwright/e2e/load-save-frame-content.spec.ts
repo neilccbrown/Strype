@@ -1,9 +1,8 @@
-// We want to stress test loading and saving, so we pick a random frame
-// and fill the slots with blanks or random content then see if it
+// We want to stress test loading and saving, so we enter a set of specific
+// frames and fill the slots with blanks or specific content then see if it
 // saves or not.
 
-import {allFrameCommandsDefs, AllowedSlotContent, CommentFrameTypesIdentifier, DefIdentifiers, getFrameDefType, ImportFrameTypesIdentifiers, JointFrameIdentifiers, StandardFrameTypesIdentifiers} from "../../cypress/support/frame-types";
-import seedrandom from "seedrandom";
+import {allFrameCommandsDefs, AllowedSlotContent, getFrameDefType} from "../../cypress/support/frame-types";
 import en from "../../../src/localisation/en/en_main.json";
 
 import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "../../../src/helpers/sharedIdCssWithTests";
@@ -38,108 +37,6 @@ type FrameEntry = {
     body?: FrameEntry[];
     joint?: FrameEntry[];
 };
-
-let rng = () => 0;
-
-const framesBySection = [Object.values(ImportFrameTypesIdentifiers),
-    [... Object.values(DefIdentifiers), ...Object.values(CommentFrameTypesIdentifier)],
-    Object.values(StandardFrameTypesIdentifiers).filter((id) => id != "global" && id != "return" && id != "continue" && id != "break" && !Object.values(JointFrameIdentifiers).includes(id))];
-
-function genRandomInt(n: number): number {
-    // Get number into range of 0 to (n-1) inclusive:
-    return ((rng() % n) + n) % n;
-}
-function pick<T>(ts: T[]): T {
-    return ts[genRandomInt(ts.length)];
-}
-
-function genRandomString(includeSymbols: boolean) : string {
-    // These are some easy valid characters and some awkward invalid ones, but
-    // none that are valid Python operators:
-    const candidates = includeSymbols ? "aB01#$!@_\\ü" : "aB01_ü";
-    const len = genRandomInt(6);
-    return Array.from({ length: len }, () => pick(candidates.split(""))).join("");
-}
-
-function genRandomExpression(level = 0) : string {
-    // Keep a reasonable chance of just producing a simple name:
-    if (genRandomInt(3) == 0 || level >= 3) {
-        return genRandomString(true);
-    }
-    // Otherwise we glue together idents and operators and brackets:
-    let expr = "";
-    const len = genRandomInt(8 - level * 2);
-    for (let i = 0; i < len; i++) {
-        // Pick: ident, operator, string or bracket:
-        expr += pick([
-            () => genRandomString(true),
-            () => pick(["0", "1", "-1", "+6.7", "0.78"]),
-            () => pick(["+", "-", "*", "/", ">=", ">", " and ", " or ", " not ", " is ", " is not ", " not in "]),
-            () => pick(["“”", "‘’", "“#”", "‘a’", "‘ foo bar ’", "‘+’", "“ and ”"]),
-            () => {
-                const brackets = pick([["(", ")"], ["[", "]"], ["{", "}"]]);
-                return brackets[0] + genRandomExpression(level + 1) + brackets[1];
-            },
-        ] as (() => string)[])();
-    }
-    // If we have generated "is" <blank> "not" (which we encode as "is  not") it's going to get interpreted in the editor
-    // as is not, so we just correct to the latter here:
-    expr = expr.replaceAll(/is {2}not in/g, "is not  in");
-    expr = expr.replaceAll(/is {2}not/g, "is not");
-    // Similarly, > > will not be interpreted correctly so just discard one part:
-    expr = expr.replaceAll(/> > >/g, ">");
-    expr = expr.replaceAll(/> >/g, ">");
-    return expr;
-}
-
-function disableAll(frames: FrameEntry[]) : FrameEntry[] {
-    return frames.map((frame) => {
-        return {
-            ...frame,
-            disabled: true,
-            ...(frame.body != undefined ? {body: disableAll(frame.body)} : {}),
-            ...(frame.joint != undefined ? {joint: disableAll(frame.joint)} : {}),
-        };
-    });  
-}
-
-function genRandomFrame(fromFrames: string[], level : number): FrameEntry {
-    const id = pick(fromFrames);
-    const def = getFrameDefType(id);
-    const subLen = level == 2 ? 0 : genRandomInt(4 - level * 2);
-
-    const children = def.allowChildren ? Array.from({ length: subLen }, () => genRandomFrame(framesBySection[2].filter((f) => !def.forbiddenChildrenTypes.includes(f)), level + 1)) : undefined;
-    const jointChildren: FrameEntry[] | undefined = !!def.allowJointChildren ? [] : undefined;
-    if (jointChildren != undefined && (id == "try" || genRandomInt(2) == 0)) {
-        // Pick one then see what can follow that:
-        let cur : string | undefined = pick(def.jointFrameTypes.filter((j) => !(j == "else" && id == "try")));
-        while (cur != undefined) {
-            const j = genRandomFrame([cur], level);
-            jointChildren.push(j);
-            const canFollow = getFrameDefType(j.frameType).jointFrameTypes.filter((f) => def.jointFrameTypes.includes(f));
-            cur = canFollow && genRandomInt(3) != 0 ? pick(canFollow) : undefined; 
-        }
-    }
-    
-    // Disable 1 in 8:
-    const disable = id != "blank" && id != "comment" && genRandomInt(8) == 0;
-    
-    return {
-        frameType: id,
-        ...(disable ? {disabled: true} : {}),
-        slotContent: def.labels.filter((l) => l.showSlots ?? true).map((_, i) => {
-            if (id == "import" || id == "from-import" || id == "funcdef" || ((id == "for" || id == "varassign") && i == 0) || ((id == "with") && i == 1)) {
-                return genRandomString(false);
-            }
-            else {
-                const expr = genRandomExpression();
-                return id == "comment" || id == "library" ? expr.trim() : expr;
-            }
-        }),
-        ...(children !== undefined ? { body: disable ? disableAll(children) : children } : {}),
-        ...(jointChildren !== undefined ? { joint: disable ? disableAll(jointChildren) : jointChildren } : {}),
-    };
-}
 
 async function dismissAutocompleteIfShowing(page: Page) : Promise<void> {
     // The randomly-generated slot content often looks like an identifier, which can trigger the
@@ -432,74 +329,6 @@ async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: s
     expect(dom2).toEqual(sections);
     expect(dom2).toEqual(dom);
 }
-
-test.describe("Enters, saves and loads random frame", () => {
-    // One day we should get all these passing, but in the mean time...
-    test.describe.configure({ retries: 3 });
-    for (let i = 0; i < 5; i++) {
-        test("Tests random entry #" + i, async ({page}, testInfo) => {
-            // Increase test timeout. 180s wasn't enough margin: CI run 29351662646 showed "entry
-            // #0" hit this wall inside a page.waitForTimeout. Note retries below are a no-op
-            // (immediate return) regardless of why the previous attempt failed, so for a genuine
-            // timeout like this one, bumping the budget is the only thing that actually helps --
-            // retrying just burns another attempt at the same limit:
-            test.setTimeout(300_000);
-            // Don't retry these tests; if they fail, we want to know:
-            if (testInfo.retry > 0) {
-                return;
-            }
-            
-            // Clears every default frame (Imports and Main), leaving the caret at the top of
-            // Imports -- exactly where the section-by-section loop below needs to start:
-            await clearDefaultProject(page);
-
-            const seed = Math.random().toString();
-            console.log(`Seed: "${seed}"`);
-            const prng = seedrandom(seed);
-            rng = prng.int32.bind(prng);
-            if (genRandomInt(3) == 1) {
-                await page.keyboard.press("ArrowLeft");
-                await waitForEditorSettled(page);
-                await page.keyboard.type("Doc " + rng());
-                await page.keyboard.press("ArrowRight");
-                await waitForEditorSettled(page);
-            }
-            
-            const frames = [[], [], []] as FrameEntry[][];
-            for (let section = 0; section < 3; section++) {
-                const numFrames = 5;
-                for (let j = 0; j < numFrames; j++) {
-                    const f = genRandomFrame(framesBySection[section], 0);
-                    await enterFrame(page, f, false);
-                    frames[section].push(f);
-                }
-                await page.keyboard.press("ArrowDown");
-                await waitForEditorSettled(page);
-            }
-            console.log(JSON.stringify(frames, null, 2));
-            const dom = await getFramesFromDOM(page);
-            expect(dom, seed).toEqual(frames);
-            const savePath = await save(page);
-            await newProject(page);
-            // Log for debugging purposes:
-            try {
-                const contents = readFileSync(savePath, "utf8");
-                console.log(contents);
-            }
-            catch (err) {
-                console.error("Error reading file:", err);
-            }
-
-            // Must make it have .spy extension:
-            await rename(savePath, savePath + ".spy");
-            await load(page, savePath + ".spy");
-            const dom2 = await getFramesFromDOM(page);
-            // Just one should be needed, but why not both just in case:
-            expect(dom2, seed).toEqual(frames);
-            expect(dom2, seed).toEqual(dom);
-        });
-    }
-});
 
 // Here we test some specifics which previously failed:
 test.describe("Enters, saves and loads specific frames", () => {

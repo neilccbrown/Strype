@@ -183,11 +183,13 @@ export default defineComponent({
             renamableIdentifiersList: [] as {oldIdentifierName: string, newIdentifierName: string, changeSlotInfos: SlotCoreInfos[]}[],
             showRenameIdentifierPopup: false,
             renameIdentifierPopupMsg: "",
-            // The pending funccall->keyword-frame or funccall->varassign conversion scheduled by
-            // checkSlotRefactoring(), if any -- see the setTimeout() calls there for why this needs
-            // tracking (fast typing right after the triggering keystroke can otherwise race and lose
-            // characters).
-            pendingConversionTimeoutId: undefined as ReturnType<typeof setTimeout> | undefined,
+            // Bookkeeping for a funccall->keyword-frame or funccall->varassign conversion in flight
+            // (see startPendingConversion()/finishPendingConversion()): whether one is currently
+            // buffering keystrokes, what's been buffered so far, and the safety-net timeout that
+            // releases the buffer if the target slot never appears.
+            pendingConversionBufferActive: false,
+            pendingConversionBuffer: "",
+            pendingConversionBufferTimeoutId: undefined as ReturnType<typeof setTimeout> | undefined,
         };
     },
 
@@ -223,6 +225,10 @@ export default defineComponent({
     },
 
     unmounted(){
+        // In case this instance is unmounted mid-conversion (e.g. navigating away before the new
+        // frame's slot appears), make sure we don't leak the keystroke listener or a stale pending
+        // count -- there's no slot left worth flushing any buffered keystrokes into.
+        this.finishPendingConversion(undefined);
         // Just to be safe with events, we clear off any registrations
         eventBus.off(CustomEventTypes.updateParamPrompts, this.updateParamPromptsIfInList);
         eventBus.off(CustomEventTypes.renameIdentifier, this.renameIdentifiers);
@@ -560,119 +566,79 @@ export default defineComponent({
                                     const isVarAssignSlotStructure = (parsedCodeRes.slots.operators.length > 0 && parsedCodeRes.slots.operators
                                         .find((opSlot, index) => (opSlot.code == "=" && parsedCodeRes.slots.operators.slice(0,index).every((opSlot) => ["", ".", ","].includes(opSlot.code)))));
                                     if(keywordFrameConversionDef && this.isKeywordFrameConversionValid(keywordFrameConversionDef.targetType)){
-                                        if (!options?.skipCursorSetAndStateSave) {
-                                            // Keep the cursor at its current (valid) position in the still-funccall
-                                            // frame during the pending delay below, rather than clearing it via
-                                            // setSlotTextCursors(undefined, undefined) -- that call also does
-                                            // document.getSelection()?.removeAllRanges(), and with no Selection Range
-                                            // at all, any character typed before the delay elapses gets inserted by
-                                            // the browser at an arbitrary default position (observed: position 0 of
-                                            // the whole label) instead of where the user is actually typing.
-                                            setDocumentSelection(cursorInfos, cursorInfos);
-                                            this.appStore.setSlotTextCursors(cursorInfos, cursorInfos);
-                                        }
-
-                                        // Cancel any earlier pending conversion still waiting on its own 300ms delay --
-                                        // otherwise fast typing after the triggering keystroke (e.g. "return 5" typed
-                                        // quickly) can let a stale, shorter uiLiteralCode from an earlier keystroke
-                                        // apply after this one, silently dropping the characters typed in between.
-                                        if (this.pendingConversionTimeoutId !== undefined) {
-                                            clearTimeout(this.pendingConversionTimeoutId);
-                                        }
-                                        this.pendingConversionTimeoutId = setTimeout(() => {
-                                            this.pendingConversionTimeoutId = undefined;
-                                            // Re-read the literal code fresh rather than using the uiLiteralCode
-                                            // captured above: setSlotTextCursors(undefined, undefined) just above
-                                            // clears focusSlotCursorInfos, which makes isFunccallTopLevelSlot's
-                                            // check false for any further keystrokes typed during this delay (e.g.
-                                            // the "5" in "return 5" typed quickly) -- those keystrokes still land
-                                            // in the store via the normal (non-conversion) path below, so by the
-                                            // time this fires the store already has the fuller content and we must
-                                            // not clobber it with the stale, shorter string captured when the
-                                            // keyword+space was first typed.
-                                            const freshLabelDiv = document.getElementById(this.labelSlotsStructDivId);
-                                            const freshUiLiteralCode = freshLabelDiv
-                                                ? getFrameLabelSlotLiteralCodeAndFocus(freshLabelDiv, slotUID, {useFlatMediaDataCode: options?.useFlatMediaDataCode}).uiLiteralCode
-                                                : uiLiteralCode;
-                                            this.performKeywordFrameConversion(keywordFrameConversionDef, freshUiLiteralCode, stateBeforeChanges, options);
-                                        }, 300);
+                                        // Convert right away rather than waiting for typing to pause: that wait
+                                        // used to exist purely to avoid a fast-typing race (see startPendingConversion()'s
+                                        // doc comment for why converting immediately would otherwise risk dropping
+                                        // characters) -- buffering keystrokes during the conversion's own brief async
+                                        // gap replaces it, so there's no reason left to delay the conversion itself.
+                                        this.startPendingConversion();
+                                        this.performKeywordFrameConversion(keywordFrameConversionDef, uiLiteralCode, stateBeforeChanges, options);
                                     }
                                     else if(isVarAssignSlotStructure && this.labelIndex == 0 && !((currentFocusSlotCursorInfos?.slotInfos.slotId??",").includes(",")) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && uiLiteralCode.match(/(?<!=)=(?!=)/) != null){
                                         // We need to break at the slot preceding the first "=" operator.
                                         const breakAtSlotIndex = parsedCodeRes.slots.operators.findIndex((opSlot) => opSlot.code == "=");
-                                        if (!options?.skipCursorSetAndStateSave) {
-                                            // See the same fix in the keyword-conversion branch above: keep a valid
-                                            // cursor/Selection during the pending delay instead of clearing it, so
-                                            // characters typed before the delay elapses don't land at an arbitrary
-                                            // position.
-                                            setDocumentSelection(cursorInfos, cursorInfos);
-                                            this.appStore.setSlotTextCursors(cursorInfos, cursorInfos);
+                                        // Convert right away -- see the comment in the keyword-conversion branch above.
+                                        this.startPendingConversion();
+
+                                        // Remove the focus
+                                        const focusedSlot = retrieveSlotByPredicate([this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures], (slot: FieldSlot) => ((slot as BaseSlot).focused??false));
+                                        if(focusedSlot){
+                                            focusedSlot.focused = false;
                                         }
 
-                                        // See the same guard in the keyword-conversion branch above: cancel any
-                                        // earlier pending conversion so fast typing right after "=" can't have a
-                                        // stale, shorter parse silently clobber later characters.
-                                        if (this.pendingConversionTimeoutId !== undefined) {
-                                            clearTimeout(this.pendingConversionTimeoutId);
-                                        }
-                                        this.pendingConversionTimeoutId = setTimeout(() => {
-                                            this.pendingConversionTimeoutId = undefined;
-                                            // Remove the focus
-                                            const focusedSlot = retrieveSlotByPredicate([this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures], (slot: FieldSlot) => ((slot as BaseSlot).focused??false));
-                                            if(focusedSlot){
-                                                focusedSlot.focused = false;
-                                            }
-                        
-                                            // Change the type of frame to varassign and adapt the content
-                                            // (when we change the state in this next line, we need to COPY the FrameType object otherwise undo/redo makes weird changes in the commands)
-                                            this.appStore.frameObjects[this.frameId].frameType = cloneDeep(getFrameDefType(AllFrameTypesIdentifier.varassign));   
-                                            const newContent: { [index: number]: LabelSlotsContent} = {
-                                                // LHS 
-                                                0: {
-                                                    slotStructures:{
-                                                        fields: parsedCodeRes.slots.fields.slice(0,breakAtSlotIndex + 1),
-                                                        operators: parsedCodeRes.slots.operators.slice(0,breakAtSlotIndex)},
+                                        // Change the type of frame to varassign and adapt the content
+                                        // (when we change the state in this next line, we need to COPY the FrameType object otherwise undo/redo makes weird changes in the commands)
+                                        this.appStore.frameObjects[this.frameId].frameType = cloneDeep(getFrameDefType(AllFrameTypesIdentifier.varassign));
+                                        const newContent: { [index: number]: LabelSlotsContent} = {
+                                            // LHS
+                                            0: {
+                                                slotStructures:{
+                                                    fields: parsedCodeRes.slots.fields.slice(0,breakAtSlotIndex + 1),
+                                                    operators: parsedCodeRes.slots.operators.slice(0,breakAtSlotIndex)},
+                                            },
+                                            //RHS are the other fields and operators
+                                            1: {
+                                                slotStructures:{
+                                                    fields: parsedCodeRes.slots.fields.slice(breakAtSlotIndex + 1),
+                                                    operators: parsedCodeRes.slots.operators.slice(breakAtSlotIndex + 1),
                                                 },
-                                                //RHS are the other fields and operators
-                                                1: {
-                                                    slotStructures:{
-                                                        fields: parsedCodeRes.slots.fields.slice(breakAtSlotIndex + 1),
-                                                        operators: parsedCodeRes.slots.operators.slice(breakAtSlotIndex + 1),
-                                                    },
-                                                }, 
-                                            };
-                                            // Set focus to the right slot (first of RHS)
-                                            (newContent[1].slotStructures.fields[0] as BaseSlot).focused = true;
+                                            },
+                                        };
+                                        // Set focus to the right slot (first of RHS)
+                                        (newContent[1].slotStructures.fields[0] as BaseSlot).focused = true;
 
-                                            this.appStore.frameObjects[this.frameId].labelSlotsDict = newContent;
+                                        this.appStore.frameObjects[this.frameId].labelSlotsDict = newContent;
 
-                                            // We need to reposition the cursor again, we shoud be in the SAME slot as we were, except that 
-                                            // we are now in another frame label index (must be 1) and at the first of the slots
-                                            const newCursorSlotInfos: SlotCursorInfos = {
-                                                slotInfos: {...cursorInfos.slotInfos, labelSlotsIndex: 1, slotId: "0"},
-                                                cursorPos: cursorInfos.cursorPos,
-                                            };                                        
-                                            // The slot we're restoring the cursor into is in the frame we just converted to
-                                            // varassign above, so it may take more than one render pass to appear -- wait for
-                                            // it rather than assuming a fixed number of ticks is enough (see waitForElementId's
-                                            // doc comment).
-                                            waitForElementId(getLabelSlotUID(newCursorSlotInfos.slotInfos)).then(() => {
-                                                if (!options?.skipCursorSetAndStateSave) {
-                                                    setDocumentSelection(newCursorSlotInfos, newCursorSlotInfos);
-                                                    this.appStore.setSlotTextCursors(newCursorSlotInfos, newCursorSlotInfos);
-                                                    // See the matching comment in the keyword-conversion branch above: without
-                                                    // this, isEditing stays false and the next keystroke is treated as
-                                                    // "not editing", creating a new frame instead of typing into this one.
-                                                    this.appStore.setFocusEditableSlot({
-                                                        frameSlotInfos: newCursorSlotInfos.slotInfos,
-                                                        caretPosition: (this.appStore.getAllowedChildren(this.frameId)) ? CaretPosition.body : CaretPosition.below,
-                                                    });
-                                                    options?.doAfterCursorSet?.();
-                                                    // Save changes only when arrived here (for undo/redo)
-                                                    this.appStore.saveStateChanges(stateBeforeChanges);
-                                                }
-                                            });
-                                        }, 300);
+                                        // We need to reposition the cursor again, we shoud be in the SAME slot as we were, except that
+                                        // we are now in another frame label index (must be 1) and at the first of the slots
+                                        const newCursorSlotInfos: SlotCursorInfos = {
+                                            slotInfos: {...cursorInfos.slotInfos, labelSlotsIndex: 1, slotId: "0"},
+                                            cursorPos: cursorInfos.cursorPos,
+                                        };
+                                        // The slot we're restoring the cursor into is in the frame we just converted to
+                                        // varassign above, so it may take more than one render pass to appear -- wait for
+                                        // it rather than assuming a fixed number of ticks is enough (see waitForElementId's
+                                        // doc comment).
+                                        waitForElementId(getLabelSlotUID(newCursorSlotInfos.slotInfos)).then(() => {
+                                            if (!options?.skipCursorSetAndStateSave) {
+                                                setDocumentSelection(newCursorSlotInfos, newCursorSlotInfos);
+                                                this.appStore.setSlotTextCursors(newCursorSlotInfos, newCursorSlotInfos);
+                                                // See the matching comment in the keyword-conversion branch above: without
+                                                // this, isEditing stays false and the next keystroke is treated as
+                                                // "not editing", creating a new frame instead of typing into this one.
+                                                this.appStore.setFocusEditableSlot({
+                                                    frameSlotInfos: newCursorSlotInfos.slotInfos,
+                                                    caretPosition: (this.appStore.getAllowedChildren(this.frameId)) ? CaretPosition.body : CaretPosition.below,
+                                                });
+                                                options?.doAfterCursorSet?.();
+                                                // Save changes only when arrived here (for undo/redo)
+                                                this.appStore.saveStateChanges(stateBeforeChanges);
+                                                this.finishPendingConversion(newCursorSlotInfos.slotInfos);
+                                            }
+                                            else {
+                                                this.finishPendingConversion(undefined);
+                                            }
+                                        });
                                     }
                                     else{
                                         if (!options?.skipCursorSetAndStateSave) {
@@ -694,6 +660,68 @@ export default defineComponent({
                         }
                     });
                 });
+            }
+        },
+
+        // Starts buffering keystrokes ahead of a funccall->keyword-frame/varassign conversion that's
+        // about to happen immediately (synchronously, right after this returns) but whose target slot
+        // won't exist until at least the next render pass (see waitForElementId's doc comment) -- the
+        // conversion swaps out the frame's own DOM subtree, so whatever the user types in that gap has
+        // nowhere of the old frame's to land, and no new slot yet to land in either. We can't wait for
+        // typing to pause and act afterward (that's the 300ms debounce this replaces, and it's exactly
+        // the visible delay that prompted this change) -- so instead we intercept those keystrokes at
+        // the browser level (before they'd insert into whatever stale element still has focus) and
+        // replay them into the real target slot once finishPendingConversion() is called with it.
+        // Bumps appStore.pendingSlotConversionCount (exposed to tests via App.vue's data-pending-slot-
+        // conversion attribute) so waitForEditorSettled() doesn't consider the editor settled mid-flight.
+        startPendingConversion(): void {
+            this.pendingConversionBufferActive = true;
+            this.pendingConversionBuffer = "";
+            this.appStore.pendingSlotConversionCount++;
+            document.addEventListener("beforeinput", this.onPendingConversionBeforeInput, true);
+            // Safety net: if the target slot never appears (e.g. a bug elsewhere, or the conversion
+            // path we started ends up not calling finishPendingConversion for some reason), don't leave
+            // every future keystroke in the whole editor silently swallowed forever.
+            this.pendingConversionBufferTimeoutId = setTimeout(() => {
+                console.warn("Strype: a pending frame conversion's target slot never appeared; discarding any buffered keystrokes and releasing the input listener.");
+                this.finishPendingConversion(undefined);
+            }, 2000);
+        },
+
+        // The capture-phase listener installed by startPendingConversion(): grabs the resolved text of
+        // any character-producing input (already resolved through keyboard layout/IME by the time
+        // beforeinput fires, unlike keydown) and stops it reaching whatever element it would otherwise
+        // have landed in.
+        onPendingConversionBeforeInput(event: InputEvent): void {
+            if (event.data != null && (event.inputType === "insertText" || event.inputType === "insertCompositionText" || event.inputType === "insertFromPaste")) {
+                this.pendingConversionBuffer += event.data;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+        },
+
+        // Ends a pending conversion started by startPendingConversion(): releases the keystroke
+        // listener and safety-net timeout, decrements appStore.pendingSlotConversionCount, and -- if
+        // targetSlotInfos is given -- replays anything that was buffered into it through the same
+        // "content pasted in a slot" pipeline real pastes use (see Commands.vue's
+        // createFuncCallFrameFromTypedChar for the same trick used for a single typed character).
+        // Pass undefined when there's no slot to receive it (a 0-slot frame type like break/continue,
+        // or this instance being unmounted mid-conversion) -- any buffered keystrokes are discarded.
+        finishPendingConversion(targetSlotInfos: SlotCoreInfos | undefined): void {
+            if (!this.pendingConversionBufferActive) {
+                return;
+            }
+            this.pendingConversionBufferActive = false;
+            document.removeEventListener("beforeinput", this.onPendingConversionBeforeInput, true);
+            if (this.pendingConversionBufferTimeoutId !== undefined) {
+                clearTimeout(this.pendingConversionBufferTimeoutId);
+                this.pendingConversionBufferTimeoutId = undefined;
+            }
+            this.appStore.pendingSlotConversionCount--;
+            const buffered = this.pendingConversionBuffer;
+            this.pendingConversionBuffer = "";
+            if (targetSlotInfos && buffered) {
+                document.getElementById(getLabelSlotUID(targetSlotInfos))?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: "text", content: buffered}}));
             }
         },
 
@@ -753,9 +781,11 @@ export default defineComponent({
         },
 
         // Converts the funccall frame at this.frameId into def.targetType, building its new content
-        // from whatever followed the keyword in uiLiteralCode. Called (after the same 300ms delay the
-        // varassign conversion in checkSlotRefactoring already uses) once isKeywordFrameConversionValid
-        // has confirmed the target type is actually allowed here.
+        // from whatever followed the keyword in uiLiteralCode. Called immediately once
+        // isKeywordFrameConversionValid has confirmed the target type is actually allowed here --
+        // the caller (checkSlotRefactoring) has already started buffering keystrokes via
+        // startPendingConversion(), which every exit path here must eventually resolve via
+        // finishPendingConversion().
         performKeywordFrameConversion(def: KeywordFrameConversionDef, uiLiteralCode: string, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, doAfterCursorSet?: VoidFunction}): void {
             // Remove the focus
             const focusedSlot = retrieveSlotByPredicate([this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures], (slot: FieldSlot) => ((slot as BaseSlot).focused??false));
@@ -775,6 +805,9 @@ export default defineComponent({
                 // matching what happens when such a frame type is inserted normally.
                 this.appStore.frameObjects[this.frameId].labelSlotsDict = {};
                 this.appStore.setSlotTextCursors(undefined, undefined);
+                // No slot exists for this frame type to flush any buffered keystrokes into --
+                // discard them (there's nowhere else for them to sensibly go).
+                this.finishPendingConversion(undefined);
                 if(!options?.skipCursorSetAndStateSave){
                     this.appStore.isEditing = false;
                     this.appStore.toggleCaret({id: this.frameId, caretPosition: CaretPosition.below});
@@ -867,6 +900,10 @@ export default defineComponent({
                     options?.doAfterCursorSet?.();
                     // Save changes only when arrived here (for undo/redo)
                     this.appStore.saveStateChanges(stateBeforeChanges);
+                    this.finishPendingConversion(newCursorSlotInfos.slotInfos);
+                }
+                else {
+                    this.finishPendingConversion(undefined);
                 }
             });
         },

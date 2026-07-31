@@ -131,8 +131,8 @@ describe("User-defined items", () => {
             cy.get("body").type("{downarrow}{downarrow}");
         }, false);
         // Make a function call and check myParam doesn't show there:
-        cy.get("body").type("  ");
-        cy.wait(500);
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
@@ -145,8 +145,8 @@ describe("User-defined items", () => {
         // Make a for loop:
         pressFrameShortcutThenType("f", "myIterator{rightarrow}imaginaryList{rightarrow}");
         // Trigger auto-completion in a new function call frame:
-        cy.get("body").type("  ");
-        cy.wait(500);
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
@@ -159,8 +159,8 @@ describe("User-defined items", () => {
         }, true);
         // Make a function call and check myIterator shows there -- Python semantics
         // are that the loop variable is available after the loop:
-        cy.get("body").type("  ");
-        cy.wait(500);
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
@@ -248,8 +248,8 @@ describe("User-defined items", () => {
             cy.get("body").type("{downarrow}{downarrow}{downarrow}");
         }, false);
         // Make a function call and check "self, bar, vaz" don't show there:
-        cy.get("body").type("  ");
-        cy.wait(500);
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
@@ -282,8 +282,8 @@ describe("User-defined items", () => {
             cy.get("body").type("{downarrow}{downarrow}{downarrow}");
         }, false);
         // Make a function call and check "self, bar, vaz, param2", and the classes function, don't show there:
-        cy.get("body").type("  ");
-        cy.wait(500);
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
@@ -321,8 +321,8 @@ describe("User-defined items", () => {
         pressFrameShortcutThenType("c", `foo(${parentClassName}{downarrow}{downarrow}{del}`);
         pressFrameShortcutThenType("f", "myF{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}");
         // Trigger auto-completion on a function call frame:
-        cy.get("body").type("  ");
-        cy.wait(500);
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
@@ -334,8 +334,8 @@ describe("User-defined items", () => {
             cy.get("body").type("{downarrow}{downarrow}{downarrow}");
         }, true);
         // Make a function call and check "self" doesn't show there:
-        cy.get("body").type("  ");
-        cy.wait(500);
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");

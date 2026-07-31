@@ -458,24 +458,16 @@ describe("Deleting frames", () => {
 
 // Test that selecting and wrapping frames using keyboard works properly:
 describe("Wrapping frames", () => {
-    // Skipped: since ebb6cd7c (Tab/Space frame-insertion prefix), wrapping a frame selection via
-    // keyboard shortcut appears to be broken for any key other than the always-direct ones
-    // (enter/#/=) -- pressing Space with a selection active opens the frame context menu (Cut/
-    // Copy/Duplicate/Delete...) instead of the frame commands pane, and a bare letter (e.g. "i")
-    // does nothing at all. Confirmed this isn't just a test issue: clicking the equivalent "if"
-    // command with the mouse in the side panel wraps the selection correctly, even though the
-    // panel still advertises "space, i" as the keyboard shortcut. This looks like an unintended
-    // side effect of that refactor (both the Tab/Space-pane-opening and bare-letter-shortcut
-    // branches in Commands.vue explicitly require selectedFrames.length === 0) rather than a
-    // deliberate behaviour change, so it's flagged here rather than worked around.
-    it.skip("Lets you wrap a frame with an if", () => {
+    it("Lets you wrap a frame with an if", () => {
         // Add three frames:
         cy.get("body").type("foo({rightArrow}{rightArrow}bar({rightArrow}{rightArrow}baz({rightArrow}{rightArrow}");
         // Delete two:
         cy.get("body").type("{shift}", {release: false});
         cy.get("body").type("{upArrow}{upArrow}");
         cy.get("body").type("{shift}");
-        cy.get("body").type("iTrue");
+        // Wrap the selection with an if (Space opens the frame commands pane instead of the
+        // frame context menu when a selection is active; "i" then selects "if" from it):
+        pressFrameShortcutThenType("i", "True");
         checkCodeEquals(defaultImports.concat([
             "foo()",
             {h: /if\s+True\s+:/, b:[

@@ -108,7 +108,8 @@ app.use(ContextMenu);
 
 // Important to do this tidy up before checking the state:
 await openIndexedDBConnection()
-    .then((initialDBConnection) => tidyUpDatabaseState(getEditorTabId(), initialDBConnection, showIndexDBError))
+    .then((initialDBConnection) => tidyUpDatabaseState(getEditorTabId(), initialDBConnection, showIndexDBError)
+        .finally(() => initialDBConnection.close()))
     .catch(showIndexDBError);
 
 

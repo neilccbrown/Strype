@@ -487,10 +487,9 @@ describe("Import of structured items", () => {
         // Add import: from datetime import date
         clearDefaultImports();
         pressFrameShortcutThenType("f", "datetime{rightarrow}date{downarrow}{downarrow}{downarrow}");
-        // Now we're back in main body, make a function call with math.:
-        cy.get("body").type("  ");
-        cy.wait(500);
-        // Trigger auto-complete:
+        // Now we're back in main body: Ctrl+Space at the bare frame caret creates an empty
+        // func-call frame and triggers autocomplete in it in one go (see Commands.vue's
+        // Ctrl+Space handler):
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel, frameId) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");

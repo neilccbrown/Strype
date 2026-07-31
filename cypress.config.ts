@@ -3,6 +3,29 @@ import {rimraf} from "rimraf";
 import fs from "fs";
 const cypressSplit = require("cypress-split");
 
+function escapeHtml(s: string): string {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function writeFlakyTestsSummary(flakyTests: { spec: string; title: string; attempts: number }[]): void {
+    const summaryFile = process.env.GITHUB_STEP_SUMMARY;
+    if (!summaryFile) {
+        return;
+    }
+    let body;
+    if (flakyTests.length === 0) {
+        body = "<h3>0 flaky tests ✅</h3>\n";
+    }
+    else {
+        const rows = flakyTests
+            .map((t) => `<tr><td>${escapeHtml(t.spec)}</td><td>${escapeHtml(t.title)}</td><td>${t.attempts}</td></tr>`)
+            .join("\n");
+        body = `<h3>${flakyTests.length} flaky test${flakyTests.length === 1 ? "" : "s"} (passed only after a retry) ⚠️</h3>\n`
+            + `<table><tr><th>Spec</th><th>Test</th><th>Attempts</th></tr>\n${rows}\n</table>\n`;
+    }
+    fs.appendFileSync(summaryFile, body);
+}
+
 export default defineConfig({
     retries: 1,
     downloadsFolder: "tests/cypress/downloads",
@@ -64,9 +87,40 @@ export default defineConfig({
             if (specFromEnv) {
                 config.specPattern = "tests/cypress/e2e/" + specFromEnv;
             }
-            
-            cypressSplit(on, config);
-            
+
+            // Surface flaky tests (failed on an earlier attempt, passed on retry) in the
+            // GitHub Actions job summary, alongside cypress-split's own per-chunk table --
+            // that table only shows final pass/fail counts, so a flaky test currently looks
+            // identical to a clean pass. cypress-split registers its own "after:spec" and
+            // "after:run" handlers, and Cypress only keeps the LAST on(event, ...)
+            // registration for a given lifecycle event name; calling `on` again after
+            // cypressSplit(on, config) would silently replace its handlers and break its
+            // summary/timings output. So instead we intercept its registrations here and
+            // layer our own logic around them, leaving cypress-split with exactly one
+            // registration per event as normal.
+            const flakyTests: { spec: string; title: string; attempts: number }[] = [];
+            const onWithFlakyTracking = ((event: string, handler: (...args: unknown[]) => unknown) => {
+                if (event === "after:spec") {
+                    return on(event as "after:spec", (spec, results) => {
+                        for (const test of results?.tests ?? []) {
+                            if (test.attempts.length > 1 && test.state === "passed") {
+                                flakyTests.push({spec: spec.relative, title: test.title.join(" > "), attempts: test.attempts.length});
+                            }
+                        }
+                        handler(spec, results);
+                    });
+                }
+                if (event === "after:run") {
+                    return on(event as "after:run", (results) => {
+                        handler(results);
+                        writeFlakyTestsSummary(flakyTests);
+                    });
+                }
+                return on(event as never, handler as never);
+            }) as Cypress.PluginEvents;
+
+            cypressSplit(onWithFlakyTracking, config);
+
             config.baseUrl = config.env.mode == "microbit" ? "http://localhost:8081/microbit/" : "http://localhost:8081/editor/";
             return config;
         },

@@ -335,11 +335,17 @@ while True:
         });
 
         test(`Check graphics actor stops moving within seconds of stopping after running for ${runTime} seconds`, async ({page}) => {
-            // This is the same underlying bug as the console print tests above (async requests/updates
-            // queueing up faster than the main thread can service them, so that Stop doesn't take effect
-            // for a long time), but for sprite/graphics updates: those are sent on their own dedicated
-            // MessagePort (see self.updatePort in python-execution.ts) rather than through the throttled
-            // makeRequest/makeRawRequest path, so a tight movement loop is a more direct way to provoke it.
+            // Unlike the console print tests above (see https://github.com/k-pet-group/Strype/issues/996
+            // for that bug: unbatched, layout-forcing textarea writes on every print, routed through a
+            // promise chain with no yield points), sprite/graphics updates go through their own dedicated
+            // MessagePort (self.updatePort in python-execution.ts) straight into an in-memory SpriteManager
+            // update with no DOM/layout work at all, and the actual canvas redraw is decoupled from that
+            // and throttled to once per requestAnimationFrame via an isDirty() flag (see redrawCanvas() in
+            // PythonExecutionArea.vue) -- so a tight movement loop does not queue up unboundedly the way a
+            // tight print loop does. Verified empirically: under CPU throttling that reliably starves the
+            // main thread for the print-loop case, this test's responsiveness stayed close to the healthy
+            // baseline. This test still checks the ordinary "Stop takes effect promptly" behaviour, just
+            // without expecting the same failure mode as the print tests.
             await enterCode(page, ["from strype.graphics import *", "", `
 cat = Actor('cat-test.jpg')
 while True:
@@ -357,8 +363,14 @@ while True:
             // Wait to see if it keeps moving after we've stopped (it shouldn't):
             await page.waitForTimeout(10_000);
             const redrawsAfterStopping = await page.evaluate(() => (window as any).__strypeGraphicsRedrawCount ?? 0);
-            // Should have stopped moving within seconds of stopping (should be less, but CI can be slow...):
-            expect(redrawsAfterStopping).toBeLessThan(redrawsWhileRunning + redrawsPerSecond * 4);
+            // Should have stopped moving within seconds of stopping (should be less, but CI can be slow...).
+            // Floor the grace amount at a small constant: for a short runTime, setup latency (e.g. loading
+            // the Actor's image) can eat into the window before any redraw happens at all, making
+            // redrawsPerSecond (and hence the grace) come out as exactly 0 -- which would make this
+            // assertion impossible to satisfy (redraw counts can't be negative) regardless of whether
+            // stopping actually worked correctly. Seen for real in CI: run 30358240472, "3 seconds" case.
+            const grace = Math.max(redrawsPerSecond * 4, 5);
+            expect(redrawsAfterStopping).toBeLessThan(redrawsWhileRunning + grace);
         });
     }
 });

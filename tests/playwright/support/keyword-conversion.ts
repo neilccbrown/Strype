@@ -1,6 +1,6 @@
 import {Page, expect} from "@playwright/test";
 import {AllFrameTypesIdentifier} from "../../cypress/support/frame-types";
-import {doTextHomeEndKeyPress, waitForEditorSettled} from "./editor";
+import {doTextHomeEndKeyPress, pressN, waitForEditorSettled} from "./editor";
 
 // ---------------------------------------------------------------------------------------------
 // Centralised configuration for the keyword-frame-conversion mechanism (see
@@ -125,7 +125,13 @@ export async function typeKeywordConversionTrigger(page: Page, keyword: string, 
 export async function clearFrameContent(page: Page, frameId: number, contentLength: number): Promise<void> {
     await page.locator(`#frameHeader_${frameId} .label-slot-input`).first().click();
     await waitForEditorSettled(page);
-    await doTextHomeEndKeyPress(page, true, false); // End (no shift) -- guarantee cursor is after the content
+    // Home (not End): a func-call frame's first label always ends with its own auto-appended,
+    // still-empty call brackets, so "end" of the whole label lands *inside* those brackets (the
+    // args slot), past this field entirely -- backspacing from there deletes the empty "()" pair
+    // instead of this field's own content. Home reliably lands at the start of this (first) field
+    // instead, then ArrowRight the known content length gets back to just after it.
+    await doTextHomeEndKeyPress(page, false, false);
+    await pressN("ArrowRight", contentLength, true)(page);
     for (let i = 0; i < contentLength; i++) {
         await page.keyboard.press("Backspace");
     }

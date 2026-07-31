@@ -71,9 +71,8 @@ function checkTranslationsForLocale(locale: string): void {
     pressFrameShortcutThenType("f", "foo{downarrow}{downarrow}");
     // And a variable:
     cy.get("body").type("{downarrow}=bar=3{rightarrow}");
-    // Then trigger autocomplete:
-    cy.get("body").type("  ");
-    cy.wait(500);
+    // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+    // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
     cy.get("body").type("{ctrl} ");
     // And check the sections:
     const expAuto = [getLocalisedString("autoCompletion.myVariables", locale), getLocalisedString("autoCompletion.myFunctions", locale)];
