@@ -334,7 +334,10 @@ describe("Paste sound literals", () => {
             (cy.focused() as any).paste(catWAV, "audio/wav");
             cy.wait(1000);
             // We can also check that a sample is fetched correctly:
-            cy.get("body").type("{downarrow}=sa=s.copy_to_mono().get_samples(){downarrow}pround(sa[int(len(sa)/2)], 3)");
+            // Leading space before "p": it's a hidden shorthand for a print() frame, which (like any
+            // other frame shortcut letter) now needs the Tab/Space prefix to open the frame-commands
+            // pane first -- typing it bare would instead start a func-call frame named literally "p".
+            cy.get("body").type("{downarrow}=sa=s.copy_to_mono().get_samples(){downarrow} pround(sa[int(len(sa)/2)], 3)");
             executeCode(false);
             checkConsoleContent("0.002\n");
         });

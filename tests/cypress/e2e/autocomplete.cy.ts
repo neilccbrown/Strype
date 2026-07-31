@@ -68,7 +68,11 @@ describe("Built-ins", () => {
         focusEditorAC();
         // Add a function frame and trigger auto-complete:
         const targetNoDocs = Cypress.env("mode") === "microbit" ? "function" : "quit";
-        cy.get("body").type(" " + targetNoDocs);
+        // No leading space: typing a letter directly at a bare frame caret starts a func-call frame
+        // with it as content (see ALWAYS_DIRECT_FRAME_SHORTCUT_KEYS in test-support.ts) -- a leading
+        // space here would instead open the frame-commands pane and misread these letters as shortcut
+        // keys (e.g. the "i" in "quit" would insert a nested "if" frame).
+        cy.get("body").type(targetNoDocs);
         cy.wait(500);
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
