@@ -8,7 +8,7 @@ import en from "../../../src/localisation/en/en_main.json";
 import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "../../../src/helpers/sharedIdCssWithTests";
 import {Page, test, expect, ElementHandle, JSHandle} from "@playwright/test";
 import { rename } from "fs/promises";
-import {checkFrameXorTextCursor, clearDefaultProject, typeIndividually, waitForEditorSettled} from "../support/editor";
+import {checkFrameXorTextCursor, clearDefaultProject, pressFrameShortcut, typeIndividually, waitForEditorSettled} from "../support/editor";
 import {readFileSync} from "node:fs";
 import {createBrowserProxy} from "../support/proxy";
 import {load, save} from "../support/loading-saving";
@@ -88,7 +88,7 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
             await page.keyboard.press("Enter");
         }
         else {
-            await page.keyboard.type(shortcut);
+            await pressFrameShortcut(page, shortcut);
         }
         await waitForEditorSettled(page);
         if (frame.frameType == "try") {
@@ -153,7 +153,9 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
         // With shift, one press should select whole frame, including any joint frames:
         await page.keyboard.press("Shift+ArrowUp");
         await waitForEditorSettled(page);
-        await page.keyboard.press(" ");
+        // Enter opens the frame context menu with a selection active; Space is now the frame-commands
+        // pane prefix instead (see App.vue/Commands.vue), so it no longer does this:
+        await page.keyboard.press("Enter");
         // No manual wait needed for the context menu to render -- click() below already waits for
         // the menu item to become actionable:
         await page.getByRole("menuitem", { name: en.contextMenu.disable }).click();
