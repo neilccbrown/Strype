@@ -47,7 +47,7 @@ export class Renderer  {
                 break;
             }
             case "add": {
-                this.sprites.addSprite(update.image, update.collidable, update.id.handle);
+                this.sprites.addSprite(update.image, update.collidable, update.x, update.y, update.id.handle);
                 // Note: deliberate fall-through here into the update.
             }
             case "update": {
