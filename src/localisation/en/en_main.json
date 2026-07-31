@@ -263,6 +263,12 @@
   "commandTabs": {
     "0": "Add Frame"
   },
+  "commandsPane": {
+    "pressSpaceThenPrefix": "",
+    "orConnector": "or",
+    "tabKey": "tab",
+    "pressSpaceThenSuffix": "→"
+  },
   "PEA": {
     "run": "Run",
     "stop": "Stop",

@@ -32,9 +32,20 @@
                                             <!-- #v-else-->
                                             <div :class="scssVars.addFrameCommandsContainerClassName">
                                             <!-- #v-endif-->
+                                                <div
+                                                    class="frame-commands-pane-intro"
+                                                    :class="{'frame-commands-pane-intro-hidden': isFrameCommandsPaneActive}"
+                                                    v-if="!isEditing && !isPythonExecuting"
+                                                >
+                                                    <span>{{ $t('commandsPane.pressSpaceThenPrefix') }}</span>
+                                                    <span class="frame-cmd-prefix-btn frame-cmd-btn-large">{{ $t('autoCompletion.spaceKey') }}</span>
+                                                    <span>{{ $t('commandsPane.orConnector') }}</span>
+                                                    <span class="frame-cmd-prefix-btn frame-cmd-btn-large">{{ $t('commandsPane.tabKey') }}</span>
+                                                    <span>{{ $t('commandsPane.pressSpaceThenSuffix') }}</span>
+                                                </div>
                                                 <p>
                                                     <AddFrameCommand
-                                                        v-for="(addFrameCommand, shortcutKey) in addFrameCommands"
+                                                        v-for="addFrameCommand in addFrameCommands"
                                                         :id="addFrameCommandUID(addFrameCommand[0].type.type)"
                                                         :key="addFrameCommand[0].type.type"
                                                         :type="addFrameCommand[0].type.type"
@@ -51,8 +62,7 @@
                                                             ? addFrameCommand[0].index
                                                             : 0
                                                         "
-                                                        :showPrefixHint="!isFrameCommandsPaneActive && !isAlwaysDirectShortcutKey(shortcutKey)"
-                                                        :prefixKeyLabel="$t('autoCompletion.spaceKey')"
+                                                        :greyedOut="!isFrameCommandsPaneActive"
                                                     />
                                                 </p>
                                                 <p v-if="codeCompletionCommand">
@@ -308,6 +318,10 @@ export default defineComponent({
 
         isEditing(): boolean {
             return this.appStore.isEditing;
+        },
+
+        isPythonExecuting(): boolean {
+            return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
         },
 
         isFrameCommandsPaneActive(): boolean {
@@ -889,10 +903,6 @@ export default defineComponent({
             return getAddFrameCmdElementUID(commandType);
         },
 
-        isAlwaysDirectShortcutKey(shortcutKey: string): boolean {
-            return alwaysDirectFrameShortcutKeys.includes(shortcutKey);
-        },
-
         // Inserts the frame matching this (lowercased) shortcut key -- by its original shortcut, its
         // secondary shortcut (shortcuts[1]), or a hidden shorthand -- exactly as the direct top-level
         // dispatch always has. Returns whether a match was found and dispatched, so callers can leave
@@ -939,7 +949,11 @@ export default defineComponent({
             // Looked up directly rather than via this.addFrameCommands["c"] -- that's filtered down to
             // whatever's valid to offer as a pane command at the current position (see the caller's
             // comment for containers that exclude it), but it must still be creatable here.
-            this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall)).then((newFrameId: number) => {
+            // Unlike the explicit "c" pane command, we don't pre-fill the default "()" brackets here:
+            // the user is just typing (e.g. the start of "if"/"while"/"return"), and the frame may well
+            // get converted away from func-call entirely once LabelSlotsStructure.vue's funccall->
+            // keyword-frame/varassign conversion kicks in -- see skipFuncCallBrackets's own comment.
+            this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall), undefined, false, true).then((newFrameId: number) => {
                 // Target the new frame's name slot explicitly (rather than document.activeElement):
                 // its own name slot isn't necessarily what ends up focused by the time this promise
                 // resolves (e.g. autocomplete-related focus shifts can already be underway), so we
@@ -1380,6 +1394,35 @@ export default defineComponent({
     flex-wrap: wrap;
 }
 
+.frame-commands-pane-intro {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 2px 5px 8px 0;
+}
+
+// Hidden via visibility (rather than the content being swapped or removed) once the pane becomes
+// active, so this row keeps occupying exactly the same space and the frame commands underneath
+// never shift.
+.frame-commands-pane-intro-hidden {
+    visibility: hidden;
+}
+
+.frame-commands-pane-intro .frame-cmd-prefix-btn {
+    margin-right: 0;
+}
+
+// Like .text-editing-command .frame-cmd-btn-large above: this sentence's "Space"/"Tab" boxes
+// aren't crammed into a row with many others, so there's no need to condense the font
+// horizontally to save space (unlike the "space" symbol in the frame commands table below).
+// Font-family is reset back to the app's usual AHN-Strype too, rather than the Inconsolata used
+// to condense the frame commands table's symbols, to match the look of the other shortcut keys.
+.frame-commands-pane-intro .frame-cmd-btn-large {
+    font-stretch: normal !important;
+    font-family: 'AHN-Strype', sans-serif !important;
+}
+
 .#{$strype-classname-add-frame-commands-container}.with-expanded-PEA p {
    // So that the frame commands in expanded view expands over the commands/PEA splitter,
    // the width is set programmatically
@@ -1388,17 +1431,18 @@ export default defineComponent({
 
 // Shown around #addFramePanel while the frame commands pane is focused for keyboard-driven
 // insertion (entered via Tab/Space at the frame caret), to make the mode change obvious.
+// Same blue as the frame caret (Caret.vue's .caret background-color: #3467FE).
 @keyframes frame-commands-pane-pulse {
     0%, 100% {
-        outline-color: rgba(220, 30, 30, 0.35);
+        outline-color: rgba(52, 103, 254, 0.35);
     }
     50% {
-        outline-color: rgba(220, 30, 30, 0.9);
+        outline-color: rgba(52, 103, 254, 0.9);
     }
 }
 
 #addFramePanel.frame-commands-pane-active {
-    outline: 3px solid rgba(220, 30, 30, 0.9);
+    outline: 3px solid rgba(52, 103, 254, 0.9);
     outline-offset: 2px;
     animation: frame-commands-pane-pulse 1.2s ease-in-out infinite;
 }

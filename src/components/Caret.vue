@@ -71,11 +71,11 @@ export default defineComponent({
     background-color: #979799 !important;
 }
 
-// Same red as the pulsing outline shown around the frame commands pane (Commands.vue's
-// #addFramePanel.frame-commands-pane-active) -- shown here on the frame caret so it's obvious,
-// even when looking at the code rather than the pane, that keyboard focus is in the pane right now.
+// Same grey as the caret's disabled state -- shown here once the frame commands pane is active
+// (i.e. once the Tab/Space prefix key has been pressed) so it's obvious, even when looking at the
+// code rather than the pane, that keyboard focus is in the pane right now.
 .frame-commands-pane-caret {
-    background-color: #DC1E1E !important;
+    background-color: #b8bac0 !important;
 }
 
 .caret-cross-forbidden-dnd {

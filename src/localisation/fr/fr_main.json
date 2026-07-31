@@ -264,6 +264,12 @@
   "commandTabs": {
     "0": "Ajoute un cadre"
   },
+  "commandsPane": {
+    "pressSpaceThenPrefix": "",
+    "orConnector": "ou",
+    "tabKey": "Tab",
+    "pressSpaceThenSuffix": "→"
+  },
   "PEA": {
     "run": "Exécuter",
     "stop": "Arrêter",
