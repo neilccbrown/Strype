@@ -209,7 +209,7 @@ describe("Locale persistence", () => {
         // Preparation 1 : we will need to check a file that was created while Strype was in English, later with another locale.
         // We just edit something (remove existing code, add a varassign and a function call) and save the converted Python file for reusing it later.
         // We make sure the frame cursor is back to the start of "my code".
-        changeCodeThenDownloadPy({renamedFileName:englishPyFileName, codeChangeStrSequence: "{del}{del}=testvar=\"this is done in English Strype.{downarrow}test{uparrow}{uparrow}"});
+        changeCodeThenDownloadPy({renamedFileName:englishPyFileName, codeChangeStrSequence: "{del}{del} =testvar=\"this is done in English Strype.{downarrow}test({uparrow}{uparrow}"});
         // Now save the spy project so we can reload it later. With Cypress, saving in the file system is directly saving in the download folder,
         // with the name of the project (so we keep it as "My project").
         cy.get("button#" + strypeElIds.getEditorMenuUID()).click({force: true}); 
