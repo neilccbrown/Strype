@@ -75,7 +75,7 @@ export class SpriteManager {
         this.notify({request: "update", id: makeSpriteHandle(p.id), image: p.img, x: p.x, y: p.y, scale: p.scale, rotation: p.rotation, collidable: p.collisionBox != null});
     }
 
-    public addSprite(imageOrCanvas : RemoteImage | RemoteCanvas, collidable: boolean, forceId?: number): number {
+    public addSprite(imageOrCanvas : RemoteImage | RemoteCanvas, collidable: boolean, x = 0, y = 0, forceId?: number): number {
         // We don't mark dirty for adding the background:
         // Note: undefined (didn't force an ID, auto-numbered) or non-zero (forced to non-background ID) marks as dirty
         // This is NOT the same as if (forceId) because undefined should go in:
@@ -83,8 +83,12 @@ export class SpriteManager {
             this.dirty = true;
         }
         const id = forceId ?? this.nextSpriteId++;
-        const box = collidable ? this.collisionSystem.createBox({x:0, y:0}, imageOrCanvas.width, imageOrCanvas.height, {isCentered: true}) : null;
-        const newImage = {id, img: imageOrCanvas, x: 0, y: 0, rotation: 0, scale: 1, collisionBox : box, removeAtTime: null};
+        // Clamp to the world bounds, same as setSpriteLocation, so the sprite is created at its
+        // final position rather than at (0, 0) and then moved (which caused a visible flash):
+        const clampedX = Math.max(-WORLD_WIDTH/2 + 1, Math.min(x, WORLD_WIDTH/2));
+        const clampedY = Math.max(-WORLD_HEIGHT/2 + 1, Math.min(y, WORLD_HEIGHT/2));
+        const box = collidable ? this.collisionSystem.createBox({x: clampedX, y: clampedY}, imageOrCanvas.width, imageOrCanvas.height, {isCentered: true}) : null;
+        const newImage = {id, img: imageOrCanvas, x: clampedX, y: clampedY, rotation: 0, scale: 1, collisionBox : box, removeAtTime: null};
         this.sprites.set(id, newImage);
         if (box != null) {
             this.boxToImageMap.set(box, newImage);

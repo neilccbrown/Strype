@@ -489,17 +489,16 @@ class Actor:
         """
         # Beware: this is also called during re_add, after construction
         if isinstance(image, Image):
-            self.__id = _strype_graphics_internal.addSprite(image._Image__image, True)
+            self.__id = _strype_graphics_internal.addSprite(image._Image__image, True, x, y)
             self.__editable_image = image
         elif isinstance(image, str):
-            self.__id = _strype_graphics_internal.addSprite(_load_image_bitmap(image), True)
+            self.__id = _strype_graphics_internal.addSprite(_load_image_bitmap(image), True, x, y)
             self.__editable_image = None
         else:
             raise TypeError("Actor constructor parameter must be Image")
         _actorsInWorld[self.__id] = self
         self.__say = None
         self.__tag = tag
-        _strype_graphics_internal.setImageLocation(self.__id, x, y)
         _strype_graphics_internal.setImageRotation(self.__id, 0)
         
     def set_location(self, x, y):

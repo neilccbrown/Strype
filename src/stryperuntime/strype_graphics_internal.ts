@@ -93,8 +93,8 @@ export function loadAndWaitForImage(filename: string) : RemoteImage {
 export function setBackground(img : RemoteImage) : void {
     globalThis.spriteManager.setBackground(img);
 } 
-export function addSprite(image: RemoteImage, collidable: boolean) : number {
-    return globalThis.spriteManager.addSprite(image, collidable);
+export function addSprite(image: RemoteImage, collidable: boolean, x = 0, y = 0) : number {
+    return globalThis.spriteManager.addSprite(image, collidable, x, y);
 }
 export function updateImage(id: number, image: RemoteImage) : void {
     globalThis.spriteManager.setSpriteImage(id, image);
