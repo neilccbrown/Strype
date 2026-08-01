@@ -73,6 +73,7 @@ import { useAsyncComputed } from "@/helpers/vue3composables";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus } from "@/helpers/appContext";
 import { BPopover } from "bootstrap-vue-next";
+import {findNearCandidate} from "@/helpers/matchCloseKeyword";
 
 interface KeywordFrameConversionDef {
     keyword: string; // the word the user types, e.g. "return", "class", "def", "from"
@@ -107,7 +108,8 @@ const keywordFrameConversions: KeywordFrameConversionDef[] = [
     {keyword: "continue", targetType: AllFrameTypesIdentifier.continue, slots: 0},
     {keyword: "try", targetType: AllFrameTypesIdentifier.try, slots: 0},
 ];
-const keywordFrameConversionRegex = new RegExp("^(" + keywordFrameConversions.map((def) => def.keyword).join("|") + ")\\s");
+//const keywordFrameConversionRegex = new RegExp("^(" + keywordFrameConversions.map((def) => def.keyword).join("|") + ")\\s");
+const wordSpaceRegex = new RegExp("^([a-zA-Z0-9]+)\\s");
 
 export default defineComponent({
     name: "LabelSlotsStructure",
@@ -555,9 +557,10 @@ export default defineComponent({
                                     // keyword, so converting to an if frame is clearly the intended outcome).
                                     const isFunccallTopLevelSlot = this.labelIndex == 0 && !((currentFocusSlotCursorInfos?.slotInfos.slotId??",").includes(","))
                                         && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall;
-                                    const keywordFrameConversionMatch = isFunccallTopLevelSlot ? uiLiteralCode.match(keywordFrameConversionRegex) : null;
+                                    const candidateKeyword = isFunccallTopLevelSlot ? uiLiteralCode.match(wordSpaceRegex) : null;
+                                    const keywordFrameConversionMatch = candidateKeyword == null ? null : findNearCandidate(candidateKeyword[1].toLowerCase(), keywordFrameConversions.map((c) => c.keyword));
                                     const keywordFrameConversionDef = keywordFrameConversionMatch
-                                        ? keywordFrameConversions.find((def) => def.keyword == keywordFrameConversionMatch[1])
+                                        ? keywordFrameConversions.find((def) => def.keyword == keywordFrameConversionMatch)
                                         : undefined;
 
                                     // We also check here if the changes trigger the conversion of a function call frame to a varassign frame (i.e. a funccall frame contains a variable assignment).
@@ -565,14 +568,14 @@ export default defineComponent({
                                     // We do not allow a conversion if the focus isn't inside a slot of level 1.
                                     const isVarAssignSlotStructure = (parsedCodeRes.slots.operators.length > 0 && parsedCodeRes.slots.operators
                                         .find((opSlot, index) => (opSlot.code == "=" && parsedCodeRes.slots.operators.slice(0,index).every((opSlot) => ["", ".", ","].includes(opSlot.code)))));
-                                    if(keywordFrameConversionDef && this.isKeywordFrameConversionValid(keywordFrameConversionDef.targetType)){
+                                    if(candidateKeyword && keywordFrameConversionDef && this.isKeywordFrameConversionValid(keywordFrameConversionDef.targetType)){
                                         // Convert right away rather than waiting for typing to pause: that wait
                                         // used to exist purely to avoid a fast-typing race (see startPendingConversion()'s
                                         // doc comment for why converting immediately would otherwise risk dropping
                                         // characters) -- buffering keystrokes during the conversion's own brief async
                                         // gap replaces it, so there's no reason left to delay the conversion itself.
                                         this.startPendingConversion();
-                                        this.performKeywordFrameConversion(keywordFrameConversionDef, uiLiteralCode, stateBeforeChanges, options);
+                                        this.performKeywordFrameConversion(keywordFrameConversionDef, candidateKeyword.length - 1, uiLiteralCode, stateBeforeChanges, options);
                                     }
                                     else if(isVarAssignSlotStructure && this.labelIndex == 0 && !((currentFocusSlotCursorInfos?.slotInfos.slotId??",").includes(",")) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && uiLiteralCode.match(/(?<!=)=(?!=)/) != null){
                                         // We need to break at the slot preceding the first "=" operator.
@@ -786,7 +789,7 @@ export default defineComponent({
         // the caller (checkSlotRefactoring) has already started buffering keystrokes via
         // startPendingConversion(), which every exit path here must eventually resolve via
         // finishPendingConversion().
-        performKeywordFrameConversion(def: KeywordFrameConversionDef, uiLiteralCode: string, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, doAfterCursorSet?: VoidFunction}): void {
+        performKeywordFrameConversion(def: KeywordFrameConversionDef, keywordLen: number, uiLiteralCode: string, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, doAfterCursorSet?: VoidFunction}): void {
             // Remove the focus
             const focusedSlot = retrieveSlotByPredicate([this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures], (slot: FieldSlot) => ((slot as BaseSlot).focused??false));
             if(focusedSlot){
@@ -797,7 +800,7 @@ export default defineComponent({
             // the FrameType object otherwise undo/redo makes weird changes in the commands)
             this.appStore.frameObjects[this.frameId].frameType = cloneDeep(getFrameDefType(def.targetType));
 
-            const rawRemainder = uiLiteralCode.slice(def.keyword.length + 1);
+            const rawRemainder = uiLiteralCode.slice(keywordLen + 1);
 
             if(def.slots === 0){
                 // No editable content at all for this frame type -- there's nowhere to put a cursor,

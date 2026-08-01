@@ -15,7 +15,7 @@ import {
     getFrameHeaderText,
     getFrameIdByType,
     relocateFrameToContainer,
-    typeKeywordConversionTrigger,
+    typeKeywordConversionTrigger, typeConversionTrigger,
 } from "../support/keyword-conversion";
 
 test.beforeEach(async ({page, browserName}, testInfo) => {
@@ -150,6 +150,37 @@ test.describe("Keyword-triggered frame conversion -- shapes", () => {
         await assertFrameType(page, frameId, AllFrameTypesIdentifier.funcdef);
         expect(await getFrameHeaderText(page, frameId)).toContain("foo");
     });
+});
+
+test.describe("Keyword-triggered frame conversion -- typo-tolerant", () => {
+    const keywordsAndConversions: [string, string | null][] = [
+        ["if", AllFrameTypesIdentifier.if],
+        ["fi", AllFrameTypesIdentifier.if],
+        ["it", AllFrameTypesIdentifier.if],
+        ["of", AllFrameTypesIdentifier.if],
+        ["on", null],
+        ["wile", AllFrameTypesIdentifier.while],
+        ["fr", AllFrameTypesIdentifier.for],
+        ["four", AllFrameTypesIdentifier.for],
+        ["raise", AllFrameTypesIdentifier.raise],
+        ["raize", AllFrameTypesIdentifier.raise],
+        ["raisin", null],
+        ["crate", null],
+        ["mtch", AllFrameTypesIdentifier.match],
+        ["matchh", AllFrameTypesIdentifier.match],
+        ["ma6ch", AllFrameTypesIdentifier.match],
+    ];
+    for (const keywordAndConversion of keywordsAndConversions) {
+        test("Keyword " + keywordAndConversion[0] +" then space produces " + keywordAndConversion[1], async ({page}) => {
+            const frameId = await typeConversionTrigger(page, keywordAndConversion[0]);
+            if (keywordAndConversion[1]) {
+                await assertFrameType(page, frameId, keywordAndConversion[1]);
+            }
+            else {
+                await assertConversionDidNotHappen(page, frameId);
+            }
+        });
+    }
 });
 
 test.describe("Keyword-triggered frame conversion -- location gating", () => {

@@ -27,9 +27,6 @@ export interface KeywordConversionDef {
     slots: 0 | 1 | 2;
     splitWord?: string; // for keyword-based 2-slot splits: "in" (for), "as" (with), "import" (from-import)
     splitAtBrackets?: boolean; // funcdef only: split at "(" ... ")" instead of a keyword
-    // Overrides DEFAULT_CONVERSION_TRIGGER for this keyword specifically. Set to "" to mean "no
-    // trigger needed at all" for a future variant where some frame types convert without one.
-    trigger?: string;
 }
 
 // Mirrors keywordFrameConversions in src/components/LabelSlotsStructure.vue. Kept as a manual
@@ -98,18 +95,22 @@ export async function getFocusedFrameId(page: Page): Promise<number> {
 // conversions (break/continue/try) the frame ends up with no editable slot at all afterwards,
 // so this is the only reliable time to capture it -- and it's equally valid for 1-/2-slot
 // conversions, since the frame ID never changes across the conversion.
-export async function typeKeywordConversionTrigger(page: Page, keyword: string, restOfLine?: string): Promise<number> {
-    const def = getKeywordConversionDef(keyword);
-    const trigger = def.trigger ?? DEFAULT_CONVERSION_TRIGGER;
+export async function typeConversionTrigger(page: Page, keyword: string, restOfLine?: string) : Promise<number> {
     await page.keyboard.type(keyword[0]);
     await waitForEditorSettled(page);
     const frameId = await getFocusedFrameId(page);
-    const remainder = keyword.slice(1) + trigger + (restOfLine ?? "");
+    const remainder = keyword.slice(1) + DEFAULT_CONVERSION_TRIGGER + (restOfLine ?? "");
     if (remainder.length > 0) {
         await page.keyboard.type(remainder);
     }
     await waitForEditorSettled(page);
     return frameId;
+}
+
+// Like typeConversionTrigger but checks the keyword exists
+export async function typeKeywordConversionTrigger(page: Page, keyword: string, restOfLine?: string): Promise<number> {
+    getKeywordConversionDef(keyword);
+    return await typeConversionTrigger(page, keyword, restOfLine);
 }
 
 // Clears whatever text content a frame's first editable slot currently holds, by focusing it
