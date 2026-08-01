@@ -46,6 +46,7 @@ export function pressFrameShortcutThenType(key: string, rest: string): void {
     pressFrameShortcut(key);
     if (rest.length > 0) {
         cy.get("body").type(rest);
+        waitForEditorSettled();
     }
 }
 

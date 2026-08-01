@@ -1,5 +1,5 @@
 import { scssVars } from "../support/standard-setup";
-import { clearDefaultImports, pressFrameShortcut, pressFrameShortcutThenType } from "../support/test-support";
+import {clearDefaultImports, pressFrameShortcut, pressFrameShortcutThenType, waitForEditorSettled} from "../support/test-support";
 
 require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
@@ -230,8 +230,9 @@ describe("Function params: types inferred from callers (Actor, multiple params)"
         focusEditorAC();
         clearDefaultImports();
         pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
-        cy.get("body").type("=myActor=Actor(\"cat-test.jpg\",0,0,\"t\"){enter}");
+        pressFrameShortcutThenType("=", "myActor=Actor(\"cat-test.jpg\",0,0,\"t\"){enter}");
         cy.get("body").type("foo(myActor){enter}");
+        waitForEditorSettled();
         cy.get("body").type("{uparrow}{uparrow}{uparrow}");
         pressFrameShortcutThenType("f", "foo{rightarrow}a{rightarrow}{downarrow}");
         cy.get("body").type("a.");
@@ -248,7 +249,7 @@ describe("Function params: types inferred from callers (Actor, multiple params)"
         focusEditorAC();
         clearDefaultImports();
         pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
-        cy.get("body").type("=myActor=Actor(\"cat-test.jpg\",0,0,\"t\"){enter}");
+        pressFrameShortcutThenType("=", "myActor=Actor(\"cat-test.jpg\",0,0,\"t\"){enter}");
         // One caller gives evidence for all 3 params at once (string, int, Actor):
         cy.get("body").type("foo(\"hi\",5,myActor){enter}");
         cy.get("body").type("{uparrow}{uparrow}{uparrow}");
@@ -303,8 +304,8 @@ describe("Function params: types inferred from callers (Actor, multiple params)"
         focusEditorAC();
         clearDefaultImports();
         pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
-        cy.get("body").type("=a=Actor(\"cat-test.jpg\",0,0,\"t\"){enter}");
-        pressFrameShortcutThenType("f", "p{rightarrow}get_actors(){rightarrow} foo(p){enter}");
+        pressFrameShortcutThenType("=", "a=Actor(\"cat-test.jpg\",0,0,\"t\"){enter}");
+        pressFrameShortcutThenType("f", "p{rightarrow}get_actors(){rightarrow}foo(p){enter}");
         cy.get("body").type("{uparrow}{uparrow}{uparrow}{uparrow}");
         pressFrameShortcutThenType("f", "foo{rightarrow}x{rightarrow}{downarrow}");
         cy.get("body").type("x.");
@@ -323,7 +324,7 @@ describe("Function params: types inferred from callers (Actor, multiple params)"
         focusEditorAC();
         clearDefaultImports();
         pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
-        pressFrameShortcutThenType("f", "p{rightarrow}get_actors(){rightarrow} p.");
+        pressFrameShortcutThenType("f", "p{rightarrow}get_actors(){rightarrow}p.");
         cy.wait(500);
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
