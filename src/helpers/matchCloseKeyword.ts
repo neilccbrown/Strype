@@ -18,9 +18,7 @@ function weightedEditDistance(
     const m = a.length;
     const n = b.length;
 
-    const dp = Array.from({ length: m + 1 }, () =>
-        new Array<number>(n + 1).fill(0)
-    );
+    const dp = Array.from({ length: m + 1 }, () => new Array<number>(n + 1).fill(0));
 
     dp[0][0] = 0;
 
