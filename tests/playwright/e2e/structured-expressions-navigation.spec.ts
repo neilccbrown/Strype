@@ -56,9 +56,6 @@ test.describe("Check navigation", () => {
         await checkFrameXorTextCursor(page);
     });
     test("Right arrow through a file", async ({page}, testInfo) => {
-        if (testInfo.project.name === "chromium") {
-            test.skip(); // See comment above
-        }
         await loadPY(page, "../../cypress/fixtures/structured-expr-nav-small.spy");
         for (let i = 0; i < 50; i++) {
             await checkFrameXorTextCursor(page);
@@ -68,9 +65,6 @@ test.describe("Check navigation", () => {
     });
     // Down by itself won't go into slots, so we do down-down-left which should get to the end.
     test("Down-down-left arrow through a file", async ({page}, testInfo) => {
-        if (testInfo.project.name === "chromium") {
-            test.skip(); // See comment above
-        }
         await loadPY(page, "../../cypress/fixtures/structured-expr-nav-small.spy");
         for (let i = 0; i < 17; i++) {
             await checkFrameXorTextCursor(page);

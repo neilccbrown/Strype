@@ -17,12 +17,6 @@ import { DEFAULT_STARTING_FRAME_COUNT, setupStrypeTest } from "../support/genera
 let scssVars: {[varName: string]: string};
 let strypeElIds: {[varName: string]: (...args: any[]) => Promise<string>};
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    // With regards to Chromium: several of these tests fail on Chromium in Playwright on Mac and
-    // I can't figure out why.  I've tried them manually in Chrome and Chromium on the same
-    // machine and it works fine, but I see in the video that the test fails in Playwright
-    // (pressing right out of a comment frame puts the cursor at the beginning and makes a frame cursor).
-    // Since it works in the real browsers, and on Webkit and Firefox, we just skip the tests in Chromium
-    test.skip(testInfo.project.name == "chromium", "Cannot run in Chromium");
     await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 240000, skipPyodide: true});
     strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
