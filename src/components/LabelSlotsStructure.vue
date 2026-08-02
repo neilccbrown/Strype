@@ -54,7 +54,7 @@
 </template>
 
 <script lang="ts">
-import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, DefsContainerDefinition, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, MediaDataAndDim, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
+import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, DefsContainerDefinition, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, MediaDataAndDim, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
 import { computed, defineComponent } from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
@@ -84,6 +84,15 @@ interface KeywordFrameConversionDef {
     isJoint?: boolean; // elif/else/except/finally: converting also relocates the frame out of its
     // parent's normal childrenIds and into a joint-frame chain -- see isJointKeywordFrameConversionValid()
     // and performKeywordFrameConversion()'s relocation step.
+}
+
+// A specific place a new joint frame could be inserted: which root's jointFrameIds array (rootId),
+// at what index, and which joint types are actually valid there right now -- see
+// computeJointAttachmentAfter()/resolveJointAttachmentPoint().
+interface JointAttachmentPoint {
+    rootId: number;
+    insertIndex: number;
+    allowedJointChildren: string[];
 }
 
 // Converts a funccall frame into one of these frame types the moment its (top-level) content starts
@@ -770,61 +779,52 @@ export default defineComponent({
             }
         },
 
-        // Whether targetType (one of elif/else/except/finally) is currently a valid *joint* conversion
-        // target for the funccall frame at this.frameId. A joint frame is never a normal child -- it can
-        // only ever follow directly on from a frame that can carry joint children -- so unlike
-        // isKeywordFrameConversionValid() above (which only ever needs to check forbiddenChildrenTypes/
-        // ancestry of the frame's *existing* position), this needs to check that the funccall's existing
-        // position IS that position: the last statement in the body of a joint-eligible root (if/try/for/
-        // while) or of one of that root's own existing joint children (elif/except). Ports the "RULE FOR
-        // THE JOINTS" block of generateAvailableFrameCommands (store.ts) -- see isKeywordFrameConversionValid's
-        // comment for why that function can't just be called from here directly. The "focusedFrame" of that
-        // function is always this frame's own parent ("block" below) here: whether the funccall landed as
-        // the very first statement typed into an empty body (mirroring generateAvailableFrameCommands' empty
-        // body case) or was added after existing siblings (mirroring its "below the final frame" case), the
-        // parent block is the same either way, so both cases collapse into one check here.
-        isJointKeywordFrameConversionValid(targetType: string): boolean {
-            const frame = this.appStore.frameObjects[this.frameId];
-            const block = this.appStore.frameObjects[frame.parentId];
-            // Must be the last statement in its containing body: that's the only position from which a
-            // following elif/else/except/finally could attach (anything else in the body would end up
-            // sandwiched below the new joint frame, which isn't valid).
-            if(block.childrenIds.at(-1) !== this.frameId){
-                return false;
-            }
-
+        // Computes what a new joint frame could be, and where in its root's jointFrameIds it would
+        // go, if inserted "directly after" anchor -- where anchor is either a joint-eligible root
+        // (if/try/for/while, when it has no relevant joint frame before it) or an existing joint
+        // child (elif/except) already attached to some root. Ports the "RULE FOR THE JOINTS" block
+        // of generateAvailableFrameCommands (store.ts) -- see isKeywordFrameConversionValid's
+        // comment for why that function can't just be called from here directly. Returns undefined
+        // if anchor isn't a valid joint-continuation position at all.
+        computeJointAttachmentAfter(anchor: FrameObject): JointAttachmentPoint | undefined {
+            let rootId: number;
             let allowedJointChildren: string[];
             let nextJointChildId: number;
-            if(!!block.frameType.allowJointChildren){
-                // block is itself a joint-eligible root (if/try/for/while): a new joint here would become
-                // the first in the chain (or slot in before whatever's already first).
-                allowedJointChildren = [...block.frameType.jointFrameTypes];
-                nextJointChildId = block.jointFrameIds[0] ?? -100;
+            let insertIndex: number;
+            if(!!anchor.frameType.allowJointChildren){
+                // anchor is itself the joint-eligible root: a new joint here would become the first
+                // in the chain (or slot in before whatever's already first).
+                rootId = anchor.id;
+                allowedJointChildren = [...anchor.frameType.jointFrameTypes];
+                nextJointChildId = anchor.jointFrameIds[0] ?? -100;
+                insertIndex = 0;
             }
-            else if(block.jointParentId > 0){
-                // block is itself an existing joint child (elif/except): a new joint here continues the
-                // same chain, straight after block.
-                const jointParent = this.appStore.frameObjects[block.jointParentId];
+            else if(anchor.jointParentId > 0){
+                // anchor is itself an existing joint child (elif/except): a new joint here continues
+                // the same chain, straight after anchor.
+                rootId = anchor.jointParentId;
+                const jointParent = this.appStore.frameObjects[rootId];
                 allowedJointChildren = [...jointParent.frameType.jointFrameTypes];
-                const indexInJointParent = jointParent.jointFrameIds.indexOf(block.id);
+                const indexInJointParent = jointParent.jointFrameIds.indexOf(anchor.id);
                 nextJointChildId = jointParent.jointFrameIds[indexInJointParent + 1] ?? -100;
+                insertIndex = indexInJointParent + 1;
             }
             else{
-                // block is neither -- not a valid joint-continuation position at all.
-                return false;
+                // anchor is neither -- not a valid joint-continuation position at all.
+                return undefined;
             }
 
             const uniqueJointFrameTypes = [AllFrameTypesIdentifier.else, AllFrameTypesIdentifier.finally];
             if(nextJointChildId === -100){
                 // Nothing follows in the chain yet.
-                if(block.frameType.type === AllFrameTypesIdentifier.try){
+                if(anchor.frameType.type === AllFrameTypesIdentifier.try){
                     // try's else is special-cased out entirely (it must follow an except, never try directly).
                     allowedJointChildren = allowedJointChildren.filter((t) => t !== AllFrameTypesIdentifier.else);
                 }
-                else if(uniqueJointFrameTypes.includes(block.frameType.type)){
-                    // block itself is a unique joint (else/finally) with nothing after it: only whatever
+                else if(uniqueJointFrameTypes.includes(anchor.frameType.type)){
+                    // anchor itself is a unique joint (else/finally) with nothing after it: only whatever
                     // (if anything) is allowed to follow that specific unique remains available.
-                    allowedJointChildren = allowedJointChildren.slice(allowedJointChildren.indexOf(block.frameType.type) + 1);
+                    allowedJointChildren = allowedJointChildren.slice(allowedJointChildren.indexOf(anchor.frameType.type) + 1);
                 }
             }
             else{
@@ -832,12 +832,12 @@ export default defineComponent({
                 if(!uniqueJointFrameTypes.includes(nextJointChild.frameType.type)){
                     allowedJointChildren = allowedJointChildren.filter((t) => !uniqueJointFrameTypes.includes(t));
                 }
-                else if(uniqueJointFrameTypes.includes(block.frameType.type)){
-                    // Both block and what follows are uniques (e.g. we're in an else, and a finally already
+                else if(uniqueJointFrameTypes.includes(anchor.frameType.type)){
+                    // Both anchor and what follows are uniques (e.g. we're in an else, and a finally already
                     // follows it): nothing more can be inserted here.
                     allowedJointChildren = [];
                 }
-                else if(block.frameType.type === AllFrameTypesIdentifier.try){
+                else if(anchor.frameType.type === AllFrameTypesIdentifier.try){
                     allowedJointChildren = allowedJointChildren.filter((t) => t !== AllFrameTypesIdentifier.else);
                 }
                 else{
@@ -845,7 +845,64 @@ export default defineComponent({
                 }
             }
 
-            return allowedJointChildren.includes(targetType);
+            return {rootId, insertIndex, allowedJointChildren};
+        },
+
+        // Resolves where (if anywhere) a joint frame of targetType could attach for the funccall
+        // frame at this.frameId, trying two candidate positions in priority order:
+        //  1) nested -- the funccall is the last statement inside the body of a joint-eligible root
+        //     or one of its existing joint children (e.g. typed at the bottom of an if's own body).
+        //     This is the original/primary position and always wins when valid for targetType.
+        //  2) after -- the funccall directly (immediately) follows a joint-eligible root as a normal
+        //     sibling one level up (e.g. typed on the next line straight after an if, not indented
+        //     into its body) -- attaching at the very end of whatever joint chain that root already
+        //     has, since nothing else in the data model can sit "after" an existing joint chain
+        //     except a normal sibling exactly here. Unlike (1), the funccall need not be the last
+        //     child at its own level for this -- moving it into the root's jointFrameIds doesn't
+        //     disturb the relative order of whatever else follows it there.
+        // (2) is only tried when (1) isn't valid for targetType: an if directly inside another if's
+        // still-open body satisfies BOTH positions for the very same funccall frame (nested in the
+        // inner if's body, AND directly after the inner if from the outer if's body's point of
+        // view) -- the nested reading must win, matching how a plain elif/else typed there would
+        // naturally read as continuing the innermost if.
+        // Not currently reachable via the frame commands pane shortcuts -- pane-added joints only
+        // ever use position (1) (see addFrameWithCommand, store.ts) -- kept that way deliberately
+        // for now.
+        resolveJointAttachmentPoint(targetType: string): JointAttachmentPoint | undefined {
+            const frame = this.appStore.frameObjects[this.frameId];
+            const block = this.appStore.frameObjects[frame.parentId];
+            const index = block.childrenIds.indexOf(this.frameId);
+            if(index === -1){
+                return undefined;
+            }
+
+            if(index === block.childrenIds.length - 1){
+                const nested = this.computeJointAttachmentAfter(block);
+                if(nested && nested.allowedJointChildren.includes(targetType)){
+                    return nested;
+                }
+            }
+
+            if(index > 0){
+                const prevSibling = this.appStore.frameObjects[block.childrenIds[index - 1]];
+                if(!!prevSibling.frameType.allowJointChildren){
+                    const tailJointId = prevSibling.jointFrameIds.at(-1);
+                    const tailAnchor = tailJointId !== undefined ? this.appStore.frameObjects[tailJointId] : prevSibling;
+                    const after = this.computeJointAttachmentAfter(tailAnchor);
+                    if(after && after.allowedJointChildren.includes(targetType)){
+                        return after;
+                    }
+                }
+            }
+
+            return undefined;
+        },
+
+        // Whether targetType (one of elif/else/except/finally) is currently a valid *joint* conversion
+        // target for the funccall frame at this.frameId. A joint frame is never a normal child -- see
+        // resolveJointAttachmentPoint for the two positions this checks.
+        isJointKeywordFrameConversionValid(targetType: string): boolean {
+            return this.resolveJointAttachmentPoint(targetType) !== undefined;
         },
 
         // Given a freshly-parsed SlotsStructure for one label of the frame we just converted into,
@@ -885,29 +942,19 @@ export default defineComponent({
 
             if(def.isJoint){
                 // elif/else/except/finally are never normal children -- isJointKeywordFrameConversionValid
-                // has already confirmed we're the last statement of a joint-eligible block, so relocate
-                // ourself out of that block's normal childrenIds and into the joint-frame chain it belongs
-                // to, mirroring addFrameWithCommand's addingJointFrame branch (store.ts).
+                // has already confirmed a valid attachment point exists for this exact targetType (either
+                // nested or after -- see resolveJointAttachmentPoint), so relocate ourself out of our
+                // current parent's normal childrenIds and into the joint-frame chain it resolves to,
+                // mirroring addFrameWithCommand's addingJointFrame branch (store.ts). Re-resolving here
+                // (rather than threading the earlier result through) is safe and cheap: nothing about the
+                // frame tree changes between that check and this call.
+                const attachment = this.resolveJointAttachmentPoint(def.targetType) as JointAttachmentPoint;
                 const currentFrameObj = this.appStore.frameObjects[this.frameId];
-                const block = this.appStore.frameObjects[currentFrameObj.parentId];
-                block.childrenIds.splice(block.childrenIds.indexOf(this.frameId), 1);
-
-                let jointParentId: number;
-                let listToUpdate: number[];
-                let indexToAdd: number;
-                if(!!block.frameType.allowJointChildren){
-                    jointParentId = block.id;
-                    listToUpdate = block.jointFrameIds;
-                    indexToAdd = 0;
-                }
-                else{
-                    jointParentId = block.jointParentId;
-                    listToUpdate = this.appStore.frameObjects[block.jointParentId].jointFrameIds;
-                    indexToAdd = listToUpdate.indexOf(block.id) + 1;
-                }
-                listToUpdate.splice(indexToAdd, 0, this.frameId);
+                const oldParent = this.appStore.frameObjects[currentFrameObj.parentId];
+                oldParent.childrenIds.splice(oldParent.childrenIds.indexOf(this.frameId), 1);
+                this.appStore.frameObjects[attachment.rootId].jointFrameIds.splice(attachment.insertIndex, 0, this.frameId);
                 currentFrameObj.parentId = 0;
-                currentFrameObj.jointParentId = jointParentId;
+                currentFrameObj.jointParentId = attachment.rootId;
             }
 
             // Change the type of frame (when we change the state in this next line, we need to COPY

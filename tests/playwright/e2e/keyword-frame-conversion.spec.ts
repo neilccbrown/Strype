@@ -15,6 +15,9 @@ import {
     getFocusedFrameId,
     getFrameHeaderText,
     getFrameIdByType,
+    getJointParentId,
+    insertBlankFuncCallAfter,
+    navigateToFrameCaret,
     relocateFrameToContainer,
     typeKeywordConversionTrigger, typeConversionTrigger, getFirstSlotText,
 } from "../support/keyword-conversion";
@@ -387,6 +390,128 @@ test.describe("Keyword-triggered frame conversion -- joint frames (elif/else/exc
     test("finally does NOT convert directly in Main (no preceding try to attach to)", async ({page}) => {
         const frameId = await typeKeywordConversionTrigger(page, "finally");
         await assertConversionDidNotHappen(page, frameId);
+    });
+});
+
+test.describe("Keyword-triggered frame conversion -- joint frames, attaching directly after the root", () => {
+    // navigateToFrameCaret(page, id, "below") moves the caret to a normal sibling position one
+    // level up from id's own body (not nested inside it) -- the position these tests need but that
+    // createIfAndEnterBody (and the "nested" describe block above) deliberately don't reach.
+
+    test("else converts when typed directly after an if (not nested inside its body)", async ({page}) => {
+        await page.keyboard.press(" ");
+        await page.keyboard.press("i"); // if
+        await waitForEditorSettled(page);
+        const ifId = await getFocusedFrameId(page);
+        await page.keyboard.type("x");
+        await waitForEditorSettled(page);
+        await navigateToFrameCaret(page, ifId, "below");
+        const frameId = await typeKeywordConversionTrigger(page, "else");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.else);
+        expect(await getJointParentId(page, frameId)).toEqual(ifId);
+    });
+
+    test("elif converts when typed directly after an if (not nested inside its body)", async ({page}) => {
+        await page.keyboard.press(" ");
+        await page.keyboard.press("i"); // if
+        await waitForEditorSettled(page);
+        const ifId = await getFocusedFrameId(page);
+        await page.keyboard.type("x");
+        await waitForEditorSettled(page);
+        await navigateToFrameCaret(page, ifId, "below");
+        const frameId = await typeKeywordConversionTrigger(page, "elif", "y");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.elif);
+        expect(await getJointParentId(page, frameId)).toEqual(ifId);
+    });
+
+    test("except converts when typed directly after a try that has no joints yet", async ({page}) => {
+        await page.keyboard.press(" ");
+        await page.keyboard.press("t"); // try (auto-creates a default except joint)
+        await waitForEditorSettled(page);
+        const tryId = await getFrameIdByType(page, AllFrameTypesIdentifier.try);
+        await navigateToFrameCaret(page, tryId, "below");
+        const frameId = await typeKeywordConversionTrigger(page, "except", "ValueError");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.except);
+        expect(await getJointParentId(page, frameId)).toEqual(tryId);
+    });
+
+    test("finally converts when typed directly after a try that already has an except (appends at the end of the existing chain)", async ({page}) => {
+        await page.keyboard.press(" ");
+        await page.keyboard.press("t"); // try (auto-creates a default except joint)
+        await waitForEditorSettled(page);
+        const tryId = await getFrameIdByType(page, AllFrameTypesIdentifier.try);
+        await navigateToFrameCaret(page, tryId, "below");
+        const frameId = await typeKeywordConversionTrigger(page, "finally");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.finally);
+        expect(await getJointParentId(page, frameId)).toEqual(tryId);
+    });
+
+    test("else does NOT convert when typed directly after a plain (non-joint-eligible) statement", async ({page}) => {
+        await page.keyboard.type("x"); // plain func-call, not an if/try/for/while
+        await waitForEditorSettled(page);
+        const xId = await getFocusedFrameId(page);
+        await navigateToFrameCaret(page, xId, "below");
+        const frameId = await typeKeywordConversionTrigger(page, "else");
+        await assertConversionDidNotHappen(page, frameId);
+    });
+
+    test("else converts directly after an if even when another statement already follows it at the same level", async ({page}) => {
+        await page.keyboard.press(" ");
+        await page.keyboard.press("i"); // if
+        await waitForEditorSettled(page);
+        const ifId = await getFocusedFrameId(page);
+        await page.keyboard.type("x");
+        await waitForEditorSettled(page);
+        await navigateToFrameCaret(page, ifId, "below");
+        await page.keyboard.type("a");
+        await waitForEditorSettled(page);
+        const frameId = await getFocusedFrameId(page);
+        await clearFrameContent(page, frameId, "a".length);
+
+        // Add a trailing statement directly after frameId via the store rather than navigating
+        // away through the UI and back -- see insertBlankFuncCallAfter's comment for why -- so
+        // frameId is no longer the last statement at its level, without disturbing its own still-
+        // focused (now empty) slot.
+        const trailingId = await insertBlankFuncCallAfter(page, frameId, "z");
+        await waitForEditorSettled(page);
+
+        await typeKeywordConversionTrigger(page, "else");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.else);
+        expect(await getJointParentId(page, frameId)).toEqual(ifId);
+        // The trailing statement should still be there, now directly after the whole if/else:
+        expect(await getFrameHeaderText(page, trailingId)).toContain("z");
+    });
+
+    test("nested if inside if: else typed directly after the inner if attaches to the OUTER if (ambiguity resolves to the nested rule)", async ({page}) => {
+        const outerId = await createIfAndEnterBody(page);
+        await page.keyboard.press(" ");
+        await page.keyboard.press("i"); // inner if
+        await waitForEditorSettled(page);
+        const innerId = await getFocusedFrameId(page);
+        await page.keyboard.type("y");
+        await waitForEditorSettled(page);
+        // Below the inner if, but still nested inside the outer if's own body:
+        await navigateToFrameCaret(page, innerId, "below");
+        const frameId = await typeKeywordConversionTrigger(page, "else");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.else);
+        expect(await getJointParentId(page, frameId)).toEqual(outerId);
+        expect(await getJointParentId(page, frameId)).not.toEqual(innerId);
+    });
+
+    test("nested if inside if: else typed inside the inner if's own body attaches to the INNER if", async ({page}) => {
+        const outerId = await createIfAndEnterBody(page);
+        await page.keyboard.press(" ");
+        await page.keyboard.press("i"); // inner if
+        await waitForEditorSettled(page);
+        const innerId = await getFocusedFrameId(page);
+        await page.keyboard.type("y");
+        await waitForEditorSettled(page);
+        await page.locator(`#frameBodyId_${innerId}`).click();
+        await waitForEditorSettled(page);
+        const frameId = await typeKeywordConversionTrigger(page, "else");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.else);
+        expect(await getJointParentId(page, frameId)).toEqual(innerId);
+        expect(await getJointParentId(page, frameId)).not.toEqual(outerId);
     });
 });
 

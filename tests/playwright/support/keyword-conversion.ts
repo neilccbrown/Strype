@@ -200,6 +200,96 @@ export const IMPORTS_CONTAINER_ID = -1;
 export const DEFS_CONTAINER_ID = -2;
 export const MAIN_CONTAINER_ID = -3;
 
+// Presses ArrowDown repeatedly (up to maxPresses) until the visible frame-level (blue) caret is
+// at the given position of the given frame, per getCaretUID's id format ("caret_" + CaretPosition +
+// "_" + frameId -- see assertFrameCaretPosition's comment for why those string values are
+// hardcoded here). Needed to reach the "directly after a block, not nested in its body" position
+// the after-the-root joint-frame tests exercise: for a still-empty body, ArrowDown from editing
+// the header first lands on the nested "body" stop (case (1) of generateAvailableFrameCommands'
+// joint rule, store.ts), then a further ArrowDown moves on to "below" (a normal sibling position
+// one level up) -- polling rather than hard-coding a press count keeps this robust to either
+// starting state (a still-focused text slot, or an already-frame-level caret e.g. after creating a
+// slot-less type like try).
+export async function navigateToFrameCaret(page: Page, frameId: number, position: "body" | "below", maxPresses = 6): Promise<void> {
+    const targetId = `caret_${position === "body" ? "caretBody" : "caretBelow"}_${frameId}`;
+    for (let i = 0; i < maxPresses; i++) {
+        const currentId = await page.evaluate(() => {
+            const scssVars = (window as unknown as {StrypeSCSSVarsGlobals: {caretClassName: string, invisibleClassName: string}}).StrypeSCSSVarsGlobals;
+            return document.querySelector("." + scssVars.caretClassName + ":not(." + scssVars.invisibleClassName + ")")?.id ?? null;
+        });
+        if (currentId === targetId) {
+            return;
+        }
+        await page.keyboard.press("ArrowDown");
+        await waitForEditorSettled(page);
+    }
+    throw new Error(`Could not navigate to caret "${targetId}" within ${maxPresses} ArrowDown presses.`);
+}
+
+// Reads a frame's jointParentId straight from the Pinia store (0 if it isn't currently a joint
+// frame) -- used to confirm WHICH root a converted elif/else/except/finally actually attached to,
+// which the DOM alone doesn't disambiguate when there's nested if/try structure (see the "after an
+// if" joint-frame tests). Same store-access pattern as relocateFrameToContainer below.
+export async function getJointParentId(page: Page, frameId: number): Promise<number> {
+    return await page.evaluate((frameId) => {
+        const app = (document.getElementById("app") as unknown as {__vue_app__: {config: {globalProperties: {$pinia: {_s: Map<string, any>}}}}}).__vue_app__;
+        const store = app.config.globalProperties.$pinia._s.get("app");
+        return store.frameObjects[frameId].jointParentId;
+    }, frameId);
+}
+
+// Directly inserts a plain func-call frame with the given code as the name field, immediately
+// after afterFrameId in its parent's childrenIds, by mutating the Pinia store from the page
+// context. Returns the new frame's id.
+//
+// Used instead of navigating there and typing it interactively when a test needs a trailing
+// sibling to already exist next to a frame it's still mid-edit on (see the "trailing statement"
+// joint-frame test): going via the UI would mean leaving that frame's focused slot and coming
+// back, which was observed to be flaky on Chromium (a click back into the slot can land before
+// the newly-typed sibling's own async creation -- see createFuncCallFrameIn's comment on that same
+// race -- has fully finished internally, silently failing to move focus). Mutating the store
+// directly leaves the original frame's focus/edit state completely undisturbed.
+//
+// Same store-access pattern as relocateFrameToContainer below. Reuses afterFrameId's own
+// (JSON-cloned) frameType rather than importing FuncCallDefinition, since the two are the same
+// type in every current caller; clone rather than share the reference for the same
+// undo/redo-safety reason addFrameWithCommand's own frame construction always clones it
+// (store.ts). The slot structure mirrors what addFrameWithCommand builds for a fresh func-call:
+// name field, then its auto-appended (still-empty) call-brackets.
+export async function insertBlankFuncCallAfter(page: Page, afterFrameId: number, code: string): Promise<number> {
+    return await page.evaluate(({afterFrameId, code}) => {
+        const app = (document.getElementById("app") as unknown as {__vue_app__: {config: {globalProperties: {$pinia: {_s: Map<string, any>}}}}}).__vue_app__;
+        const store = app.config.globalProperties.$pinia._s.get("app");
+        const afterFrame = store.frameObjects[afterFrameId];
+        const parentId = afterFrame.parentId;
+        const newId = store.nextAvailableId++;
+        store.frameObjects[newId] = {
+            frameType: JSON.parse(JSON.stringify(afterFrame.frameType)),
+            id: newId,
+            isDisabled: false,
+            isSelected: false,
+            isVisible: true,
+            parentId,
+            childrenIds: [],
+            jointParentId: 0,
+            jointFrameIds: [],
+            caretVisibility: "none",
+            labelSlotsDict: {
+                0: {
+                    shown: true,
+                    slotStructures: {
+                        fields: [{code}, {openingBracketValue: "(", fields: [{code: ""}], operators: []}, {code: ""}],
+                        operators: [{code: ""}, {code: ""}],
+                    },
+                },
+            },
+        };
+        const siblings = store.frameObjects[parentId].childrenIds;
+        siblings.splice(siblings.indexOf(afterFrameId) + 1, 0, newId);
+        return newId;
+    }, {afterFrameId, code});
+}
+
 // Directly relocates a frame to a different parent container by mutating the Pinia store from
 // the page context, then waits for the app to re-render and settle.
 //
