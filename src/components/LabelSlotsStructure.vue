@@ -59,7 +59,7 @@ import { computed, defineComponent } from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
-import { CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID, getFlatCodeSlotsInLabelStruct, getCaretContainerUID, closeRenameIdentifierPopups, getImportFrameNameBindings, waitForElementId } from "@/helpers/editor";
+import { bumpCaretRequestSeq, CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID, getFlatCodeSlotsInLabelStruct, getCaretContainerUID, closeRenameIdentifierPopups, getImportFrameNameBindings, waitForElementId } from "@/helpers/editor";
 import { checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId, areSlotStructuresIsomorphic, getAncestorFrameOfTypeId, findSlotsWithIndentifierName, isContainedInFrame } from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import Parser from "@/parser/parser";
@@ -84,6 +84,10 @@ interface KeywordFrameConversionDef {
     isJoint?: boolean; // elif/else/except/finally: converting also relocates the frame out of its
     // parent's normal childrenIds and into a joint-frame chain -- see isJointKeywordFrameConversionValid()
     // and performKeywordFrameConversion()'s relocation step.
+    endsWithColon?: boolean; // 0-slot types whose own (fixed) label ends with " :" (try/else/finally,
+    // as opposed to break/continue, which don't open a body and so have no colon at all): typing the
+    // keyword immediately followed by ":" (no space) also converts, since that colon *is* the rest of
+    // the frame's own fixed label -- see checkSlotRefactoring's wordColonRegex handling.
 }
 
 // A specific place a new joint frame could be inserted: which root's jointFrameIds array (rootId),
@@ -118,14 +122,30 @@ const keywordFrameConversions: KeywordFrameConversionDef[] = [
     {keyword: "def", targetType: AllFrameTypesIdentifier.funcdef, slots: 2, splitAtBrackets: true},
     {keyword: "break", targetType: AllFrameTypesIdentifier.break, slots: 0},
     {keyword: "continue", targetType: AllFrameTypesIdentifier.continue, slots: 0},
-    {keyword: "try", targetType: AllFrameTypesIdentifier.try, slots: 0},
+    {keyword: "try", targetType: AllFrameTypesIdentifier.try, slots: 0, endsWithColon: true},
     {keyword: "elif", targetType: AllFrameTypesIdentifier.elif, slots: 1, isJoint: true},
-    {keyword: "else", targetType: AllFrameTypesIdentifier.else, slots: 0, isJoint: true},
+    {keyword: "else", targetType: AllFrameTypesIdentifier.else, slots: 0, isJoint: true, endsWithColon: true},
     {keyword: "except", targetType: AllFrameTypesIdentifier.except, slots: 1, isJoint: true},
-    {keyword: "finally", targetType: AllFrameTypesIdentifier.finally, slots: 0, isJoint: true},
+    {keyword: "finally", targetType: AllFrameTypesIdentifier.finally, slots: 0, isJoint: true, endsWithColon: true},
 ];
 //const keywordFrameConversionRegex = new RegExp("^(" + keywordFrameConversions.map((def) => def.keyword).join("|") + ")\\s");
 const wordSpaceRegex = new RegExp("^([a-zA-Z0-9]+)\\s");
+// Same, but without requiring a trailing whitespace character -- used when the conversion is
+// triggered by Enter rather than by an actual typed space (see checkSlotRefactoring's
+// triggeredByEnter option): Enter never types a character, so a bare keyword with nothing after it
+// yet (e.g. "if" then Enter) has no real trailing whitespace in uiLiteralCode to match against
+// (funccall frames also always have their own auto-appended, still-empty "()" immediately after
+// the name field, which isn't whitespace either). Enter is itself the deliberate "I'm done typing
+// this word" signal a space would otherwise provide, so no boundary character is needed here --
+// findNearCandidate's existing typo-tolerance is what actually protects against unrelated
+// identifiers matching (same as it already does for the space-triggered path).
+const wordOnlyAtStartRegex = new RegExp("^([a-zA-Z0-9]+)");
+// Matches a bare keyword immediately followed by ":" (no space in between) -- e.g. typing "else:"
+// directly, the way a real colon-terminated Python header would naturally be typed. Only ever
+// consulted for keywordFrameConversions entries with endsWithColon set (try/else/finally): those are
+// the only ones whose own fixed label already ends in " :", so the colon the user just typed *is*
+// the rest of the frame's own label, not left-over content that would need parsing into a slot.
+const wordColonRegex = new RegExp("^([a-zA-Z0-9]+):");
 
 export default defineComponent({
     name: "LabelSlotsStructure",
@@ -480,7 +500,7 @@ export default defineComponent({
             return true;
         },
 
-        checkSlotRefactoring(slotUID: string, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, skipStateSaveOnly?: boolean, doAfterCursorSet?: VoidFunction, useFlatMediaDataCode?: boolean, ignoreBlurEditableSlot?: boolean}) {
+        checkSlotRefactoring(slotUID: string, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, skipStateSaveOnly?: boolean, doAfterCursorSet?: VoidFunction, useFlatMediaDataCode?: boolean, ignoreBlurEditableSlot?: boolean, triggeredByEnter?: boolean}) {
             // Slot errors will be check later again. We clear off the notification on the parent (frame header) for slot errors so it can reset the triangle error indicator
             vueComponentsAPIHandler.frameHeaderComponentAPI?.forInstance[this.frameId].setHasErroneousSlot(false);
             // Comments do not need to be checked, so we do nothing special for them, but just enforce the caret to be placed at the right place and the code value to be updated
@@ -573,9 +593,21 @@ export default defineComponent({
                                     // keyword, so converting to an if frame is clearly the intended outcome).
                                     const isFunccallTopLevelSlot = this.labelIndex == 0 && !((currentFocusSlotCursorInfos?.slotInfos.slotId??",").includes(","))
                                         && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall;
-                                    const candidateKeyword = isFunccallTopLevelSlot ? uiLiteralCode.match(wordSpaceRegex) : null;
+                                    // Enter never types a character, so there's no real trailing whitespace to match against when the
+                                    // user presses Enter right after typing a bare keyword (e.g. "if" then Enter, with nothing else
+                                    // typed yet) -- triggeredByEnter (set by onEnterOrTabKeyUp, LabelSlot.vue) uses wordOnlyAtStartRegex
+                                    // instead, which doesn't require one, so Enter converts exactly like typing "if " does. The
+                                    // performKeywordFrameConversion call below is told there's no real separator character to skip
+                                    // over either (separatorLength 0 vs 1), since uiLiteralCode is used completely unpadded either way.
+                                    const spaceOrEnterMatch = isFunccallTopLevelSlot ? uiLiteralCode.match(options?.triggeredByEnter ? wordOnlyAtStartRegex : wordSpaceRegex) : null;
+                                    // A typed ":" (no space) also completes a bare keyword -- but only for the handful whose own
+                                    // fixed label ends in " :" (endsWithColon; see wordColonRegex's comment), checked once the
+                                    // matching def is resolved below since the regex alone can't tell which keyword this is yet.
+                                    const colonMatch = (isFunccallTopLevelSlot && !options?.triggeredByEnter && !spaceOrEnterMatch) ? uiLiteralCode.match(wordColonRegex) : null;
+                                    const isColonTrigger = spaceOrEnterMatch == null && colonMatch != null;
+                                    const candidateKeyword = spaceOrEnterMatch ?? colonMatch;
                                     const keywordFrameConversionMatch = candidateKeyword == null ? null : findNearCandidate(candidateKeyword[1].toLowerCase(), keywordFrameConversions.map((c) => c.keyword));
-                                    const keywordFrameConversionDef = keywordFrameConversionMatch
+                                    const keywordFrameConversionDef = (keywordFrameConversionMatch && (!isColonTrigger || keywordFrameConversions.find((def) => def.keyword == keywordFrameConversionMatch)?.endsWithColon))
                                         ? keywordFrameConversions.find((def) => def.keyword == keywordFrameConversionMatch)
                                         : undefined;
 
@@ -593,7 +625,7 @@ export default defineComponent({
                                         // characters) -- buffering keystrokes during the conversion's own brief async
                                         // gap replaces it, so there's no reason left to delay the conversion itself.
                                         this.startPendingConversion();
-                                        this.performKeywordFrameConversion(keywordFrameConversionDef, candidateKeyword[1].length, uiLiteralCode, stateBeforeChanges, options);
+                                        this.performKeywordFrameConversion(keywordFrameConversionDef, candidateKeyword[1].length, uiLiteralCode, stateBeforeChanges, options?.triggeredByEnter ? 0 : 1, options);
                                     }
                                     else if(isVarAssignSlotStructure && this.labelIndex == 0 && !((currentFocusSlotCursorInfos?.slotInfos.slotId??",").includes(",")) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && uiLiteralCode.match(/(?<!=)=(?!=)/) != null){
                                         // We need to break at the slot preceding the first "=" operator.
@@ -933,7 +965,11 @@ export default defineComponent({
         // the caller (checkSlotRefactoring) has already started buffering keystrokes via
         // startPendingConversion(), which every exit path here must eventually resolve via
         // finishPendingConversion().
-        performKeywordFrameConversion(def: KeywordFrameConversionDef, keywordLen: number, uiLiteralCode: string, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, doAfterCursorSet?: VoidFunction}): void {
+        // separatorLength is how many characters immediately after the keyword are the "boundary"
+        // that isn't part of any remaining content -- 1 for a real typed space, 0 when the
+        // conversion was triggered by Enter instead (no character was actually typed, so uiLiteralCode
+        // has nothing there to skip over -- see checkSlotRefactoring's triggeredByEnter option).
+        performKeywordFrameConversion(def: KeywordFrameConversionDef, keywordLen: number, uiLiteralCode: string, stateBeforeChanges: any, separatorLength: number, options?: {skipCursorSetAndStateSave?: boolean, doAfterCursorSet?: VoidFunction}): void {
             // Remove the focus
             const focusedSlot = retrieveSlotByPredicate([this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures], (slot: FieldSlot) => ((slot as BaseSlot).focused??false));
             if(focusedSlot){
@@ -961,7 +997,7 @@ export default defineComponent({
             // the FrameType object otherwise undo/redo makes weird changes in the commands)
             this.appStore.frameObjects[this.frameId].frameType = cloneDeep(getFrameDefType(def.targetType));
 
-            const rawRemainder = uiLiteralCode.slice(keywordLen + 1);
+            const rawRemainder = uiLiteralCode.slice(keywordLen + separatorLength);
 
             if(def.slots === 0){
                 // No editable content at all for this frame type -- there's nowhere to put a text
@@ -1401,10 +1437,19 @@ export default defineComponent({
                 return;
             }
             
+            // Moving via the keyboard supersedes any earlier, still-pending LabelSlot.vue
+            // onGetCaret() request (see bumpCaretRequestSeq()'s doc comment) -- otherwise, if one was
+            // queued (e.g. checkSlotRefactoring's own cursor-restoring editableSlotGotCaret dispatch,
+            // which fires on every keystroke including Enter, regardless of whether anything ended up
+            // converting), its deferred callback can fire after we've already left this slot and blindly
+            // re-focus it underneath us, silently undoing the very navigation this method just performed
+            // (isEditing flips back to true with nothing focused to show for it). Mirrors leftRightKey's
+            // identical guard (store.ts) for the same reason.
+            bumpCaretRequestSeq();
             this.appStore.isEditing = false;
             this.appStore.isSelectingMultiSlots = false;
             document.getSelection()?.removeAllRanges();
-            
+
             //If the up arrow is pressed you need to move the caret as well.
             if(event.key == "ArrowUp") {
                 this.appStore.changeCaretPosition(event.key);

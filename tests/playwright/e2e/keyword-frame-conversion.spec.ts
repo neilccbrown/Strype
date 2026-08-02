@@ -20,6 +20,8 @@ import {
     navigateToFrameCaret,
     relocateFrameToContainer,
     typeKeywordConversionTrigger, typeConversionTrigger, getFirstSlotText,
+    typeConversionTriggerViaEnter, typeKeywordConversionTriggerViaEnter,
+    typeConversionTriggerViaColon, typeKeywordConversionTriggerViaColon,
 } from "../support/keyword-conversion";
 
 test.beforeEach(async ({page, browserName}, testInfo) => {
@@ -512,6 +514,93 @@ test.describe("Keyword-triggered frame conversion -- joint frames, attaching dir
         await assertFrameType(page, frameId, AllFrameTypesIdentifier.else);
         expect(await getJointParentId(page, frameId)).toEqual(innerId);
         expect(await getJointParentId(page, frameId)).not.toEqual(outerId);
+    });
+});
+
+test.describe("Keyword-triggered frame conversion -- Enter as trigger", () => {
+    test("1-slot: \"if\" then Enter converts, same as \"if \"", async ({page}) => {
+        const frameId = await typeKeywordConversionTriggerViaEnter(page, "if");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.if);
+    });
+
+    test("0-slot: \"try\" then Enter converts, caret left inside its (empty) body", async ({page}) => {
+        const frameId = await typeKeywordConversionTriggerViaEnter(page, "try");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.try);
+        await assertFrameCaretPosition(page, frameId, "body");
+    });
+
+    test("typo-tolerant: \"fi\" then Enter converts to if, same as \"fi \"", async ({page}) => {
+        // "fi" isn't itself a recognised keyword (it's a near-miss for "if"), so this uses the
+        // unchecked variant -- same as the existing space-triggered typo-tolerant tests above.
+        const frameId = await typeConversionTriggerViaEnter(page, "fi");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.if);
+    });
+
+    test("joint frame: \"else\" then Enter converts when typed as the last statement in an if's body", async ({page}) => {
+        await createIfAndEnterBody(page);
+        const frameId = await typeKeywordConversionTriggerViaEnter(page, "else");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.else);
+    });
+
+    test("location gating still applies via Enter: \"return\" then Enter does NOT convert directly in Main", async ({page}) => {
+        const frameId = await typeKeywordConversionTriggerViaEnter(page, "return");
+        await assertConversionDidNotHappen(page, frameId);
+    });
+
+    test("an unrecognised word then Enter does not convert, and still moves the caret to the next line as normal", async ({page}) => {
+        const frameId = await typeConversionTriggerViaEnter(page, "banana");
+        await assertConversionDidNotHappen(page, frameId);
+        expect(await getFirstSlotText(page, frameId)).toEqual("banana");
+        // Enter's normal "move to the next line" behaviour must still happen when nothing converted:
+        await assertFrameCaretPosition(page, frameId, "below");
+    });
+});
+
+test.describe("Keyword-triggered frame conversion -- colon as trigger for colon-ending 0-slot types", () => {
+    test("0-slot with a colon label: \"try:\" converts, same as \"try \"", async ({page}) => {
+        const frameId = await typeKeywordConversionTriggerViaColon(page, "try");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.try);
+        await assertFrameCaretPosition(page, frameId, "body");
+    });
+
+    test("joint frame: \"else:\" converts when typed as the last statement in an if's body", async ({page}) => {
+        await createIfAndEnterBody(page);
+        const frameId = await typeKeywordConversionTriggerViaColon(page, "else");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.else);
+    });
+
+    test("joint frame: \"finally:\" converts when typed inside an already-existing except's body", async ({page}) => {
+        await page.keyboard.press(" ");
+        await page.keyboard.press("t"); // try (auto-creates a default except joint)
+        await waitForEditorSettled(page);
+        const exceptId = await getFrameIdByType(page, AllFrameTypesIdentifier.except);
+        await page.locator(`#frameBodyId_${exceptId}`).click();
+        await waitForEditorSettled(page);
+        const frameId = await typeKeywordConversionTriggerViaColon(page, "finally");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.finally);
+    });
+
+    test("typo-tolerant: \"els:\" converts to else, same as \"els \"", async ({page}) => {
+        await createIfAndEnterBody(page);
+        // "els" isn't itself a recognised keyword (it's a near-miss for "else"), so this uses the
+        // unchecked variant -- same as the existing space-triggered typo-tolerant tests above.
+        const frameId = await typeConversionTriggerViaColon(page, "els");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.else);
+    });
+
+    test("location gating still applies via colon: \"else:\" does NOT convert directly in Main (no preceding if)", async ({page}) => {
+        const frameId = await typeConversionTriggerViaColon(page, "else");
+        await assertConversionDidNotHappen(page, frameId);
+    });
+
+    test("0-slot WITHOUT a colon label: \"break:\" does NOT convert (break has no colon to complete)", async ({page}) => {
+        await createForLoopAndEnterBody(page);
+        const frameId = await typeConversionTriggerViaColon(page, "break");
+        await assertConversionDidNotHappen(page, frameId);
+        // ":" is parsed as its own operator slot rather than staying part of the name field, so the
+        // full header text (not just the first slot) is needed to see it's still there literally:
+        expect(await getFrameHeaderText(page, frameId)).toContain("break");
+        expect(await getFrameHeaderText(page, frameId)).toContain(":");
     });
 });
 

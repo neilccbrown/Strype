@@ -28,6 +28,8 @@ export interface KeywordConversionDef {
     splitWord?: string; // for keyword-based 2-slot splits: "in" (for), "as" (with), "import" (from-import)
     splitAtBrackets?: boolean; // funcdef only: split at "(" ... ")" instead of a keyword
     isJoint?: boolean; // elif/else/except/finally: only valid as the last statement of a joint-eligible body
+    endsWithColon?: boolean; // try/else/finally: typing the keyword immediately followed by ":" (no
+    // space) also converts, since that colon is the rest of the frame's own fixed label
 }
 
 // Mirrors keywordFrameConversions in src/components/LabelSlotsStructure.vue. Kept as a manual
@@ -51,11 +53,11 @@ export const keywordConversionDefs: KeywordConversionDef[] = [
     {keyword: "def", targetType: AllFrameTypesIdentifier.funcdef, slots: 2, splitAtBrackets: true},
     {keyword: "break", targetType: AllFrameTypesIdentifier.break, slots: 0},
     {keyword: "continue", targetType: AllFrameTypesIdentifier.continue, slots: 0},
-    {keyword: "try", targetType: AllFrameTypesIdentifier.try, slots: 0},
+    {keyword: "try", targetType: AllFrameTypesIdentifier.try, slots: 0, endsWithColon: true},
     {keyword: "elif", targetType: AllFrameTypesIdentifier.elif, slots: 1, isJoint: true},
-    {keyword: "else", targetType: AllFrameTypesIdentifier.else, slots: 0, isJoint: true},
+    {keyword: "else", targetType: AllFrameTypesIdentifier.else, slots: 0, isJoint: true, endsWithColon: true},
     {keyword: "except", targetType: AllFrameTypesIdentifier.except, slots: 1, isJoint: true},
-    {keyword: "finally", targetType: AllFrameTypesIdentifier.finally, slots: 0, isJoint: true},
+    {keyword: "finally", targetType: AllFrameTypesIdentifier.finally, slots: 0, isJoint: true, endsWithColon: true},
 ];
 
 export function getKeywordConversionDef(keyword: string): KeywordConversionDef {
@@ -116,6 +118,53 @@ export async function typeConversionTrigger(page: Page, keyword: string, restOfL
 export async function typeKeywordConversionTrigger(page: Page, keyword: string, restOfLine?: string): Promise<number> {
     getKeywordConversionDef(keyword);
     return await typeConversionTrigger(page, keyword, restOfLine);
+}
+
+// Like typeConversionTrigger, but presses Enter instead of the space trigger character -- and,
+// unlike typeConversionTrigger, never takes a restOfLine: typing anything (including a real space)
+// after the bare keyword would already have fired the conversion via the usual space trigger
+// before Enter is even reached, so Enter's own behaviour (treating a bare keyword as though a
+// space had been typed -- see checkSlotRefactoring's triggeredByEnter option, LabelSlotsStructure.
+// vue) is only actually exercised by the bare keyword on its own.
+export async function typeConversionTriggerViaEnter(page: Page, keyword: string): Promise<number> {
+    await page.keyboard.type(keyword[0]);
+    await waitForEditorSettled(page);
+    const frameId = await getFocusedFrameId(page);
+    const remainder = keyword.slice(1);
+    if (remainder.length > 0) {
+        await page.keyboard.type(remainder);
+    }
+    await waitForEditorSettled(page);
+    await page.keyboard.press("Enter");
+    await waitForEditorSettled(page);
+    return frameId;
+}
+
+// Like typeConversionTriggerViaEnter but checks the keyword exists
+export async function typeKeywordConversionTriggerViaEnter(page: Page, keyword: string): Promise<number> {
+    getKeywordConversionDef(keyword);
+    return await typeConversionTriggerViaEnter(page, keyword);
+}
+
+// Like typeConversionTriggerViaEnter, but types ":" as the trigger instead of pressing Enter --
+// e.g. "else:" typed directly, with no space before the colon. Only meaningful for keywords with
+// endsWithColon set (try/else/finally): their own fixed label already ends in " :", so the colon
+// the user types *is* the rest of that label, not left-over content. Never takes a restOfLine for
+// the same reason typeConversionTriggerViaEnter doesn't (see its own comment).
+export async function typeConversionTriggerViaColon(page: Page, keyword: string): Promise<number> {
+    await page.keyboard.type(keyword[0]);
+    await waitForEditorSettled(page);
+    const frameId = await getFocusedFrameId(page);
+    const remainder = keyword.slice(1) + ":";
+    await page.keyboard.type(remainder);
+    await waitForEditorSettled(page);
+    return frameId;
+}
+
+// Like typeConversionTriggerViaColon but checks the keyword exists
+export async function typeKeywordConversionTriggerViaColon(page: Page, keyword: string): Promise<number> {
+    getKeywordConversionDef(keyword);
+    return await typeConversionTriggerViaColon(page, keyword);
 }
 
 // Clears whatever text content a frame's first editable slot currently holds, by focusing it

@@ -867,14 +867,37 @@ export default defineComponent({
                     }); 
                 }
                 else{
-                    // Same as hitting ctrl/alt + arrow down
-                    document.getElementById(getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
-                        new KeyboardEvent("keydown", {
-                            key: "ArrowDown",
-                            altKey: true,
-                            ctrlKey: true,
-                        })
-                    );
+                    // Same as hitting ctrl/alt + arrow down -- unless the bare word typed so far is
+                    // (or fuzzy-matches, per findNearCandidate) a recognised keyword eligible for
+                    // conversion right here (see keywordFrameConversions, LabelSlotsStructure.vue):
+                    // typing "if" or "else" then Enter should convert exactly like typing "if "/
+                    // "else " does, without requiring the space first. checkSlotRefactoring's own
+                    // gating (isFunccallTopLevelSlot etc.) already no-ops correctly when this isn't
+                    // a func-call frame's top-level slot, so there's no need to duplicate that check
+                    // here -- just always give it the chance (via its triggeredByEnter option), and
+                    // only fall back to the normal "move to next line" behaviour if nothing actually
+                    // converted (checked inside doAfterCursorSet, once the frame's own type -- still
+                    // funccall, or not -- reflects whether it did). skipStateSaveOnly avoids pushing
+                    // a spurious no-op undo/redo entry for the (overwhelmingly common) case where
+                    // Enter doesn't end up converting anything.
+                    const stateBeforeChanges = cloneDeep(this.appStore.$state);
+                    const frameId = this.frameId;
+                    const labelSlotsIndex = this.labelSlotsIndex;
+                    vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(frameId, labelSlotsIndex)].checkSlotRefactoring(this.UID, stateBeforeChanges, {
+                        triggeredByEnter: true,
+                        skipStateSaveOnly: true,
+                        doAfterCursorSet: () => {
+                            if(this.appStore.frameObjects[frameId]?.frameType.type === AllFrameTypesIdentifier.funccall){
+                                document.getElementById(getFrameLabelSlotsStructureUID(frameId, labelSlotsIndex))?.dispatchEvent(
+                                    new KeyboardEvent("keydown", {
+                                        key: "ArrowDown",
+                                        altKey: true,
+                                        ctrlKey: true,
+                                    })
+                                );
+                            }
+                        },
+                    });
                 }
             }
             this.showAC = false;
