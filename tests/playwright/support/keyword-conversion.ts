@@ -168,6 +168,11 @@ export async function getFrameHeaderText(page: Page, frameId: number): Promise<s
     return text.replace(/​/g, "");
 }
 
+export async function getFirstSlotText(page: Page, frameId: number): Promise<string> {
+    const text = await page.locator(`#frameHeader_${frameId} .label-slot-input`).first().innerText();
+    return text.replace(/​/g, "");
+}
+
 // Well-known negative frame IDs for the three top-level containers (see
 // ContainerTypesIdentifiers in tests/cypress/support/frame-types.ts and the equivalent in
 // src/types/types.ts) -- stable across the app, already relied on elsewhere in the test suite

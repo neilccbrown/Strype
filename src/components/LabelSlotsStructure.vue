@@ -575,7 +575,7 @@ export default defineComponent({
                                         // characters) -- buffering keystrokes during the conversion's own brief async
                                         // gap replaces it, so there's no reason left to delay the conversion itself.
                                         this.startPendingConversion();
-                                        this.performKeywordFrameConversion(keywordFrameConversionDef, candidateKeyword.length - 1, uiLiteralCode, stateBeforeChanges, options);
+                                        this.performKeywordFrameConversion(keywordFrameConversionDef, candidateKeyword[1].length, uiLiteralCode, stateBeforeChanges, options);
                                     }
                                     else if(isVarAssignSlotStructure && this.labelIndex == 0 && !((currentFocusSlotCursorInfos?.slotInfos.slotId??",").includes(",")) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && uiLiteralCode.match(/(?<!=)=(?!=)/) != null){
                                         // We need to break at the slot preceding the first "=" operator.

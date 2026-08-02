@@ -15,7 +15,7 @@ import {
     getFrameHeaderText,
     getFrameIdByType,
     relocateFrameToContainer,
-    typeKeywordConversionTrigger, typeConversionTrigger,
+    typeKeywordConversionTrigger, typeConversionTrigger, getFirstSlotText,
 } from "../support/keyword-conversion";
 
 test.beforeEach(async ({page, browserName}, testInfo) => {
@@ -175,9 +175,11 @@ test.describe("Keyword-triggered frame conversion -- typo-tolerant", () => {
             const frameId = await typeConversionTrigger(page, keywordAndConversion[0]);
             if (keywordAndConversion[1]) {
                 await assertFrameType(page, frameId, keywordAndConversion[1]);
+                expect(await getFirstSlotText(page, frameId)).toEqual("");
             }
             else {
                 await assertConversionDidNotHappen(page, frameId);
+                expect(await getFirstSlotText(page, frameId)).toEqual(keywordAndConversion[0] + " ");
             }
         });
     }
