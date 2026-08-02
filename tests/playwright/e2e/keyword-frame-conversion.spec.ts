@@ -7,6 +7,7 @@ import {
     IMPORTS_CONTAINER_ID,
     MAIN_CONTAINER_ID,
     assertConversionDidNotHappen,
+    assertFrameCaretPosition,
     assertFrameHasError,
     assertFrameType,
     clearFrameContent,
@@ -69,6 +70,23 @@ async function createForLoopAndEnterBody(page: Page): Promise<void> {
     await waitForEditorSettled(page);
 }
 
+// Creates an if-block in Main ("space" then "i"; index 0 of the "i" shortcut group, unambiguous
+// since no disambiguation key follows -- see the same pattern in the "Frame-not-allowed-here
+// error check" describe block below), types a throwaway condition, then moves the caret into its
+// (empty) body. Returns the if frame's own ID (unlike createForLoopAndEnterBody/
+// createFunctionAndEnterBody, joint-frame tests need this to navigate into frames added there).
+async function createIfAndEnterBody(page: Page): Promise<number> {
+    await page.keyboard.press(" ");
+    await page.keyboard.press("i"); // if
+    await waitForEditorSettled(page);
+    const ifId = await getFocusedFrameId(page);
+    await page.keyboard.type("x");
+    await waitForEditorSettled(page);
+    await page.locator(`#frameBodyId_${ifId}`).click();
+    await waitForEditorSettled(page);
+    return ifId;
+}
+
 // Creates a throwaway func-call frame in Main, relocates it into the given container (a
 // placement no real typing can reach directly -- see the callers below), then clears its
 // content so it's a blank slate ready for typeKeywordConversionTrigger. Returns its frame ID.
@@ -98,9 +116,21 @@ async function createFuncCallFrameIn(page: Page, containerId: number): Promise<n
 }
 
 test.describe("Keyword-triggered frame conversion -- shapes", () => {
-    test("0-slot: \"try\" converts with no editable content", async ({page}) => {
+    test("0-slot: \"try\" converts with no editable content, caret left inside its (empty) body", async ({page}) => {
         const frameId = await typeKeywordConversionTrigger(page, "try");
         await assertFrameType(page, frameId, AllFrameTypesIdentifier.try);
+        // Regression test: try allows children (it has a body), so the caret belongs inside it,
+        // ready to type the first statement -- not below the whole (still-empty) try block.
+        await assertFrameCaretPosition(page, frameId, "body");
+    });
+
+    test("0-slot: break/continue convert with no editable content, caret left below (no body)", async ({page}) => {
+        await createForLoopAndEnterBody(page);
+        const breakFrameId = await typeKeywordConversionTrigger(page, "break");
+        await assertFrameType(page, breakFrameId, AllFrameTypesIdentifier.break);
+        // break/continue don't allow children -- there's no body to put the caret inside, so it
+        // correctly stays below, unlike the block types (try/else/finally) above/below.
+        await assertFrameCaretPosition(page, breakFrameId, "below");
     });
 
     test("1-slot: content typed right after the trigger isn't lost or misplaced", async ({page}) => {
@@ -262,6 +292,100 @@ test.describe("Keyword-triggered frame conversion -- location gating", () => {
 
     test("case does NOT convert directly in Main", async ({page}) => {
         const frameId = await typeKeywordConversionTrigger(page, "case");
+        await assertConversionDidNotHappen(page, frameId);
+    });
+});
+
+test.describe("Keyword-triggered frame conversion -- joint frames (elif/else/except/finally)", () => {
+    test("elif converts when typed as the last statement in an if's body", async ({page}) => {
+        await createIfAndEnterBody(page);
+        const frameId = await typeKeywordConversionTrigger(page, "elif", "y");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.elif);
+        expect(await getFrameHeaderText(page, frameId)).toContain("y");
+    });
+
+    test("else converts when typed as the last statement in an if's body, caret left inside its (empty) body", async ({page}) => {
+        await createIfAndEnterBody(page);
+        const frameId = await typeKeywordConversionTrigger(page, "else");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.else);
+        // Regression test: else has no editable slot (its label is fixed "else :"), but it does
+        // allow children -- the caret must land inside its body, not disappear entirely.
+        await assertFrameCaretPosition(page, frameId, "body");
+    });
+
+    test("elif does NOT convert directly in Main (no preceding if to attach to)", async ({page}) => {
+        const frameId = await typeKeywordConversionTrigger(page, "elif", "y");
+        await assertConversionDidNotHappen(page, frameId);
+    });
+
+    test("else does NOT convert directly in Main (no preceding if to attach to)", async ({page}) => {
+        const frameId = await typeKeywordConversionTrigger(page, "else");
+        await assertConversionDidNotHappen(page, frameId);
+    });
+
+    test("elif converts when typed inside an already-existing elif's body (chained)", async ({page}) => {
+        await createIfAndEnterBody(page);
+        const elifId = await typeKeywordConversionTrigger(page, "elif", "y");
+        await assertFrameType(page, elifId, AllFrameTypesIdentifier.elif);
+        await page.locator(`#frameBodyId_${elifId}`).click();
+        await waitForEditorSettled(page);
+        const secondElifId = await typeKeywordConversionTrigger(page, "elif", "z");
+        await assertFrameType(page, secondElifId, AllFrameTypesIdentifier.elif);
+    });
+
+    test("else converts when typed inside an already-existing elif's body (chained)", async ({page}) => {
+        await createIfAndEnterBody(page);
+        const elifId = await typeKeywordConversionTrigger(page, "elif", "y");
+        await assertFrameType(page, elifId, AllFrameTypesIdentifier.elif);
+        await page.locator(`#frameBodyId_${elifId}`).click();
+        await waitForEditorSettled(page);
+        const elseId = await typeKeywordConversionTrigger(page, "else");
+        await assertFrameType(page, elseId, AllFrameTypesIdentifier.else);
+    });
+
+    test("a second else does NOT convert after an if already has one (else is unique)", async ({page}) => {
+        await createIfAndEnterBody(page);
+        const elseId = await typeKeywordConversionTrigger(page, "else");
+        await assertFrameType(page, elseId, AllFrameTypesIdentifier.else);
+        // Move into the (now-converted) else's own empty body to attempt a further joint there:
+        await page.locator(`#frameBodyId_${elseId}`).click();
+        await waitForEditorSettled(page);
+        const secondFrameId = await typeKeywordConversionTrigger(page, "else");
+        await assertConversionDidNotHappen(page, secondFrameId);
+    });
+
+    test("except converts when typed as the last statement in a try's body", async ({page}) => {
+        await page.keyboard.press(" ");
+        await page.keyboard.press("t"); // try (auto-creates a default except joint)
+        await waitForEditorSettled(page);
+        const tryId = await getFrameIdByType(page, AllFrameTypesIdentifier.try);
+        await page.locator(`#frameBodyId_${tryId}`).click();
+        await waitForEditorSettled(page);
+        const frameId = await typeKeywordConversionTrigger(page, "except", "ValueError");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.except);
+        expect(await getFrameHeaderText(page, frameId)).toContain("ValueError");
+    });
+
+    test("finally converts when typed inside an already-existing except's body, caret left inside its (empty) body", async ({page}) => {
+        await page.keyboard.press(" ");
+        await page.keyboard.press("t"); // try (auto-creates a default except joint)
+        await waitForEditorSettled(page);
+        const exceptId = await getFrameIdByType(page, AllFrameTypesIdentifier.except);
+        await page.locator(`#frameBodyId_${exceptId}`).click();
+        await waitForEditorSettled(page);
+        const frameId = await typeKeywordConversionTrigger(page, "finally");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.finally);
+        // Regression test: finally has no editable slot either -- same caret-placement bug as else.
+        await assertFrameCaretPosition(page, frameId, "body");
+    });
+
+    test("except does NOT convert directly in Main (no preceding try to attach to)", async ({page}) => {
+        const frameId = await typeKeywordConversionTrigger(page, "except", "ValueError");
+        await assertConversionDidNotHappen(page, frameId);
+    });
+
+    test("finally does NOT convert directly in Main (no preceding try to attach to)", async ({page}) => {
+        const frameId = await typeKeywordConversionTrigger(page, "finally");
         await assertConversionDidNotHappen(page, frameId);
     });
 });

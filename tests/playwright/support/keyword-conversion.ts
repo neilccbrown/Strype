@@ -1,6 +1,6 @@
 import {Page, expect} from "@playwright/test";
 import {AllFrameTypesIdentifier} from "../../cypress/support/frame-types";
-import {doTextHomeEndKeyPress, pressN, waitForEditorSettled} from "./editor";
+import {checkFrameXorTextCursor, doTextHomeEndKeyPress, pressN, waitForEditorSettled} from "./editor";
 
 // ---------------------------------------------------------------------------------------------
 // Centralised configuration for the keyword-frame-conversion mechanism (see
@@ -27,6 +27,7 @@ export interface KeywordConversionDef {
     slots: 0 | 1 | 2;
     splitWord?: string; // for keyword-based 2-slot splits: "in" (for), "as" (with), "import" (from-import)
     splitAtBrackets?: boolean; // funcdef only: split at "(" ... ")" instead of a keyword
+    isJoint?: boolean; // elif/else/except/finally: only valid as the last statement of a joint-eligible body
 }
 
 // Mirrors keywordFrameConversions in src/components/LabelSlotsStructure.vue. Kept as a manual
@@ -51,6 +52,10 @@ export const keywordConversionDefs: KeywordConversionDef[] = [
     {keyword: "break", targetType: AllFrameTypesIdentifier.break, slots: 0},
     {keyword: "continue", targetType: AllFrameTypesIdentifier.continue, slots: 0},
     {keyword: "try", targetType: AllFrameTypesIdentifier.try, slots: 0},
+    {keyword: "elif", targetType: AllFrameTypesIdentifier.elif, slots: 1, isJoint: true},
+    {keyword: "else", targetType: AllFrameTypesIdentifier.else, slots: 0, isJoint: true},
+    {keyword: "except", targetType: AllFrameTypesIdentifier.except, slots: 1, isJoint: true},
+    {keyword: "finally", targetType: AllFrameTypesIdentifier.finally, slots: 0, isJoint: true},
 ];
 
 export function getKeywordConversionDef(keyword: string): KeywordConversionDef {
@@ -157,6 +162,20 @@ export async function assertFrameType(page: Page, frameId: number, frameType: st
 // did NOT fire, typically because isKeywordFrameConversionValid rejected it for this location.
 export async function assertConversionDidNotHappen(page: Page, frameId: number): Promise<void> {
     await assertFrameType(page, frameId, AllFrameTypesIdentifier.funccall);
+}
+
+// Asserts that, after a 0-slot conversion (break/continue/try/else/finally -- frame types with no
+// editable content for the caret to land in), there IS a single visible frame-level (blue) caret,
+// and that it's at the expected position (body vs below) of the given frame -- rather than focus
+// having silently disappeared (neither a text cursor nor a frame caret visible), which is what
+// happens if the store's caretVisibility is left pointing at a position nothing renders.
+// Mirrors getCaretUID's id format (src/helpers/editor.ts): "caret_" + CaretPosition + "_" + frameId,
+// where CaretPosition's own string values ("caretBody"/"caretBelow") are hardcoded here for the
+// same reason this file doesn't import CaretPosition itself -- see the header comment above.
+export async function assertFrameCaretPosition(page: Page, frameId: number, position: "body" | "below"): Promise<void> {
+    const caretElement = await checkFrameXorTextCursor(page, true, `Expected a visible frame caret for frame ${frameId} at position "${position}"`);
+    const id = await caretElement.evaluate((el: Element) => el.id);
+    expect(id).toEqual(`caret_${position === "body" ? "caretBody" : "caretBelow"}_${frameId}`);
 }
 
 // Lightweight text content check for a frame's header (all its labels and slots concatenated),

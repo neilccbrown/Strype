@@ -81,14 +81,17 @@ interface KeywordFrameConversionDef {
     slots: 0 | 1 | 2;
     splitWord?: string; // for keyword-based 2-slot splits: "in" (for), "as" (with), "import" (from-import)
     splitAtBrackets?: boolean; // funcdef only: split at "(" ... ")" instead of a keyword
+    isJoint?: boolean; // elif/else/except/finally: converting also relocates the frame out of its
+    // parent's normal childrenIds and into a joint-frame chain -- see isJointKeywordFrameConversionValid()
+    // and performKeywordFrameConversion()'s relocation step.
 }
 
 // Converts a funccall frame into one of these frame types the moment its (top-level) content starts
 // with the given keyword followed by whitespace -- see checkSlotRefactoring()'s use of this table via
-// isKeywordFrameConversionValid()/performKeywordFrameConversion(). elif/else/except/finally are
-// deliberately not here: their validity depends on being a valid *joint continuation* of a preceding
-// block, a materially different (and currently isEditing-gated) check living in
-// generateAvailableFrameCommands (store.ts) -- out of scope for this table.
+// isKeywordFrameConversionValid()/performKeywordFrameConversion(). elif/else/except/finally (isJoint)
+// additionally require being a valid *joint continuation* of a preceding block -- a check mirroring
+// generateAvailableFrameCommands (store.ts), ported separately in isJointKeywordFrameConversionValid()
+// since that function can't be called from here directly (see isKeywordFrameConversionValid's comment).
 const keywordFrameConversions: KeywordFrameConversionDef[] = [
     {keyword: "if", targetType: AllFrameTypesIdentifier.if, slots: 1},
     {keyword: "while", targetType: AllFrameTypesIdentifier.while, slots: 1},
@@ -107,6 +110,10 @@ const keywordFrameConversions: KeywordFrameConversionDef[] = [
     {keyword: "break", targetType: AllFrameTypesIdentifier.break, slots: 0},
     {keyword: "continue", targetType: AllFrameTypesIdentifier.continue, slots: 0},
     {keyword: "try", targetType: AllFrameTypesIdentifier.try, slots: 0},
+    {keyword: "elif", targetType: AllFrameTypesIdentifier.elif, slots: 1, isJoint: true},
+    {keyword: "else", targetType: AllFrameTypesIdentifier.else, slots: 0, isJoint: true},
+    {keyword: "except", targetType: AllFrameTypesIdentifier.except, slots: 1, isJoint: true},
+    {keyword: "finally", targetType: AllFrameTypesIdentifier.finally, slots: 0, isJoint: true},
 ];
 //const keywordFrameConversionRegex = new RegExp("^(" + keywordFrameConversions.map((def) => def.keyword).join("|") + ")\\s");
 const wordSpaceRegex = new RegExp("^([a-zA-Z0-9]+)\\s");
@@ -568,7 +575,9 @@ export default defineComponent({
                                     // We do not allow a conversion if the focus isn't inside a slot of level 1.
                                     const isVarAssignSlotStructure = (parsedCodeRes.slots.operators.length > 0 && parsedCodeRes.slots.operators
                                         .find((opSlot, index) => (opSlot.code == "=" && parsedCodeRes.slots.operators.slice(0,index).every((opSlot) => ["", ".", ","].includes(opSlot.code)))));
-                                    if(candidateKeyword && keywordFrameConversionDef && this.isKeywordFrameConversionValid(keywordFrameConversionDef.targetType)){
+                                    if(candidateKeyword && keywordFrameConversionDef && (keywordFrameConversionDef.isJoint
+                                        ? this.isJointKeywordFrameConversionValid(keywordFrameConversionDef.targetType)
+                                        : this.isKeywordFrameConversionValid(keywordFrameConversionDef.targetType))){
                                         // Convert right away rather than waiting for typing to pause: that wait
                                         // used to exist purely to avoid a fast-typing race (see startPendingConversion()'s
                                         // doc comment for why converting immediately would otherwise risk dropping
@@ -761,6 +770,84 @@ export default defineComponent({
             }
         },
 
+        // Whether targetType (one of elif/else/except/finally) is currently a valid *joint* conversion
+        // target for the funccall frame at this.frameId. A joint frame is never a normal child -- it can
+        // only ever follow directly on from a frame that can carry joint children -- so unlike
+        // isKeywordFrameConversionValid() above (which only ever needs to check forbiddenChildrenTypes/
+        // ancestry of the frame's *existing* position), this needs to check that the funccall's existing
+        // position IS that position: the last statement in the body of a joint-eligible root (if/try/for/
+        // while) or of one of that root's own existing joint children (elif/except). Ports the "RULE FOR
+        // THE JOINTS" block of generateAvailableFrameCommands (store.ts) -- see isKeywordFrameConversionValid's
+        // comment for why that function can't just be called from here directly. The "focusedFrame" of that
+        // function is always this frame's own parent ("block" below) here: whether the funccall landed as
+        // the very first statement typed into an empty body (mirroring generateAvailableFrameCommands' empty
+        // body case) or was added after existing siblings (mirroring its "below the final frame" case), the
+        // parent block is the same either way, so both cases collapse into one check here.
+        isJointKeywordFrameConversionValid(targetType: string): boolean {
+            const frame = this.appStore.frameObjects[this.frameId];
+            const block = this.appStore.frameObjects[frame.parentId];
+            // Must be the last statement in its containing body: that's the only position from which a
+            // following elif/else/except/finally could attach (anything else in the body would end up
+            // sandwiched below the new joint frame, which isn't valid).
+            if(block.childrenIds.at(-1) !== this.frameId){
+                return false;
+            }
+
+            let allowedJointChildren: string[];
+            let nextJointChildId: number;
+            if(!!block.frameType.allowJointChildren){
+                // block is itself a joint-eligible root (if/try/for/while): a new joint here would become
+                // the first in the chain (or slot in before whatever's already first).
+                allowedJointChildren = [...block.frameType.jointFrameTypes];
+                nextJointChildId = block.jointFrameIds[0] ?? -100;
+            }
+            else if(block.jointParentId > 0){
+                // block is itself an existing joint child (elif/except): a new joint here continues the
+                // same chain, straight after block.
+                const jointParent = this.appStore.frameObjects[block.jointParentId];
+                allowedJointChildren = [...jointParent.frameType.jointFrameTypes];
+                const indexInJointParent = jointParent.jointFrameIds.indexOf(block.id);
+                nextJointChildId = jointParent.jointFrameIds[indexInJointParent + 1] ?? -100;
+            }
+            else{
+                // block is neither -- not a valid joint-continuation position at all.
+                return false;
+            }
+
+            const uniqueJointFrameTypes = [AllFrameTypesIdentifier.else, AllFrameTypesIdentifier.finally];
+            if(nextJointChildId === -100){
+                // Nothing follows in the chain yet.
+                if(block.frameType.type === AllFrameTypesIdentifier.try){
+                    // try's else is special-cased out entirely (it must follow an except, never try directly).
+                    allowedJointChildren = allowedJointChildren.filter((t) => t !== AllFrameTypesIdentifier.else);
+                }
+                else if(uniqueJointFrameTypes.includes(block.frameType.type)){
+                    // block itself is a unique joint (else/finally) with nothing after it: only whatever
+                    // (if anything) is allowed to follow that specific unique remains available.
+                    allowedJointChildren = allowedJointChildren.slice(allowedJointChildren.indexOf(block.frameType.type) + 1);
+                }
+            }
+            else{
+                const nextJointChild = this.appStore.frameObjects[nextJointChildId];
+                if(!uniqueJointFrameTypes.includes(nextJointChild.frameType.type)){
+                    allowedJointChildren = allowedJointChildren.filter((t) => !uniqueJointFrameTypes.includes(t));
+                }
+                else if(uniqueJointFrameTypes.includes(block.frameType.type)){
+                    // Both block and what follows are uniques (e.g. we're in an else, and a finally already
+                    // follows it): nothing more can be inserted here.
+                    allowedJointChildren = [];
+                }
+                else if(block.frameType.type === AllFrameTypesIdentifier.try){
+                    allowedJointChildren = allowedJointChildren.filter((t) => t !== AllFrameTypesIdentifier.else);
+                }
+                else{
+                    allowedJointChildren = allowedJointChildren.slice(0, allowedJointChildren.indexOf(nextJointChild.frameType.type));
+                }
+            }
+
+            return allowedJointChildren.includes(targetType);
+        },
+
         // Given a freshly-parsed SlotsStructure for one label of the frame we just converted into,
         // finds the last non-operator (i.e. actually editable) slot and returns cursor info placing
         // the cursor at its end -- the natural place, since these conversions always fire right as the
@@ -796,6 +883,33 @@ export default defineComponent({
                 focusedSlot.focused = false;
             }
 
+            if(def.isJoint){
+                // elif/else/except/finally are never normal children -- isJointKeywordFrameConversionValid
+                // has already confirmed we're the last statement of a joint-eligible block, so relocate
+                // ourself out of that block's normal childrenIds and into the joint-frame chain it belongs
+                // to, mirroring addFrameWithCommand's addingJointFrame branch (store.ts).
+                const currentFrameObj = this.appStore.frameObjects[this.frameId];
+                const block = this.appStore.frameObjects[currentFrameObj.parentId];
+                block.childrenIds.splice(block.childrenIds.indexOf(this.frameId), 1);
+
+                let jointParentId: number;
+                let listToUpdate: number[];
+                let indexToAdd: number;
+                if(!!block.frameType.allowJointChildren){
+                    jointParentId = block.id;
+                    listToUpdate = block.jointFrameIds;
+                    indexToAdd = 0;
+                }
+                else{
+                    jointParentId = block.jointParentId;
+                    listToUpdate = this.appStore.frameObjects[block.jointParentId].jointFrameIds;
+                    indexToAdd = listToUpdate.indexOf(block.id) + 1;
+                }
+                listToUpdate.splice(indexToAdd, 0, this.frameId);
+                currentFrameObj.parentId = 0;
+                currentFrameObj.jointParentId = jointParentId;
+            }
+
             // Change the type of frame (when we change the state in this next line, we need to COPY
             // the FrameType object otherwise undo/redo makes weird changes in the commands)
             this.appStore.frameObjects[this.frameId].frameType = cloneDeep(getFrameDefType(def.targetType));
@@ -803,9 +917,12 @@ export default defineComponent({
             const rawRemainder = uiLiteralCode.slice(keywordLen + 1);
 
             if(def.slots === 0){
-                // No editable content at all for this frame type -- there's nowhere to put a cursor,
-                // so just clear editing state and leave the blue caret positioned below the frame,
-                // matching what happens when such a frame type is inserted normally.
+                // No editable content at all for this frame type -- there's nowhere to put a text
+                // cursor, so just clear editing state and leave the blue (frame-level) caret
+                // positioned wherever such a frame type would land it when inserted normally: inside
+                // its own (empty) body for a block type (try/else/finally all allow children), or
+                // below it otherwise (break/continue don't) -- see addFrameWithCommand's identical
+                // choice of CaretPosition.body vs below (store.ts).
                 this.appStore.frameObjects[this.frameId].labelSlotsDict = {};
                 this.appStore.setSlotTextCursors(undefined, undefined);
                 // No slot exists for this frame type to flush any buffered keystrokes into --
@@ -813,7 +930,7 @@ export default defineComponent({
                 this.finishPendingConversion(undefined);
                 if(!options?.skipCursorSetAndStateSave){
                     this.appStore.isEditing = false;
-                    this.appStore.toggleCaret({id: this.frameId, caretPosition: CaretPosition.below});
+                    this.appStore.toggleCaret({id: this.frameId, caretPosition: this.appStore.getAllowedChildren(this.frameId) ? CaretPosition.body : CaretPosition.below});
                     options?.doAfterCursorSet?.();
                     this.appStore.saveStateChanges(stateBeforeChanges);
                 }
