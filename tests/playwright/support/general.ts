@@ -79,12 +79,17 @@ export async function setupStrypeTest(page: Page, browserName: string, testInfo:
     if (fakeClipboard) {
         await addFakeClipboard(page);
     }
+    // Use addInitScript (not a one-shot page.evaluate) so this flag is re-applied on every new
+    // document, including reloads mid-test (e.g. "New project"), not just the initial page.goto --
+    // otherwise the app falls back to the real showOpenFilePicker/showSaveFilePicker API after a
+    // reload, which Chrome's automation controls abort instead of firing Playwright's "filechooser"
+    // event, causing waitForEvent("filechooser") to hang until timeout.
+    await page.addInitScript(() => {
+        (window as any).Playwright = true;
+    });
 
     await page.goto("./", {waitUntil: gotoWaitUntil});
     // Wait for the default project's content to actually render, not just for <body> to exist --
     // the latter is satisfied long before the app has mounted anything:
     await expect.poll(() => page.locator(".frame-div").count(), {timeout: readyTimeoutMs}).toBeGreaterThanOrEqual(minFrameCount);
-    await page.evaluate(() => {
-        (window as any).Playwright = true;
-    });
 }
