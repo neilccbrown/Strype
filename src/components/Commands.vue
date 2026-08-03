@@ -1434,19 +1434,19 @@ export default defineComponent({
 // Shown around #addFramePanel while the frame commands pane is focused for keyboard-driven
 // insertion (entered via Tab/Space at the frame caret), to make the mode change obvious.
 // Same blue as the frame caret (Caret.vue's .caret background-color: #3467FE).
-@keyframes frame-commands-pane-pulse {
-    0%, 100% {
-        outline-color: rgba(52, 103, 254, 0.35);
-    }
-    50% {
-        outline-color: rgba(52, 103, 254, 0.9);
-    }
+// Uses an inset box-shadow rather than outline: an outline is painted outside the element's
+// box, so with this panel flush against the right edge of its container, the outline's right
+// edge was clipped off screen. An inset shadow stays within the box and so is never clipped.
+// Padding is applied always (not just while active) so the shortcut/label content doesn't
+// shift position when the border appears -- otherwise it would jump inward by the padding
+// amount right as the border is drawn over it.
+#addFramePanel {
+    box-sizing: border-box;
+    padding: 6px;
 }
 
 #addFramePanel.frame-commands-pane-active {
-    outline: 3px solid rgba(52, 103, 254, 0.9);
-    outline-offset: 2px;
-    animation: frame-commands-pane-pulse 1.2s ease-in-out infinite;
+    box-shadow: inset 0 0 0 3px rgba(52, 103, 254, 0.9);
 }
 
 .#{$strype-classname-pea-container} {
@@ -1478,6 +1478,7 @@ export default defineComponent({
 
 .command-tab-content {
     margin-left: 5px;
+    margin-right: 5px;
 }
 
 //the following overrides the bootstrap tab generated styles
