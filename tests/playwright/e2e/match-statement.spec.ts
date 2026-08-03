@@ -87,7 +87,7 @@ ${defaultStandardStrypeProjectDocLiteral}#(=> Section:Imports
 ${defaultStrypeProjectImportsLiteral}#(=> Section:Definitions
 #(=> Section:Main
 match foo  :
-    case bar if x>0  :
+    case bar if x > 0  :
         return "hi" 
     case _  :
         pass
@@ -281,7 +281,7 @@ match value  :
     # 1. Literal patterns
     case 0  :
         return "Got zero" 
-    case 1|2|3  :
+    case 1 | 2 | 3  :
         return "Got a small number (1-3)" 
     # 2. Type patterns
     case str()  :
@@ -298,12 +298,12 @@ match value  :
     case complex(real=r,imag=i)  :
         return f"Complex number: real={r}, imag={i}" 
     # 6. OR-patterns with structure
-    case ("yes"|"y"|"ok")  :
+    case ("yes" | "y" | "ok")  :
         return "Affirmative" 
     # 7. Guard conditions
-    case int(n) if n<0  :
+    case int(n) if n < 0  :
         return "Negative integer" 
-    case int(n) if n>100  :
+    case int(n) if n > 100  :
         return "Large integer" 
     # 8. Default catch-all
     case _  :

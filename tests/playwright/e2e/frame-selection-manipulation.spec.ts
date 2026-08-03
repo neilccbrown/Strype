@@ -111,11 +111,11 @@ len(None)
     return x
 else:
     return y
-`, "if", makeStrypeFile(["", "", `if x>0  :
+`, "if", makeStrypeFile(["", "", `if x > 0  :
     return x 
 else :
     return y 
-if x>0  :
+if x > 0  :
     return x 
 else :
     return y 
@@ -127,11 +127,11 @@ else :
     return x
 elif y > 0:
     return y
-`, "elif", makeStrypeFile(["", "", `if x>0  :
+`, "elif", makeStrypeFile(["", "", `if x > 0  :
     return x 
-elif y>0  :
+elif y > 0  :
     return y 
-elif y>0  :
+elif y > 0  :
     return y 
 `]));
         // Had a bug at one point where it was internally duplicating but not showing on screen, so check we see two elif:
@@ -144,11 +144,11 @@ elif y > 0:
     return y
 else:
     return z
-`, "elif", makeStrypeFile(["", "", `if x>0  :
+`, "elif", makeStrypeFile(["", "", `if x > 0  :
     return x 
-elif y>0  :
+elif y > 0  :
     return y 
-elif y>0  :
+elif y > 0  :
     return y 
 else :
     return z 
@@ -216,7 +216,7 @@ def src():
     print('C')
 `, /* We get below print('B'): */ ["End", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "Control+a"], "cut", ["Home", "ArrowDown"],makeStrypeFile(["", `def dest ( ) :
     print('A') 
-    if x>0  :
+    if x > 0  :
         print('B') 
     print('C') 
 def src ( ) :
@@ -235,7 +235,7 @@ def second():
     print('C')
 `, /* We get below print('B'): */ ["End", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "Control+a", "Control+a"], "cut", ["Home"],makeStrypeFile(["", `def second ( ) :
     print('A') 
-    if x>0  :
+    if x > 0  :
         print('B') 
     print('C') 
 def first ( ) :
@@ -256,7 +256,7 @@ def second():
     print('0') 
 def second ( ) :
     print('A') 
-    if x>0  :
+    if x > 0  :
         print('B') 
     print('C') 
 `, ""]));
@@ -284,7 +284,7 @@ class Src:
     dest_member  = 0 
     def dest (self, ) :
         print('A') 
-        if x>0  :
+        if x > 0  :
             print('B') 
         print('C') 
         print('0') 
@@ -303,7 +303,7 @@ class Src  :
     dest_member  = 0 
     def src (self, ) :
         print('A') 
-        if x>0  :
+        if x > 0  :
             print('B') 
         print('C') 
     def dest (self, ) :
@@ -322,7 +322,7 @@ class Src  :
     src_member_1  = 0 
     def src (self, ) :
         print('A') 
-        if x>0  :
+        if x > 0  :
             print('B') 
         print('C') 
     def src2 (self, ) :
@@ -340,7 +340,7 @@ class Src  :
     src_member_1  = 0 
     def src (self, ) :
         print('A') 
-        if x>0  :
+        if x > 0  :
             print('B') 
         print('C') 
     def src2 (self, ) :
@@ -362,7 +362,7 @@ class Src  :
     src_member_1  = 0 
     def src (self, ) :
         print('A') 
-        if x>0  :
+        if x > 0  :
             print('B') 
         print('C') 
     def src2 (self, ) :
@@ -579,7 +579,7 @@ test.describe("Pasting a function with a leading self param removes it", () => {
     def existing (self, ) :
         pass
     def foo (self,x,y ) :
-        return x+y 
+        return x + y 
 `, ""]));
     });
 
@@ -591,7 +591,7 @@ test.describe("Pasting a function with a leading self param removes it", () => {
 
     test("Pasting a function with a self param plus more params into top-level functions removes self", async ({page}) => {
         await testPaste(page, "", ["ArrowUp"], "def foo(self, x, y):\n    return x+y\n", makeStrypeFile(["", `def foo (x,y ) :
-    return x+y 
+    return x + y 
 `, ""]));
     });
 
@@ -611,10 +611,10 @@ class Dest:
     test("Copying a method and pasting it into another class removes self", async ({page}) => {
         await testBeforeAfterPaste(page, twoClasses, selectBarMethod, "copy", ["ArrowDown", "ArrowDown"], makeStrypeFile(["", `class Src  :
     def bar (self,x ) :
-        return x*2 
+        return x * 2 
 class Dest  :
     def bar (self,x ) :
-        return x*2 
+        return x * 2 
     def existing (self, ) :
         pass
 `, ""]));
@@ -623,12 +623,12 @@ class Dest  :
     test("Copying a method and pasting it as a top-level function removes self", async ({page}) => {
         await testBeforeAfterPaste(page, twoClasses, selectBarMethod, "copy", ["End"], makeStrypeFile(["", `class Src  :
     def bar (self,x ) :
-        return x*2 
+        return x * 2 
 class Dest  :
     def existing (self, ) :
         pass
 def bar (x ) :
-    return x*2 
+    return x * 2 
 `, ""]));
     });
 });

@@ -27,7 +27,7 @@ ${defaultStandardStrypeProjectDocLiteral}#(=> Section:Imports
 #(=> Section:Definitions
 #(=> Section:Main
 [myString,anotherString]  = ["Hello from Strype"," Bye..."] 
-print(myString+anotherString) 
+print(myString + anotherString) 
 print(myString) 
 print(anotherString.strip()) 
 #(=> Section:End
@@ -42,7 +42,7 @@ def testF (anotherString ) :
     print(anotherString) 
 #(=> Section:Main
 [myString,anotherString]  = ["Hello from Strype"," Bye..."] 
-print(myString+anotherString) 
+print(myString + anotherString) 
 print(myString) 
 print(anotherString.strip()) 
 testF(anotherString) 
@@ -112,7 +112,7 @@ def testF ( ) :
 #(=> Section:Main
 for i  in range(5)  :
     today  = dt.date.today() 
-    new_day  = today+dt.timedelta(days=i) 
+    new_day  = today + dt.timedelta(days=i) 
     print(new_day) 
 print(dt.datetime.today()) 
 #(=> Section:End
@@ -127,7 +127,7 @@ class MyClass  :
     def __init__ (self, ) :
         pass
     def testF (self, ) :
-        print(self.var+4) 
+        print(self.var + 4) 
 #(=> Section:Main
 print(MyClass().var) 
 MyClass().testF() 

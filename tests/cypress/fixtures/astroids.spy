@@ -14,7 +14,7 @@ class Vector  :
     '''A 2D vector. The vector can be read and manipulated in Cartesian coordinates
     (as an x,y-offset pair) or in polar coordinates (as a direction and a length).'''
     def __init__ (self,angle=0.0,length=0,dx=0,dy=0 ) :
-        if angle!=None  :
+        if angle != None  :
             self.angle,self.length  = angle,length 
             update_cartesian() 
         else :
@@ -58,13 +58,13 @@ class FreeMover(Actor)  :
     def drift (self, ) :
         '''Move the actor forward at its current velocity. If it reaches the edge of the world, wrap arround to the opposite edge.'''
         self.move(speed) 
-        if self.get_x()==-399  :
+        if self.get_x() == -399  :
             self.set_location(400,self.get_y()) 
-        elif self.get_x()==400  :
+        elif self.get_x() == 400  :
             self.set_location(-399,self.get_y()) 
-        elif self.get_y()==-299  :
+        elif self.get_y() == -299  :
             self.set_location(self.get_x(),300) 
-        elif self.get_y()==300  :
+        elif self.get_y() == 300  :
             self.set_location(self.get_x(),-299) 
     def add_to_velocity (self,force ) :
         '''Modify our velocity by adding a velocity vector'''
