@@ -1806,11 +1806,25 @@ export default defineComponent({
 .open-menu-embedded-proj-link{
     font-size: smaller;
     cursor: pointer;
+    color: inherit;
+    text-decoration: none;
+    border: #c5c4c1 2px solid;
+    border-radius: 6px;
+    padding: 4px 10px;
+}
+
+.open-menu-embedded-proj-link:hover,
+.open-menu-embedded-proj-link:focus {
+    border-color: #007bff;
+    box-shadow: 2px 2px 5px rgb(141, 140, 140);
+    outline: none;
 }
 
 div:has(> a.open-menu-embedded-proj-link) {
     display: flex;
-    gap: 8px;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 5px;
 }
 
 .save-project-modal-dlg-container {
