@@ -876,18 +876,22 @@ export default defineComponent({
                     // a func-call frame's top-level slot, so there's no need to duplicate that check
                     // here -- just always give it the chance (via its triggeredByEnter option), and
                     // only fall back to the normal "move to next line" behaviour if nothing actually
-                    // converted (checked inside doAfterCursorSet, once the frame's own type -- still
-                    // funccall, or not -- reflects whether it did). skipStateSaveOnly avoids pushing
-                    // a spurious no-op undo/redo entry for the (overwhelmingly common) case where
-                    // Enter doesn't end up converting anything.
+                    // converted. We detect that by comparing the frame's type after the call to what
+                    // it was before: a conversion always changes it (funccall -> if/for/etc.), so an
+                    // unchanged type means nothing converted, whatever that type was -- not just
+                    // funccall, since checkSlotRefactoring is a no-op for every other frame type too
+                    // (var-assign, if, etc.) and Enter must still move to the next line for those.
+                    // skipStateSaveOnly avoids pushing a spurious no-op undo/redo entry for the
+                    // (overwhelmingly common) case where Enter doesn't end up converting anything.
                     const stateBeforeChanges = cloneDeep(this.appStore.$state);
                     const frameId = this.frameId;
                     const labelSlotsIndex = this.labelSlotsIndex;
+                    const frameTypeBeforeEnter = this.appStore.frameObjects[frameId]?.frameType.type;
                     vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(frameId, labelSlotsIndex)].checkSlotRefactoring(this.UID, stateBeforeChanges, {
                         triggeredByEnter: true,
                         skipStateSaveOnly: true,
                         doAfterCursorSet: () => {
-                            if(this.appStore.frameObjects[frameId]?.frameType.type === AllFrameTypesIdentifier.funccall){
+                            if(this.appStore.frameObjects[frameId]?.frameType.type === frameTypeBeforeEnter){
                                 document.getElementById(getFrameLabelSlotsStructureUID(frameId, labelSlotsIndex))?.dispatchEvent(
                                     new KeyboardEvent("keydown", {
                                         key: "ArrowDown",

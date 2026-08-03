@@ -130,16 +130,18 @@ const keywordFrameConversions: KeywordFrameConversionDef[] = [
 ];
 //const keywordFrameConversionRegex = new RegExp("^(" + keywordFrameConversions.map((def) => def.keyword).join("|") + ")\\s");
 const wordSpaceRegex = new RegExp("^([a-zA-Z0-9]+)\\s");
-// Same, but without requiring a trailing whitespace character -- used when the conversion is
-// triggered by Enter rather than by an actual typed space (see checkSlotRefactoring's
-// triggeredByEnter option): Enter never types a character, so a bare keyword with nothing after it
-// yet (e.g. "if" then Enter) has no real trailing whitespace in uiLiteralCode to match against
-// (funccall frames also always have their own auto-appended, still-empty "()" immediately after
-// the name field, which isn't whitespace either). Enter is itself the deliberate "I'm done typing
-// this word" signal a space would otherwise provide, so no boundary character is needed here --
-// findNearCandidate's existing typo-tolerance is what actually protects against unrelated
-// identifiers matching (same as it already does for the space-triggered path).
-const wordOnlyAtStartRegex = new RegExp("^([a-zA-Z0-9]+)");
+// Same, but anchored at the end instead of requiring a trailing whitespace character -- used when
+// the conversion is triggered by Enter rather than by an actual typed space (see
+// checkSlotRefactoring's triggeredByEnter option): Enter never types a character, so a bare keyword
+// with nothing after it yet (e.g. "if" then Enter) has no real trailing whitespace in uiLiteralCode
+// to match against. Enter is itself the deliberate "I'm done typing this word" signal a space would
+// otherwise provide, but only when the word really is all there is -- the end anchor requires that,
+// so a fully-typed call like "foo()" or "foo(3)" (which also starts with an alnum run) is never
+// mistaken for a bare keyword just because Enter was pressed straight after it. Without it,
+// findNearCandidate's typo-tolerance (which must stay loose enough to match "fi" to "if") ends up
+// matching common identifiers that merely start with a near-miss substring, e.g. "foo" (edit
+// distance 1 from "for") -- silently mangling an already-written function call into a for-loop.
+const wordOnlyAtStartRegex = new RegExp("^([a-zA-Z0-9]+)$");
 // Matches a bare keyword immediately followed by ":" (no space in between) -- e.g. typing "else:"
 // directly, the way a real colon-terminated Python header would naturally be typed. Only ever
 // consulted for keywordFrameConversions entries with endsWithColon set (try/else/finally): those are
