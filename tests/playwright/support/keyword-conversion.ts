@@ -56,7 +56,7 @@ export const keywordConversionDefs: KeywordConversionDef[] = [
     {keyword: "try", targetType: AllFrameTypesIdentifier.try, slots: 0, endsWithColon: true},
     {keyword: "elif", targetType: AllFrameTypesIdentifier.elif, slots: 1, isJoint: true},
     {keyword: "else", targetType: AllFrameTypesIdentifier.else, slots: 0, isJoint: true, endsWithColon: true},
-    {keyword: "except", targetType: AllFrameTypesIdentifier.except, slots: 1, isJoint: true},
+    {keyword: "except", targetType: AllFrameTypesIdentifier.except, slots: 1, isJoint: true, endsWithColon: true},
     {keyword: "finally", targetType: AllFrameTypesIdentifier.finally, slots: 0, isJoint: true, endsWithColon: true},
 ];
 

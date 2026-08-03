@@ -124,7 +124,7 @@ const keywordFrameConversions: KeywordFrameConversionDef[] = [
     {keyword: "try", targetType: AllFrameTypesIdentifier.try, slots: 0, endsWithColon: true},
     {keyword: "elif", targetType: AllFrameTypesIdentifier.elif, slots: 1, isJoint: true},
     {keyword: "else", targetType: AllFrameTypesIdentifier.else, slots: 0, isJoint: true, endsWithColon: true},
-    {keyword: "except", targetType: AllFrameTypesIdentifier.except, slots: 1, isJoint: true},
+    {keyword: "except", targetType: AllFrameTypesIdentifier.except, slots: 1, isJoint: true, endsWithColon: true},
     {keyword: "finally", targetType: AllFrameTypesIdentifier.finally, slots: 0, isJoint: true, endsWithColon: true},
 ];
 const wordSpaceRegex = new RegExp("^([a-zA-Z0-9]+)\\s");
@@ -139,9 +139,11 @@ const wordSpaceRegex = new RegExp("^([a-zA-Z0-9]+)\\s");
 const wordOnlyAtStartRegex = new RegExp("^([a-zA-Z0-9]+)$");
 // Matches a bare keyword immediately followed by ":" (no space in between) -- e.g. typing "else:"
 // directly, the way a real colon-terminated Python header would naturally be typed. Only ever
-// consulted for keywordFrameConversions entries with endsWithColon set (try/else/finally): those are
-// the only ones whose own fixed label already ends in " :", so the colon the user just typed *is*
-// the rest of the frame's own label, not left-over content that would need parsing into a slot.
+// consulted for keywordFrameConversions entries with endsWithColon set: for the 0-slot types
+// (try/else/finally) the colon the user just typed *is* the rest of the frame's own fixed label; for
+// except (1-slot) it instead means "make it a bare except", the same blank-content shortcut as
+// pressing Enter right after "except" -- see performKeywordFrameConversion's own except-specific
+// caret handling for why both are treated the same way there.
 const wordColonRegex = new RegExp("^([a-zA-Z0-9]+):");
 
 export default defineComponent({
@@ -622,7 +624,7 @@ export default defineComponent({
                                         // characters) -- buffering keystrokes during the conversion's own brief async
                                         // gap replaces it, so there's no reason left to delay the conversion itself.
                                         this.startPendingConversion();
-                                        this.performKeywordFrameConversion(keywordFrameConversionDef, candidateKeyword[1].length, uiLiteralCode, stateBeforeChanges, options?.triggeredByEnter ? 0 : 1, options);
+                                        this.performKeywordFrameConversion(keywordFrameConversionDef, candidateKeyword[1].length, uiLiteralCode, stateBeforeChanges, options?.triggeredByEnter ? 0 : 1, {...options, isColonTrigger});
                                     }
                                     else if(isVarAssignSlotStructure && this.labelIndex == 0 && !((currentFocusSlotCursorInfos?.slotInfos.slotId??",").includes(",")) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && uiLiteralCode.match(/(?<!=)=(?!=)/) != null){
                                         // We need to break at the slot preceding the first "=" operator.
@@ -942,7 +944,7 @@ export default defineComponent({
         // that isn't part of any remaining content -- 1 for a real typed space, 0 when the
         // conversion was triggered by Enter instead (no character was actually typed, so uiLiteralCode
         // has nothing there to skip over -- see checkSlotRefactoring's triggeredByEnter option).
-        performKeywordFrameConversion(def: KeywordFrameConversionDef, keywordLen: number, uiLiteralCode: string, stateBeforeChanges: any, separatorLength: number, options?: {skipCursorSetAndStateSave?: boolean, doAfterCursorSet?: VoidFunction, triggeredByEnter?: boolean}): void {
+        performKeywordFrameConversion(def: KeywordFrameConversionDef, keywordLen: number, uiLiteralCode: string, stateBeforeChanges: any, separatorLength: number, options?: {skipCursorSetAndStateSave?: boolean, doAfterCursorSet?: VoidFunction, triggeredByEnter?: boolean, isColonTrigger?: boolean}): void {
             this.clearFocusedTopLevelSlot();
 
             if(def.isJoint){
@@ -1062,40 +1064,44 @@ export default defineComponent({
 
             this.appStore.frameObjects[this.frameId].labelSlotsDict = newLabelSlotsDict;
 
-            if(def.keyword === "return" && options?.triggeredByEnter){
-                // Enter right after a bare "return" (as opposed to space) signals the user wants a
-                // blank return statement and to move straight on to the next line, rather than
-                // staying in the now-empty expression slot to keep typing -- so leave the slot
-                // unfocused and place the (blue) frame caret below instead, mirroring the def.slots
-                // === 0 case above.
+            // A handful of keywords move the caret straight to a frame-level (blue) position, leaving
+            // their own expression slot blank, when completed via Enter or (for except) a colon rather
+            // than a space: that's the user deliberately signalling "I'm done with this line" rather
+            // than "let me keep typing the expression" -- return has nothing after it to go to, so the
+            // caret goes below; except allows a body, so the caret goes there instead, ready to type
+            // the first handled statement.
+            const caretOnlyTargetPosition: CaretPosition | undefined =
+                (def.keyword === "return" && options?.triggeredByEnter) ? CaretPosition.below :
+                    (def.keyword === "except" && (options?.triggeredByEnter || options?.isColonTrigger)) ? CaretPosition.body :
+                        undefined;
+
+            if(caretOnlyTargetPosition !== undefined){
                 (newLabelSlotsDict[0].slotStructures.fields.at(-1) as BaseSlot).focused = false;
                 if(!options?.skipCursorSetAndStateSave){
-                    // Unlike the def.slots === 0 case above (where labelSlotsDict is wiped entirely,
-                    // so the old element is simply gone), the expression slot's own contenteditable
-                    // element is still there. But it's not this span that actually holds real browser
-                    // focus -- a contenteditable *div* wrapping the whole label (labelSlotsStructDivId)
-                    // does (see LabelSlot.vue's onLoseCaret comment: "the spans don't get focus anymore
-                    // because the containing editable div grabs it") -- so clearing the store's own
-                    // focus/cursor state, or dispatching editableSlotLostCaret at the span, doesn't
-                    // actually move real DOM focus away from it. The established way to do that (see
-                    // changeCaretWithKeyboard, store.ts) is to explicitly focus() the target frame
-                    // caret's own DOM container instead: the browser then fires a genuine native blur
-                    // on the still-focused label div, which runs blurEditableSlot()'s own normal
-                    // slot-leaving cleanup for us.
+                    // The expression slot's own contenteditable element is still there. But it's not
+                    // this span that actually holds real browser focus -- a contenteditable *div*
+                    // wrapping the whole label (labelSlotsStructDivId) does (see LabelSlot.vue's
+                    // onLoseCaret comment: "the spans don't get focus anymore because the containing
+                    // editable div grabs it") -- so clearing the store's own focus/cursor state, or
+                    // dispatching editableSlotLostCaret at the span, doesn't actually move real DOM
+                    // focus away from it. The established way to do that (see changeCaretWithKeyboard,
+                    // store.ts) is to explicitly focus() the target frame caret's own DOM container
+                    // instead: the browser then fires a genuine native blur on the still-focused label
+                    // div, which runs blurEditableSlot()'s own normal slot-leaving cleanup for us.
                     // checkSlotRefactoring's own cursor-repositioning step (earlier in the same call,
                     // before it even knew this would turn into a keyword conversion) already dispatched
                     // an editableSlotGotCaret request at the old span for wherever the cursor logically
                     // sits -- LabelSlot.vue's onGetCaret() handles that via a debounced setTimeout, so it
-                    // can still fire *after* this branch has already finished and left the caret below,
-                    // silently re-focusing the slot we just deliberately left blank. bumpCaretRequestSeq()
-                    // is the established way to invalidate a still-pending onGetCaret request (see its
-                    // use in leftRightKey, store.ts, for the same kind of race).
+                    // can still fire *after* this branch has already finished and left the caret at its
+                    // target position, silently re-focusing the slot we just deliberately left blank.
+                    // bumpCaretRequestSeq() is the established way to invalidate a still-pending
+                    // onGetCaret request (see its use in leftRightKey, store.ts, for the same race).
                     bumpCaretRequestSeq();
                     waitForElementId(getLabelSlotUID(newCursorSlotInfos.slotInfos)).then(() => {
                         this.appStore.setSlotTextCursors(undefined, undefined);
                         this.appStore.isEditing = false;
-                        this.appStore.toggleCaret({id: this.frameId, caretPosition: CaretPosition.below});
-                        document.getElementById(getCaretContainerUID(CaretPosition.below, this.frameId))?.focus();
+                        this.appStore.toggleCaret({id: this.frameId, caretPosition: caretOnlyTargetPosition});
+                        document.getElementById(getCaretContainerUID(caretOnlyTargetPosition, this.frameId))?.focus();
                         options?.doAfterCursorSet?.();
                         this.appStore.saveStateChanges(stateBeforeChanges);
                         this.finishPendingConversion(undefined);

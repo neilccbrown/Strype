@@ -338,6 +338,50 @@ test.describe("Keyword-triggered frame conversion -- joint frames (elif/else/exc
         expect(await getFrameHeaderText(page, frameId)).toContain("ValueError");
     });
 
+    test("\"except\" then space converts and focuses the (empty) expression slot", async ({page}) => {
+        await page.keyboard.press(" ");
+        await page.keyboard.press("t"); // try (auto-creates a default except joint)
+        await waitForEditorSettled(page);
+        const tryId = await getFrameIdByType(page, AllFrameTypesIdentifier.try);
+        await page.locator(`#frameBodyId_${tryId}`).click();
+        await waitForEditorSettled(page);
+        const frameId = await typeKeywordConversionTrigger(page, "except");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.except);
+        expect(await getFirstSlotText(page, frameId)).toEqual("");
+        // Space keeps the user in the expression slot, ready to type the exception type -- a text
+        // cursor should be focused, not a frame-level (blue) caret:
+        await checkFrameXorTextCursor(page, false, "Expected a text cursor focused in except's expression slot after space");
+    });
+
+    test("\"except\" then colon converts, leaves the expression slot blank, and moves the caret into its body", async ({page}) => {
+        await page.keyboard.press(" ");
+        await page.keyboard.press("t"); // try (auto-creates a default except joint)
+        await waitForEditorSettled(page);
+        const tryId = await getFrameIdByType(page, AllFrameTypesIdentifier.try);
+        await page.locator(`#frameBodyId_${tryId}`).click();
+        await waitForEditorSettled(page);
+        const frameId = await typeKeywordConversionTriggerViaColon(page, "except");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.except);
+        expect(await getFirstSlotText(page, frameId)).toEqual("");
+        // Unlike space, a colon signals "done" (a bare except) -- the caret should move into the
+        // except's own (empty) body rather than staying focused in the expression slot:
+        await assertFrameCaretPosition(page, frameId, "body");
+    });
+
+    test("\"except\" then Enter converts, leaves the expression slot blank, and moves the caret into its body", async ({page}) => {
+        await page.keyboard.press(" ");
+        await page.keyboard.press("t"); // try (auto-creates a default except joint)
+        await waitForEditorSettled(page);
+        const tryId = await getFrameIdByType(page, AllFrameTypesIdentifier.try);
+        await page.locator(`#frameBodyId_${tryId}`).click();
+        await waitForEditorSettled(page);
+        const frameId = await typeKeywordConversionTriggerViaEnter(page, "except");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.except);
+        expect(await getFirstSlotText(page, frameId)).toEqual("");
+        // Same as colon -- Enter also signals "done" here, same as it does for return:
+        await assertFrameCaretPosition(page, frameId, "body");
+    });
+
     test("finally converts when typed inside an already-existing except's body, caret left inside its (empty) body", async ({page}) => {
         await page.keyboard.press(" ");
         await page.keyboard.press("t"); // try (auto-creates a default except joint)
@@ -536,7 +580,7 @@ test.describe("Keyword-triggered frame conversion -- Enter as trigger", () => {
     });
 });
 
-test.describe("Keyword-triggered frame conversion -- colon as trigger for colon-ending 0-slot types", () => {
+test.describe("Keyword-triggered frame conversion -- colon as trigger for colon-ending types", () => {
     test("0-slot with a colon label: \"try:\" converts, same as \"try \"", async ({page}) => {
         const frameId = await typeKeywordConversionTriggerViaColon(page, "try");
         await assertFrameType(page, frameId, AllFrameTypesIdentifier.try);
@@ -562,6 +606,11 @@ test.describe("Keyword-triggered frame conversion -- colon as trigger for colon-
 
     test("location gating still applies via colon: \"else:\" does NOT convert directly in Main (no preceding if)", async ({page}) => {
         const frameId = await typeConversionTriggerViaColon(page, "else");
+        await assertConversionDidNotHappen(page, frameId);
+    });
+
+    test("location gating still applies via colon: \"except:\" does NOT convert directly in Main (no preceding try)", async ({page}) => {
+        const frameId = await typeKeywordConversionTriggerViaColon(page, "except");
         await assertConversionDidNotHappen(page, frameId);
     });
 
