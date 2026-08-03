@@ -1,6 +1,6 @@
 import {Page, test, expect} from "@playwright/test";
 import {setupStrypeTest} from "../support/general";
-import {clearDefaultProject, waitForEditorSettled} from "../support/editor";
+import {checkFrameXorTextCursor, clearDefaultProject, waitForEditorSettled} from "../support/editor";
 import {AllFrameTypesIdentifier} from "../../cypress/support/frame-types";
 import {
     DEFS_CONTAINER_ID,
@@ -545,6 +545,26 @@ test.describe("Keyword-triggered frame conversion -- Enter as trigger", () => {
     test("location gating still applies via Enter: \"return\" then Enter does NOT convert directly in Main", async ({page}) => {
         const frameId = await typeKeywordConversionTriggerViaEnter(page, "return");
         await assertConversionDidNotHappen(page, frameId);
+    });
+
+    test("\"return\" then space converts and focuses the (empty) expression slot", async ({page}) => {
+        await createFunctionAndEnterBody(page);
+        const frameId = await typeKeywordConversionTrigger(page, "return");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.return);
+        expect(await getFirstSlotText(page, frameId)).toEqual("");
+        // Space keeps the user in the expression slot, ready to type the returned value -- a
+        // text cursor should be focused, not a frame-level (blue) caret:
+        await checkFrameXorTextCursor(page, false, "Expected a text cursor focused in return's expression slot after space");
+    });
+
+    test("\"return\" then Enter converts, leaves the expression slot blank, and moves the caret below", async ({page}) => {
+        await createFunctionAndEnterBody(page);
+        const frameId = await typeKeywordConversionTriggerViaEnter(page, "return");
+        await assertFrameType(page, frameId, AllFrameTypesIdentifier.return);
+        expect(await getFirstSlotText(page, frameId)).toEqual("");
+        // Unlike space, Enter signals "done" -- the caret should move on to the next line rather
+        // than staying focused in the now-empty expression slot:
+        await assertFrameCaretPosition(page, frameId, "below");
     });
 
     test("an unrecognised word then Enter does not convert, and still moves the caret to the next line as normal", async ({page}) => {

@@ -60,7 +60,7 @@ import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
 import { bumpCaretRequestSeq, CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID, getFlatCodeSlotsInLabelStruct, getCaretContainerUID, closeRenameIdentifierPopups, getImportFrameNameBindings, waitForElementId } from "@/helpers/editor";
-import { checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId, areSlotStructuresIsomorphic, getAncestorFrameOfTypeId, findSlotsWithIndentifierName, isContainedInFrame } from "@/helpers/storeMethods";
+import { checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId, areSlotStructuresIsomorphic, getAncestorFrameOfTypeId, findSlotsWithIndentifierName, isContainedInFrame } from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import Parser from "@/parser/parser";
 import { calculateParamPrompt } from "@/autocompletion/acManager";
@@ -128,7 +128,6 @@ const keywordFrameConversions: KeywordFrameConversionDef[] = [
     {keyword: "except", targetType: AllFrameTypesIdentifier.except, slots: 1, isJoint: true},
     {keyword: "finally", targetType: AllFrameTypesIdentifier.finally, slots: 0, isJoint: true, endsWithColon: true},
 ];
-//const keywordFrameConversionRegex = new RegExp("^(" + keywordFrameConversions.map((def) => def.keyword).join("|") + ")\\s");
 const wordSpaceRegex = new RegExp("^([a-zA-Z0-9]+)\\s");
 // Same, but anchored at the end instead of requiring a trailing whitespace character -- used when
 // the conversion is triggered by Enter rather than by an actual typed space (see
@@ -634,12 +633,7 @@ export default defineComponent({
                                         const breakAtSlotIndex = parsedCodeRes.slots.operators.findIndex((opSlot) => opSlot.code == "=");
                                         // Convert right away -- see the comment in the keyword-conversion branch above.
                                         this.startPendingConversion();
-
-                                        // Remove the focus
-                                        const focusedSlot = retrieveSlotByPredicate([this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures], (slot: FieldSlot) => ((slot as BaseSlot).focused??false));
-                                        if(focusedSlot){
-                                            focusedSlot.focused = false;
-                                        }
+                                        this.clearFocusedTopLevelSlot();
 
                                         // Change the type of frame to varassign and adapt the content
                                         // (when we change the state in this next line, we need to COPY the FrameType object otherwise undo/redo makes weird changes in the commands)
@@ -671,29 +665,10 @@ export default defineComponent({
                                             cursorPos: cursorInfos.cursorPos,
                                         };
                                         // The slot we're restoring the cursor into is in the frame we just converted to
-                                        // varassign above, so it may take more than one render pass to appear -- wait for
-                                        // it rather than assuming a fixed number of ticks is enough (see waitForElementId's
-                                        // doc comment).
-                                        waitForElementId(getLabelSlotUID(newCursorSlotInfos.slotInfos)).then(() => {
-                                            if (!options?.skipCursorSetAndStateSave) {
-                                                setDocumentSelection(newCursorSlotInfos, newCursorSlotInfos);
-                                                this.appStore.setSlotTextCursors(newCursorSlotInfos, newCursorSlotInfos);
-                                                // See the matching comment in the keyword-conversion branch above: without
-                                                // this, isEditing stays false and the next keystroke is treated as
-                                                // "not editing", creating a new frame instead of typing into this one.
-                                                this.appStore.setFocusEditableSlot({
-                                                    frameSlotInfos: newCursorSlotInfos.slotInfos,
-                                                    caretPosition: (this.appStore.getAllowedChildren(this.frameId)) ? CaretPosition.body : CaretPosition.below,
-                                                });
-                                                options?.doAfterCursorSet?.();
-                                                // Save changes only when arrived here (for undo/redo)
-                                                this.appStore.saveStateChanges(stateBeforeChanges);
-                                                this.finishPendingConversion(newCursorSlotInfos.slotInfos);
-                                            }
-                                            else {
-                                                this.finishPendingConversion(undefined);
-                                            }
-                                        });
+                                        // varassign above, so it may take more than one render pass to appear -- see
+                                        // finishConversionCursorRestore's own comment for why we wait for it rather
+                                        // than assuming a fixed number of ticks is enough.
+                                        this.finishConversionCursorRestore(newCursorSlotInfos, stateBeforeChanges, options);
                                     }
                                     else{
                                         if (!options?.skipCursorSetAndStateSave) {
@@ -786,11 +761,11 @@ export default defineComponent({
         // pane -- but that function can't be called from here directly (it returns {} whenever
         // isEditing is true, store.ts:327, which is always the case while this runs).
         isKeywordFrameConversionValid(targetType: string): boolean {
-            const frame = this.appStore.frameObjects[this.frameId];
-            // Note: container frames (Imports/Defs/Main) use negative IDs, not just positive ones -- 0
-            // is the actual "no parent" sentinel used elsewhere (e.g. isContainedInFrame's traversal,
-            // storeMethods.ts:878), so we must not treat a negative parentId as absent.
-            const parentId = frame.jointParentId !== 0 ? frame.jointParentId : frame.parentId;
+            // getParentOrJointParent() covers the joint case too (a funccall frame is never itself a
+            // joint frame, so it just resolves to frame.parentId here, but it's the established helper
+            // for "this frame's real containing parent" -- see its own doc comment for the negative-ID
+            // container-frame subtlety it already handles).
+            const parentId = getParentOrJointParent(this.frameId);
             if(parentId === 0 || this.appStore.frameObjects[parentId].frameType.forbiddenChildrenTypes.includes(targetType)){
                 return false;
             }
@@ -971,12 +946,8 @@ export default defineComponent({
         // that isn't part of any remaining content -- 1 for a real typed space, 0 when the
         // conversion was triggered by Enter instead (no character was actually typed, so uiLiteralCode
         // has nothing there to skip over -- see checkSlotRefactoring's triggeredByEnter option).
-        performKeywordFrameConversion(def: KeywordFrameConversionDef, keywordLen: number, uiLiteralCode: string, stateBeforeChanges: any, separatorLength: number, options?: {skipCursorSetAndStateSave?: boolean, doAfterCursorSet?: VoidFunction}): void {
-            // Remove the focus
-            const focusedSlot = retrieveSlotByPredicate([this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures], (slot: FieldSlot) => ((slot as BaseSlot).focused??false));
-            if(focusedSlot){
-                focusedSlot.focused = false;
-            }
+        performKeywordFrameConversion(def: KeywordFrameConversionDef, keywordLen: number, uiLiteralCode: string, stateBeforeChanges: any, separatorLength: number, options?: {skipCursorSetAndStateSave?: boolean, doAfterCursorSet?: VoidFunction, triggeredByEnter?: boolean}): void {
+            this.clearFocusedTopLevelSlot();
 
             if(def.isJoint){
                 // elif/else/except/finally are never normal children -- isJointKeywordFrameConversionValid
@@ -1095,19 +1066,83 @@ export default defineComponent({
 
             this.appStore.frameObjects[this.frameId].labelSlotsDict = newLabelSlotsDict;
 
+            if(def.keyword === "return" && options?.triggeredByEnter){
+                // Enter right after a bare "return" (as opposed to space) signals the user wants a
+                // blank return statement and to move straight on to the next line, rather than
+                // staying in the now-empty expression slot to keep typing -- so leave the slot
+                // unfocused and place the (blue) frame caret below instead, mirroring the def.slots
+                // === 0 case above.
+                (newLabelSlotsDict[0].slotStructures.fields.at(-1) as BaseSlot).focused = false;
+                if(!options?.skipCursorSetAndStateSave){
+                    // Unlike the def.slots === 0 case above (where labelSlotsDict is wiped entirely,
+                    // so the old element is simply gone), the expression slot's own contenteditable
+                    // element is still there. But it's not this span that actually holds real browser
+                    // focus -- a contenteditable *div* wrapping the whole label (labelSlotsStructDivId)
+                    // does (see LabelSlot.vue's onLoseCaret comment: "the spans don't get focus anymore
+                    // because the containing editable div grabs it") -- so clearing the store's own
+                    // focus/cursor state, or dispatching editableSlotLostCaret at the span, doesn't
+                    // actually move real DOM focus away from it. The established way to do that (see
+                    // changeCaretWithKeyboard, store.ts) is to explicitly focus() the target frame
+                    // caret's own DOM container instead: the browser then fires a genuine native blur
+                    // on the still-focused label div, which runs blurEditableSlot()'s own normal
+                    // slot-leaving cleanup for us.
+                    // checkSlotRefactoring's own cursor-repositioning step (earlier in the same call,
+                    // before it even knew this would turn into a keyword conversion) already dispatched
+                    // an editableSlotGotCaret request at the old span for wherever the cursor logically
+                    // sits -- LabelSlot.vue's onGetCaret() handles that via a debounced setTimeout, so it
+                    // can still fire *after* this branch has already finished and left the caret below,
+                    // silently re-focusing the slot we just deliberately left blank. bumpCaretRequestSeq()
+                    // is the established way to invalidate a still-pending onGetCaret request (see its
+                    // use in leftRightKey, store.ts, for the same kind of race).
+                    bumpCaretRequestSeq();
+                    waitForElementId(getLabelSlotUID(newCursorSlotInfos.slotInfos)).then(() => {
+                        this.appStore.setSlotTextCursors(undefined, undefined);
+                        this.appStore.isEditing = false;
+                        this.appStore.toggleCaret({id: this.frameId, caretPosition: CaretPosition.below});
+                        document.getElementById(getCaretContainerUID(CaretPosition.below, this.frameId))?.focus();
+                        options?.doAfterCursorSet?.();
+                        this.appStore.saveStateChanges(stateBeforeChanges);
+                        this.finishPendingConversion(undefined);
+                    });
+                }
+                else{
+                    this.finishPendingConversion(undefined);
+                }
+                return;
+            }
+
             // The slot we're restoring the cursor into is in the frame we just converted into above, so
-            // it may take more than one render pass to appear -- wait for it rather than assuming a
-            // fixed number of ticks is enough (see waitForElementId's doc comment).
+            // it may take more than one render pass to appear -- see finishConversionCursorRestore's own
+            // comment for why we wait for it rather than assuming a fixed number of ticks is enough.
+            this.finishConversionCursorRestore(newCursorSlotInfos, stateBeforeChanges, options);
+        },
+
+        // Clears the focused flag off whichever top-level (label 0) slot currently has it, ahead of a
+        // funccall->keyword-frame/varassign conversion swapping out the frame's content entirely: used
+        // by both checkSlotRefactoring's varassign branch and performKeywordFrameConversion.
+        clearFocusedTopLevelSlot(): void {
+            const focusedSlot = retrieveSlotByPredicate([this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures], (slot: FieldSlot) => ((slot as BaseSlot).focused??false));
+            if(focusedSlot){
+                focusedSlot.focused = false;
+            }
+        },
+
+        // Shared tail of a completed funccall->keyword-frame/varassign conversion (used by both
+        // checkSlotRefactoring's varassign branch and performKeywordFrameConversion): waits for
+        // newCursorSlotInfos' slot to actually exist (it may take more than one render pass to appear,
+        // since the conversion just swapped out the frame's own DOM subtree -- see waitForElementId's
+        // doc comment) then restores the cursor/selection there and marks the editor as editing again.
+        // setSlotTextCursors alone only updates the Selection/cursor-position bookkeeping -- it does NOT
+        // mark the editor as "editing" this frame. Without the setFocusEditableSlot call below, isEditing
+        // stays false (as it was left by the setSlotTextCursors(undefined, undefined) call made when the
+        // conversion was first detected), so Commands.vue's global keydown handler would treat the very
+        // next keystroke as "not currently editing a slot" and create a whole new frame from it instead
+        // of typing into the frame we just converted into.
+        finishConversionCursorRestore(newCursorSlotInfos: SlotCursorInfos, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, doAfterCursorSet?: VoidFunction}): void {
             waitForElementId(getLabelSlotUID(newCursorSlotInfos.slotInfos)).then(() => {
                 if (!options?.skipCursorSetAndStateSave) {
                     setDocumentSelection(newCursorSlotInfos, newCursorSlotInfos);
                     this.appStore.setSlotTextCursors(newCursorSlotInfos, newCursorSlotInfos);
-                    // setSlotTextCursors alone only updates the Selection/cursor-position bookkeeping --
-                    // it does NOT mark the editor as "editing" this frame. Without this, isEditing stays
-                    // false (as it was left by the setSlotTextCursors(undefined, undefined) call above
-                    // when the conversion was first detected), so Commands.vue's global keydown handler
-                    // treats the very next keystroke as "not currently editing a slot" and creates a
-                    // whole new frame from it instead of typing into the frame we just converted into.
                     this.appStore.setFocusEditableSlot({
                         frameSlotInfos: newCursorSlotInfos.slotInfos,
                         caretPosition: (this.appStore.getAllowedChildren(this.frameId)) ? CaretPosition.body : CaretPosition.below,
