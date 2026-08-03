@@ -73,7 +73,6 @@ import { useAsyncComputed } from "@/helpers/vue3composables";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus } from "@/helpers/appContext";
 import { BPopover } from "bootstrap-vue-next";
-import {findNearCandidate} from "@/helpers/matchCloseKeyword";
 
 interface KeywordFrameConversionDef {
     keyword: string; // the word the user types, e.g. "return", "class", "def", "from"
@@ -136,10 +135,7 @@ const wordSpaceRegex = new RegExp("^([a-zA-Z0-9]+)\\s");
 // to match against. Enter is itself the deliberate "I'm done typing this word" signal a space would
 // otherwise provide, but only when the word really is all there is -- the end anchor requires that,
 // so a fully-typed call like "foo()" or "foo(3)" (which also starts with an alnum run) is never
-// mistaken for a bare keyword just because Enter was pressed straight after it. Without it,
-// findNearCandidate's typo-tolerance (which must stay loose enough to match "fi" to "if") ends up
-// matching common identifiers that merely start with a near-miss substring, e.g. "foo" (edit
-// distance 1 from "for") -- silently mangling an already-written function call into a for-loop.
+// mistaken for a bare keyword just because Enter was pressed straight after it.
 const wordOnlyAtStartRegex = new RegExp("^([a-zA-Z0-9]+)$");
 // Matches a bare keyword immediately followed by ":" (no space in between) -- e.g. typing "else:"
 // directly, the way a real colon-terminated Python header would naturally be typed. Only ever
@@ -607,7 +603,7 @@ export default defineComponent({
                                     const colonMatch = (isFunccallTopLevelSlot && !options?.triggeredByEnter && !spaceOrEnterMatch) ? uiLiteralCode.match(wordColonRegex) : null;
                                     const isColonTrigger = spaceOrEnterMatch == null && colonMatch != null;
                                     const candidateKeyword = spaceOrEnterMatch ?? colonMatch;
-                                    const keywordFrameConversionMatch = candidateKeyword == null ? null : findNearCandidate(candidateKeyword[1].toLowerCase(), keywordFrameConversions.map((c) => c.keyword));
+                                    const keywordFrameConversionMatch = candidateKeyword != null && keywordFrameConversions.some((c) => c.keyword === candidateKeyword[1]) ? candidateKeyword[1] : null;
                                     const keywordFrameConversionDef = (keywordFrameConversionMatch && (!isColonTrigger || keywordFrameConversions.find((def) => def.keyword == keywordFrameConversionMatch)?.endsWithColon))
                                         ? keywordFrameConversions.find((def) => def.keyword == keywordFrameConversionMatch)
                                         : undefined;

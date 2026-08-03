@@ -868,8 +868,8 @@ export default defineComponent({
                 }
                 else{
                     // Same as hitting ctrl/alt + arrow down -- unless the bare word typed so far is
-                    // (or fuzzy-matches, per findNearCandidate) a recognised keyword eligible for
-                    // conversion right here (see keywordFrameConversions, LabelSlotsStructure.vue):
+                    // a recognised keyword eligible for conversion right here (see
+                    // keywordFrameConversions, LabelSlotsStructure.vue):
                     // typing "if" or "else" then Enter should convert exactly like typing "if "/
                     // "else " does, without requiring the space first. checkSlotRefactoring's own
                     // gating (isFunccallTopLevelSlot etc.) already no-ops correctly when this isn't

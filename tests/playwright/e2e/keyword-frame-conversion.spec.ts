@@ -19,7 +19,7 @@ import {
     insertBlankFuncCallAfter,
     navigateToFrameCaret,
     relocateFrameToContainer,
-    typeKeywordConversionTrigger, typeConversionTrigger, getFirstSlotText,
+    typeKeywordConversionTrigger, getFirstSlotText,
     typeConversionTriggerViaEnter, typeKeywordConversionTriggerViaEnter,
     typeConversionTriggerViaColon, typeKeywordConversionTriggerViaColon,
 } from "../support/keyword-conversion";
@@ -185,39 +185,6 @@ test.describe("Keyword-triggered frame conversion -- shapes", () => {
         await assertFrameType(page, frameId, AllFrameTypesIdentifier.funcdef);
         expect(await getFrameHeaderText(page, frameId)).toContain("foo");
     });
-});
-
-test.describe("Keyword-triggered frame conversion -- typo-tolerant", () => {
-    const keywordsAndConversions: [string, string | null][] = [
-        ["if", AllFrameTypesIdentifier.if],
-        ["fi", AllFrameTypesIdentifier.if],
-        ["it", AllFrameTypesIdentifier.if],
-        ["of", AllFrameTypesIdentifier.if],
-        ["on", null],
-        ["wile", AllFrameTypesIdentifier.while],
-        ["fr", AllFrameTypesIdentifier.for],
-        ["four", AllFrameTypesIdentifier.for],
-        ["raise", AllFrameTypesIdentifier.raise],
-        ["raize", AllFrameTypesIdentifier.raise],
-        ["raisin", null],
-        ["crate", null],
-        ["mtch", AllFrameTypesIdentifier.match],
-        ["matchh", AllFrameTypesIdentifier.match],
-        ["ma6ch", AllFrameTypesIdentifier.match],
-    ];
-    for (const keywordAndConversion of keywordsAndConversions) {
-        test("Keyword " + keywordAndConversion[0] +" then space produces " + keywordAndConversion[1], async ({page}) => {
-            const frameId = await typeConversionTrigger(page, keywordAndConversion[0]);
-            if (keywordAndConversion[1]) {
-                await assertFrameType(page, frameId, keywordAndConversion[1]);
-                expect(await getFirstSlotText(page, frameId)).toEqual("");
-            }
-            else {
-                await assertConversionDidNotHappen(page, frameId);
-                expect(await getFirstSlotText(page, frameId)).toEqual(keywordAndConversion[0] + " ");
-            }
-        });
-    }
 });
 
 test.describe("Keyword-triggered frame conversion -- location gating", () => {
@@ -529,13 +496,6 @@ test.describe("Keyword-triggered frame conversion -- Enter as trigger", () => {
         await assertFrameCaretPosition(page, frameId, "body");
     });
 
-    test("typo-tolerant: \"fi\" then Enter converts to if, same as \"fi \"", async ({page}) => {
-        // "fi" isn't itself a recognised keyword (it's a near-miss for "if"), so this uses the
-        // unchecked variant -- same as the existing space-triggered typo-tolerant tests above.
-        const frameId = await typeConversionTriggerViaEnter(page, "fi");
-        await assertFrameType(page, frameId, AllFrameTypesIdentifier.if);
-    });
-
     test("joint frame: \"else\" then Enter converts when typed as the last statement in an if's body", async ({page}) => {
         await createIfAndEnterBody(page);
         const frameId = await typeKeywordConversionTriggerViaEnter(page, "else");
@@ -598,14 +558,6 @@ test.describe("Keyword-triggered frame conversion -- colon as trigger for colon-
         await waitForEditorSettled(page);
         const frameId = await typeKeywordConversionTriggerViaColon(page, "finally");
         await assertFrameType(page, frameId, AllFrameTypesIdentifier.finally);
-    });
-
-    test("typo-tolerant: \"els:\" converts to else, same as \"els \"", async ({page}) => {
-        await createIfAndEnterBody(page);
-        // "els" isn't itself a recognised keyword (it's a near-miss for "else"), so this uses the
-        // unchecked variant -- same as the existing space-triggered typo-tolerant tests above.
-        const frameId = await typeConversionTriggerViaColon(page, "els");
-        await assertFrameType(page, frameId, AllFrameTypesIdentifier.else);
     });
 
     test("location gating still applies via colon: \"else:\" does NOT convert directly in Main (no preceding if)", async ({page}) => {
