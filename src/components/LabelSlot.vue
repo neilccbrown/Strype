@@ -1068,6 +1068,14 @@ export default defineComponent({
             }
         },
 
+        // Checks whether the label immediately following this one is a plain ":" label with no slot of its own
+        // (e.g. the " :" label of if/elif/for/while/except/class frames), which is the case we want to treat
+        // a trailing ":" keypress as overtyping rather than insertion.
+        isNextLabelColon() : boolean {
+            const nextLabel = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelSlotsIndex + 1];
+            return nextLabel != undefined && nextLabel.showSlots === false && nextLabel.label.replace(/&nbsp;/g, "").trim() === ":";
+        },
+
         doArrowRightNextTick() {
             this.$nextTick(() => {
                 document.getElementById(getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
@@ -1183,6 +1191,23 @@ export default defineComponent({
             // On comments, we do not need multislots and parsing any code, we just let any key go through
             else if(this.allowedSlotContent == AllowedSlotContent.LIBRARY_ADDRESS || this.allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION){
                 // Do nothing
+            }
+            // If we type ":" at the very end of a top-level slot structure (not inside a bracket or quote), and the
+            // next label of this frame is just a colon label (e.g. "if <cond>:", "while <cond>:"...), we treat this
+            // as overtyping that colon label rather than inserting a new one:
+            else if(inputString === ":" && isAtEndOfLastSlot && !isFieldStringSlot(currentSlot) && !this.coreSlotInfo.slotId.includes(",") && this.isNextLabelColon()){
+                this.removeLastInput(inputString);
+                // There is no further slot to move the focus to within this frame's own label slots (the
+                // ":" label that follows has no slot of its own), so unlike the other overtyping cases in
+                // this method we can't just dispatch a synthetic ArrowRight to the label-slots-structure
+                // element -- we need to actually leave the frame's header, so we call the store action
+                // that performs this navigation directly instead:
+                this.$nextTick(() => {
+                    this.$nextTick(() => {
+                        this.appStore.leftRightKey({key: "ArrowRight"});
+                    });
+                });
+                return;
             }
             // Finally, we check the case an operator, bracket or quote has been typed and the slots within this frame need update
             // First we check closing brackets or quote as they have a specifc behaviour, then keep working out the other things
