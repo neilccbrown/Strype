@@ -93,6 +93,7 @@ export default defineComponent({
 // so there's no need to condense the font horizontally to save space.
 .text-editing-command .frame-cmd-btn-large {
     font-stretch: normal !important;
+    font-family: 'AHN-Strype', sans-serif !important;
 }
 
 .frame-cmd-btn {

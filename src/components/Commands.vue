@@ -37,10 +37,7 @@
                                                     :class="{'frame-commands-pane-intro-hidden': isFrameCommandsPaneActive}"
                                                     v-if="!isEditing && !isPythonExecuting"
                                                 >
-                                                    <span>{{ $t('commandsPane.pressSpaceThenPrefix') }}</span>
-                                                    <span class="frame-cmd-prefix-btn frame-cmd-btn-large">{{ $t('autoCompletion.spaceKey') }}</span>
-                                                    <span>{{ $t('commandsPane.orConnector') }}</span>
-                                                    <span class="frame-cmd-prefix-btn frame-cmd-btn-large">{{ $t('commandsPane.tabKey') }}</span>
+                                                    <span class="frame-cmd-prefix-btn frame-cmd-btn-large frame-cmd-prefix-btn-wide">{{ $t('autoCompletion.spaceKey') }}</span>
                                                     <span>{{ $t('commandsPane.pressSpaceThenSuffix') }}</span>
                                                 </div>
                                                 <p>
@@ -403,8 +400,8 @@ export default defineComponent({
             const ctrl = {label: this.$t("contextMenu.ctrl")};
             const shift = {label: "⇧", title: this.$t("autoCompletion.shiftKey")};
             return [
-                {keys: [ctrl, shift, {label: "I"}], description: this.$t("autoCompletion.recordImageShortcut")},
-                {keys: [ctrl, shift, {label: "U"}], description: this.$t("autoCompletion.recordSoundShortcut")},
+                {keys: [ctrl, shift, {label: "i"}], description: this.$t("autoCompletion.recordImageShortcut")},
+                {keys: [ctrl, shift, {label: "u"}], description: this.$t("autoCompletion.recordSoundShortcut")},
             ];
         },
 
@@ -1421,6 +1418,11 @@ export default defineComponent({
 .frame-commands-pane-intro .frame-cmd-btn-large {
     font-stretch: normal !important;
     font-family: 'AHN-Strype', sans-serif !important;
+}
+
+.frame-cmd-prefix-btn-wide {
+    padding-left: 10px;
+    padding-right: 10px;
 }
 
 .#{$strype-classname-add-frame-commands-container}.with-expanded-PEA p {

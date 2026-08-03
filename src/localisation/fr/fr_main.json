@@ -265,9 +265,6 @@
     "0": "Ajoute un cadre"
   },
   "commandsPane": {
-    "pressSpaceThenPrefix": "",
-    "orConnector": "ou",
-    "tabKey": "Tab",
     "pressSpaceThenSuffix": "→"
   },
   "PEA": {

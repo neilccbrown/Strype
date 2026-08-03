@@ -1063,10 +1063,9 @@ export function checkPrecompiledErrorsForFrame(frameId: number): void {
     // and says nothing about which joint types may attach to it, so checking it here would
     // false-positive on essentially every existing if/elif/else and try/except/finally.
     if(!frameObject.frameType.isJointFrame){
-        // Note: container frames (Imports/Defs/Main) use negative IDs, not just positive ones -- 0 is
-        // the actual "no parent" sentinel used elsewhere in the codebase (e.g. isContainedInFrame's
-        // traversal, storeMethods.ts ~934), so we must not treat a negative parentId as absent.
-        const actualParentId = frameObject.jointParentId !== 0 ? frameObject.jointParentId : frameObject.parentId;
+        // getParentOrJointParent() covers the joint case too, but frameObject is never itself a joint
+        // frame here (guarded above), so this just resolves to frameObject.parentId.
+        const actualParentId = getParentOrJointParent(frameId);
         // actualParentId won't always resolve to a real entry in frameObjects: pasting a lone
         // elif/else/except/finally parses it by gluing on a throwaway if/try wrapper to get valid
         // Python syntax first, then discards the wrapper from the pasted frame tree -- but the
