@@ -557,18 +557,17 @@ export const allFrameCommandsDefs = {
             index: 0,
         },
         {
-            type: getFrameDefType(AllFrameTypesIdentifier.funcdef),
-            description: en.frame.funcdef_desc,
-            shortcuts: ["f"],
-            index: 1,
-        },
-        {
             type: getFrameDefType(AllFrameTypesIdentifier.fromimport),
             description: "from...import",
             shortcuts: ["f"],
-            index:2,
+            index: 1,
         },
     ],
+    "d": [{
+        type: getFrameDefType(AllFrameTypesIdentifier.funcdef),
+        description: en.frame.funcdef_desc,
+        shortcuts: ["d", "f"],
+    }],
     "c": [
         {
             type: getFrameDefType(AllFrameTypesIdentifier.classdef),

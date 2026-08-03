@@ -28,7 +28,7 @@
       "case": "matching values"
     },
     "classdef_desc": "class definition",
-    "funcdef_desc": "function definition",
+    "funcdef_desc": "define function",
     "varassign_desc": "assignment",
     "funccall_desc": "function call",
     "blank_desc": "blank line",

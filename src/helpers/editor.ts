@@ -824,18 +824,18 @@ export function generateAllFrameCommandsDefs():void {
                 index: 0,
             },
             {
-                type: getFrameDefType(AllFrameTypesIdentifier.funcdef),
-                description: i18n.global.t("frame.funcdef_desc"),
-                shortcuts: ["f"],
-                index: 1,
-            },
-            {
                 type: getFrameDefType(AllFrameTypesIdentifier.fromimport),
                 description: "from...import",
                 shortcuts: ["f"],
-                index:2,
+                index: 1,
             },
         ],
+        "d": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.funcdef),
+            description: i18n.global.t("frame.funcdef_desc"),
+            // "f" is kept working as a secret/legacy shortcut alongside the official "d".
+            shortcuts: ["d", "f"],
+        }],
         "c": [
             {
                 type: getFrameDefType(AllFrameTypesIdentifier.classdef),
