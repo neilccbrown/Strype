@@ -151,7 +151,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { alwaysDirectFrameShortcutKeys, computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getLabelSlotUID, getMenuLeftPaneUID, hiddenShorthandFrames, notifyDragEnded, waitForPanesSettled } from "@/helpers/editor";
+import { alwaysDirectFrameShortcutKeys, computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getLabelSlotUID, getLegacyShortcut, getMenuLeftPaneUID, hiddenShorthandFrames, notifyDragEnded, waitForPanesSettled } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, CaretPosition, CollapsedState, defaultEmptyStrypeLayoutDividerSettings, FrameObject, getFrameDefType, isSlotStringLiteralType, PythonExecRunningState, SelectAllFramesAction, SlotType, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -794,8 +794,11 @@ export default defineComponent({
                             // "type anything, get an error later if it's wrong here" fallback everywhere,
                             // same as it already does in Main/bodies -- see the "frame not allowed here" check
                             // (setFrameErroneous/atParsingError in store.ts) that flags it afterwards instead
-                            // of pre-emptively blocking the keystroke.
-                            else if(!event.altKey && event.key.length === 1 && event.key !== " " && event.key !== "#" && event.key !== "="
+                            // of pre-emptively blocking the keystroke. "#"/"=" need no separate exclusion here:
+                            // the alwaysDirectFrameShortcutKeys branch above already claims them (this is an
+                            // else-if chain) -- only space needs excluding, since it opens/closes the pane
+                            // instead (handled elsewhere) rather than being in that list.
+                            else if(!event.altKey && event.key.length === 1 && event.key !== " "
                                 && this.appStore.selectedFrames.length === 0){
                                 if(!ignoreKeyEvent){
                                     event.stopImmediatePropagation();
@@ -901,17 +904,18 @@ export default defineComponent({
         },
 
         // Inserts the frame matching this (lowercased) shortcut key -- by its original shortcut, its
-        // secondary shortcut (shortcuts[1]), or a hidden shorthand -- exactly as the direct top-level
-        // dispatch always has. Returns whether a match was found and dispatched, so callers can leave
-        // non-matching keys as a no-op. Shared between the always-direct shortcuts (Enter/#/=, handled
-        // above regardless of the frame commands pane) and the pane's own shortcut-letter handling
-        // (handleFrameCommandsPaneKeyDown), where every shortcut is fair game once the pane is focused.
+        // legacy shortcut (see getLegacyShortcut, editor.ts), or a hidden shorthand -- exactly as the
+        // direct top-level dispatch always has. Returns whether a match was found and dispatched, so
+        // callers can leave non-matching keys as a no-op. Shared between the always-direct shortcuts
+        // (Enter/#/=, handled above regardless of the frame commands pane) and the pane's own
+        // shortcut-letter handling (handleFrameCommandsPaneKeyDown), where every shortcut is fair
+        // game once the pane is focused.
         insertFrameForShortcutKey(eventKeyLowCase: string): boolean {
             const isHiddenShorthandFrameCommand = (hiddenShorthandFrames[eventKeyLowCase] !== undefined
                 && Object.values(this.addFrameCommands).flat().flatMap((addFrameDef) => addFrameDef.type.type).includes(hiddenShorthandFrames[eventKeyLowCase].type.type));
 
             if(this.addFrameCommands[eventKeyLowCase] === undefined
-                && Object.values(this.addFrameCommands).find((addFrameCmdDef) => addFrameCmdDef[0].shortcuts[1] == eventKeyLowCase) === undefined
+                && Object.values(this.addFrameCommands).find((addFrameCmdDef) => getLegacyShortcut(addFrameCmdDef[0]) == eventKeyLowCase) === undefined
                 && !isHiddenShorthandFrameCommand){
                 return false;
             }
@@ -921,12 +925,12 @@ export default defineComponent({
                 this.appStore.addFrameWithCommand(hiddenShorthandFrames[eventKeyLowCase].type, hiddenShorthandFrames[eventKeyLowCase]);
             }
             else{
-                // We can add the frame by its original shortcut or hidden one
+                // We can add the frame by its original shortcut or legacy one
                 const isOriginalShortcut = (this.addFrameCommands[eventKeyLowCase] != undefined);
                 this.appStore.addFrameWithCommand(
                     (isOriginalShortcut)
                         ? this.addFrameCommands[eventKeyLowCase][0].type
-                        : (Object.values(this.addFrameCommands).find((addFrameCmdDef) =>  addFrameCmdDef[0].shortcuts[1] == eventKeyLowCase) as AddFrameCommandDef[])[0].type
+                        : (Object.values(this.addFrameCommands).find((addFrameCmdDef) => getLegacyShortcut(addFrameCmdDef[0]) == eventKeyLowCase) as AddFrameCommandDef[])[0].type
                 );
             }
             return true;
@@ -950,7 +954,7 @@ export default defineComponent({
             // the user is just typing (e.g. the start of "if"/"while"/"return"), and the frame may well
             // get converted away from func-call entirely once LabelSlotsStructure.vue's funccall->
             // keyword-frame/varassign conversion kicks in -- see skipFuncCallBrackets's own comment.
-            this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall), undefined, false, true).then((newFrameId: number) => {
+            this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall), undefined, true).then((newFrameId: number) => {
                 // Target the new frame's name slot explicitly (rather than document.activeElement):
                 // its own name slot isn't necessarily what ends up focused by the time this promise
                 // resolves (e.g. autocomplete-related focus shifts can already be underway), so we
@@ -958,6 +962,11 @@ export default defineComponent({
                 const nameSlotUID = getLabelSlotUID({frameId: newFrameId, labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code});
                 document.getElementById(nameSlotUID)?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: "text", content: typedChar}}));
             });
+        },
+
+        // All command buttons currently in the frame commands pane, in DOM order.
+        getFrameCommandButtons(): HTMLButtonElement[] {
+            return Array.from(document.querySelectorAll("#addFramePanel .frame-cmd-btn")) as HTMLButtonElement[];
         },
 
         // Opens the frame commands pane: moves real DOM focus onto the first available command button.
@@ -974,8 +983,7 @@ export default defineComponent({
             // character instead. (This also relies on the Commands tab switch above -- see
             // validateSlot() in store.ts -- being instant: BTabs is set `no-fade` for exactly this
             // reason, otherwise its buttons would stay display:none for the fade's duration.)
-            const firstAvailableButton = (Array.from(document.querySelectorAll("#addFramePanel .frame-cmd-btn")) as HTMLButtonElement[])
-                .find((button) => !button.disabled && button.offsetParent !== null);
+            const firstAvailableButton = this.getFrameCommandButtons().find((button) => !button.disabled && button.offsetParent !== null);
             firstAvailableButton?.focus();
         },
 
@@ -1005,25 +1013,6 @@ export default defineComponent({
                 return;
             }
 
-            const buttons = Array.from(document.querySelectorAll("#addFramePanel .frame-cmd-btn")) as HTMLButtonElement[];
-            const currentIndex = buttons.indexOf(document.activeElement as HTMLButtonElement);
-
-            if(event.key === "ArrowDown" || event.key === "ArrowRight"){
-                event.preventDefault();
-                if(buttons.length > 0){
-                    buttons[(currentIndex + 1) % buttons.length].focus();
-                }
-                return;
-            }
-
-            if(event.key === "ArrowUp" || event.key === "ArrowLeft" || (event.key === "Tab" && event.shiftKey)){
-                event.preventDefault();
-                if(buttons.length > 0){
-                    buttons[(currentIndex - 1 + buttons.length) % buttons.length].focus();
-                }
-                return;
-            }
-
             if(event.key === "Enter"){
                 // Don't click the button here on keydown: focused <button> elements natively
                 // self-activate (synthesise a click) on Enter keydown, and if we let that happen --
@@ -1035,6 +1024,19 @@ export default defineComponent({
                 // below instead, once this key's lifecycle is otherwise finished. Same fix Menu.vue
                 // already uses for its own Enter-confirms-selection handling.
                 event.preventDefault();
+                return;
+            }
+
+            if(event.key === "ArrowDown" || event.key === "ArrowRight" || event.key === "ArrowUp" || event.key === "ArrowLeft" || event.key === "Tab"){
+                // Only these need the current button list/position -- everything above is handled
+                // (and returns) without it.
+                const buttons = this.getFrameCommandButtons();
+                const currentIndex = buttons.indexOf(document.activeElement as HTMLButtonElement);
+                event.preventDefault();
+                if(buttons.length > 0){
+                    const delta = (event.key === "ArrowDown" || event.key === "ArrowRight") ? 1 : -1;
+                    buttons[(currentIndex + delta + buttons.length) % buttons.length].focus();
+                }
                 return;
             }
 
@@ -1410,14 +1412,11 @@ export default defineComponent({
     margin-right: 0;
 }
 
-// Like .text-editing-command .frame-cmd-btn-large above: this sentence's "Space"/"Tab" boxes
-// aren't crammed into a row with many others, so there's no need to condense the font
-// horizontally to save space (unlike the "space" symbol in the frame commands table below).
-// Font-family is reset back to the app's usual AHN-Strype too, rather than the Inconsolata used
-// to condense the frame commands table's symbols, to match the look of the other shortcut keys.
+// Like .text-editing-command .frame-cmd-btn-large (AddFrameCommand.vue): this sentence's
+// "Space"/"Tab" boxes aren't crammed into a row with many others, so there's no need to condense
+// the font horizontally to save space (unlike the "space" symbol in the frame commands table below).
 .frame-commands-pane-intro .frame-cmd-btn-large {
-    font-stretch: normal !important;
-    font-family: 'AHN-Strype', sans-serif !important;
+    @include frame-cmd-btn-large-normal-stretch;
 }
 
 .frame-cmd-prefix-btn-wide {

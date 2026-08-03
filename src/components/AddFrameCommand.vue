@@ -92,8 +92,7 @@ export default defineComponent({
 // shortcut), the code completion shortcut's key boxes aren't crammed into a row with many others,
 // so there's no need to condense the font horizontally to save space.
 .text-editing-command .frame-cmd-btn-large {
-    font-stretch: normal !important;
-    font-family: 'AHN-Strype', sans-serif !important;
+    @include frame-cmd-btn-large-normal-stretch;
 }
 
 .frame-cmd-btn {

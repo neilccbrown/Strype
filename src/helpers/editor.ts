@@ -929,6 +929,12 @@ export function generateAllFrameCommandsDefs():void {
 //Commands for Frame insertion, one command can match more than 1 frame ONLY when there is a TOTAL distinct context between the two
 let allFrameCommandsDefs: {[id: string]: AddFrameCommandDef[]} | undefined = undefined;
 
+// def's hidden/legacy shortcut (e.g. "f" for funcdef, kept working alongside the official "d"), if
+// it has one -- named accessor so callers don't need to know shortcuts[1] is where that lives.
+export function getLegacyShortcut(def: AddFrameCommandDef): string | undefined {
+    return def.shortcuts[1];
+}
+
 export function getAddCommandsDefs(): {[id: string]: AddFrameCommandDef[]} { 
     if(allFrameCommandsDefs === undefined){
         generateAllFrameCommandsDefs();
@@ -961,8 +967,7 @@ export function findAddCommandFrameType(shortcut: string, index?: number): Frame
 
 // These are the only frame-insertion shortcuts that still work directly at the frame caret without
 // first pressing the Tab/Space prefix key (see Commands.vue's keydown handler): blank frame, comment,
-// and assignment. Every other shortcut requires opening the frame commands pane first. Exported so the
-// same list can drive both the keydown handling and the pane's shortcut-hint display.
+// and assignment. Every other shortcut requires opening the frame commands pane first.
 export const alwaysDirectFrameShortcutKeys = ["enter", "#", "="];
 
 // This shorthand frames are enhanced frames because they contain some default code value.

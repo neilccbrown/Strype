@@ -871,37 +871,47 @@ export default defineComponent({
                     // a recognised keyword eligible for conversion right here (see
                     // keywordFrameConversions, LabelSlotsStructure.vue):
                     // typing "if" or "else" then Enter should convert exactly like typing "if "/
-                    // "else " does, without requiring the space first. checkSlotRefactoring's own
-                    // gating (isFunccallTopLevelSlot etc.) already no-ops correctly when this isn't
-                    // a func-call frame's top-level slot, so there's no need to duplicate that check
-                    // here -- just always give it the chance (via its triggeredByEnter option), and
-                    // only fall back to the normal "move to next line" behaviour if nothing actually
-                    // converted. We detect that by comparing the frame's type after the call to what
-                    // it was before: a conversion always changes it (funccall -> if/for/etc.), so an
-                    // unchanged type means nothing converted, whatever that type was -- not just
-                    // funccall, since checkSlotRefactoring is a no-op for every other frame type too
-                    // (var-assign, if, etc.) and Enter must still move to the next line for those.
-                    // skipStateSaveOnly avoids pushing a spurious no-op undo/redo entry for the
-                    // (overwhelmingly common) case where Enter doesn't end up converting anything.
-                    const stateBeforeChanges = cloneDeep(this.appStore.$state);
+                    // "else " does, without requiring the space first. Only a func-call frame can
+                    // ever convert this way, so that's checked here as a cheap prefilter -- avoiding
+                    // an unconditional cloneDeep(appStore.$state) on every single Enter keypress,
+                    // in every slot, of every frame type -- before deferring to
+                    // checkSlotRefactoring's own fuller isFunccallTopLevelSlot gating (labelIndex,
+                    // slotId) for the rarer case where it matters. Once we do call it, we always
+                    // give it the chance to convert (via its triggeredByEnter option), and only fall
+                    // back to the normal "move to next line" behaviour if nothing actually converted.
+                    // We detect that by comparing the frame's type after the call to what it was
+                    // before: a conversion always changes it (funccall -> if/for/etc.), so an
+                    // unchanged type means nothing converted (checkSlotRefactoring is also a no-op
+                    // for e.g. a func-call whose content isn't actually a recognised keyword).
+                    // skipStateSaveOnly avoids pushing a spurious no-op undo/redo entry for that
+                    // still-common case.
                     const frameId = this.frameId;
                     const labelSlotsIndex = this.labelSlotsIndex;
                     const frameTypeBeforeEnter = this.appStore.frameObjects[frameId]?.frameType.type;
-                    vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(frameId, labelSlotsIndex)].checkSlotRefactoring(this.UID, stateBeforeChanges, {
-                        triggeredByEnter: true,
-                        skipStateSaveOnly: true,
-                        doAfterCursorSet: () => {
-                            if(this.appStore.frameObjects[frameId]?.frameType.type === frameTypeBeforeEnter){
-                                document.getElementById(getFrameLabelSlotsStructureUID(frameId, labelSlotsIndex))?.dispatchEvent(
-                                    new KeyboardEvent("keydown", {
-                                        key: "ArrowDown",
-                                        altKey: true,
-                                        ctrlKey: true,
-                                    })
-                                );
-                            }
-                        },
-                    });
+                    const moveToNextLine = () => {
+                        document.getElementById(getFrameLabelSlotsStructureUID(frameId, labelSlotsIndex))?.dispatchEvent(
+                            new KeyboardEvent("keydown", {
+                                key: "ArrowDown",
+                                altKey: true,
+                                ctrlKey: true,
+                            })
+                        );
+                    };
+                    if(frameTypeBeforeEnter !== AllFrameTypesIdentifier.funccall){
+                        moveToNextLine();
+                    }
+                    else{
+                        const stateBeforeChanges = cloneDeep(this.appStore.$state);
+                        vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(frameId, labelSlotsIndex)].checkSlotRefactoring(this.UID, stateBeforeChanges, {
+                            triggeredByEnter: true,
+                            skipStateSaveOnly: true,
+                            doAfterCursorSet: () => {
+                                if(this.appStore.frameObjects[frameId]?.frameType.type === frameTypeBeforeEnter){
+                                    moveToNextLine();
+                                }
+                            },
+                        });
+                    }
                 }
             }
             this.showAC = false;

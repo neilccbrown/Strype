@@ -54,13 +54,13 @@
 </template>
 
 <script lang="ts">
-import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, DefsContainerDefinition, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, MediaDataAndDim, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
+import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FlatSlotBase, FrameObject, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, MediaDataAndDim, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
 import { computed, defineComponent } from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
 import { bumpCaretRequestSeq, CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID, getFlatCodeSlotsInLabelStruct, getCaretContainerUID, closeRenameIdentifierPopups, getImportFrameNameBindings, waitForElementId } from "@/helpers/editor";
-import { checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId, areSlotStructuresIsomorphic, getAncestorFrameOfTypeId, findSlotsWithIndentifierName, isContainedInFrame } from "@/helpers/storeMethods";
+import { checkCodeErrors, evaluateSlotType, filterAllowedJointChildrenAfter, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId, areSlotStructuresIsomorphic, getAncestorFrameOfTypeId, findSlotsWithIndentifierName, isAncestorGatedFrameTypeAllowed } from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import Parser from "@/parser/parser";
 import { calculateParamPrompt } from "@/autocompletion/acManager";
@@ -87,6 +87,12 @@ interface KeywordFrameConversionDef {
     // as opposed to break/continue, which don't open a body and so have no colon at all): typing the
     // keyword immediately followed by ":" (no space) also converts, since that colon *is* the rest of
     // the frame's own fixed label -- see checkSlotRefactoring's wordColonRegex handling.
+    enterCaretTarget?: CaretPosition; // return/except only: completing the bare keyword via Enter (or,
+    // for except, via ":" too -- see endsWithColon) jumps straight to this frame-level caret position,
+    // leaving the new expression slot blank, rather than focusing that slot the way every other
+    // keyword's Enter/colon completion does -- these two are the only ones where nothing more usually
+    // follows on the same line (a bare "return"/"except" is itself common Python) -- see
+    // performKeywordFrameConversion's use of this field.
 }
 
 // A specific place a new joint frame could be inserted: which root's jointFrameIds array (rootId),
@@ -101,13 +107,13 @@ interface JointAttachmentPoint {
 // Converts a funccall frame into one of these frame types the moment its (top-level) content starts
 // with the given keyword followed by whitespace -- see checkSlotRefactoring()'s use of this table via
 // isKeywordFrameConversionValid()/performKeywordFrameConversion(). elif/else/except/finally (isJoint)
-// additionally require being a valid *joint continuation* of a preceding block -- a check mirroring
-// generateAvailableFrameCommands (store.ts), ported separately in isJointKeywordFrameConversionValid()
-// since that function can't be called from here directly (see isKeywordFrameConversionValid's comment).
+// additionally require being a valid *joint continuation* of a preceding block -- a check sharing its
+// core "RULE FOR THE JOINTS" narrowing with generateAvailableFrameCommands (store.ts) via
+// filterAllowedJointChildrenAfter, in isJointKeywordFrameConversionValid().
 const keywordFrameConversions: KeywordFrameConversionDef[] = [
     {keyword: "if", targetType: AllFrameTypesIdentifier.if, slots: 1},
     {keyword: "while", targetType: AllFrameTypesIdentifier.while, slots: 1},
-    {keyword: "return", targetType: AllFrameTypesIdentifier.return, slots: 1},
+    {keyword: "return", targetType: AllFrameTypesIdentifier.return, slots: 1, enterCaretTarget: CaretPosition.below},
     {keyword: "global", targetType: AllFrameTypesIdentifier.global, slots: 1},
     {keyword: "raise", targetType: AllFrameTypesIdentifier.raise, slots: 1},
     {keyword: "match", targetType: AllFrameTypesIdentifier.match, slots: 1},
@@ -124,7 +130,7 @@ const keywordFrameConversions: KeywordFrameConversionDef[] = [
     {keyword: "try", targetType: AllFrameTypesIdentifier.try, slots: 0, endsWithColon: true},
     {keyword: "elif", targetType: AllFrameTypesIdentifier.elif, slots: 1, isJoint: true},
     {keyword: "else", targetType: AllFrameTypesIdentifier.else, slots: 0, isJoint: true, endsWithColon: true},
-    {keyword: "except", targetType: AllFrameTypesIdentifier.except, slots: 1, isJoint: true, endsWithColon: true},
+    {keyword: "except", targetType: AllFrameTypesIdentifier.except, slots: 1, isJoint: true, endsWithColon: true, enterCaretTarget: CaretPosition.body},
     {keyword: "finally", targetType: AllFrameTypesIdentifier.finally, slots: 0, isJoint: true, endsWithColon: true},
 ];
 const wordSpaceRegex = new RegExp("^([a-zA-Z0-9]+)\\s");
@@ -605,9 +611,9 @@ export default defineComponent({
                                     const colonMatch = (isFunccallTopLevelSlot && !options?.triggeredByEnter && !spaceOrEnterMatch) ? uiLiteralCode.match(wordColonRegex) : null;
                                     const isColonTrigger = spaceOrEnterMatch == null && colonMatch != null;
                                     const candidateKeyword = spaceOrEnterMatch ?? colonMatch;
-                                    const keywordFrameConversionMatch = candidateKeyword != null && keywordFrameConversions.some((c) => c.keyword === candidateKeyword[1]) ? candidateKeyword[1] : null;
-                                    const keywordFrameConversionDef = (keywordFrameConversionMatch && (!isColonTrigger || keywordFrameConversions.find((def) => def.keyword == keywordFrameConversionMatch)?.endsWithColon))
-                                        ? keywordFrameConversions.find((def) => def.keyword == keywordFrameConversionMatch)
+                                    const candidateKeywordDef = (candidateKeyword != null) ? keywordFrameConversions.find((def) => def.keyword === candidateKeyword[1]) : undefined;
+                                    const keywordFrameConversionDef = (candidateKeywordDef && (!isColonTrigger || candidateKeywordDef.endsWithColon))
+                                        ? candidateKeywordDef
                                         : undefined;
 
                                     // We also check here if the changes trigger the conversion of a function call frame to a varassign frame (i.e. a funccall frame contains a variable assignment).
@@ -757,7 +763,7 @@ export default defineComponent({
         // this.frameId, per keywordFrameConversions. Mirrors the same conditions
         // generateAvailableFrameCommands (store.ts) uses to gate these types in the frame commands
         // pane -- but that function can't be called from here directly (it returns {} whenever
-        // isEditing is true, store.ts:327, which is always the case while this runs).
+        // state.isEditing is true, which is always the case while this runs).
         isKeywordFrameConversionValid(targetType: string): boolean {
             // getParentOrJointParent() covers the joint case too (a funccall frame is never itself a
             // joint frame, so it just resolves to frame.parentId here, but it's the established helper
@@ -771,28 +777,19 @@ export default defineComponent({
             // restriction that matters for every OTHER type in the table (Imports/Defs-only types,
             // case-inside-match, etc: see the container definitions in types.ts). return/global/
             // break/continue are the only ones gated by something else (an ancestor check, not
-            // forbiddenChildrenTypes) -- same conditions as store.ts:449,463-465.
-            switch(targetType){
-            case AllFrameTypesIdentifier.global:
-                return isContainedInFrame(this.frameId, CaretPosition.below, [DefsContainerDefinition.type]);
-            case AllFrameTypesIdentifier.return:
-                return isContainedInFrame(this.frameId, CaretPosition.below, [DefsContainerDefinition.type])
-                    || isContainedInFrame(this.frameId, CaretPosition.below, [AllFrameTypesIdentifier.case]);
-            case AllFrameTypesIdentifier.break:
-            case AllFrameTypesIdentifier.continue:
-                return isContainedInFrame(this.frameId, CaretPosition.below, [AllFrameTypesIdentifier.for, AllFrameTypesIdentifier.while]);
-            default:
-                return true;
-            }
+            // forbiddenChildrenTypes) -- isAncestorGatedFrameTypeAllowed is the shared rule for those,
+            // also used by generateAvailableFrameCommands (store.ts).
+            return isAncestorGatedFrameTypeAllowed(this.frameId, CaretPosition.below, targetType);
         },
 
         // Computes what a new joint frame could be, and where in its root's jointFrameIds it would
         // go, if inserted "directly after" anchor -- where anchor is either a joint-eligible root
         // (if/try/for/while, when it has no relevant joint frame before it) or an existing joint
-        // child (elif/except) already attached to some root. Ports the "RULE FOR THE JOINTS" block
-        // of generateAvailableFrameCommands (store.ts) -- see isKeywordFrameConversionValid's
-        // comment for why that function can't just be called from here directly. Returns undefined
-        // if anchor isn't a valid joint-continuation position at all.
+        // child (elif/except) already attached to some root. The actual "RULE FOR THE JOINTS"
+        // narrowing is shared with generateAvailableFrameCommands (store.ts) via
+        // filterAllowedJointChildrenAfter -- see isKeywordFrameConversionValid's comment for why
+        // generateAvailableFrameCommands itself can't just be called from here directly. Returns
+        // undefined if anchor isn't a valid joint-continuation position at all.
         computeJointAttachmentAfter(anchor: FrameObject): JointAttachmentPoint | undefined {
             let rootId: number;
             let allowedJointChildren: string[];
@@ -821,36 +818,11 @@ export default defineComponent({
                 return undefined;
             }
 
-            const uniqueJointFrameTypes = [AllFrameTypesIdentifier.else, AllFrameTypesIdentifier.finally];
-            if(nextJointChildId === -100){
-                // Nothing follows in the chain yet.
-                if(anchor.frameType.type === AllFrameTypesIdentifier.try){
-                    // try's else is special-cased out entirely (it must follow an except, never try directly).
-                    allowedJointChildren = allowedJointChildren.filter((t) => t !== AllFrameTypesIdentifier.else);
-                }
-                else if(uniqueJointFrameTypes.includes(anchor.frameType.type)){
-                    // anchor itself is a unique joint (else/finally) with nothing after it: only whatever
-                    // (if anything) is allowed to follow that specific unique remains available.
-                    allowedJointChildren = allowedJointChildren.slice(allowedJointChildren.indexOf(anchor.frameType.type) + 1);
-                }
-            }
-            else{
-                const nextJointChild = this.appStore.frameObjects[nextJointChildId];
-                if(!uniqueJointFrameTypes.includes(nextJointChild.frameType.type)){
-                    allowedJointChildren = allowedJointChildren.filter((t) => !uniqueJointFrameTypes.includes(t));
-                }
-                else if(uniqueJointFrameTypes.includes(anchor.frameType.type)){
-                    // Both anchor and what follows are uniques (e.g. we're in an else, and a finally already
-                    // follows it): nothing more can be inserted here.
-                    allowedJointChildren = [];
-                }
-                else if(anchor.frameType.type === AllFrameTypesIdentifier.try){
-                    allowedJointChildren = allowedJointChildren.filter((t) => t !== AllFrameTypesIdentifier.else);
-                }
-                else{
-                    allowedJointChildren = allowedJointChildren.slice(0, allowedJointChildren.indexOf(nextJointChild.frameType.type));
-                }
-            }
+            allowedJointChildren = filterAllowedJointChildrenAfter(
+                anchor.frameType.type,
+                allowedJointChildren,
+                (nextJointChildId === -100) ? undefined : this.appStore.frameObjects[nextJointChildId]
+            );
 
             return {rootId, insertIndex, allowedJointChildren};
         },
@@ -934,6 +906,24 @@ export default defineComponent({
             };
         },
 
+        // A funccall frame's content always ends with its own auto-appended, still-empty call brackets
+        // (e.g. typing "return 5" into one actually produces the literal "return 5()") -- strips that
+        // trailing "()" artifact, shared by performKeywordFrameConversion's splitWord and single-label
+        // branches (not its splitAtBrackets branch, which uses those same brackets as real content).
+        stripTrailingEmptyFuncCallBrackets(text: string): string {
+            return text.endsWith("()") ? text.slice(0, -2) : text;
+        },
+
+        // Marks the last (editable) field of newLabelSlotsDict[focusIndex] as focused and returns cursor
+        // info placing the cursor at its end -- the shared tail of performKeywordFrameConversion's three
+        // content-splitting branches (splitAtBrackets/splitWord/single-label), which otherwise only
+        // differ in how they arrive at newLabelSlotsDict and which index ends up as focusIndex.
+        focusSplitKeywordConversionLabel(newLabelSlotsDict: {[index: number]: LabelSlotsContent}, focusIndex: number, targetType: string): SlotCursorInfos {
+            const slots = newLabelSlotsDict[focusIndex].slotStructures;
+            (slots.fields.at(-1) as BaseSlot).focused = true;
+            return this.computeKeywordConversionCursorInfos(focusIndex, slots, targetType);
+        },
+
         // Converts the funccall frame at this.frameId into def.targetType, building its new content
         // from whatever followed the keyword in uiLiteralCode. Called immediately once
         // isKeywordFrameConversionValid has confirmed the target type is actually allowed here --
@@ -1006,9 +996,7 @@ export default defineComponent({
                 const nameParsed = parseCodeLiteral(nameText, {frameType: def.targetType});
                 const paramsParsed = parseCodeLiteral(paramsText, {frameType: def.targetType});
                 newLabelSlotsDict = {0: {slotStructures: nameParsed.slots}, 1: {slotStructures: paramsParsed.slots}};
-                const focusIndex = (paramsText.trim() !== "") ? 1 : 0;
-                (newLabelSlotsDict[focusIndex].slotStructures.fields.at(-1) as BaseSlot).focused = true;
-                newCursorSlotInfos = this.computeKeywordConversionCursorInfos(focusIndex, newLabelSlotsDict[focusIndex].slotStructures, def.targetType);
+                newCursorSlotInfos = this.focusSplitKeywordConversionLabel(newLabelSlotsDict, (paramsText.trim() !== "") ? 1 : 0, def.targetType);
             }
             else if(def.splitWord){
                 // for/with/from-import: split at " in "/" as "/" import " (a keyword-operator boundary,
@@ -1021,10 +1009,7 @@ export default defineComponent({
                 // split word itself is typed -- subsequent typing happens as normal edits *within* the
                 // now-already-converted frame's own labels, through that frame type's own existing
                 // input handling, not through this conversion again).
-                let remainder = rawRemainder;
-                if(remainder.endsWith("()")){
-                    remainder = remainder.slice(0, -2);
-                }
+                const remainder = this.stripTrailingEmptyFuncCallBrackets(rawRemainder);
                 const splitMarker = " " + def.splitWord + " ";
                 const splitIdx = remainder.indexOf(splitMarker);
                 const leftText = (splitIdx == -1) ? remainder : remainder.slice(0, splitIdx);
@@ -1032,9 +1017,7 @@ export default defineComponent({
                 const leftParsed = parseCodeLiteral(leftText, {frameType: def.targetType});
                 const rightParsed = parseCodeLiteral(rightText, {frameType: def.targetType});
                 newLabelSlotsDict = {0: {slotStructures: leftParsed.slots}, 1: {slotStructures: rightParsed.slots}};
-                const focusIndex = (rightText.trim() !== "") ? 1 : 0;
-                (newLabelSlotsDict[focusIndex].slotStructures.fields.at(-1) as BaseSlot).focused = true;
-                newCursorSlotInfos = this.computeKeywordConversionCursorInfos(focusIndex, newLabelSlotsDict[focusIndex].slotStructures, def.targetType);
+                newCursorSlotInfos = this.focusSplitKeywordConversionLabel(newLabelSlotsDict, (rightText.trim() !== "") ? 1 : 0, def.targetType);
             }
             else{
                 // Single condition/content label (if/while/return/global/raise/match/case/library/
@@ -1042,14 +1025,10 @@ export default defineComponent({
                 // still-empty call brackets (e.g. typing "return 5" into one actually produces the
                 // literal "return 5()") -- strip that trailing "()" the same way the splitWord/
                 // splitAtBrackets branches do, then parse the remainder as this frame's own single label.
-                let remainder = rawRemainder;
-                if(remainder.endsWith("()")){
-                    remainder = remainder.slice(0, -2);
-                }
+                const remainder = this.stripTrailingEmptyFuncCallBrackets(rawRemainder);
                 const parsed = parseCodeLiteral(remainder, {frameType: def.targetType});
                 newLabelSlotsDict = {0: {slotStructures: parsed.slots}};
-                (parsed.slots.fields.at(-1) as BaseSlot).focused = true;
-                newCursorSlotInfos = this.computeKeywordConversionCursorInfos(0, parsed.slots, def.targetType);
+                newCursorSlotInfos = this.focusSplitKeywordConversionLabel(newLabelSlotsDict, 0, def.targetType);
             }
 
             // Any other labels of the target frame type -- e.g. funcdef's own description label, which
@@ -1064,16 +1043,15 @@ export default defineComponent({
 
             this.appStore.frameObjects[this.frameId].labelSlotsDict = newLabelSlotsDict;
 
-            // A handful of keywords move the caret straight to a frame-level (blue) position, leaving
-            // their own expression slot blank, when completed via Enter or (for except) a colon rather
-            // than a space: that's the user deliberately signalling "I'm done with this line" rather
-            // than "let me keep typing the expression" -- return has nothing after it to go to, so the
-            // caret goes below; except allows a body, so the caret goes there instead, ready to type
-            // the first handled statement.
+            // A handful of keywords (see enterCaretTarget, KeywordFrameConversionDef) move the caret
+            // straight to a frame-level (blue) position, leaving their own expression slot blank, when
+            // completed via Enter or (for endsWithColon types like except) a colon rather than a space:
+            // that's the user deliberately signalling "I'm done with this line" rather than "let me
+            // keep typing the expression".
             const caretOnlyTargetPosition: CaretPosition | undefined =
-                (def.keyword === "return" && options?.triggeredByEnter) ? CaretPosition.below :
-                    (def.keyword === "except" && (options?.triggeredByEnter || options?.isColonTrigger)) ? CaretPosition.body :
-                        undefined;
+                (def.enterCaretTarget !== undefined && (options?.triggeredByEnter || (options?.isColonTrigger && def.endsWithColon)))
+                    ? def.enterCaretTarget
+                    : undefined;
 
             if(caretOnlyTargetPosition !== undefined){
                 (newLabelSlotsDict[0].slotStructures.fields.at(-1) as BaseSlot).focused = false;

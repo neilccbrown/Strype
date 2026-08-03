@@ -102,22 +102,30 @@ export async function getFocusedFrameId(page: Page): Promise<number> {
 // conversions (break/continue/try) the frame ends up with no editable slot at all afterwards,
 // so this is the only reliable time to capture it -- and it's equally valid for 1-/2-slot
 // conversions, since the frame ID never changes across the conversion.
-export async function typeConversionTrigger(page: Page, keyword: string, restOfLine?: string) : Promise<number> {
+// Shared plumbing for typeConversionTrigger/ViaEnter/ViaColon below: they all type the keyword's
+// first character, wait for the frame to settle so its ID can be read, then type whatever remains
+// of the trigger sequence -- differing only in what that remainder is, and whether Enter gets
+// pressed afterwards.
+async function typeConversionTriggerImpl(page: Page, keyword: string, mode: "type" | "enter" | "colon", restOfLine?: string): Promise<number> {
     await page.keyboard.type(keyword[0]);
     await waitForEditorSettled(page);
     const frameId = await getFocusedFrameId(page);
-    const remainder = keyword.slice(1) + DEFAULT_CONVERSION_TRIGGER + (restOfLine ?? "");
+    const remainder = mode === "colon" ? keyword.slice(1) + ":"
+        : mode === "enter" ? keyword.slice(1)
+            : keyword.slice(1) + DEFAULT_CONVERSION_TRIGGER + (restOfLine ?? "");
     if (remainder.length > 0) {
         await page.keyboard.type(remainder);
     }
     await waitForEditorSettled(page);
+    if (mode === "enter") {
+        await page.keyboard.press("Enter");
+        await waitForEditorSettled(page);
+    }
     return frameId;
 }
 
-// Like typeConversionTrigger but checks the keyword exists
-export async function typeKeywordConversionTrigger(page: Page, keyword: string, restOfLine?: string): Promise<number> {
-    getKeywordConversionDef(keyword);
-    return await typeConversionTrigger(page, keyword, restOfLine);
+export async function typeConversionTrigger(page: Page, keyword: string, restOfLine?: string) : Promise<number> {
+    return typeConversionTriggerImpl(page, keyword, "type", restOfLine);
 }
 
 // Like typeConversionTrigger, but presses Enter instead of the space trigger character -- and,
@@ -127,23 +135,7 @@ export async function typeKeywordConversionTrigger(page: Page, keyword: string, 
 // space had been typed -- see checkSlotRefactoring's triggeredByEnter option, LabelSlotsStructure.
 // vue) is only actually exercised by the bare keyword on its own.
 export async function typeConversionTriggerViaEnter(page: Page, keyword: string): Promise<number> {
-    await page.keyboard.type(keyword[0]);
-    await waitForEditorSettled(page);
-    const frameId = await getFocusedFrameId(page);
-    const remainder = keyword.slice(1);
-    if (remainder.length > 0) {
-        await page.keyboard.type(remainder);
-    }
-    await waitForEditorSettled(page);
-    await page.keyboard.press("Enter");
-    await waitForEditorSettled(page);
-    return frameId;
-}
-
-// Like typeConversionTriggerViaEnter but checks the keyword exists
-export async function typeKeywordConversionTriggerViaEnter(page: Page, keyword: string): Promise<number> {
-    getKeywordConversionDef(keyword);
-    return await typeConversionTriggerViaEnter(page, keyword);
+    return typeConversionTriggerImpl(page, keyword, "enter");
 }
 
 // Like typeConversionTriggerViaEnter, but types ":" as the trigger instead of pressing Enter --
@@ -152,20 +144,23 @@ export async function typeKeywordConversionTriggerViaEnter(page: Page, keyword: 
 // the user types *is* the rest of that label, not left-over content. Never takes a restOfLine for
 // the same reason typeConversionTriggerViaEnter doesn't (see its own comment).
 export async function typeConversionTriggerViaColon(page: Page, keyword: string): Promise<number> {
-    await page.keyboard.type(keyword[0]);
-    await waitForEditorSettled(page);
-    const frameId = await getFocusedFrameId(page);
-    const remainder = keyword.slice(1) + ":";
-    await page.keyboard.type(remainder);
-    await waitForEditorSettled(page);
-    return frameId;
+    return typeConversionTriggerImpl(page, keyword, "colon");
 }
 
-// Like typeConversionTriggerViaColon but checks the keyword exists
-export async function typeKeywordConversionTriggerViaColon(page: Page, keyword: string): Promise<number> {
-    getKeywordConversionDef(keyword);
-    return await typeConversionTriggerViaColon(page, keyword);
+// Wraps one of the typeConversionTrigger* functions above with an upfront check that `keyword` is
+// actually a recognised one (see getKeywordConversionDef) -- used at every call site where the
+// keyword is expected to be valid, so a typo or an out-of-sync keywordConversionDefs table fails
+// fast with a clear error instead of the conversion just silently not happening.
+function withKeywordCheck<Args extends unknown[]>(fn: (page: Page, keyword: string, ...args: Args) => Promise<number>) {
+    return async (page: Page, keyword: string, ...args: Args): Promise<number> => {
+        getKeywordConversionDef(keyword);
+        return await fn(page, keyword, ...args);
+    };
 }
+
+export const typeKeywordConversionTrigger = withKeywordCheck(typeConversionTrigger);
+export const typeKeywordConversionTriggerViaEnter = withKeywordCheck(typeConversionTriggerViaEnter);
+export const typeKeywordConversionTriggerViaColon = withKeywordCheck(typeConversionTriggerViaColon);
 
 // Clears whatever text content a frame's first editable slot currently holds, by focusing it
 // and backspacing over all of it. Needed before typeKeywordConversionTrigger() when the frame
