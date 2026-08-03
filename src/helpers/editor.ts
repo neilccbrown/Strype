@@ -55,6 +55,7 @@ export enum CustomEventTypes {
     removeFunctionToEditorProjectSave = "rmToProjectSaveFunction",
     requestEditorProjectSaveNow = "requestProjectSaveNow",
     saveStrypeProjectDoneForLoad = "saveProjDoneForLoad",
+    backupEditorProjectBeforeDiscard = "backupProjectBeforeDiscard",
     unsupportedByStrypeFilePicked = "unsupportedByStrypeFilePicked",
     acItemHovered = "acItemHovered",
     acItemClicked = "acItemClicked",
@@ -74,6 +75,7 @@ export enum CustomEventTypes {
     closeOtherRenameIdentifierPopup = "closeOtherRenameIdentifierPopup",
     // The following events are used for our modal dialogs, a wrapping mechanism around Bootstrap modals
     showStrypeModal = "bv::show::modal", // request a modal opening, param is a dialog ID
+    strypeModalShow = "bv::modal::show", // event just before a modal is shown (before its content is interactable): param is a BvTriggerableEvent event
     strypeModalShown = "bv::modal::shown", // event after a modal is opened: param is a BvTriggerableEvent event
     hideStrypeModal = "bv::hide::modal", // request a modal closing, param is a BvTriggerableEvent event
     strypeModalHidden = "bv::modal::hidden", // event after a modal is closed: param is a BvTriggerableEvent event
@@ -85,7 +87,8 @@ export enum CustomEventTypes {
     pythonConsoleAfterInput = "pythonConsoleAfterInput",
     notifyGraphicsUsage = "graphicsUsage",
     pythonExecAreaSizeChanged = "peaSizeChanged",
-    highlightPythonRunningState = "highlightPythonRunningState"
+    highlightPythonRunningState = "highlightPythonRunningState",
+    copyPEAConsoleText = "copyPEAConsoleText"
     // #v-endif
 }
 
@@ -454,7 +457,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                     + " ";
                 }
                 let stringPlaceHoldersCursorOffset = 0; // The offset induced by the difference of length between the string quotes and their placeholder representation
-                const stringPlaceholderMatcher = (spanElement.textContent as string).match(new RegExp("("+STRING_SINGLEQUOTE_PLACERHOLDER.replaceAll("$","\\$")+"|"+STRING_DOUBLEQUOTE_PLACERHOLDER.replaceAll("$","\\$")+")", "g"));
+                const stringPlaceholderMatcher = (spanElement.textContent as string).match(new RegExp(quotesPlaceholderRegExStr, "g"));
                 if(stringPlaceholderMatcher != null){
                     // The difference is 1 character per found placeholders 
                     stringPlaceHoldersCursorOffset = stringPlaceholderMatcher.length * (STRING_DOUBLEQUOTE_PLACERHOLDER.length - 1);
@@ -1291,7 +1294,10 @@ export const operators = [".","+","-","/","*","%",":","//","**","&","|","~","^",
 // as they will always come from a combination of writing one word then the other (the first will be added as operator);
 // "as" is added in the operator list for imports, but it will be discarded when not dealing with import frames.
 // Important that the longer operators come before the shorter ones with the same prefix:
-export const keywordOperatorsWithSurroundSpaces = [" and ", " in ", " is not ", " is ", " or ", " not in ", " not ", " as ", " if ", " else ", " for "];
+// "lambda" is recognised as a plain prefix keyword operator (like "not") so it can be
+// typed/pasted without crashing and gets sensible precedence-based spacing, but Strype
+// gives it no semantic support (no parameter-list awareness) -- it's a pass-through.
+export const keywordOperatorsWithSurroundSpaces = [" and ", " in ", " is not ", " is ", " or ", " not in ", " not ", " as ", " if ", " else ", " for ", " lambda "];
 export const trimmedKeywordOperators = keywordOperatorsWithSurroundSpaces.map((spacedOp) => spacedOp.trim());
 
 
@@ -1491,10 +1497,12 @@ function splitAtCommas<X>(operands: X[], operators: BaseSlot[]): { operands: X[]
 
 
 export const IMAGE_PLACERHOLDER = "$strype_image_placeholder$";
+const mediaLiteralPlaceholderRegExStr = IMAGE_PLACERHOLDER.replaceAll("$", "\\$") + "\\d+\\$";
 // The placeholders for the string quotes when strings are extracted FROM THE EDITOR SLOTS,
 // both placeholders need to have THE SAME LENGHT so sustitution operations are done with more ease
 export const STRING_SINGLEQUOTE_PLACERHOLDER = "$strype_StrSgQuote_placeholder$";
 export const STRING_DOUBLEQUOTE_PLACERHOLDER = "$strype_StrDbQuote_placeholder$";
+const quotesPlaceholderRegExStr = "(" + STRING_SINGLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + "|" + STRING_DOUBLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + ")";
 
 // Each params item is the set of operands and operators that are before the next comma or end of bracket
 // Each item in keyValues corresponds to the item in params
@@ -1551,8 +1559,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
     //                             <print($strype_StrDbQuote_placeholder$hello$strype_StrDbQuote_placeholder$)>
     // so we blank it like this --> print("                                                                 ")
     // in that way, everything is of the same length and we keep work character indexes properly. We only need to care about the real quotes when we create the string slots.   
-    const quotesPlaceholdersRegex = "(" + STRING_SINGLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + "|" + STRING_DOUBLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + ")";
-    const strRegEx = (flags?.skipStringEscape) ? new RegExp(quotesPlaceholdersRegex+"((?!\\1).)*\\1","g") : /(['"])(?:(?!(?:\\|\1)).|\\.)*\1?/g;
+    const strRegEx = (flags?.skipStringEscape) ? new RegExp(quotesPlaceholderRegExStr+"((?!\\1).)*\\1","g") : /(['"])(?:(?!(?:\\|\1)).|\\.)*\1?/g;
     let missingClosingQuote = "";
     const blankedStringCodeLiteral = codeLiteral.replace(strRegEx, (match) => {
         if(flags?.skipStringEscape){
@@ -1616,7 +1623,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         while (innerOpeningBracketCount != 0 && closingBracketPos != -1);
        
         
-        // Now that we have found the bracket boudary (if we didn't find a closing bracket match, we "manually" close after the whole content following opening bracket)
+        // Now that we have found the bracket boundary (if we didn't find a closing bracket match, we "manually" close after the whole content following opening bracket)
         // we can make a structure and parse the split code content as 
         //  - before the bracket
         //  - inside the bracket (so, we DO NOT include the bracket themselves)
@@ -1634,7 +1641,15 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         // Note: we need to pass (all) imageLiterals to the recursive calls because they might reverse our replacement:
         const {slots: structBeforeBracket, cursorOffset: beforeBracketCursorOffset} = parseCodeLiteral(beforeBracketCode, {isInsideString:false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         cursorOffset += beforeBracketCursorOffset;
-        const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, {isInsideString: false, cursorPos: (flags?.cursorPos !== undefined) ? flags.cursorPos - (firstOpenedBracketPos + 1) : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
+        // When parsing the code between brackets, we should give the cursor position relative to the content before the bracket.
+        // Since that may contain placeholders, we need to account for them for finding out the cursor position for the inner content of the bracket.
+        let beforePlaceHoldersOffset = 0;
+        if(flags?.cursorPos){
+            beforeBracketCode.matchAll(new RegExp(`${quotesPlaceholderRegExStr}|${mediaLiteralPlaceholderRegExStr}`, "g")).forEach((matchedPlaceholder) => {
+                beforePlaceHoldersOffset += matchedPlaceholder[0].length - 1; // -1 as a quote would already counted from the user code that placeholder replaces
+            });            
+        }
+        const {slots: structOfBracket, cursorOffset: bracketCursorOffset} = parseCodeLiteral(innerBracketCode, {isInsideString: false, cursorPos: (flags?.cursorPos !== undefined) ? (flags.cursorPos + beforePlaceHoldersOffset) - (firstOpenedBracketPos + 1) : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
         if (openingBracketValue === "(") {
             // First scan and find all the comma-separated parameters:
             const {params, keyValues} = extractFormalParamsFromSlot(structOfBracket);
@@ -1658,8 +1673,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         const structOfBracketField = {...structOfBracket, openingBracketValue: openingBracketValue};
         cursorOffset += bracketCursorOffset;
         let actualCodeClosingBracketPos = closingBracketPos;
-        const quotesPlaceholdersExp = "(" + STRING_SINGLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + "|" + STRING_DOUBLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + ")";
-        innerBracketCode.match(new RegExp(quotesPlaceholdersExp, "g"))?.forEach((placeholder) => {
+        innerBracketCode.match(new RegExp(quotesPlaceholderRegExStr, "g"))?.forEach((placeholder) => {
             // If the content of the brackets contained any string, the value of the closing bracket position is for a code WITH the string quotes placeholders.
             // Therefore, if we want to use that to check what is the new cursor position in the parsing of the code after the bracket, we need to do so without
             // the string placeholders, if any. When a placeholder is found, we remove its length - 1 to the positin, as it would match 1 quote.
@@ -1707,7 +1721,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         }
         else{
             // 3 - break the code by operatorSlot, if we have any media here (that is, strype image placeholders) we need to temporary update the cursor position for that
-            const mediaMatchs = blankedStringCodeLiteral.matchAll(new RegExp(IMAGE_PLACERHOLDER.replaceAll("$", "\\$") + "\\d+\\$", "g"));
+            const mediaMatchs = blankedStringCodeLiteral.matchAll(new RegExp(mediaLiteralPlaceholderRegExStr, "g"));
             let mediaCursorPos: null|number = null;
             if(flags?.cursorPos != undefined && mediaMatchs){
                 mediaCursorPos = flags.cursorPos;
@@ -1890,9 +1904,8 @@ const getParsingStringContentAndFocusOffset = (quote: string, content: string): 
     //  ‘$strype_StrDbQuote_placeholder$this is Strype's string$strype_StrDbQuote_placeholder$’
     // We need to have:
     //  ‘"this is Strype\'s string"’
-    const quotesPlaceholdersExp = "(" + STRING_SINGLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + "|" + STRING_DOUBLEQUOTE_PLACERHOLDER.replaceAll("$","\\$") + ")";
     let cursorOffset = 0;
-    content = content.replaceAll(new RegExp(quotesPlaceholdersExp, "g"), (placeholder) => {
+    content = content.replaceAll(new RegExp(quotesPlaceholderRegExStr, "g"), (placeholder) => {
         return (placeholder == STRING_DOUBLEQUOTE_PLACERHOLDER) ? "\"" : "'";
     });
     

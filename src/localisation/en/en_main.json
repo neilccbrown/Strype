@@ -189,7 +189,8 @@
     "renameIdentifiers": "Rename all uses of {thisIdentifierType}?",
     "thisVariable": "this variable",
     "thisFunction": "this function",
-    "thisClass": "this class"
+    "thisClass": "this class",
+    "downloadPEAConsole":"Preparing the console screenshot (this may take time)..."
   },
   "contextMenu": {
     "ctrl": "Ctrl",
@@ -211,7 +212,7 @@
     "delete": "Delete",
     "deleteOuter": "Delete Outer",
     "insert": "Insert",
-    "screenshotGraphics": "Download screenshot",
+    "screenshotPEA": "Download screenshot",
     "collapseHeader": "Collapsed View",
     "collapseDocumentation": "Interface View",
     "collapseFull": "Expanded View",
@@ -245,7 +246,18 @@
     "importedModules": "Imported modules",
     "builtinFiles": "Built-in files",
     "invalidState": "No completion available",
-    "noDocumentation": "No documentation available"
+    "noDocumentation": "No documentation available",
+    "codeCompletion": "Code completion",
+    "codeCompletionFilePaths": "Code completion (file paths)",
+    "spaceKey": "space",
+    "wrapRoundBrackets": "Wrap in ()",
+    "wrapSquareBrackets": "Wrap in []",
+    "wrapCurlyBrackets": "Wrap in {'{}'}",
+    "wrapDoubleQuotes": "Wrap in \"",
+    "wrapSingleQuotes": "Wrap in '",
+    "shiftKey": "Shift",
+    "recordImageShortcut": "Record image",
+    "recordSoundShortcut": "Record sound"
   },
   "commandTabs": {
     "0": "Add Frame"
@@ -292,7 +304,17 @@
     "cursorTimeWin": "Time (Ctrl-C to copy):",
     "cursorTimeMac": "Time (⌘ C to copy):",
     "cursorHeightWin": "Height (Ctrl-Shift-C to copy):",
-    "cursorHeightMac": "Height (⇧ ⌘ C to copy):"
+    "cursorHeightMac": "Height (⇧ ⌘ C to copy):",
+    "recordImageTitle": "Record image",
+    "recordSoundTitle": "Record sound",
+    "record": "Record",
+    "recordCountdown": "Record (3 second countdown)",
+    "stop": "Stop",
+    "reRecord": "Re-record",
+    "cameraPermissionDenied": "Camera access was denied. Please allow camera access to record an image.",
+    "micPermissionDenied": "Microphone access was denied. Please allow microphone access to record a sound.",
+    "noCameraFound": "No camera was found on this device.",
+    "noMicFound": "No microphone was found on this device."
   },
   "book": {
     "dialogTitle": "Strype textbook"

@@ -93,6 +93,9 @@ export function openIndexedDBConnection(): Promise<IDBDatabase> {
 // the lastModifiedAt is updated.  Regardless of that, lastAliveAt is always modified
 // If the modified and alive times are omitted from the params, Date.now() is used
 export async function saveSessionState(tabId: string, projectName: string, data: string, stillAlive: "maybe" | "false", modifiedSinceExternalSave: boolean, lastModifiedAt?: number, lastAliveAt?: number, db?: IDBDatabase) : Promise<void> {
+    // Only close the connection at the end if we're the one who opened it here; if the caller
+    // passed one in, it's theirs to keep open across further calls:
+    const ownConnection = !db;
     db = db ?? await openIndexedDBConnection();
 
     return new Promise<void>((resolve, reject) => {
@@ -135,8 +138,18 @@ export async function saveSessionState(tabId: string, projectName: string, data:
             }
         };
 
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
+        tx.oncomplete = () => {
+            if (ownConnection) {
+                db.close();
+            }
+            resolve();
+        };
+        tx.onerror = () => {
+            if (ownConnection) {
+                db.close();
+            }
+            reject(tx.error);
+        };
     });
 }
 
@@ -168,6 +181,9 @@ export function emergencySaveSessionState(tabId: string, projectName: string, da
 
 // Load session state, if it exists, or return undefined if not found:
 export async function loadSessionState(tabId: string, db?: IDBDatabase) : Promise<string | null> {
+    // Only close the connection at the end if we're the one who opened it here; if the caller
+    // passed one in, it's theirs to keep open across further calls:
+    const ownConnection = !db;
     db = db ?? await openIndexedDBConnection();
 
     return new Promise<string | null>((resolve, reject) => {
@@ -177,6 +193,9 @@ export async function loadSessionState(tabId: string, db?: IDBDatabase) : Promis
         const request = store.get(tabId);
 
         request.onsuccess = () => {
+            if (ownConnection) {
+                db.close();
+            }
             if (request.result) {
                 resolve(request.result[DatabaseFieldNames.data] as string);
             }
@@ -185,7 +204,12 @@ export async function loadSessionState(tabId: string, db?: IDBDatabase) : Promis
             }
         };
 
-        request.onerror = () => reject(request.error);
+        request.onerror = () => {
+            if (ownConnection) {
+                db.close();
+            }
+            reject(request.error);
+        };
     });
 }
 
@@ -259,20 +283,28 @@ export async function checkForRecentSaveStates(locale: string, reason: "banner" 
                 if (reason == "banner") {
                     // Mark others past the first as seen:
                     const otherTabIdsToMark = candidates.slice(1).map((x) => x.tabId);
+                    // markUserDecisionOnReloading opens its own separate connection, so ours is
+                    // done and can be closed now rather than waiting for it:
+                    db.close();
                     markUserDecisionOnReloading(otherTabIdsToMark).then(() => {
                         // Take only the first:
                         resolve(candidates.slice(0,1));
                     });
                 }
                 else {
+                    db.close();
                     resolve(candidates);
                 }
             }
             else {
+                db.close();
                 resolve([]);
             }
         };
-        request.onerror = () => reject(request.error);
+        request.onerror = () => {
+            db.close();
+            reject(request.error);
+        };
     });
 }
 
@@ -305,9 +337,18 @@ export async function markUserDecisionOnReloading(tabIds: string[]): Promise<voi
             };
         }
 
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-        tx.onabort = () => reject(tx.error);
+        tx.oncomplete = () => {
+            db.close();
+            resolve();
+        };
+        tx.onerror = () => {
+            db.close();
+            reject(tx.error);
+        };
+        tx.onabort = () => {
+            db.close();
+            reject(tx.error);
+        };
     });
 }
 
@@ -438,7 +479,13 @@ export async function deleteStates(tabIds: string[]) : Promise<void> {
             cursor.continue();
         };
 
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
+        tx.oncomplete = () => {
+            db.close();
+            resolve();
+        };
+        tx.onerror = () => {
+            db.close();
+            reject(tx.error);
+        };
     });
 }

@@ -67,6 +67,69 @@ test.describe("Test stdin works", () => {
     });
 });
 
+test.describe("Test stopping during a pending input doesn't break the next run (issue #927)", () => {
+    // sInput()'s cleanup of a stopped-but-still-pending input() call (removing its console
+    // keydown/composition listeners, see execPythonCode.ts) is driven by a 1-second polling
+    // interval rather than any DOM-observable event, so we wait a little over a second after
+    // stopping to give that cleanup a chance to run before starting the next execution -- that's
+    // exactly the race these tests are meant to cover (without the fix, the stale listeners are
+    // never removed no matter how long we wait).
+    const STALE_INPUT_CLEANUP_WAIT_MS = 1500;
+
+    test("Check console still accepts input after stopping with a second input still pending", async ({page}) => {
+        const code = "name = input('What is your name?\\n')\nprint('Hello ' + name)\nspecies = input('What is your species?\\n')\nprint('Hello ' + name + ' the ' + species)\n";
+        await enterCode(page, ["", "", code]);
+        let button = await startRunning(page);
+        await expect(page.locator("#peaConsole")).toBeEnabled();
+        await expect(page.locator("#peaConsole")).toBeFocused();
+        // Validate the first input, leaving the second one pending:
+        await page.locator("#peaConsole").pressSequentially("George\n", {delay: 75});
+        await checkConsoleContent(page, "What is your name?\nGeorge\nHello George\nWhat is your species?\n");
+        await expect(button).toContainText("Stop");
+        // Stop while the second input is still pending:
+        await button.click();
+        await runButtonShowsRun(button);
+        await page.waitForTimeout(STALE_INPUT_CLEANUP_WAIT_MS);
+
+        // Run again, and check that typing into the console actually works this time:
+        button = await startRunning(page);
+        await expect(page.locator("#peaConsole")).toBeEnabled();
+        await expect(page.locator("#peaConsole")).toBeFocused();
+        await page.locator("#peaConsole").pressSequentially("Amy\n", {delay: 75});
+        await checkConsoleContent(page, "What is your name?\nAmy\nHello Amy\nWhat is your species?\n");
+        await expect(button).toContainText("Stop");
+        await page.locator("#peaConsole").pressSequentially("dog\n", {delay: 75});
+        await checkConsoleContent(page, "What is your name?\nAmy\nHello Amy\nWhat is your species?\ndog\nHello Amy the dog\n");
+        await runButtonShowsRun(button);
+        await checkFrameErrorCount(page, 0);
+    });
+
+    test("Check Enter still validates input after stopping with an unvalidated input pending", async ({page}) => {
+        const code = "name = input('What is your name?\\n')\nprint('Hello ' + name)\n";
+        await enterCode(page, ["", "", code]);
+        let button = await startRunning(page);
+        await expect(page.locator("#peaConsole")).toBeEnabled();
+        await expect(page.locator("#peaConsole")).toBeFocused();
+        // Type something but don't validate it with Enter:
+        await page.locator("#peaConsole").pressSequentially("Geo", {delay: 75});
+        await checkConsoleContent(page, "What is your name?\nGeo");
+        await expect(button).toContainText("Stop");
+        // Stop while the input is still pending and unvalidated:
+        await button.click();
+        await runButtonShowsRun(button);
+        await page.waitForTimeout(STALE_INPUT_CLEANUP_WAIT_MS);
+
+        // Run again, type something, and check Enter actually validates it this time:
+        button = await startRunning(page);
+        await expect(page.locator("#peaConsole")).toBeEnabled();
+        await expect(page.locator("#peaConsole")).toBeFocused();
+        await page.locator("#peaConsole").pressSequentially("Amy\n", {delay: 75});
+        await checkConsoleContent(page, "What is your name?\nAmy\nHello Amy\n");
+        await runButtonShowsRun(button);
+        await checkFrameErrorCount(page, 0);
+    });
+});
+
 test.describe("Test assets filesystem", () => {
     test("Check reading and processing book", async ({page}) => {
         await enterCode(page, ["", "", `
@@ -272,11 +335,17 @@ while True:
         });
 
         test(`Check graphics actor stops moving within seconds of stopping after running for ${runTime} seconds`, async ({page}) => {
-            // This is the same underlying bug as the console print tests above (async requests/updates
-            // queueing up faster than the main thread can service them, so that Stop doesn't take effect
-            // for a long time), but for sprite/graphics updates: those are sent on their own dedicated
-            // MessagePort (see self.updatePort in python-execution.ts) rather than through the throttled
-            // makeRequest/makeRawRequest path, so a tight movement loop is a more direct way to provoke it.
+            // Unlike the console print tests above (see https://github.com/k-pet-group/Strype/issues/996
+            // for that bug: unbatched, layout-forcing textarea writes on every print, routed through a
+            // promise chain with no yield points), sprite/graphics updates go through their own dedicated
+            // MessagePort (self.updatePort in python-execution.ts) straight into an in-memory SpriteManager
+            // update with no DOM/layout work at all, and the actual canvas redraw is decoupled from that
+            // and throttled to once per requestAnimationFrame via an isDirty() flag (see redrawCanvas() in
+            // PythonExecutionArea.vue) -- so a tight movement loop does not queue up unboundedly the way a
+            // tight print loop does. Verified empirically: under CPU throttling that reliably starves the
+            // main thread for the print-loop case, this test's responsiveness stayed close to the healthy
+            // baseline. This test still checks the ordinary "Stop takes effect promptly" behaviour, just
+            // without expecting the same failure mode as the print tests.
             await enterCode(page, ["from strype.graphics import *", "", `
 cat = Actor('cat-test.jpg')
 while True:
@@ -294,8 +363,14 @@ while True:
             // Wait to see if it keeps moving after we've stopped (it shouldn't):
             await page.waitForTimeout(10_000);
             const redrawsAfterStopping = await page.evaluate(() => (window as any).__strypeGraphicsRedrawCount ?? 0);
-            // Should have stopped moving within seconds of stopping (should be less, but CI can be slow...):
-            expect(redrawsAfterStopping).toBeLessThan(redrawsWhileRunning + redrawsPerSecond * 4);
+            // Should have stopped moving within seconds of stopping (should be less, but CI can be slow...).
+            // Floor the grace amount at a small constant: for a short runTime, setup latency (e.g. loading
+            // the Actor's image) can eat into the window before any redraw happens at all, making
+            // redrawsPerSecond (and hence the grace) come out as exactly 0 -- which would make this
+            // assertion impossible to satisfy (redraw counts can't be negative) regardless of whether
+            // stopping actually worked correctly. Seen for real in CI: run 30358240472, "3 seconds" case.
+            const grace = Math.max(redrawsPerSecond * 4, 5);
+            expect(redrawsAfterStopping).toBeLessThan(redrawsWhileRunning + grace);
         });
     }
 });

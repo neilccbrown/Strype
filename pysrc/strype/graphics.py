@@ -192,7 +192,7 @@ class Image:
         return Color(rgba[0], rgba[1], rgba[2], rgba[3])
 
     def set_pixel(self, x, y, color):
-        # type: (int, int, Color) -> None
+        # type: (int, int, Color | str) -> None
         """
         Set the pixel at the given position to a specific color.
         
@@ -235,7 +235,7 @@ class Image:
         _strype_graphics_internal.canvas_clearRect(self.__image, 0, 0, self.get_width(), self.get_height())
 
     def draw_image(self, image, x, y):
-        # type: (Image, int, int) -> None
+        # type: (Image, float, float) -> None
         """
         Draw another image onto this image. 
         
@@ -247,7 +247,7 @@ class Image:
         _strype_graphics_internal.canvas_drawImagePart(self.__image, image._Image__image, x, y, 0, 0, dim[0], dim[1], 1.0)
 
     def _draw_part_of_image(self, image, x, y, sx, sy, width, height, scale = 1.0):
-        # type: (Image, int, int, int, int, int, int, float) -> None
+        # type: (Image, float, float, float, float, float, float, float) -> None
         """
         Draws part of the given image into this image.
         
@@ -472,7 +472,7 @@ class Actor:
     # whenever we use it, we should check it's still actually present.
     
     def __init__(self, image, x = 0, y = 0, tag = None):
-        # type: (Image, float, float, Any | None) -> None
+        # type: (Image | str, float, float, Any | None) -> None
         """
         Create a new Actor.  An actor has an image and a location.  It can optionally have a tag.  A tag (usually a string) 
         can be used to group actors and identify them later for collision detection.
@@ -489,17 +489,16 @@ class Actor:
         """
         # Beware: this is also called during re_add, after construction
         if isinstance(image, Image):
-            self.__id = _strype_graphics_internal.addSprite(image._Image__image, True)
+            self.__id = _strype_graphics_internal.addSprite(image._Image__image, True, x, y)
             self.__editable_image = image
         elif isinstance(image, str):
-            self.__id = _strype_graphics_internal.addSprite(_load_image_bitmap(image), True)
+            self.__id = _strype_graphics_internal.addSprite(_load_image_bitmap(image), True, x, y)
             self.__editable_image = None
         else:
             raise TypeError("Actor constructor parameter must be Image")
         _actorsInWorld[self.__id] = self
         self.__say = None
         self.__tag = tag
-        _strype_graphics_internal.setImageLocation(self.__id, x, y)
         _strype_graphics_internal.setImageRotation(self.__id, 0)
         
     def set_location(self, x, y):
@@ -532,7 +531,7 @@ class Actor:
         # Note: no need to update say position if we are just rotating
                 
     def get_rotation(self):
-        # type: () -> float
+        # type: () -> float | None
         """
         Return the current rotation of this actor.
         
@@ -564,7 +563,7 @@ class Actor:
         del _actorsInWorld[self.__id]
 
     def re_add(self, x = 0, y = 0):
-        # type (int, int) -> None
+        # type: (int, int) -> None
         """
         Re-adds this actor to the world, if it was previously removed.
         
@@ -579,7 +578,7 @@ class Actor:
             self.__init__(self.__editable_image, x, y, self.__tag)
 
     def get_x(self):
-        # type: () -> int
+        # type: () -> int | None
         """
         Return the x coordinate of the actor as an integer (whole number).  If the actor's exact position
         is not a whole number, it is rounded down (towards zero).  To receive the exact position as a potentially
@@ -593,7 +592,7 @@ class Actor:
         return int(location.x) if location else None
 
     def get_y(self):
-        # type: () -> int
+        # type: () -> int | None
         """
         Return the y coordinate of the actor as an integer (whole number).  If the actor's exact position
         is not a whole number, it is rounded down (towards zero).  To receive the exact position as a potentially
@@ -606,7 +605,7 @@ class Actor:
         return int(location.y) if location else None
 
     def get_exact_x(self):
-        # type: () -> float
+        # type: () -> float | None
         """
         Return the exact x coordinate of the actor, which may be a fractional number.  For simpler coordinate calculations
         using whole numbers, call `get_x()` instead.
@@ -618,7 +617,7 @@ class Actor:
         return location.x if location else None
 
     def get_exact_y(self):
-        # type: () -> float
+        # type: () -> float | None
         """
         Return the exact y coordinate of the actor, which may be a fractional number.  For simpler coordinate calculations
         using whole numbers, call `get_y()` instead.
@@ -781,7 +780,7 @@ class Actor:
         return self.__editable_image
     
     def set_image(self, image):
-        # type: (Image) -> None
+        # type: (Image | str) -> None
         """
         Set an actor's image
         
@@ -1021,7 +1020,7 @@ def get_key():
     return _strype_input_internal.waitForNextKey()
 
 def set_background(image_or_color, scale_to_fit = False):
-    # type: (Image | str, bool) -> None
+    # type: (Image | str | Color, bool) -> None
     """
     Set the current background image.
     
@@ -1113,7 +1112,7 @@ def get_actors(tag = None):
     return [_actorsInWorld.get(a) for a in _strype_input_internal.getAllActors() if _actorsInWorld.get(a) is not None and (tag is None or tag == _actorsInWorld.get(a).get_tag())]
 
 def get_actor_at(x, y, tag = None):
-    # type: (float, float, Any | None) -> (Actor|None)
+    # type: (float, float, Any | None) -> Actor | None
     """
         Gets an actor that is touching the given X, Y position.
         
@@ -1132,7 +1131,7 @@ def get_actor_at(x, y, tag = None):
     return next(reversed(with_tag), None)
 
 def remove_actors(tag = None):
-    # type: (Any | None) -> None
+    # type: (Any | None) -> list[Actor]
     """
         Removes actors with the given tag.
         

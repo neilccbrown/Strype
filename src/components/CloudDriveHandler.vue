@@ -611,6 +611,17 @@ export default defineComponent({
                 // The date conversion works fine for a date set as *RFC 3339 date format*
                 lastSaveDate = Date.parse(fileModifiedDateTime);
             }, (fileContent: string) => {
+                // If we're reconnecting to a previously-synced Cloud Drive project at startup (see
+                // resyncToCloudDriveAtStartup()) and the local copy has edits that were never pushed
+                // to the Drive, back it up before we overwrite it with the remote version. Named
+                // distinctly ("(local edits)") so it doesn't get confused, in the recent-states
+                // banner/Open Recent menu, with the official copy of the same project we're about
+                // to reload:
+                if (this.loadReason == LoadRequestReason.reloadBrowser && this.appStore.isEditorContentModified) {
+                    eventBus.emit(CustomEventTypes.backupEditorProjectBeforeDiscard, {
+                        projectNameOverride: `${this.appStore.projectName} (local edits)`,
+                    });
+                }
                 // SPY file shouldn't be based on the state anymore. But just for keeping them working, we can support both situations:
                 // we check if the file is an object like (old format SPY) or starts with our special comments (new format SPY).
                 const isPurePython = otherParams.fileName?.endsWith(`.${pythonFileExtension}`)??false;

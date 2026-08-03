@@ -2,6 +2,7 @@ import i18n from "@/i18n";
 import Compiler from "@/compiler/compiler";
 import { useStore } from "@/store/store";
 import scssVars from "@/assets/style/_export.module.scss";
+import { PrecedenceTier } from "@/helpers/operatorPrecedence";
 import quoteCircleProject from "@/assets/images/quote-circle/quote-circle-project.png";
 import quoteCircleFuncdef from "@/assets/images/quote-circle/quote-circle-funcdef.png";
 import quoteCircleClass from "@/assets/images/quote-circle/quote-circle-class.png";
@@ -72,6 +73,9 @@ export interface MediaSlot extends BaseSlot {
 export interface FlatSlotBase extends BaseSlot {
     id: string;
     type: SlotType;
+    // Only meaningful when type === SlotType.operator: the visual spacing tier
+    // computed by calculatePrecedenceTiers(), used to pick the operator's CSS class.
+    operatorPrecedenceTier?: PrecedenceTier;
 }
 
 export function isFieldStringSlot(field: FieldSlot): field is StringSlot {
@@ -793,7 +797,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         colour: "#E0DFE4",
         forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier).filter((type) => type != StandardFrameTypesIdentifiers.case && type != StandardFrameTypesIdentifiers.blank && type != StandardFrameTypesIdentifiers.comment),
         // A match statement must always have one case at least, so we enforce it upon frame creation
-        defaultChildrenTypes: [{...EmptyFrameObject, frameType: CaseDefinition, labelSlotsDict: {0: {slotStructures:{fields:[{code:"_"}], operators: []}}, 1: {slotStructures:{fields:[{code:""}], operators: []}}}}],
+        defaultChildrenTypes: [{...EmptyFrameObject, frameType: CaseDefinition, labelSlotsDict: {0: {slotStructures:{fields:[{code:"_"}], operators: []}}}}],
 
     };
 
@@ -866,10 +870,6 @@ export function getFrameDefType(key: string): FramesDefinitions {
     }
 
     return Object.values(Definitions).find((frameDefinition) => ((frameDefinition as FramesDefinitions).type === key)) as FramesDefinitions;
-}
-
-export function getLoopFramesTypeIdentifiers(): string[] {
-    return [StandardFrameTypesIdentifiers.for, StandardFrameTypesIdentifiers.while];
 }
 
 export const EmptyFrameObject: FrameObject = {
@@ -1338,6 +1338,20 @@ export interface MediaDataAndDim {
     height: number // for sounds, set to -1
 }
 
-export type EditImageInDialogFunction = (imageDataURL: string, showPreview: (dataURL: string) => void, callback: (replacement: { code: string, mediaType: string }) => void) => void;
-export type EditSoundInDialogFunction = (sound: AudioBuffer, callback: (replacement: { code: string, mediaType: string }) => void) => void;
+// recordOptions is only passed when the edit dialog is opened as part of the record-new-media flow
+// (see RecordImageDlg.vue/RecordSoundDlg.vue); it adds a "Re-record" button that loops back to the
+// record dialog instead of closing this one. Omitted (undefined) for the pre-existing "edit an
+// already-inserted literal" use case, where no such button should be shown.
+// onCancelled, if given, is called if the dialog closes without "OK" (cancel/backdrop/Esc) -- it is
+// NOT called for "Re-record" (the flow continues) or "OK" (callback is called instead).
+export type EditImageInDialogFunction = (imageDataURL: string, showPreview: (dataURL: string) => void, callback: (replacement: { code: string, mediaType: string }) => void, recordOptions?: { onReRecord: () => void }, onCancelled?: () => void) => void;
+export type EditSoundInDialogFunction = (sound: AudioBuffer, callback: (replacement: { code: string, mediaType: string }) => void, recordOptions?: { onReRecord: () => void }, onCancelled?: () => void) => void;
+
+// Opens the "record a new image from the webcam" / "record a new sound from the microphone" flow,
+// which itself chains into EditImageInDialogFunction/EditSoundInDialogFunction above once a capture
+// is made. callback receives the final {code, mediaType} only if the user completes the whole flow
+// with "OK" on the edit dialog; onCancelled is called instead if the user cancels at any point
+// (record dialog or edit dialog) -- exactly one of the two is ever called.
+export type RecordNewImageInDialogFunction = (callback: (replacement: { code: string, mediaType: string }) => void, onCancelled: () => void) => void;
+export type RecordNewSoundInDialogFunction = (callback: (replacement: { code: string, mediaType: string }) => void, onCancelled: () => void) => void;
 

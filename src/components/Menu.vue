@@ -37,6 +37,7 @@
                             <span>{{ $t("appMessage.targetFS") }}</span>
                         </div>
                     </div>
+                    <div><a class="open-menu-embedded-proj-link" @click="onOpenMenuLinkClick('examples')">{{$t("appMenu.loadDemoProject")}}</a><a class="open-menu-embedded-proj-link" @click="onOpenMenuLinkClick('book')">{{$t("appMenu.book")}}</a></div>
                     <div class="recent-states-pane" v-if="recentLoadableStates && recentLoadableStates.length > 0">
                         <div class="d-flex justify-content-between align-items-baseline">
                             <span class="load-save-label">{{ $t("appMessage.loadRecentState") }}</span>
@@ -268,11 +269,15 @@ import { eventBus, getLocaleBuildDate } from "@/helpers/appContext";
 import {checkForRecentSaveStates, deleteStates} from "@/store/store-db-storage";
 import OpenBookDlg from "@/components/OpenBookDlg.vue";
 import {trackUsedBookProject} from "@/store/analytics";
+import { useBrowserDetect } from "vue3-detect-browser";
 
 //////////////////////
 //     Component    //
 //////////////////////
 const defaultSharingProjectMode = ShareProjectMode.public;
+// The browser doesn't change during a session, so we detect it once here rather than calling
+// useBrowserDetect() (which allocates a new reactive object) on every keydown event.
+const { isSafari } = useBrowserDetect();
 export default defineComponent({
     name: "Menu",
     
@@ -389,8 +394,19 @@ export default defineComponent({
         window.addEventListener(
             "keydown",
             (event: KeyboardEvent) => {
-                // Loading/saving project shortcuts
-                if((event.key.toLowerCase() === "s" || event.key.toLowerCase() === "o") && (event.metaKey || event.ctrlKey) && (!event.shiftKey)){
+                // Loading/saving project shortcuts.
+                // The control for the shortcuts is a bit awkward to preserve a tight check on the browsers: for Safari, ⌘+O is interecepted
+                // by the browser so we cannot rely on this shortcut to open a Strype project. However, ctrl+O works, but is not trivial for macOS.
+                // Therefore for Safari, we use ⌘+⇧+O to open a project (while still supportting ctrl+O), ⌘+S to save a project (but silently supports
+                // ⌘+⇧+S too for muscle memory, and ctrl+s which was already supported implictly before).
+                // For other browsers: we are restricting to ctrl+O and ctrl+S as expected (explicitly discarding ⇧ to keep not override existing browser shortcuts).
+                const lowCaseEventKey = event.key.toLowerCase();
+                const isOpeningOrSavingShortcut = ((event.metaKey || event.ctrlKey) && (lowCaseEventKey === "s" || lowCaseEventKey === "o")) 
+                    && ((isSafari)
+                        ? event.metaKey && (lowCaseEventKey === "s" || (lowCaseEventKey === "o" && event.shiftKey))
+                        : !event.shiftKey
+                    );
+                if(isOpeningOrSavingShortcut){
                     event.stopImmediatePropagation();
                     event.preventDefault();
                     if(this.isPythonRunning){
@@ -422,8 +438,9 @@ export default defineComponent({
         );
 
         // The events from Bootstrap modal are registered on eventBus.
+        eventBus.on(CustomEventTypes.strypeModalShow, this.onStrypeMenuShowModalDlg);
         eventBus.on(CustomEventTypes.strypeModalShown, this.onStrypeMenuShownModalDlg);
-        eventBus.on(CustomEventTypes.strypeModalHidden, this.onStrypeMenuHideModalDlg);      
+        eventBus.on(CustomEventTypes.strypeModalHidden, this.onStrypeMenuHideModalDlg);
         
         // Event listener for saving project action completion
         eventBus.on(CustomEventTypes.saveStrypeProjectDoneForLoad, this.openLoadProjectDlgAfterSaved);
@@ -437,6 +454,7 @@ export default defineComponent({
 
     beforeUnmount(){
         // Just in case, we remove the Bootstrap modal event handler from eventBus
+        eventBus.off(CustomEventTypes.strypeModalShow, this.onStrypeMenuShowModalDlg);
         eventBus.off(CustomEventTypes.strypeModalShown, this.onStrypeMenuShownModalDlg);
         eventBus.off(CustomEventTypes.strypeModalHidden, this.onStrypeMenuHideModalDlg);
 
@@ -515,7 +533,7 @@ export default defineComponent({
         },
 
         loadProjectKBShortcut(): string {
-            return `${(isMacOSPlatform()) ? "⌘" : (this.$t("contextMenu.ctrl")+"+")}O`;
+            return `${(isMacOSPlatform() ? "⌘" : this.$t("contextMenu.ctrl")+"+")+(isSafari ? "⇧" : "")}O`;
         },
         
         loadProjectModalDlgId(): string {
@@ -575,7 +593,8 @@ export default defineComponent({
         },
 
         shareProjectKBShortcut(): string {
-            return `${(isMacOSPlatform()) ? "⌘" : (this.$t("contextMenu.ctrl")+"+")}⇧+L`;
+            const isMacos = isMacOSPlatform();
+            return `${(isMacos) ? "⌘" : (this.$t("contextMenu.ctrl")+"+")}⇧${isMacos ? "" : "+"}L`;
         },
 
         shareProjectModalDlgId(): string {
@@ -876,6 +895,18 @@ export default defineComponent({
             return (this.tempSyncTarget != StrypeSyncTarget.none) ? this.tempSyncTarget : StrypeSyncTarget.gd;
         },
 
+        onOpenMenuLinkClick(target: "examples" | "book"): void {
+            // When a link from the menu is clicked, we need to close the "Open" dialog (as cancelled), 
+            // and open the selected link target's dialog.
+            eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "cancel", componentId: this.loadProjectModalDlgId});
+            if(target === "examples"){
+                this.openLoadDemoProjectModal();
+            }
+            else{
+                this.openBookModal();
+            };
+        },
+
         onSaveTargetChanged(){
             this.showCloudSaveLocation = isSyncTargetCloudDrive(this.getTargetSelectVal());
         },
@@ -951,6 +982,27 @@ export default defineComponent({
             }
         },
 
+        onStrypeMenuShowModalDlg(event: BvTriggerableEvent) {
+            // This fires just before the dialog becomes visible/interactable (unlike
+            // onStrypeMenuShownModalDlg below, which fires just after). The Examples... and
+            // Book... dialogs reset their category/chapter selection to the first entry whenever
+            // they're opened -- that reset needs to happen here, before the dialog can be
+            // interacted with, rather than in the "shown" handler. Doing it on "shown" left a
+            // window where a fast click (or, in CI, Playwright) could select a different
+            // category/chapter while the dialog was already interactable but the "shown" event
+            // hadn't fired yet, only for that selection to be silently wiped out moments later
+            // when the reset ran -- e.g. clicking "Chapter 2" then having the list of projects
+            // revert back to Chapter 1's, so a project by name in another chapter was never
+            // found (see the regression test for this).
+            const dlgId = event.componentId;
+            if (dlgId == this.loadDemoProjectModalDlgId) {
+                vueComponentsAPIHandler.openDemoDlgComponentAPI?.shown();
+            }
+            else if (dlgId == this.loadBookProjectModalDlgId) {
+                (this.$refs.openBookDlg as InstanceType<typeof OpenBookDlg>).shown();
+            }
+        },
+
         onStrypeMenuShownModalDlg(event: BvTriggerableEvent) {
             const dlgId = event.componentId;
             // This method handles the workflow of the menu entries' related dialog
@@ -991,13 +1043,9 @@ export default defineComponent({
                     this.getSharingLink(defaultSharingProjectMode, true);
                 }, 2000);
             }
-            else if (dlgId == this.loadDemoProjectModalDlgId) {
-                vueComponentsAPIHandler.openDemoDlgComponentAPI?.shown();
-            }
-            else if (dlgId == this.loadBookProjectModalDlgId) {
-                (this.$refs.openBookDlg  as InstanceType<typeof OpenBookDlg>).shown();
-            }
-            else {
+            else if (dlgId != this.loadDemoProjectModalDlgId && dlgId != this.loadBookProjectModalDlgId) {
+                // (The Examples... and Book... dialogs' own "shown" work happens earlier, in
+                // onStrypeMenuShowModalDlg -- see its comment for why.)
                 // When the load or save project dialogs are opened, we focus the Google Drive selector by default when we don't have information about the source target
                 setTimeout(() => {
                     const targetToFocusButton =[...document.querySelectorAll(`#${dlgId} .${scssVars.projectTargetButtonClassName}`)].find((targetButton) => {
@@ -1154,6 +1202,11 @@ export default defineComponent({
                 if(dlgId == this.saveOnLoadModalDlgId){
                     // Case of request to save/discard the file currently opened, before loading a new file:
                     // user chose to discard the file saving: we can trigger the file opening.
+                    // Before we throw the current content away, back it up to the internal webstorage
+                    // recovery copy (never the real FS/cloud target -- discarding must never silently
+                    // write to the user's actual file) so it's still recoverable via the recent-states
+                    // banner/Open Recent menu, exactly as if the tab had been closed instead of reused:
+                    eventBus.emit(CustomEventTypes.backupEditorProjectBeforeDiscard);
                     if (this.afterSaveDialog && "spy" in this.afterSaveDialog) {
                         vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(this.afterSaveDialog.spy, this.afterSaveDialog.name, 0, false, "import")
                             .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
@@ -1275,10 +1328,15 @@ export default defineComponent({
                 else if (dlgId == this.loadBookProjectModalDlgId) {
                     const selectedProject = (this.$refs.openBookDlg  as InstanceType<typeof OpenBookDlg>).getSelectedProject();
                     if (selectedProject) {
+                        // We always show the book menu entry and dialog. However, the projects do not run on the micro:bit version.
+                        // Therefore, if we are on the micro:bit version, instead of loading the selected project inside the current editor,
+                        // we open a new tab pointing at the standard version with the project as if we shared it.
+                        const projectName = selectedProject.name ?? "Book";
+                        trackUsedBookProject(projectName, selectedProject.chapter);
+                        // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                         selectedProject.projectFile.then((content) => {
                             if (content) {
-                                trackUsedBookProject(selectedProject.name ?? "Book", selectedProject.chapter);
-                                this.afterSaveDialog = {spy: content, name: selectedProject.name ?? "Book"};
+                                this.afterSaveDialog = {spy: content, name: projectName};
                                 if (this.appStore.isEditorContentModified) {
                                     eventBus.emit(CustomEventTypes.showStrypeModal, this.saveOnLoadModalDlgId);
                                 }
@@ -1287,6 +1345,12 @@ export default defineComponent({
                                 }
                             }
                         });
+                        // #v-else
+                        // For micro:bit, we can simply open a shared the project as an exteral resource since it exists in our public repository.
+                        // Of course, this rely on how we expose the projects, and that we have the correct project name set.
+                        const normalisedChapterNumber = selectedProject.chapter.replace(/chapter\s+(\d+)/i, (_, n) => n.padStart(2, "0"));
+                        window.open(`https://strype.org/editor/?${sharedStrypeProjectIdKey}=${encodeURI(`https://strype.org/editor/book_projects/chapter${normalisedChapterNumber}/${projectName}.spy`)}`, "_blank");
+                        // #v-endif
                     }
                 }
             }
@@ -1739,6 +1803,16 @@ export default defineComponent({
     cursor: pointer;
 }
 
+.open-menu-embedded-proj-link{
+    font-size: smaller;
+    cursor: pointer;
+}
+
+div:has(> a.open-menu-embedded-proj-link) {
+    display: flex;
+    gap: 8px;
+}
+
 .save-project-modal-dlg-container {
     display: table;
     border-spacing: 10px 10px;
@@ -1997,5 +2071,4 @@ export default defineComponent({
     color: #aaa;
     padding-left: 3rem;
 }
-
 </style>

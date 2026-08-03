@@ -1,7 +1,7 @@
 
 // Splits arguments at a comma, but allows brackets with commas in them
 // which do not split.  So only splits at top-level of a potentially nested expression.
-import {Signature, TPyParser} from "tigerpython-parser";
+import {Signature, TPyParser} from "@tigerpython/tpparser";
 
 function splitTopLevelArgs(s: string): string[] {
     const result: string[] = [];

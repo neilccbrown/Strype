@@ -1,7 +1,7 @@
 
 
 import {cleanFromHTML, clearDefaultImports, waitForEditorSettled} from "./test-support";
-import {Signature, SignatureArg} from "tigerpython-parser";
+import {Signature, SignatureArg} from "@tigerpython/tpparser";
 import { scssVars, standardBeforeEach, strypeElIds } from "./standard-setup";
 
 beforeEach(standardBeforeEach);

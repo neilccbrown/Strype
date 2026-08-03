@@ -1,14 +1,13 @@
-import {AcResultsWithCategory, AcResultType, AllFrameTypesIdentifier, BaseSlot, CaretPosition, FieldSlot, FrameObject, isFieldBaseSlot, SlotsStructure, StringSlot} from "@/types/types";
+import {AcResultsWithCategory, AcResultType, AllFrameTypesIdentifier, BaseSlot, FieldSlot, FrameObject, isFieldBaseSlot, SlotsStructure, StringSlot} from "@/types/types";
 
 import {useStore} from "@/store/store";
 import {extractFormalParamsFromSlot, getMatchingBracket, transformFieldPlaceholders} from "@/helpers/editor";
 import {getAllEnabledUserDefinedClasses, getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
-import {Signature, TPyParser} from "tigerpython-parser";
+import {Signature, TPyParser} from "@tigerpython/tpparser";
 import {getAvailablePyPyiFromLibrary, getPossibleImports, getTextFileFromLibraries} from "@/helpers/libraryManager";
-import Parser from "@/parser/parser";
+import Parser, { AC_PROBE_MARKER } from "@/parser/parser";
 import {extractPYI} from "@/helpers/python-pyi";
-import {findCurrentStrypeLocation, STRYPE_LOCATION} from "@/helpers/pythonToFrames";
 import {AcResultsWithCategorySchema} from "@/types/ac-types-zod";
 import builtinsMod from "@/../pysrc/pyi/builtins.pyi?raw";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
@@ -718,6 +717,40 @@ async function getFormalParamsSlotStructureOrSignatureForUserDefinedClass(userCl
     }
 }
 
+// Dummy names used only to build a syntactically-safe probe for TigerPython -- see buildProbeCodeAndOffset().
+// Long and dunder-ish so they don't collide with any real name the user's own code might define.
+const PROBE_WRAPPER_NAME = "___strype_ac_probe_wrap___";
+const PROBE_DUMMY_IDENT = "___strype_ac_probe_ident___";
+
+// Splices a "context.<something>" probe into baseCode at AC_PROBE_MARKER (or appends it at the end if the
+// marker isn't found), and returns the resulting code plus the offset to ask TigerPython to complete at
+// (i.e. the position immediately after the dot).
+//
+// The probe is wrapped in a dummy call, e.g. "___wrap___(<context>.___ident___)", rather than spliced in
+// bare as "<context>.". This matters because "context" is not always a single clean expression: when
+// completing inside a nested call like "max(0, someList[0].", context is "0,someList[0]" (the sibling "0,"
+// argument from the enclosing call leaks in, because context is computed as "everything in the current
+// bracket before the dot", not "the innermost operand before the dot"). Splicing that bare would produce
+// "0,someList[0]." as the entire statement, which is invalid syntax (a bare trailing dot after a plain
+// comma, with nothing after it) and makes TigerPython fail to resolve anything at all. Wrapping in a call
+// absorbs the leaked leading comma as a separate (and irrelevant) argument: "___wrap___(0,someList[0].___ident___)"
+// parses fine as a 2-argument call, and the trailing attribute access still binds only to the last
+// argument, "someList[0]", same as if the leaked comma weren't there.
+export function buildProbeCodeAndOffset(baseCode: string, context: string): {code: string; offset: number} {
+    const probePrefix = `${PROBE_WRAPPER_NAME}(${transformFieldPlaceholders(context)}.`;
+    const probe = `${probePrefix}${PROBE_DUMMY_IDENT})`;
+    const markerIndex = baseCode.indexOf(AC_PROBE_MARKER);
+    if (markerIndex === -1) {
+        // Can happen if an ancestor block (e.g. an enclosing function's params) currently has an
+        // unrelated slot error, which drops the whole subtree containing our marker -- fall back to
+        // appending at the end.
+        const code = baseCode + "\n" + probe;
+        return {code, offset: baseCode.length + 1 + probePrefix.length};
+    }
+    const code = baseCode.slice(0, markerIndex) + probe + baseCode.slice(markerIndex + AC_PROBE_MARKER.length);
+    return {code, offset: markerIndex + probePrefix.length};
+}
+
 // Gets the parameter name prompt for the given autocomplete details (context+token)
 // for the given parameter. Note that for the UI to display spans properly, empty placeholders are returned as \u200b (0-width space)
 export async function calculateParamPrompt(frameId: number, {context, token, paramIndex, lastParam, prevKeywordNames} : {context: string, token: string, paramIndex: number, lastParam: boolean, prevKeywordNames: string[]}, isFocused: boolean) : Promise<string> {
@@ -779,25 +812,18 @@ export async function calculateParamPrompt(frameId: number, {context, token, par
     }
 
     if (context) {
-        // See if TigerPython can infer the type of the content before the .
-        // A special case is handled for using "self" inside a class: we need the full class to be parsed.
-        // If we are inside the "my code" section, we don't need to put the section "definitions"'s content
-        // at the end of the user code.
-        const currentStrypeLocationForClassInfos = findCurrentStrypeLocation({lookForGivenFramePosition: {id: frameId, caretPosition: CaretPosition.below}, checkForClassDeep: true});
-        const isGettingWholeClassContext = (context == "self" && currentStrypeLocationForClassInfos.strypeLocation == STRYPE_LOCATION.IN_CLASSDEF) && findCurrentStrypeLocation().strypeLocation == STRYPE_LOCATION.IN_FUNCDEF;
+        // See if TigerPython can infer the type of the content before the dot (".")
         const parser = new Parser(false, "py", true);
-        const userCode = (isGettingWholeClassContext) ? parser.getWholeClassCodeWithoutError(currentStrypeLocationForClassInfos.locationFrameId, frameId) : parser.getCodeWithoutErrors(frameId, findCurrentStrypeLocation().strypeLocation != STRYPE_LOCATION.MAIN_CODE_SECTION);
+        const userCode = parser.getCodeWithoutErrors(frameId);
         await tpyDefineLibraries(parser);
-        // If we are in the generic case: so we get context code out which is a partial expression and may not be valid at top-level.  Thus we wrap it in:
-        // f(<code>.x)
-        // If we are in the specific case of a whole class parsing (see above) then we do a similar approach but only add this (we are inside a function so we know there is one at least):
-        //         f(self.x) //--> WITH this indentation (double indent).
-        // To make it a valid statement, then autocomplete after the dot (two characters before the end)
-        const totalCode = userCode + ((isGettingWholeClassContext)
-            ? (parser.getIndent() + parser.getIndent() + "f(self.x)")
-            : ("\n" + parser.getStoppedIndentation() + "f(" + transformFieldPlaceholders(context) + "." + "x)")
-        );
-        const tppCompletions = TPyParser.autoCompleteExt(totalCode, totalCode.length - 2);
+        // getCodeWithoutErrors() leaves AC_PROBE_MARKER exactly where the frame we're editing sits, so
+        // the probe below ends up correctly nested there, however much other code (e.g. evidence for a
+        // "My code" global) surrounds it -- appending at the very end would often land it outside the
+        // right scope. This also covers "self." inside a method: since userCode is the whole program,
+        // the enclosing class -- and any class it inherits from -- is always present, so TigerPython
+        // resolves "self" the same way any other call after the dot would be.
+        const {code: totalCode, offset: completionOffset} = buildProbeCodeAndOffset(userCode, context);
+        const tppCompletions = TPyParser.autoCompleteExt(totalCode, completionOffset);
         const match = tppCompletions?.filter((c) => c.acResult === token);
         if (match && match.length > 0 && match[0].signature) {
             return getParamPrompt(match[0].signature, paramIndex, prevKeywordNames, lastParam, isFocused);
