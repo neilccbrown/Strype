@@ -252,7 +252,7 @@ import { generateSPYFileContent } from "@/helpers/load-save";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { ceil, cloneDeep } from "lodash";
 import appPackageJson from "@/../package.json";
-import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
+import { checkCodeErrors, getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import scssVars from "@/assets/style/_export.module.scss";
 import OpenDemoDlg from "@/components/OpenDemoDlg.vue";
 import { CloudFileSharingStatus, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
@@ -1515,6 +1515,9 @@ export default defineComponent({
                 // #v-endif
                 return;
             }
+            
+            // Update errors in case they're about to download etc:
+            checkCodeErrors();
 
             const isMenuOpening = (e !== null);
             if(isMenuOpening) {

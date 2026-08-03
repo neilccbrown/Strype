@@ -1,5 +1,5 @@
 import { scssVars } from "../support/standard-setup";
-import { clearDefaultImports } from "../support/test-support";
+import { clearDefaultImports, pressFrameShortcutThenType } from "../support/test-support";
 
 require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
@@ -20,7 +20,8 @@ describe("User-defined items", () => {
     it("Offers auto-complete for user-defined functions", () => {
         focusEditorAC();
         // Go up to functions section, add a function named "foo", a description "bar", then come back down and make a function call frame:
-        cy.get("body").type("{uparrow}ffoo{rightarrow}{rightarrow}bar{downarrow}{downarrow}{downarrow} ");
+        cy.get("body").type("{uparrow}");
+        pressFrameShortcutThenType("f", "foo{rightarrow}{rightarrow}bar{downarrow}{downarrow}{downarrow}  ");
         cy.wait(500);
         // Trigger auto-complete:
         cy.get("body").type("{ctrl} ");
@@ -39,7 +40,8 @@ describe("User-defined items", () => {
     it("Offers auto-complete for user-defined functions with *", () => {
         focusEditorAC();
         // Go up to functions section, add a function named "foo" then come back down and make a function call frame:
-        cy.get("body").type("{uparrow}ffoo(a,*,b){downarrow}{downarrow}{downarrow}{downarrow} ");
+        cy.get("body").type("{uparrow}");
+        pressFrameShortcutThenType("f", "foo(a,*,b){downarrow}{downarrow}{downarrow}{downarrow}  ");
         cy.wait(500);
         // Trigger auto-complete:
         cy.get("body").type("{ctrl} ");
@@ -56,7 +58,7 @@ describe("User-defined items", () => {
     it("Offers auto-complete for user-defined variables", () => {
         focusEditorAC();
         // Make an assignment frame that says "myVar=23", then make a function call frame beneath:
-        cy.get("body").type("=myVar=23{enter} ");
+        cy.get("body").type("=myVar=23{enter}  ");
         cy.wait(500);
         // Trigger auto-completion:
         cy.get("body").type("{ctrl} ");
@@ -74,7 +76,8 @@ describe("User-defined items", () => {
         // The 2 arrow-ups navigate from Main up into (empty) Definitions -- unaffected by Imports'
         // content, since that path never passes through Imports, so this doesn't need clearing the
         // default imports the way the import-focused tests below do:
-        cy.get("body").type("=myVar=\"hello\"{enter}{uparrow}{uparrow}ffoo{rightarrow}{rightarrow}{rightarrow} ");
+        cy.get("body").type("=myVar=\"hello\"{enter}{uparrow}{uparrow}");
+        pressFrameShortcutThenType("f", "foo{rightarrow}{rightarrow}{rightarrow}  ");
         cy.wait(500);
         // Trigger auto-completion:
         cy.get("body").type("{ctrl} ");
@@ -115,7 +118,8 @@ describe("User-defined items", () => {
         focusEditorAC();
         // Make a function frame with "foo(myParam)" 
         // then make a function call frame inside:
-        cy.get("body").type("{uparrow}ffoo(myParam{rightarrow}{rightarrow} ");
+        cy.get("body").type("{uparrow}");
+        pressFrameShortcutThenType("f", "foo(myParam{rightarrow}{rightarrow}  ");
         // Trigger auto-completion:
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
@@ -127,7 +131,9 @@ describe("User-defined items", () => {
             cy.get("body").type("{downarrow}{downarrow}");
         }, false);
         // Make a function call and check myParam doesn't show there:
-        cy.get("body").type(" {ctrl} ");
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
+        cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkNoItems(acIDSel, "myParam", true);
@@ -137,9 +143,11 @@ describe("User-defined items", () => {
     it("Offers auto-complete for for-loop iterating variables", () => {
         focusEditorAC();
         // Make a for loop:
-        cy.get("body").type("fmyIterator{rightarrow}imaginaryList{rightarrow}");
+        pressFrameShortcutThenType("f", "myIterator{rightarrow}imaginaryList{rightarrow}");
         // Trigger auto-completion in a new function call frame:
-        cy.get("body").type(" {ctrl} ");
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
+        cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, MYVARS, "myIterator");
@@ -151,7 +159,9 @@ describe("User-defined items", () => {
         }, true);
         // Make a function call and check myIterator shows there -- Python semantics
         // are that the loop variable is available after the loop:
-        cy.get("body").type(" {ctrl} ");
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
+        cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, MYVARS, "myIterator");
@@ -162,7 +172,7 @@ describe("User-defined items", () => {
     it("Offers auto-complete for items on user-defined variables", () => {
         focusEditorAC();
         // Make an assignment frame myVar="hi" then add a function call frame beneath with "myVar."
-        cy.get("body").type("=myVar=\"hi{enter} myVar.");
+        cy.get("body").type("=myVar=\"hi{enter}myVar.");
         cy.wait(500);
         // Trigger auto-complete:
         cy.get("body").type("{ctrl} ");
@@ -186,7 +196,7 @@ describe("User-defined items", () => {
     it("Offers auto-complete for user-defined variables but not before declaration", () => {
         focusEditorAC();
         // Make an assignment frame with myVar=23, then go before it and add a function call frame:
-        cy.get("body").type("=myVar=23{enter}{uparrow} ");
+        cy.get("body").type("=myVar=23{enter}{uparrow}  ");
         cy.wait(500);
         // Trigger auto-complete:
         cy.get("body").type("{ctrl} ");
@@ -200,7 +210,8 @@ describe("User-defined items", () => {
     it("Offers auto-complete for user-defined classes", () => {
         focusEditorAC();
         // Go up to definitions section, add a class named "foo", a documentation "bar", then come back down and make a class call frame:
-        cy.get("body").type("{uparrow}cfoo{rightarrow}bar{downarrow}{downarrow}{downarrow}{downarrow}{downarrow} ");
+        cy.get("body").type("{uparrow}");
+        pressFrameShortcutThenType("c", "foo{rightarrow}bar{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}  ");
         cy.wait(500);
         // Trigger auto-complete:
         cy.get("body").type("{ctrl} ");
@@ -220,7 +231,8 @@ describe("User-defined items", () => {
         focusEditorAC();
         // Make a class frame with "foo" and the params for the init function "bar, vaz",
         // then make a function call frame inside:
-        cy.get("body").type("{uparrow}cfoo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar,vaz{rightarrow}{rightarrow}");
+        cy.get("body").type("{uparrow}");
+        pressFrameShortcutThenType("c", "foo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar,vaz{rightarrow}{rightarrow}");
         cy.wait(500);
         // Trigger auto-completion:
         cy.get("body").type("{ctrl} ");
@@ -236,7 +248,9 @@ describe("User-defined items", () => {
             cy.get("body").type("{downarrow}{downarrow}{downarrow}");
         }, false);
         // Make a function call and check "self, bar, vaz" don't show there:
-        cy.get("body").type(" {ctrl} ");
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
+        cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkNoItems(acIDSel, "self", true);
@@ -250,7 +264,9 @@ describe("User-defined items", () => {
         focusEditorAC();
         // Make a class frame with "foo" and the params for the init function "bar",
         // then add function definition "myF" frame with parameters "vaz, param2" and go inside:
-        cy.get("body").type("{uparrow}cfoo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar{rightarrow}{rightarrow}{downarrow}fmyF{rightarrow}vaz,param2{rightarrow}{rightarrow}");
+        cy.get("body").type("{uparrow}");
+        pressFrameShortcutThenType("c", "foo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar{rightarrow}{rightarrow}{downarrow}");
+        pressFrameShortcutThenType("f", "myF{rightarrow}vaz,param2{rightarrow}{rightarrow}");
         cy.wait(500);
         // Trigger auto-completion:
         cy.get("body").type("{ctrl} ");
@@ -266,7 +282,9 @@ describe("User-defined items", () => {
             cy.get("body").type("{downarrow}{downarrow}{downarrow}");
         }, false);
         // Make a function call and check "self, bar, vaz, param2", and the classes function, don't show there:
-        cy.get("body").type(" {ctrl} ");
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
+        cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkNoItems(acIDSel, "self", true);
@@ -298,11 +316,14 @@ describe("User-defined items", () => {
         focusEditorAC();
         // Add the right import to get Actor or NeoPixel
         clearDefaultImports();
-        cy.get("body").type(`f${parentImport[0]}{rightarrow}${parentImport[1]}{downarrow}{downarrow}`);
+        pressFrameShortcutThenType("f", `${parentImport[0]}{rightarrow}${parentImport[1]}{downarrow}{downarrow}`);
         // Make a class frame with "foo(<parent class>)" and delete the init function, add a function "myF", then go to my code
-        cy.get("body").type(`cfoo(${parentClassName}{downarrow}{downarrow}{del}fmyF{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}`);
+        pressFrameShortcutThenType("c", `foo(${parentClassName}{downarrow}{downarrow}{del}`);
+        pressFrameShortcutThenType("f", "myF{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}");
         // Trigger auto-completion on a function call frame:
-        cy.get("body").type(" {ctrl} ");
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
+        cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, MYCLASSES, `foo(${parentClassInitParamsToTest})`);
@@ -313,7 +334,9 @@ describe("User-defined items", () => {
             cy.get("body").type("{downarrow}{downarrow}{downarrow}");
         }, true);
         // Make a function call and check "self" doesn't show there:
-        cy.get("body").type(" {ctrl} ");
+        // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
+        // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
+        cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkNoItems(acIDSel, "self", true);           

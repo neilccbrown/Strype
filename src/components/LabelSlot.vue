@@ -78,7 +78,7 @@ import { defineComponent, nextTick, PropType } from "vue";
 import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
-import { closeBracketCharacters, CustomEventTypes, getACLabelSlotUID, getFocusedEditableSlotTextSelectionStartEnd, getFrameHeaderUID, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFrameUID, getLabelSlotUID, getMatchingBracket, getNumPrecedingBackslashes, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, keywordOperatorsWithSurroundSpaces, openBracketCharacters, operators, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, simpleSlotStructureToString, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringDoubleQuoteChar, stringQuoteCharacters, stringSingleQuoteChar, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength } from "@/helpers/editor";
+import { bumpCaretRequestSeq, closeBracketCharacters, CustomEventTypes, getACLabelSlotUID, getCaretRequestSeq, getFocusedEditableSlotTextSelectionStartEnd, getFrameHeaderUID, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFrameUID, getLabelSlotUID, getMatchingBracket, getNumPrecedingBackslashes, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, keywordOperatorsWithSurroundSpaces, openBracketCharacters, operators, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, simpleSlotStructureToString, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringDoubleQuoteChar, stringQuoteCharacters, stringSingleQuoteChar, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength } from "@/helpers/editor";
 import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, OptionalSlotType, PythonExecRunningState, RecordNewImageInDialogFunction, RecordNewSoundInDialogFunction, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
@@ -515,7 +515,14 @@ export default defineComponent({
             // When this method is triggered by a natural click on the text slot, we delay the chain of actions a bit,
             // because the potential blurring of another slot may interfer with with timing and scrolling into view.
             const waitFor = (fromNaturalClick) ? 200 : 0;
+            // Mark this as the newest pending "got caret" request (see bumpCaretRequestSeq() doc) so
+            // that if the user navigates elsewhere (e.g. arrows out to a frame caret) before this
+            // fires, we can tell this callback is stale and must not re-focus this slot underneath them.
+            const myCaretRequestSeq = bumpCaretRequestSeq();
             setTimeout(() => {
+                if(myCaretRequestSeq !== getCaretRequestSeq()){
+                    return;
+                }
                 // If the user's code is being executed, or if the frame is disabled, we don't focus any slot, but we make sure we show the adequate frame cursor instead.
                 if(this.isPythonExecuting || this.isDisabled || this.isFrozen){
                     event?.stopImmediatePropagation();
@@ -860,14 +867,51 @@ export default defineComponent({
                     }); 
                 }
                 else{
-                    // Same as hitting ctrl/alt + arrow down
-                    document.getElementById(getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex))?.dispatchEvent(
-                        new KeyboardEvent("keydown", {
-                            key: "ArrowDown",
-                            altKey: true,
-                            ctrlKey: true,
-                        })
-                    );
+                    // Same as hitting ctrl/alt + arrow down -- unless the bare word typed so far is
+                    // a recognised keyword eligible for conversion right here (see
+                    // keywordFrameConversions, LabelSlotsStructure.vue):
+                    // typing "if" or "else" then Enter should convert exactly like typing "if "/
+                    // "else " does, without requiring the space first. Only a func-call frame can
+                    // ever convert this way, so that's checked here as a cheap prefilter -- avoiding
+                    // an unconditional cloneDeep(appStore.$state) on every single Enter keypress,
+                    // in every slot, of every frame type -- before deferring to
+                    // checkSlotRefactoring's own fuller isFunccallTopLevelSlot gating (labelIndex,
+                    // slotId) for the rarer case where it matters. Once we do call it, we always
+                    // give it the chance to convert (via its triggeredByEnter option), and only fall
+                    // back to the normal "move to next line" behaviour if nothing actually converted.
+                    // We detect that by comparing the frame's type after the call to what it was
+                    // before: a conversion always changes it (funccall -> if/for/etc.), so an
+                    // unchanged type means nothing converted (checkSlotRefactoring is also a no-op
+                    // for e.g. a func-call whose content isn't actually a recognised keyword).
+                    // skipStateSaveOnly avoids pushing a spurious no-op undo/redo entry for that
+                    // still-common case.
+                    const frameId = this.frameId;
+                    const labelSlotsIndex = this.labelSlotsIndex;
+                    const frameTypeBeforeEnter = this.appStore.frameObjects[frameId]?.frameType.type;
+                    const moveToNextLine = () => {
+                        document.getElementById(getFrameLabelSlotsStructureUID(frameId, labelSlotsIndex))?.dispatchEvent(
+                            new KeyboardEvent("keydown", {
+                                key: "ArrowDown",
+                                altKey: true,
+                                ctrlKey: true,
+                            })
+                        );
+                    };
+                    if(frameTypeBeforeEnter !== AllFrameTypesIdentifier.funccall){
+                        moveToNextLine();
+                    }
+                    else{
+                        const stateBeforeChanges = cloneDeep(this.appStore.$state);
+                        vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(frameId, labelSlotsIndex)].checkSlotRefactoring(this.UID, stateBeforeChanges, {
+                            triggeredByEnter: true,
+                            skipStateSaveOnly: true,
+                            doAfterCursorSet: () => {
+                                if(this.appStore.frameObjects[frameId]?.frameType.type === frameTypeBeforeEnter){
+                                    moveToNextLine();
+                                }
+                            },
+                        });
+                    }
                 }
             }
             this.showAC = false;

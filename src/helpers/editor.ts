@@ -19,6 +19,20 @@ import { eventBus } from "@/helpers/appContext";
 export const undoMaxSteps = 50;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
 
+// A monotonically increasing counter used to detect stale, superseded "got caret" requests.
+// LabelSlot.vue's onGetCaret() defers its work by a tick (or 200ms for a real click) via
+// setTimeout(); if the user has since navigated elsewhere (e.g. arrowing out of the slot into a
+// frame caret) before that timeout fires, it must not blindly re-focus the slot it was originally
+// scheduled for. Each call to bumpCaretRequestSeq() marks "a new/different focus request has
+// started", invalidating any earlier-scheduled callback that captured an older sequence number.
+let caretRequestSeq = 0;
+export function bumpCaretRequestSeq(): number {
+    return ++caretRequestSeq;
+}
+export function getCaretRequestSeq(): number {
+    return caretRequestSeq;
+}
+
 // Constants used for query parameters parsing
 // The target to fetch the project (for now, we only support Google Drive. We use the enum StrypeSyncTarget for values)
 export const sharedStrypeProjectTargetKey = "shared_proj_targ"; 
@@ -759,12 +773,6 @@ export function getNearestErrorIndex(): number {
 // unless conflicts are clearly impossible.
 export function generateAllFrameCommandsDefs():void {
     allFrameCommandsDefs = {
-        " ": [{
-            type: getFrameDefType(AllFrameTypesIdentifier.funccall),
-            description: i18n.global.t("frame.funccall_desc"),
-            shortcuts: [" "],
-            symbol: i18n.global.t("buttonLabel.spaceBar"),
-        }],
         "=": [{
             type: getFrameDefType(AllFrameTypesIdentifier.varassign),
             description: i18n.global.t("frame.varassign_desc"),
@@ -816,18 +824,18 @@ export function generateAllFrameCommandsDefs():void {
                 index: 0,
             },
             {
-                type: getFrameDefType(AllFrameTypesIdentifier.funcdef),
-                description: i18n.global.t("frame.funcdef_desc"),
-                shortcuts: ["f"],
-                index: 1,
-            },
-            {
                 type: getFrameDefType(AllFrameTypesIdentifier.fromimport),
                 description: "from...import",
                 shortcuts: ["f"],
-                index:2,
+                index: 1,
             },
         ],
+        "d": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.funcdef),
+            description: i18n.global.t("frame.funcdef_desc"),
+            // "f" is kept working as a secret/legacy shortcut alongside the official "d".
+            shortcuts: ["d", "f"],
+        }],
         "c": [
             {
                 type: getFrameDefType(AllFrameTypesIdentifier.classdef),
@@ -840,6 +848,12 @@ export function generateAllFrameCommandsDefs():void {
                 description: "case",
                 shortcuts: ["c"],
                 index: 1,
+            },
+            {
+                type: getFrameDefType(AllFrameTypesIdentifier.funccall),
+                description: i18n.global.t("frame.funccall_desc"),
+                shortcuts: ["c"],
+                index: 2,
             },
         ],
         "w": [{
@@ -915,6 +929,12 @@ export function generateAllFrameCommandsDefs():void {
 //Commands for Frame insertion, one command can match more than 1 frame ONLY when there is a TOTAL distinct context between the two
 let allFrameCommandsDefs: {[id: string]: AddFrameCommandDef[]} | undefined = undefined;
 
+// def's hidden/legacy shortcut (e.g. "f" for funcdef, kept working alongside the official "d"), if
+// it has one -- named accessor so callers don't need to know shortcuts[1] is where that lives.
+export function getLegacyShortcut(def: AddFrameCommandDef): string | undefined {
+    return def.shortcuts[1];
+}
+
 export function getAddCommandsDefs(): {[id: string]: AddFrameCommandDef[]} { 
     if(allFrameCommandsDefs === undefined){
         generateAllFrameCommandsDefs();
@@ -945,7 +965,12 @@ export function findAddCommandFrameType(shortcut: string, index?: number): Frame
     return null;
 }
 
-// This shorthand frames are enhanced frames because they contain some default code value. 
+// These are the only frame-insertion shortcuts that still work directly at the frame caret without
+// first pressing the Tab/Space prefix key (see Commands.vue's keydown handler): blank frame, comment,
+// and assignment. Every other shortcut requires opening the frame commands pane first.
+export const alwaysDirectFrameShortcutKeys = ["enter", "#", "="];
+
+// This shorthand frames are enhanced frames because they contain some default code value.
 // Therefore they are treated separately in the code and in the UI. They do not show in the frame command panel.
 // IMPORTANT : make sure that the shortcut assigned to a frame IS NOT assigned to a normal frame (see generateAllFrameCommandsDefs()) 
 // unless conflicts are clearly impossible. Shortcut is not shown, so we don't need to define it elsewhere than in the indexes.

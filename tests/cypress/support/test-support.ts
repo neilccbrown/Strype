@@ -8,6 +8,48 @@ export function cleanFromHTML(html: string) : string {
     return html.replace("\u200B", "").replaceAll("\u00A0", " ");
 }
 
+// Keys that insert their frame type directly, without a Tab/Space prefix first (see
+// alwaysDirectFrameShortcutKeys in src/helpers/editor.ts) -- every other key (any letter) needs
+// the prefix to open the frame-commands pane first; typing the bare letter alone instead starts
+// a func-call frame with that letter as its content (see "Typing a character at the bare frame
+// caret starts a func-call frame"). Mirrored here (not imported) for the same reason
+// tests/cypress/support/frame-types.ts is a manual copy of src/types/types.ts: pulling from src/
+// into Cypress's test bundle for a helper like this isn't straightforward.
+const ALWAYS_DIRECT_FRAME_SHORTCUT_KEYS = ["enter", "#", "="];
+
+// Presses the keyboard shortcut that inserts a frame at the current blank "insert a new frame"
+// caret -- e.g. pressFrameShortcut("i") for an if frame. Centralised so that if the app's own
+// prefix requirement (or the prefix itself) ever changes again, only this needs updating, not
+// every call site that inserts a frame this way.
+export function pressFrameShortcut(key: string): void {
+    // Settle first: a caller that just confirmed a slot (e.g. typing a condition then
+    // {rightarrow} out of it) hands off to the store's leftRightKey(), which updates the store
+    // synchronously but only moves real DOM focus onto the new bare-caret element once Vue's
+    // reactive re-render catches up. If the Space below is sent before that happens, it lands on
+    // the about-to-be-abandoned slot as literal text instead of opening the frame-commands pane
+    // -- and the following letter, now arriving at a bare caret it was never meant for, starts an
+    // unwanted func-call frame instead of the intended shortcut (observed as e.g. a nested "if"
+    // shortcut producing a stray "iFalse(...)" func-call frame instead of a nested if):
+    waitForEditorSettled();
+    if (!ALWAYS_DIRECT_FRAME_SHORTCUT_KEYS.includes(key.toLowerCase())) {
+        cy.get("body").type(" ");
+    }
+    cy.get("body").type(key);
+}
+
+// Convenience for the common "press a frame shortcut, then immediately keep typing into the
+// frame it just created" pattern (e.g. a single combined action string like
+// "ffoo{rightarrow}{rightarrow}bar{downarrow}" that used to work as one cy.get("body").type(...)
+// call before frame shortcuts needed the Tab/Space prefix). Splits it into the shortcut press
+// and the rest of the typing, rather than every call site doing that split by hand.
+export function pressFrameShortcutThenType(key: string, rest: string): void {
+    pressFrameShortcut(key);
+    if (rest.length > 0) {
+        cy.get("body").type(rest);
+        waitForEditorSettled();
+    }
+}
+
 export function getDefaultStrypeProjectDocumentationFullLine(mode: string): string {
     return (mode == "microbit") 
         ? "'''This is the default Strype starter project for micro:bit'''\n"
@@ -150,7 +192,16 @@ export function waitForEditorSettled(timeoutMs = 10000): void {
                 const focusId = editorEl?.getAttribute("data-slot-focus-id") ?? "";
                 const cursor = editorEl?.getAttribute("data-slot-cursor") ?? "";
                 const frameCount = win.document.querySelectorAll(".frame-div").length;
-                const state = `${focusId}:${cursor}:${frameCount}`;
+                // While a conversion is pending (see App.vue's data-pending-slot-conversion), the
+                // app deliberately keeps focus/cursor unchanged for the whole debounce so in-flight
+                // typing doesn't land at the wrong spot -- e.g. converting a function-call frame to
+                // a variable assignment on typing "=" -- meaning focus/cursor/frameCount look
+                // "stable" from the very first check even though the frame hasn't actually finished
+                // converting yet. Fold it into the tracked state so any change in pending-ness (in
+                // either direction) resets the stability clock, and so we never resolve while it's
+                // still true:
+                const pendingConversion = editorEl?.getAttribute("data-pending-slot-conversion") === "true";
+                const state = `${focusId}:${cursor}:${frameCount}:${pendingConversion}`;
                 const now = Date.now();
                 if (state !== lastState) {
                     stableSince = now;
@@ -158,17 +209,13 @@ export function waitForEditorSettled(timeoutMs = 10000): void {
                 lastState = state;
                 lastFocusId = focusId;
                 // A blank focus id (no slot focused) is also used by the app as a transient marker
-                // while some restructuring is in flight -- e.g. converting a function-call frame to
-                // a variable assignment on typing "=" holds focus blank for a genuine ~300ms
-                // debounce (see LabelSlotsStructure.vue) -- and that blank reading is itself stable
-                // across many consecutive checks during the whole debounce window, which would
-                // otherwise fool this into passing mid-restructure. Frame-level pastes can
-                // legitimately end up blank too (a frame caret, not a slot), so we can't just
-                // refuse blank outright -- instead require the state to have been unchanged for
-                // longer (~450ms of wall-clock time) before trusting a blank state than a real one
-                // (no minimum wait), comfortably past the known debounce:
+                // while some restructuring is in flight -- frame-level pastes can legitimately end
+                // up blank (a frame caret, not a slot) -- so we can't just refuse blank outright --
+                // instead require the state to have been unchanged for longer (~450ms of wall-clock
+                // time) before trusting a blank state than a real one (no minimum wait), comfortably
+                // past any such transient:
                 const requiredStableMs = lastFocusId === "" ? 450 : 0;
-                if (now - stableSince >= requiredStableMs) {
+                if (!pendingConversion && now - stableSince >= requiredStableMs) {
                     resolve();
                     return;
                 }

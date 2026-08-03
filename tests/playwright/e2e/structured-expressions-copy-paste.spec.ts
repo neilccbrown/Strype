@@ -1,5 +1,5 @@
 import {Page, test, expect} from "@playwright/test";
-import {typeIndividually, doPagePaste, doTextHomeEndKeyPress, assertStateOfIfFrame, waitForEditorSettled} from "../support/editor";
+import {typeIndividually, doPagePaste, doTextHomeEndKeyPress, assertStateOfIfFrame, pressFrameShortcut, waitForEditorSettled} from "../support/editor";
 import { setupStrypeTest } from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
@@ -16,7 +16,7 @@ function testSelection(code : string, startIndex: number, endIndex: number, seco
     test("Tests selecting in " + code + " from " + startIndex + " to " + endIndex + " then " + secondEntry + " " + extraTitle, async ({page}) => {
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
-        await page.keyboard.type("i");
+        await pressFrameShortcut(page, "i");
         await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, code);
@@ -61,7 +61,7 @@ function testCutCopy(code : string, stepsToBegin: number, stepsWhileSelecting: n
     test(`Tests selecting then ${CUT_COPY_TEST[kind]} in ${code} from ${stepsToBegin} + ${stepsWhileSelecting}`, async ({page, context}) => {        
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
-        await page.keyboard.type("i");
+        await pressFrameShortcut(page, "i");
         await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, code);

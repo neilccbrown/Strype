@@ -18,16 +18,28 @@
                         </div>     
                         <div @mousedown.prevent.stop @mouseup.prevent.stop>
                             <!-- #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE -->
-                            <BTabs id="commandsTabs" content-class="mt-2" v-model:index="tabIndex">
+                            <!-- no-fade: opening the frame commands pane (Tab/Space at a frame caret) switches
+                                 to this tab and immediately needs to focus one of its buttons -- a fade transition
+                                 leaves the tab's content display:none (unfocusable) for its whole duration, which
+                                 loses the race against a shortcut letter typed right after (see openFrameCommandsPane()). -->
+                            <BTabs id="commandsTabs" content-class="mt-2" v-model:index="tabIndex" no-fade>
                                 <BTab :title="$t('commandTabs.0')" active :title-link-class="getTabClasses(0)" :disabled="isEditing">
                             <!-- #v-endif-->
                                     <div :id="commandsContainerUID" class="command-tab-content" >
-                                        <div id="addFramePanel">
+                                        <div id="addFramePanel" :class="{'frame-commands-pane-active': isFrameCommandsPaneActive}">
                                             <!-- #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE -->
                                             <div :class="{[scssVars.addFrameCommandsContainerClassName]: true, 'with-expanded-PEA': isExpandedPEA}">
                                             <!-- #v-else-->
                                             <div :class="scssVars.addFrameCommandsContainerClassName">
                                             <!-- #v-endif-->
+                                                <div
+                                                    class="frame-commands-pane-intro"
+                                                    :class="{'frame-commands-pane-intro-hidden': isFrameCommandsPaneActive}"
+                                                    v-if="!isEditing && !isPythonExecuting"
+                                                >
+                                                    <span class="frame-cmd-prefix-btn frame-cmd-btn-large frame-cmd-prefix-btn-wide">{{ $t('autoCompletion.spaceKey') }}</span>
+                                                    <span>{{ $t('commandsPane.pressSpaceThenSuffix') }}</span>
+                                                </div>
                                                 <p>
                                                     <AddFrameCommand
                                                         v-for="addFrameCommand in addFrameCommands"
@@ -47,6 +59,7 @@
                                                             ? addFrameCommand[0].index
                                                             : 0
                                                         "
+                                                        :greyedOut="!isFrameCommandsPaneActive"
                                                     />
                                                 </p>
                                                 <p v-if="codeCompletionCommand">
@@ -138,9 +151,9 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getMenuLeftPaneUID, hiddenShorthandFrames, notifyDragEnded, waitForPanesSettled } from "@/helpers/editor";
+import { alwaysDirectFrameShortcutKeys, computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getLabelSlotUID, getLegacyShortcut, getMenuLeftPaneUID, hiddenShorthandFrames, notifyDragEnded, waitForPanesSettled } from "@/helpers/editor";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, CaretPosition, CollapsedState, defaultEmptyStrypeLayoutDividerSettings, FrameObject, isSlotStringLiteralType, PythonExecRunningState, SelectAllFramesAction, SlotType, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
+import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, CaretPosition, CollapsedState, defaultEmptyStrypeLayoutDividerSettings, FrameObject, getFrameDefType, isSlotStringLiteralType, PythonExecRunningState, SelectAllFramesAction, SlotType, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
 import { defineComponent } from "vue";
 import { mapStores } from "pinia";
@@ -304,6 +317,14 @@ export default defineComponent({
             return this.appStore.isEditing;
         },
 
+        isPythonExecuting(): boolean {
+            return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
+        },
+
+        isFrameCommandsPaneActive(): boolean {
+            return this.appStore.isFrameCommandsPaneActive;
+        },
+
         addFrameCommands(): Record<string, AddFrameCommandDef[]> {
             // Just use the flag data to bind this computed property to the flag, so that when the frame commands are changed, we can update the UI
             this.frameCommandsReactiveFlag;
@@ -379,8 +400,8 @@ export default defineComponent({
             const ctrl = {label: this.$t("contextMenu.ctrl")};
             const shift = {label: "⇧", title: this.$t("autoCompletion.shiftKey")};
             return [
-                {keys: [ctrl, shift, {label: "I"}], description: this.$t("autoCompletion.recordImageShortcut")},
-                {keys: [ctrl, shift, {label: "U"}], description: this.$t("autoCompletion.recordSoundShortcut")},
+                {keys: [ctrl, shift, {label: "i"}], description: this.$t("autoCompletion.recordImageShortcut")},
+                {keys: [ctrl, shift, {label: "u"}], description: this.$t("autoCompletion.recordSoundShortcut")},
             ];
         },
 
@@ -500,6 +521,18 @@ export default defineComponent({
                 // If a modal is open, we let the event be handled by the browser
                 if(this.appStore.isModalDlgShown){
                     return;
+                }
+
+                // While the frame commands pane is focused (entered via Tab/Space at the frame caret),
+                // it owns all keydown handling until a frame is inserted or Escape is hit.
+                if(this.appStore.isFrameCommandsPaneActive){
+                    if(document.activeElement?.closest("#addFramePanel")){
+                        this.handleFrameCommandsPaneKeyDown(event);
+                        return;
+                    }
+                    // Focus left the panel some other way (e.g. a mouse click elsewhere); don't let
+                    // a stale flag hijack normal keydown handling below.
+                    this.appStore.isFrameCommandsPaneActive = false;
                 }
 
                 if(!isDraggingFrames && (event.ctrlKey || event.metaKey)) {
@@ -624,6 +657,28 @@ export default defineComponent({
                     return;
                 }
 
+                // Tab or Space at the frame caret opens the frame commands pane (letting the user then
+                // either press a shortcut letter, or arrow to a command and press Enter) instead of their
+                // usual jobs (Tab normally moves to the next navigable position, Space normally inserts a
+                // func-call frame directly). If there's nothing insertable here, we fall through so Tab/Space
+                // keep their old behaviour (matching what happens today when the panel is empty). Ctrl/Meta
+                // must be excluded here so Ctrl+Space keeps doing its own thing below (insert + autocomplete).
+                // Also works with a frame selection active (this.addFrameCommands is already filtered down
+                // to wrap-capable types in that case -- see generateAvailableFrameCommands in store.ts), so
+                // this deliberately isn't gated on selectedFrames.length === 0: that used to block it
+                // entirely, leaving Space's other job -- opening the frame context menu when frames are
+                // selected, see App.vue -- as the only thing Space did with a selection, and no keyboard way
+                // left to wrap one. See the matching change there.
+                if(!isEditing && !isDraggingFrames && !isPythonExecuting && !this.appStore.isAppMenuOpened
+                    && !event.ctrlKey && !event.metaKey
+                    && (event.key === "Tab" || event.key === " ") && Object.keys(this.addFrameCommands).length > 0){
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    event.stopPropagation();
+                    this.openFrameCommandsPane();
+                    return;
+                }
+
                 // Prevent default scrolling and navigation in the editor, except if Python is currently running
                 // (then we just leave the PEA handling it, see at the end of these conditions for related code)
                 let extraConditionsForPEA = true;
@@ -705,8 +760,6 @@ export default defineComponent({
                 if(event.key != "Escape"){
                     if(!isEditing && !this.appStore.isAppMenuOpened && !isPythonExecuting && !isDraggingFrames){
                         // Cases when there is no editing:
-                        const isHiddenShorthandFrameCommand = (hiddenShorthandFrames[eventKeyLowCase] !== undefined 
-                            && Object.values(this.addFrameCommands).flat().flatMap((addFrameDef) => addFrameDef.type.type).includes(hiddenShorthandFrames[eventKeyLowCase].type.type));
                         if(!(event.ctrlKey || event.metaKey)){
                             if(event.key == "Delete" || event.key == "Backspace"){
                                 if(!ignoreKeyEvent && !event.repeat){
@@ -718,26 +771,40 @@ export default defineComponent({
                                     this.appStore.ignoreKeyEvent = false;
                                 }
                             }
-                            //add the frame in the editor if allowed or the special cases of hidden frames
-                            else if(this.addFrameCommands[eventKeyLowCase] !== undefined || Object.values(this.addFrameCommands).find((addFrameCmdDef) =>  addFrameCmdDef[0].shortcuts[1] == eventKeyLowCase) !== undefined
-                                || isHiddenShorthandFrameCommand){
+                            // Everything else that can insert a frame requires the Tab/Space prefix (frame
+                            // commands pane) first, except for these three shortcuts which stay direct:
+                            else if(alwaysDirectFrameShortcutKeys.includes(eventKeyLowCase)){
                                 if(!ignoreKeyEvent){
                                     event.stopImmediatePropagation();
                                     event.stopPropagation(),
                                     event.preventDefault();
-                                    if(isHiddenShorthandFrameCommand) {
-                                        // Adding a shorthand frame required to 1) add the frame itself
-                                        this.appStore.addFrameWithCommand(hiddenShorthandFrames[eventKeyLowCase].type, hiddenShorthandFrames[eventKeyLowCase]);
-                                    }
-                                    else{
-                                        // We can add the frame by its original shortcut or hidden one
-                                        const isOriginalShortcut = (this.addFrameCommands[eventKeyLowCase] != undefined);
-                                        this.appStore.addFrameWithCommand(
-                                            (isOriginalShortcut)
-                                                ? this.addFrameCommands[eventKeyLowCase][0].type
-                                                : (Object.values(this.addFrameCommands).find((addFrameCmdDef) =>  addFrameCmdDef[0].shortcuts[1] == eventKeyLowCase) as AddFrameCommandDef[])[0].type
-                                        );
-                                    }
+                                    this.insertFrameForShortcutKey(eventKeyLowCase);
+                                }
+                                else{
+                                    this.appStore.ignoreKeyEvent = false;
+                                }
+                            }
+                            // Typing any other single printable character (not Alt-held -- Ctrl/Meta are already
+                            // excluded above -- and not a key like F1/Escape/ArrowLeft, which all have a
+                            // multi-character event.key) starts a func-call frame with that character as the
+                            // beginning of its name, and there's no frame selection to interfere with. Not
+                            // gated on this.addFrameCommands["c"] (whether func-call is currently offered as a
+                            // pane command) -- containers that forbid it (Imports/Definitions) correctly don't
+                            // offer it there as a pane command, but bare typing must still work as the generic
+                            // "type anything, get an error later if it's wrong here" fallback everywhere,
+                            // same as it already does in Main/bodies -- see the "frame not allowed here" check
+                            // (setFrameErroneous/atParsingError in store.ts) that flags it afterwards instead
+                            // of pre-emptively blocking the keystroke. "#"/"=" need no separate exclusion here:
+                            // the alwaysDirectFrameShortcutKeys branch above already claims them (this is an
+                            // else-if chain) -- only space needs excluding, since it opens/closes the pane
+                            // instead (handled elsewhere) rather than being in that list.
+                            else if(!event.altKey && event.key.length === 1 && event.key !== " "
+                                && this.appStore.selectedFrames.length === 0){
+                                if(!ignoreKeyEvent){
+                                    event.stopImmediatePropagation();
+                                    event.stopPropagation();
+                                    event.preventDefault();
+                                    this.createFuncCallFrameFromTypedChar(event.key);
                                 }
                                 else{
                                     this.appStore.ignoreKeyEvent = false;
@@ -748,13 +815,16 @@ export default defineComponent({
                             const currentStrypeLocation = findCurrentStrypeLocation().strypeLocation;
                             if(currentStrypeLocation == STRYPE_LOCATION.MAIN_CODE_SECTION || currentStrypeLocation == STRYPE_LOCATION.IN_FUNCDEF){
                                 // If ctrl/meta + space is activated on caret (in a function/class definition or in the main section), we add a new functional call frame and trigger the a/c.
+                                // Looked up directly (not via this.addFrameCommands[" "]) since func-call's own
+                                // shortcut is "c" now, not Space -- see FuncCallDefinition's entry in
+                                // allFrameCommandsDefs (editor.ts).
                                 // We must wait for addFrameWithCommand() to fully finish -- including its internal
                                 // cursor placement into the new frame's first slot -- before re-dispatching ctrl-space:
                                 // a single $nextTick() isn't always enough (that placement can itself need more than
                                 // one tick, e.g. for a frame added deep inside a freshly-created class/method), and a
                                 // too-early redispatch finds no focused slot to forward to and is silently dropped,
                                 // leaving auto-complete never triggered.
-                                this.appStore.addFrameWithCommand(this.addFrameCommands[eventKeyLowCase][0].type).then(() => {
+                                this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall)).then(() => {
                                     document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true}));
                                 });
                             }
@@ -779,6 +849,22 @@ export default defineComponent({
             // we use this reactive flag to trigger the recomputation of the computed property addFrameCommands
             this.frameCommandsReactiveFlag = !this.frameCommandsReactiveFlag;
         });
+
+        // Companion to the frame commands pane's Enter handling in handleFrameCommandsPaneKeyDown() above
+        // (see the comment there): the actual activation of the focused command happens on keyup, not
+        // keydown, so that moving focus into the newly-inserted frame only happens once this key press's
+        // keydown/keyup pair is otherwise finished.
+        window.addEventListener(
+            "keyup",
+            (event: KeyboardEvent) => {
+                if(this.appStore.isFrameCommandsPaneActive && event.key === "Enter" && document.activeElement?.closest("#addFramePanel")){
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    event.stopPropagation();
+                    (document.activeElement as HTMLElement).click();
+                }
+            }
+        );
     },
 
     mounted() {
@@ -794,7 +880,17 @@ export default defineComponent({
             this.handleAppScroll,
             false
         );
-        
+
+        // Belt-and-braces alongside the lazy check in the keydown handler: if focus leaves the frame
+        // commands pane to somewhere outside it (e.g. a mouse click elsewhere), close pane mode eagerly
+        // rather than waiting for the next keydown to notice.
+        document.getElementById("addFramePanel")?.addEventListener("focusout", (event: FocusEvent) => {
+            const relatedTarget = event.relatedTarget as HTMLElement | null;
+            if(!relatedTarget?.closest("#addFramePanel")){
+                this.appStore.isFrameCommandsPaneActive = false;
+            }
+        });
+
         // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
         mbSimulator = (document.querySelector("#mbSimulatorIframe") as HTMLIFrameElement)?.contentWindow;
         window.addEventListener("blur", this.handleMBSimulatorTakesFocus);        
@@ -806,7 +902,149 @@ export default defineComponent({
         addFrameCommandUID(commandType: string): string {
             return getAddFrameCmdElementUID(commandType);
         },
-        
+
+        // Inserts the frame matching this (lowercased) shortcut key -- by its original shortcut, its
+        // legacy shortcut (see getLegacyShortcut, editor.ts), or a hidden shorthand -- exactly as the
+        // direct top-level dispatch always has. Returns whether a match was found and dispatched, so
+        // callers can leave non-matching keys as a no-op. Shared between the always-direct shortcuts
+        // (Enter/#/=, handled above regardless of the frame commands pane) and the pane's own
+        // shortcut-letter handling (handleFrameCommandsPaneKeyDown), where every shortcut is fair
+        // game once the pane is focused.
+        insertFrameForShortcutKey(eventKeyLowCase: string): boolean {
+            const isHiddenShorthandFrameCommand = (hiddenShorthandFrames[eventKeyLowCase] !== undefined
+                && Object.values(this.addFrameCommands).flat().flatMap((addFrameDef) => addFrameDef.type.type).includes(hiddenShorthandFrames[eventKeyLowCase].type.type));
+
+            if(this.addFrameCommands[eventKeyLowCase] === undefined
+                && Object.values(this.addFrameCommands).find((addFrameCmdDef) => getLegacyShortcut(addFrameCmdDef[0]) == eventKeyLowCase) === undefined
+                && !isHiddenShorthandFrameCommand){
+                return false;
+            }
+
+            if(isHiddenShorthandFrameCommand) {
+                // Adding a shorthand frame required to 1) add the frame itself
+                this.appStore.addFrameWithCommand(hiddenShorthandFrames[eventKeyLowCase].type, hiddenShorthandFrames[eventKeyLowCase]);
+            }
+            else{
+                // We can add the frame by its original shortcut or legacy one
+                const isOriginalShortcut = (this.addFrameCommands[eventKeyLowCase] != undefined);
+                this.appStore.addFrameWithCommand(
+                    (isOriginalShortcut)
+                        ? this.addFrameCommands[eventKeyLowCase][0].type
+                        : (Object.values(this.addFrameCommands).find((addFrameCmdDef) => getLegacyShortcut(addFrameCmdDef[0]) == eventKeyLowCase) as AddFrameCommandDef[])[0].type
+                );
+            }
+            return true;
+        },
+
+        // Typing any other printable character at the bare frame caret creates an (empty) func-call
+        // frame, then feeds the typed character into its name slot through the same "paste into a slot"
+        // pipeline LabelSlot.vue already uses for real pastes (onCodePasteImpl, invoked here via the
+        // contentPastedInSlot custom event on the newly-focused slot) -- rather than setting the slot's
+        // code directly -- so bracket/quote pairing and any other slot-splitting logic that already
+        // applies when typing a character into a slot keeps working here too (e.g. typing "(" or '"'
+        // still auto-pairs, since it's genuinely going through the same code path as typing it into a
+        // slot, just retargeted at a freshly created one). Mirrors the existing ctrl-space-redispatch
+        // pattern below (waiting for addFrameWithCommand()'s own promise, which only resolves once the
+        // new frame's first slot is genuinely focused, before dispatching to document.activeElement).
+        createFuncCallFrameFromTypedChar(typedChar: string): void {
+            // Looked up directly rather than via this.addFrameCommands["c"] -- that's filtered down to
+            // whatever's valid to offer as a pane command at the current position (see the caller's
+            // comment for containers that exclude it), but it must still be creatable here.
+            // Unlike the explicit "c" pane command, we don't pre-fill the default "()" brackets here:
+            // the user is just typing (e.g. the start of "if"/"while"/"return"), and the frame may well
+            // get converted away from func-call entirely once LabelSlotsStructure.vue's funccall->
+            // keyword-frame/varassign conversion kicks in -- see skipFuncCallBrackets's own comment.
+            this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall), undefined, true).then((newFrameId: number) => {
+                // Target the new frame's name slot explicitly (rather than document.activeElement):
+                // its own name slot isn't necessarily what ends up focused by the time this promise
+                // resolves (e.g. autocomplete-related focus shifts can already be underway), so we
+                // address it directly by the frame ID addFrameWithCommand() just gave us.
+                const nameSlotUID = getLabelSlotUID({frameId: newFrameId, labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code});
+                document.getElementById(nameSlotUID)?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: "text", content: typedChar}}));
+            });
+        },
+
+        // All command buttons currently in the frame commands pane, in DOM order.
+        getFrameCommandButtons(): HTMLButtonElement[] {
+            return Array.from(document.querySelectorAll("#addFramePanel .frame-cmd-btn")) as HTMLButtonElement[];
+        },
+
+        // Opens the frame commands pane: moves real DOM focus onto the first available command button.
+        // addFrameWithCommand() (store.ts) resets isFrameCommandsPaneActive itself once a frame is
+        // actually inserted, so the only explicit close path needed here is Escape (closeFrameCommandsPane).
+        openFrameCommandsPane(): void {
+            this.appStore.isFrameCommandsPaneActive = true;
+            // The first ".frame-cmd-btn" in DOM order isn't necessarily the one currently shown
+            // (some commands, e.g. func-call's own "space" shortcut, aren't always applicable at
+            // the current caret position) -- focusing a hidden button is a silent no-op, which
+            // leaves focus outside #addFramePanel entirely and makes the very next keydown handler
+            // think the pane was never actually entered (see the isFrameCommandsPaneActive check
+            // above), so it falls through and treats a following shortcut letter as a literal typed
+            // character instead. (This also relies on the Commands tab switch above -- see
+            // validateSlot() in store.ts -- being instant: BTabs is set `no-fade` for exactly this
+            // reason, otherwise its buttons would stay display:none for the fade's duration.)
+            const firstAvailableButton = this.getFrameCommandButtons().find((button) => !button.disabled && button.offsetParent !== null);
+            firstAvailableButton?.focus();
+        },
+
+        closeFrameCommandsPane(returnFocusToCaret: boolean): void {
+            this.appStore.isFrameCommandsPaneActive = false;
+            if(returnFocusToCaret){
+                document.getElementById(getFrameUID(this.appStore.currentFrame.id))?.focus();
+            }
+        },
+
+        // Handles all keydown events while the frame commands pane is focused: arrow keys cycle between
+        // command buttons (Shift+Tab also cycles backwards, matching ArrowUp/ArrowLeft), Enter activates
+        // whichever one is currently focused (same as a mouse click), and any other shortcut key inserts
+        // that frame directly. Plain Tab and Space both close the pane and return to the frame caret,
+        // same as Escape: they're what opened the pane in the first place (at the bare frame caret), so
+        // a second press toggles it shut again, the same way you'd expect of any open/close key -- arrow
+        // keys are the dedicated way to navigate between buttons once the pane is open, so Tab isn't
+        // needed for that too, and Space no longer doubles as a func-call shortcut (that's "c" now, see
+        // allFrameCommandsDefs in editor.ts), so it's free for this instead.
+        handleFrameCommandsPaneKeyDown(event: KeyboardEvent): void {
+            event.stopImmediatePropagation();
+            event.stopPropagation();
+
+            if(event.key === "Escape" || event.key === " " || (event.key === "Tab" && !event.shiftKey)){
+                event.preventDefault();
+                this.closeFrameCommandsPane(true);
+                return;
+            }
+
+            if(event.key === "Enter"){
+                // Don't click the button here on keydown: focused <button> elements natively
+                // self-activate (synthesise a click) on Enter keydown, and if we let that happen --
+                // or trigger our own click here -- focus moves to the newly-inserted frame's slot
+                // *before* this same physical key press's keyup fires. That keyup then lands on the
+                // slot instead of the button, and the slot's own Enter handling immediately reacts to
+                // it (e.g. leaving the slot again). So we only preventDefault() here (blocking the
+                // native keydown auto-click) and do the actual activation in the "keyup" listener
+                // below instead, once this key's lifecycle is otherwise finished. Same fix Menu.vue
+                // already uses for its own Enter-confirms-selection handling.
+                event.preventDefault();
+                return;
+            }
+
+            if(event.key === "ArrowDown" || event.key === "ArrowRight" || event.key === "ArrowUp" || event.key === "ArrowLeft" || event.key === "Tab"){
+                // Only these need the current button list/position -- everything above is handled
+                // (and returns) without it.
+                const buttons = this.getFrameCommandButtons();
+                const currentIndex = buttons.indexOf(document.activeElement as HTMLButtonElement);
+                event.preventDefault();
+                if(buttons.length > 0){
+                    const delta = (event.key === "ArrowDown" || event.key === "ArrowRight") ? 1 : -1;
+                    buttons[(currentIndex + delta + buttons.length) % buttons.length].focus();
+                }
+                return;
+            }
+
+            // Any other key: try it as a direct shortcut letter (a no-op if it doesn't match anything).
+            event.preventDefault();
+            this.insertFrameForShortcutKey(event.key.toLowerCase());
+        },
+
         handleAppScroll(event: WheelEvent) {
             // Don't do anything if a context menu is displayed 
             if(!getActiveContextMenu()){
@@ -1155,10 +1393,59 @@ export default defineComponent({
     flex-wrap: wrap;
 }
 
+.frame-commands-pane-intro {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 2px 5px 8px 0;
+}
+
+// Hidden via visibility (rather than the content being swapped or removed) once the pane becomes
+// active, so this row keeps occupying exactly the same space and the frame commands underneath
+// never shift.
+.frame-commands-pane-intro-hidden {
+    visibility: hidden;
+}
+
+.frame-commands-pane-intro .frame-cmd-prefix-btn {
+    margin-right: 0;
+}
+
+// Like .text-editing-command .frame-cmd-btn-large (AddFrameCommand.vue): this sentence's
+// "Space"/"Tab" boxes aren't crammed into a row with many others, so there's no need to condense
+// the font horizontally to save space (unlike the "space" symbol in the frame commands table below).
+.frame-commands-pane-intro .frame-cmd-btn-large {
+    @include frame-cmd-btn-large-normal-stretch;
+}
+
+.frame-cmd-prefix-btn-wide {
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
 .#{$strype-classname-add-frame-commands-container}.with-expanded-PEA p {
    // So that the frame commands in expanded view expands over the commands/PEA splitter,
    // the width is set programmatically
-   position: absolute;   
+   position: absolute;
+}
+
+// Shown around #addFramePanel while the frame commands pane is focused for keyboard-driven
+// insertion (entered via Tab/Space at the frame caret), to make the mode change obvious.
+// Same blue as the frame caret (Caret.vue's .caret background-color: #3467FE).
+// Uses an inset box-shadow rather than outline: an outline is painted outside the element's
+// box, so with this panel flush against the right edge of its container, the outline's right
+// edge was clipped off screen. An inset shadow stays within the box and so is never clipped.
+// Padding is applied always (not just while active) so the shortcut/label content doesn't
+// shift position when the border appears -- otherwise it would jump inward by the padding
+// amount right as the border is drawn over it.
+#addFramePanel {
+    box-sizing: border-box;
+    padding: 6px;
+}
+
+#addFramePanel.frame-commands-pane-active {
+    box-shadow: inset 0 0 0 3px rgba(52, 103, 254, 0.9);
 }
 
 .#{$strype-classname-pea-container} {
@@ -1190,6 +1477,7 @@ export default defineComponent({
 
 .command-tab-content {
     margin-left: 5px;
+    margin-right: 5px;
 }
 
 //the following overrides the bootstrap tab generated styles

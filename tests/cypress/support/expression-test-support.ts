@@ -2,7 +2,7 @@
 // and CSS class names of Strype (we only do it if they are not already saved in this file)
 // We also set the set the 'paste' command via standard-setup
 import { isMacOSPlatform } from "@/helpers/common";
-import {cleanFromHTML, waitForEditorSettled} from "../support/test-support";
+import {cleanFromHTML, pressFrameShortcut, waitForEditorSettled} from "../support/test-support";
 import { scssVars, strypeElIds } from "./standard-setup";
 
 export function assertState(expectedState : string, assertMessage?: string) : void {
@@ -55,7 +55,7 @@ function withSelection(inner : (arg0: { id: string, cursorPos : number }) => voi
 export function testInsert(insertion : string, result : string, canBeTestedWithPaste?: boolean) : void {
     it("Tests " + insertion, () => {
         focusEditor();
-        cy.get("body").type("i");
+        pressFrameShortcut("i");
         assertState("{$}");
         cy.get("body").type(" " + insertion);
         assertState(result);
@@ -78,7 +78,7 @@ export function testInsert(insertion : string, result : string, canBeTestedWithP
 export function testInsertMediaThenExp(mediaPath: string, mediaMIME: string, exp: string, result: string): void {
     it("Tests Media followed by " + exp, () => {
         focusEditor();
-        cy.get("body").type("i");
+        pressFrameShortcut("i");
         assertState("{$}");
         cy.readFile(mediaPath, null).then((mediaContent) => {
             (cy.focused() as any).paste(mediaContent, mediaMIME);
@@ -167,7 +167,7 @@ export function testMultiInsert(multiInsertion : string, firstResult : string, s
         const nest = multiInsertion.substring(startNest + 1, endNest);
         const after = multiInsertion.substring(endNest + 1);
 
-        cy.get("body").type("i");
+        pressFrameShortcut("i");
         assertState("{$}");
         if (before.length > 0) {
             cy.get("body").type(before);
@@ -201,7 +201,7 @@ export function testInsertExisting(original : string, toInsert : string, expecte
         const before = original.substring(0, cursorIndex);
         const after = original.substring(cursorIndex + 1);
 
-        cy.get("body").type("i");
+        pressFrameShortcut("i");
         assertState("{$}");
         if (before.length > 0) {
             cy.get("body").type(before);
@@ -235,7 +235,7 @@ export function testBackspace(originalInclBksp : string, expectedResult : string
             const before = originalInclBksp.substring(0, bkspIndex);
             const after = originalInclBksp.substring(bkspIndex + 1);
 
-            cy.get("body").type("i");
+            pressFrameShortcut("i");
             assertState("{$}");
             if (before.length > 0) {
                 cy.get("body").type(before);
@@ -267,7 +267,7 @@ export function testBackspace(originalInclBksp : string, expectedResult : string
             const before = originalInclBksp.substring(0, bkspIndex - 1);
             const after = originalInclBksp.substring(bkspIndex - 1, bkspIndex) + originalInclBksp.substring(bkspIndex + 1);
 
-            cy.get("body").type("i");
+            pressFrameShortcut("i");
             assertState("{$}");
             if (before.length > 0) {
                 cy.get("body").type(before);
@@ -335,7 +335,7 @@ export function testPushBracket(original: string, expectedResults: string[], pus
             doTestPushBracket(original, expectedResults, pushSequence);
         }
         else{ 
-            cy.get("body").type("i");
+            pressFrameShortcut("i");
             assertState("{$}");
 
             const cursorIndex = original.indexOf("$");

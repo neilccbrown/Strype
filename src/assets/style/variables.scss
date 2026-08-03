@@ -79,3 +79,13 @@ $strype-classname-project-recent-state-label: recent-state-label;
 $strype-classname-strype-menu-item: strype-menu-item;
 $strype-classname-rename-identifier-popover: rename-popover;
 
+// Resets a .frame-cmd-btn-large's font back to the app's usual AHN-Strype, normal-width look --
+// used wherever a frame-cmd-btn-large's key box(es) aren't crammed into a row with many others (so
+// there's no need for .frame-cmd-btn-large's own default horizontal condensing to save space): the
+// code completion shortcut (AddFrameCommand.vue) and the frame commands pane's intro sentence
+// (Commands.vue).
+@mixin frame-cmd-btn-large-normal-stretch {
+    font-stretch: normal !important;
+    font-family: 'AHN-Strype', sans-serif !important;
+}
+
