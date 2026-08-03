@@ -1881,9 +1881,20 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
             }
         }
     }
-    // As we always have at least 1 field, and operators contained between fields, we need to add the trimming field 
+    // As we always have at least 1 field, and operators contained between fields, we need to add the trimming field
     // (and we also need to remove "dead" closing brackets)
-    let code = codeLiteral.substring(lookOffset).trimStart();
+    const untrimmedTailCode = codeLiteral.substring(lookOffset);
+    let code = untrimmedTailCode.trimStart();
+    // Symbol binary operators are now generated with real surrounding spaces (see parser.ts's
+    // getSlotStartsLengthsAndCodeForFrameLabel), so -- unlike before, when only keyword operators
+    // (whose match/length already bakes in a trailing space) could leave whitespace here -- this
+    // final trailing field can now have leading whitespace to trim off too. Account for that
+    // trimming in the cursor offset the same way the fields inside the loop above do, or the
+    // cursor ends up positioned as if that whitespace were still there (e.g. landing back inside
+    // the previous field instead of at the end of this one):
+    if ((cursorPos ?? -1) >= lookOffset) {
+        cursorOffset += (code.length - untrimmedTailCode.length);
+    }
     closeBracketCharacters.forEach((closingBracket) => {
         code = code.replaceAll(closingBracket, "");
     });
