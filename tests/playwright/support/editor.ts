@@ -1,13 +1,34 @@
 import {Page, expect, ElementHandle} from "@playwright/test";
 import {WINDOW_STRYPE_NEXTTICK_PROPNAME} from "@/helpers/sharedIdCssWithTests";
 
-async function readEditorState(page: Page) : Promise<{focusId: string, cursor: string, frameCount: number}> {
+// Keys that insert their frame type directly, without a Tab/Space prefix first (see
+// alwaysDirectFrameShortcutKeys in src/helpers/editor.ts) -- every other key (any letter) needs
+// the prefix to open the frame-commands pane first; typing the bare letter alone instead starts
+// a func-call frame with that letter as its content (see "Typing a character at the bare frame
+// caret starts a func-call frame"). Mirrored here (not imported) for the same reason
+// tests/cypress/support/frame-types.ts is a manual copy of src/types/types.ts: pulling from src/
+// into a Playwright spec's Node-based test loader breaks it (Vue/i18n side effects).
+const ALWAYS_DIRECT_FRAME_SHORTCUT_KEYS = ["enter", "#", "="];
+
+// Presses the keyboard shortcut that inserts a frame at the current blank "insert a new frame"
+// caret -- e.g. pressFrameShortcut(page, "i") for an if frame. Centralised so that if the app's
+// own prefix requirement (or the prefix itself) ever changes again, only this needs updating,
+// not every call site that inserts a frame this way.
+export async function pressFrameShortcut(page: Page, key: string): Promise<void> {
+    if (!ALWAYS_DIRECT_FRAME_SHORTCUT_KEYS.includes(key.toLowerCase())) {
+        await page.keyboard.press(" ");
+    }
+    await page.keyboard.press(key);
+}
+
+async function readEditorState(page: Page) : Promise<{focusId: string, cursor: string, frameCount: number, pendingConversion: boolean}> {
     return page.evaluate(() => {
         const editor = document.querySelector("#editor");
         return {
             focusId: editor?.getAttribute("data-slot-focus-id") ?? "",
             cursor: editor?.getAttribute("data-slot-cursor") ?? "",
             frameCount: document.querySelectorAll(".frame-div").length,
+            pendingConversion: editor?.getAttribute("data-pending-slot-conversion") === "true",
         };
     });
 }
@@ -33,17 +54,18 @@ export async function waitForEditorSettled(page: Page, timeoutMs = 4000) : Promi
     while (Date.now() - start < timeoutMs) {
         await page.waitForTimeout(30);
         const cur = await readEditorState(page);
-        if (cur.focusId === last.focusId && cur.cursor === last.cursor && cur.frameCount === last.frameCount) {
+        // While a conversion is pending (see App.vue's data-pending-slot-conversion), the app
+        // deliberately keeps focus/cursor unchanged for the whole debounce so in-flight typing
+        // doesn't land at the wrong spot -- meaning focus/cursor look "stable" from the very first
+        // poll even though the frame hasn't actually finished converting yet. Never treat that as
+        // settled, however many consecutive stable reads we've seen:
+        if (!cur.pendingConversion && cur.focusId === last.focusId && cur.cursor === last.cursor && cur.frameCount === last.frameCount) {
             stableCount++;
             // A blank focus id (no slot focused) is also used by the app as a transient marker
-            // while some restructuring is in flight -- e.g. converting a function-call frame to a
-            // variable assignment on typing "=" holds focus blank for a genuine ~300ms debounce
-            // (see LabelSlotsStructure.vue), and that blank reading is itself stable across many
-            // consecutive polls during the whole debounce window, which would otherwise fool this
-            // into returning mid-restructure. Frame-level pastes can legitimately end up blank too
-            // (a frame caret, not a slot), so we can't just refuse blank outright -- instead
+            // while some restructuring is in flight -- frame-level pastes can legitimately end up
+            // blank (a frame caret, not a slot) -- so we can't just refuse blank outright -- instead
             // require more consecutive stable reads (~450ms) before trusting a blank state than a
-            // real one (~30ms), comfortably past the known debounce:
+            // real one (~30ms), comfortably past any such transient:
             if (stableCount >= (cur.focusId === "" ? 15 : 1)) {
                 return;
             }

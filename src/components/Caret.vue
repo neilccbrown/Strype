@@ -1,5 +1,5 @@
 <template>
-    <div :class="{[scssVars.invisibleClassName]: isInvisible && !areFramesDraggedOver, disabled: isPythonExecuting, 'caret-drop': areFramesDraggedOver, 'caret-drop-forbidden': areFramesDraggedOver && !areDropFramesAllowed}">
+    <div :class="{[scssVars.invisibleClassName]: isInvisible && !areFramesDraggedOver, disabled: isPythonExecuting, 'caret-drop': areFramesDraggedOver, 'caret-drop-forbidden': areFramesDraggedOver && !areDropFramesAllowed, 'frame-commands-pane-caret': isFrameCommandsPaneActive && !isInvisible}">
         <!-- The inner content of the caret is reserved for the cross (x) that is displayed during DnD when a location is forbidden for dropping -->
          <span v-if="!isInvisible && areFramesDraggedOver && !areDropFramesAllowed" class="caret-cross-forbidden-dnd caret-cross-forbidden-dnd-arm1"></span>
          <span v-if="!isInvisible && areFramesDraggedOver && !areDropFramesAllowed" class="caret-cross-forbidden-dnd caret-cross-forbidden-dnd-arm2"></span>
@@ -38,6 +38,10 @@ export default defineComponent({
             return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
         },
 
+        isFrameCommandsPaneActive(): boolean {
+            return this.appStore.isFrameCommandsPaneActive;
+        },
+
         scssVars() {
             // just to be able to use in template
             return scssVars;
@@ -65,6 +69,13 @@ export default defineComponent({
 
 .caret-drop-forbidden {
     background-color: #979799 !important;
+}
+
+// Same grey as the caret's disabled state -- shown here once the frame commands pane is active
+// (i.e. once the Tab/Space prefix key has been pressed) so it's obvious, even when looking at the
+// code rather than the pane, that keyboard focus is in the pane right now.
+.frame-commands-pane-caret {
+    background-color: #b8bac0 !important;
 }
 
 .caret-cross-forbidden-dnd {

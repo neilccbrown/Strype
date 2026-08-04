@@ -1,15 +1,9 @@
 import {expect, Page, test} from "@playwright/test";
 import fs from "fs";
-import {doPagePaste, waitForEditorSettled} from "../support/editor";
+import {doPagePaste, pressFrameShortcut, waitForEditorSettled} from "../support/editor";
 import {setupStrypeTest} from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    // With regards to Chromium: several of these tests fail on Chromium in Playwright on Mac and
-    // I can't figure out why.  I've tried them manually in Chrome and Chromium on the same
-    // machine and it works fine, but I see in the video that the test fails in Playwright
-    // (pressing right out of a comment frame puts the cursor at the beginning and makes a frame cursor).
-    // Since it works in the real browsers, and on Webkit and Firefox, we just skip the tests in Chromium
-    test.skip(testInfo.project.name == "chromium", "Cannot run in Chromium");
     await setupStrypeTest(page, browserName, testInfo, {fakeClipboard: true, skipPyodide: true});
 });
 
@@ -94,12 +88,13 @@ test.describe("Check slots have errors", () => {
         // Class with method, where the method has header content "a, *"
         await page.keyboard.press("ArrowUp");
         await waitForEditorSettled(page);
-        await page.keyboard.type("cFoo");
+        await pressFrameShortcut(page, "c");
+        await page.keyboard.type("Foo");
         await page.keyboard.press("ArrowRight");
         await waitForEditorSettled(page);
         await page.keyboard.press("ArrowRight");
         await waitForEditorSettled(page);
-        await page.keyboard.type("dfoo(a,*");
+        await page.keyboard.type("def foo(a,*");
         const paramId = await getFocusedId(page);
         // Move into the function description slot
         await page.keyboard.press("ArrowRight");

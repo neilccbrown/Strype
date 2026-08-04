@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { PNG } from "pngjs";
-import { doPagePaste } from "../support/editor";
+import { doPagePaste, pressFrameShortcut } from "../support/editor";
 import { setupStrypeTest } from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
@@ -53,7 +53,7 @@ test.describe("Media literal resizing", async () => {
                 const srcImage = createBlackPngBase64(srcX, srcY);
                 
                 // Make a print and put the image in the params:
-                await page.keyboard.press("p");
+                await pressFrameShortcut(page, "p");
                 await doPagePaste(page, srcImage, "image/png");
                 
                 // Get the old src=... attribute ready to wait for it to change later:

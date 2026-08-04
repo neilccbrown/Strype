@@ -5,7 +5,7 @@ import os from "os";
 failOnConsoleError();
 import "../support/paste-test-support";
 import {testRoundTripImportAndDownload,testRoundTripPasteAndDownload} from "../support/paste-test-support";
-import { getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
+import { getDefaultStrypeProjectDocumentationFullLine, pressFrameShortcutThenType } from "../support/test-support";
 
 // If the user pastes "mixed" code (i.e. imports, functions and body code)
 // then we split it into those three categories and obey the following rules:
@@ -289,7 +289,7 @@ ${STARTING_DEF}
 ${STARTING_MAIN}
 #(=> Section:End
 `.trimStart(), true, "spy", () => {
-            cy.get("body").type(" afterwards");
+            cy.get("body").type("afterwards(");
         });
     });
 
@@ -309,7 +309,7 @@ ${STARTING_MAIN}
 afterwards()
 #(=> Section:End
 `.trimStart(), true, "spy", () => {
-            cy.get("body").type(" afterwards");
+            cy.get("body").type("afterwards(");
         });
     });
 
@@ -334,7 +334,7 @@ ${MAIN0}
 ${STARTING_MAIN}
 #(=> Section:End
 `.trimStart(), true, "spy", () => {
-            cy.get("body").type("iafterwards");
+            pressFrameShortcutThenType("i", "afterwards");
         });
     });
 
@@ -374,7 +374,7 @@ ${STARTING_DEF}
 afterwards()
 #(=> Section:End
 `.trimStart(), true, "spy", () => {
-            cy.get("body").type(" afterwards");
+            cy.get("body").type("afterwards(");
         });
     });
 });

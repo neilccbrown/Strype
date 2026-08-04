@@ -1,5 +1,5 @@
 import {test, expect} from "@playwright/test";
-import { typeIndividually, doPagePaste, doTextHomeEndKeyPress, assertStateOfIfFrame, checkFrameXorTextCursor, clearDefaultProject, MEDIA_SLOT_PARSED_PLACEHOLDER, assertStateOfFuncCallFrame, waitForEditorSettled } from "../support/editor";
+import { typeIndividually, doPagePaste, doTextHomeEndKeyPress, assertStateOfIfFrame, checkFrameXorTextCursor, clearDefaultProject, MEDIA_SLOT_PARSED_PLACEHOLDER, assertStateOfFuncCallFrame, pressFrameShortcut, waitForEditorSettled } from "../support/editor";
 import fs from "fs";
 import { setupStrypeTest } from "../support/general";
 import { save } from "../support/loading-saving";
@@ -30,7 +30,7 @@ test.describe("Media literal copying", () => {
         await page.keyboard.press("End");
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
-        await page.keyboard.type("i");
+        await pressFrameShortcut(page, "i");
         await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, "set_background(");
@@ -62,7 +62,7 @@ test.describe("Media literal copying", () => {
         await page.keyboard.press("End");
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
-        await page.keyboard.type("i");
+        await pressFrameShortcut(page, "i");
         await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, "set_background(");
@@ -117,7 +117,7 @@ test.describe("Media literal copying", () => {
         await page.keyboard.press("End");
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
-        await page.keyboard.type("i");
+        await pressFrameShortcut(page, "i");
         await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, "type(");
@@ -179,7 +179,7 @@ test.describe("Media literal manipulation", () => {
         await clearDefaultProject(page);
         await page.keyboard.press("ArrowDown");
         await page.keyboard.press("ArrowDown");
-        await page.keyboard.type("i");
+        await pressFrameShortcut(page, "i");
         await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{$}");
         const image = fs.readFileSync("src/assetsFilesystem/images/cat-test.jpg").toString("base64");
@@ -203,7 +203,7 @@ test.describe("Media literal manipulation", () => {
         await clearDefaultProject(page);
         await page.keyboard.press("ArrowDown");
         await page.keyboard.press("ArrowDown");
-        await page.keyboard.type("i");
+        await pressFrameShortcut(page, "i");
         await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{$}");
         const image = fs.readFileSync("src/assetsFilesystem/sounds/meow.wav").toString("base64");
@@ -224,7 +224,7 @@ test.describe("Media literal manipulation", () => {
 test.describe("Edition in expressions with media",() => {
     test("With keyword operators (basic)", async ({page}) => {
         // Write the expression (inside if): <media> or 5
-        await page.keyboard.press("i"),
+        await pressFrameShortcut(page, "i"),
         await waitForEditorSettled(page);
         const image = fs.readFileSync("src/assetsFilesystem/images/cat-test.jpg").toString("base64");
         const last10B64ImgChars = image.slice(-10);
@@ -235,7 +235,8 @@ test.describe("Edition in expressions with media",() => {
 
     test("With keyword operators (a bit more complex)", async ({page}) => {
         // Write the expression (inside if): test(<media>, 5 and 6)
-        await page.keyboard.type("itest("),
+        await pressFrameShortcut(page, "i"),
+        await page.keyboard.type("test("),
         await waitForEditorSettled(page);
         const image = fs.readFileSync("src/assetsFilesystem/images/cat-test.jpg").toString("base64");
         const last10B64ImgChars = image.slice(-10);
@@ -246,7 +247,7 @@ test.describe("Edition in expressions with media",() => {
 
     test("With keyword operators (and 2 media)", async ({page}) => {
         // Write the expression (inside if): <media1>+<media2> and "abc")
-        await page.keyboard.press("i"),
+        await pressFrameShortcut(page, "i"),
         await waitForEditorSettled(page);
         const mediaInfo: {mediaType: "img" | "snd", endOfB64: string}[] = [];
         const image = fs.readFileSync("src/assetsFilesystem/images/cat-test.jpg").toString("base64");
