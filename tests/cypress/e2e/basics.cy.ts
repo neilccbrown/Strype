@@ -4,7 +4,7 @@ import {expect} from "chai";
 import en from "@/localisation/en/en_main.json";
 
 import failOnConsoleError from "cypress-fail-on-console-error";
-import {cleanFromHTML, getDefaultStrypeProjectDocumentationFullLine, pressFrameShortcut, pressFrameShortcutThenType} from "../support/test-support";
+import {cleanFromHTML, clearDefaultImports, getDefaultStrypeProjectDocumentationFullLine, pressFrameShortcut, pressFrameShortcutThenType} from "../support/test-support";
 import { scssVars, standardBeforeEach, strypeElIds } from "../support/standard-setup";
 failOnConsoleError();
 require("cypress-terminal-report/src/installLogsCollector")();
@@ -378,6 +378,18 @@ describe("Classes", () => {
             defaultMyCode[0],
             {h: /with\s+f\s+as\s+g\s*:/, b: []},
         ]).concat(defaultMyCode.slice(1)));
+    });
+
+    it("Lets you use space to move to the next slot in a from...import frame", () => {
+        checkCodeEquals(defaultImports.concat(defaultMyCode));
+        // Clear the default imports and add our own "from...import" there instead -- "for" isn't a
+        // valid command in the imports section, so the bare "f" shortcut resolves directly to
+        // "from...import" here (unlike in "my code", where it needs disambiguating from "for"):
+        clearDefaultImports();
+        pressFrameShortcutThenType("f", "microbit Foo");
+        checkCodeEquals(([
+            /from\s+microbit\s+import\s+Foo/,
+        ] as CodeMatch[]).concat(defaultMyCode));
     });
 });
 
