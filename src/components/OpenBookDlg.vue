@@ -87,7 +87,10 @@ const chapters: Chapter[] = [
     {name: "Chapter 6", content: getBuiltinDemos("book_projects/chapter06")},
     {name: "Chapter 7", content: getBuiltinDemos("book_projects/chapter07")},
     {name: "Chapter 8", content: getBuiltinDemos("book_projects/chapter08")},
+    {name: "Chapter 9", content: getBuiltinDemos("book_projects/chapter09")},
     {name: "Chapter 10", content: getBuiltinDemos("book_projects/chapter10")},
+    {name: "Chapter 11", content: getBuiltinDemos("book_projects/chapter11")},
+    {name: "Chapter 12", content: getBuiltinDemos("book_projects/chapter12")},
 ];
 
 const props = defineProps<{
